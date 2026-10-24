@@ -18,6 +18,7 @@ from experiments.learner import contextual as c
 from contextual_protocol import ContextualProducer, NativeFailure, loads
 from env import HeadlessSelfPlayEnv, Limits, _Side
 from contextual_env import CONTINUATION_LIMIT
+from test_contextual_evidence import write_barriers
 
 
 def obs():
@@ -173,6 +174,11 @@ class AdapterTests(unittest.TestCase):
             e.sides[index] = side
         e._engine_evidence = lambda log: ({"synthetic": True}, None)
         e._identity = lambda: dict(engine_revision="synthetic", bridge_source_sha256="a" * 64, map_sha256="b" * 64)
+        write_barriers(self.root)
+        for name in ("replay.jsonl", "contextual-replay.jsonl"):
+            (self.root / "engine" / name).write_text('{"synthetic_unit_fixture":true}\n')
+        with (self.root / "engine/contextual-replay.jsonl").open("a") as stream:
+            stream.write('{"seq":0,"kind":"close","barrier_id":1,"client_packets":123}\n')
 
     def tearDown(self):
         # No subprocess or real socket exists in these explicit unit fixtures.
@@ -268,7 +274,7 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(result.rewards, {"red": 1, "blue": -1})
         self.assertTrue(self.audit(result)["scoring_binding_verified"])
         self.assertFalse(result.manifest["deterministic_replay_verified"])
-        self.assertEqual(result.manifest["replay"]["status"], "unsupported")
+        self.assertEqual(result.manifest["replay"]["status"], "recorded")
 
     def _terminal_pair(self):
         for index, side in self.env.sides.items():
@@ -286,6 +292,24 @@ class AdapterTests(unittest.TestCase):
         result = e._finish(0)
         self.assertEqual(result.status, "failed")
         self.assertEqual(result.termination_reason, "unsupported_interface")
+        self.assertFalse(self.audit(result)["record_contract_eligible"])
+
+    def test_clean_exit_and_complete_sockets_without_barrier_are_unscored(self):
+        self._terminal_pair()
+        (self.root / "engine/terminal-barrier-client.jsonl").unlink()
+        result = self.env._finish(0)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.termination_reason, "terminal_barrier_invalid")
+        self.assertEqual(result.rewards, {"red": None, "blue": None})
+        self.assertEqual(result.bootstrap, {"red": None, "blue": None})
+        self.assertFalse(self.audit(result)["record_contract_eligible"])
+
+    def test_late_engine_failure_after_valid_barrier_is_unscored(self):
+        self._terminal_pair()
+        self.env.log.write("Headless packet handling failed: injected after receipt\n")
+        result = self.env._finish(0)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.rewards, {"red": None, "blue": None})
         self.assertFalse(self.audit(result)["record_contract_eligible"])
 
     def test_explicit_unsupported_before_terminal_keeps_specific_reason(self):

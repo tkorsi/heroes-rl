@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
+#include "ContextualEvidence.h"
 #include "VisibleWorld.h"
 
 #include "../../lib/battle/BattleAction.h"
@@ -154,7 +155,7 @@ void waitSocket(int fd, short events, int timeoutSeconds)
 thread_local bool gameStateReadHeld = false;
 }
 
-ExplorerRL::GameStateRead::GameStateRead()
+ExplorerRL::GameStateRead::GameStateRead(const char * actor) : event(actor, "read")
 {
 	if(gameStateReadHeld)
 		throw std::logic_error("Nested game-state read lock");
@@ -181,6 +182,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(!callbackPlayer)
 		throw std::runtime_error("ExplorerRL requires a player-specific callback");
 	playerID = *callbackPlayer;
+	evidenceActor = "player" + std::to_string(playerID.getNum());
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
@@ -195,6 +197,8 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	human = false;
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
+	if(contextual && contextualEvidenceEnabled())
+		explorer_rl::ContextualEvidence::live(episode, townEconomy);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
@@ -236,6 +240,8 @@ void ExplorerRL::finish()
 
 void ExplorerRL::connectPolicy()
 {
+	if(explorer_rl::ContextualEvidence::replaying())
+		return;
 	// Each instance has its own callback, state and socket. Plural routing never
 	// falls back to a shared port, so a missing endpoint fails explicitly.
 	const std::string portKey = std::getenv("EXPLORER_RL_PLAYERS")
@@ -293,6 +299,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 
 bool ExplorerRL::buildAndSend(const std::function<JsonNode()> & build)
 {
+	ExperimentEventGuard event(evidenceActor.c_str(), "send");
 	// gameOver writes the terminal under sendMutex on the network thread. A
 	// message's events are taken and written under the same lock, so the
 	// terminal either follows this message or this message is never built and
@@ -309,6 +316,12 @@ bool ExplorerRL::buildAndSend(const std::function<JsonNode()> & build)
 
 void ExplorerRL::writeMessage(const JsonNode & message)
 {
+	if(auto * evidence = explorer_rl::ContextualEvidence::current())
+	{
+		evidence->message(playerID.getNum(), message);
+		if(explorer_rl::ContextualEvidence::replaying())
+			return;
+	}
 	const auto encodeStart = std::chrono::steady_clock::now();
 	// VCMI's compact writer can retain formatting newlines. JSON strings escape
 	// their own newlines, so removing literal CR/LF produces a JSONL record.
@@ -341,6 +354,8 @@ void ExplorerRL::writeMessage(const JsonNode & message)
 
 JsonNode ExplorerRL::receiveMessage()
 {
+	if(explorer_rl::ContextualEvidence::replaying())
+		return explorer_rl::ContextualEvidence::current()->replayResponse(playerID.getNum());
 	while(true)
 	{
 		const auto newline = receiveBuffer.find('\n');
@@ -353,7 +368,11 @@ JsonNode ExplorerRL::receiveMessage()
 			JsonParsingSettings parsing;
 			parsing.mode = JsonParsingSettings::JsonFormatMode::JSON;
 			parsing.strict = true;
-			return JsonNode(line.data(), line.size(), parsing, "ExplorerRL policy response");
+			JsonNode response(line.data(), line.size(), parsing, "ExplorerRL policy response");
+			ExperimentEventGuard event(evidenceActor.c_str(), "receive");
+			if(auto * evidence = explorer_rl::ContextualEvidence::current())
+				evidence->response(playerID.getNum(), response);
+			return response;
 		}
 		if(receiveBuffer.size() > 65536)
 			throw std::runtime_error("Policy response exceeds 64 KiB");
@@ -369,6 +388,8 @@ JsonNode ExplorerRL::receiveMessage()
 
 bool ExplorerRL::ended()
 {
+	if(explorer_rl::ContextualEvidence::cancelled())
+		return true;
 	std::lock_guard lock(stateMutex);
 	if(!failure.empty())
 		throw std::runtime_error(failure);
@@ -433,6 +454,8 @@ void ExplorerRL::run() noexcept
 	}
 	catch(const std::exception & error)
 	{
+		if(explorer_rl::ContextualEvidence::cancelled())
+			return;
 		bool report;
 		{
 			std::lock_guard lock(stateMutex);
@@ -568,7 +591,8 @@ void ExplorerRL::battleStart(const BattleID & battleID, const CCreatureSet * arm
 		if(!contextual)
 			events.push_back(std::move(event));
 	}
-	CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
+	if(!explorer_rl::ContextualEvidence::replaying())
+		CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
 
 void ExplorerRL::battleEnd(const BattleID & battleID, const BattleResult * result, QueryID queryID)
@@ -578,7 +602,8 @@ void ExplorerRL::battleEnd(const BattleID & battleID, const BattleResult * resul
 		if(result && battleSide && (result->winner == BattleSide::ATTACKER || result->winner == BattleSide::DEFENDER))
 			battleWon = result->winner == *battleSide;
 	}
-	CAdventureAI::battleEnd(battleID, result, queryID);
+	if(!explorer_rl::ContextualEvidence::replaying())
+		CAdventureAI::battleEnd(battleID, result, queryID);
 }
 
 void ExplorerRL::battleEnded()
@@ -651,7 +676,7 @@ JsonNode ExplorerRL::takeEvents()
 
 ExplorerRL::GameStateRead ExplorerRL::readGameState() const
 {
-	return GameStateRead();
+	return GameStateRead(evidenceActor.c_str());
 }
 
 void ExplorerRL::noteVisibleChanges()

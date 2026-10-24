@@ -1,0 +1,743 @@
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -10,6 +10,7 @@
+ #include "StdInc.h"
+ #include "Global.h"
+ #include "Client.h"
++#include "CMT.h"
+ 
+ #include "CPlayerInterface.h"
+ #include "PlayerLocalState.h"
+@@ -350,7 +351,12 @@
+ {
+ 	const auto expected = configuredExplorerPlayers();
+ 	if(!expected.contains(player) || !explorerTerminalsReceived.insert(player).second)
++	{
++		if(contextualEvidenceEnabled())
++			throw std::runtime_error("Unexpected or repeated contextual terminal");
+ 		return false;
++	}
++	explorerTerminalOutcomes.emplace(player, won);
+ 	logAi->info("Experiment player %d %s. Terminal received.", player.getNum(), won ? "won" : "lost");
+ 	return explorerTerminalsReceived.size() == expected.size();
+ }
+@@ -409,23 +415,67 @@
+ 
+ void CClient::handlePack(CPackForClient & pack)
+ {
+-	ApplyClientNetPackVisitor afterVisitor(*this, gameState());
+-	ApplyFirstClientNetPackVisitor beforeVisitor(*this, gameState());
+-
+-	pack.visit(beforeVisitor);
+-	logNetwork->trace("\tMade first apply on cl: %s", typeid(pack).name());
+-	{
+-		std::unique_lock lock(CGameState::mutex);
+-		gameState().apply(pack);
+-		noteExperimentPackApplied(CTypeList::getInstance().getTypeID(&pack));
+-	}
+-	logNetwork->trace("\tApplied on gs: %s", typeid(pack).name());
+-	pack.visit(afterVisitor);
+-	logNetwork->trace("\tMade second apply on cl: %s", typeid(pack).name());
+-	// The interfaces may change during the notifications above, so iterate over a copy.
+-	const auto interfaces = playerint;
+-	for(const auto & entry : interfaces)
+-		entry.second->packApplied();
++	{
++		ExperimentEventGuard transaction("client", "packet");
++		if(contextualEvidenceEnabled() && experimentBarrierReceived)
++			throw std::runtime_error("Packet received after contextual terminal barrier");
++		beginExperimentPacket(CTypeList::getInstance().getTypeID(&pack));
++		ApplyClientNetPackVisitor afterVisitor(*this, gameState());
++		ApplyFirstClientNetPackVisitor beforeVisitor(*this, gameState());
++
++		pack.visit(beforeVisitor);
++		logNetwork->trace("\tMade first apply on cl: %s", typeid(pack).name());
++		{
++			std::unique_lock lock(CGameState::mutex);
++			gameState().apply(pack);
++			noteExperimentPackApplied(CTypeList::getInstance().getTypeID(&pack));
++		}
++		logNetwork->trace("\tApplied on gs: %s", typeid(pack).name());
++		pack.visit(afterVisitor);
++		logNetwork->trace("\tMade second apply on cl: %s", typeid(pack).name());
++		// The interfaces may change during the notifications above, so iterate over a copy.
++		const auto interfaces = playerint;
++		for(const auto & entry : interfaces)
++			entry.second->packApplied();
++		if(contextualEvidenceEnabled())
++		{
++			if(const auto * applied = dynamic_cast<const PackageApplied *>(&pack))
++				lastExperimentAcknowledgement = std::tuple(applied->player, applied->requestID, applied->packType);
++			noteExperimentPacketCallbacksComplete();
++			if(auto hooks = experimentEvidenceHooks())
++				hooks->callbacksComplete(pack, experimentReceiptPosition());
++			if(const auto * barrier = dynamic_cast<const ExperimentTerminalBarrier *>(&pack))
++				completeExperimentTerminalBarrier(*barrier);
++		}
++	}
++	if(experimentBarrierReceived)
++		requestHeadlessShutdown(experimentHasFailed() ? EXIT_FAILURE : EXIT_SUCCESS);
++}
++
++void CClient::completeExperimentTerminalBarrier(const ExperimentTerminalBarrier & barrier)
++{
++	const char * episode = std::getenv("EXPLORER_RL_EPISODE");
++	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
++	const auto position = experimentReceiptPosition();
++	const auto expected = std::set<PlayerColor>{PlayerColor(0), PlayerColor(1)};
++	if(experimentHasFailed() || !episode || !interface || barrier.version != 1 || barrier.barrierId != 1
++		|| barrier.episode != episode || barrier.interface != interface
++		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1")
++		|| configuredExplorerPlayers() != expected || explorerTerminalsReceived != expected
++		|| explorerTerminalOutcomes.at(PlayerColor(0)) != barrier.redWon
++		|| explorerTerminalOutcomes.at(PlayerColor(1)) == barrier.redWon
++		|| barrier.clientPackets != position.index || position.index != position.completed
++		|| position.phase != ExperimentPacketPhase::CallbacksComplete
++		|| !lastExperimentAcknowledgement
++		|| *lastExperimentAcknowledgement != std::tuple(barrier.requestPlayer, barrier.requestID, barrier.requestType))
++		throw std::runtime_error("Contextual terminal barrier identity, callbacks or outcomes mismatch");
++	writeExperimentTerminalBarrier(barrier, true);
++	experimentBarrierReceived = true;
++	if(auto hooks = experimentEvidenceHooks())
++		hooks->terminalBarrierComplete(barrier);
++	if(experimentHasFailed())
++		throw std::runtime_error("Contextual terminal barrier callback failed");
++	logAi->info("Contextual terminal barrier received after all callbacks: heroes-contextual-terminal-barrier-v1");
+ }
+ 
+ std::optional<BattleAction> CClient::makeSurrenderRetreatDecision(PlayerColor player, const BattleID & battleID, const BattleStateInfoForRetreat & battleState)
+@@ -435,15 +485,22 @@
+ 
+ int CClient::sendRequest(const CPackForServer & request, PlayerColor player, bool waitTillRealize)
+ {
+-	const int requestID = requestCounter.fetch_add(1, std::memory_order_relaxed);
+-	logNetwork->trace("Sending a request \"%s\". It'll have an ID=%d.", typeid(request).name(), requestID);
+-
+-	waitingRequest.pushBack(requestID);
+-	request.requestID = requestID;
+-	request.player = player;
+-	GAME->server().sendGamePack(request);
+-	if(vstd::contains(playerint, player))
+-		playerint[player]->requestSent(&request, requestID);
++	int requestID;
++	{
++		ExperimentEventGuard transaction("client", "request");
++		requestID = requestCounter.fetch_add(1, std::memory_order_relaxed);
++		logNetwork->trace("Sending a request \"%s\". It'll have an ID=%d.", typeid(request).name(), requestID);
++
++		waitingRequest.pushBack(requestID);
++		request.requestID = requestID;
++		request.player = player;
++		if(contextualEvidenceEnabled())
++			if(auto hooks = experimentEvidenceHooks())
++				hooks->nativeRequest(request, player);
++		GAME->server().sendGamePack(request);
++		if(vstd::contains(playerint, player))
++			playerint[player]->requestSent(&request, requestID);
++	}
+ 
+ 	if(waitTillRealize)
+ 	{
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -22,6 +22,7 @@
+ VCMI_LIB_NAMESPACE_BEGIN
+ 
+ struct CPackForClient;
++struct ExperimentTerminalBarrier;
+ struct CPackForServer;
+ class IBattleEventsReceiver;
+ class CBattleGameInterface;
+@@ -131,6 +132,10 @@
+ 	std::atomic<int> requestCounter{1};
+ 	std::set<PlayerColor> advInterfaceReadySent;
+ 	std::set<PlayerColor> explorerTerminalsReceived;
++	std::map<PlayerColor, bool> explorerTerminalOutcomes;
++	std::optional<std::tuple<PlayerColor, uint32_t, uint16_t>> lastExperimentAcknowledgement;
++	bool experimentBarrierReceived = false;
++	void completeExperimentTerminalBarrier(const ExperimentTerminalBarrier & barrier);
+ 
+ public:
+ 	std::map<PlayerColor, std::shared_ptr<CGameInterface>> playerint;
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -30,6 +30,7 @@
+ #include "UIHelper.h"
+ 
+ #include "../lib/callback/CCallback.h"
++#include "../lib/callback/ExperimentHooks.h"
+ #include "../lib/filesystem/Filesystem.h"
+ #include "../lib/filesystem/FileInfo.h"
+ #include "../lib/texts/CGeneralTextHandler.h"
+@@ -455,7 +456,8 @@
+ 		if(!ENGINE)
+ 		{
+ 			// gameOver above delivered each terminal synchronously on this thread.
+-			requestHeadlessShutdown(EXIT_SUCCESS);
++			if(!contextualEvidenceEnabled())
++				requestHeadlessShutdown(EXIT_SUCCESS);
+ 		}
+ 		else if(recording)
+ 		{
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -10,6 +10,12 @@
+ #include "StdInc.h"
+ #include "CDynLibHandler.h"
+ #include "ExperimentHooks.h"
++#include "CGameInterface.h"
++#include "../json/JsonNode.h"
++#include "../networkPacks/PacksForClient.h"
++#include "../networkPacks/PacksForServer.h"
++#include <cstdio>
++#include <cstdlib>
+ 
+ #include "CGlobalAI.h"
+ 
+@@ -44,6 +50,7 @@
+ 
+ namespace
+ {
++std::atomic<bool> experimentFailure{false};
+ std::mutex experimentFailureMutex;
+ std::function<void(const std::string &)> experimentFailureHandler;
+ }
+@@ -60,10 +67,14 @@
+ std::atomic<uint16_t> experimentPackType{0};
+ }
+ 
++namespace { void setExperimentPacketApplied(); }
++
+ void noteExperimentPackApplied(uint16_t type)
+ {
+ 	experimentPackType.store(type, std::memory_order_relaxed);
+ 	experimentPackIndex.fetch_add(1, std::memory_order_relaxed);
++	if(contextualEvidenceEnabled())
++		setExperimentPacketApplied();
+ }
+ 
+ ExperimentPackPosition experimentPackPosition()
+@@ -73,6 +84,7 @@
+ 
+ void reportExperimentFailure(const std::string & reason)
+ {
++	experimentFailure.store(true, std::memory_order_release);
+ 	std::function<void(const std::string &)> handler;
+ 	{
+ 		std::lock_guard lock(experimentFailureMutex);
+@@ -80,6 +92,176 @@
+ 	}
+ 	if(handler)
+ 		handler(reason);
++}
++
++namespace
++{
++std::recursive_mutex experimentEventMutex;
++std::mutex experimentHooksMutex;
++std::shared_ptr<ExperimentEvidenceHooks> evidenceHooks;
++ExperimentReceiptPosition receiptPosition;
++thread_local unsigned eventDepth = 0;
++thread_local std::string eventActor;
++
++void setExperimentPacketApplied()
++{
++	if(!eventDepth || receiptPosition.phase != ExperimentPacketPhase::Before)
++		throw std::runtime_error("Contextual packet applied outside its receipt transaction");
++	receiptPosition.phase = ExperimentPacketPhase::Applied;
++}
++}
++
++bool contextualEvidenceEnabled()
++{
++	const char * value = std::getenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE");
++	return value && std::string(value) == "1";
++}
++
++bool supportedExperimentTerminalRequest(const CPackForServer & input, bool neutralAuthenticated)
++{
++	return input.player == PlayerColor(0) || input.player == PlayerColor(1)
++		|| (input.player == PlayerColor::NEUTRAL && neutralAuthenticated
++			&& dynamic_cast<const MakeAction *>(&input));
++}
++
++bool experimentHasFailed()
++{
++	return experimentFailure.load(std::memory_order_acquire);
++}
++
++void setExperimentEvidenceHooks(std::shared_ptr<ExperimentEvidenceHooks> hooks)
++{
++	std::lock_guard lock(experimentHooksMutex);
++	evidenceHooks = std::move(hooks);
++}
++
++std::shared_ptr<ExperimentEvidenceHooks> experimentEvidenceHooks()
++{
++	std::lock_guard lock(experimentHooksMutex);
++	return evidenceHooks;
++}
++
++std::string experimentEventActor()
++{
++	return eventActor;
++}
++
++ExperimentEventGuard::ExperimentEventGuard(const char * actor_, const char * operation_)
++	: actor(actor_), operation(operation_), enabled(contextualEvidenceEnabled())
++{
++	if(!enabled)
++		return;
++	if(eventDepth)
++	{
++		++eventDepth;
++		return;
++	}
++	hooks = experimentEvidenceHooks();
++	if(hooks)
++		hooks->beforeEvent(actor, operation);
++	lock = std::unique_lock<std::recursive_mutex>(experimentEventMutex);
++	eventDepth = 1;
++	eventActor = actor;
++	outermost = true;
++	try
++	{
++		if(hooks)
++			hooks->eventEntered(actor, operation);
++	}
++	catch(...)
++	{
++		eventDepth = 0;
++		eventActor.clear();
++		throw;
++	}
++}
++
++ExperimentEventGuard::~ExperimentEventGuard() noexcept
++{
++	if(!enabled)
++		return;
++	if(outermost)
++	{
++		try
++		{
++			if(hooks)
++				hooks->eventLeaving(actor, operation);
++		}
++		catch(const std::exception & error)
++		{
++			reportExperimentFailure(std::string("Contextual evidence transaction failed: ") + error.what());
++		}
++		catch(...)
++		{
++			reportExperimentFailure("Contextual evidence transaction failed");
++		}
++		eventActor.clear();
++	}
++	--eventDepth;
++}
++
++void beginExperimentPacket(uint16_t type)
++{
++	if(!contextualEvidenceEnabled())
++		return;
++	if(!eventDepth || receiptPosition.index != receiptPosition.completed)
++		throw std::runtime_error("Contextual client packet receipt is incomplete");
++	++receiptPosition.index;
++	receiptPosition.type = type;
++	receiptPosition.phase = ExperimentPacketPhase::Before;
++}
++
++void noteExperimentPacketCallbacksComplete()
++{
++	if(!contextualEvidenceEnabled())
++		return;
++	if(!eventDepth || receiptPosition.phase != ExperimentPacketPhase::Applied)
++		throw std::runtime_error("Contextual packet callbacks completed out of order");
++	receiptPosition.phase = ExperimentPacketPhase::CallbacksComplete;
++	receiptPosition.completed = receiptPosition.index;
++}
++
++ExperimentReceiptPosition experimentReceiptPosition()
++{
++	std::lock_guard lock(experimentEventMutex);
++	return receiptPosition;
++}
++
++void writeExperimentTerminalBarrier(const ExperimentTerminalBarrier & barrier, bool client)
++{
++	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
++	if(!directory || !*directory || experimentHasFailed())
++		throw std::runtime_error("Contextual terminal barrier evidence unavailable");
++	JsonNode record;
++	record["schema"].String() = "heroes-contextual-terminal-barrier-v1";
++	record["kind"].String() = client ? "client" : "server";
++	record["episode"].String() = barrier.episode;
++	record["interface"].String() = barrier.interface;
++	record["barrier_id"].Integer() = barrier.barrierId;
++	record["origin"].String() = "request";
++	record["request"]["player"].Integer() = barrier.requestPlayer.getNum();
++	record["request"]["id"].Integer() = barrier.requestID;
++	record["request"]["type"].Integer() = barrier.requestType;
++	record["client_packets"].Integer() = barrier.clientPackets;
++	record["outcomes"].Vector() = {JsonNode(barrier.redWon ? "win" : "loss"), JsonNode(barrier.redWon ? "loss" : "win")};
++	if(client)
++	{
++		record["callbacks_complete"].Bool() = true;
++		record["observed_count"].Integer() = experimentReceiptPosition().completed;
++	}
++	std::string line = record.toCompactString();
++	line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
++	line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
++	line += '\n';
++	const std::string path = std::string(directory) + "/terminal-barrier-" + (client ? "client" : "server") + ".jsonl";
++	FILE * output = std::fopen(path.c_str(), "wbx");
++	if(!output)
++		throw std::runtime_error("Cannot create contextual terminal barrier evidence");
++	const bool written = std::fwrite(line.data(), 1, line.size(), output) == line.size();
++	const bool flushed = std::fflush(output) == 0;
++	const bool closed = std::fclose(output) == 0;
++	if(!written || !flushed || !closed)
++		throw std::runtime_error("Cannot flush contextual terminal barrier evidence");
+ }
+ 
+ template<typename rett>
+--- a/lib/callback/ExperimentHooks.h
++++ b/lib/callback/ExperimentHooks.h
+@@ -8,6 +8,12 @@
+  *
+  */
+ #pragma once
++
++#include <memory>
++#include <mutex>
++#include <string>
++#include <cstdint>
++#include "../constants/EntityIdentifiers.h"
+ 
+ VCMI_LIB_NAMESPACE_BEGIN
+ 
+@@ -25,4 +31,61 @@
+ /// Stable while the caller holds the game-state lock or runs on the packet thread.
+ DLL_LINKAGE ExperimentPackPosition experimentPackPosition();
+ 
++struct CPackForClient;
++struct CPackForServer;
++struct ExperimentTerminalBarrier;
++class PlayerColor;
++
++/// Diagnostic-only serialization of client callbacks and adapter operations.
++/// Nothing in this interface is a learner observation.
++DLL_LINKAGE bool contextualEvidenceEnabled();
++DLL_LINKAGE bool experimentHasFailed();
++/// Neutral can end a game only through a successful battle action from the
++/// recorded connection that actually owns the neutral battle callback.
++DLL_LINKAGE bool supportedExperimentTerminalRequest(const CPackForServer & input, bool neutralAuthenticated);
++enum class ExperimentPacketPhase { Before, Applied, CallbacksComplete };
++struct ExperimentReceiptPosition
++{
++	uint64_t index = 0;
++	uint16_t type = 0;
++	ExperimentPacketPhase phase = ExperimentPacketPhase::CallbacksComplete;
++	uint64_t completed = 0;
++};
++DLL_LINKAGE void beginExperimentPacket(uint16_t type);
++DLL_LINKAGE void noteExperimentPacketCallbacksComplete();
++DLL_LINKAGE ExperimentReceiptPosition experimentReceiptPosition();
++
++class DLL_LINKAGE ExperimentEvidenceHooks
++{
++public:
++	virtual ~ExperimentEvidenceHooks() = default;
++	/// Replay scheduling runs before acquiring the event mutex.
++	virtual void beforeEvent(const std::string & actor, const std::string & operation) {}
++	virtual void eventEntered(const std::string & actor, const std::string & operation) {}
++	virtual void eventLeaving(const std::string & actor, const std::string & operation) {}
++	virtual void nativeRequest(const CPackForServer & request, PlayerColor player) {}
++	virtual void callbacksComplete(const CPackForClient & pack, ExperimentReceiptPosition position) {}
++	virtual void terminalBarrierComplete(const ExperimentTerminalBarrier & barrier) {}
++};
++DLL_LINKAGE void setExperimentEvidenceHooks(std::shared_ptr<ExperimentEvidenceHooks> hooks);
++DLL_LINKAGE std::shared_ptr<ExperimentEvidenceHooks> experimentEvidenceHooks();
++DLL_LINKAGE std::string experimentEventActor();
++
++class DLL_LINKAGE ExperimentEventGuard
++{
++	std::unique_lock<std::recursive_mutex> lock;
++	std::shared_ptr<ExperimentEvidenceHooks> hooks;
++	std::string actor;
++	std::string operation;
++	bool enabled = false;
++	bool outermost = false;
++public:
++	explicit ExperimentEventGuard(const char * actor = "", const char * operation = "");
++	~ExperimentEventGuard() noexcept;
++	ExperimentEventGuard(const ExperimentEventGuard &) = delete;
++	ExperimentEventGuard & operator=(const ExperimentEventGuard &) = delete;
++};
++
++/// Exactly one exclusive-created, flushed JSONL record; callers own ordering.
++DLL_LINKAGE void writeExperimentTerminalBarrier(const ExperimentTerminalBarrier & barrier, bool client);
+ VCMI_LIB_NAMESPACE_END
+--- a/lib/networkPacks/NetPackVisitor.h
++++ b/lib/networkPacks/NetPackVisitor.h
+@@ -29,6 +29,7 @@
+ 	virtual void visitForClient(CPackForClient & pack) {}
+ 	virtual void visitPackageApplied(PackageApplied & pack) {}
+ 	virtual void visitPackageReceived(PackageReceived & pack) {}
++	virtual void visitExperimentTerminalBarrier(ExperimentTerminalBarrier & pack) {}
+ 	virtual void visitSystemMessage(SystemMessage & pack) {}
+ 	virtual void visitPlayerBlocked(PlayerBlocked & pack) {}
+ 	virtual void visitPlayerCheated(PlayerCheated & pack) {}
+--- a/lib/networkPacks/NetPacksLib.cpp
++++ b/lib/networkPacks/NetPacksLib.cpp
+@@ -74,6 +74,11 @@
+ 	visitor.visitPackageApplied(*this);
+ }
+ 
++void ExperimentTerminalBarrier::visitTyped(ICPackVisitor & visitor)
++{
++	visitor.visitExperimentTerminalBarrier(*this);
++}
++
+ void PackageReceived::visitTyped(ICPackVisitor & visitor)
+ {
+ 	visitor.visitPackageReceived(*this);
+--- a/lib/networkPacks/PacksForClient.h
++++ b/lib/networkPacks/PacksForClient.h
+@@ -79,6 +79,36 @@
+ 		h & requestID;
+ 		h & packType;
+ 		h & result;
++	}
++};
++
++/// Diagnostic FIFO fence, emitted after the final request and all its effects.
++/// It carries no gameplay state and must never enter learner observations.
++struct DLL_LINKAGE ExperimentTerminalBarrier : public CPackForClient
++{
++	uint32_t version = 1;
++	int64_t barrierId = 1;
++	std::string episode;
++	std::string interface;
++	PlayerColor requestPlayer;
++	uint32_t requestID = 0;
++	uint16_t requestType = 0;
++	int64_t clientPackets = 0;
++	bool redWon = false;
++	void visitTyped(ICPackVisitor & visitor) override;
++	template<typename Handler> void serialize(Handler & h)
++	{
++		h & version;
++		h & barrierId;
++		h & episode;
++		h & interface;
++		h & requestPlayer;
++		h & requestID;
++		h & requestType;
++		h & clientPackets;
++		h & redWon;
++		if(version != 1 || barrierId != 1 || clientPackets <= 0)
++			throw std::runtime_error("Invalid contextual terminal barrier counters");
+ 	}
+ };
+ 
+--- a/lib/serializer/RegisterTypes.h
++++ b/lib/serializer/RegisterTypes.h
+@@ -305,6 +305,7 @@
+ 	s.template registerType<ChangeTactics>(262);
+ 	s.template registerType<CompositeUpdater>(263);
+ 	s.template registerType<BonusParameters>(264);
++	s.template registerType<ExperimentTerminalBarrier>(265);
+ }
+ 
+ VCMI_LIB_NAMESPACE_END
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -9,6 +9,8 @@
+  */
+ #include "StdInc.h"
+ #include "CGameHandler.h"
++#include "../lib/callback/ExperimentHooks.h"
++#include "../lib/callback/CGameInterface.h"
+ 
+ #include "CVCMIServer.h"
+ #include "TurnTimerHandler.h"
+@@ -510,6 +512,8 @@
+ 
+ void CGameHandler::handleReceivedPack(GameConnectionID connection, CPackForServer & pack)
+ {
++	if(terminalBarrierSent)
++		throw std::runtime_error("Request after contextual terminal barrier");
+ 	//prepare struct informing that action was applied
+ 	auto sendPackageResponse = [&](bool successfullyApplied)
+ 	{
+@@ -564,8 +568,61 @@
+ 		lastPackResult = result;
+ 		sendPackageResponse(result);
+ 	}
++	maybeSendExperimentTerminalBarrier(pack, connection);
+ 	if(replayRecorder)
+ 		replayRecorder->applied(*this, pack, lastPackBlocked, lastPackResult);
++}
++
++bool CGameHandler::contextualNaturalEnd() const
++{
++	if(!contextualEvidenceEnabled())
++		return false;
++	const auto red = gameState().players.find(PlayerColor(0));
++	const auto blue = gameState().players.find(PlayerColor(1));
++	if(gameState().players.size() != 2 || red == gameState().players.end() || blue == gameState().players.end())
++		throw std::runtime_error("Contextual terminal barrier requires exactly Red and Blue");
++	return (red->second.status == EPlayerStatus::WINNER && blue->second.status == EPlayerStatus::LOSER)
++		|| (red->second.status == EPlayerStatus::LOSER && blue->second.status == EPlayerStatus::WINNER);
++}
++
++void CGameHandler::rejectUnsupportedExperimentTerminalOrigin(const char * origin)
++{
++	if(contextualNaturalEnd())
++	{
++		reportExperimentFailure(std::string("Unsupported contextual terminal origin: ") + origin);
++		throw std::runtime_error("Contextual natural completion outside a replayed request");
++	}
++}
++
++void CGameHandler::maybeSendExperimentTerminalBarrier(const CPackForServer & input, GameConnectionID requestConnection)
++{
++	if(!contextualNaturalEnd())
++		return;
++	const char * episode = std::getenv("EXPLORER_RL_EPISODE");
++	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
++	const auto connection = gameServer().experimentClientConnection();
++	if(!episode || !*episode || !interface
++		|| (std::string(interface) != "adventure-windows-v1" && std::string(interface) != "adventure-town-v1")
++		|| !gameServer().hasPlayerAt(PlayerColor(0), connection) || !gameServer().hasPlayerAt(PlayerColor(1), connection)
++		|| requestConnection != connection
++		|| !supportedExperimentTerminalRequest(input, lastPackResult && !lastPackBlocked
++			&& gameServer().hasPlayerAt(PlayerColor::NEUTRAL, requestConnection))
++		|| experimentHasFailed())
++		throw std::runtime_error("Contextual terminal barrier identity unavailable");
++	ExperimentTerminalBarrier barrier;
++	barrier.episode = episode;
++	barrier.interface = interface;
++	barrier.requestPlayer = input.player;
++	barrier.requestID = input.requestID;
++	barrier.requestType = CTypeList::getInstance().getTypeID(&input);
++	barrier.clientPackets = gameServer().experimentClientPacketCount() + 1;
++	barrier.redWon = gameState().players.at(PlayerColor(0)).status == EPlayerStatus::WINNER;
++	// The recorder is absent during independent native replay. Replay verifies
++	// the same emitted pack and must not overwrite the original receipt.
++	if(replayRecorder)
++		writeExperimentTerminalBarrier(barrier, false);
++	gameServer().sendPack(barrier, connection);
++	terminalBarrierSent = true;
+ }
+ 
+ CGameHandler::CGameHandler(IGameServer & server, const std::shared_ptr<CGameState> & initialGamestate)
+@@ -857,13 +914,17 @@
+ 		events::GameResumed::defaultExecute(serverEventBus.get());
+ 
+ 	turnOrder->onGameStarted();
++	rejectUnsupportedExperimentTerminalOrigin("start");
+ 	if(replayRecorder)
+ 		replayRecorder->afterStart(*this, gameServer());
+ }
+ 
+ void CGameHandler::tick(int millisecondsPassed)
+ {
++	if(terminalBarrierSent)
++		return;
+ 	turnTimerHandler->update(millisecondsPassed);
++	rejectUnsupportedExperimentTerminalOrigin("tick");
+ }
+ 
+ void CGameHandler::giveSpells(const CGTownInstance *t, const CGHeroInstance *h)
+--- a/server/CGameHandler.h
++++ b/server/CGameHandler.h
+@@ -64,6 +64,10 @@
+ class CGameHandler : public Environment, public IGameEventCallback
+ {
+ 	IGameServer & server;
++	bool terminalBarrierSent = false;
++	bool contextualNaturalEnd() const;
++	void maybeSendExperimentTerminalBarrier(const CPackForServer & input, GameConnectionID requestConnection);
++	void rejectUnsupportedExperimentTerminalOrigin(const char * origin);
+ 
+ public:
+ 	std::unique_ptr<HeroPoolProcessor> heroPool;
+@@ -101,6 +105,7 @@
+ 	vstd::CLoggerBase * logger() const override;
+ 	events::EventBus * eventBus() const override;
+ 	IGameServer & gameServer() const;
++	bool experimentTerminalBarrierSent() const { return terminalBarrierSent; }
+ 	ServerCallback * spellcastEnvironment() const;
+ 
+ 	bool isBlockedByQueries(const CPackForServer *pack, PlayerColor player);
+--- a/server/CVCMIServer.cpp
++++ b/server/CVCMIServer.cpp
+@@ -1246,8 +1246,24 @@
+ 	return false;
+ }
+ 
++uint64_t CVCMIServer::experimentClientPacketCount() const
++{
++	if(!gh || !gh->replayRecorder)
++		throw std::runtime_error("Contextual barrier requires server replay recording");
++	return gh->replayRecorder->clientPacketCount();
++}
++
++GameConnectionID CVCMIServer::experimentClientConnection() const
++{
++	if(!gh || !gh->replayRecorder || gh->replayRecorder->recordedClientConnection() < 0)
++		throw std::runtime_error("Contextual barrier requires a recorded client connection");
++	return GameConnectionID(gh->replayRecorder->recordedClientConnection());
++}
++
+ void CVCMIServer::applyPack(CPackForClient & pack)
+ {
++	if(gh && gh->experimentTerminalBarrierSent())
++		throw std::runtime_error("Server emitted a packet after contextual terminal barrier");
+ 	if(gh && gh->replayRecorder)
+ 		gh->replayRecorder->sent(pack, -1);
+ 	logNetwork->trace("\tSending to all clients: %s", typeid(pack).name());
+@@ -1259,6 +1275,8 @@
+ 
+ void CVCMIServer::sendPack(CPackForClient & pack, GameConnectionID connectionID)
+ {
++	if(gh && gh->experimentTerminalBarrierSent())
++		throw std::runtime_error("Server emitted a packet after contextual terminal barrier");
+ 	if(gh && gh->replayRecorder)
+ 		gh->replayRecorder->sent(pack, static_cast<int>(connectionID));
+ 	for (const auto & c : activeConnections)
+--- a/server/CVCMIServer.h
++++ b/server/CVCMIServer.h
+@@ -72,6 +72,8 @@
+ 	bool isPlayerHost(const PlayerColor & color) const override;
+ 	bool hasPlayerAt(PlayerColor player, GameConnectionID connectionID) const override;
+ 	bool hasBothPlayersAtSameConnection(PlayerColor left, PlayerColor right) const override;
++	uint64_t experimentClientPacketCount() const override;
++	GameConnectionID experimentClientConnection() const override;
+ 	void applyPack(CPackForClient & pack) override;
+ 	void sendPack(CPackForClient & pack, GameConnectionID connectionID) override;
+ 
+--- a/server/ExperimentReplay.h
++++ b/server/ExperimentReplay.h
+@@ -93,5 +93,7 @@
+ 	void input(GameConnectionID connection, const CPackForServer & pack);
+ 	void applied(CGameHandler & gameHandler, const CPackForServer & pack, bool blocked, bool result);
+ 	void sent(const CPackForClient & pack, int target);
++	uint64_t clientPacketCount() const { return outgoing.clientCount; }
++	int recordedClientConnection() const { return clientConnection; }
+ };
+ }
+--- a/server/IGameServer.h
++++ b/server/IGameServer.h
+@@ -30,6 +30,8 @@
+ public:
+ 	virtual ~IGameServer() = default;
+ 
++	virtual uint64_t experimentClientPacketCount() const { throw std::runtime_error("Contextual replay packet count unavailable"); }
++	virtual GameConnectionID experimentClientConnection() const { throw std::runtime_error("Contextual replay connection unavailable"); }
+ 	virtual void setState(EServerState value) = 0;
+ 	virtual EServerState getState() const = 0;
+ 	virtual bool isPlayerHost(const PlayerColor & color) const = 0;

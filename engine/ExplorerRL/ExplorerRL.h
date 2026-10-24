@@ -4,6 +4,7 @@
 #include "../../lib/json/JsonNode.h"
 #include "VisibleState.h"
 #include "Contextual.h"
+#include "../../lib/callback/ExperimentHooks.h"
 
 #include <array>
 #include <atomic>
@@ -97,6 +98,7 @@ private:
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
 	bool contextual = false;
+	std::string evidenceActor;
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
 	explorer_rl::ContextualState contextState; ///< protected by stateMutex
@@ -138,10 +140,11 @@ private:
 	/// waiting writer would deadlock.
 	class GameStateRead
 	{
+		ExperimentEventGuard event;
 		std::shared_lock<std::shared_mutex> lock;
 
 	public:
-		GameStateRead();
+		explicit GameStateRead(const char * actor);
 		~GameStateRead();
 		GameStateRead(const GameStateRead &) = delete;
 		GameStateRead & operator=(const GameStateRead &) = delete;

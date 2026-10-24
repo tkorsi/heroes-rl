@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from experiments.learner import contextual as contract
 import contextual_protocol
+import contextual_evidence
 from contextual_protocol import ContextualProducer, NativeFailure, loads
 from env import COLORS, Limits, Request, EpisodeEnd, _Side, READER_DRAIN_SECONDS, scoring, stop_process_group
 
@@ -34,6 +35,7 @@ _IMPORTED_SOURCE_HASHES = {
     str(Path(__file__).resolve().relative_to(ROOT)): scoring.digest(Path(__file__)),
     str(Path(contextual_protocol.__file__).resolve().relative_to(ROOT)): contextual_protocol.IMPORTED_SOURCE_SHA256,
     str(Path(contract.__file__).resolve().relative_to(ROOT)): scoring.digest(Path(contract.__file__)),
+    str(Path(contextual_evidence.__file__).resolve().relative_to(ROOT)): scoring.digest(Path(contextual_evidence.__file__)),
 }
 
 CONTINUATION_LIMIT = 8  # per seat; close then end-turn normally needs at most two
@@ -82,6 +84,8 @@ class ContextualMixin:
             raise ValueError("Unknown contextual interface")
         if not ledger:
             raise ValueError("Contextual validation requires complete raw bridge and action ledgers")
+        if not replay:
+            raise ValueError("Contextual validation requires native replay and terminal barrier evidence")
         super().__init__(launcher, output, limits, ledger=ledger, profile=profile, agents=agents,
                          snapshot_every=snapshot_every, replay=replay)
         self.interface = interface
@@ -110,6 +114,8 @@ class ContextualMixin:
                          self.context_profile.history_schema, self.context_profile.action_schema))
         if any(marker not in contents for marker in required):
             raise ValueError(f"Rebuild ExplorerRL with the contextual protocol-{self.context_profile.protocol} interface; no legacy fallback")
+        if b"heroes-contextual-terminal-barrier-v1" not in Path(self.launcher.binary).read_bytes():
+            raise ValueError("Rebuild the native client with the contextual terminal barrier")
 
     def reset(self, episode, seed):
         if type(episode) is not int or episode < 1 or type(seed) is not int or not 1 <= seed <= 2147483647:
@@ -136,11 +142,9 @@ class ContextualMixin:
         environment = {"EXPLORER_RL_PLAYERS": "0,1", "EXPLORER_RL_EPISODE": str(episode),
                        "EXPLORER_RL_TIMEOUT": str(self.limits.bridge_timeout),
                        "EXPLORER_RL_PROFILE": "1" if self.profile else "0",
-                       "EXPLORER_RL_INTERFACE": self.interface}
-        # These optional files are raw evidence, explicitly unsupported by the
-        # contextual verifier; they never inherit a legacy replay success label.
-        if self.replay:
-            environment["VCMI_EXPERIMENT_REPLAY"] = "1"
+                       "EXPLORER_RL_INTERFACE": self.interface,
+                       "VCMI_EXPERIMENT_REPLAY": "1",
+                       "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1"}
         for player, color in enumerate(COLORS):
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
@@ -408,6 +412,12 @@ class ContextualMixin:
                 "map_sha256": identity.get("map", {}).get("sha256"),
                 "contextual_python_sha256": dict(self._imported_sources),
                 "captured_before_launch": True}
+            binary = getattr(self.launcher, "binary", None)
+            if binary is not None:
+                native = Path(binary).parent
+                # The verifier and linked rules/AI libraries are part of the
+                # executable recipe, not just the client entry-point binary.
+                self._context_identity["native_runtime_sha256"] = contextual_evidence.runtime_identity(native)
         return self._context_identity
 
     def _finish(self, exited):
@@ -467,6 +477,17 @@ class ContextualMixin:
             status, termination = "failed", "engine_evidence_invalid"
         if status in ("completed", "truncated") and not all(complete):
             status, termination = "failed", "incomplete_contextual_streams"
+        barrier, barrier_error = None, None
+        if status == "completed":
+            try:
+                barrier = contextual_evidence.terminal_barrier(self.episode_dir,
+                    episode=str(self.episode), interface=self.interface,
+                    outcomes=[outcomes[color] for color in COLORS])
+                contextual_evidence.terminal_capture_close(self.episode_dir, barrier)
+            except (OSError, ValueError, TypeError) as error:
+                barrier_error = f"{type(error).__name__}: {error}"
+                status, termination = "failed", "terminal_barrier_invalid"
+                self.detail = barrier_error
         shutdown_verified = declared_stop and returncode in (-signal.SIGTERM, -signal.SIGKILL)
         if status == "truncated" and not shutdown_verified:
             # An engine failure can win between the last poll and our signal.
@@ -477,6 +498,15 @@ class ContextualMixin:
         identity = self._identity()
         if status in ("completed", "truncated") and (identity["engine_revision"] == "unavailable" or not identity.get("map_sha256")):
             status, termination = "failed", "missing_source_identity"
+        try:
+            replay_evidence = contextual_evidence.capture_files(self.episode_dir)
+        except (OSError, ValueError) as error:
+            replay_evidence = {"requested": True, "schema": "heroes-contextual-replay-v1",
+                               "status": "incomplete", "recorded": False, "verified": False,
+                               "files": {}, "missing": list(contextual_evidence.REPLAY_FILES),
+                               "error": f"{type(error).__name__}: {error}"}
+        if status in ("completed", "truncated") and not replay_evidence["recorded"]:
+            status, termination = "failed", "contextual_capture_incomplete"
         evidence_path = self.episode_dir / "contextual-finalization.json"
         evidence_document = {
             "schema": "heroes-contextual-finalization-evidence-v1", "episode": str(self.episode),
@@ -484,6 +514,8 @@ class ContextualMixin:
             "expected_stop_signals": [signal.SIGTERM, signal.SIGKILL], "reason": self.reason,
             "detail": self.detail, "streams_complete": list(complete), "engine_evidence": evidence,
             "engine_evidence_error": evidence_error, "process_log_sha256": scoring.digest(self.episode_dir / "logs/process.log"),
+            "terminal_barrier": barrier, "terminal_barrier_error": barrier_error,
+            "native_capture": replay_evidence,
             "socket_outcomes": [self.sides[p].validator.terminal for p in (0, 1)],
             "engine_verified_outcomes": outcomes if status == "completed" else None,
             "natural_terminal_after_cutoff": natural_after_cutoff,
@@ -540,8 +572,7 @@ class ContextualMixin:
                     "rewards_by_player": rewards, "evidence_ref": evidence_ref, "players": declarations,
                     "identity": identity, "launch": self.launch_info, "engine_evidence": evidence,
                     "env_steps": self.env_step, "wall_seconds": time.monotonic() - self.started,
-                    "replay": {"requested": self.replay, "status": "unsupported", "verified": False,
-                               "reason": "Contextual fields and action/native-command associations are not replay verified"},
+                    "replay": replay_evidence,
                     "deterministic_replay_verified": False, "training_performed": False,
                     "natural_terminal_after_horizon": natural_after_cutoff}
         scoring.write_json(self.episode_dir / "manifest.json", manifest)

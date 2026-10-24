@@ -29,7 +29,7 @@ validated.
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
 
-This is the canonical project document. Last agreement: **24 October 2026**.
+This is the canonical project document. Last agreement: **25 October 2026**.
 
 ## Why this project exists
 
@@ -1415,6 +1415,49 @@ python3 validation/probes/create_boundary_fixture.py \
   --episode runs/my-ordinary-cohort/episode-000001 \
   --output runs/my-ordinary-cohort/inference-audit-1.json
 ```
+
+#### Native terminal barrier and contextual replay implementation
+
+On 25 October, the user authorized Codex to finish terminal drainage and
+contextual replay, investigate ordinary-game completion, and publish coherent
+commits with bounded local validation. Gameplay optimizer updates, training,
+paid compute and merges remain excluded. Claude's duplicate contextual adapter
+is preserved on `claude/contextual-engine-parallel`; its shared branch was
+restored to the earlier base. Ownership of these contextual changes was
+coordinated on issue #4. Claude's legacy replay/performance evidence remains
+separate.
+
+The new contextual capture requires an explicit server terminal barrier after
+the terminal-producing request, its effects and acknowledgement. The client
+validates the request, complementary outcomes and packet count after all
+callbacks, flushes its receipt and closes the diagnostic capture before
+shutdown. Python requires the matching server/client receipts and final capture
+close in addition to clean exit, complete bridge streams and no failure. Missing
+or mismatched evidence and late failures remain unscored. This version supports
+request-caused natural endings, including authenticated automatic neutral battle
+actions; initial and timer-origin endings fail explicitly
+until they have a replayable origin. The learner wire and terminal-only reward
+contract are unchanged.
+
+Contextual replay uses a fresh diagnostic transaction tape. It first reruns the
+recorded server inputs through the actual game handler, then applies the
+regenerated packets through the actual client callbacks and contextual adapter.
+Recorded policy responses and transaction ordering drive that second pass;
+observations, notices, window contents and native adventure requests must be
+regenerated exactly. Automatic battle inputs remain separately identified and
+bound to the authoritative server input stream. The Python verifier binds every
+delivered message and action, reconstructs both persisted player histories and
+proofs, and checks the map, source recipe, executable/library identities and
+file hashes. A cutoff verifies only its exact captured prefix. Historical
+contextual recordings without this tape remain unsupported, and legacy replay
+does not acquire a contextual verification label.
+
+Implementation and native validation are in progress on
+`codex/contextual-replay`. The next ordinary cohort is predeclared before any new
+game: unchanged map and saved untrained checkpoints, engine seeds `97111` and
+`97112` in both learner colors, policy seed `97103`, and at most 2,048 choices or
+100 days per game. Every attempt is retained. Diagnostic fixtures and development
+probes remain separate from the ordinary outcome denominator.
 
 Before gameplay optimization, establish contextual natural outcomes on ordinary
 games and verify complete native terminal drainage and contextual replay.

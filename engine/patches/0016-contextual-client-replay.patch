@@ -1,0 +1,104 @@
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -11,6 +11,7 @@
+ 
+ #include <atomic>
+ #include <memory>
++#include <functional>
+ #include <vcmi/Environment.h>
+ 
+ #include "../lib/callback/IClient.h"
+@@ -135,6 +136,7 @@
+ 	std::map<PlayerColor, bool> explorerTerminalOutcomes;
+ 	std::optional<std::tuple<PlayerColor, uint32_t, uint16_t>> lastExperimentAcknowledgement;
+ 	bool experimentBarrierReceived = false;
++	bool experimentReplayMode = false;
+ 	void completeExperimentTerminalBarrier(const ExperimentTerminalBarrier & barrier);
+ 
+ public:
+@@ -161,6 +163,9 @@
+ 
+ 	void newGame(std::shared_ptr<CGameState> gameState);
+ 	void loadGame(std::shared_ptr<CGameState> gameState);
++	/// Offline verification uses the actual packet visitors with a fresh state.
++	void initExperimentReplay(std::shared_ptr<CGameState> state, const std::function<std::shared_ptr<CGameInterface>(PlayerColor)> & factory);
++	void acceptExperimentReplayAutomaticRequest(const CPackForServer & request);
+ 
+ 	void endNetwork();
+ 	void finishGameplay();
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -138,6 +138,33 @@
+ 	reinitScripting();
+ 	initPlayerEnvironments();
+ 	initPlayerInterfaces();
++}
++
++void CClient::initExperimentReplay(std::shared_ptr<CGameState> state,
++	const std::function<std::shared_ptr<CGameInterface>(PlayerColor)> & factory)
++{
++	if(!contextualEvidenceEnabled() || !experimentEvidenceHooks() || !state || gamestate)
++		throw std::runtime_error("Invalid contextual replay client initialization");
++	experimentReplayMode = true;
++	gamestate = std::move(state);
++	gamestate->preInit(LIBRARY);
++	GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
++	reinitScripting();
++	for(const auto color : {PlayerColor(0), PlayerColor(1)})
++	{
++		if(!gameState().players.contains(color) || gameState().players.at(color).isHuman())
++			throw std::runtime_error("Contextual replay requires the two AI-controlled baseline players");
++		playerEnvironments[color] = std::make_shared<CPlayerEnvironment>(color, this,
++			std::make_shared<CCallback>(gamestate, color, this));
++		installNewPlayerInterface(factory(color), color);
++	}
++}
++
++void CClient::acceptExperimentReplayAutomaticRequest(const CPackForServer & request)
++{
++	if(!experimentReplayMode || request.requestID != requestCounter.fetch_add(1, std::memory_order_relaxed))
++		throw std::runtime_error("Automatic replay request ID is out of order");
++	waitingRequest.pushBack(request.requestID);
+ }
+ 
+ void CClient::loadGame(std::shared_ptr<CGameState> initializedGameState)
+@@ -448,7 +475,7 @@
+ 				completeExperimentTerminalBarrier(*barrier);
+ 		}
+ 	}
+-	if(experimentBarrierReceived)
++	if(experimentBarrierReceived && !experimentReplayMode)
+ 		requestHeadlessShutdown(experimentHasFailed() ? EXIT_FAILURE : EXIT_SUCCESS);
+ }
+ 
+@@ -469,7 +496,8 @@
+ 		|| !lastExperimentAcknowledgement
+ 		|| *lastExperimentAcknowledgement != std::tuple(barrier.requestPlayer, barrier.requestID, barrier.requestType))
+ 		throw std::runtime_error("Contextual terminal barrier identity, callbacks or outcomes mismatch");
+-	writeExperimentTerminalBarrier(barrier, true);
++	if(!experimentReplayMode)
++		writeExperimentTerminalBarrier(barrier, true);
+ 	experimentBarrierReceived = true;
+ 	if(auto hooks = experimentEvidenceHooks())
+ 		hooks->terminalBarrierComplete(barrier);
+@@ -497,7 +525,8 @@
+ 		if(contextualEvidenceEnabled())
+ 			if(auto hooks = experimentEvidenceHooks())
+ 				hooks->nativeRequest(request, player);
+-		GAME->server().sendGamePack(request);
++		if(!experimentReplayMode)
++			GAME->server().sendGamePack(request);
+ 		if(vstd::contains(playerint, player))
+ 			playerint[player]->requestSent(&request, requestID);
+ 	}
+--- a/lib/gameState/CGameStateCampaign.h
++++ b/lib/gameState/CGameStateCampaign.h
+@@ -35,7 +35,7 @@
+ 	std::vector<ArtifactPosition> transferrableArtifacts;
+ };
+ 
+-class CGameStateCampaign : public Serializeable
++class DLL_LINKAGE CGameStateCampaign : public Serializeable
+ {
+ 	CGameState * gameState = nullptr;
+ 

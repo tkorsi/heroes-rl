@@ -5,6 +5,9 @@
  *
  */
 #include "StdInc.h"
+#ifdef HEROES_CONTEXTUAL_REPLAY
+#include "ContextualReplay.h"
+#endif
 
 #include "../AI/ExplorerRL/VisibleWorld.h"
 #include "../server/CGameHandler.h"
@@ -161,6 +164,9 @@ public:
 	std::set<int> hosts;
 	EServerState state = EServerState::LOBBY;
 	std::function<void(uint16_t)> clientPackApplied;
+	std::function<void(const CPackForClient &)> clientPackProduced;
+	uint64_t experimentClientPacketCount() const override { return outgoing.clientCount; }
+	GameConnectionID experimentClientConnection() const override { return GameConnectionID(static_cast<int8_t>(clientConnection)); }
 
 	void setState(EServerState value) override { state = value; }
 	EServerState getState() const override { return state; }
@@ -185,6 +191,8 @@ public:
 		// As CVCMIServer::applyPack: noted, sent, then applied to the server's state.
 		const auto before = outgoing.clientCount;
 		outgoing.note(pack, -1, clientConnection);
+		if(outgoing.clientCount != before && clientPackProduced)
+			clientPackProduced(pack);
 		gameHandler->gs->apply(pack);
 		if(outgoing.clientCount != before && clientPackApplied)
 			clientPackApplied(CTypeList::getInstance().getTypeID(&pack));
@@ -194,6 +202,8 @@ public:
 	{
 		const auto before = outgoing.clientCount;
 		outgoing.note(pack, static_cast<int>(connectionID), clientConnection);
+		if(outgoing.clientCount != before && clientPackProduced)
+			clientPackProduced(pack);
 		if(outgoing.clientCount != before && clientPackApplied)
 			clientPackApplied(CTypeList::getInstance().getTypeID(&pack));
 	}
@@ -201,6 +211,9 @@ public:
 
 class Replay
 {
+#ifdef HEROES_CONTEXTUAL_REPLAY
+	ContextualReplay * contextual = nullptr;
+#endif
 	ReplayServer server;
 	std::unique_ptr<CGameHandler> gameHandler;
 	std::map<int, std::shared_ptr<CCallback>> callbacks; ///< per recorded player, over the replayed state
@@ -338,6 +351,9 @@ public:
 			throw std::runtime_error("Cannot write " + path);
 	}
 
+#ifdef HEROES_CONTEXTUAL_REPLAY
+	void setContextual(ContextualReplay & value) { contextual = &value; }
+#endif
 	JsonNode run(const std::vector<JsonNode> & records, bool allowPlatformMismatch, bool prefix, const std::string & workDirectory)
 	{
 		if(records.size() < 2 || records[0]["kind"].String() != "init" || records[1]["kind"].String() != "start")
@@ -382,6 +398,13 @@ public:
 		Load::ProgressAccumulator progress;
 		gameHandler->init(&startInfo, progress);
 		expectState("init", init, *gameHandler);
+#ifdef HEROES_CONTEXTUAL_REPLAY
+		if(contextual)
+		{
+			contextual->initialize(*gameHandler->gs);
+			server.clientPackProduced = [this](const CPackForClient & pack) { contextual->packet(pack); };
+		}
+#endif
 
 		for(const auto & [connection, players] : server.connections)
 			if(connection == server.clientConnection)
@@ -424,6 +447,9 @@ public:
 			if(!pack)
 				throw Divergence(stage, "pack", "a pack for the server", "another pack type");
 			expectEqual(stage, "type", text(input["type"]), std::to_string(CTypeList::getInstance().getTypeID(pack)));
+#ifdef HEROES_CONTEXTUAL_REPLAY
+			if(contextual) contextual->input(input);
+#endif
 
 			server.outgoing.clearFlags();
 			gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
@@ -519,6 +545,7 @@ int main(int argc, const char * argv[])
 	std::string observationDirectory;
 	std::string reportPath;
 	std::string tracePath;
+	std::string contextualPath;
 	bool allowPlatformMismatch = false;
 	bool prefix = false;
 	for(int i = 1; i < argc; ++i)
@@ -538,6 +565,8 @@ int main(int argc, const char * argv[])
 			reportPath = value();
 		else if(argument == "--trace")
 			tracePath = value();
+		else if(argument == "--contextual")
+			contextualPath = value();
 		else if(argument == "--allow-platform-mismatch")
 			allowPlatformMismatch = true;
 		else if(argument == "--prefix")
@@ -558,7 +587,7 @@ int main(int argc, const char * argv[])
 	CBasicLogConfigurator logConfigurator(VCMIDirs::get().userLogsPath() / "VCMI_Replay_log.txt", &console);
 	logConfigurator.configureDefault();
 	JsonNode report;
-	report["schema"].String() = "heroes-replay-verification-v1";
+	report["schema"].String() = contextualPath.empty() ? "heroes-replay-verification-v1" : "heroes-contextual-replay-verification-v1";
 	report["log"].String() = logPath;
 	report["verified"].Bool() = false;
 	int status = 1;
@@ -567,6 +596,24 @@ int main(int argc, const char * argv[])
 	{
 		// Malformed evidence fails before the game library loads.
 		const auto records = readLines(logPath);
+		std::vector<JsonNode> contextualTape;
+#ifdef HEROES_CONTEXTUAL_REPLAY
+		ContextualReplay contextual;
+		if(!contextualPath.empty())
+		{
+			if(allowPlatformMismatch || !observationDirectory.empty())
+				throw std::runtime_error("Contextual replay requires exact platform and its own ledger");
+			contextualTape = readLines(contextualPath);
+			if(contextualTape.empty()) throw std::runtime_error("Missing contextual replay header");
+			setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
+			setenv("EXPLORER_RL_EPISODE", contextualTape.front()["episode"].String().c_str(), 1);
+			setenv("EXPLORER_RL_INTERFACE", contextualTape.front()["interface"].String().c_str(), 1);
+			replay.setContextual(contextual);
+		}
+		else unsetenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE");
+#else
+		if(!contextualPath.empty()) throw std::runtime_error("This server-only build has no contextual client replay");
+#endif
 		if(!observationDirectory.empty())
 			replay.loadObservations(observationDirectory);
 		LIBRARY = new GameLibrary;
@@ -577,6 +624,14 @@ int main(int argc, const char * argv[])
 			replay.openTrace(tracePath);
 		report["summary"] = replay.run(records, allowPlatformMismatch, prefix,
 			boost::filesystem::absolute(reportPath).parent_path().string());
+#ifdef HEROES_CONTEXTUAL_REPLAY
+		if(!contextualPath.empty())
+		{
+			auto serverSummary = report["summary"];
+			report["summary"] = contextual.run(contextualTape, prefix);
+			report["summary"]["server"] = serverSummary;
+		}
+#endif
 		report["verified"].Bool() = true;
 		report["divergence"] = JsonNode();
 		status = 0;

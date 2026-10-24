@@ -3,6 +3,7 @@
 #include <compare>
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -26,9 +27,13 @@ struct Logger
 Logger logger;
 Logger * logAi = &logger;
 
+bool contextualMode = false;
+bool contextualEvidenceEnabled() { return contextualMode; }
+
 class CClient
 {
 	std::set<PlayerColor> explorerTerminalsReceived;
+	std::map<PlayerColor, bool> explorerTerminalOutcomes;
 
 public:
 	std::optional<PlayerColor> configuredExplorerPlayer() const;
@@ -99,6 +104,16 @@ void runRegression()
 		require(!client.recordExplorerTerminal(PlayerColor(first), true), "completed self-play repeated shutdown");
 		require(logger.terminalMessages == 2, "expected exactly two distinct terminals");
 	}
+	contextualMode = true;
+	configure(nullptr, "0,1");
+	CClient contextualClient;
+	require(!contextualClient.recordExplorerTerminal(PlayerColor(0), false), "contextual first terminal completed early");
+	bool duplicateRejected = false;
+	try { contextualClient.recordExplorerTerminal(PlayerColor(0), false); }
+	catch(const std::runtime_error &) { duplicateRejected = true; }
+	require(duplicateRejected, "contextual duplicate terminal was silently accepted");
+	require(contextualClient.recordExplorerTerminal(PlayerColor(1), true), "contextual pair did not complete");
+	contextualMode = false;
 	configure(nullptr, "0,1,2");
 	CClient threePlayers;
 	require(!threePlayers.recordExplorerTerminal(PlayerColor(0), true), "first of three completed early");
