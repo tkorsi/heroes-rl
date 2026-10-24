@@ -14,10 +14,8 @@ protocol violation or engine error is a technical failure. Neither is scored.
 """
 from __future__ import annotations
 
-from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import hashlib
 import importlib.util
 import json
 import os
@@ -37,7 +35,6 @@ if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
 
 from bridge_protocol import BridgeValidator, ProtocolError  # noqa: E402
-from contextual_bridge import UNSUPPORTED_PREFIX, ContextualPlayer, contract as contextual_contract  # noqa: E402
 from player_history import PlayerHistory  # noqa: E402
 
 _SCORING_SPEC = importlib.util.spec_from_file_location("heroes_episode_scoring", ROOT / "experiments/episodes/scoring.py")
@@ -49,8 +46,6 @@ MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 TAIL_BYTES = 64 * 1024  # first window when reading the end of an evidence file
 REPLAY_TAIL_SECONDS = 5.0  # longest wait for the server's replay log before a stop
 READER_DRAIN_SECONDS = 5.0  # after an engine exit of its own, for every bridge reader to reach its end of stream
-MOVEMENT_INTERFACE = "movement-v1"  # protocol 3: primitive steps, history v1 (the default)
-CONTEXTUAL_INTERFACE = "adventure-windows-v1"  # protocol 4: contextual actions, history v2 (opt-in)
 
 
 @dataclass(frozen=True)
@@ -286,25 +281,12 @@ def await_replay_tail(engine: Path, running, timeout: float) -> float:
 
 
 class HeadlessSelfPlayEnv:
-    """Agent-environment cycle over one isolated engine process per episode.
-
-    ``interface`` selects the engine interface. The default movement interface
-    is unchanged; ``adventure-windows-v1`` constructs a ``ContextualSelfPlayEnv``.
-    """
-
-    def __new__(cls, *args, interface: str = MOVEMENT_INTERFACE, **kwargs):
-        if cls is HeadlessSelfPlayEnv and interface == CONTEXTUAL_INTERFACE:
-            cls = ContextualSelfPlayEnv
-        return super().__new__(cls)
+    """Agent-environment cycle over one isolated engine process per episode."""
 
     def __init__(self, launcher, output: Path, limits: Limits = Limits(), *, ledger: bool = True,
-                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1, replay: bool = True,
-                 interface: str = MOVEMENT_INTERFACE):
+                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1, replay: bool = True):
         if type(snapshot_every) is not int or not 0 <= snapshot_every <= 1000000:
             raise ValueError("snapshot_every must be an integer from 0 to 1000000")
-        if interface != (CONTEXTUAL_INTERFACE if isinstance(self, ContextualSelfPlayEnv) else MOVEMENT_INTERFACE):
-            raise ValueError(f"Use interface {MOVEMENT_INTERFACE!r} or {CONTEXTUAL_INTERFACE!r}")
-        self.interface = interface
         self.launcher, self.limits, self.ledger_enabled, self.profile = launcher, limits, ledger, profile
         # Decision observations repeat the visible tiles every N decisions (never
         # when 0) so the adapter can verify its event fold; events are never thinned.
@@ -357,13 +339,12 @@ class HeadlessSelfPlayEnv:
                        "EXPLORER_RL_SNAPSHOT_EVERY": str(self.snapshot_every)}
         if self.replay:
             environment["VCMI_EXPERIMENT_REPLAY"] = "1"
-        if self.interface != MOVEMENT_INTERFACE:
-            environment["EXPLORER_RL_INTERFACE"] = self.interface
         for player, color in enumerate(COLORS):
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            side = self._new_side(player, color, str(episode), listener)
+            side = _Side(player, color, BridgeValidator(player, str(episode)), PlayerHistory(player, color, str(episode)),
+                         listener)
             if self.ledger_enabled:
                 folder = self.episode_dir / "agents" / color
                 folder.mkdir(parents=True)
@@ -456,12 +437,6 @@ class HeadlessSelfPlayEnv:
     def memory(self, color: str) -> list[dict]:
         side = next(side for side in self.sides.values() if side.color == color)
         return side.history.memory()
-
-    def history_v2(self, color: str) -> list[dict]:
-        raise ValueError(f"heroes-player-history-v2 frames require interface={CONTEXTUAL_INTERFACE!r}")
-
-    def _new_side(self, player: int, color: str, episode: str, listener: socket.socket) -> _Side:
-        return _Side(player, color, BridgeValidator(player, episode), PlayerHistory(player, color, episode), listener)
 
     def close(self) -> None:
         self.request = None
@@ -731,7 +706,49 @@ class HeadlessSelfPlayEnv:
         if exited is not None and self.reason in scoring.HEADLESS_TRUNCATIONS:
             # The engine ended on its own before the declared stop took effect: its exit and terminals decide.
             self._cancel_stop()
-        returncode, finished, log_text = self._stop_and_drain()
+        stopped_by_environment = self.reason is not None
+        if stopped_by_environment:
+            if self.replay:  # a stop must not cut the server's log short of what the players saw
+                self.replay_tail_wait = await_replay_tail(self.episode_dir / "engine", lambda: self.process.poll() is None,
+                                                          REPLAY_TAIL_SECONDS)
+            stop_process_group(self.process)
+        returncode = self.process.wait()
+        finished = time.monotonic()
+        if stopped_by_environment:
+            self.stopping.set()  # read errors after a declared stop change nothing
+        # Drain messages already written before the exit; they belong to the evidence. After an exit of its own
+        # the engine's sockets are closed, so each connected reader ends at its end of stream or reports why it
+        # could not; only then may stopping silence a reader, such as one still waiting for a connection.
+        connected = [side for side in self.sides.values() if side.reader is not None and side.connection is not None]
+        drained = time.monotonic() + READER_DRAIN_SECONDS
+        for side in connected:
+            side.reader.join(timeout=max(0.0, drained - time.monotonic()))
+        unfinished = [side.color for side in connected if side.reader.is_alive()]
+        self.stopping.set()
+        for side in self.sides.values():
+            if side.reader is not None and side.color not in unfinished:
+                side.reader.join(timeout=2)
+        while True:
+            try:
+                kind, player, payload, received = self.events.get_nowait()
+            except queue.Empty:
+                break
+            if stopped_by_environment:
+                if kind == "message":
+                    self._write_ledger(self.sides[player], "engine", payload)  # evidence only
+            elif kind == "message":
+                self._ingest(self.sides[player], payload, received, draining=True)
+            elif kind == "bridge_error":
+                # A stream that ended inside a message, or failed to decode, has no complete history to score.
+                self._note_problem("protocol_error", f"{self.sides[player].color}: {payload}")
+        if unfinished and not stopped_by_environment:
+            self._note_problem("protocol_error", f"bridge reader for {', '.join(unfinished)} did not finish its stream")
+        self.request = None
+        for side in self.sides.values():
+            if side.ledger is not None:
+                side.ledger.close()
+        self.log.close()
+        log_text = (self.episode_dir / "logs" / "process.log").read_text(errors="replace")
         executions = {side.color: self._execution(side) for side in self.sides.values()}
         status, outcomes, termination, rewards = scoring.classify_headless_self_play(returncode, self.reason, log_text, executions)
         if status == "completed":
@@ -789,54 +806,6 @@ class HeadlessSelfPlayEnv:
                                  bootstrap_v1_seq=bootstrap_seq)
         self.process = None
         return self.result
-
-    def _stop_and_drain(self) -> tuple[int, float, str]:
-        """Stop the engine if the environment declared the end, drain every stream, and return its exit status,
-        the end time and the process log."""
-        stopped_by_environment = self.reason is not None
-        if stopped_by_environment:
-            if self.replay:  # a stop must not cut the server's log short of what the players saw
-                self.replay_tail_wait = await_replay_tail(self.episode_dir / "engine", lambda: self.process.poll() is None,
-                                                          REPLAY_TAIL_SECONDS)
-            stop_process_group(self.process)
-        returncode = self.process.wait()
-        finished = time.monotonic()
-        if stopped_by_environment:
-            self.stopping.set()  # read errors after a declared stop change nothing
-        # Drain messages already written before the exit; they belong to the evidence. After an exit of its own
-        # the engine's sockets are closed, so each connected reader ends at its end of stream or reports why it
-        # could not; only then may stopping silence a reader, such as one still waiting for a connection.
-        connected = [side for side in self.sides.values() if side.reader is not None and side.connection is not None]
-        drained = time.monotonic() + READER_DRAIN_SECONDS
-        for side in connected:
-            side.reader.join(timeout=max(0.0, drained - time.monotonic()))
-        unfinished = [side.color for side in connected if side.reader.is_alive()]
-        self.stopping.set()
-        for side in self.sides.values():
-            if side.reader is not None and side.color not in unfinished:
-                side.reader.join(timeout=2)
-        while True:
-            try:
-                kind, player, payload, received = self.events.get_nowait()
-            except queue.Empty:
-                break
-            if stopped_by_environment:
-                if kind == "message":
-                    self._write_ledger(self.sides[player], "engine", payload)  # evidence only
-            elif kind == "message":
-                self._ingest(self.sides[player], payload, received, draining=True)
-            elif kind == "bridge_error":
-                # A stream that ended inside a message, or failed to decode, has no complete history to score.
-                self._note_problem("protocol_error", f"{self.sides[player].color}: {payload}")
-        if unfinished and not stopped_by_environment:
-            self._note_problem("protocol_error", f"bridge reader for {', '.join(unfinished)} did not finish its stream")
-        self.request = None
-        for side in self.sides.values():
-            if side.ledger is not None:
-                side.ledger.close()
-        self.log.close()
-        log_text = (self.episode_dir / "logs" / "process.log").read_text(errors="replace")
-        return returncode, finished, log_text
 
     def _cancel_stop(self) -> None:
         self.reason = self.detail = None
@@ -897,318 +866,6 @@ class HeadlessSelfPlayEnv:
             return {"metadata": validated, "seed": seed}, None
         except (OSError, ValueError) as error:
             return None, f"{type(error).__name__}: {error}"
-
-
-class ContextualSelfPlayEnv(HeadlessSelfPlayEnv):
-    """The adventure-windows-v1 interface: contextual actions and heroes-player-history-v2.
-
-    Construct it as ``HeadlessSelfPlayEnv(..., interface="adventure-windows-v1")``.
-    Each request carries the player's history-v2 frames since its previous
-    request, ending with its decision; ``step`` takes a contract ``Action`` the
-    decision offers and raises ``ValueError``, changing nothing, otherwise.
-
-    A horizon is a provisional cutoff at each player's own next unacted
-    decision. After a player's cutoff its prefix is frozen and the environment
-    answers its later decisions itself (close, then end turn), as raw evidence
-    only, until the other player reaches its cutoff; then the engine is stopped,
-    every stream drained, and only then are both prefixes finalized. A natural
-    result requires both terminals, a clean exit and complete streams. Any
-    failure, including an unsupported interaction or a failure during the
-    continuation, ends both histories as failures. Contextual replay is not
-    verified: the manifest says so explicitly.
-    """
-
-    CONTINUATION_LIMIT = 16  # environment answers per player after its cutoff
-
-    def reset(self, episode: int, seed: int) -> Request | EpisodeEnd:
-        library = getattr(self.launcher, "ai_library", None)
-        if library is not None and CONTEXTUAL_INTERFACE.encode() not in (library.read_bytes() if library.is_file() else b""):
-            raise ValueError(f"Rebuild ExplorerRL with the {CONTEXTUAL_INTERFACE} interface: {library}")
-        self.stop_reason = None  # the first declared horizon; every later player decision is a cutoff
-        return super().reset(episode, seed)
-
-    def step(self, action) -> Request | EpisodeEnd:
-        if self.request is None:
-            raise ValueError("No current request; call reset() or start a new episode")
-        side = self.sides[self.request.player]
-        response = side.validator.respond(action)  # raises ValueError, changing nothing, unless offered
-        self.agent_wait += time.monotonic() - self.request_time
-        decision = side.validator.decision
-        self.request = None
-        # Whatever arrived while the agent chose comes first, an engine exit or failure included.
-        exited = self._settle()
-        if self.reason is not None or exited is not None:
-            return self._finish(exited)
-        if side.validator.decision is not decision or not side.validator.open_decision():
-            return self._next()  # the terminal withdrew the decision; the response is never sent
-        if self._send(side, response):
-            folding = time.perf_counter()
-            side.validator.submitted(action)
-            self.costs["act"] += time.perf_counter() - folding
-            side.actions_sent += 1
-        else:
-            side.responses_undelivered += 1  # never taken: the terminal supersedes the decision
-        self.env_step += 1
-        sent = time.monotonic()
-        result = self._next()
-        self.step_latencies.append(time.monotonic() - sent)
-        return result
-
-    def truncate(self, reason: str = "collection_window") -> EpisodeEnd | Request:
-        """Declare a horizon at the current request: its decision is this player's cutoff."""
-        if self.request is None or reason not in scoring.HEADLESS_TRUNCATIONS:
-            raise ValueError("Truncate only at a pending request, with a declared horizon")
-        side = self.sides[self.request.player]
-        self.request = None
-        exited = self._settle()
-        if self.reason is not None or exited is not None:
-            return self._finish(exited)
-        if any(other.validator.terminal for other in self.sides.values()):
-            self.closing = True  # the game ended first: the terminals and the exit decide
-            return self._advance()
-        self.stop_reason = self.stop_reason or reason
-        if side.validator.open_decision() and not side.validator.frozen:
-            self._cut(side)
-        return self._next()
-
-    def history_v2(self, color: str) -> list[dict]:
-        """A copy of one player's complete heroes-player-history-v2 frames."""
-        side = next(side for side in self.sides.values() if side.color == color)
-        return [json.loads(text) for text in side.validator.frames_text()]
-
-    def history(self, color: str) -> list[dict]:
-        raise ValueError("The contextual interface records history v2 only; use history_v2()")
-
-    def history_v1(self, color: str) -> list[dict]:
-        raise ValueError("The contextual interface records history v2 only; use history_v2()")
-
-    def memory(self, color: str) -> list[dict]:
-        raise ValueError("The contextual interface records history v2 only; use history_v2()")
-
-    # -- engine stream -----------------------------------------------------
-    def _new_side(self, player: int, color: str, episode: str, listener: socket.socket) -> _Side:
-        producer = ContextualPlayer(player, color, episode)
-        side = _Side(player, color, producer, producer.history, listener)
-        side.unrequested = False  # a held decision arrived while another request was pending
-        side.continuation_steps = 0
-        return side
-
-    def _ingest_checked(self, side: _Side, message: dict, received: float, draining: bool) -> Request | None:
-        kind = side.validator.check(message)
-        if kind == "ready":
-            side.ready_at = received - self.started
-            return None
-        if kind == "error":
-            side.error = message["message"]
-            reason = "unsupported_interaction" if side.error.startswith(UNSUPPORTED_PREFIX) else "engine_error"
-            self._note_problem(reason, f"{side.color}: {side.error}")
-            return None
-        for key, value in message.get("perf", {}).items():
-            if type(value) is int:
-                side.perf[key] = side.perf.get(key, 0) + value
-        if kind == "terminal":
-            side.terminal_at = received - self.started
-            return None
-        if kind != "decision":
-            return None
-        if draining:
-            side.unrequested = True  # routed once the environment may answer again
-            return None
-        return self._route(side)
-
-    def _route(self, side: _Side) -> Request | None:
-        """A held decision becomes a request, a cutoff, or a continuation answer."""
-        producer = side.validator
-        if producer.frozen:
-            self._continue(side)
-            return None
-        if self.stop_reason is None:
-            if producer.decision["day"] > self.limits.max_days:
-                self.stop_reason = "game_day_limit"
-            elif side.actions_sent >= self.limits.max_actions:
-                self.stop_reason = "agent_action_limit"
-        if self.stop_reason is not None:
-            self._cut(side)
-            return None
-        if self.request is not None:
-            side.unrequested = True
-            return None
-        frames = producer.frames_json(side.unread_frames_from)
-        side.unread_frames_from += len(frames)
-        side.unrequested = False
-        self.request = Request(side.color, side.player, "decision", frames[-1], frames, frames)
-        self.request_time = time.monotonic()
-        return self.request
-
-    def _next(self) -> Request | EpisodeEnd:
-        if self.reason is not None:
-            return self._finish(None)
-        if not self.closing:
-            for side in self.sides.values():
-                if side.unrequested and side.validator.open_decision():
-                    side.unrequested = False
-                    request = self._route(side)
-                    if request is not None:
-                        return request
-                    if self.reason is not None:
-                        return self._finish(None)
-        return self._advance()
-
-    def _cut(self, side: _Side) -> None:
-        side.cutoff_reason = side.limit = self.stop_reason
-        side.cutoff_seq = side.validator.cut(self.stop_reason)
-        if all(other.validator.frozen for other in self.sides.values()):
-            self._note_problem(self.stop_reason, "both players reached their cutoff decisions")
-            return
-        self._continue(side)
-
-    def _continue(self, side: _Side) -> None:
-        if side.continuation_steps >= self.CONTINUATION_LIMIT:
-            self._note_problem("continuation_limit", f"{side.color} needed more than {self.CONTINUATION_LIMIT} "
-                                                     "continuation answers before the other cutoff")
-            return
-        side.continuation_steps += 1
-        self._send(side, side.validator.continuation())  # an undelivered answer: the stream's end decides
-
-    def _send(self, side: _Side, response: dict) -> bool:
-        responding = time.perf_counter()
-        try:
-            side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
-            delivered = True
-        except OSError as error:
-            side.write_error, delivered = f"{type(error).__name__}: {error}", False
-        self.costs["respond"] += time.perf_counter() - responding
-        self._write_ledger(side, "policy", response if delivered else {**response, "delivered": False})
-        return delivered
-
-    # -- episode end -------------------------------------------------------
-    def _finish(self, exited) -> EpisodeEnd:
-        if self.reason is not None and exited is None:
-            exited = self._settle()  # a declared stop takes effect only now
-        returncode, finished, log_text = self._stop_and_drain()
-        sides = [self.sides[player] for player in sorted(self.sides)]
-        executions = {side.color: {"ready": side.validator.ready, "actions_sent": side.actions_sent, "error": side.error,
-                                   "limit": side.limit, "write_error": side.write_error,
-                                   "terminal": {"outcome": side.validator.terminal} if side.validator.terminal else None,
-                                   "cutoff": None if side.cutoff_seq is None else {"history_v2_seq": side.cutoff_seq}}
-                      for side in sides}
-        status, outcomes, termination, rewards = scoring.classify_headless_self_play(returncode, self.reason, log_text, executions)
-        if status == "failed" and any(side.error and side.error.startswith(UNSUPPORTED_PREFIX) for side in sides):
-            termination = "unsupported_interaction"
-        frozen = [side.validator.frozen for side in sides]
-        if status == "completed" and any(frozen):
-            # A natural end after one player's cutoff follows environment answers, not that player's policy.
-            status, termination = "failed", "natural_terminal_after_cutoff"
-        elif status == "truncated" and (not all(frozen) or (exited is not None and returncode != 0)):
-            status, termination = "failed", "engine_exit_during_cutoff" if all(frozen) else "incomplete_cutoff"
-        evidence, evidence_error = self._engine_evidence(log_text)
-        if status in {"completed", "truncated"} and evidence_error:
-            status, termination = "failed", "engine_evidence_invalid"
-        if status != "completed":
-            outcomes, rewards = {c: None for c in COLORS}, {c: None for c in COLORS}
-        histories = tuple(side.history for side in sides)
-        evidence_ref = f"{self.episode_dir.name}/agents/{{{','.join(COLORS)}}}/bridge.jsonl"
-        try:
-            if status == "completed":
-                contextual_contract.finalize_natural(
-                    histories, engine_outcomes=tuple(outcomes[c] for c in COLORS),
-                    socket_outcomes=tuple(side.validator.terminal for side in sides), process_exit_code=returncode,
-                    evidence_ref=evidence_ref, histories_complete=(True, True))
-            elif status == "truncated":
-                contextual_contract.finalize_cutoff(
-                    histories, evidence_ref=evidence_ref, histories_complete=(True, True), failure_free=True,
-                    shutdown_verified=True, continuation_limit=self.CONTINUATION_LIMIT,
-                    continuation_steps=tuple(side.continuation_steps for side in sides))
-        except ValueError as error:
-            status, termination = "failed", "finalization_rejected"
-            outcomes, rewards = {c: None for c in COLORS}, {c: None for c in COLORS}
-            self.detail = f"{type(error).__name__}: {error}"
-        if status == "failed":
-            for side in sides:
-                side.validator.fail(termination)
-        declarations = {side.color: self._write_history(side, status) for side in sides}
-        terminals = [side.terminal_at for side in sides if side.terminal_at is not None]
-        readies = [side.ready_at for side in sides if side.ready_at is not None]
-        manifest = {
-            "schema_version": 1, "kind": "contextual-headless-self-play", "environment": CONTEXTUAL_INTERFACE,
-            "history_schema": contextual_contract.SCHEMA, "action_schema": contextual_contract.ACTION_SCHEMA,
-            "episode": str(self.episode), "seed": self.seed, "created_at": self.created_at,
-            "status": status, "termination_reason": termination,
-            "failure_detail": self.detail if status != "completed" else None, "evidence_ref": evidence_ref,
-            "outcomes_by_player": outcomes, "rewards_by_player": rewards, "returncode": returncode,
-            "limits": {"max_days": self.limits.max_days, "max_actions_per_player": self.limits.max_actions,
-                       "watchdog_seconds": self.limits.watchdog_seconds, "bridge_timeout": self.limits.bridge_timeout,
-                       "continuation_limit": self.CONTINUATION_LIMIT},
-            "env_steps": self.env_step,
-            "step_latency_seconds": latency_summary(self.step_latencies),
-            "timing": {"wall_seconds": round(finished - self.started, 6),
-                       "startup_seconds": round(max(readies), 6) if len(readies) == 2 else None,
-                       "shutdown_seconds": round(finished - self.started - max(terminals), 6) if len(terminals) == 2 else None,
-                       "engine_wait_seconds": round(self.engine_wait, 6), "agent_seconds": round(self.agent_wait, 6),
-                       "adapter_seconds": {**{key: round(value, 6) for key, value in self.costs.items()},
-                                           "decode": round(sum(side.decode_seconds for side in sides), 6)}},
-            "players": {side.color: {**executions[side.color], "history_v2": declarations[side.color],
-                                     **self._contextual_counters(side)} for side in sides},
-            "engine_evidence": evidence, "engine_evidence_error": evidence_error,
-            "agents": self.agent_descriptions, "ledger": self.ledger_enabled, "replay": self._replay_evidence(),
-            "contextual_replay": {"status": "unsupported",
-                                  "reason": "Replay does not yet re-verify contextual windows, routes, notices or "
-                                            "command acknowledgements; raw evidence is kept unverified."},
-            "deterministic_replay_verified": False,
-            "identity": self._contextual_identity(),
-            "launch": self.launch_info,
-        }
-        scoring.write_json(self.episode_dir / "manifest.json", manifest)
-        final = {side.color: side.validator.frames_json(side.unread_frames_from) for side in sides}
-        bootstrap = {side.color: (side.validator.frames_json()[side.cutoff_seq] if status == "truncated" else None)
-                     for side in sides}
-        self.result = EpisodeEnd(status, termination, outcomes, rewards, final, final, bootstrap, manifest)
-        self.process = None
-        return self.result
-
-    def _write_history(self, side: _Side, status: str) -> dict:
-        folder = self.episode_dir / "agents" / side.color
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / "history-v2.jsonl"
-        lines = side.validator.frames_text()
-        with path.open("x") as stream:
-            for line in lines:
-                stream.write(line + "\n")
-        history = side.history
-        closed = bool(lines) and history.frames[-1].kind in ("finalized", "cutoff_finalized")
-
-        def digest(count):  # the auditor's canonical prefix encoding, which the file lines already use
-            value = hashlib.sha256()
-            for line in lines[:count]:
-                value.update(line.encode() + b"\n")
-            return value.hexdigest()
-
-        return {"path": str(path.relative_to(self.episode_dir)), "sha256": scoring.digest(path),
-                "prefix_sha256": digest(len(lines) - 1 if closed else len(lines)), "canonical_sha256": history.digest(),
-                "boundary": history.boundary, "complete": status in ("completed", "truncated"), "frames": len(lines)}
-
-    def _contextual_counters(self, side: _Side) -> dict:
-        frames = side.history.frames
-        count = lambda kind: sum(frame.kind == kind for frame in frames)  # noqa: E731
-        return {"decisions": count("decision"), "views": count("view"), "events": count("event"),
-                "native_commands": count("issued"),
-                "native_rejections": sum(frame.kind == "acknowledged" and frame.accepted is False for frame in frames),
-                "results": dict(sorted(Counter(frame.result.status for frame in frames if frame.result).items())),
-                "responses_undelivered": side.responses_undelivered, "continuation_steps": side.continuation_steps,
-                "handles_assigned": len(side.validator.handles), "bytes_received": side.bytes_received,
-                "ready_seconds": side.ready_at, "terminal_seconds": side.terminal_at, "native_perf_totals": side.perf}
-
-    def _contextual_identity(self) -> dict:
-        def combined(digests):
-            return hashlib.sha256("".join(f"{name}\0{value}\n" for name, value in sorted(digests.items())).encode()).hexdigest()
-
-        recipe = scoring.engine_recipe_digests(ROOT)
-        pinned = json.loads((ROOT / "dependencies/vcmi.json").read_text())["commit"]
-        game_map = getattr(self.launcher, "game_map", None)
-        return {**self._identity(),
-                "engine_revision": f"{pinned}+recipe.{combined(recipe)}",
-                "bridge_source_sha256": combined({k: v for k, v in recipe.items() if k.startswith("engine/ExplorerRL/")}),
-                "map_sha256": scoring.digest(game_map) if game_map is not None else None}
 
 
 def _git_state(path: Path) -> dict | None:

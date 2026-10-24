@@ -5,7 +5,6 @@
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
-#include "ContextualState.h"
 #include "VisibleState.h"
 
 /// The player-visible world as one player's callback reports it. ExplorerRL
@@ -92,56 +91,6 @@ struct CallbackWorld
 		for(const auto * object : callback.getMyObjects())
 			if(object->getOwner() == player && object->ID == Obj::MINE)
 				++own.mines;
-		return own;
-	}
-};
-
-/// The player's own callback as an adventure-windows-v1 map context: visible
-/// tiles with their roads, the same visible objects, and every owned hero and
-/// town without armies.
-struct CallbackContextWorld
-{
-	const CCallback & callback;
-	PlayerColor player;
-	int3 size;
-
-	int width() const { return size.x; }
-	int height() const { return size.y; }
-	int levels() const { return size.z; }
-	bool tileVisible(int x, int y, int z) const { return callback.isVisible(int3(x, y, z)); }
-
-	ContextTile tileFacts(int x, int y, int z) const
-	{
-		const auto * tile = callback.getTile(int3(x, y, z), false);
-		if(!tile)
-			throw std::runtime_error("A visible tile has no terrain");
-		const auto facts = visibleTileFacts(callback, *tile);
-		return {facts.terrain, tile->getRoadID().getNum(), facts.blocked, facts.visitable};
-	}
-
-	void visibleObjectsAt(int x, int y, int z, std::vector<VisibleObject> & out) const
-	{
-		CallbackWorld{callback, player, size}.visibleObjectsAt(x, y, z, out);
-	}
-
-	ContextOwn ownState() const
-	{
-		ContextOwn own;
-		for(int resource = 0; resource < GameConstants::RESOURCE_QUANTITY; ++resource)
-			own.resources.push_back(callback.getResourceAmount(GameResID(resource)));
-		for(const auto * hero : callback.getHeroesInfo())
-			if(hero->getOwner() == player)
-			{
-				const auto position = hero->visitablePos();
-				own.heroes.push_back({hero->id.getNum(), {position.x, position.y, position.z},
-					hero->movementPointsRemaining(), hero->movementPointsLimit()});
-			}
-		for(const auto * town : callback.getTownsInfo())
-			if(town->getOwner() == player)
-			{
-				const auto position = town->visitablePos();
-				own.towns.push_back({town->id.getNum(), {position.x, position.y, position.z}});
-			}
 		return own;
 	}
 };

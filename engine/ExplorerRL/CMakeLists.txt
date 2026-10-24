@@ -1,4 +1,4 @@
-add_library(ExplorerRL SHARED ContextualState.h ExplorerRL.cpp ExplorerRL.h ExplorerRLContext.cpp KnowledgeGrid.h KnowledgePlanner.cpp KnowledgePlanner.h main.cpp NoticeParser.h StdInc.cpp StdInc.h VisibleState.h VisibleWorld.h)
+add_library(ExplorerRL SHARED ExplorerRL.cpp ExplorerRL.h KnowledgeGrid.h KnowledgePlanner.cpp KnowledgePlanner.h main.cpp StdInc.cpp StdInc.h)
 target_include_directories(ExplorerRL PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ExplorerRL PRIVATE vcmi)
 add_dependencies(ExplorerRL BattleAI)

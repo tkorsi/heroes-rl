@@ -185,14 +185,6 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
-	// Unset or empty keeps the movement interface; see ExplorerRLContext.cpp for the contextual one.
-	if(const char * interfaceName = std::getenv("EXPLORER_RL_INTERFACE"); interfaceName && *interfaceName)
-	{
-		if(std::string(interfaceName) == "adventure-windows-v1")
-			contextual = true;
-		else
-			failure = std::string("Unsupported EXPLORER_RL_INTERFACE ") + interfaceName; // reported by the worker
-	}
 	if(const char * replay = std::getenv("VCMI_EXPERIMENT_REPLAY"); replay && std::string(replay) == "1")
 	{
 		const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
@@ -280,7 +272,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = contextual ? 4 : 3;
+	result["protocol_version"].Integer() = 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -375,29 +367,18 @@ void ExplorerRL::run() noexcept
 	try
 	{
 		connectPolicy();
+		auto ready = message("ready");
+		ready["adventure_actions"].Integer() = 9;
+		ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
+		ready["battle_ai"].String() = getBattleAIName();
+		// Ordered player-visible changes between decisions; see VisibleState.h.
+		ready["observation_events"].String() = "visible_update-v2";
+		ready["profiling"].Bool() = profile;
+		ready["snapshot_every"].Integer() = snapshotEvery;
 		{
-			std::lock_guard lock(stateMutex);
-			if(!failure.empty())
-				throw std::runtime_error(failure);
-		}
-		JsonNode ready;
-		if(contextual)
-			ready = contextualReady();
-		else
-		{
-			ready = message("ready");
-			ready["adventure_actions"].Integer() = 9;
-			ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
-			ready["battle_ai"].String() = getBattleAIName();
-			// Ordered player-visible changes between decisions; see VisibleState.h.
-			ready["observation_events"].String() = "visible_update-v2";
-			ready["profiling"].Bool() = profile;
-			ready["snapshot_every"].Integer() = snapshotEvery;
-			{
-				const auto gameLock = readGameState();
-				const auto size = callback->getMapSize();
-				ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
-			}
+			const auto gameLock = readGameState();
+			const auto size = callback->getMapSize();
+			ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
 		}
 		if(!buildAndSend([&ready] { return ready; }))
 			return;
@@ -422,10 +403,7 @@ void ExplorerRL::run() noexcept
 				query = turns.front();
 				turns.pop_front();
 			}
-			if(contextual)
-				runContextualTurn(query);
-			else
-				runTurn(query);
+			runTurn(query);
 		}
 	}
 	catch(const std::exception & error)
@@ -474,15 +452,6 @@ void ExplorerRL::requestSent(const CPackForServer *, int requestID)
 	{
 		std::lock_guard lock(stateMutex);
 		pendingRequest = requestID;
-		if(contextual && issuingCommand >= 0)
-		{
-			// The acknowledgement can arrive before this call names its request.
-			commandRequests[requestID] = issuingCommand;
-			const auto acknowledged = acknowledgements.find(requestID);
-			if(acknowledged != acknowledgements.end())
-				settleCommand(issuingCommand, acknowledged->second);
-			issuingCommand = -1;
-		}
 	}
 }
 
@@ -493,18 +462,6 @@ void ExplorerRL::requestRealized(PackageApplied * pack)
 		// BattleAI uses the same callback. Parent moves and nested dialogs
 		// have separate IDs; responses may precede requestSent returning.
 		acknowledgements[pack->requestID] = pack->result;
-		if(contextual && action && action->pending)
-		{
-			// Ordered among the events; takeContextEvents keeps only the action's own commands.
-			JsonNode marker;
-			marker["kind"].String() = "_ack";
-			marker["request"].Integer() = pack->requestID;
-			marker["accepted"].Bool() = pack->result;
-			events.push_back(std::move(marker));
-			const auto command = commandRequests.find(pack->requestID);
-			if(command != commandRequests.end())
-				settleCommand(command->second, pack->result);
-		}
 	}
 	changed.notify_all();
 }
@@ -537,15 +494,11 @@ void ExplorerRL::battleStart(const BattleID & battleID, const CCreatureSet * arm
 		|| object->ID == Obj::CREATURE_GENERATOR2 || object->ID == Obj::CREATURE_GENERATOR3 || object->ID == Obj::CREATURE_GENERATOR4);
 	event["opponent"].String() = explorer_rl::opponentKind(opposingHero != nullptr,
 		dynamic_cast<const CGTownInstance *>(opposingArmy) != nullptr, unowned);
-	if(contextual)
-		event.Struct().erase("opponent"); // not part of the contextual battle event
 	{
 		std::lock_guard lock(stateMutex);
 		battleSide = side;
 		battleWon.reset();
 		events.push_back(std::move(event));
-		if(contextual)
-			++stopCauses;
 	}
 	CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
@@ -575,8 +528,6 @@ void ExplorerRL::battleEnded()
 		battleSide.reset();
 		battleWon.reset();
 		events.push_back(std::move(event));
-		if(contextual)
-			++stopCauses;
 	}
 	changed.notify_all();
 }
@@ -594,8 +545,6 @@ void ExplorerRL::heroVisit(const CGHeroInstance * hero, const CGObjectInstance *
 	event["owner"].Integer() = object->getOwner().getNum();
 	std::lock_guard lock(stateMutex);
 	events.push_back(std::move(event));
-	if(contextual)
-		++stopCauses;
 }
 
 JsonNode ExplorerRL::takeEvents()
@@ -661,10 +610,7 @@ void ExplorerRL::visibleChangeTrigger() noexcept
 			if(stopping || terminal || !failure.empty())
 				return;
 		}
-		if(contextual)
-			noteContextChanges();
-		else
-			noteVisibleChanges();
+		noteVisibleChanges();
 	}
 	catch(const std::exception & error)
 	{
@@ -1047,26 +993,6 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		std::lock_guard sendLock(sendMutex);
 		auto record = message("terminal");
 		record["outcome"].String() = result.victory() ? "win" : "loss";
-		if(contextual)
-		{
-			// Packet callbacks run on the applying thread, so the state is stable here.
-			noteContextChanges();
-			{
-				// The in-flight action ends here. Its result is known only when it issued
-				// a command and every issued command was acknowledged; otherwise it stays
-				// unresolved and the adapter supersedes it.
-				std::lock_guard lock(stateMutex);
-				if(action && action->commands > 0 && !action->pending)
-					record["result"] = contextResult(*action);
-			}
-			record["events"] = takeContextEvents();
-			noteLedgerMessage("terminal");
-			writeMessage(record);
-			std::lock_guard lock(stateMutex);
-			if(observationLedger)
-				std::fflush(observationLedger);
-			return;
-		}
 		{
 			// The last action issued before this player's game ended (see executeRequest); a later reply never is.
 			std::lock_guard lock(stateMutex);
@@ -1100,12 +1026,6 @@ void ExplorerRL::unsupported(const std::string & operation)
 
 void ExplorerRL::enqueueDecision(QueryID query, JsonNode payload)
 {
-	if(contextual)
-	{
-		// The contextual action schema has no dialog answers yet.
-		unsupported("query dialog " + payload["kind"].String());
-		return;
-	}
 	if(query == QueryID(-1))
 	{
 		unsupported("non-query dialog");
@@ -1168,8 +1088,6 @@ void ExplorerRL::heroGotLevel(const CGHeroInstance * hero, PrimarySkill primary,
 		unsupported("level-up of a hero the player does not own");
 		return;
 	}
-	if(query == QueryID(-1) && contextual)
-		return; // applied by the server without a choice; the hero window shows its effects
 	if(query == QueryID(-1))
 	{
 		// With at most one secondary skill offered the server applies the
