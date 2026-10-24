@@ -1646,7 +1646,8 @@ update, training campaign, paid compute or GitHub PR merge has been performed.
 
 #### Explicit town-to-visitor troop transfer and first-run preparation
 
-The current implementation on `codex/troop-transfer` adds the missing way to
+The current implementation on `codex/troop-transfer` in
+[draft PR #12](https://github.com/tkorsi/heroes-rl/pull/12) adds the missing way to
 move recruited troops from a town into its visiting hero's army. It does not
 assign a strategic priority to recruitment, transfer, movement or capture.
 The policy chooses `transfer_stack`, the source slot, destination slot and exact
@@ -1778,7 +1779,7 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The current handoff is `codex/troop-transfer`, stacked on
+The current handoff is `codex/troop-transfer` (draft PR #12), stacked on
 `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
 barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
 preparation are implemented and locally validated as described above. Read
