@@ -7,7 +7,7 @@ numeric neural features. Frozen records preserve every delivered prefix.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, replace
 import hashlib
 import json
 import re
@@ -18,6 +18,9 @@ ENVIRONMENT = "adventure-windows-v1"
 TOWN_SCHEMA = "heroes-player-history-v3"
 TOWN_ACTION_SCHEMA = "heroes-context-actions-v3"
 TOWN_ENVIRONMENT = "adventure-town-v1"
+ARMIES_SCHEMA = "heroes-player-history-v4"
+ARMIES_ACTION_SCHEMA = "heroes-context-actions-v4"
+ARMIES_ENVIRONMENT = "adventure-armies-v1"
 TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
 TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
@@ -39,14 +42,23 @@ class InterfaceProfile:
     def history_filename(self):
         return f"history-v{self.version}.jsonl"
 
+    @property
+    def town_economy(self):
+        return self.version in (3, 4)
+
+    @property
+    def army_transfer(self):
+        return self.version == 4
+
 
 WINDOWS_PROFILE = InterfaceProfile(ENVIRONMENT, SCHEMA, ACTION_SCHEMA, 4, 2)
 TOWN_PROFILE = InterfaceProfile(TOWN_ENVIRONMENT, TOWN_SCHEMA, TOWN_ACTION_SCHEMA, 5, 3)
+ARMIES_PROFILE = InterfaceProfile(ARMIES_ENVIRONMENT, ARMIES_SCHEMA, ARMIES_ACTION_SCHEMA, 6, 4)
 
 
 def profile_for(value):
     """Select an explicit interface/history/action version; v2 remains the default."""
-    for profile in (WINDOWS_PROFILE, TOWN_PROFILE):
+    for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE):
         if value in (profile.environment, profile.history_schema, profile.action_schema):
             return profile
     raise ValueError("Unsupported contextual interface/schema")
@@ -121,8 +133,10 @@ class Action:
         if self.schema != profile.action_schema:
             raise ValueError("Expected an action schema")
         town_actions = ("open_panel", "open_building", "construct", "back", "select_recruit", "recruit")
+        if profile.army_transfer:
+            town_actions += ("transfer_stack",)
         if self.kind not in ("move_to", "open_hero", "open_town", "close", "end_turn", *(
-                town_actions if profile == TOWN_PROFILE else ())):
+                town_actions if profile.town_economy else ())):
             raise ValueError("Unsupported contextual action")
         if self.kind in ("move_to", "open_hero", "open_town", *town_actions):
             _text(self.subject)
@@ -138,17 +152,17 @@ class Action:
                 _text(self.selection)
             elif self.panel != "hall" or self.selection is not None:
                 raise ValueError("Unsupported explicit town panel selection")
-        elif self.kind in ("open_building", "construct", "select_recruit", "recruit"):
+        elif self.kind in ("open_building", "construct", "select_recruit", "recruit", "transfer_stack"):
             _text(self.selection)
             if self.panel is not None:
                 raise ValueError("This action selects a displayed entry, not a panel")
         elif self.panel is not None or self.selection is not None:
             raise ValueError("This action has no panel selection")
-        if self.kind == "recruit":
-            _integer(self.count, low=1, high=2**31 - 1, name="recruitment count")
+        if self.kind in ("recruit", "transfer_stack"):
+            _integer(self.count, low=1, high=2**31 - 1, name="explicit creature count")
             _text(self.destination)
         elif self.count is not None or self.destination is not None:
-            raise ValueError("Only recruitment supplies a count and destination")
+            raise ValueError("Only recruitment or transfer supplies a count and destination")
 
 
 BUILDING_STATUSES = ("have_capital", "no_water", "forbidden", "add_mages_guild", "already_present",
@@ -294,12 +308,95 @@ class RecruitmentPanel:
 
 
 @dataclass(frozen=True)
+class ArmySlot:
+    ref: str
+    slot: int
+    creature: int | None
+    count: int
+
+    def __post_init__(self):
+        _text(self.ref)
+        _integer(self.slot, high=6)
+        _integer(self.count, high=2**31 - 1, name="displayed stack count")
+        if self.creature is None:
+            if self.count != 0:
+                raise ValueError("Empty army slot must have zero count")
+        else:
+            _integer(self.creature, high=2**31 - 1)
+            if self.count == 0:
+                raise ValueError("Occupied army slot requires a positive count")
+
+
+@dataclass(frozen=True)
+class ArmyView:
+    ref: str
+    role: str
+    subject: str
+    requires_nonempty: bool
+    slots: tuple[ArmySlot, ...]
+
+    def __post_init__(self):
+        _text(self.ref)
+        _text(self.subject)
+        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero"):
+            raise ValueError("Unsupported displayed town army role")
+        if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role != "town_garrison"):
+            raise ValueError("Last-stack rule must match the displayed army role")
+        _tuple(self.slots, ArmySlot, "displayed army slots")
+        if tuple(slot.slot for slot in self.slots) != tuple(range(7)):
+            raise ValueError("Display exactly seven ordered army slots")
+        _unique([self.ref, *(slot.ref for slot in self.slots)], "army/slot reference")
+        if self.requires_nonempty and not any(slot.count for slot in self.slots):
+            raise ValueError("A displayed hero must retain a nonempty army")
+
+
+@dataclass(frozen=True)
+class ArmyExchange:
+    source: ArmyView
+    destination: ArmyView | None
+
+    def __post_init__(self):
+        if type(self.source) is not ArmyView or self.source.role not in ("town_garrison", "garrison_hero"):
+            raise ValueError("Transfer source is the native upper town army")
+        if self.destination is not None:
+            if type(self.destination) is not ArmyView or self.destination.role != "visiting_hero":
+                raise ValueError("Transfer destination is only the actual own visiting hero")
+            if self.source.subject == self.destination.subject:
+                raise ValueError("Transfer armies must be distinct owned objects")
+            _unique([army.ref for army in (self.source, self.destination)]
+                    + [slot.ref for army in (self.source, self.destination) for slot in army.slots], "displayed army reference")
+
+    def maximum(self, source_ref, destination_ref):
+        """Exact native representability/last-stack rules; no strategic ranking."""
+        if self.destination is None:
+            return 0
+        source = next((slot for slot in self.source.slots if slot.ref == source_ref), None)
+        destination = next((slot for slot in self.destination.slots if slot.ref == destination_ref), None)
+        if source is None or destination is None or source.count == 0 or destination.creature not in (None, source.creature):
+            return 0
+        # Both the native split UI and server sum both stacks in signed int32,
+        # even if the selected transfer is small. Never offer an unsafe pair.
+        if source.count + destination.count > 2**31 - 1:
+            return 0
+        reserve = int(self.source.requires_nonempty and sum(bool(slot.count) for slot in self.source.slots) == 1)
+        return source.count - reserve
+
+    def choices(self):
+        if self.destination is None:
+            return ()
+        return tuple((source.ref, destination.ref, self.maximum(source.ref, destination.ref))
+                     for source in self.source.slots for destination in self.destination.slots
+                     if self.maximum(source.ref, destination.ref) > 0)
+
+
+@dataclass(frozen=True)
 class TownPanel:
     kind: str
     controls: tuple[PanelControl, ...] = ()
     buildings: tuple[BuildingChoice, ...] = ()
     building: BuildingDetails | None = None
     recruitment: RecruitmentPanel | None = None
+    armies: ArmyExchange | None = None
 
     def __post_init__(self):
         _tuple(self.controls, PanelControl, "town controls")
@@ -324,6 +421,8 @@ class TownPanel:
             raise ValueError("Unsupported town panel payload")
         if self.kind != "recruitment" and self.recruitment is not None:
             raise ValueError("Recruitment details require an open recruitment panel")
+        if self.armies is not None and (self.kind != "overview" or type(self.armies) is not ArmyExchange):
+            raise ValueError("Both armies are visible only in the open town overview")
 
 
 @dataclass(frozen=True)
@@ -489,6 +588,20 @@ class Observation:
                               *(amount // price for amount, price in zip(self.resources, panel.unit_cost) if price))
                 if panel.slider_max != maximum:
                     raise ValueError("Recruitment slider must equal displayed stock/resource affordability")
+            panel = self.window.town_panel
+            if panel is not None and panel.armies is not None:
+                exchange = panel.armies
+                source = exchange.source
+                if source.role == "town_garrison":
+                    if source.subject != self.window.context.subject:
+                        raise ValueError("Upper town army must bind the open town")
+                elif source.subject not in {hero.handle for hero in self.heroes}:
+                    raise ValueError("Garrisoned hero must be in this player's owned list")
+                if exchange.destination is not None and exchange.destination.subject not in {hero.handle for hero in self.heroes}:
+                    raise ValueError("Visiting hero must be in this player's owned list")
+                upper = tuple(Stack(slot.slot, slot.creature, slot.count) for slot in source.slots if slot.count)
+                if upper != self.window.army:
+                    raise ValueError("Displayed upper army snapshots disagree")
 
     @property
     def context(self):
@@ -522,9 +635,10 @@ class Offers:
         if self.context.kind != "map" and (self.hero_refs or self.town_refs):
             raise ValueError("Window support cannot expose map subject choices")
         _validate_context(self.context, profile)
-        if self.context.kind == "town" and profile == TOWN_PROFILE:
+        if self.context.kind == "town" and profile.town_economy:
             if type(self.panel) is not TownPanel or self.panel.kind != self.context.panel:
                 raise ValueError("Town support must bind the displayed panel")
+            _validate_panel(self.panel, profile)
         elif self.panel is not None:
             raise ValueError("This interface/context has no town panel support")
 
@@ -542,6 +656,9 @@ class Offers:
             return False
         if self.panel is not None:
             if self.context.panel == "overview":
+                if action.kind == "transfer_stack":
+                    return (action.subject == self.context.subject and self.panel.armies is not None
+                            and action.count <= self.panel.armies.maximum(action.selection, action.destination))
                 return action.kind == "close" or (action.kind == "open_panel"
                     and action.subject == self.context.subject
                     and any(control.panel == action.panel and (action.panel == "hall" or control.ref == action.selection)
@@ -580,13 +697,13 @@ class Result:
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
                                "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built",
-                               "selected", "recruited", "no_capacity"):
+                               "selected", "recruited", "no_capacity", "transferred"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
         if self.status in ("rejected", "no_capacity") and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -700,7 +817,7 @@ def _no_capacity_notice(notice):
 
 def _validate_notice(notice, profile):
     if any(token.text_id in TOWN_NOTICE_TEXT_IDS for token in notice.text):
-        if profile != TOWN_PROFILE or not _no_capacity_notice(notice):
+        if not profile.town_economy or not _no_capacity_notice(notice):
             raise ValueError("Town capacity notice requires its exact v3-only displayed template")
 
 
@@ -822,14 +939,22 @@ _PAYLOADS = {
 def _validate_context(context, profile):
     if profile == WINDOWS_PROFILE and (context.panel is not None or context.selection is not None):
         raise ValueError("History v2 cannot contain town panels")
-    if profile == TOWN_PROFILE and context.kind == "town" and context.panel is None:
-        raise ValueError("History v3 requires an explicit town panel")
+    if profile.town_economy and context.kind == "town" and context.panel is None:
+        raise ValueError("Town economy history requires an explicit town panel")
+
+
+def _validate_panel(panel, profile):
+    expected = profile.army_transfer and panel.kind == "overview"
+    if expected != (panel.armies is not None):
+        raise ValueError("Explicit displayed armies belong only to v4 town overview")
 
 
 def _validate_observation(observation, profile):
     _validate_context(observation.context, profile)
     if profile == WINDOWS_PROFILE and observation.window is not None and observation.window.town_panel is not None:
         raise ValueError("History v2 cannot contain town economy data")
+    if observation.window is not None and observation.window.town_panel is not None:
+        _validate_panel(observation.window.town_panel, profile)
 
 
 @dataclass(frozen=True)
@@ -893,6 +1018,8 @@ class Frame:
             raise ValueError("Action/history schema mismatch")
         if self.result is not None and profile == WINDOWS_PROFILE and self.result.status in ("built", "selected", "recruited", "no_capacity"):
             raise ValueError("History v2 cannot contain town economy results")
+        if self.result is not None and not profile.army_transfer and self.result.status == "transferred":
+            raise ValueError("Army transfer results require history v4")
         if self.event is not None and self.event.notice is not None:
             _validate_notice(self.event.notice, profile)
         if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
@@ -1010,18 +1137,18 @@ class PlayerHistory:
             self._match_action(frame)
             if self.consumed:
                 raise ValueError("Duplicate action consumption")
-            if self.action.kind == "construct" and frame.consumer != "engine":
-                raise ValueError("Construction must be consumed by the native engine interface")
+            if self.action.kind in ("construct", "transfer_stack") and frame.consumer != "engine":
+                raise ValueError("Construction and transfer require native engine consumption")
             self.consumed = True
             self.consumer = frame.consumer
         elif kind == "issued":
             self._match_consumed(frame)
-            if self.action.kind not in ("move_to", "end_turn", "construct", "recruit"):
+            if self.action.kind not in ("move_to", "end_turn", "construct", "recruit", "transfer_stack"):
                 raise ValueError("Navigation cannot issue native game commands")
             if self.action.kind == "recruit" and (self.consumer != "engine" or self.capacity_notice):
                 raise ValueError("Recruitment issuance requires native consumption without capacity rejection")
             if (self.pending_command is not None or frame.command_index != self.commands or self.native_rejected
-                    or self.action.kind in ("end_turn", "construct", "recruit") and self.commands != 0):
+                    or self.action.kind in ("end_turn", "construct", "recruit", "transfer_stack") and self.commands != 0):
                 raise ValueError("Native commands require ordered acknowledgement; rejected steps stop execution")
             self.pending_command = frame.command_index
             self.commands += 1
@@ -1118,7 +1245,7 @@ class PlayerHistory:
         if action.kind == "open_hero":
             return Context("hero", action.subject)
         if action.kind == "open_town":
-            return Context("town", action.subject, "overview" if self.profile == TOWN_PROFILE else None)
+            return Context("town", action.subject, "overview" if self.profile.town_economy else None)
         if action.kind == "close":
             return Context()
         if action.kind == "open_panel":
@@ -1135,7 +1262,9 @@ class PlayerHistory:
 
     def _check_result(self, result):
         action = self.action
-        if action.kind == "move_to":
+        if action.kind == "transfer_stack":
+            self._check_transfer_result(result)
+        elif action.kind == "move_to":
             if result.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
                                      "interaction", "hero_unavailable", "rejected"):
                 raise ValueError("Incorrect movement result")
@@ -1204,6 +1333,38 @@ class PlayerHistory:
                 raise ValueError("Successful town operation requires its explicit context revision")
             if not result.accepted and action.kind not in ("construct", "recruit") and self.context != self.decision.observation.context:
                 raise ValueError("Rejected navigation cannot have changed context")
+
+    def _check_transfer_result(self, result):
+        if result.status not in ("transferred", "rejected") or any(value is not None for value in (
+                result.position, result.movement, result.destination_reached)):
+            raise ValueError("Transfer result cannot claim movement or another operation")
+        before = self.decision.observation
+        observed = next((frame.observation for frame in reversed(self._frames)
+                         if frame.observation is not None), before)
+        if (self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted)
+                or self.context_changes != 0 or self.revision != self.decision.revision
+                or observed.context != before.context or self.context != before.context
+                or observed.resources != before.resources):
+            raise ValueError("Transfer requires one acknowledgement, unchanged overview and unchanged resources")
+        expected = before.window
+        if result.accepted:
+            action = self.action
+            exchange = expected.town_panel.armies
+            if exchange.maximum(action.selection, action.destination) < action.count:
+                raise ValueError("Transfer quantity exceeds the displayed exact native support")
+            source = next(slot for slot in exchange.source.slots if slot.ref == action.selection)
+            def changed(slot, *, receiving):
+                count = slot.count + action.count if receiving else slot.count - action.count
+                return replace(slot, count=count, creature=source.creature if count else None)
+            upper = replace(exchange.source, slots=tuple(changed(slot, receiving=False) if slot.ref == action.selection
+                                                        else slot for slot in exchange.source.slots))
+            lower = replace(exchange.destination, slots=tuple(changed(slot, receiving=True) if slot.ref == action.destination
+                                                             else slot for slot in exchange.destination.slots))
+            panel = replace(expected.town_panel, armies=ArmyExchange(upper, lower))
+            expected = replace(expected, town_panel=panel,
+                               army=tuple(Stack(slot.slot, slot.creature, slot.count) for slot in upper.slots if slot.count))
+        if observed.window != expected:
+            raise ValueError("Transfer acknowledgement must match the exact displayed two-army effect")
 
     def _terminal_closure(self):
         """Derive closure only for the final consumed action, without new frames."""
@@ -1340,11 +1501,16 @@ def _exact_record(raw, cls):
     return data
 
 
-def decode_town_panel(raw):
+def decode_town_panel(raw, *, schema=TOWN_SCHEMA):
+    profile = profile_for(schema)
+    if schema != profile.history_schema or not profile.town_economy:
+        raise ValueError("Town panel requires its explicit history schema")
     data = _record(raw, TownPanel)
     expected = {"kind", "controls", "buildings", "building"}
     if data.get("kind") == "recruitment":
         expected.add("recruitment")
+    if profile.army_transfer and data.get("kind") == "overview":
+        expected.add("armies")
     if set(data) != expected:
         raise ValueError("Town panel payload must match its exact displayed panel")
     data["controls"] = tuple(_decode_simple(item, PanelControl) for item in _array(data["controls"]))
@@ -1372,6 +1538,14 @@ def decode_town_panel(raw):
         recruitment["unit_cost"] = _array(recruitment["unit_cost"])
         recruitment["destination"] = _decode_simple(recruitment["destination"], RecruitDestination)
         data["recruitment"] = RecruitmentPanel(**recruitment)
+    if "armies" in data:
+        exchange = _exact_record(data["armies"], ArmyExchange)
+        for key in ("source", "destination"):
+            if exchange[key] is not None:
+                army = _exact_record(exchange[key], ArmyView)
+                army["slots"] = tuple(ArmySlot(**_exact_record(slot, ArmySlot)) for slot in _array(army["slots"]))
+                exchange[key] = ArmyView(**army)
+        data["armies"] = ArmyExchange(**exchange)
     return TownPanel(**data)
 
 
@@ -1393,7 +1567,7 @@ def decode_observation(raw, *, schema=SCHEMA):
             if "town_panel" in window:
                 raise ValueError("Town economy fields are absent from this context/schema")
         else:
-            window["town_panel"] = decode_town_panel(window.get("town_panel"))
+            window["town_panel"] = decode_town_panel(window.get("town_panel"), schema=profile.history_schema)
         if window.get("army") is not None:
             window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
         for name in ("primary_skills", "buildings"):
@@ -1445,8 +1619,10 @@ def _wire(value):
             del data["schema"]  # bound by the enclosing frame's explicit schema
             if value.panel is None:
                 del data["panel"]
-        elif type(value) is TownPanel and value.recruitment is None:
-            del data["recruitment"]
+        elif type(value) is TownPanel:
+            for name in ("recruitment", "armies"):
+                if getattr(value, name) is None:
+                    del data[name]
         elif type(value) is NoticeComponent and value.content_id is None:
             del data["content_id"]
         return data
@@ -1510,7 +1686,7 @@ def decode_frame(raw):
         offer["schema"] = profile.action_schema
         offer["context"] = _decode_context(offer.get("context"), profile)
         if "panel" in offer:
-            offer["panel"] = decode_town_panel(offer["panel"])
+            offer["panel"] = decode_town_panel(offer["panel"], schema=profile.history_schema)
         for name in ("size", "hero_refs", "town_refs"):
             if name in offer:
                 offer[name] = _array(offer[name])

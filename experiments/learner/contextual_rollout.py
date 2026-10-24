@@ -16,7 +16,7 @@ from pathlib import Path
 import torch
 
 from . import contextual as c
-from .contextual_model import ContextualEncoder, DecisionSupport, weights_sha256
+from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, distribution_schema_for, model_schema_for, weights_sha256
 
 ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
 TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
@@ -59,7 +59,8 @@ def _support_dict(support):
 
 
 def _support(frame):
-    return DecisionSupport(action_schema=frame.offers.schema, context=frame.offers.context, offers=frame.offers)
+    return DecisionSupport(action_schema=frame.offers.schema, context=frame.offers.context, offers=frame.offers,
+                           distribution_schema=distribution_schema_for(frame.offers.schema))
 
 
 def _record(raw, keys):
@@ -494,7 +495,10 @@ class CollectedEpisode:
         _paired_binding(histories, json.loads(self.manifest_json))
         _tuple(self.model_configs_json, str)
         if len(self.model_configs_json) != 2: raise ValueError("Both model configurations are required")
-        for value in (*self.model_configs_json, self.audit_json): json.loads(value)
+        for value, history in zip(self.model_configs_json, histories):
+            if ModelConfig.from_dict(json.loads(value)).schema != model_schema_for(history.schema):
+                raise ValueError("Recorded model version disagrees with the player history profile")
+        json.loads(self.audit_json)
 
     def to_dict(self):
         return {"schema": self.artifact_schema, "rollouts": [rollout.to_dict() for rollout in self.rollouts],
@@ -525,6 +529,8 @@ class ContextualCollector:
         if type(policy_seeds) is not tuple or len(policy_seeds) != 2: raise ValueError("Both policy seeds are required")
         self.profile = c.profile_for(interface)
         if interface != self.profile.environment: raise ValueError("Collector requires an environment interface")
+        if any(model.config.schema != model_schema_for(interface) for model in models):
+            raise ValueError("Both frozen collection models must match the explicit interface")
         self.models, self.checkpoints = models, checkpoints
         if trajectory_schema not in _TRAJECTORIES.values(): raise ValueError("Unsupported collector trajectory schema")
         self.trajectory_schema = trajectory_schema

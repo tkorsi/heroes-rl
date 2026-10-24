@@ -24,7 +24,7 @@ from experiments.learner import contextual as contract
 from experiments.learner.checkpoints import (
     FrozenOpponentPool, load_policy_checkpoint, save_policy_checkpoint,
 )
-from experiments.learner.contextual_model import ContextualActorCritic, weights_sha256
+from experiments.learner.contextual_model import ContextualActorCritic, ModelConfig, model_schema_for, weights_sha256
 from experiments.learner.contextual_rollout import ContextualCollector
 from validation.probes.audit_contextual_histories import audit
 from validation.probes.create_boundary_fixture import BASELINE, UPSTREAM, source_contents
@@ -38,7 +38,7 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def source_identity():
+def source_identity(interface=contract.TOWN_ENVIRONMENT):
     paths = sorted((ROOT / "experiments/learner").glob("*.py"))
     paths += [ROOT / "dependencies/learner.lock"]
     return {
@@ -48,7 +48,7 @@ def source_identity():
             ["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, text=True).strip()),
         "source_sha256": {str(p.relative_to(ROOT)): digest(p) for p in paths},
         "torch": str(torch.__version__), "python": sys.version,
-        "interface": contract.TOWN_ENVIRONMENT,
+        "interface": interface,
     }
 
 
@@ -174,6 +174,11 @@ def ordinary_summary(attempts, *, planned_attempts):
 
 def run(args):
     torch.set_num_threads(1)
+    interface = getattr(args, "interface", contract.TOWN_ENVIRONMENT)
+    profile = contract.profile_for(interface)
+    if profile.environment != interface:
+        raise ValueError("Inference requires an explicit environment profile")
+    config = ModelConfig(schema=model_schema_for(interface))
     purpose = getattr(args, "purpose", "diagnostic")
     if purpose not in ("diagnostic", "ordinary-evaluation"):
         raise ValueError("Unsupported cohort purpose")
@@ -181,20 +186,20 @@ def run(args):
     map_identity = ordinary_map_identity(args.game_map) if ordinary else None
     output = args.output.expanduser().resolve()
     output.mkdir(parents=True, exist_ok=False)
-    source = source_identity()
+    source = source_identity(interface)
     if args.checkpoint:
-        loaded = load_policy_checkpoint(args.checkpoint, allowed_provenance=("random_initialization",))
+        loaded = load_policy_checkpoint(args.checkpoint, allowed_provenance=("random_initialization",), interface=interface)
         learner, learner_id = loaded.model, loaded.checkpoint
     else:
         torch.manual_seed(args.init_seed)
-        learner = ContextualActorCritic()
+        learner = ContextualActorCritic(config)
         learner_id = "untrained-" + weights_sha256(learner)[:16]
     learner.eval()
     learner_digest = weights_sha256(learner)
     pool = FrozenOpponentPool()
     for seed in args.opponent_seeds:
         torch.manual_seed(seed)
-        opponent = ContextualActorCritic()
+        opponent = ContextualActorCritic(config)
         pool.add("untrained-" + weights_sha256(opponent)[:16], opponent)
     opponent_rng = random.Random(args.opponent_sampling_seed)
     # The same fixed opponent is used for both colors of each engine seed.
@@ -202,7 +207,7 @@ def run(args):
     save_policy_checkpoint(
         output / "untrained-policy.pt", learner, checkpoint=learner_id,
         provenance="random_initialization", source_metadata=source,
-        python_generators={"opponent": opponent_rng}, opponent_pool=pool)
+        python_generators={"opponent": opponent_rng}, opponent_pool=pool, interface=interface)
     limits = Limits(max_days=args.max_days, max_actions=args.max_requests + 1)
     roster = attempt_roster(plan, learner_id=learner_id, learner_digest=learner_digest, pool=pool,
                            policy_seed=args.policy_seed, max_requests=args.max_requests, limits=limits)
@@ -253,15 +258,15 @@ def run(args):
                     ordinary_map_identity(args.game_map)
                     if digest(output / "cohort-plan.json") != report["cohort_plan"]["sha256"]:
                         raise ValueError("Predeclared cohort plan changed")
-                    if source_identity()["source_sha256"] != source["source_sha256"]:
+                    if source_identity(interface)["source_sha256"] != source["source_sha256"]:
                         raise ValueError("Learner sources changed before fixed-weight collection")
                 collector = ContextualCollector(
                     models=models, checkpoints=checkpoints, learner_player=learner_player,
-                    opponent_pool="fixed-diagnostic-v1", interface=contract.TOWN_ENVIRONMENT,
+                    opponent_pool="fixed-diagnostic-v1", interface=interface,
                     purpose="diagnostic", origin="native", policy_seeds=policy_seeds)
                 env = HeadlessSelfPlayEnv(
                     VcmiLauncher(args.binary, args.data, args.game_map), output, limits=limits,
-                    ledger=True, replay=True, interface=contract.TOWN_ENVIRONMENT,
+                    ledger=True, replay=True, interface=interface,
                     agents={color: {"checkpoint": checkpoint, "kind": "fixed-untrained-recurrent"}
                             for color, checkpoint in zip(COLORS, checkpoints)})
                 collected = collector.run_episode(env, episode=episode, seed=seed, max_requests=args.max_requests)
@@ -269,8 +274,8 @@ def run(args):
                 histories = tuple(env.history(color) for color in COLORS)
                 manifest_path = folder / "manifest.json"
                 manifest = json.loads(manifest_path.read_text())
-                independent = audit(folder / "agents/red/history-v3.jsonl",
-                                    folder / "agents/blue/history-v3.jsonl", manifest_path)
+                independent = audit(folder / "agents/red" / profile.history_filename,
+                                    folder / "agents/blue" / profile.history_filename, manifest_path)
                 write_json(folder / "neural-rollout.json", collected.to_dict())
                 write_json(folder / "neural-audit.json", independent)
                 if not independent["consistent"] or not independent["manifest_bound"]:
@@ -292,7 +297,8 @@ def run(args):
                                weights_unchanged=True, training_samples=0,
                                files={str(p.relative_to(output)): digest(p) for p in (
                                    manifest_path, folder / "neural-rollout.json", folder / "neural-audit.json",
-                                   folder / "agents/red/history-v3.jsonl", folder / "agents/blue/history-v3.jsonl")})
+                                   folder / "agents/red" / profile.history_filename,
+                                   folder / "agents/blue" / profile.history_filename)})
             except Exception as error:
                 attempt.update(status="collection_error", error=f"{type(error).__name__}: {error}",
                                outcomes=None, rewards=None, training_samples=0)
@@ -321,6 +327,8 @@ def main(argv=None):
     parser.add_argument("--data", type=Path, default=Path.home() / "Library/Application Support/vcmi")
     parser.add_argument("--map", dest="game_map", type=Path, default=ROOT / "experiments/explorer/maps/random-baseline-v1.vmap")
     parser.add_argument("--checkpoint", type=Path)
+    parser.add_argument("--interface", choices=(contract.ENVIRONMENT, contract.TOWN_ENVIRONMENT, contract.ARMIES_ENVIRONMENT),
+                        default=contract.TOWN_ENVIRONMENT)
     parser.add_argument("--purpose", choices=("diagnostic", "ordinary-evaluation"), default="diagnostic")
     parser.add_argument("--init-seed", type=int, default=95001)
     parser.add_argument("--opponent-seed", dest="opponent_seeds", type=int, action="append")

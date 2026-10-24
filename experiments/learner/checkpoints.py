@@ -22,13 +22,13 @@ PROVENANCES = ("random_initialization", "synthetic_optimizer_test")
 
 def _contracts(interface):
     from . import contextual as contract
-    from .contextual_model import DISTRIBUTION_SCHEMA, MODEL_SCHEMA
+    from .contextual_model import distribution_schema_for, model_schema_for
     profile = contract.profile_for(interface)
     if interface != profile.environment:
         raise ValueError("Checkpoint interface must name its explicit environment")
     return {"environment": profile.environment, "history_schema": profile.history_schema,
-            "action_schema": profile.action_schema, "encoder_schema": MODEL_SCHEMA,
-            "distribution_schema": DISTRIBUTION_SCHEMA}
+            "action_schema": profile.action_schema, "encoder_schema": model_schema_for(interface),
+            "distribution_schema": distribution_schema_for(interface)}
 
 
 def _json(value):
@@ -213,9 +213,13 @@ def _payload(model, checkpoint, provenance, source_metadata, generators, python_
         raise ValueError("Real-game training checkpoints are not enabled")
     if next(model.parameters()).device.type != "cpu":
         raise ValueError("Only the validated CPU checkpoint path is enabled")
+    contracts = _contracts(interface)
+    if model.config.schema != contracts["encoder_schema"] or pool is not None and any(
+            pool.get(identity).model.config.schema != contracts["encoder_schema"] for identity, _ in pool.identities):
+        raise ValueError("Checkpoint model/opponent versions must match the explicit interface")
     _validate_weights(model, model.state_dict())
     return {"schema": SCHEMA, "kind": "policy", "checkpoint": checkpoint, "provenance": provenance,
-            "contracts": _contracts(interface),
+            "contracts": contracts,
             "torch_version": str(torch.__version__), "model_config": model.config.to_dict(),
             "weights_sha256": model_weight_digest(model), "model_state": _weights(model),
             "source_metadata": _json(source_metadata), "rng": _rng_state(generators, python_generators),
@@ -232,6 +236,13 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
         raise ValueError("Checkpoint version or provenance differs")
     if payload["contracts"] != _contracts(interface):
         raise ValueError("Checkpoint observation/action/encoder/distribution versions differ")
+    expected_model = payload["contracts"]["encoder_schema"]
+    pool = payload["opponent_pool"]
+    if pool is not None and (type(pool) is not list or any(type(entry) is not dict for entry in pool)):
+        raise ValueError("Invalid frozen opponent pool")
+    configurations = [payload["model_config"], *(entry.get("model_config") for entry in pool or ())]
+    if any(type(config) is not dict or config.get("schema") != expected_model for config in configurations):
+        raise ValueError("Checkpoint model or frozen pool has an incompatible encoder version")
     _text(payload["checkpoint"])
     _json(payload["source_metadata"])
     if expected_source_metadata is not None and payload["source_metadata"] != _json(expected_source_metadata):

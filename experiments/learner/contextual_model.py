@@ -20,8 +20,10 @@ from . import contextual as c
 
 MODEL_SCHEMA = "heroes-context-model-v1"
 DISTRIBUTION_SCHEMA = "heroes-context-policy-v1"
+ARMIES_MODEL_SCHEMA = "heroes-context-model-v2"
+ARMIES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v2"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
-            "open_building", "construct", "back", "select_recruit", "recruit")
+            "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack")
 # Verification, command identifiers and technical boundaries are not observations.
 _METADATA = frozenset(("issued", "cutoff", "cutoff_finalized", "finalized", "failure", "superseded"))
 
@@ -34,7 +36,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema != MODEL_SCHEMA:
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -50,6 +52,14 @@ class ModelConfig:
         if type(value) is not dict or set(value) != {f.name for f in fields(cls)}:
             raise ValueError("Exact versioned model configuration required")
         return cls(**value)
+
+
+def model_schema_for(profile_or_schema):
+    return ARMIES_MODEL_SCHEMA if c.profile_for(profile_or_schema).army_transfer else MODEL_SCHEMA
+
+
+def distribution_schema_for(profile_or_schema):
+    return ARMIES_DISTRIBUTION_SCHEMA if c.profile_for(profile_or_schema).army_transfer else DISTRIBUTION_SCHEMA
 
 
 def weights_sha256(model):
@@ -111,13 +121,28 @@ def _action(action, observation):
         value = getattr(action, key)
         children.append(_node(key, _semantic(value)))
     children.extend((_node("panel", _semantic(action.panel)),
-                     _node("decision_selection", _selection(observation, action.selection))))
+                     _node("decision_selection", _army_slot(observation, action.selection, receiving=False)
+                           if action.kind == "transfer_stack" else _selection(observation, action.selection))))
     if action.destination is not None:
-        panel = observation.window.town_panel.recruitment
-        if panel is None or panel.destination.ref != action.destination:
-            raise ValueError("Action destination has no displayed semantic binding")
-        children.append(_node("destination", _semantic(panel.destination)))
+        if action.kind == "transfer_stack":
+            children.append(_node("destination", _army_slot(observation, action.destination, receiving=True)))
+        else:
+            panel = observation.window.town_panel.recruitment
+            if panel is None or panel.destination.ref != action.destination:
+                raise ValueError("Action destination has no displayed semantic binding")
+            children.append(_node("destination", _semantic(panel.destination)))
     return _node("action", *children)
+
+
+def _army_slot(observation, ref, *, receiving):
+    panel = observation.window.town_panel if observation and observation.window else None
+    exchange = panel.armies if panel else None
+    army = (exchange.destination if receiving else exchange.source) if exchange else None
+    slot = next((slot for slot in army.slots if slot.ref == ref), None) if army else None
+    if slot is None:
+        raise ValueError("Army slot has no current displayed semantic binding")
+    return _node("army_slot", _node("role", _text(army.role)), _node("owner_subject", _subject(observation, army.subject)),
+                 _node("requires_nonempty", _semantic(army.requires_nonempty)), _semantic(slot))
 
 
 def _semantic(value):
@@ -150,6 +175,10 @@ def _semantic(value):
         children = []
         for field in fields(value):
             name, item = field.name, getattr(value, field.name)
+            # This additive v4 field must not add even an "absent" node to old
+            # observations: archived v1 values/probabilities remain exact.
+            if type(value) is c.TownPanel and name == "armies" and item is None:
+                continue
             if name in ("handle", "ref", "control_ref", "selected_offer_ref", "subject", "selection", "schema"):
                 continue
             if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction") and type(item) is int:
@@ -229,7 +258,7 @@ class DecisionSupport:
     distribution_schema: str = DISTRIBUTION_SCHEMA
 
     def __post_init__(self):
-        if (self.distribution_schema != DISTRIBUTION_SCHEMA or type(self.offers) is not c.Offers
+        if (self.distribution_schema != distribution_schema_for(self.action_schema) or type(self.offers) is not c.Offers
                 or self.action_schema != self.offers.schema or self.context != self.offers.context):
             raise ValueError("Exact contextual policy support required")
 
@@ -371,6 +400,8 @@ class ContextualActorCritic(nn.Module):
     def forward_step(self, frame, state):
         if type(frame) is not ContextualInput:
             raise ValueError("Use the checked contextual history codec")
+        if self.config.schema != model_schema_for(frame.frame.schema):
+            raise ValueError("Model version does not match this explicit history profile")
         if (not isinstance(state, Tensor) or state.shape != (self.config.hidden_size,)
                 or state.device != self.device or state.dtype != self.byte.weight.dtype):
             raise ValueError("State must match model dimensions, dtype and device")
@@ -403,7 +434,7 @@ class ContextualDistribution:
     def __init__(self, model, state, observation, offers, cells, cache):
         self.model, self.state, self.observation, self.offers = model, state, observation, offers
         self.cells, self.cache = cells, cache
-        self.support = DecisionSupport(offers.schema, offers.context, offers)
+        self.support = DecisionSupport(offers.schema, offers.context, offers, distribution_schema_for(offers.schema))
 
     def _features(self, semantic):
         return self.model._encode_tree(semantic, self.cache)
@@ -420,7 +451,8 @@ class ContextualDistribution:
         if offers.panel is None:
             return ("close",)
         if context.panel == "overview":
-            return ("close", "open_panel") if offers.panel.controls else ("close",)
+            kinds = ("close", "open_panel") if offers.panel.controls else ("close",)
+            return kinds + (("transfer_stack",) if offers.panel.armies and offers.panel.armies.choices() else ())
         if context.panel == "hall":
             return ("open_building", "back") if offers.panel.buildings else ("back",)
         if context.panel == "building":
@@ -476,6 +508,36 @@ class ContextualDistribution:
             index = choose("selection", self._logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
+        elif kind == "transfer_stack":
+            exchange = self.offers.panel.armies
+            choices = exchange.choices()
+            sources = tuple(dict.fromkeys(source for source, _, _ in choices))
+            source_index = choose("source_slot", self._logits([_army_slot(self.observation, ref, receiving=False) for ref in sources]),
+                                  sources.index(action.selection) if action else None)
+            selection = sources[source_index]
+            destinations = tuple(destination for source, destination, _ in choices if source == selection)
+            destination_index = choose("destination_slot", self._logits([
+                _node("transfer_pair", _army_slot(self.observation, selection, receiving=False),
+                      _army_slot(self.observation, ref, receiving=True)) for ref in destinations]),
+                destinations.index(action.destination) if action else None)
+            destination = destinations[destination_index]
+            subject = self.offers.context.subject
+            low, maximum = 1, exchange.maximum(selection, destination)
+            high = maximum
+            features = self._features(_node("transfer_quantity", _army_slot(self.observation, selection, receiving=False),
+                                           _army_slot(self.observation, destination, receiving=True)))
+            depth = 0
+            while low < high:
+                middle = (low + high) // 2
+                numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
+                logits = self.model.quantity(torch.cat((self.state, features, numeric)))
+                logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                selected = int(action.count > middle) if action else None
+                branch = choose(f"count:{low}:{high}", logits, selected)
+                if branch: low = middle + 1
+                else: high = middle
+                depth += 1
+            count = low
         elif kind in ("construct", "back", "recruit"):
             subject = self.offers.context.subject
             if kind == "construct":
