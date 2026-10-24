@@ -111,7 +111,7 @@ def construction(run):
     prerequisite = next((choice for choice in hall.buildings if choice.status in ("prerequires", "missing_base")), None)
     base.ensure(prerequisite is not None, "No native unmet-requirement detail available")
     details = run.open_building(prerequisite)
-    run.check("native_conditional_requirement_panel", "passed", name=details.name_text_id, status=details.status)
+    run.check("native_conditional_requirement_panel", "passed", content_name=details.name_text_id, native_status=details.status)
     run.call(run.town_action("back"), "back_from_requirement_detail")
     choices = run.panel("hall").buildings
     chosen = next((choice for choice in choices if choice.status == "allowed"
@@ -127,7 +127,7 @@ def construction(run):
     base.ensure(tuple(a - b for a, b in zip(before.observation.resources, after.observation.resources)) == details.cost,
                 "Actual construction resource debit differs from displayed price")
     base.ensure(run.history(run.state.color)[:len(old_history)] == old_history, "Build mutated prior panel history")
-    run.check("exact_build_cost_and_native_request", "passed", name=details.name_text_id,
+    run.check("exact_build_cost_and_native_request", "passed", content_name=details.name_text_id,
               cost=list(details.cost), resources_before=list(before.observation.resources),
               resources_after=list(after.observation.resources), returned_to="overview")
     run.call(run.town_action("construct", selection=details.ref),
@@ -142,7 +142,7 @@ def construction(run):
     base.ensure(capped is not None, "No daily construction cap observed after native build")
     capped_details = run.open_building(capped)
     run.call(run.town_action("construct", selection=capped.ref), "daily_build_cap_rejected", expect_rejection=True)
-    run.check("native_daily_build_cap", "passed", ref=capped.ref, name=capped_details.name_text_id)
+    run.check("native_daily_build_cap", "passed", ref=capped.ref, content_name=capped_details.name_text_id)
     day = run.inspect_request().day
     run.next_own_day(owner, day)
     base.ensure(run.inspect_request().observation.window is None, "Closed panel refreshed on subsequent day")
