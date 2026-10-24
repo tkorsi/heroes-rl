@@ -92,7 +92,8 @@ For future training, save episode records and checkpoints for the whole run;
 record scheduled evaluation episodes from frozen checkpoints. This avoids
 making every training step wait for rendering. A video of a later evaluation
 is labelled as such, not presented as the original training episode. Exact
-action replay is a separate capability and is not implemented yet.
+action replay is a separate capability and is not implemented yet; it is now
+part of the delegated headless workstream below.
 
 The player view means the map information available to a **side/team**, shared
 by its heroes and towns; it is not a single hero's line of sight or a literal
@@ -187,6 +188,82 @@ ends the game or a declared limit is reached. Random wandering may never produce
 a winner within the budget, which is itself useful evidence about sparse
 terminal feedback.
 
+## Next workstreams — simulation and learning
+
+**Claude owns the entire headless simulation, performance and offline replay
+workstream**, tracked in [issue #4](https://github.com/tkorsi/heroes-rl/issues/4).
+Codex owns the learning design, policy/value implementation and integration.
+Deliver engine work in staged draft PRs starting from the merged `main` branch.
+Keep this README as the canonical agreement rather than creating another charter.
+
+The training path must advance the real VCMI rules without a window, renderer,
+animation waits, audio, frame encoding or presentation delays. Video production
+is a separate consumer of selected episode records. A replay must reproduce the
+original logical states and each player's historical fog, checked with hashes;
+re-running a checkpoint on a seed is not sufficient evidence of exact replay.
+Capture all relevant randomness or authoritative events, including automatic
+battles. Keep omniscient replay data inaccessible to the learner.
+
+First prove a complete headless episode, correct terminal/truncation handling
+and replay fidelity. Then measure actions/second and naturally completed
+games/second separately, with hardware, worker count, setup/reset time, game
+lengths and limits. Thousands of complete games per second is an aspiration,
+not a measured result or an acceptance promise. Use isolated processes first;
+the engine has global state. Episode validity must be independent of whether
+an optional video was successfully rendered.
+
+### Initial learner specification (proposed, not implemented)
+
+The current policy is uniform random over permitted attempts, and no learned
+policy, value function or training loop exists. The first candidate is a small
+recurrent actor-critic trained with [PPO](https://arxiv.org/abs/1707.06347).
+This is a starting hypothesis to test, not an established best algorithm for
+Heroes III.
+
+| Component | Initial specification |
+| --- | --- |
+| Reward | 0 on ordinary transitions; +1 for a verified natural win and -1 for a verified natural loss, from that player's perspective. No exploration, mine, gold, survival or invalid-move rewards/penalties. |
+| Observation | Only the player's structured visible map, own heroes/army/towns/resources, attempt mask, and history of its observations, actions and results. No spectator state or opponent memory. |
+| Policy `pi(a \| h)` | A map/state encoder and GRU memory feed nine masked action logits: eight adjacent attempts and end-turn. Sample during collection; record the mask and behavior log-probability. The server still validates attempts into unknown terrain. |
+| Value `V(h)` | A scalar prediction of expected future terminal return under the current policy and frozen opponent distribution, using the same permitted information and memory. No separate Q-network is required initially. |
+| Self-play | Share model weights across colors, with separate recurrent state and trajectories. Start each episode with a learner seat and a frozen opponent sampled from random play or saved policy checkpoints; alternate learner colors. |
+
+Here `h` is the player's observation/action history, summarized by recurrent
+memory. Use an undiscounted terminal objective (`gamma = 1`) initially, so
+winning sooner is not a separate reward. For games that eventually end in a
+win or loss, the ideal value is `P(win | h) - P(loss | h)`; it is a prediction
+under the training opponent distribution, not an objective score for the map.
+Both policy and value learn from experience. Mines and exploration are logged
+as metrics; their strategic usefulness must be learned through eventual returns.
+The existing uniform dialog-choice policy and automatic BattleAI remain fixed
+subsystems for this first movement learner, with their versions recorded.
+
+Freeze the behavior checkpoint and opponent mixture during rollout collection,
+and the chosen opponent for each episode. PPO updates use learner actions with
+their recorded behavior probabilities; historical opponents' actions are not
+additional on-policy data.
+Keep a player's transition open until its next decision or own terminal, even
+when the opponent takes a full turn in between. Compute returns/advantages
+within that player's trajectory, never using the other side's value or memory.
+Train recurrent sequences with preserved history rather than shuffled isolated
+observations. Reset memory at episode boundaries, not between player turns or
+rollout chunks, and keep checkpoint identities.
+
+A true terminal has no value bootstrap. A valid rollout/horizon cutoff may
+bootstrap only from a verified next decision observation and matching recurrent
+state for that player. A timeout is not a draw or loss; a killed process with no
+valid boundary cannot supply a bootstrap. Exclude technical failures from
+training. The current rendered, wall-limited recordings do not yet provide this
+learner boundary contract. An entropy term, if used for exploration in PPO, is
+an optimization term logged separately from game reward.
+
+The three existing self-play runs contain no verified terminal outcomes.
+Bootstrapping zero-reward trajectories alone does not supply missing win/loss
+information. Before a learning campaign, establish reachable natural endings
+and measure their frequency under the headless baseline. Evaluate frozen
+checkpoints on held-out seeds, both colors and a fixed opponent set; do not use
+win rate against the current copy of itself as the sole measure of progress.
+
 ## Git and local artifacts
 
 This is one Git project. Open its root in SourceTree to see all Python code,
@@ -252,8 +329,9 @@ the single source of purpose and decisions; do not maintain competing charters.
   exposed a startup acknowledgement error, a shutdown exception and a shutdown
   queue race, respectively; they remain unscored. Earlier successful attempts
   3 and 5 are retained. The final series uses attempts 6–8 after the queue fix.
-- Client/server/ExplorerRL/Nullkiller builds, 65 tests, exact dependency-source
-  verification and video visual checks pass. The native concurrency regression
+- Client/server/ExplorerRL/Nullkiller builds and video visual checks passed for
+  the recorded series. After merging self-play and offline analysis, all 84 tests
+  and exact dependency-source verification pass. The native concurrency regression
   fails on the old queue and passes after the fix. Self-play now exercises the
   external bridge on both colors, automatic neutral battles and mine capture.
   Nested game dialogs remain unverified live paths. The older bare-duel map
@@ -265,6 +343,12 @@ the single source of purpose and decisions; do not maintain competing charters.
   `validation/recording-2026-10-24.json` used Nullkiller's automatic open-map
   cheat (runs 003/004). They validate recording only, **not** play under fog.
 - No Heroes learner training or 1,000-episode run has been performed here.
+- Claude's offline baseline analyzer is integrated with additional evidence
+  validation. All eight local baseline attempts classify as five natural
+  endings, two technical failures and one truncation across six provenance
+  cohorts; input files remain unchanged. Schema 3 self-play analysis is not yet
+  supported by this CLI. Headless simulation and exact replay remain pending
+  in issue #4; no headless throughput measurement has been performed.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -385,6 +469,27 @@ python3 experiments/recording/video.py montage runs/my-self-play \
 Use `--view omniscient --player blue` for Blue's matching open-map camera.
 Self-play defaults to Red when no player is specified. Overlays explicitly label
 the run **random self-play — no training**, including unknown outcomes for limits.
+
+## Analyze recorded baseline attempts
+
+The offline CLI reads explicit run directories and writes new reports without
+modifying the inputs. It supports schema 2 `random-baseline` manifests; schema 3
+self-play and other inputs are explicitly reported as unsupported. List every
+attempt in a comparison, including failures, rather than selecting only successes.
+
+```sh
+python3 experiments/analysis/analyze_runs.py \
+  runs/random-baseline-001 runs/random-baseline-002 runs/random-baseline-003 \
+  runs/random-baseline-004 runs/random-baseline-005 runs/random-baseline-006 \
+  runs/random-baseline-007 runs/random-baseline-008 \
+  --json reports/baseline-analysis.json --markdown reports/baseline-analysis.md
+```
+
+Reports separate verified endings, truncations and failures, retain incompatible
+provenance cohorts, and expose missing or contradictory evidence. Optional ledger
+metrics require matching hashes, player/episode identity and monotonic timestamps.
+Observed intervals without a hero do not count as defeat while a town remains.
+Existing output paths are refused; omit output flags to print JSON to stdout.
 
 ## Recorder commands
 
