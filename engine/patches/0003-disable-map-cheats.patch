@@ -1,0 +1,144 @@
+diff --git a/AI/Nullkiller/Engine/Nullkiller.cpp b/AI/Nullkiller/Engine/Nullkiller.cpp
+--- a/AI/Nullkiller/Engine/Nullkiller.cpp
++++ b/AI/Nullkiller/Engine/Nullkiller.cpp
+@@ -27,6 +27,8 @@
+ #include "../../lib/pathfinder/PathfinderCache.h"
+ #include "../../lib/pathfinder/PathfinderOptions.h"
+ 
++#include <cstdlib>
++
+ namespace NKAI
+ {
+ 
+@@ -95,6 +97,9 @@
+ 		useObjectGraph = false;
+ 		openMap = false;
+ 	}
++	if(const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR"); recordingDirectory && *recordingDirectory)
++		logAi->info("Experiment AI visibility: player=%d cheats_allowed=%d open_map=%d use_object_graph=%d",
++			playerID.getNum(), cb->getStartInfo()->extraOptionsInfo.cheatsAllowed, openMap, useObjectGraph);
+ 
+ 	baseGraph.reset();
+ 
+diff --git a/client/CServerHandler.cpp b/client/CServerHandler.cpp
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -50,6 +50,7 @@
+ #include "../lib/campaign/CampaignState.h"
+ #include "../lib/gameState/CGameState.h"
+ #include "../lib/gameState/HighScore.h"
++#include "../lib/json/JsonNode.h"
+ #include "../lib/CPlayerState.h"
+ #include "../lib/mapping/CMap.h"
+ #include "../lib/mapping/CMapInfo.h"
+@@ -68,6 +69,66 @@
+ #include <SDL_thread.h>
+ 
+ #include <boost/lexical_cast.hpp>
++
++#include <cstdio>
++#include <cstdlib>
++
++namespace
++{
++void writeExperimentMetadata(const CGameState & gameState)
++{
++	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++	if(!recordingDirectory || !*recordingDirectory)
++		return;
++
++	const auto * options = gameState.getStartInfo();
++	JsonNode metadata;
++	metadata["schema_version"].Integer() = 1;
++	metadata["phase"].String() = "before_first_turn";
++	metadata["cheats_allowed"].Bool() = options->extraOptionsInfo.cheatsAllowed;
++	metadata["difficulty_index"].Integer() = options->difficulty;
++	metadata["map_uri"].String() = options->mapname;
++	metadata["map_name"].String() = gameState.getMap().name.toString();
++	metadata["game_day"].Integer() = gameState.day;
++	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
++	{
++		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
++			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS must be exactly 0 or 1");
++		metadata["requested_no_cheats"].Bool() = std::string(noCheats) == "1";
++		if(metadata["requested_no_cheats"].Bool() && options->extraOptionsInfo.cheatsAllowed)
++			throw std::runtime_error("Experiment requested disabled cheats, but the actual game permits cheats");
++	}
++	else
++		metadata["requested_no_cheats"] = JsonNode();
++
++	const auto mapSize = gameState.getMapSize();
++	metadata["map_width"].Integer() = mapSize.x;
++	metadata["map_height"].Integer() = mapSize.y;
++	metadata["map_levels"].Integer() = mapSize.z;
++	for(const auto & [color, player] : gameState.players)
++	{
++		const auto & fog = gameState.teams.at(player.team).fogOfWarMap;
++		JsonNode state;
++		state["player_index"].Integer() = color.getNum();
++		state["team_index"].Integer() = player.team.getNum();
++		state["human"].Bool() = player.isHuman();
++		state["visible_tiles"].Integer() = std::count_if(fog.begin(), fog.end(), [](uint8_t visible) { return visible != 0; });
++		state["total_tiles"].Integer() = std::distance(fog.begin(), fog.end());
++		logGlobal->info("Experiment initial visibility: player=%d team=%d visible_tiles=%d total_tiles=%d",
++			color.getNum(), player.team.getNum(), state["visible_tiles"].Integer(), state["total_tiles"].Integer());
++		metadata["players"].Vector().push_back(std::move(state));
++	}
++	const auto path = boost::filesystem::path(recordingDirectory) / "experiment-metadata.json";
++	std::unique_ptr<std::FILE, decltype(&std::fclose)> file(std::fopen(path.string().c_str(), "wbx"), &std::fclose);
++	if(!file)
++		throw std::runtime_error("Cannot exclusively create experiment metadata: " + path.string());
++	const auto text = metadata.toString() + "\n";
++	if(std::fwrite(text.data(), 1, text.size(), file.get()) != text.size() || std::fflush(file.get()) != 0)
++		throw std::runtime_error("Cannot write experiment metadata: " + path.string());
++	logGlobal->info("Experiment effective state: cheats_allowed=%d difficulty=%d map=%s",
++		options->extraOptionsInfo.cheatsAllowed, static_cast<int>(options->difficulty), options->mapname);
++}
++}
+ 
+ CServerHandler::~CServerHandler()
+ {
+@@ -649,6 +710,9 @@
+ 
+ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
+ {
++	// Validate and record actual state received from the server before any AI interface is created.
++	writeExperimentMetadata(*gameState);
++
+ 	if(GAME->mainmenu())
+ 		GAME->mainmenu()->disable();
+ 
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -86,6 +86,8 @@
+ #include <vcmi/events/AdventureEvents.h>
+ 
+ #include <boost/lexical_cast.hpp>
++
++#include <cstdlib>
+ 
+ #define COMPLAIN_RET_IF(cond, txt) do {if (cond){complain(txt); return;}} while(0)
+ #define COMPLAIN_RET_FALSE_IF(cond, txt) do {if (cond){complain(txt); return false;}} while(0)
+@@ -583,6 +585,21 @@
+ 
+ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTracking)
+ {
++	// Set the authoritative options before game-state construction and AI initialization.
++	// Normal games retain their configured options; only an explicit recorder request disables cheats.
++	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
++	{
++		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
++			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS must be exactly 0 or 1");
++		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++		if(!recordingDirectory || !*recordingDirectory)
++			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS requires VCMI_RECORD_DIR");
++		if(std::string(noCheats) == "1")
++			si->extraOptionsInfo.cheatsAllowed = false;
++		logGlobal->info("Experiment server options: requested_no_cheats=%s cheats_allowed=%d difficulty=%d map=%s",
++			noCheats, si->extraOptionsInfo.cheatsAllowed, static_cast<int>(si->difficulty), si->mapname);
++	}
++
+ 	CMapService mapService;
+ 	gs = std::make_shared<CGameState>();
+ 	int requestedSeed = settings["server"]["seed"].Integer();

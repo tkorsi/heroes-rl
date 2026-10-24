@@ -120,7 +120,8 @@
   "limitations": [
     "Recordings end at frame limit and are unscored, not natural defeats.",
     "No learner policy is connected to this launcher.",
-    "Exact deterministic replay and full-scenario ExplorerRL interactions remain unvalidated."
+    "Exact deterministic replay and full-scenario ExplorerRL interactions remain unvalidated.",
+    "Historical runs 003/004 used Nullkiller with automatic open-map cheats enabled. They validate recording/encoding only, not play under fog of war; see recording-dual-view-2026-10-24.json for corrected fog validation."
   ],
   "recipe": {
     "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",

@@ -60,11 +60,15 @@ Build the recording path before training:
 
 1. Capture native game frames from the VCMI renderer during gameplay, without
    capturing the desktop or other applications.
-2. Save a timestamped frame ledger, isolated engine logs/settings, and a run
-   manifest. Set finite frame and wall-time limits.
-3. Encode an individual episode to MP4 and produce a labelled, roughly
+2. Record two synchronized views of the **same episode**: **omniscient** (open
+   map for inspection) and **player** (the selected AI player's actual team fog).
+   Both use the same camera following that player's heroes. The open-map pass
+   must never change player fog, AI callbacks, or the learner's observations.
+3. Save a timestamped frame ledger per view, isolated engine logs/settings, and
+   a run manifest. Set finite frame and wall-time limits.
+4. Encode each view of an individual episode to MP4 and produce a labelled, roughly
    one-minute montage across a set of episodes.
-4. Verify the path on a real, bounded built-in-AI game with automatic battles.
+5. Verify the path on a real, bounded built-in-AI game with automatic battles.
    Label this **recorder smoke test**, with no learner and no training claim.
 
 For future training, save episode records and checkpoints for the whole run;
@@ -72,6 +76,18 @@ record scheduled evaluation episodes from frozen checkpoints. This avoids
 making every training step wait for rendering. A video of a later evaluation
 is labelled as such, not presented as the original training episode. Exact
 action replay is a separate capability and is not implemented yet.
+
+The player view means the map information available to a **side/team**, shared
+by its heroes and towns; it is not a single hero's line of sight or a literal
+visualization of the AI's internal thoughts. Preserve VCMI's normal fog rules.
+Only the map perspective changes; spectator sidebars are still spectator UI.
+
+The recorder disables engine cheats before game-state creation. This also
+turns off Nullkiller's automatic map reveal and hidden-object graph. Record
+actual initial fog counts and effective AI flags, then the chosen side's visible
+tile count per sample. Treat these checks as evidence of configured fog, not a
+complete audit of every built-in AI information access. The future learner still
+needs its own validated player-visible observation interface.
 
 ## First experiment proposal after recording
 
@@ -126,14 +142,20 @@ the single source of purpose and decisions; do not maintain competing charters.
 
 - VCMI 1.7.5 is installed locally and its source/build are available.
 - An older, unvalidated ExplorerRL bridge and tiny duel-map generator exist.
-- Stage 1 works: two real bounded games were captured (360 frames each), encoded
-  to 60-second H.264 videos, and combined into a labelled 60-second overview.
-  Both were stopped at the recording frame limit, with no scored outcome.
-- The native build, nine Python tests, and exact dependency-source verification
-  pass. Spectator startup, camera, palettes, resource display, and unattended
-  shutdown were repaired as part of the real-game validation.
-- Local preview: `videos/recorder-demo-60s.mp4`. Compact evidence:
-  `validation/recording-2026-10-24.json`. This is built-in-AI recorder validation.
+- Stage 1 records synchronized open-map and player-fog views. A real Easy
+  Nullkiller game produced 120 paired samples and two 20-second MP4s. Red's
+  explored area grew from 65 to 221 of 2,592 tiles across days 1–3; both AIs'
+  actual map-reveal and object-graph flags were off.
+- Native player-only (Blue) and omniscient-only modes also passed bounded runs.
+  All runs ended at frame limits with unknown outcomes, never scored defeats.
+- Client/server/Nullkiller builds, 20 Python tests, exact dependency-source
+  verification, and visual checks of map/minimap fog pass.
+- Current previews: `videos/dual-view-005-player.mp4` and
+  `videos/dual-view-005-omniscient.mp4`. Compact evidence:
+  `validation/recording-dual-view-2026-10-24.json`.
+- Historical `videos/recorder-demo-60s.mp4` and
+  `validation/recording-2026-10-24.json` used Nullkiller's automatic open-map
+  cheat (runs 003/004). They validate recording only, **not** play under fog.
 - No Heroes learner training or 1,000-episode run has been performed here.
 
 ## Recorder commands
@@ -167,35 +189,51 @@ From this repository, build the client with the recorder changes:
 cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH=/opt/homebrew -DENABLE_GOLDMASTER=ON \
   -DENABLE_STRICT_COMPILATION=OFF
-cmake --build vcmi/build --target vcmiclient vcmiserver --parallel 8
+cmake --build vcmi/build --target vcmiclient vcmiserver Nullkiller --parallel 8
 ```
 
 Record a bounded game on the installed **Key to Victory** map. Both players use
-the built-in Nullkiller on Easy. The runner opens a game window and follows the
-active heroes; battles resolve automatically. Every run requires a new directory:
+the built-in Nullkiller on Easy with automatic map reveal disabled. The runner
+opens a game window and follows the selected player's heroes; battles resolve
+automatically. Every run requires a new directory:
 
 ```sh
 python3 experiments/recording/record.py \
-  --output runs/example-001 --episode 1 --seed 12345 --seconds 90
+  --output runs/example-001 --episode 1 --seed 12345 --seconds 90 \
+  --view both --player red
 ```
 
 The runner defaults to 6 captured frames/second and a maximum of 3,600 frames.
-`--map`, `--fps`, `--max-frames`, `--binary`, and `--data` are configurable.
+`--view both` (default) creates two videos; `--view player` or `--view omniscient`
+records just one. `--player red` (default) selects the side whose fog/camera is
+used; other standard colors are supported when present on the map. `--map`,
+`--fps`, `--max-frames`, `--binary`, and `--data` are configurable.
 Settings, saves, logs, frames and a copied map use a fresh run-specific profile.
 The original game assets are read through links. A wall/frame limit is reported
 as an unscored truncation with unknown outcome; it is not a natural defeat.
 
-The result is `runs/example-001/episode.mp4`, plus its `manifest.json`, native
-`frames/frames.jsonl`, and logs. PNG timestamps preserve actual elapsed capture
-time. Individual MP4 playback uses nominal capture FPS; skipped render intervals
-therefore shorten idle/slow periods. This is a visual recording, not exact replay.
+The results are `runs/example-001/omniscient.mp4` and
+`runs/example-001/player-red.mp4`, plus `manifest.json`, logs, and separate
+`frames/omniscient/frames.jsonl` / `frames/player/frames.jsonl` ledgers. Schema v2
+identifies each recording's perspective explicitly. Paired samples share frame
+IDs, timestamps and game days, captured under one client-state lock. The window
+returns to the player's fog view after recording. PNG timestamps preserve actual
+elapsed capture time. Individual MP4 playback uses nominal capture FPS; skipped
+render intervals therefore shorten idle/slow periods. This is a visual recording, not exact replay.
 
 Create a 60-second overview from evenly spaced recorded episodes:
 
 ```sh
 python3 experiments/recording/video.py montage runs \
-  --output videos/overview.mp4 --seconds 60 --samples 12
+  --output videos/overview-player.mp4 --seconds 60 --samples 12 --view player
 ```
+
+Use `--view omniscient` for an open-map overview. Player view is the default;
+missing player views are skipped explicitly, never replaced by open-map clips.
+Legacy schema v1 recordings are available only as omniscient views. Each montage
+labels the view and selected player, and retains the no-training label for smoke
+runs. The current test-map terminal detector reports Red's result; manifests and
+montages label the outcome owner even when recording another side.
 
 Use `--samples 0` to show every available episode. At 30 output frames/second,
 1,000 episodes fit in 60 seconds as 1–2 frames each, so the sampled overview is
@@ -207,7 +245,7 @@ To encode an existing capture separately (for example, after `--no-encode`):
 
 ```sh
 python3 experiments/recording/video.py encode \
-  --frames runs/example-001/frames --fps 6 --output videos/episode-001.mp4
+  --frames runs/example-001/frames/player --fps 6 --output videos/player-001.mp4
 python3 -m unittest discover -s tests -v
 ```
 

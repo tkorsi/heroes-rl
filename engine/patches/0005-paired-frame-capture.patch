@@ -1,0 +1,175 @@
+diff --git a/client/renderSDL/ScreenHandler.cpp b/client/renderSDL/ScreenHandler.cpp
+--- a/client/renderSDL/ScreenHandler.cpp
++++ b/client/renderSDL/ScreenHandler.cpp
+@@ -18,6 +18,8 @@
+ #include "../GameEngine.h"
+ #include "../GameInstance.h"
+ #include "../CServerHandler.h"
++#include "../CPlayerInterface.h"
++#include "../adventureMap/AdventureMapInterface.h"
+ #include "../GameChatHandler.h"
+ #include "../gui/CursorHandler.h"
+ #include "../gui/WindowHandler.h"
+@@ -25,6 +27,7 @@
+ #include "../renderSDL/SDLImage.h"
+ 
+ #include "../../lib/CConfigHandler.h"
++#include "../../lib/callback/CCallback.h"
+ #include "../../lib/constants/StringConstants.h"
+ #include "../../lib/VCMIDirs.h"
+ #include "../../lib/texts/MetaString.h"
+@@ -61,7 +64,13 @@
+ 	using File = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
+ 
+ 	boost::filesystem::path directory;
+-	File manifest{nullptr, &std::fclose};
++	File ownership{nullptr, &std::fclose};
++	struct View
++	{
++		std::string name;
++		File manifest{nullptr, &std::fclose};
++	};
++	std::vector<View> views;
+ 	Clock::time_point started;
+ 	Clock::time_point nextFrame;
+ 	std::chrono::duration<double> interval;
+@@ -110,7 +119,7 @@
+ 		{
+ 			// Before exclusive manifest creation this directory may belong to a previous run.
+ 			// Do not add an error marker that would invalidate that run's existing evidence.
+-			if(manifest && directory.is_absolute() && boost::filesystem::is_directory(directory))
++			if(ownership && directory.is_absolute() && boost::filesystem::is_directory(directory))
+ 			{
+ 				auto errorFile = createFile(directory / "recording-error.txt");
+ 				writeText(errorFile.get(), message + "\n");
+@@ -134,12 +143,24 @@
+ 			for(const auto & entry : boost::filesystem::directory_iterator(directory))
+ 			{
+ 				const auto name = entry.path().filename().string();
+-				if(name == "frames.jsonl" || name.rfind("recording-", 0) == 0 || (name.rfind("frame", 0) == 0 && entry.path().extension() == ".png"))
++				if(name == "omniscient" || name == "player" || name == "experiment-metadata.json" || name == "frames.jsonl" || name.rfind("recording-", 0) == 0 || (name.rfind("frame", 0) == 0 && entry.path().extension() == ".png"))
+ 					throw std::runtime_error("Recording directory contains previous output: " + entry.path().string());
+ 			}
+ 			interval = std::chrono::duration<double>(1.0 / readSetting("VCMI_RECORD_FPS", 6, 60));
+ 			maxFrames = readSetting("VCMI_RECORD_MAX_FRAMES", 3600, 1000000);
+-			manifest = createFile(directory / "frames.jsonl");
++			const char * requestedViews = std::getenv("VCMI_RECORD_VIEWS");
++			const std::string selection = requestedViews ? requestedViews : "both";
++			if(selection != "both" && selection != "omniscient" && selection != "player")
++				throw std::runtime_error("VCMI_RECORD_VIEWS must be both, omniscient or player");
++			ownership = createFile(directory / "recording-session.json");
++			writeText(ownership.get(), "{\"schema_version\":2,\"views\":\"" + selection + "\"}\n");
++			for(const std::string view : {"omniscient", "player"})
++			{
++				if(selection != "both" && selection != view)
++					continue;
++				boost::filesystem::create_directory(directory / view);
++				views.push_back({view, createFile(directory / view / "frames.jsonl")});
++			}
+ 			logGlobal->info("Experiment recording enabled: %s (maximum %u frames)", directory.string(), maxFrames);
+ 		}
+ 		catch(const std::exception & error)
+@@ -157,29 +178,62 @@
+ 		if(frameCount && now < nextFrame)
+ 			return;
+ 
++		auto * observer = GAME->interface();
++		auto redraw = [&](bool omniscient)
++		{
++			observer->setRecordingOmniscient(omniscient);
++			adventureInt->onMapTilesChanged(boost::none); // rebuild minimap for the same perspective
++			ENGINE->windows().totalRedraw();
++			ENGINE->windows().simpleRedraw(); // showAll does not advance animations
++		};
+ 		try
+ 		{
++			if(!observer->hasRecordingPerspective() || !adventureInt)
++				throw std::runtime_error("Native recording requires VCMI_RECORD_PLAYER and an adventure interface");
+ 			if(!frameCount)
+ 				started = now;
++			// Both passes run under interfaceMutex. Network packet application also holds
++			// this mutex, so neither the game state nor the camera advances between them.
++			const auto size = observer->cb->getMapSize();
++			unsigned int visibleTiles = 0;
++			for(int z = 0; z < size.z; ++z)
++				for(int y = 0; y < size.y; ++y)
++					for(int x = 0; x < size.x; ++x)
++						visibleTiles += observer->isVisibleToRecordingPlayer(int3(x, y, z));
++			const int player = observer->getRecordingPlayer().getNum();
++			const int day = observer->cb->getDate(Date::DAY);
+ 			std::ostringstream filename;
+ 			filename.imbue(std::locale::classic());
+ 			filename << "frame" << std::setfill('0') << std::setw(6) << frameCount + 1 << ".png";
+-			auto file = createFile(directory / filename.str());
+-			SDL_RWops * output = SDL_RWFromFP(file.get(), SDL_FALSE);
+-			if(!output)
+-				throw std::runtime_error(std::string("Cannot open PNG output: ") + SDL_GetError());
+-			if(IMG_SavePNG_RW(surface, output, 1) != 0)
+-				throw std::runtime_error(std::string("Cannot save PNG frame: ") + IMG_GetError());
+-			if(std::fflush(file.get()) != 0)
+-				throw std::runtime_error("Cannot flush PNG frame");
+-
+-			std::ostringstream metadata;
+-			metadata.imbue(std::locale::classic());
+-			metadata << "{\"index\":" << frameCount + 1
+-				<< ",\"file\":\"" << filename.str() << "\",\"elapsed_seconds\":"
+-				<< std::fixed << std::setprecision(6) << std::chrono::duration<double>(now - started).count()
+-				<< ",\"width\":" << surface->w << ",\"height\":" << surface->h << "}\n";
+-			writeText(manifest.get(), metadata.str());
++			for(auto & view : views)
++			{
++				redraw(view.name == "omniscient");
++				auto file = createFile(directory / view.name / filename.str());
++				SDL_RWops * output = SDL_RWFromFP(file.get(), SDL_FALSE);
++				if(!output)
++					throw std::runtime_error(std::string("Cannot open PNG output: ") + SDL_GetError());
++				if(IMG_SavePNG_RW(surface, output, 1) != 0)
++					throw std::runtime_error(std::string("Cannot save PNG frame: ") + IMG_GetError());
++				if(std::fflush(file.get()) != 0)
++					throw std::runtime_error("Cannot flush PNG frame");
++
++				std::ostringstream metadata;
++				metadata.imbue(std::locale::classic());
++				metadata << "{\"index\":" << frameCount + 1
++					<< ",\"sample_id\":" << frameCount + 1
++					<< ",\"file\":\"" << filename.str() << "\",\"elapsed_seconds\":"
++					<< std::fixed << std::setprecision(6) << std::chrono::duration<double>(now - started).count()
++					<< ",\"width\":" << surface->w << ",\"height\":" << surface->h
++					<< ",\"view\":\"" << view.name << "\",\"player_index\":"
++					<< (view.name == "player" ? std::to_string(player) : "null")
++					<< ",\"observer_player_index\":" << player << ",\"game_day\":" << day
++					<< ",\"visible_tiles\":" << visibleTiles << "}\n";
++				writeText(view.manifest.get(), metadata.str());
++			}
++			// The live window always returns to the selected player's fog view.
++			// In the usual paired mode the second pass already left it there.
++			if(views.back().name != "player")
++				redraw(false);
+ 			++frameCount;
+ 			// Do not synthesize catch-up frames if PNG encoding or gameplay took longer than the interval.
+ 			nextFrame = now + std::chrono::duration_cast<Clock::duration>(interval);
+@@ -188,12 +242,23 @@
+ 				auto limitFile = createFile(directory / "recording-limit-reached.txt");
+ 				writeText(limitFile.get(), std::to_string(frameCount) + "\n");
+ 				stopped = true;
+-				logGlobal->info("Experiment recording reached frame limit: %u", frameCount);
++				logGlobal->info("Experiment recording reached frame limit: %u paired samples", frameCount);
+ 			}
+ 		}
+ 		catch(const std::exception & error)
+ 		{
+ 			reportError(error.what());
++			if(observer->hasRecordingPerspective() && adventureInt)
++			{
++				try
++				{
++					redraw(false);
++				}
++				catch(const std::exception & restoreError)
++				{
++					logGlobal->error("Cannot restore recording player perspective: %s", restoreError.what());
++				}
++			}
+ 		}
+ 	}
+ };

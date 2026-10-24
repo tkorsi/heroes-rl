@@ -18,6 +18,9 @@ import subprocess
 import tempfile
 import zlib
 
+VIEWS = {"omniscient", "player"}
+PLAYER_COLORS = ("red", "blue", "tan", "green", "orange", "purple", "teal", "pink")
+
 
 class VideoError(ValueError):
     """Invalid recording or an unsuccessful video operation."""
@@ -78,8 +81,12 @@ def png_dimensions(path: Path) -> tuple[int, int]:
 
 
 def validate_frames(directory: Path) -> list[dict]:
-    if (directory / "recording-error.txt").exists():
-        raise VideoError(f"Recorder reported an error: {directory / 'recording-error.txt'}")
+    markers = [directory / "recording-error.txt"]
+    if directory.name in VIEWS:
+        markers.append(directory.parent / "recording-error.txt")
+    for marker in markers:
+        if marker.exists():
+            raise VideoError(f"Recorder reported an error: {marker}")
     metadata = directory / "frames.jsonl"
     if not metadata.is_file():
         raise VideoError(f"Missing {metadata}")
@@ -114,7 +121,68 @@ def validate_frames(directory: Path) -> list[dict]:
         raise VideoError("Recording contains no frames")
     if {p.name for p in directory.glob("frame*.png")} != {r["file"] for r in records}:
         raise VideoError("PNG files and frame metadata do not match")
+    validate_frame_identity(records)
     return records
+
+
+def validate_frame_identity(records: list[dict]) -> None:
+    """Validate optional native metadata without inventing a view for legacy captures."""
+    if not records:
+        raise VideoError("Capture contains no frame identities")
+    fields = ("sample_id", "game_day", "view", "player_index", "visible_tiles", "observer_player_index")
+    for field in fields:
+        present = [field in record for record in records]
+        if any(present) and not all(present):
+            raise VideoError(f"Frame identity field {field} is missing from some samples")
+        if not all(present):
+            continue
+        values = [record[field] for record in records]
+        if field in {"sample_id", "game_day", "visible_tiles"}:
+            minimum = 1 if field == "sample_id" else 0
+            if any(type(value) is not int or value < minimum for value in values):
+                raise VideoError(f"Invalid frame identity field: {field}")
+            if field == "sample_id" and any(b <= a for a, b in zip(values, values[1:])):
+                raise VideoError("Frame sample_id values must strictly increase")
+            if field == "game_day" and any(b < a for a, b in zip(values, values[1:])):
+                raise VideoError("Frame game_day values cannot decrease")
+        elif any(value != values[0] for value in values):
+            raise VideoError(f"Capture identity changes between frames: {field}")
+    for record in records:
+        if "view" in record and (not isinstance(record["view"], str) or record["view"] not in VIEWS):
+            raise VideoError("Unknown frame view")
+        player_index = record.get("player_index")
+        if player_index is not None and (type(player_index) is not int or not 0 <= player_index < 8):
+            raise VideoError("Invalid frame player_index")
+        if record.get("view") == "player" and player_index is None:
+            raise VideoError("Player-view frame is missing player_index")
+        if record.get("view") == "omniscient" and player_index is not None:
+            raise VideoError("Omniscient frame cannot claim a player_index")
+        if "observer_player_index" in record and (type(record["observer_player_index"]) is not int
+                                                  or not 0 <= record["observer_player_index"] < 8):
+            raise VideoError("Invalid frame observer_player_index")
+
+
+def validate_paired_frames(omniscient: list[dict], player: list[dict]) -> dict:
+    """Verify shared capture identity; this does not prove that fog rendering is correct."""
+    if not omniscient or len(omniscient) != len(player):
+        raise VideoError("Paired views must contain the same nonzero number of frames")
+    validate_frame_identity(omniscient)
+    validate_frame_identity(player)
+    checked_fields = []
+    for field in ("sample_id", "game_day", "observer_player_index", "visible_tiles"):
+        if field in omniscient[0] or field in player[0]:
+            if any(a.get(field) != b.get(field) for a, b in zip(omniscient, player)):
+                raise VideoError(f"Paired view {field} values differ")
+            checked_fields.append(field)
+    for a, b in zip(omniscient, player):
+        if a.get("view", "omniscient") != "omniscient" or b.get("view", "player") != "player":
+            raise VideoError("Paired capture view identities are reversed or invalid")
+        if not math.isclose(a["elapsed_seconds"], b["elapsed_seconds"], rel_tol=0, abs_tol=0.000001):
+            raise VideoError("Paired view capture timestamps differ")
+        if (a["width"], a["height"]) != (b["width"], b["height"]):
+            raise VideoError("Paired view frame dimensions differ")
+    return {"frames": len(omniscient), "matched_fields": checked_fields + ["elapsed_seconds", "width", "height"],
+            "shared_sample_ids_verified": "sample_id" in checked_fields}
 
 
 def prepare_output(output: Path, sidecar: bool = False) -> None:
@@ -151,7 +219,33 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def discover(roots: list[Path]) -> tuple[list[dict], list[dict]]:
+def recording_for_view(data: dict, view: str) -> dict | None:
+    if data["schema_version"] == 1:
+        if view != "omniscient":
+            return None
+        return {"video": data.get("video"), "capture": data.get("capture"),
+                "perspective": {"mode": "omniscient", "player": None, "player_index": None}}
+    recordings = data["recordings"]
+    if not isinstance(recordings, dict):
+        raise VideoError("Manifest recordings must be an object")
+    recording = recordings.get(view)
+    if recording is None:
+        return None
+    perspective = recording["perspective"]
+    if perspective["mode"] != view:
+        raise VideoError("Recording perspective does not match its selected view")
+    player, index = perspective["player"], perspective["player_index"]
+    if view == "omniscient":
+        if player is not None or index is not None:
+            raise VideoError("Omniscient perspective cannot claim a player")
+    elif player not in PLAYER_COLORS or type(index) is not int or PLAYER_COLORS.index(player) != index:
+        raise VideoError("Player perspective must identify a matching player color and index")
+    return recording
+
+
+def discover(roots: list[Path], view: str = "player") -> tuple[list[dict], list[dict]]:
+    if view not in VIEWS:
+        raise VideoError(f"Unsupported requested view: {view}")
     paths = set()
     for root in roots:
         if not root.exists():
@@ -163,7 +257,7 @@ def discover(roots: list[Path]) -> tuple[list[dict], list[dict]]:
     for path in sorted(paths):
         try:
             data = json.loads(path.read_text())
-            if data["schema_version"] != 1 or data["kind"] not in {"recorder-smoke", "rl-evaluation"}:
+            if data["schema_version"] not in {1, 2} or data["kind"] not in {"recorder-smoke", "rl-evaluation"}:
                 raise VideoError(f"Unsupported run manifest: {path}")
             if type(data["episode"]) is not int or data["episode"] <= 0:
                 raise VideoError(f"Episode must be a positive integer: {path}")
@@ -175,16 +269,25 @@ def discover(roots: list[Path]) -> tuple[list[dict], list[dict]]:
                 raise VideoError(f"Missing policy checkpoint field: {path}")
             base = {"manifest": str(path), "manifest_sha256": sha256(path),
                     "episode": data["episode"], "kind": data["kind"], "status": data["status"],
-                    "outcome": data["outcome"], "policy": data["policy"],
-                    "run_wall_seconds": data.get("wall_seconds")}
+                    "outcome": data["outcome"], "outcome_player": data.get("outcome_player"), "policy": data["policy"],
+                    "run_wall_seconds": data.get("wall_seconds"), "requested_view": view}
+            recording = recording_for_view(data, view)
+            if recording is None:
+                reason = "Legacy schema v1 has only an omniscient recording" if data["schema_version"] == 1 else f"Requested {view} recording is unavailable"
+                skipped.append({**base, "reason": reason})
+                continue
+            base["perspective"] = recording["perspective"]
+            if "visibility_validation" in recording or "visibility_validation" in data:
+                base["visibility_validation"] = recording.get("visibility_validation", data.get("visibility_validation"))
             if any(marker.exists() for marker in (path.parent / "recording-error.txt",
-                                                  path.parent / "frames" / "recording-error.txt")):
+                                                  path.parent / "frames" / "recording-error.txt",
+                                                  path.parent / "frames" / view / "recording-error.txt")):
                 skipped.append({**base, "reason": "Native recorder reported an error"})
                 continue
-            if not data.get("video"):
+            if not recording.get("video"):
                 skipped.append({**base, "reason": "No source video"})
                 continue
-            relative = Path(data["video"])
+            relative = Path(recording["video"])
             video = (path.parent / relative).resolve()
             if relative.is_absolute() or not video.is_relative_to(path.parent):
                 raise VideoError(f"Video must be inside its run directory: {path}")
@@ -194,7 +297,7 @@ def discover(roots: list[Path]) -> tuple[list[dict], list[dict]]:
             info = probe(video)
             if info["frames"] <= 0 or info["duration_seconds"] <= 0:
                 raise VideoError(f"Empty source video: {video}")
-            capture = data["capture"]
+            capture = recording["capture"]
             if type(capture["frames"]) is not int or capture["frames"] != info["frames"]:
                 raise VideoError(f"Capture frame count disagrees with source video: {path}")
             if not math.isfinite(float(capture["fps"])) or float(capture["fps"]) <= 0:
@@ -207,8 +310,6 @@ def discover(roots: list[Path]) -> tuple[list[dict], list[dict]]:
                 raise
             raise VideoError(f"Invalid manifest {path}: {exc}") from exc
     sources.sort(key=lambda item: (item["episode"], item["manifest"]))
-    if not sources:
-        raise VideoError("No valid episode videos found")
     return sources, skipped
 
 
@@ -252,13 +353,16 @@ FONT = {char: [int(row) for row in rows.split(",")] for char, rows in _FONT_ROWS
 
 def overlay_lines(source: dict) -> list[str]:
     kind = "RECORDER SMOKE (NO RL TRAINING)" if source["kind"] == "recorder-smoke" else "RL POLICY EVALUATION"
-    lines = [f"EPISODE #{source['episode']} | {kind}", f"POLICY: {source['policy']['label']}",
-             f"STATUS: {source['status']} | OUTCOME: {source['outcome'] or 'UNKNOWN'}"]
+    perspective = source["perspective"]
+    view = f"PLAYER {perspective['player']} | FOG OF WAR" if perspective["mode"] == "player" else "OMNISCIENT | FULL MAP"
+    outcome_label = "OUTCOME" + (f" {source['outcome_player']}" if source.get("outcome_player") else "")
+    lines = [f"EPISODE #{source['episode']} | {kind}", f"VIEW: {view}", f"POLICY: {source['policy']['label']}",
+             f"STATUS: {source['status']} | {outcome_label}: {source['outcome'] or 'UNKNOWN'}"]
     return ["".join(char if char in FONT else "?" for char in line.upper())[:68] for line in lines]
 
 
 def write_banner(path: Path, lines: list[str]) -> None:
-    width, height, scale = 1280, 106, 3
+    width, height, scale = 1280, len(lines) * 30 + 16, 3
     pixels = bytearray(bytes((0, 0, 0, 215)) * width * height)
     for row, line in enumerate(lines):
         for column, char in enumerate(line):
@@ -278,11 +382,14 @@ def write_banner(path: Path, lines: list[str]) -> None:
                      + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
 
 
-def montage(roots: list[Path], output: Path, seconds: float = 60, samples: int = 12) -> dict:
+def montage(roots: list[Path], output: Path, seconds: float = 60, samples: int = 12, view: str = "player") -> dict:
     if not math.isfinite(seconds) or seconds <= 0:
         raise VideoError("Duration must be positive and finite")
     prepare_output(output, sidecar=True)
-    sources, skipped = discover(roots)
+    sources, skipped = discover(roots, view=view)
+    if not sources:
+        reasons = "; ".join(sorted({item["reason"] for item in skipped}))
+        raise VideoError(f"No valid {view} episode videos found" + (f": {reasons}" if reasons else ""))
     discovered_count = len(sources) + len(skipped)
     selected_indices = select_indices(len(sources), samples)
     budgets = frame_budgets(round(seconds * 30), len(selected_indices))
@@ -304,7 +411,7 @@ def montage(roots: list[Path], output: Path, seconds: float = 60, samples: int =
                        "scale=1280:720:force_original_aspect_ratio=decrease,"
                        "pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,"
                        f"tpad=stop_mode=clone:stop_duration={duration},trim=end_frame={frames}[v];"
-                       "[v][1:v]overlay=x=0:y=614:shortest=1:format=auto,format=yuv420p[out]")
+                       "[v][1:v]overlay=x=0:y=H-h:shortest=1:format=auto,format=yuv420p[out]")
             run([binary("ffmpeg"), "-hide_banner", "-loglevel", "error", "-xerror", "-n",
                  "-i", source["video"], "-loop", "1", "-framerate", "30", "-i", str(banner),
                  "-filter_complex", filters, "-map", "[out]", "-frames:v", str(frames), "-an",
@@ -321,7 +428,7 @@ def montage(roots: list[Path], output: Path, seconds: float = 60, samples: int =
              "-f", "concat", "-safe", "1", "-i", str(concat), "-map", "0:v:0", "-c", "copy",
              "-movflags", "+faststart", str(staged)])
         info = check_video(staged, sum(budgets), 30)
-        report = {"schema_version": 1, "kind": "experiment-montage", "output": output.name,
+        report = {"schema_version": 2, "kind": "experiment-montage", "output": output.name, "view": view,
                   "output_sha256": sha256(staged), "requested_seconds": seconds, "fps": 30,
                   "output_video": info, "selection": "Evenly spaced episode order; outcomes are not used for selection",
                   "source_time_sampling": "Each selected source is uniformly rescaled over its whole video timeline",
@@ -355,9 +462,10 @@ def main(argv: list[str] | None = None) -> int:
     reel.add_argument("--output", type=Path, required=True)
     reel.add_argument("--seconds", type=float, default=60)
     reel.add_argument("--samples", type=int, default=12, help="Evenly spaced episodes; 0 includes all")
+    reel.add_argument("--view", choices=sorted(VIEWS), default="player", help="Perspective to select; legacy runs support only omniscient")
     args = parser.parse_args(argv)
     try:
-        result = encode(args.frames, args.output, args.fps) if args.command == "encode" else montage(args.runs, args.output, args.seconds, args.samples)
+        result = encode(args.frames, args.output, args.fps) if args.command == "encode" else montage(args.runs, args.output, args.seconds, args.samples, args.view)
         print(json.dumps(result, indent=2))
         return 0
     except (VideoError, OSError) as exc:

@@ -1,0 +1,272 @@
+diff --git a/client/CPlayerInterface.h b/client/CPlayerInterface.h
+--- a/client/CPlayerInterface.h
++++ b/client/CPlayerInterface.h
+@@ -63,6 +63,9 @@
+ {
+ 	bool ignoreEvents;
+ 	int autosaveCount;
++	std::optional<PlayerColor> recordingPlayer;
++	bool recordingOmniscient = false;
++	uint64_t recordingPerspectiveRevision = 0;
+ 
+ 	const std::string QUICKSAVE_PATH = "Saves/Quicksave";
+ 
+@@ -86,6 +89,16 @@
+ 	CInGameConsole * cingconsole;
+ 
+ 	std::shared_ptr<CCallback> cb; //to communicate with engine
++
++	// Render-only observer perspective; never changes player identity or AI callbacks.
++	bool hasRecordingPerspective() const;
++	PlayerColor getRecordingPlayer() const;
++	void setRecordingOmniscient(bool omniscient);
++	uint64_t getRecordingPerspectiveRevision() const;
++	bool isVisibleForRecording(const int3 & tile) const;
++	bool isVisibleForRecording(const CGObjectInstance * object) const;
++	bool isVisibleToRecordingPlayer(const int3 & tile) const;
++	bool isVisibleToRecordingPlayer(const CGObjectInstance * object) const;
+ 
+ 	bool hasQuickSave;
+ 
+diff --git a/client/CPlayerInterface.cpp b/client/CPlayerInterface.cpp
+--- a/client/CPlayerInterface.cpp
++++ b/client/CPlayerInterface.cpp
+@@ -10,6 +10,7 @@
+ #include "StdInc.h"
+ #include "CPlayerInterface.h"
+ 
++#include <cstdlib>
+ #include <vcmi/Artifact.h>
+ 
+ #include "Client.h"
+@@ -137,6 +138,15 @@
+ 	logGlobal->trace("\tHuman player interface for player %s being constructed", Player.toString());
+ 	GAME->setInterfaceInstance(this);
+ 	playerID=Player;
++	if(Player.isSpectator())
++	{
++		if(const char * value = std::getenv("VCMI_RECORD_PLAYER"))
++		{
++			if(value[0] < '0' || value[0] >= '0' + PlayerColor::PLAYER_LIMIT_I || value[1] != '\0')
++				throw std::runtime_error("VCMI_RECORD_PLAYER must be a player index from 0 to 7");
++			recordingPlayer = PlayerColor(value[0] - '0');
++		}
++	}
+ 	human=true;
+ 	battleInt.reset();
+ 	castleInt = nullptr;
+@@ -163,6 +173,8 @@
+ {
+ 	cb = CB;
+ 	env = ENV;
++	if(recordingPlayer && !cb->getPlayerState(*recordingPlayer, false))
++		throw std::runtime_error("VCMI_RECORD_PLAYER is not present in this game");
+ 
+ 	pathfinderCache = std::make_unique<PathfinderCache>(cb.get(), PathfinderOptions(*cb));
+ 	ENGINE->music().loadTerrainMusicThemes();
+@@ -170,6 +182,62 @@
+ 
+ 	adventureInt.reset(new AdventureMapInterface());
+ 	adventureInt->onCurrentPlayerChanged(playerID);
++	if(recordingPlayer)
++	{
++		const auto heroes = cb->getHeroes(*recordingPlayer);
++		if(!heroes.empty())
++			adventureInt->centerOnObject(heroes.front());
++		else
++		{
++			const auto & towns = cb->getPlayerState(*recordingPlayer)->getTowns();
++			if(!towns.empty())
++				adventureInt->centerOnObject(towns.front());
++		}
++	}
++}
++
++bool CPlayerInterface::hasRecordingPerspective() const
++{
++	return recordingPlayer.has_value();
++}
++
++PlayerColor CPlayerInterface::getRecordingPlayer() const
++{
++	return recordingPlayer.value();
++}
++
++void CPlayerInterface::setRecordingOmniscient(bool omniscient)
++{
++	if(recordingOmniscient != omniscient)
++	{
++		recordingOmniscient = omniscient;
++		++recordingPerspectiveRevision;
++	}
++}
++
++uint64_t CPlayerInterface::getRecordingPerspectiveRevision() const
++{
++	return recordingPerspectiveRevision;
++}
++
++bool CPlayerInterface::isVisibleForRecording(const int3 & tile) const
++{
++	return recordingPlayer && !recordingOmniscient ? isVisibleToRecordingPlayer(tile) : cb->isVisible(tile);
++}
++
++bool CPlayerInterface::isVisibleForRecording(const CGObjectInstance * object) const
++{
++	return recordingPlayer && !recordingOmniscient ? isVisibleToRecordingPlayer(object) : cb->isVisible(object);
++}
++
++bool CPlayerInterface::isVisibleToRecordingPlayer(const int3 & tile) const
++{
++	return recordingPlayer ? cb->isVisibleFor(tile, *recordingPlayer) : cb->isVisible(tile);
++}
++
++bool CPlayerInterface::isVisibleToRecordingPlayer(const CGObjectInstance * object) const
++{
++	return recordingPlayer ? cb->isVisibleFor(object, *recordingPlayer) : cb->isVisible(object);
+ }
+ 
+ std::shared_ptr<const CPathsInfo> CPlayerInterface::getPathsInfo(const CGHeroInstance * h)
+@@ -410,6 +478,8 @@
+ 	const CGHeroInstance * hero = cb->getHero(details.id); //object representing this hero
+ 
+ 	if (!hero)
++		return;
++	if(recordingPlayer && hero->getOwner() != *recordingPlayer)
+ 		return;
+ 
+ 	movementController->onTryMoveHero(hero, details);
+diff --git a/client/mapView/MapRendererContext.cpp b/client/mapView/MapRendererContext.cpp
+--- a/client/mapView/MapRendererContext.cpp
++++ b/client/mapView/MapRendererContext.cpp
+@@ -68,6 +68,8 @@
+ 
+ bool MapRendererBaseContext::isVisible(const int3 & coordinates) const
+ {
++	if(GAME->interface()->hasRecordingPerspective())
++		return GAME->interface()->isVisibleForRecording(coordinates);
+ 	if(settingsSessionSpectate)
+ 		return GAME->interface()->cb->isInTheMap(coordinates);
+ 	else
+@@ -143,6 +145,8 @@
+ double MapRendererBaseContext::objectTransparency(ObjectInstanceID objectID, const int3 & coordinates) const
+ {
+ 	const CGObjectInstance * object = getObject(objectID);
++	if(GAME->interface()->hasRecordingPerspective() && !GAME->interface()->isVisibleForRecording(object))
++		return 0;
+ 
+ 	if(object->ID == Obj::HERO)
+ 	{
+@@ -396,6 +400,9 @@
+ 
+ double MapRendererAdventureTransitionContext::viewTransitionProgress() const
+ {
++	// A transition snapshot belongs to one perspective and cannot be shared by paired views.
++	if(GAME->interface()->hasRecordingPerspective())
++		return 0;
+ 	return progress;
+ }
+ 
+@@ -418,6 +425,8 @@
+ 
+ double MapRendererAdventureFadingContext::objectTransparency(ObjectInstanceID objectID, const int3 & coordinates) const
+ {
++	if(GAME->interface()->hasRecordingPerspective() && !GAME->interface()->isVisibleForRecording(getObject(objectID)))
++		return 0;
+ 	if(objectID == target)
+ 		return progress;
+ 
+diff --git a/client/mapView/MapViewController.cpp b/client/mapView/MapViewController.cpp
+--- a/client/mapView/MapViewController.cpp
++++ b/client/mapView/MapViewController.cpp
+@@ -306,6 +306,10 @@
+ 
+ bool MapViewController::isEventVisible(const CGObjectInstance * obj, const PlayerColor & initiator)
+ {
++	// Both recording views follow the chosen player's events, never a hidden opponent.
++	if(GAME->interface()->hasRecordingPerspective()
++		&& (initiator != GAME->interface()->getRecordingPlayer() || !GAME->interface()->isVisibleToRecordingPlayer(obj)))
++		return false;
+ 	if(adventureContext == nullptr)
+ 		return false;
+ 
+@@ -332,6 +336,11 @@
+ 
+ bool MapViewController::isEventVisible(const CGHeroInstance * obj, const int3 & from, const int3 & dest)
+ {
++	if(GAME->interface()->hasRecordingPerspective()
++		&& (obj->getOwner() != GAME->interface()->getRecordingPlayer()
++			|| (!GAME->interface()->isVisibleToRecordingPlayer(obj->convertToVisitablePos(from))
++				&& !GAME->interface()->isVisibleToRecordingPlayer(obj->convertToVisitablePos(dest)))))
++		return false;
+ 	if(adventureContext == nullptr)
+ 		return false;
+ 
+diff --git a/client/adventureMap/CMinimap.cpp b/client/adventureMap/CMinimap.cpp
+--- a/client/adventureMap/CMinimap.cpp
++++ b/client/adventureMap/CMinimap.cpp
+@@ -35,6 +35,8 @@
+ 
+ ColorRGBA CMinimapInstance::getTileColor(const int3 & pos) const
+ {
++	if(!GAME->interface()->isVisibleForRecording(pos))
++		return Colors::BLACK;
+ 	const TerrainTile * tile = GAME->interface()->cb->getTile(pos, false);
+ 
+ 	// if tile is not visible it will be black on minimap
+@@ -46,7 +48,7 @@
+ 	{
+ 		const auto * obj = GAME->interface()->cb->getObj(objectID);
+ 
+-		if (obj)
++		if (obj && GAME->interface()->isVisibleForRecording(obj))
+ 		{
+ 			PlayerColor player = obj->getOwner();
+ 			if(player == PlayerColor::NEUTRAL)
+@@ -280,7 +282,8 @@
+ 			continue;
+ 
+ 		for (const auto & hero : GAME->interface()->cb->getHeroes(player))
+-			visibleHeroes.push_back(hero->id);
++			if(GAME->interface()->isVisibleForRecording(hero))
++				visibleHeroes.push_back(hero->id);
+ 	}
+ 
+ 	return visibleHeroes;
+diff --git a/client/mapView/MapViewCache.h b/client/mapView/MapViewCache.h
+--- a/client/mapView/MapViewCache.h
++++ b/client/mapView/MapViewCache.h
+@@ -44,6 +44,7 @@
+ 	Point cachedSize;
+ 	Point cachedPosition;
+ 	int cachedLevel;
++	uint64_t cachedRecordingPerspectiveRevision = 0;
+ 	bool overlayWasVisible;
+ 
+ 	std::shared_ptr<MapViewModel> model;
+diff --git a/client/mapView/MapViewCache.cpp b/client/mapView/MapViewCache.cpp
+--- a/client/mapView/MapViewCache.cpp
++++ b/client/mapView/MapViewCache.cpp
+@@ -23,6 +23,8 @@
+ #include "../render/Graphics.h"
+ 
+ #include "../GameEngine.h"
++#include "../GameInstance.h"
++#include "../CPlayerInterface.h"
+ #include "../widgets/TextControls.h"
+ 
+ #include "../../lib/int3.h"
+@@ -110,6 +112,13 @@
+ 
+ void MapViewCache::update(const std::shared_ptr<IMapRendererContext> & context)
+ {
++	// Visibility can change object opacity without changing a tile's existing checksums.
++	const auto perspectiveRevision = GAME->interface()->getRecordingPerspectiveRevision();
++	if(cachedRecordingPerspectiveRevision != perspectiveRevision)
++	{
++		cachedLevel = -1; // Force every cached tile to be rendered for the new perspective.
++		cachedRecordingPerspectiveRevision = perspectiveRevision;
++	}
+ 	Rect dimensions = model->getTilesTotalRect();
+ 	bool mapResized = cachedSize != model->getSingleTileSize();
+ 
