@@ -64,6 +64,16 @@ class CostBreakdownTests(unittest.TestCase):
         self.assertEqual((native["battle_request_us"], native["battle_actions"]), (5000, 1))
         self.assertEqual((native["action_request_us"], native["actions"]), (200, 1))
 
+    def test_only_the_battle_events_explorer_rl_emits_mark_an_action(self):
+        write_episode(self.run, 1, [
+            engine("observation"), ACTION,
+            engine("action_result", ["battle_complete"], request_us=3000),
+            engine("observation"), ACTION,
+            engine("action_result", ["battle_end"], request_us=300)])
+        native = cost_breakdown.episode_costs(self.run / "episodes" / "episode-000001")["native"]
+        self.assertEqual((native["battle_request_us"], native["battle_actions"]), (3000, 1))
+        self.assertEqual((native["action_request_us"], native["actions"]), (300, 1))
+
     def test_the_bridge_battle_counter_marks_an_action_without_events(self):
         write_episode(self.run, 1, [
             engine("observation"), ACTION,

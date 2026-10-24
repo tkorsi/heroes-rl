@@ -52,10 +52,15 @@ log() { printf '\n[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 # Moves a stage output that lacks its completion marker aside; nothing is deleted.
 set_aside() {
   [ -e "$1" ] || return 0
-  local moved
-  moved="$1.interrupted-$(date -u +%Y%m%dT%H%M%SZ)"
-  log "Unfinished $1 moved to $moved"
+  local base moved n=1
+  base="$1.interrupted-$(date -u +%Y%m%dT%H%M%SZ)"
+  moved="$base"
+  while [ -e "$moved" ]; do  # never move into an output set aside in the same second
+    n=$((n + 1))
+    moved="$base-$n"
+  done
   mv "$1" "$moved"
+  log "Unfinished $1 moved to $moved"
 }
 
 # All 4 smoke attempts played, every selected attempt verified and every tamper case rejected.
