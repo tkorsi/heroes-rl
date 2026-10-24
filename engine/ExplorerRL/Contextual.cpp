@@ -7,6 +7,7 @@
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/entities/artifact/ArtifactUtils.h"
 #include "../../lib/entities/artifact/CArtifactInstance.h"
+#include "../../lib/entities/building/CBuilding.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
@@ -91,6 +92,11 @@ JsonNode ContextualState::contextJson() const
 	JsonNode node;
 	node["kind"].String() = context;
 	node["subject"] = context == "map" ? JsonNode() : JsonNode(subject);
+	if(context == "town" && !panel.empty())
+	{
+		node["panel"].String() = panel;
+		node["selection"] = selection.empty() ? JsonNode() : JsonNode(selection);
+	}
 	return node;
 }
 
@@ -199,6 +205,8 @@ JsonNode ExplorerRL::contextualObservation()
 		contextState.supersede(day, "subject_unavailable");
 		contextState.context = "map";
 		contextState.subject.clear();
+		contextState.panel.clear();
+		contextState.selection.clear();
 		auto record = contextState.record("context_invalidated", day);
 		record["context"] = contextState.contextJson();
 		record["revision"].Integer() = ++contextState.revision;
@@ -221,8 +229,16 @@ JsonNode ExplorerRL::contextualObservation()
 		}
 		else
 		{
-			window["army"] = army(*openTown->getUpperArmy());
-			window["faction"].Integer() = openTown->getFactionID().getNum();
+			if(townEconomy && contextState.panel != "overview")
+				window["army"] = JsonNode();
+			else
+			{
+				window["army"] = army(*openTown->getUpperArmy());
+				window["faction"].Integer() = openTown->getFactionID().getNum();
+			}
+			if(townEconomy)
+				window["town_panel"] = explorer_rl::townPanel(*callback, *openTown,
+					contextState.panel, contextState.selection, contextState.economy);
 		}
 		observation["window"] = std::move(window);
 	}
@@ -231,10 +247,15 @@ JsonNode ExplorerRL::contextualObservation()
 
 void ExplorerRL::captureContextual()
 {
+	std::lock_guard lock(stateMutex);
+	captureContextualLocked();
+}
+
+void ExplorerRL::captureContextualLocked()
+{
 	const int day = callback->getDate(Date::DAY);
 	if(day < 1)
 		return;
-	std::lock_guard lock(stateMutex);
 	auto observation = contextualObservation();
 	if(observation == contextState.lastObservation && day == contextState.lastDay)
 		return;
@@ -294,6 +315,8 @@ void ExplorerRL::contextualTerminal(const char * outcome)
 		{
 			contextState.context = "map";
 			contextState.subject.clear();
+			contextState.panel.clear();
+			contextState.selection.clear();
 			auto record = contextState.record("context_invalidated", day);
 			record["context"] = contextState.contextJson();
 			record["revision"].Integer() = ++contextState.revision;
@@ -371,7 +394,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			return;
 		fields(response, {"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"},
 			{"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"});
-		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != 4
+		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (townEconomy ? 5 : 4)
 			|| response["type"].String() != "context_action" || response["episode"].String() != episode
 			|| !integer(response["player"]) || response["player"].Integer() != playerID.getNum()
 			|| !integer(response["decision_id"]) || response["decision_id"].Integer() != decision
@@ -383,12 +406,179 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 	}
 }
 
+bool ExplorerRL::executeTownAction(const JsonNode & action, int64_t decision)
+{
+	const auto kind = action["kind"].String();
+	const bool constructing = kind == "construct";
+	if(!action["subject"].isString() || !action["x"].isNull() || !action["y"].isNull()
+		|| !action["count"].isNull() || !action["destination"].isNull())
+		throw std::runtime_error("Incorrect town action parameters");
+	if(kind == "open_panel")
+	{
+		if(!action["panel"].isString() || action["panel"].String() != "hall" || !action["selection"].isNull())
+			throw std::runtime_error("Unsupported town panel selection");
+	}
+	else if(!action["panel"].isNull() || (kind == "back" ? !action["selection"].isNull() : !action["selection"].isString()))
+		throw std::runtime_error("Incorrect building selection");
+	const auto subject = action["subject"].String();
+	const auto selection = action["selection"].isString() ? action["selection"].String() : std::string();
+	ObjectInstanceID townID(-1);
+	BuildingID buildingID(-1);
+	std::array<int64_t, 7> beforeResources{}, price{};
+	int beforeBuilt = 0;
+
+	// These helpers run only with both stable game state and stateMutex held.
+	const auto activeTown = [&]() -> const CGTownInstance *
+	{
+		if(contextState.context != "town" || contextState.subject != subject)
+			throw std::runtime_error("Town action does not match the active context");
+		const auto handle = contextState.subjects.find(subject);
+		if(handle == contextState.subjects.end())
+			throw std::runtime_error("Unknown town subject");
+		for(const auto * town : callback->getTownsInfo())
+			if(town->id.getNum() == handle->second && town->getOwner() == playerID)
+				return town;
+		throw std::runtime_error("Active town is no longer owned");
+	};
+	const auto validate = [&](const CGTownInstance & town)
+	{
+		if(kind == "open_panel")
+		{
+			if(contextState.panel != "overview")
+				throw std::runtime_error("Hall entry requires town overview");
+		}
+		else if(kind == "open_building")
+		{
+			if(contextState.panel != "hall")
+				throw std::runtime_error("Building selection requires hall");
+			const auto & choices = contextState.lastObservation["window"]["town_panel"]["buildings"].Vector();
+			if(std::none_of(choices.begin(), choices.end(), [&](const auto & entry) { return entry["ref"].String() == selection; }))
+				throw std::runtime_error("Building was not displayed in this hall");
+			contextState.economy.resolveBuilding(town, selection);
+		}
+		else if(kind == "back")
+		{
+			if(contextState.panel != "hall" && contextState.panel != "building")
+				throw std::runtime_error("Back requires a supported town overlay");
+		}
+		else if(constructing)
+		{
+			if(contextState.panel != "building" || contextState.selection != selection)
+				throw std::runtime_error("Construction requires the selected building detail");
+			const auto id = contextState.economy.resolveBuilding(town, selection);
+			const auto & building = *town.getTown()->buildings.at(id);
+			if(building.mode != CBuilding::BUILD_NORMAL
+				|| callback->canBuildStructure(&town, id) != EBuildingState::ALLOWED)
+				throw std::runtime_error("Construction control is disabled");
+		}
+	};
+	const auto consume = [&]()
+	{
+		contextState.executing = true;
+		contextState.commands = 0;
+		contextState.routeInteractions.reset();
+		auto record = contextState.record("consumed", callback->getDate(Date::DAY));
+		record["decision_id"].Integer() = decision;
+		record["consumer"].String() = constructing ? "engine" : "adapter";
+		contextState.records.push_back(std::move(record));
+	};
+	const auto changePanel = [&](const std::string & panel, const std::string & selected)
+	{
+		contextState.panel = panel;
+		contextState.selection = selected;
+		auto record = contextState.record("context", callback->getDate(Date::DAY));
+		record["decision_id"].Integer() = decision;
+		record["context"] = contextState.contextJson();
+		record["revision"].Integer() = ++contextState.revision;
+		contextState.records.push_back(std::move(record));
+	};
+	{
+		const auto gameLock = readGameState();
+		captureContextual();
+		std::lock_guard lock(stateMutex);
+		if(contextState.decision != decision || terminal || stopping) return false;
+		if(!failure.empty()) throw std::runtime_error(failure);
+		const auto * town = activeTown();
+		validate(*town);
+		if(!constructing)
+		{
+			consume();
+			if(kind == "open_panel")
+			{
+				if(explorer_rl::hallHasGrailPrompt(*town))
+					throw std::runtime_error("Unsupported scenario interaction: unsupported_interaction: hall Grail prompt");
+				changePanel("hall", "");
+			}
+			else if(kind == "open_building") changePanel("building", selection);
+			else changePanel(contextState.panel == "building" ? "hall" : "overview", "");
+		}
+	}
+	if(!constructing)
+	{
+		contextualResult(resultNode(kind == "back" ? "closed" : "opened", true), decision);
+		return true;
+	}
+
+	bool issued = false;
+	const bool accepted = executeRequest([&]
+	{
+		const auto * town = activeTown();
+		if(town->id != townID || !callback->buildBuilding(town, buildingID))
+			throw std::runtime_error("Revalidated construction did not issue a native request");
+		// CBuildWindow::buyFunc pops detail and hall immediately after sending,
+		// even if the later server acknowledgement rejects the request. Holding
+		// the read/state locks ensures no incoming change refreshes closed detail.
+		changePanel("overview", "");
+	}, true, decision, &issued, [&]
+	{
+		// A changed held decision is superseded before consumption, under the
+		// same read/state locks that protect the actual send and requestSent.
+		captureContextualLocked();
+		if(contextState.decision != decision) return false;
+		const auto * town = activeTown();
+		validate(*town);
+		townID = town->id;
+		buildingID = contextState.economy.resolveBuilding(*town, selection);
+		const auto & cost = town->getTown()->buildings.at(buildingID)->resources;
+		beforeBuilt = town->built;
+		for(int resource = 0; resource < 7; ++resource)
+		{
+			beforeResources[resource] = callback->getResourceAmount(GameResID(resource));
+			price[resource] = cost[resource];
+		}
+		consume();
+		contextState.issueArmed = true;
+		return true;
+	});
+	if(ended()) return true;
+	if(!issued) return false;
+	{
+		const auto gameLock = readGameState();
+		std::lock_guard lock(stateMutex);
+		const auto * town = activeTown();
+		if(town->id != townID || town->hasBuilt(buildingID) != accepted
+			|| town->built != beforeBuilt + (accepted ? 1 : 0))
+			throw std::runtime_error("Construction acknowledgement does not match the observed building effect");
+		for(int resource = 0; resource < 7; ++resource)
+			if(beforeResources[resource] - callback->getResourceAmount(GameResID(resource)) != (accepted ? price[resource] : 0))
+				throw std::runtime_error("Construction acknowledgement does not match the observed resource effect");
+	}
+	contextualResult(resultNode(accepted ? "built" : "rejected", accepted), decision);
+	return true;
+}
+
 bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decision)
 {
-	fields(action, {"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
-	if(action["schema"].String() != "heroes-context-actions-v2" || !action["kind"].isString())
+	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
+		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
+	if(action["schema"].String() != (townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(townEconomy && (kind == "open_panel" || kind == "open_building" || kind == "back" || kind == "construct"))
+		return executeTownAction(action, decision);
+	if(townEconomy)
+		for(const char * key : {"panel", "selection", "count", "destination"})
+			if(!action[key].isNull()) throw std::runtime_error("Unused town action parameter");
 	const bool navigation = kind == "open_hero" || kind == "open_town" || kind == "close";
 	if(!navigation && kind != "move_to" && kind != "end_turn")
 		throw std::runtime_error("Unsupported contextual action");
@@ -412,6 +602,8 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 			throw std::runtime_error("Action is unavailable in the current context");
 		if(contextState.context != "map" && kind != "close")
 			throw std::runtime_error("Only closing is supported in a window");
+		if(townEconomy && kind == "close" && contextState.context == "town" && contextState.panel != "overview")
+			throw std::runtime_error("Town overlay requires back before close");
 		if(needsSubject)
 		{
 			const auto & own = contextState.lastObservation[kind == "open_town" ? "towns" : "heroes"].Vector();
@@ -438,6 +630,8 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 		{
 			contextState.context = kind == "close" ? "map" : kind == "open_hero" ? "hero" : "town";
 			contextState.subject = needsSubject ? action["subject"].String() : "";
+			contextState.panel = townEconomy && kind == "open_town" ? "overview" : "";
+			contextState.selection.clear();
 			auto change = contextState.record("context", callback->getDate(Date::DAY));
 			change["decision_id"].Integer() = decision;
 			change["context"] = contextState.contextJson();

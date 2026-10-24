@@ -15,7 +15,39 @@ import re
 SCHEMA = "heroes-player-history-v2"
 ACTION_SCHEMA = "heroes-context-actions-v2"
 ENVIRONMENT = "adventure-windows-v1"
+TOWN_SCHEMA = "heroes-player-history-v3"
+TOWN_ACTION_SCHEMA = "heroes-context-actions-v3"
+TOWN_ENVIRONMENT = "adventure-town-v1"
 MAX_INT = 2**63 - 1
+
+
+@dataclass(frozen=True)
+class InterfaceProfile:
+    environment: str
+    history_schema: str
+    action_schema: str
+    protocol: int
+    version: int
+
+    @property
+    def history_key(self):
+        return f"history_v{self.version}"
+
+    @property
+    def history_filename(self):
+        return f"history-v{self.version}.jsonl"
+
+
+WINDOWS_PROFILE = InterfaceProfile(ENVIRONMENT, SCHEMA, ACTION_SCHEMA, 4, 2)
+TOWN_PROFILE = InterfaceProfile(TOWN_ENVIRONMENT, TOWN_SCHEMA, TOWN_ACTION_SCHEMA, 5, 3)
+
+
+def profile_for(value):
+    """Select an explicit interface/history/action version; v2 remains the default."""
+    for profile in (WINDOWS_PROFILE, TOWN_PROFILE):
+        if value in (profile.environment, profile.history_schema, profile.action_schema):
+            return profile
+    raise ValueError("Unsupported contextual interface/schema")
 
 
 def _integer(value, low=0, high=MAX_INT, name="integer"):
@@ -49,6 +81,8 @@ def _unique(values, name):
 class Context:
     kind: str = "map"
     subject: str | None = None
+    panel: str | None = None
+    selection: str | None = None
 
     def __post_init__(self):
         if self.kind not in ("map", "hero", "town"):
@@ -58,6 +92,14 @@ class Context:
                 raise ValueError("Map context has no subject")
         else:
             _text(self.subject)
+        if self.kind != "town" and (self.panel is not None or self.selection is not None):
+            raise ValueError("Only town contexts have panels")
+        if self.panel not in (None, "overview", "hall", "building"):
+            raise ValueError("Unsupported town panel")
+        if self.panel == "building":
+            _text(self.selection)
+        elif self.selection is not None:
+            raise ValueError("Only building detail selects a building")
 
 
 @dataclass(frozen=True)
@@ -67,12 +109,20 @@ class Action:
     x: int | None = None
     y: int | None = None
     schema: str = ACTION_SCHEMA
+    panel: str | None = None
+    selection: str | None = None
+    count: int | None = None
+    destination: str | None = None
 
     def __post_init__(self):
-        if self.schema != ACTION_SCHEMA or self.kind not in (
-                "move_to", "open_hero", "open_town", "close", "end_turn"):
+        profile = profile_for(self.schema)
+        if self.schema != profile.action_schema:
+            raise ValueError("Expected an action schema")
+        town_actions = ("open_panel", "open_building", "construct", "back")
+        if self.kind not in ("move_to", "open_hero", "open_town", "close", "end_turn", *(
+                town_actions if profile == TOWN_PROFILE else ())):
             raise ValueError("Unsupported contextual action")
-        if self.kind in ("move_to", "open_hero", "open_town"):
+        if self.kind in ("move_to", "open_hero", "open_town", *town_actions):
             _text(self.subject)
         elif self.subject is not None:
             raise ValueError("This action has no subject")
@@ -81,6 +131,134 @@ class Action:
             _integer(self.y)
         elif self.x is not None or self.y is not None:
             raise ValueError("Only destination movement takes coordinates")
+        if self.kind == "open_panel":
+            if self.panel != "hall" or self.selection is not None:
+                raise ValueError("Only the explicit hall panel is supported")
+        elif self.kind in ("open_building", "construct"):
+            _text(self.selection)
+            if self.panel is not None:
+                raise ValueError("Building actions select a displayed building only")
+        elif self.panel is not None or self.selection is not None:
+            raise ValueError("This action has no panel selection")
+        if self.count is not None or self.destination is not None:
+            raise ValueError("Recruitment is not enabled in this construction stage")
+
+
+BUILDING_STATUSES = ("have_capital", "no_water", "forbidden", "add_mages_guild", "already_present",
+                     "cant_build_today", "no_resources", "allowed", "prerequires", "missing_base")
+_BUILDING_TEXT_ID = re.compile(r"building\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.[A-Za-z][A-Za-z0-9_]{0,63}\.(name|description)")
+
+
+def _building_text(value, suffix):
+    if type(value) is not str or _BUILDING_TEXT_ID.fullmatch(value) is None or not value.endswith("." + suffix):
+        raise ValueError("Expected a static core building text ID")
+
+
+@dataclass(frozen=True)
+class Requirement:
+    """Only the minimized requirement expression displayed in an open detail."""
+    op: str
+    name_text_id: str | None = None
+    children: tuple[Requirement, ...] = ()
+
+    def __post_init__(self):
+        _tuple(self.children, Requirement, "requirement children")
+        if self.op == "building":
+            _building_text(self.name_text_id, "name")
+            if self.children:
+                raise ValueError("A requirement leaf has no children")
+        elif self.op in ("all", "any", "none"):
+            if self.name_text_id is not None:
+                raise ValueError("A requirement expression has no building name")
+        else:
+            raise ValueError("Unsupported displayed requirement operation")
+        pending = [(self, 0)]
+        count = 0
+        while pending:
+            node, depth = pending.pop()
+            count += 1
+            if count > 128 or depth > 16:
+                raise ValueError("Displayed requirement expression exceeds bounds")
+            pending.extend((child, depth + 1) for child in node.children)
+
+
+@dataclass(frozen=True)
+class PanelControl:
+    panel: str
+    ref: str
+
+    def __post_init__(self):
+        if self.panel != "hall":
+            raise ValueError("Only hall navigation is enabled")
+        _text(self.ref)
+
+
+@dataclass(frozen=True)
+class BuildingChoice:
+    ref: str
+    name_text_id: str
+    status: str
+
+    def __post_init__(self):
+        _text(self.ref)
+        _building_text(self.name_text_id, "name")
+        if self.status not in BUILDING_STATUSES:
+            raise ValueError("Unsupported displayed construction status")
+
+
+@dataclass(frozen=True)
+class BuildingDetails:
+    ref: str
+    name_text_id: str
+    description_text_id: str
+    status: str
+    cost: tuple[int, ...]
+    requirements: Requirement | None = None
+
+    def __post_init__(self):
+        BuildingChoice(self.ref, self.name_text_id, self.status)
+        _building_text(self.description_text_id, "description")
+        if self.description_text_id[:-11] != self.name_text_id[:-4]:
+            raise ValueError("Building name and description must identify the same definition")
+        _tuple(self.cost, int, "construction cost")
+        if len(self.cost) != 7:
+            raise ValueError("Construction cost requires seven resource amounts")
+        for amount in self.cost:
+            _integer(amount, high=2**31 - 1)
+        if self.status in ("prerequires", "missing_base"):
+            if type(self.requirements) is not Requirement:
+                raise ValueError("Displayed prerequisite status requires its expression")
+            if self.status == "missing_base" and self.requirements.op != "building":
+                raise ValueError("Missing base displays one building name")
+        elif self.requirements is not None:
+            raise ValueError("This detail status does not display prerequisites")
+
+
+@dataclass(frozen=True)
+class TownPanel:
+    kind: str
+    controls: tuple[PanelControl, ...] = ()
+    buildings: tuple[BuildingChoice, ...] = ()
+    building: BuildingDetails | None = None
+
+    def __post_init__(self):
+        _tuple(self.controls, PanelControl, "town controls")
+        _tuple(self.buildings, BuildingChoice, "hall buildings")
+        _unique([control.ref for control in self.controls], "panel control")
+        _unique([choice.ref for choice in self.buildings], "building choice")
+        if len(self.controls) > 32 or len(self.buildings) > 128:
+            raise ValueError("Town panel exceeds display bounds")
+        if self.kind == "overview":
+            if self.buildings or self.building is not None:
+                raise ValueError("Overview cannot expose hall or building details")
+        elif self.kind == "hall":
+            if self.controls or self.building is not None:
+                raise ValueError("Hall exposes only its displayed choices")
+        elif self.kind == "building":
+            if self.controls or self.buildings or type(self.building) is not BuildingDetails:
+                raise ValueError("Building panel exposes only its selected detail")
+        else:
+            raise ValueError("Unsupported town panel payload")
 
 
 @dataclass(frozen=True)
@@ -156,20 +334,26 @@ class Stack:
 @dataclass(frozen=True)
 class Window:
     context: Context
-    army: tuple[Stack, ...]
+    army: tuple[Stack, ...] | None
     primary_skills: tuple[int, int, int, int] | None = None
     mana: int | None = None
     level: int | None = None
     buildings: tuple[int, ...] | None = None
     faction: int | None = None
+    town_panel: TownPanel | None = None
 
     def __post_init__(self):
         if type(self.context) is not Context or self.context.kind == "map":
             raise ValueError("Window requires a hero or town context")
-        _tuple(self.army, Stack, "army")
-        _unique([s.slot for s in self.army], "army slot")
+        overlay = self.context.kind == "town" and self.context.panel in ("hall", "building")
+        if overlay:
+            if self.army is not None or self.faction is not None:
+                raise ValueError("Town overlays cannot refresh overview army or faction")
+        else:
+            _tuple(self.army, Stack, "army")
+            _unique([s.slot for s in self.army], "army slot")
         if self.context.kind == "hero":
-            if self.buildings is not None or self.faction is not None:
+            if self.buildings is not None or self.faction is not None or self.town_panel is not None:
                 raise ValueError("Hero window cannot expose town fields")
             if type(self.primary_skills) is not tuple or len(self.primary_skills) != 4:
                 raise ValueError("Hero window requires four primary skills")
@@ -182,7 +366,15 @@ class Window:
                 raise ValueError("Town window cannot expose hero fields")
             if self.buildings is not None:
                 raise ValueError("Town building details are deferred in this interface")
-            _integer(self.faction)
+            if not overlay:
+                _integer(self.faction)
+            if self.context.panel is not None:
+                if type(self.town_panel) is not TownPanel or self.town_panel.kind != self.context.panel:
+                    raise ValueError("Town context requires its matching explicit panel")
+                if self.context.panel == "building" and self.context.selection != self.town_panel.building.ref:
+                    raise ValueError("Selected building does not match detail payload")
+            elif self.town_panel is not None:
+                raise ValueError("Legacy town context cannot expose deeper panels")
 
 
 @dataclass(frozen=True)
@@ -235,8 +427,13 @@ class Offers:
     size: tuple[int, int, int]
     hero_refs: tuple[str, ...] = ()
     town_refs: tuple[str, ...] = ()
+    panel: TownPanel | None = None
+    schema: str = ACTION_SCHEMA
 
     def __post_init__(self):
+        profile = profile_for(self.schema)
+        if self.schema != profile.action_schema:
+            raise ValueError("Offers require an action schema")
         if type(self.context) is not Context:
             raise ValueError("Offers require a typed context")
         _position(self.size)
@@ -248,20 +445,39 @@ class Offers:
                 _text(ref)
             _unique(refs, "offered subject")
         if self.context.kind != "map" and (self.hero_refs or self.town_refs):
-            raise ValueError("First-stage windows offer close only")
+            raise ValueError("Window support cannot expose map subject choices")
+        _validate_context(self.context, profile)
+        if self.context.kind == "town" and profile == TOWN_PROFILE:
+            if type(self.panel) is not TownPanel or self.panel.kind != self.context.panel:
+                raise ValueError("Town support must bind the displayed panel")
+        elif self.panel is not None:
+            raise ValueError("This interface/context has no town panel support")
 
     @classmethod
-    def from_observation(cls, observation):
+    def from_observation(cls, observation, *, schema=ACTION_SCHEMA):
         if type(observation) is not Observation:
             raise ValueError("Expected typed observation")
         if observation.context.kind != "map":
-            return cls(observation.context, observation.size)
+            return cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema)
         return cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
-                   tuple(t.handle for t in observation.towns))
+                   tuple(t.handle for t in observation.towns), schema=schema)
 
     def permits(self, action):
-        if type(action) is not Action:
+        if type(action) is not Action or action.schema != self.schema:
             return False
+        if self.panel is not None:
+            if self.context.panel == "overview":
+                return action.kind == "close" or (action.kind == "open_panel"
+                    and action.subject == self.context.subject
+                    and any(control.panel == action.panel for control in self.panel.controls))
+            if action.subject != self.context.subject:
+                return False
+            if action.kind == "back":
+                return True
+            if self.context.panel == "hall":
+                return action.kind == "open_building" and action.selection in {item.ref for item in self.panel.buildings}
+            return (action.kind == "construct" and action.selection == self.panel.building.ref
+                    and self.panel.building.status == "allowed")
         if self.context.kind != "map":
             return action.kind == "close"
         if action.kind == "end_turn":
@@ -281,13 +497,13 @@ class Result:
 
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
-                               "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected"):
+                               "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
         if self.status == "rejected" and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -508,6 +724,19 @@ _PAYLOADS = {
 }
 
 
+def _validate_context(context, profile):
+    if profile == WINDOWS_PROFILE and (context.panel is not None or context.selection is not None):
+        raise ValueError("History v2 cannot contain town panels")
+    if profile == TOWN_PROFILE and context.kind == "town" and context.panel is None:
+        raise ValueError("History v3 requires an explicit town panel")
+
+
+def _validate_observation(observation, profile):
+    _validate_context(observation.context, profile)
+    if profile == WINDOWS_PROFILE and observation.window is not None and observation.window.town_panel is not None:
+        raise ValueError("History v2 cannot contain town economy data")
+
+
 @dataclass(frozen=True)
 class Frame:
     episode: str
@@ -533,7 +762,8 @@ class Frame:
     schema: str = SCHEMA
 
     def __post_init__(self):
-        if self.schema != SCHEMA or self.kind not in _PAYLOADS:
+        profile = profile_for(self.schema)
+        if self.schema != profile.history_schema or self.kind not in _PAYLOADS:
             raise ValueError("Unsupported contextual history schema/kind")
         _text(self.episode, "episode")
         _integer(self.player, high=1)
@@ -560,7 +790,15 @@ class Frame:
             _text(self.reason, "boundary reason")
         if self.accepted is not None and type(self.accepted) is not bool:
             raise ValueError("Native acknowledgement requires boolean acceptance")
-        if self.kind == "decision" and self.offers != Offers.from_observation(self.observation):
+        if self.context is not None:
+            _validate_context(self.context, profile)
+        if self.observation is not None:
+            _validate_observation(self.observation, profile)
+        if self.action is not None and self.action.schema != profile.action_schema:
+            raise ValueError("Action/history schema mismatch")
+        if self.result is not None and profile == WINDOWS_PROFILE and self.result.status == "built":
+            raise ValueError("History v2 cannot contain construction results")
+        if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
 
@@ -581,10 +819,14 @@ class Transition:
 class PlayerHistory:
     """Append-only one-player stream. It does not allocate or update neural state."""
 
-    def __init__(self, episode: str, player: int):
+    def __init__(self, episode: str, player: int, *, schema=SCHEMA):
         _text(episode, "episode")
         _integer(player, high=1)
         self.episode, self.player = episode, player
+        self.profile = profile_for(schema)
+        if schema != self.profile.history_schema:
+            raise ValueError("PlayerHistory requires a history schema")
+        self.schema = schema
         self._frames = []
         self.context = Context()
         self.revision = -1
@@ -611,13 +853,14 @@ class PlayerHistory:
         return digest.hexdigest()
 
     def emit(self, kind, day=None, **payload):
-        frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind, **payload)
+        frame = Frame(self.episode, self.player, len(self._frames), self.day if day is None else day, kind,
+                      schema=self.schema, **payload)
         self.append(frame)
         return frame
 
     def append(self, frame):
-        if type(frame) is not Frame or (frame.episode, frame.player) != (self.episode, self.player):
-            raise ValueError("Cross-player/episode or untyped frame")
+        if type(frame) is not Frame or (frame.episode, frame.player, frame.schema) != (self.episode, self.player, self.schema):
+            raise ValueError("Cross-player/episode/schema or untyped frame")
         if frame.seq != len(self._frames) or frame.day < self.day:
             raise ValueError("Missing, repeated, reordered or decreasing-day frame")
         kind = frame.kind
@@ -646,13 +889,15 @@ class PlayerHistory:
             self._match_action(frame)
             if self.consumed:
                 raise ValueError("Duplicate action consumption")
+            if self.action.kind == "construct" and frame.consumer != "engine":
+                raise ValueError("Construction must be consumed by the native engine interface")
             self.consumed = True
         elif kind == "issued":
             self._match_consumed(frame)
-            if self.action.kind not in ("move_to", "end_turn"):
+            if self.action.kind not in ("move_to", "end_turn", "construct"):
                 raise ValueError("Navigation cannot issue native game commands")
             if (self.pending_command is not None or frame.command_index != self.commands or self.native_rejected
-                    or self.action.kind == "end_turn" and self.commands != 0):
+                    or self.action.kind in ("end_turn", "construct") and self.commands != 0):
                 raise ValueError("Native commands require ordered acknowledgement; rejected steps stop execution")
             self.pending_command = frame.command_index
             self.commands += 1
@@ -665,12 +910,11 @@ class PlayerHistory:
             self.native_rejected = self.native_rejected or not frame.accepted
         elif kind == "context":
             self._match_consumed(frame)
-            expected = {"open_hero": Context("hero", self.action.subject),
-                        "open_town": Context("town", self.action.subject)} if self.action.subject is not None else {}
-            if self.action.kind == "close":
-                expected["close"] = Context()
-            if expected.get(self.action.kind) != frame.context or frame.revision <= self.revision:
+            expected = self._context_target()
+            if expected != frame.context or frame.revision <= self.revision:
                 raise ValueError("Context change must match consumed navigation and advance revision")
+            if self.action.kind == "construct" and self.commands != 1:
+                raise ValueError("Construction closes its detail only after genuine native issuance")
             self.context, self.revision = frame.context, frame.revision
         elif kind == "context_invalidated":
             if (self.context.kind == "map" or frame.context != Context() or frame.revision <= self.revision
@@ -733,6 +977,25 @@ class PlayerHistory:
         self.consumed, self.commands, self.accepted_commands, self.pending_command = False, 0, 0, None
         self.native_rejected = False
 
+    def _context_target(self):
+        action = self.action
+        before = self.decision.observation.context
+        if action.kind == "open_hero":
+            return Context("hero", action.subject)
+        if action.kind == "open_town":
+            return Context("town", action.subject, "overview" if self.profile == TOWN_PROFILE else None)
+        if action.kind == "close":
+            return Context()
+        if action.kind == "open_panel":
+            return Context("town", action.subject, action.panel)
+        if action.kind == "open_building":
+            return Context("town", action.subject, "building", action.selection)
+        if action.kind == "back":
+            return Context("town", action.subject, "hall" if before.panel == "building" else "overview")
+        if action.kind == "construct":
+            return Context("town", action.subject, "overview")
+        return None
+
     def _check_result(self, result):
         action = self.action
         if action.kind == "move_to":
@@ -765,17 +1028,22 @@ class PlayerHistory:
         else:
             if any(x is not None for x in (result.position, result.movement, result.destination_reached)):
                 raise ValueError("Only movement has movement-result fields")
-            expected = {"open_hero": "opened", "open_town": "opened", "close": "closed", "end_turn": "turn_ended"}
+            expected = {"open_hero": "opened", "open_town": "opened", "close": "closed", "end_turn": "turn_ended",
+                        "open_panel": "opened", "open_building": "opened", "back": "closed", "construct": "built"}
             if result.status not in (expected[action.kind], "rejected"):
                 raise ValueError("Incorrect contextual result")
-            target = Context() if action.kind == "close" else Context(action.kind[5:], action.subject) if action.kind.startswith("open_") else self.context
+            target = self._context_target()
             if action.kind == "end_turn" and result.accepted and (self.commands != 1 or self.accepted_commands != 1):
                 raise ValueError("Successful turn ending requires exactly one accepted native command")
             if action.kind == "end_turn" and not result.accepted and self.accepted_commands != 0:
                 raise ValueError("Accepted native turn ending cannot be reported as rejected")
+            if action.kind == "construct":
+                if (self.commands != 1 or self.accepted_commands != int(result.accepted)
+                        or self.context != target):
+                    raise ValueError("Construction requires one native acknowledgement and explicit overview return")
             if result.accepted and action.kind != "end_turn" and self.context != target:
                 raise ValueError("Navigation result requires matching explicit context change")
-            if not result.accepted and self.context != self.decision.observation.context:
+            if not result.accepted and action.kind != "construct" and self.context != self.decision.observation.context:
                 raise ValueError("Rejected navigation cannot have changed context")
 
     def transitions(self):
@@ -815,7 +1083,8 @@ def finalize_natural(histories, *, engine_outcomes, socket_outcomes, process_exi
                      histories_complete=(True, True)):
     """Finalize both seats after external evidence checks; never infer from exit alone."""
     if (type(histories) is not tuple or len(histories) != 2 or any(type(h) is not PlayerHistory for h in histories)
-            or tuple(h.player for h in histories) != (0, 1) or histories[0].episode != histories[1].episode):
+            or tuple(h.player for h in histories) != (0, 1) or histories[0].episode != histories[1].episode
+            or histories[0].schema != histories[1].schema):
         raise ValueError("Finalization requires both separate player histories in seat order")
     if any(h.boundary is not None or h.terminal != socket_outcomes[h.player] for h in histories):
         raise ValueError("Both unfinalized terminal streams must agree with evidence")
@@ -831,6 +1100,7 @@ def finalize_cutoff(histories, *, evidence_ref, histories_complete, failure_free
     """Commit both provisional cutoff prefixes only after external final checks."""
     if (type(histories) is not tuple or len(histories) != 2 or any(type(h) is not PlayerHistory for h in histories)
             or tuple(h.player for h in histories) != (0, 1) or histories[0].episode != histories[1].episode
+            or histories[0].schema != histories[1].schema
             or any(h.boundary != "cutoff_pending" for h in histories)):
         raise ValueError("Both players need provisional own-decision cutoffs")
     proof = CutoffVerification(histories[0].episode, evidence_ref, histories_complete, failure_free,
@@ -864,7 +1134,53 @@ def _decode_simple(raw, cls, tuple_fields=()):
         raise ValueError(f"Missing or invalid {cls.__name__} fields") from exc
 
 
-def decode_observation(raw):
+def _decode_context(raw, profile):
+    data = _record(raw, Context)
+    if profile == WINDOWS_PROFILE or data.get("kind", "map") != "town":
+        if {"panel", "selection"} & data.keys():
+            raise ValueError("Panel fields are absent from this context/schema")
+    elif not {"panel", "selection"} <= data.keys():
+        raise ValueError("Town v3 context requires explicit panel and selection")
+    context = _decode_simple(data, Context)
+    _validate_context(context, profile)
+    return context
+
+
+def _exact_record(raw, cls):
+    data = _record(raw, cls)
+    if set(data) != {field.name for field in fields(cls)}:
+        raise ValueError(f"Incomplete {cls.__name__} wire payload")
+    return data
+
+
+def decode_town_panel(raw):
+    data = _exact_record(raw, TownPanel)
+    data["controls"] = tuple(_decode_simple(item, PanelControl) for item in _array(data["controls"]))
+    data["buildings"] = tuple(_decode_simple(item, BuildingChoice) for item in _array(data["buildings"]))
+    if data["building"] is not None:
+        building = _exact_record(data["building"], BuildingDetails)
+        building["cost"] = _array(building["cost"])
+        nodes = 0
+
+        def requirement(raw_node, depth=0):
+            nonlocal nodes
+            nodes += 1
+            if nodes > 128 or depth > 16:
+                raise ValueError("Displayed requirement expression exceeds bounds")
+            node = _exact_record(raw_node, Requirement)
+            node["children"] = tuple(requirement(child, depth + 1) for child in _array(node["children"]))
+            return Requirement(**node)
+
+        if building["requirements"] is not None:
+            building["requirements"] = requirement(building["requirements"])
+        data["building"] = BuildingDetails(**building)
+    return TownPanel(**data)
+
+
+def decode_observation(raw, *, schema=SCHEMA):
+    profile = profile_for(schema)
+    if schema != profile.history_schema:
+        raise ValueError("Observation decoding requires its enclosing history schema")
     data = _record(raw, Observation)
     for name in ("size", "resources"):
         if name in data:
@@ -874,8 +1190,14 @@ def decode_observation(raw):
             data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
     if data.get("window") is not None:
         window = _record(data["window"], Window)
-        window["context"] = _decode_simple(window.get("context"), Context)
-        window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window.get("army")))
+        window["context"] = _decode_context(window.get("context"), profile)
+        if profile == WINDOWS_PROFILE or window["context"].kind != "town":
+            if "town_panel" in window:
+                raise ValueError("Town economy fields are absent from this context/schema")
+        else:
+            window["town_panel"] = decode_town_panel(window.get("town_panel"))
+        if window.get("army") is not None:
+            window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
         for name in ("primary_skills", "buildings"):
             if window.get(name) is not None:
                 window[name] = _array(window[name])
@@ -884,7 +1206,9 @@ def decode_observation(raw):
         except TypeError as exc:
             raise ValueError("Incomplete window") from exc
     try:
-        return Observation(**data)
+        observation = Observation(**data)
+        _validate_observation(observation, profile)
+        return observation
     except TypeError as exc:
         raise ValueError("Incomplete observation") from exc
 
@@ -901,27 +1225,72 @@ def decode_notice(raw):
         raise ValueError("Incomplete informational notice") from exc
 
 
+def _wire(value):
+    """Detached canonical JSON, omitting additive fields from their older schema."""
+    if isinstance(value, tuple):
+        return [_wire(item) for item in value]
+    if hasattr(value, "__dataclass_fields__"):
+        data = {field.name: _wire(getattr(value, field.name)) for field in fields(value)}
+        if type(value) is Context and value.panel is None:
+            del data["panel"], data["selection"]
+        elif type(value) is Action and value.schema == ACTION_SCHEMA:
+            for name in ("panel", "selection", "count", "destination"):
+                del data[name]
+        elif type(value) is Window and value.town_panel is None:
+            del data["town_panel"]
+        elif type(value) is Offers:
+            del data["schema"]  # bound by the enclosing frame's explicit schema
+            if value.panel is None:
+                del data["panel"]
+        elif type(value) is NoticeComponent and value.content_id is None:
+            del data["content_id"]
+        return data
+    return value
+
+
+def encode_action(action):
+    if type(action) is not Action:
+        raise ValueError("Expected typed contextual action")
+    return _wire(action)
+
+
+def encode_observation(observation, *, schema=SCHEMA):
+    if type(observation) is not Observation:
+        raise ValueError("Expected typed contextual observation")
+    profile = profile_for(schema)
+    if schema != profile.history_schema:
+        raise ValueError("Observation encoding requires its enclosing history schema")
+    _validate_observation(observation, profile)
+    return _wire(observation)
+
+
+def encode_offers(offers):
+    if type(offers) is not Offers:
+        raise ValueError("Expected typed contextual offers")
+    return _wire(offers)
+
+
 def encode_frame(frame):
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
-    data = asdict(frame)
-    if frame.event is not None and frame.event.notice is not None:
-        for component in data["event"]["notice"]["components"]:
-            # Preserve existing history-v2 bytes/hashes for ordinary notices;
-            # the additive trophy variant alone carries a static content ID.
-            if component["content_id"] is None:
-                del component["content_id"]
-    # JSON conversion changes immutable tuples to arrays without sharing mutable data.
-    return json.loads(json.dumps(data))
+    return _wire(frame)
 
 
 def decode_frame(raw):
     data = _record(raw, Frame)
     if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
+    profile = profile_for(data["schema"])
+    if data["schema"] != profile.history_schema:
+        raise ValueError("Expected a history schema")
     if data.get("observation") is not None:
-        data["observation"] = decode_observation(data["observation"])
-    for name, cls in (("context", Context), ("action", Action), ("result", Result)):
+        data["observation"] = decode_observation(data["observation"], schema=profile.history_schema)
+    if data.get("context") is not None:
+        data["context"] = _decode_context(data["context"], profile)
+    if data.get("action") is not None and profile == WINDOWS_PROFILE:
+        if type(data["action"]) is not dict or {"panel", "selection", "count", "destination"} & data["action"].keys():
+            raise ValueError("Action v2 cannot carry town economy fields")
+    for name, cls in (("action", Action), ("result", Result)):
         if data.get(name) is not None:
             data[name] = _decode_simple(data[name], cls, ("position",) if name == "result" else ())
     if data.get("event") is not None:
@@ -931,7 +1300,12 @@ def decode_frame(raw):
         data["event"] = _decode_simple(event, VisibleEvent)
     if data.get("offers") is not None:
         offer = _record(data["offers"], Offers)
-        offer["context"] = _decode_simple(offer.get("context"), Context)
+        if "schema" in offer or profile == WINDOWS_PROFILE and "panel" in offer:
+            raise ValueError("Unsupported offer schema/panel wire field")
+        offer["schema"] = profile.action_schema
+        offer["context"] = _decode_context(offer.get("context"), profile)
+        if "panel" in offer:
+            offer["panel"] = decode_town_panel(offer["panel"])
         for name in ("size", "hero_refs", "town_refs"):
             if name in offer:
                 offer[name] = _array(offer[name])

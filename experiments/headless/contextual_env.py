@@ -77,7 +77,8 @@ class ContextualMixin:
 
     def __init__(self, launcher, output, limits=Limits(), *, ledger=True, profile=False, agents=None,
                  snapshot_every=1, replay=True, interface=contract.ENVIRONMENT):
-        if interface != contract.ENVIRONMENT:
+        self.context_profile = contract.profile_for(interface)
+        if interface != self.context_profile.environment:
             raise ValueError("Unknown contextual interface")
         if not ledger:
             raise ValueError("Contextual validation requires complete raw bridge and action ledgers")
@@ -105,9 +106,10 @@ class ContextualMixin:
         if library is None:
             raise ValueError("Contextual launch requires a native ExplorerRL library identity")
         contents = Path(library).read_bytes()
-        required = (b"adventure-windows-v1", b"heroes-player-history-v2", b"heroes-context-actions-v2")
+        required = tuple(value.encode() for value in (self.context_profile.environment,
+                         self.context_profile.history_schema, self.context_profile.action_schema))
         if any(marker not in contents for marker in required):
-            raise ValueError("Rebuild ExplorerRL with the contextual protocol-4 interface; no legacy fallback")
+            raise ValueError(f"Rebuild ExplorerRL with the contextual protocol-{self.context_profile.protocol} interface; no legacy fallback")
 
     def reset(self, episode, seed):
         if type(episode) is not int or episode < 1 or type(seed) is not int or not 1 <= seed <= 2147483647:
@@ -134,7 +136,7 @@ class ContextualMixin:
         environment = {"EXPLORER_RL_PLAYERS": "0,1", "EXPLORER_RL_EPISODE": str(episode),
                        "EXPLORER_RL_TIMEOUT": str(self.limits.bridge_timeout),
                        "EXPLORER_RL_PROFILE": "1" if self.profile else "0",
-                       "EXPLORER_RL_INTERFACE": contract.ENVIRONMENT}
+                       "EXPLORER_RL_INTERFACE": self.interface}
         # These optional files are raw evidence, explicitly unsupported by the
         # contextual verifier; they never inherit a legacy replay success label.
         if self.replay:
@@ -143,7 +145,7 @@ class ContextualMixin:
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            producer = ContextualProducer(str(episode), player)
+            producer = ContextualProducer(str(episode), player, interface=self.interface)
             side = _Side(player, color, producer, producer.history, listener)
             folder = self.episode_dir / "agents" / color
             folder.mkdir(parents=True)
@@ -166,12 +168,19 @@ class ContextualMixin:
         return self._advance()
 
     def history_v2(self, color):
+        if self.context_profile != contract.WINDOWS_PROFILE:
+            raise ValueError("history_v2 requires adventure-windows-v1")
+        return self.history(color)
+
+    def history_v3(self, color):
+        if self.context_profile != contract.TOWN_PROFILE:
+            raise ValueError("history_v3 requires adventure-town-v1")
+        return self.history(color)
+
+    def history(self, color):
         if color not in COLORS:
             raise ValueError("Unknown player color")
         return encoded(self.sides[COLORS.index(color)].validator.history)
-
-    def history(self, color):
-        return self.history_v2(color)
 
     def history_v1(self, color):
         raise ValueError("Contextual history has no compatible v1 projection")
@@ -295,7 +304,10 @@ class ContextualMixin:
                 if side.validator.live.decision is None:
                     self.request = None
                 else:
-                    action = contract.Action("end_turn" if side.validator.live.context.kind == "map" else "close")
+                    context = side.validator.live.context
+                    kind = "end_turn" if context.kind == "map" else "back" if context.panel in ("hall", "building") else "close"
+                    action = contract.Action(kind, subject=context.subject if kind == "back" else None,
+                                             schema=self.context_profile.action_schema)
                     self._send_current(action, continuation=True)
             state = super()._advance()
             if state.done:
@@ -476,7 +488,8 @@ class ContextualMixin:
             "engine_verified_outcomes": outcomes if status == "completed" else None,
             "natural_terminal_after_cutoff": natural_after_cutoff,
             "continuation": {"limit_per_player": CONTINUATION_LIMIT, "actions": [self.sides[p].validator.continuation_steps for p in (0, 1)],
-                             "allowed_actions": ["close", "end_turn"], "learner_excluded": True},
+                             "allowed_actions": (["back", "close", "end_turn"] if self.context_profile == contract.TOWN_PROFILE
+                                                 else ["close", "end_turn"]), "learner_excluded": True},
             "raw_bridge_sha256": {side.color: scoring.digest(self.episode_dir / "agents" / side.color / "bridge.jsonl")
                                   for side in self.sides.values()}, "identity": identity,
         }
@@ -503,24 +516,25 @@ class ContextualMixin:
         for side in self.sides.values():
             producer = side.validator
             folder = self.episode_dir / "agents" / side.color
-            path = folder / "history-v2.jsonl"
+            path = folder / self.context_profile.history_filename
             digest = persist_history(path, producer.history)
             prefix = producer.history.frames[:-1] if producer.history.frames[-1].kind in ("finalized", "cutoff_finalized") else producer.history.frames
             digestor = hashlib.sha256()
             for frame in prefix:
                 digestor.update(json.dumps(contract.encode_frame(frame), sort_keys=True, separators=(",", ":")).encode() + b"\n")
-            live = folder / "live-history-v2.jsonl"
+            live = folder / ("live-" + self.context_profile.history_filename)
             live_digest = persist_history(live, producer.live)
             declarations[side.color] = {**executions[side.color], "actions_sent": side.actions_sent,
                 "actions_accepted": side.accepted, "actions_rejected": side.rejected,
                 "responses_undelivered": side.responses_undelivered,
-                "history_v2": {"path": str(path.relative_to(self.episode_dir)), "sha256": digest,
+                self.context_profile.history_key: {"path": str(path.relative_to(self.episode_dir)), "sha256": digest,
                                "canonical_sha256": producer.history.digest(), "prefix_sha256": digestor.hexdigest(),
                                "boundary": producer.history.boundary, "complete": complete[side.player]},
                 "live_evidence": {"path": str(live.relative_to(self.episode_dir)), "sha256": live_digest,
                                   "continuation_steps": producer.continuation_steps, "learner_input": False}}
         manifest = {"schema_version": 1, "kind": "contextual-headless-self-play", "episode": str(self.episode),
-                    "environment": contract.ENVIRONMENT, "history_schema": contract.SCHEMA, "action_schema": contract.ACTION_SCHEMA,
+                    "environment": self.interface, "history_schema": self.context_profile.history_schema,
+                    "action_schema": self.context_profile.action_schema,
                     "seed": self.seed, "created_at": self.created_at, "status": status, "termination_reason": termination,
                     "failure_detail": self.detail, "returncode": returncode, "outcomes_by_player": outcomes,
                     "rewards_by_player": rewards, "evidence_ref": evidence_ref, "players": declarations,

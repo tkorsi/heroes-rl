@@ -88,13 +88,15 @@ class CaseRun:
         self.seed = seed
         self.records = self.directory / "attempts.jsonl"
         self.records.touch(exist_ok=False)
+        self.interface = getattr(args, "interface", contract.ENVIRONMENT)
+        self.history_version = 3 if self.interface == "adventure-town-v1" else 2
         days = 1 if name == "day-cutoff" else args.max_days
         limits = env_module.Limits(max_days=days, max_actions=args.max_decisions,
                                    watchdog_seconds=args.watchdog, startup_seconds=args.startup_seconds,
                                    shutdown_seconds=args.watchdog, bridge_timeout=min(300, max(10, int(args.watchdog))))
         self.env = env_module.HeadlessSelfPlayEnv(
             env_module.VcmiLauncher(args.binary, args.data, args.map, "info"), self.directory,
-            limits=limits, ledger=True, replay=True, interface=contract.ENVIRONMENT,
+            limits=limits, ledger=True, replay=True, interface=self.interface,
             agents={color: {"kind": "contextual-interface-validation", "training": False,
                             "case": name, "seed": seed} for color in COLORS})
 
@@ -110,9 +112,9 @@ class CaseRun:
         self.inspect_request()
 
     def history(self, color):
-        frames = self.env.history_v2(color)
+        frames = getattr(self.env, f"history_v{self.history_version}")(color)
         ensure(type(frames) is list and all(type(frame) is dict for frame in frames),
-               "history_v2 must return JSON frames, not raw engine messages")
+               "History API must return JSON frames, not raw engine messages")
         return frames
 
     def inspect_request(self):
@@ -131,9 +133,12 @@ class CaseRun:
         ensure(len(full) >= len(previous) and full[:len(previous)] == previous, "Delivered history prefix changed")
         self.snapshots[request.color] = json.loads(json.dumps(full))
         self.initial.setdefault(request.color, frame)
-        ensure(frame.offers == self.contract.Offers.from_observation(frame.observation), "Offers differ from public support")
+        ensure(frame.offers == self.expected_offers(frame), "Offers differ from public support")
         ensure(frame.observation.context.kind != "map" or frame.observation.window is None, "Closed window refreshed in map observation")
         return frame
+
+    def expected_offers(self, frame):
+        return self.contract.Offers.from_observation(frame.observation)
 
     def call(self, action, label, *, expect_rejection=False):
         frame = self.inspect_request()
@@ -229,7 +234,7 @@ class CaseRun:
             previous = self.snapshots[color]
             ensure(frames[:len(previous)] == previous, f"Finalization mutated the {color} delivered prefix")
             # Preserve independently read API output separately; never repair producer files or its manifest.
-            path = self.directory / f"observed-history-v2-{color}.jsonl"
+            path = self.directory / f"observed-history-v{self.history_version}-{color}.jsonl"
             with path.open("x") as stream:
                 for frame in frames:
                     stream.write(json.dumps(frame, sort_keys=True, separators=(",", ":")) + "\n")
@@ -240,11 +245,11 @@ class CaseRun:
         declarations = manifest.get("players", {})
         producer_paths = {}
         for color in COLORS:
-            declaration = declarations.get(color, {}).get("history_v2", {})
+            declaration = declarations.get(color, {}).get(f"history_v{self.history_version}", {})
             named = declaration.get("path")
             candidates = ([self.env.episode_dir / named] if isinstance(named, str) else []) + [
-                self.env.episode_dir / "agents" / color / "history-v2.jsonl",
-                self.env.episode_dir / f"history-v2-{color}.jsonl",
+                self.env.episode_dir / "agents" / color / f"history-v{self.history_version}.jsonl",
+                self.env.episode_dir / f"history-v{self.history_version}-{color}.jsonl",
             ]
             matches = [path for path in candidates if path.is_file() and sha(path) == declaration.get("sha256")]
             ensure(matches, f"No persisted {color} history file matches producer manifest")

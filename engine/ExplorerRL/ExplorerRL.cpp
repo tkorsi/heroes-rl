@@ -184,9 +184,10 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
-		if(name != "movement-v1" && name != "adventure-windows-v1")
+		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1")
 			throw std::runtime_error("Unsupported ExplorerRL interface");
-		contextual = name == "adventure-windows-v1";
+		townEconomy = name == "adventure-town-v1";
+		contextual = townEconomy || name == "adventure-windows-v1";
 	}
 	if(contextual && playerID != PlayerColor(0) && playerID != PlayerColor(1))
 		throw std::runtime_error("Contextual interface requires the two baseline players");
@@ -284,7 +285,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = contextual ? 4 : 3;
+	result["protocol_version"].Integer() = townEconomy ? 5 : contextual ? 4 : 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -382,9 +383,9 @@ void ExplorerRL::run() noexcept
 		auto ready = message("ready");
 		if(contextual)
 		{
-			ready["interface"].String() = "adventure-windows-v1";
-			ready["history_schema"].String() = "heroes-player-history-v2";
-			ready["action_schema"].String() = "heroes-context-actions-v2";
+			ready["interface"].String() = townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
+			ready["history_schema"].String() = townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
+			ready["action_schema"].String() = townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 		}
 		else
 		{
@@ -754,7 +755,7 @@ JsonNode ExplorerRL::takeProfile()
 }
 
 bool ExplorerRL::executeRequest(const std::function<void()> & request, bool waitForAdventure, int64_t policyActionID,
-	bool * issued)
+	bool * issued, const std::function<bool()> & beforeIssue)
 {
 	{
 		std::lock_guard lock(stateMutex);
@@ -786,6 +787,8 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 					contextState.issueArmed = false;
 					return false;
 				}
+				if(beforeIssue && !beforeIssue())
+					return false;
 				submittedActionID = policyActionID;
 				// Serialize the actual send and its requestSent notification with
 				// visible events. A notice already queued cannot be followed by a

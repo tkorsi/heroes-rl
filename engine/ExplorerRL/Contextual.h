@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../lib/json/JsonNode.h"
+#include "TownEconomy.h"
 
 #include <map>
 #include <optional>
@@ -20,6 +21,9 @@ struct ContextualState
 	int lastDay = 0;
 	std::string context = "map";
 	std::string subject;
+	std::string panel; ///< empty outside the opt-in v3 town context
+	std::string selection;
+	TownEconomyState economy;
 	int64_t revision = -1;
 	int64_t nextDecision = 0;
 	std::optional<int64_t> decision;

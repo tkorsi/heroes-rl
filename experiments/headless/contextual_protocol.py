@@ -1,4 +1,4 @@
-"""Strict protocol-4 transport to immutable player-local history v2.
+"""Strict versioned transport to immutable player-local contextual history.
 
 Raw transport identifiers are evidence only. Python assigns learner sequence
 numbers and derives support solely from the delivered observation. Socket send,
@@ -6,7 +6,6 @@ consumer acknowledgement, native issuance and native acceptance stay separate.
 """
 from __future__ import annotations
 
-from dataclasses import asdict
 import hashlib
 from pathlib import Path
 import json
@@ -53,7 +52,7 @@ def exact(raw, fields, name):
 
 
 def clone_history(history):
-    cloned = contract.PlayerHistory(history.episode, history.player)
+    cloned = contract.PlayerHistory(history.episode, history.player, schema=history.schema)
     for frame in history.frames:
         cloned.append(frame)
     return cloned
@@ -62,9 +61,12 @@ def clone_history(history):
 class ContextualProducer:
     """One socket recipient. No other player's state is available here."""
 
-    def __init__(self, episode, player):
+    def __init__(self, episode, player, *, interface=contract.ENVIRONMENT):
         self.episode, self.player = episode, player
-        self.live = contract.PlayerHistory(episode, player)
+        self.profile = contract.profile_for(interface)
+        if interface != self.profile.environment:
+            raise ValueError("Producer requires an explicit environment interface")
+        self.live = contract.PlayerHistory(episode, player, schema=self.profile.history_schema)
         self.history = self.live
         self.ready = False
         self.terminal = None
@@ -74,16 +76,16 @@ class ContextualProducer:
         self.continuation_steps = 0
 
     def ingest(self, message):
-        if type(message) is not dict or message.get("protocol_version") != PROTOCOL or type(message.get("protocol_version")) is not int:
-            raise ValueError("Contextual mode requires explicit protocol_version 4")
+        if type(message) is not dict or message.get("protocol_version") != self.profile.protocol or type(message.get("protocol_version")) is not int:
+            raise ValueError(f"Contextual mode requires explicit protocol_version {self.profile.protocol}")
         kind = message.get("type")
         base = {"protocol_version", "type", "episode", "player"}
         if message.get("episode") != self.episode or type(message.get("player")) is not int or message.get("player") != self.player:
             raise ValueError("Cross-player or cross-episode contextual envelope")
         if kind == "ready":
             exact(message, base | {"interface", "history_schema", "action_schema"}, "ready")
-            if (self.ready or message["interface"] != contract.ENVIRONMENT or message["history_schema"] != contract.SCHEMA
-                    or message["action_schema"] != contract.ACTION_SCHEMA):
+            if (self.ready or message["interface"] != self.profile.environment or message["history_schema"] != self.profile.history_schema
+                    or message["action_schema"] != self.profile.action_schema):
                 raise ValueError("Duplicate ready or mismatched contextual schema")
             self.ready = True
             return ()
@@ -113,10 +115,10 @@ class ContextualProducer:
                     raise ValueError("Unknown native decision reference")
                 else:
                     raw["decision_seq"] = self.decision_ids[native_id]
-            raw.update(schema=contract.SCHEMA, episode=self.episode, player=self.player, seq=len(self.live.frames))
+            raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=len(self.live.frames))
             if record_kind == "decision":
-                observation = contract.decode_observation(raw["observation"])
-                raw["offers"] = json.loads(json.dumps(asdict(contract.Offers.from_observation(observation))))
+                observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
+                raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
             frame = contract.decode_frame(raw)
             self.live.append(frame)
             appended.append(frame)
@@ -134,9 +136,9 @@ class ContextualProducer:
         if (type(action) is not contract.Action or decision is None or self.live.action is not None
                 or self.current_id is None or not decision.offers.permits(action)):
             raise ValueError("Action does not match the current contextual request")
-        return {"protocol_version": PROTOCOL, "type": "context_action", "episode": self.episode,
+        return {"protocol_version": self.profile.protocol, "type": "context_action", "episode": self.episode,
                 "player": self.player, "decision_id": self.current_id, "revision": decision.revision,
-                "action": asdict(action)}
+                "action": contract.encode_action(action)}
 
     def submitted(self, action):
         # Called only after sendall succeeds; this is not proof of native receipt.

@@ -426,8 +426,19 @@ five groups and 200 hidden-world variants; it does not run the full pathfinder
 in a game. The 88 contextual contract, auditor and probe tests also pass. The
 planner stage preceded the live contextual adapter. Its compact stage evidence is in
 `validation/contextual-integration-2026-10-24.json`.
-Construction, recruitment and army editing remain later stages. No training is
-authorized. Keep the adjacent-step `movement-v1` baseline
+**Next stage authorized, 24 October:** implement town construction and creature
+recruitment through explicit structured panel navigation, then validate each
+increment in real VCMI. Work proceeds on `codex/town-economy` from draft PR #7
+at `48d8e1a`. Preserve the existing contextual interface and movement baseline
+with explicit version/provenance separation. The policy selects the building,
+creature, count and supported destination; the adapter supplies no strategy,
+automatic purchase/quantity or new reward. Options, costs, prerequisites and
+stock appear only where the normal town interface displays them. Keep the
+authored map, tavern restriction and hero count unchanged; isolated validation
+fixtures must declare every difference and never become training experience.
+Broader army editing and special interfaces remain deferred. This stage is
+implementation work, not a claim that these operations have passed validation.
+No training is authorized. Keep the adjacent-step `movement-v1` baseline
 as a separately identified comparison. All contexts are structured headless
 interfaces; opening one does not create a rendered window or use image recognition.
 
@@ -461,7 +472,7 @@ The intended loop, in plain English:
 | History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons and boundary audits pass within their recorded scope. | Contextual replay and wider event coverage; legacy replay cannot verify v2. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
-| Hero/town operations | Explicit owned hero/town open/read/close; hero army/skills/mana/level and town army/faction only while open. | Construction, recruitment, army editing and deeper panels remain deferred. |
+| Hero/town operations | Explicit owned hero/town open/read/close; hero army/skills/mana/level and town army/faction only while open. | Town construction, then recruitment are the authorized implementation stage; broader army editing and special panels remain deferred. |
 | Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
 
 The action-consumption and stream-finalization findings are **resolved in the
@@ -532,6 +543,61 @@ Hero windows add army slots, four primary skills, mana and level. Town windows
 add army slots and faction only; building details and deeper controls are
 deferred. The only window action is `close`. Unknown fields are rejected at every
 nested record boundary, including raw engine IDs and path-cost/reachability data.
+
+The authorized town extension uses a separate opt-in `adventure-town-v1`,
+protocol 5, `heroes-player-history-v3` and `heroes-context-actions-v3`. The v2
+defaults, serialized records and prefix hashes remain unchanged. Mixing versions
+within either player's history or a paired finalization is invalid. The v3
+environment uses a separate history API/file/manifest declaration; it does not
+make legacy or v2 records interchangeable with town-operation experience.
+This contract is the implementation target; native acceptance evidence is
+reported separately below when available.
+
+In v3, a town context also identifies its active panel and optional selected
+entry. Each town action names its owned town handle and binds to the held
+decision and context revision. `back` follows the actual parent panel;
+`close` is available only from the town overview. Map and hero contexts retain
+their previous behavior. None of these navigation operations ends the turn or
+resets memory.
+
+| Active town panel | Permitted current content | Supported selection |
+| --- | --- | --- |
+| Overview | The existing upper army and faction; audited hall/dwelling navigation controls. No hall catalog, construction prices, prerequisites or recruitment stock. | Explicit `open_panel`; `close` returns to map. |
+| Hall | One actual displayed building per native hall slot, its opaque reference, static name identifier and displayed status. No hidden upgrade chain or detailed prices. | `open_building`, including a disabled entry to inspect its detail; `back` returns to overview. |
+| Selected building details | Its static name/description identifiers, status, seven-resource price, and only the minimized requirement expression the UI displays for the applicable status. | `construct` only when the native Buy control is enabled; `back` returns to hall. |
+| Selected dwelling recruitment | Actual creature cards, selected creature, shared available stock, selected unit price and native quantity-slider maximum; supported upper-army destination. | Explicit creature selection, integer count and destination in `recruit`; `back` returns to overview. |
+
+Overlay panels do not refresh the underlying town army or faction. Building,
+dwelling, offer and destination references are player-local routing handles,
+not numeric neural features. Static content identifiers describe displayed
+identity; they do not grant access to unshown object data or resolved game text.
+Requirements preserve the displayed logical expression, not the engine's full
+dependency graph or an auxiliary plan for satisfying it. The normal Grail prompt
+on hall entry is an unsupported boundary, never bypassed or answered implicitly.
+
+An activated native construction returns to the overview, matching Buy's
+closure of both detail and hall. It issues exactly one building request; an
+acknowledgement and verified native effect are distinct evidence. Exact price
+deduction and the requested building/daily counter change must agree. No retry,
+automatic prerequisite purchase or strategic ranking is part of the adapter.
+
+Recruitment must not rely on the server's quantity clamping. The explicit count
+must fit the currently displayed slider range before submission, and accepted
+effects must match that exact count, cost, stock and army delta. The normal town
+UI targets its upper army (town garrison or garrisoned hero); server support for
+other destinations does not make those UI choices available. Capacity does not
+reduce the native slider maximum. A valid count can produce the native no-room
+response with no issued purchase and unchanged stock/resources. Duplicate-stack
+automatic merging under a different engine setting is outside this interface;
+do not silently alter the setting or perform extra army edits.
+
+Malformed, foreign, stale or unoffered selections must not be converted into a
+different valid operation. API rejection preserves the held request and history.
+A valid consumed operation that the native UI rejects is recorded distinctly
+from a server-issued request. All ordinary rewards remain zero. New panels obey
+the same immutable-history, intervening-event and paired-finalization rules;
+cutoff continuation explicitly unwinds their parent panels outside the frozen
+learner prefixes. Contextual replay, including v3, remains unsupported.
 
 Informational notices are separate ordered events. VCMI's `InfoWindow` carries
 no query or server reply, including in its `MODAL` display mode. The audited
@@ -661,9 +727,9 @@ or labelled as beneficial. The agent selects the operation, target and quantity.
 | Town, construction panel | `construct` | An offered `building_ref`; attempt one construction with the displayed cost/prerequisites. |
 | Town, recruitment panel | `recruit` | An offered `creature_offer_ref`, a currently supported visible `destination_army_ref`, and integer `count`; attempt exactly that purchase/placement. No automatic quantity or destination selection. |
 
-Construction/recruitment panels are a **proposed** refinement of the allowed town
-window, not an already agreed blanket permission for extra windows. Audit their
-native navigation and information scope before implementation. If the operation
+Construction/recruitment panels were explicitly authorized on 24 October as the
+next incremental implementation. Their audited native navigation and information
+scope define the boundary; this does not authorize unrelated windows. If the operation
 requires an additional unsupported modal interface, leave it unsupported under
 the rule below. In the native construction interface, town → hall → building
 details reveals information progressively; do not collapse that into revealing
@@ -860,8 +926,9 @@ failure, not a substitute for such a cutoff.
    features or labels enter policy/value inputs or targets. Validate native
    coordinate conversion and route replay, including all intervening sightings.
    Synthetic tests alone do not pass this gate.
-5. **Add internal operations incrementally.** One hero army edit, then audited
-   town construction/recruitment and quantity selection. Verify exact costs,
+5. **Add internal operations incrementally.** The authorized order is town
+   construction first, then recruitment and quantity selection; broader army
+   editing remains deferred. Verify exact costs,
    stock, slot/count changes, rejections and no hidden-mask leakage. Each step
    needs real game evidence, an explicit coverage list and replay verification.
    Exercise unsupported-dialog termination without answering it. Retain failed

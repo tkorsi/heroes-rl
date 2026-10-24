@@ -97,6 +97,7 @@ private:
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
 	bool contextual = false;
+	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
 	explorer_rl::ContextualState contextState; ///< protected by stateMutex
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex
@@ -163,15 +164,17 @@ private:
 	/// becomes the terminal's consumption watermark, only while this player's game is in progress; otherwise
 	/// nothing is issued and `issued` stays false.
 	bool executeRequest(const std::function<void()> & request, bool waitForAdventure = true, int64_t policyActionID = -1,
-		bool * issued = nullptr);
+		bool * issued = nullptr, const std::function<bool()> & beforeIssue = {});
 	bool ended();
 	void unsupported(const std::string & operation);
 	void runContextualTurn(QueryID queryID);
 	void captureContextual(); ///< stable game state; acquires stateMutex
+	void captureContextualLocked(); ///< stable game state and stateMutex held
 	JsonNode contextualObservation(); ///< stable game state and stateMutex held
 	JsonNode takeContextualRecords(); ///< acquires stateMutex
 	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex
 	bool executeContextualAction(const JsonNode & action, int64_t decision);
+	bool executeTownAction(const JsonNode & action, int64_t decision);
 	void contextualResult(JsonNode result, int64_t decision);
 };

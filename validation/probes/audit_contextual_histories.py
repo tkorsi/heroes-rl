@@ -138,13 +138,13 @@ def audit_player(path, player):
                 raw = _json(line)
                 # The serialized envelope must carry its version, even if a
                 # dataclass constructor has a convenient in-process default.
-                if type(raw) is not dict or raw.get("schema") != contract.SCHEMA:
-                    raise ValueError("Explicit history-v2 schema is required")
+                if type(raw) is not dict or raw.get("schema") not in (contract.SCHEMA, contract.TOWN_SCHEMA):
+                    raise ValueError("Explicit supported contextual history schema is required")
                 frame = contract.decode_frame(raw)
                 if frame.player != player:
                     raise ValueError("History belongs to the wrong player")
                 if history is None:
-                    history = contract.PlayerHistory(frame.episode, player)
+                    history = contract.PlayerHistory(frame.episode, player, schema=frame.schema)
                 history.append(frame)
                 frozen_encodings.append(_canonical(frame))
             except Exception as error:
@@ -155,7 +155,8 @@ def audit_player(path, player):
         frames = history.frames
         if any(_canonical(frame) != previous for frame, previous in zip(frames, frozen_encodings)):
             raise ValueError("A previously appended immutable prefix changed")
-        report.update(episode=history.episode, decoded_frames=len(frames), boundary=history.boundary,
+        report.update(episode=history.episode, history_schema=history.schema, environment=history.profile.environment,
+                      decoded_frames=len(frames), boundary=history.boundary,
                       terminal=history.terminal, canonical_sha256=_digest(frames),
                       prefix_sha256=_digest(frames[:-1] if frames and frames[-1].kind in FINALIZED_KINDS else frames),
                       coverage=_coverage(frames))
@@ -192,8 +193,9 @@ def _manifest_checks(manifest, reports, histories):
     if type(manifest) is not dict:
         require(False, "Manifest must be an object")
         return failures
-    expected = {"schema_version": 1, "kind": "contextual-headless-self-play", "environment": contract.ENVIRONMENT,
-                "history_schema": contract.SCHEMA, "action_schema": contract.ACTION_SCHEMA}
+    profile = histories[0].profile
+    expected = {"schema_version": 1, "kind": "contextual-headless-self-play", "environment": profile.environment,
+                "history_schema": profile.history_schema, "action_schema": profile.action_schema}
     for key, value in expected.items():
         require(type(manifest.get(key)) is type(value) and manifest.get(key) == value, f"Invalid manifest {key}")
     require(all(manifest.get("episode") == history.episode for history in histories), "Manifest episode mismatch")
@@ -233,11 +235,13 @@ def _manifest_checks(manifest, reports, histories):
         players = {}
     for color, report, history in zip(COLORS, reports, histories):
         player = players.get(color, {})
-        declaration = player.get("history_v2", {}) if type(player) is dict else {}
+        declaration = player.get(profile.history_key, {}) if type(player) is dict else {}
+        other_key = contract.TOWN_PROFILE.history_key if profile == contract.WINDOWS_PROFILE else contract.WINDOWS_PROFILE.history_key
+        require(type(player) is dict and other_key not in player, f"{color} contains a different history version declaration")
         if type(declaration) is not dict:
             declaration = {}
         for name, derived in (("sha256", "file_sha256"), ("prefix_sha256", "prefix_sha256")):
-            require(declaration.get(name) == report.get(derived), f"{color} history_v2.{name} mismatch")
+            require(declaration.get(name) == report.get(derived), f"{color} {profile.history_key}.{name} mismatch")
         if "canonical_sha256" in declaration:
             require(declaration["canonical_sha256"] == report.get("canonical_sha256"), f"{color} canonical history hash mismatch")
         require(declaration.get("boundary") == history.boundary, f"{color} declared history boundary mismatch")
@@ -271,6 +275,8 @@ def audit(red, blue, manifest=None):
     if all(history is not None and history.frames for history in histories):
         if histories[0].episode != histories[1].episode:
             failures.append({"phase": "pair", "error": "Different player episode identities"})
+        if histories[0].schema != histories[1].schema:
+            failures.append({"phase": "pair", "error": "Different player history schemas"})
         if histories[0].boundary != histories[1].boundary:
             failures.append({"phase": "pair", "error": "Both player histories require the same final boundary"})
         if any(history.boundary in ("natural", "cutoff") for history in histories):
