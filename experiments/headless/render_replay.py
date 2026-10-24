@@ -20,8 +20,10 @@ Python standard library + ffmpeg/ffprobe only, like experiments/recording/video.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -200,8 +202,8 @@ class TraceRenderer:
                 panel.pixels[start:start + TILE * 3] = source.pixels[start:start + TILE * 3]
         for object_id, (x, y, kind, owner) in sorted(self.memory[player].items()):
             glyph(panel, x * TILE, y * TILE, kind, owner, faded=object_id not in visible_ids)
-        for x, y, _ in frame.get("battles", []):
-            if visible[x + self.width * y] == "1":
+        for x, y, _, *sides in frame.get("battles", []):
+            if player in sides and visible[x + self.width * y] == "1":  # only the two sides learn of a battle
                 panel.outline(x * TILE - 2, y * TILE - 2, TILE + 4, TILE + 4, BATTLE, 2)
         return panel
 
@@ -211,7 +213,7 @@ class TraceRenderer:
         for object_id, (x, y, _, kind, _, owner) in sorted(objects.items()):
             if 0 <= x < self.width and 0 <= y < self.height:
                 glyph(panel, x * TILE, y * TILE, kind, owner)
-        for x, y, _ in frame.get("battles", []):
+        for x, y, *_ in frame.get("battles", []):
             panel.outline(x * TILE - 2, y * TILE - 2, TILE + 4, TILE + 4, BATTLE, 2)
         return panel
 
@@ -254,21 +256,38 @@ def read_trace(path: Path) -> tuple[dict, list[dict]]:
 
 
 def select_frames(frames: list[dict], max_frames: int) -> list[int]:
-    """Frames whose drawn content changed, thinned evenly to the budget; boundaries and battles are kept."""
+    """Frames whose drawn content changed, thinned evenly to the budget.
+
+    The game end and the final trace frame are always kept. Battles, battle ends and new sightings (a player sees
+    an object it did not see on the previous frame) come next, strided evenly only if they alone overflow.
+    """
     def content(frame):
         return (json.dumps(frame["objects"]), json.dumps(frame["players"]), json.dumps(frame.get("battles")), frame["day"])
-    changed, previous = [], None
+    if not frames:
+        return []
+    changed, forced, previous, sighted = [], set(), None, {}
     for index, frame in enumerate(frames):
         key = content(frame)
         if key != previous or frame.get("boundary"):
             changed.append(index)
         previous = key
-    if len(changed) <= max_frames:
-        return changed
-    keep = {index for index in changed if frames[index].get("boundary") in ("game_end", "battle_end")}
-    keep |= {index for index in changed if frames[index].get("battles")}
-    if len(keep) >= max_frames:
-        keep = set(sorted(keep)[:: max(1, len(keep) // max_frames)])
+        for player, view in frame["players"].items():
+            ids = set(view.get("objects", []))
+            if ids - sighted.get(player, set()):
+                forced.add(index)  # a sighting can end before the next drawn frame
+            sighted[player] = ids
+    ends = {index for index in changed if frames[index].get("boundary") == "game_end"} | {len(frames) - 1}
+    ends = set(sorted(ends)[-max_frames:])
+    keep = ends | set(changed)
+    if len(keep) <= max_frames:
+        return sorted(keep)
+    forced |= {index for index in changed if frames[index].get("boundary") in ("game_end", "battle_end")}
+    forced |= {index for index in changed if frames[index].get("battles")}
+    forced = sorted(forced - ends)
+    room = max_frames - len(ends)
+    if len(forced) > room:
+        forced = forced[:: math.ceil(len(forced) / room)] if room else []
+    keep = ends | set(forced)
     rest = [index for index in changed if index not in keep]
     budget = max(0, max_frames - len(keep))
     if budget and rest:
@@ -300,7 +319,8 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
     total_inputs = max((frame["seq"] for frame in frames), default=-1) + 1
     written = 0
     try:
-        # Memory follows every recorded frame, drawn or not, so thinning never skips a sighting.
+        # Memory follows every recorded frame, drawn or not. select_frames keeps every frame with a new
+        # sighting, so thinning skips one only when forced frames alone overflow the budget.
         wanted = set(selected)
         last = None
         for index, frame in enumerate(frames):
@@ -320,6 +340,14 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
         process.stderr.close()
         if process.wait() != 0:
             raise video.VideoError(f"ffmpeg failed: {error[-2000:]}")
+    except BrokenPipeError as broken:  # ffmpeg exited before taking every frame; its stderr says why
+        with contextlib.suppress(BrokenPipeError):
+            process.stdin.close()
+        error = process.stderr.read().decode(errors="replace")
+        process.stderr.close()
+        process.wait()
+        staged.unlink(missing_ok=True)
+        raise video.VideoError(f"ffmpeg failed: {error[-2000:]}") from broken
     except BaseException:
         process.kill()
         process.wait()
