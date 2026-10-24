@@ -691,8 +691,9 @@ the legacy replay path.
 Records are immutable and append-only. Navigation consumption is distinguished
 from native command issuance and acknowledgement. An unacted decision must be
 superseded before a new visible view or event enters its history. A consumed
-action without a trustworthy result remains recorded but never becomes a
-completed sample. Natural finalization binds both complete player prefixes to
+action without a trustworthy result never acquires an ordinary result;
+trajectory-v2 may derive only the verified terminal closure described below.
+Natural finalization binds both complete recorded player prefixes to
 complementary engine/socket outcomes and a clean exit. A collection cutoff is
 provisional until both players have real held decisions, readers finish without
 failure and bounded continuation/shutdown evidence is verified. Technical and
@@ -1356,12 +1357,78 @@ views are useful fixture evidence, not a general drainage guarantee. These
 native changes remain separately scoped from Claude's legacy replay/performance
 work; the ownership update is on issue #4.
 
+Validation at `f448939` on local macOS arm64 with locked PyTorch 2.9.1:
+
+- **480 tests passed, zero skipped**, including both colors, acknowledgement
+  arrival variants, invalid/ambiguous closures, version compatibility, separate
+  memory, synthetic PPO gradients and exact checkpoint/RNG resumption.
+- Four fixed-weight fixture games, two with Red townless and two with Blue
+  townless, reached natural complementary outcomes. All four losing final
+  consumed actions now receive exactly -1 with null `result_seq`; winners receive
+  +1. All eight player trajectories are structurally valid. Each loser retains
+  its post-terminal `hero_lost` event and empty-own-hero view before finalization.
+- The predeclared ordinary cohort used engine seeds `96111` and `96112` in both
+  learner colors, with a 2,048-choice/100-day budget per game. All four reached
+  verified day cutoffs: **0 natural outcomes / 4 attempts**, zero unsupported
+  interactions, technical failures or collection errors. Completed-only win
+  fraction is undefined (zero completed games); cutoffs are not draws. Its 6,274
+  choices include all eleven action kinds, 15 constructions and 148 recruitments.
+  This finite result does not establish that ordinary natural outcomes are
+  reachable under the current untrained policies, or that they are impossible.
+- An intentional owned-process kill after four resolved choices left every
+  reward and bootstrap absent and every sample ineligible. No technical failure
+  was assigned a loss or draw.
+- Recomputing all 49,560 saved frames reproduces 6,536 decision values, 6,528
+  sampled action probabilities and 11,017 conditional probabilities with zero
+  difference. All eighteen native player rollouts reject optimizer admission;
+  all eight actual unsampled cutoff decisions supply their own bootstrap values.
+- Saved rollout-v1 cutoff, natural and failure artifacts still round-trip with
+  identical canonical bytes. Four tampered copies of a new real rollout reject
+  swapped policy roles, a forged closure reference, an invented result and a
+  missing loss target. These are artifact checks, not native replay tests.
+- Exact prepared-engine verification passes; native sources and binaries were
+  unchanged. The replay CLI rejects the new contextual recording before replay,
+  and both legacy observation ledgers are empty, as the source audit predicted.
+
+All nine native attempts are retained. Compact source/checkpoint/artifact hashes,
+the declared roster, inference reconstruction results and gate statuses are in
+`validation/contextual-terminal-2026-10-24.json`; raw files remain under ignored
+`runs/`. Previous native fog/freshness, construction-price and recruitment-stock
+checks remain bounded evidence at their original commits, not fresh exhaustive
+verification by this cohort. No gameplay optimizer update, paid compute or merge
+occurred.
+
+Reproduce the ordinary cohort with the prepared engine and saved random policy:
+
+```sh
+.venv/bin/python -m experiments.learner.inference \
+  --purpose ordinary-evaluation --output runs/my-ordinary-cohort \
+  --checkpoint runs/neural-fixed-check/untrained-policy.pt \
+  --engine-seed 96111 --engine-seed 96112 --policy-seed 96103 \
+  --max-requests 2048 --max-days 100
+python3 validation/probes/create_boundary_fixture.py \
+  --kind natural-townless-blue --output runs/my-blue-terminal-fixture
+.venv/bin/python validation/probes/audit_neural_rollout.py \
+  --checkpoint runs/my-ordinary-cohort/untrained-policy.pt \
+  --episode runs/my-ordinary-cohort/episode-000001 \
+  --output runs/my-ordinary-cohort/inference-audit-1.json
+```
+
 Before gameplay optimization, establish contextual natural outcomes on ordinary
 games and verify complete native terminal drainage and contextual replay.
 Broader event/action coverage and the prior town edge cases also remain gates.
 The synthetic-only optimizer admission must be changed only with explicit
 training authorization and review. No learning campaign is authorized by this
 implementation.
+
+The smallest proposed later training check, **only after those gates pass and
+the user approves**, is one PPO update from random initialization against one
+frozen initial opponent: four valid ordinary episodes split across learner
+colors, at most sixteen collection attempts, two PPO epochs, then four fixed
+held-out seed/color evaluations. Stop before the update if the capped collection
+does not supply the declared valid natural outcomes. Keep terminal-only rewards,
+the same map/fog/actions and all attempts. This would test the first real update
+and resumption, not demonstrate strategy improvement or authorize a campaign.
 
 ### Continue in a new chat
 
