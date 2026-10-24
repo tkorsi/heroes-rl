@@ -535,8 +535,9 @@ Use English and read `AGENTS.md` plus this README first. The public `main`
 contains merged self-play PR #3 and offline analysis PR #2, including evidence
 validation fixes. Claude's headless implementation is now in draft
 [PR #6](https://github.com/tkorsi/heroes-rl/pull/6), initially reviewed locally at
-`40e34a3` and then at `3a25545` after its neutral-player fix. It is not merged
-or accepted for learner integration.
+`40e34a3`, then at `3a25545` after its neutral-player fix, and rechecked at
+`bbfc955`. The four remaining findings still reproduce at that head. It is not
+merged or accepted for learner integration.
 Check its current status rather than treating this snapshot as live.
 
 Codex has now specified the learner's observation/history and per-player
@@ -680,6 +681,18 @@ the single source of purpose and decisions; do not maintain competing charters.
   evidence separately. **Training remains blocked** by action consumption and
   stream finalization. Last-seen memory and video evidence binding also need
   fixes; video success is not a condition of learner episode validity.
+- Follow-up review at `bbfc955` confirms that none of those four fixes has
+  landed. Its only change since `3a25545` correctly labels map-monster battles
+  as neutral; the relevant Python implementations are unchanged. Fresh probes
+  reproduce all four defects, including the different scoring results when exit
+  and reader-error events arrive in opposite orders. The native visibility
+  regression (10 scenarios, 200 randomized folds) and eight renderer tests pass;
+  those passing checks do not cover the four defects. This recheck used injected
+  failures, synthetic histories and real FFmpeg encoding, with no new game series
+  or training. Evidence and commands: `validation/headless-four-findings-recheck-2026-10-24.json`.
+  Portable reproducers are tracked under `validation/probes/`; their reports
+  distinguish a reproduced bug from correct behavior. Exit zero alone is not an
+  acceptance verdict.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |
