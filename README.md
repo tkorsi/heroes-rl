@@ -320,6 +320,81 @@ episode boundaries and reachable natural outcomes. Keep unresolved gaps visible:
 the current three self-play runs were truncated, schema 3 offline analysis is
 pending, and no headless throughput or replay fidelity has been measured here.
 
+## Headless self-play environment (issue #4, in progress)
+
+Status: implemented in source and unit-tested in the cloud with synthetic
+fixtures; **not yet validated against the real game**. No real headless
+episode, natural ending, throughput or replay has been measured. Those checks
+need the Mac's local game data and are tracked in the draft PR for issue #4.
+
+`vcmiclient --headless` plays the real VCMI rules with no window, renderer,
+audio, frame capture, animation waits or policy delays. Patch
+`engine/patches/0012-headless-simulation.patch` makes the upstream headless path
+playable. Without it, the client crashed on its first packet. The patch:
+
+- uses a fallback interface mutex when no GUI engine exists;
+- always creates the map-change relay, which has no views in headless mode,
+  so map notifications and animation waits return at once while every
+  authoritative state update still runs;
+- turns the main loop into a wait for one shutdown request with an exit status;
+- exits 0 only after both ExplorerRL terminals were delivered, and nonzero after
+  a packet-handling exception, a lost server connection, a refused server start
+  or missing game data;
+- calls every AI's `finish()` before destruction;
+- skips the stdin console;
+- accepts `VCMI_EXPERIMENT_DIR` for experiment evidence.
+
+ExplorerRL protocol v3 adds ordered, sanitized player-visible events between
+decisions. After every relevant engine callback, each side captures its own
+team-fog view (visible tiles plus objects on them that its callback reports
+visible) and emits the difference from its previous capture as a
+`visible_update`. Raw callback arguments are never forwarded. A disappearance
+carries no cause or later position, and a hidden removal produces nothing.
+The first capture is reported against an empty view, so the event stream alone
+reconstructs what the player saw at every point. The Python adapter checks
+this at every decision snapshot. `battle_start`/`battle_complete` mark battle
+boundaries for the side involved.
+
+`experiments/headless/env.py` is the agent-environment cycle:
+
+- `reset(episode, seed)` launches an isolated engine process with its own
+  profile directory, ports and seed. It returns the first request.
+- `step(value)` answers the current player's request and returns the next
+  request or the episode end. A request carries only that player's sanitized
+  records since its previous response.
+- Engine object IDs stay in the adapter's private routing table. Learner
+  records use opaque per-player handles, assigned on the player's own first
+  legitimate observation.
+- `memory(color)` keeps last-seen facts that never refresh from hidden state.
+- Rewards are 0 on ordinary transitions. +1/-1 exists only after both
+  terminals, a clean exit and validated engine evidence.
+- Day, action and collection horizons are `truncated`. A truncation reports
+  the unanswered decision observation as the only bootstrap boundary.
+- Watchdog, crash, protocol violation, engine error and unclean shutdown are
+  `failed`. Neither truncations nor failures are scored, and a dead hero with
+  a surviving town is never a loss.
+
+The workload is the authored map with two independent seeded uniform-random
+agents. Run a predetermined series and record its frozen seed schedule:
+
+```bash
+python3 tools/prepare_vcmi.py --check
+cmake --build vcmi/build --target vcmiclient ExplorerRL BattleAI
+python3 experiments/headless/run_headless.py --output runs/headless-smoke --episodes 3
+```
+
+`summary.json` records the host, build type, source identity, seed schedule,
+per-episode status and termination reason, and per-player counts: accepted,
+rejected and moving actions, end turns, town-only turns, dialogs, battles and
+days. It also records step-latency percentiles, startup and shutdown time,
+log volume, peak memory and end-to-end resolved actions per second, which
+include relaunch time. Steady-state rates are reported separately and never
+replace the end-to-end figure.
+
+Deferred: verified replay, offline videos from recorded episodes, measured
+scaling across workers, persistent workers, and a typed action transport for
+economy choices.
+
 ## Git and local artifacts
 
 This is one Git project. Open its root in SourceTree to see all Python code,
@@ -329,7 +404,7 @@ The root repository has no submodules.
 
 | Path | Contents |
 | --- | --- |
-| `experiments/` | Agent policies, authored maps and recording tools |
+| `experiments/` | Agent policies, authored maps, recording tools and the headless environment |
 | `engine/` | Our VCMI integration and reviewable engine patches |
 | `dependencies/` | Pinned external dependency metadata |
 | `tools/` | Reproducible dependency preparation |
@@ -404,8 +479,9 @@ the single source of purpose and decisions; do not maintain competing charters.
   validation. All eight local baseline attempts classify as five natural
   endings, two technical failures and one truncation across six provenance
   cohorts; input files remain unchanged. Schema 3 self-play analysis is not yet
-  supported by this CLI. Headless simulation and exact replay remain pending
-  in issue #4; no headless throughput measurement has been performed.
+  supported by this CLI. A headless environment is implemented and unit-tested
+  (see below), but no real headless episode, throughput or replay has been
+  measured yet; exact replay remains pending in issue #4.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |
