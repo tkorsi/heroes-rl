@@ -105,7 +105,7 @@ class ContextualAuditorTests(unittest.TestCase):
         manifest = self.persist(histories())
         report = audit(*self.paths, manifest)
         self.assertTrue(report["consistent"] and report["manifest_bound"] and report["scoring_binding_verified"])
-        self.assertTrue(report["learner_eligible"])
+        self.assertTrue(report["record_contract_eligible"] and report["has_eligible_samples"] and report["learner_eligible"])
         red = report["players"]["red"]
         self.assertNotEqual(red["file_sha256"], red["canonical_sha256"])
         self.assertNotEqual(red["prefix_sha256"], red["canonical_sha256"])
@@ -118,7 +118,34 @@ class ContextualAuditorTests(unittest.TestCase):
         report = audit(*self.paths)
         self.assertTrue(report["consistent"])
         self.assertFalse(report["manifest_bound"] or report["scoring_binding_verified"] or report["learner_eligible"])
+        self.assertFalse(report["record_contract_eligible"] or report["has_eligible_samples"])
         self.assertEqual(report["players"]["red"]["transitions"]["effective_eligible"], 0)
+
+    def test_empty_natural_record_is_valid_but_has_no_learner_samples(self):
+        # A verified natural result can exist before a seat has a completed
+        # action. Record validity does not manufacture a learner transition.
+        for red_has_action in (False, True):
+            with self.subTest(red_has_action=red_has_action):
+                pair = (c.PlayerHistory("synthetic-audit", 0), c.PlayerHistory("synthetic-audit", 1))
+                if red_has_action:
+                    no_op(pair[0])
+                for history, outcome in zip(pair, ("win", "loss")):
+                    history.emit("terminal", outcome=outcome)
+                c.finalize_natural(pair, engine_outcomes=("win", "loss"), socket_outcomes=("win", "loss"),
+                                   process_exit_code=0, evidence_ref="synthetic-native-evidence")
+                manifest = self.persist(pair)
+                report = audit(*self.paths, manifest)
+                self.assertTrue(report["consistent"] and report["scoring_binding_verified"])
+                self.assertTrue(report["record_contract_eligible"])
+                self.assertEqual(report["has_eligible_samples"], red_has_action)
+                self.assertEqual(report["learner_eligible"], red_has_action)
+                for color, has_samples in (("red", red_has_action), ("blue", False)):
+                    player = report["players"][color]
+                    self.assertTrue(player["record_contract_eligible"])
+                    self.assertEqual(player["has_eligible_samples"], has_samples)
+                    self.assertEqual(player["learner_eligible"], has_samples)
+                    self.assertEqual(player["transitions"]["effective_eligible"], int(has_samples))
+                    self.assertEqual(player["transitions"]["effective_bootstrap_allowed"], 0)
 
     def test_cutoff_and_failure_never_gain_terminal_rewards(self):
         for boundary in ("cutoff", "failure"):
@@ -296,6 +323,21 @@ class ContextualAuditorTests(unittest.TestCase):
         self.assertEqual(before, [path.read_bytes() for path in (*self.paths, manifest_path)])
         with self.assertRaises(FileExistsError):
             main(args)
+
+    def test_cli_explicit_null_manifest_is_rejected_not_treated_as_omitted(self):
+        self.persist(histories())
+        manifest = self.root / "null-manifest.json"
+        manifest.write_text("null\n")
+        output = self.root / "null-manifest-audit.json"
+        before = [path.read_bytes() for path in (*self.paths, manifest)]
+        result = main(["--red", str(self.paths[0]), "--blue", str(self.paths[1]),
+                       "--manifest", str(manifest), "--output", str(output)])
+        self.assertEqual(result, 1)
+        report = json.loads(output.read_text())
+        for flag in ("consistent", "manifest_bound", "record_contract_eligible", "has_eligible_samples", "learner_eligible"):
+            self.assertFalse(report[flag])
+        self.assertIn("Provided manifest must be a JSON object", str(report["failures"]))
+        self.assertEqual(before, [path.read_bytes() for path in (*self.paths, manifest)])
 
 
 if __name__ == "__main__":

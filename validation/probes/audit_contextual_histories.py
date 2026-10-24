@@ -120,7 +120,8 @@ def _coverage(frames):
 def audit_player(path, player):
     path = Path(path).resolve()
     report = {"path": str(path), "player": player, "color": COLORS[player],
-              "failures": [], "learner_eligible": False}
+              "failures": [], "record_contract_eligible": False,
+              "has_eligible_samples": False, "learner_eligible": False}
     history = None
     frozen_encodings = []
     try:
@@ -263,6 +264,8 @@ def audit(red, blue, manifest=None):
             else:
                 manifest_data = manifest
                 manifest_description = {"source": "provided_object"}
+            if type(manifest_data) is not dict:
+                raise ValueError("Provided manifest must be a JSON object")
         except Exception as error:
             failures.append({"phase": "manifest_read", "error": str(error)})
     if all(history is not None and history.frames for history in histories):
@@ -284,14 +287,20 @@ def audit(red, blue, manifest=None):
     consistent = not failures
     manifest_bound = consistent and manifest_data is not None
     for report, history in zip(reports, histories):
-        eligible = manifest_bound and history.boundary in ("natural", "cutoff")
-        report["learner_eligible"] = eligible
-        if eligible:
+        record_eligible = manifest_bound and history.boundary in ("natural", "cutoff")
+        report["record_contract_eligible"] = record_eligible
+        if record_eligible:
             report["transitions"]["effective_eligible"] = report["transitions"]["contract_eligible"]
             report["transitions"]["effective_bootstrap_allowed"] = report["transitions"]["contract_bootstrap_allowed"]
+        report["has_eligible_samples"] = report.get("transitions", {}).get("effective_eligible", 0) > 0
+        report["learner_eligible"] = record_eligible and report["has_eligible_samples"]
+    record_eligible = all(report["record_contract_eligible"] for report in reports)
+    has_samples = any(report["has_eligible_samples"] for report in reports)
     return {"audit_schema": "heroes-contextual-history-audit-v1", "consistent": consistent,
             "manifest_bound": manifest_bound, "scoring_binding_verified": manifest_bound and manifest_data.get("status") == "completed",
-            "learner_eligible": all(report["learner_eligible"] for report in reports),
+            "record_contract_eligible": record_eligible, "has_eligible_samples": has_samples,
+            "learner_eligible": record_eligible and has_samples,
+            "eligibility_semantics": "Record eligibility requires both valid bound histories. Learner eligibility additionally requires at least one effective eligible sample; inspect each player's counts separately.",
             "scope": SCOPE, "source_visibility_proven": False, "training_performed": False,
             "manifest": manifest_description, "players": dict(zip(COLORS, reports)), "failures": failures}
 

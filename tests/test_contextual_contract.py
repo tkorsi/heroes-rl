@@ -498,6 +498,105 @@ class ContextualContractTests(unittest.TestCase):
             history.emit("issued", decision_seq=seq, command_index=1)
         history.emit("result", decision_seq=seq, result=Result("interrupted", True, (1, 1, 0), 1000, False))
 
+    def test_visible_event_requires_superseding_unacted_decision_before_cutoff(self):
+        history = PlayerHistory("game", 0)
+        complete_move(history)
+        held = decision(history)
+        prefix = history.frames
+        event = VisibleEvent("hero_lost", subject="own-hero", owner="self")
+        with self.assertRaises(ValueError):
+            history.emit("event", event=event)
+        self.assertEqual(history.frames, prefix)
+        history.emit("superseded", decision_seq=held.seq, reason="visible_change")
+        history.emit("event", event=event)
+        current = replace(observation(), heroes=())
+        history.emit("view", observation=current)
+        fresh = decision(history, current)
+        history.emit("cutoff", decision_seq=fresh.seq, reason="budget")
+        finalize_own_cutoff(history)
+        transition, = history.transitions()
+        self.assertTrue(transition.eligible and transition.bootstrap_allowed)
+        self.assertEqual(transition.successor_seq, fresh.seq)
+        self.assertEqual(history.frames[:len(prefix)], prefix)
+        self.assertEqual(fresh.offers.hero_refs, ())
+
+    def test_visible_event_during_consumed_action_is_preserved(self):
+        history = PlayerHistory("game", 0)
+        decision(history)
+        seq = submit(history, Action("end_turn"))
+        history.emit("issued", decision_seq=seq, command_index=0)
+        history.emit("event", event=VisibleEvent("turn_end"))
+        history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=True)
+        history.emit("result", decision_seq=seq, result=Result("turn_ended", True))
+        self.assertEqual(history.frames[4].event, VisibleEvent("turn_end"))
+
+    def test_no_route_known_requires_no_native_command(self):
+        for accepted in (False, True):
+            with self.subTest(accepted=accepted):
+                history = PlayerHistory("game", 0)
+                decision(history)
+                seq = submit(history, Action("move_to", "own-hero", 10, 10))
+                history.emit("issued", decision_seq=seq, command_index=0)
+                history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=accepted)
+                with self.assertRaises(ValueError):
+                    history.emit("result", decision_seq=seq,
+                                 result=Result("no_route_known", True, (1, 1, 0), 1000, False))
+                history.emit("result", decision_seq=seq,
+                             result=Result("interrupted", True, (1, 1, 0), 1000, False))
+
+    def test_no_route_known_preserves_position_and_movement_points(self):
+        history = PlayerHistory("game", 0)
+        decision(history)
+        seq = submit(history, Action("move_to", "own-hero", 10, 10))
+        for position, movement in (((2, 1, 0), 1000), ((1, 1, 0), 900)):
+            with self.subTest(position=position, movement=movement), self.assertRaises(ValueError):
+                history.emit("result", decision_seq=seq,
+                             result=Result("no_route_known", True, position, movement, False))
+        history.emit("result", decision_seq=seq,
+                     result=Result("no_route_known", True, (1, 1, 0), 1000, False))
+
+    def test_rejected_step_cannot_report_reached_but_preserves_partial_movement(self):
+        history = PlayerHistory("game", 0)
+        decision(history)
+        seq = submit(history, Action("move_to", "own-hero", 2, 1))
+        history.emit("issued", decision_seq=seq, command_index=0)
+        history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=True)
+        history.emit("issued", decision_seq=seq, command_index=1)
+        history.emit("acknowledged", decision_seq=seq, command_index=1, accepted=False)
+        with self.assertRaises(ValueError):
+            history.emit("result", decision_seq=seq,
+                         result=Result("reached", True, (2, 1, 0), 900, True))
+        history.emit("result", decision_seq=seq,
+                     result=Result("interrupted", True, (2, 1, 0), 900, True))
+
+    def test_accepted_native_end_turn_cannot_be_reported_as_rejected(self):
+        history = PlayerHistory("game", 0)
+        decision(history)
+        seq = submit(history, Action("end_turn"))
+        history.emit("issued", decision_seq=seq, command_index=0)
+        history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=True)
+        with self.assertRaises(ValueError):
+            history.emit("result", decision_seq=seq, result=Result("rejected", False))
+        history.emit("result", decision_seq=seq, result=Result("turn_ended", True))
+
+    def test_rejected_step_requires_interruption_rejection_or_hero_unavailable(self):
+        for final_status in ("interrupted", "rejected", "hero_unavailable"):
+            with self.subTest(final_status=final_status):
+                history = PlayerHistory("game", 0)
+                decision(history)
+                seq = submit(history, Action("move_to", "own-hero", 10, 10))
+                history.emit("issued", decision_seq=seq, command_index=0)
+                history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=True)
+                history.emit("issued", decision_seq=seq, command_index=1)
+                history.emit("acknowledged", decision_seq=seq, command_index=1, accepted=False)
+                for status in ("movement_limit", "interaction"):
+                    with self.subTest(status=status), self.assertRaises(ValueError):
+                        history.emit("result", decision_seq=seq,
+                                     result=Result(status, True, (2, 1, 0), 900, False))
+                result = (Result("hero_unavailable", True) if final_status == "hero_unavailable" else
+                          Result(final_status, final_status != "rejected", (2, 1, 0), 900, False))
+                history.emit("result", decision_seq=seq, result=result)
+
 
 if __name__ == "__main__":
     unittest.main()
