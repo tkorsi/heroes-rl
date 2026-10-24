@@ -516,7 +516,8 @@ class HeadlessSelfPlayEnv:
                                    f"No engine event for {timeout:.1f} s")
                 continue
             finally:
-                self.engine_wait += time.monotonic() - waited
+                if deadline_kind == "watchdog":  # startup and shutdown are timed on their own
+                    self.engine_wait += time.monotonic() - waited
             if kind == "exit":
                 exited = payload
                 continue

@@ -682,6 +682,14 @@ class HeadlessEnvTests(unittest.TestCase):
         self.assertGreaterEqual(tail["waited_seconds"], 0.2)
         self.assertLess(tail["waited_seconds"], 2.0)
 
+    def test_engine_wait_excludes_startup_and_shutdown(self):
+        end, _ = play(self.make(mode="natural", end_day=2, startup_delay=1.0), self.random_players())
+        timing = end.manifest["timing"]
+        self.assertEqual(end.status, "completed")
+        self.assertGreaterEqual(timing["startup_seconds"], 1.0)
+        # Steady-state rates divide by engine plus agent time, so the launch wait must stay out of it.
+        self.assertLess(timing["engine_wait_seconds"], 0.5)
+
     def test_response_cost_excludes_the_ledger_write_and_the_action_fold(self):
         env = self.make(mode="natural", end_day=2)
         write_ledger, act = env._write_ledger, player_history.PlayerHistory.act

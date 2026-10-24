@@ -426,10 +426,13 @@ python3 experiments/headless/run_headless.py --output runs/headless-smoke --epis
 `summary.json` records the host, build type, source identity, seed schedule,
 per-episode status and termination reason, and per-player counts: accepted,
 rejected and moving actions, end turns, town-only turns, dialogs, battles and
-days. It also records step-latency percentiles, startup and shutdown time,
-log volume, peak memory and end-to-end resolved actions per second, which
-include relaunch time. Steady-state rates are reported separately and never
-replace the end-to-end figure.
+days. Totals over both players call the battle count
+`battle_participations_red_plus_blue`, because a battle between the two
+players counts once for each. It also records step-latency percentiles,
+startup and shutdown time, log volume, peak memory and end-to-end resolved
+actions per second, which include relaunch time. Steady-state rates divide by
+the stepping time between both bridges being ready and both terminals; they
+are reported separately and never replace the end-to-end figure.
 
 ### Verified replay
 
@@ -549,8 +552,10 @@ again, and a smoke stage in which any of the four attempts fails or does not
 verify, tamper tests included, stops the run before the long stages. The build
 stage configures `vcmi/build` when it has no CMake cache; a `vcmi/` prepared
 from an older recipe is never changed, and the stage prints the one-time
-commands that keep it aside and prepare again. Build and test output is kept in
-`$OUT/build.log` and `$OUT/tests.log` and hashed into the evidence. Replay
+commands that keep it aside and prepare again. Each build and test run keeps
+its own timestamped log, and `$OUT/build.log` and `$OUT/tests.log` collect
+every run, so a resumed run adds to the evidence instead of replacing it; both
+are hashed into the evidence. Replay
 verification puts natural endings with a battle first and traces episodes until
 three verified ones have a trace; a video selection with fewer videos, or
 without a natural ending that shows a battle, is recorded as a note in the

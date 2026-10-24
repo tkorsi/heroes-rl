@@ -75,7 +75,8 @@ def summarize_configuration(workers: int, summaries: list[dict], window: float, 
         "natural_games_per_second": round(totals.get("natural_completions", 0) / measured, 6) if measured else None,
         "steady_state_decision_cycles_per_second_per_worker":
             round(resolved / sum(stepping), 3) if sum(stepping) else None,
-        "breakdown": {key: totals.get(key) for key in ("moves", "end_turns", "town_only_turns", "dialogs", "battles",
+        "breakdown": {key: totals.get(key) for key in ("moves", "end_turns", "town_only_turns", "dialogs",
+                                                       "battle_participations_red_plus_blue",
                                                        "decisions", "turns")},
         "coverage_totals": totals.get("coverage_totals", {}),
         "per_finished_episode": {

@@ -102,6 +102,22 @@ sys.exit(1 if problems else 0)
 EOF
 }
 
+# Each run of a command keeps its own timestamped log, and the stage log
+# accumulates them, so a resumed run never replaces an earlier run's evidence.
+run_logged() {
+  local name="$1" base status=0 n=1
+  shift
+  base="$OUT/$name-$(date -u +%Y%m%dT%H%M%SZ)"
+  LAST_LOG="$base.log"
+  while [ -e "$LAST_LOG" ]; do  # never overwrite a run logged in the same second
+    n=$((n + 1))
+    LAST_LOG="$base-$n.log"
+  done
+  "$@" > "$LAST_LOG" 2>&1 || status=$?
+  { echo "== $(basename "$LAST_LOG") (exit $status)"; cat "$LAST_LOG"; } >> "$OUT/$name.log"
+  return "$status"
+}
+
 # benchmark.py marks its report complete only after the last configuration.
 benchmark_complete() {
   "$PYTHON" -c 'import json, sys; sys.exit(json.load(open(sys.argv[1])).get("complete") is not True)' \
@@ -132,17 +148,17 @@ for stage in "${STAGES[@]}"; do
           -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON > "$OUT/configure.log" 2>&1 \
           || { tail -30 "$OUT/configure.log" >&2; echo "Configure failed; full log: $OUT/configure.log" >&2; exit 1; }
       fi
-      cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay > "$OUT/build.log" 2>&1 \
-        || { grep -m 20 -E 'error:|FAILED:' "$OUT/build.log" >&2 || true; tail -30 "$OUT/build.log" >&2
-             echo "Build failed; full log: $OUT/build.log" >&2; exit 1; }
-      tail -3 "$OUT/build.log"
+      run_logged build cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay \
+        || { grep -m 20 -E 'error:|FAILED:' "$LAST_LOG" >&2 || true; tail -30 "$LAST_LOG" >&2
+             echo "Build failed; full log: $LAST_LOG" >&2; exit 1; }
+      tail -3 "$LAST_LOG"
       ;;
     tests)
       log "Unit and contract tests"
-      "$PYTHON" -m unittest discover -s tests > "$OUT/tests.log" 2>&1 \
-        || { grep -E '^(ERROR|FAIL):' "$OUT/tests.log" >&2 || true; tail -30 "$OUT/tests.log" >&2
-             echo "Tests failed; full log: $OUT/tests.log" >&2; exit 1; }
-      tail -3 "$OUT/tests.log"
+      run_logged tests "$PYTHON" -m unittest discover -s tests \
+        || { grep -E '^(ERROR|FAIL):' "$LAST_LOG" >&2 || true; tail -30 "$LAST_LOG" >&2
+             echo "Tests failed; full log: $LAST_LOG" >&2; exit 1; }
+      tail -3 "$LAST_LOG"
       ;;
     smoke)
       [ -f "$OUT/smoke/ok" ] && { log "smoke: done"; continue; }

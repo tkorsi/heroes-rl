@@ -164,6 +164,8 @@ def aggregate(rows: list[dict], wall_seconds: float) -> dict:
     natural = sum(1 for row in rows if row["status"] == "completed")
     totals = {key: sum(row[c][key] for row in rows for c in ("red", "blue"))
               for key in ("decisions", "turns", "battles", "end_turns", "moves", "town_only_turns", "dialogs")}
+    # Summed over both players, a battle between them counts once for each.
+    totals["battle_participations_red_plus_blue"] = totals.pop("battles")
     coverage = {key: sum(row[c]["coverage"][key] for row in rows for c in ("red", "blue"))
                 for key in rows[0]["red"]["coverage"]} if rows else {}
     return {"episodes": len(rows), "status_counts": statuses, "natural_completions": natural,

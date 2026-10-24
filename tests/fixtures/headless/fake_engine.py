@@ -338,6 +338,7 @@ def play_turn(world, bridges, player):
 
 
 def main():
+    time.sleep(SCENARIO.get("startup_delay", 0))  # map loading before the bridges connect
     world = World()
     bridges = {p: Bridge(p, int(os.environ[f"EXPLORER_RL_PORT_{p}"])) for p in (0, 1)}
     for bridge in bridges.values():

@@ -8,10 +8,11 @@ side's bridge ledger; the adapter fields come from each episode manifest.
 
 Categories overlap in wall time: the two players' bridges and the engine's
 threads run concurrently, and ``engine_wait`` already contains everything the
-engine did while the adapter waited. They are reported as totals and per
-decision cycle, not as shares that add up to 100%. The engine's own info log
-is not timed natively; compare series with ``--ledger none`` and ``--replay
-none`` for the evidence-writing cost.
+engine did while the adapter waited between both bridges being ready and both
+terminals (startup and shutdown are timed on their own). They are reported as
+totals and per decision cycle, not as shares that add up to 100%. The engine's
+own info log is not timed natively; compare series with ``--ledger none`` and
+``--replay none`` for the evidence-writing cost.
 """
 from __future__ import annotations
 
@@ -74,7 +75,8 @@ def episode_costs(episode: Path) -> dict:
     tail = ((manifest.get("replay") or {}).get("tail") or {}).get("waited_seconds", 0.0)
     return {"episode": manifest["episode"], "status": manifest["status"],
             "decision_cycles": sum(p["actions_accepted"] + p["actions_rejected"] for p in players),
-            "battles": sum(p["battles_started"] for p in players), "wall_seconds": timing["wall_seconds"],
+            "battle_participations_red_plus_blue": sum(p["battles_started"] for p in players),
+            "wall_seconds": timing["wall_seconds"],
             "startup_seconds": timing["startup_seconds"] or 0.0, "shutdown_seconds": timing["shutdown_seconds"] or 0.0,
             "replay_tail_seconds": tail if timing["shutdown_seconds"] is None else 0.0,
             "engine_wait_seconds": timing["engine_wait_seconds"], "agent_seconds": timing["agent_seconds"],
@@ -118,7 +120,8 @@ def breakdown(run: Path) -> dict:
     }
     return {"schema_version": 1, "kind": "headless-cost-breakdown", "run": str(run),
             "workload": summary.get("workload"), "host": summary.get("host"), "episodes": len(episodes),
-            "decision_cycles": cycles, "battles": sum(e["battles"] for e in episodes), "totals": totals,
+            "decision_cycles": cycles, "battle_participations_red_plus_blue": sum(e["battle_participations_red_plus_blue"] for e in episodes),
+            "totals": totals,
             "native_totals": native, "adapter_totals": {k: round(v, 6) for k, v in adapter.items()},
             "categories_seconds": {k: round(v, 6) for k, v in categories.items()},
             "categories_microseconds_per_decision_cycle": {k: per_cycle(v) for k, v in categories.items()},

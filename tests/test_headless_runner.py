@@ -128,6 +128,10 @@ class RunnerTests(unittest.TestCase):
             self.assertTrue(row["red"]["history_v1"]["valid"] and row["blue"]["history_v1"]["valid"])
         aggregate = summary["aggregate"]
         self.assertEqual(aggregate["resolved_actions"], aggregate["accepted_actions"] + aggregate["rejected_attempts"])
+        # Summed over both players, the battle count is named for what it counts.
+        self.assertNotIn("battles", aggregate)
+        self.assertEqual(aggregate["battle_participations_red_plus_blue"],
+                         sum(row[color]["battles"] for row in summary["episodes"] for color in ("red", "blue")))
 
     def test_benchmark_aligns_windows_and_reports_end_to_end_rates(self):
         output = self.base / "bench"
@@ -145,6 +149,7 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(entry["decision_cycles"], entry["accepted_actions"] + entry["rejected_attempts"])
             self.assertLess(entry["measured_start_spread_seconds"], 1.0)
             self.assertIsNotNone(entry["scaling_efficiency"])
+            self.assertIn("battle_participations_red_plus_blue", entry["breakdown"])
             self.assertFalse(configuration["stretch_target_1000_per_second_met"])
         two = report["configurations"][1]["repetitions"][0]
         indices = sorted(row for worker in (output / "workers-2/rep-0").glob("worker-[0-9]")
@@ -168,6 +173,8 @@ class RunnerTests(unittest.TestCase):
         breakdown = json.loads(costs.stdout)
         self.assertEqual(breakdown["episodes"], 3)
         self.assertGreater(breakdown["adapter_totals"]["ingest"], 0)
+        self.assertNotIn("battles", breakdown)
+        self.assertIn("battle_participations_red_plus_blue", breakdown)
 
     def test_interrupted_benchmark_stays_incomplete_in_the_evidence(self):
         output = self.base / "bench"
@@ -288,6 +295,25 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("Output: runs/validation-2000-01-01", resumed.stdout)
         self.assertIn("smoke: done", resumed.stdout)
         self.assertFalse((tree / pinned).exists())
+
+    def test_validation_keeps_every_test_run_in_the_evidence(self):
+        tree, out = self.validation_tree(), self.base / "validation"
+        (tree / "tests").mkdir()
+        (tree / "tests/test_stub.py").write_text(
+            "import os, unittest\n\nclass Stub(unittest.TestCase):\n"
+            "    def test_stub(self):\n        self.assertNotIn('STUB_TESTS_FAIL', os.environ)\n")
+        failed = self.validate(tree, "tests", OUT=str(out), STUB_TESTS_FAIL="1")
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertIn("Tests failed; full log:", failed.stderr)
+        passed = self.validate(tree, "tests", "evidence", OUT=str(out))
+        self.assertEqual(passed.returncode, 0, passed.stdout + passed.stderr)
+        # A resumed run adds its log instead of replacing the failed run's.
+        self.assertEqual(len(list(out.glob("tests-*.log"))), 2)
+        combined = (out / "tests.log").read_text()
+        self.assertEqual([line.rsplit(" ", 2)[-2:] for line in combined.splitlines() if line.startswith("== ")],
+                         [["(exit", "1)"], ["(exit", "0)"]])
+        record = json.loads((out / "evidence.json").read_text())["tests_log"]
+        self.assertEqual((record["tests_run"], record["result"]), (1, "OK"))
 
 
 if __name__ == "__main__":
