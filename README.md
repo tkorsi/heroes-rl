@@ -13,7 +13,9 @@ exist; they are not connected to VCMI and have not been trained. Draft headless
 PR #6 has separately passed bounded native-game, boundary and replay validation
 on macOS at `4fe0d7c`; it remains unmerged. The next interface design is structured
 map, hero-window and town-window interaction, specified below but not implemented.
-Other platforms are not yet validated.
+Its agreed movement action selects a destination coordinate for engine routing;
+the existing adjacent-step baseline stays separate. Other platforms are not yet
+validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
@@ -74,6 +76,12 @@ improving play. Terminal-only rewards may produce no learning for a long time.
   in scope. Window-only information and operations require an explicit open
   action; closing a window stops refreshes of its private panel contents.
   Additional interfaces, including obelisks and special dialogs, are deferred.
+- In the new contextual experiment, the policy chooses a destination `(x, y)`
+  and the engine computes and executes a route within the hero's available
+  movement points. Do not supply engine path costs, a reachable-this-turn target
+  mask or a movement-range overlay. Learn movement relationships from permitted
+  observations and actual results. No auxiliary path-cost target or handcrafted
+  movement reward is authorized. Retain the adjacent-step baseline separately.
 - Learned recurrent state is separate for each player and resets each episode.
   Discuss any engineered last-seen input/cache before adding it to the learner;
   existing diagnostic caches are not authorization to make them model inputs.
@@ -397,10 +405,13 @@ change is agreed or implemented by this document.
 
 ### Contextual map, hero and town interface — agreement and proposal
 
-**Status:** the constraints in this section are agreed requirements. The concrete
-v2 schemas, initial operations and implementation stages are proposals, not
-implemented behavior. This revision changes documentation only and does not
-authorize training. Keep `movement-v1` as a separately identified comparison.
+**Status:** the constraints in this section, including destination selection and
+engine routing, are agreed requirements. The concrete v2 schemas, route execution
+details, initial internal-window operations and implementation stages are
+proposals, not implemented behavior. This revision changes documentation only
+and does not authorize training. Keep the adjacent-step `movement-v1` baseline
+as a separately identified comparison. All contexts are structured headless
+interfaces; opening one does not create a rendered window or use image recognition.
 
 The intended loop, in plain English:
 
@@ -428,8 +439,8 @@ The intended loop, in plain English:
 
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
-| Live action interface | One selected owned hero, eight adjacent movement attempts and end-turn; automatic battles. | Explicit hero targeting and map/hero/town context navigation. |
-| History and fog | PR #6 records per-player visible events and current map/own-state views; local replay and transient-sighting checks pass. | Context/field visibility audit, window observations and complete terminal/supersession history. |
+| Live action interface | One selected owned hero, eight adjacent movement attempts and end-turn; automatic battles. | Explicit hero targeting, destination-coordinate engine routing and map/hero/town context navigation. |
+| History and fog | PR #6 records per-player visible events and current map/own-state views; local replay and transient-sighting checks pass. The learner tile schema has terrain but no road field. | Context/field visibility audit, permitted road encoding, window observations and complete terminal/supersession history. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement adapter only. Opaque candidate keys are not features. | Typed entity/control references and parameter domains; history/trajectory v1 still accepts only indices 0–8. |
 | Hero/town operations | No structured open/close, construction, recruitment, army editing or quantity-choice transport. | Implement and validate each declared operation against VCMI. Calling a generic scorer with a new type does not implement it. |
@@ -448,7 +459,9 @@ Introduce a new environment identifier, for example `adventure-windows-v1`, with
 `heroes-player-history-v2` and `heroes-context-actions-v2`. These are proposed
 names. Store versions, supported operations, map/engine hashes and checkpoint
 compatibility in manifests. Never pool these results with `movement-v1` without
-identifying the interface and observation differences.
+identifying the interface and observation differences. Record the destination
+execution rules, pathfinder configuration and tie-breaking behavior as part of
+the new interface version; the existing nine-action adapter is not compatible.
 
 Each decision carries `{context, revision, observation, controls, offers}`. Context is
 `map`, `hero(subject)` or `town(subject)`; subjects use player-local routing
@@ -465,7 +478,7 @@ Separate **map/global fields** from **active-window fields**:
 
 | Context | Proposed current observation | Freshness/access rule |
 | --- | --- | --- |
-| Map | Public day, the player's own resources, permitted terrain/objects and owned hero/town map information established by the interface audit. | Preserve normal player/team fog and legitimate map-visible changes. No blanket inclusion of all owned-object attributes. |
+| Map | Public day, the player's own resources, hero position and remaining movement points, known terrain/roads, permitted objects and other owned hero/town map fields established by the interface audit. | Preserve normal player/team fog and legitimate map-visible changes. No route costs, range overlays, reachability labels or blanket inclusion of all owned-object attributes. |
 | Hero | The explicitly opened, accessible hero's supported statistics, army slots and other audited hero-panel fields; supported controls. | Only after successful `open_hero`; do not expose another hero's panel. Unsupported fields are declared as coverage limits, not invented zeros. |
 | Town | The explicitly opened, accessible town's supported overview, buildings and armies; controls visible in that panel. | Recruitment stock, construction options and other deeper-panel details require the appropriate explicit internal-panel navigation if the normal interface does. |
 
@@ -501,7 +514,7 @@ or labelled as beneficial. The agent selects the operation, target and quantity.
 
 | Context | Proposed interaction | Typed parameters and mechanics |
 | --- | --- | --- |
-| Map | `move_step` | Owned `hero_ref`, `direction` in the eight adjacent directions. One adjacent destination attempt; no route planning or repeated movement. |
+| Map | `move_to` | Owned `hero_ref`, integer destination `(x, y)` on the current map level. The policy chooses the target; the engine plans and executes the permitted current-turn route prefix under the proposed rules below. |
 | Map | `end_turn` | No parameters; remains possible without a hero while the player is still in the game. |
 | Map | `open_hero`, `open_town` | An accessible owned `subject_ref` from permitted map/list observations; returns a structured window observation. |
 | Hero | `close` | Return to map; no world command or automatic end-turn. |
@@ -523,12 +536,105 @@ a hero to the town. Tavern hiring, shops, spell books, artifact operations, inte
 exchange, obelisks and other special dialogs stay deferred. The authored baseline
 also forbids tavern construction; do not quietly change the map to enable hiring.
 
-Current native movement already matches the one-step proposal: ExplorerRL sends
-one adjacent destination to `moveHero`; the callback wraps that single destination
-as a one-element path. The engine can reject it or resolve a visit/battle, and
-acknowledgement does not guarantee displacement. No engine-selected multi-tile
-route is requested. Any future destination/path command is a separate versioned
-capability with explicit route semantics, not a silent strategic macro.
+The implemented movement baseline still sends one adjacent destination to
+`moveHero`, wrapped as a one-element path. It does not implement destination
+routing. The new experiment replaces the proposed `move_step` action with
+`move_to`; it does not change the old baseline or its evidence.
+
+#### Destination movement: agreed choice and proposed execution
+
+**Agreed:** the policy selects `(x, y)`; engine routing executes movement within
+the hero's available points. The learner receives legitimate hero position,
+remaining movement points and known terrain/roads, then the actual resulting
+position and points. It receives no planned route, predicted path cost, arrival
+turn, reachable-target mask, range overlay or auxiliary cost-learning target.
+The difference between observed before/after movement points is experience,
+not an engine-provided prediction. Ordinary movement transitions receive 0;
+verified natural win/loss uses +1/-1, while technical failures remain unscored.
+Routing is an approved mechanical operation; choosing or replacing the
+policy's strategic destination remains outside the adapter's authority.
+
+**Proposed first execution contract — not yet agreed or implemented:**
+
+- Use the hero's visitable map tile as `(x, y)`, on the authored single level.
+  The adapter handles native coordinate conversion. Initially support ordinary
+  land/road movement only, with boats, teleportation, flight and spell use
+  explicitly outside the route configuration. These are public capability
+  restrictions, not tests of undiscovered objects.
+- For each accessible owned hero, offer every in-bounds coordinate, including
+  unknown terrain, obstacles, the current position and targets beyond this
+  turn's range. Keep that coordinate support even at zero movement points.
+  Do not precompute, filter, order or annotate targets by route existence,
+  cost, distance, usefulness or current-turn reachability. Bounds and current
+  level are public; coordinate inputs are not handcrafted target priorities.
+- Compute a route only after selection, using audited player/team knowledge
+  and native mechanical routing with fixed configuration. It may extend beyond
+  this turn; execute only its legal current-turn prefix. An all-map or omniscient
+  planner is forbidden even if its route is never returned: the hero's chosen
+  detour or a failure could disclose hidden state. Do not expose planner timings,
+  internal search counters, future nodes or rejected hidden-object details.
+- The first proposal does not speculate through unexplored terrain. The native
+  pathfinder blocks unexplored tiles; such destinations remain selectable but
+  return `no_route_known` if no route exists in the permitted knowledge and
+  supported travel modes. This does not assert that the physical destination is
+  unreachable. Do not substitute a frontier, nearest reachable tile or another
+  target. Movement to known frontier coordinates can reveal more terrain through
+  ordinary fog rules. Speculative routing through unknown terrain would need
+  a separate decision and validation.
+- Once planned, follow that route without strategic detours or automatic
+  replanning. Validate each native step and capture every permitted intermediate
+  event. New observations alone do not trigger a handcrafted threat/utility
+  rule; normal engine interruptions and the encounter stop rule below apply.
+  A policy destination is one decision, while its native steps and actual
+  elapsed game time are logged separately. No intermediate learned decisions
+  are invented. Bound route execution and planning; a watchdog or inconsistent
+  engine response is a technical failure, not a gameplay rejection.
+
+History must link the destination decision, each issued/consumed native command,
+intermediate observations and final result without duplicating the policy action.
+There is one behavior probability for the policy's hero/coordinate selection,
+not a policy probability for each engine-chosen step. Keep step count and elapsed
+game time as trajectory metadata so the later PPO design explicitly chooses its
+discount convention for this interface rather than inheriting adjacent-step
+timing. This adds neither intermediate rewards nor path-cost supervision.
+
+The adapter returns a structured result tied to the original decision/hero/target,
+with a stop status, actual position and remaining points when observable, and
+`destination_reached` determined from the actual visitable position. It does not
+return a remaining distance, predicted cost or route feasibility for other
+targets. Proposed stopping semantics are:
+
+| Situation | Proposed execution and next boundary |
+| --- | --- |
+| Target equals the current tile | Return `reached` without movement; consume one policy decision and no movement points. |
+| No movement points remain | For any different target, return `movement_limit` immediately without planning. Do not end the turn. |
+| No route in permitted knowledge/supported modes | Return `no_route_known`, with no movement or automatic alternate target. This is an ordinary zero-reward result, not an episode failure or a claim about hidden terrain. |
+| Target is farther than this turn permits | Follow the current-turn prefix and stop before the next unaffordable step. Return `movement_limit` and the actual endpoint/points, even if points remain. Do not cross a turn boundary or automatically end the turn. |
+| Native interruption, blocked/rejected next step or route invalidation | Keep completed movement, stop the remaining route and return `interrupted` with only a legitimately observable reason. Do not refund completed steps, replan or retry automatically. |
+| Visit, pickup, capture or automatic battle encountered en route | Resolve the supported native effect, then stop the route at that first interaction even if points remain. Record every permitted event and return `interaction` plus actual position/points; an interaction can occur without occupying the target tile. Do not automatically open a hero/town window or expose its contents. |
+| Encounter requires an unsupported dialog/choice | Apply the bounded `unsupported_interaction` stop rule below; do not answer it or continue the route. If even a dismiss/acknowledgement is required and unsupported, it follows the same rule. |
+| Hero becomes unavailable, while its player remains alive | Stop without selecting another hero. Report only the permitted own-hero event, then offer that player's next valid map decision. Losing a hero is not by itself terminal defeat. |
+| Verified natural episode ending | Stop all pending movement; preserve final visible events and apply the verified terminal contract. No synthetic next decision. |
+| Engine crash, timeout or incomplete event capture | Fail unscored with no bootstrap or training targets; a partial route does not turn a technical failure into an ordinary cutoff. |
+
+These conditions are evaluated at native step/event boundaries. Technical failure
+or incomplete capture prevents scoring even if a natural ending is subsequently
+reported; otherwise verified terminal finalization takes precedence. An encountered
+interaction or interruption stops further steps, and position/points determine normal
+completion or the movement limit. At entry, an already-reached target takes
+precedence over zero points. An observed interaction at the destination can
+report `interaction` with `destination_reached=true`; it need not be relabelled.
+If the target was not reached, discard the unexecuted route. The requested target
+remains historical input only; resuming later requires a fresh policy action,
+including after an explicit end-turn. No persistent auto-travel queue is implied.
+
+The engine can use costs internally to route and enforce movement limits. It
+must not supply those costs as policy/value features or supervision. Native
+pathfinding needs a source and real-game fog audit, including guard relations,
+object access, caches and unsupported travel modes. Reusing the graphical
+movement controller wholesale is unsuitable: it includes presentation work and
+automatic replies. Implement a structured headless adapter with the declared
+stop rules, shared with replay and coordinated with Claude's engine workstream.
 
 The smallest quantity implementation can enumerate the finite legal counts in
 the bounded scenario. A later conditional distribution may select an offer and
@@ -540,10 +646,11 @@ embeddings would violate the existing information contract.
 
 **Availability is not utility or a guarantee of success.** Filter offers using
 only current context, declared adapter capabilities and player-visible facts:
-ownership/access, displayed costs/stock/prerequisites, visible army slots and
-known movement restrictions. Unknown neighboring tiles remain attemptable under
-the same public rules; do not consult hidden obstacles, enemies or undiscovered
-objects to prune the mask. The server still checks actual reachability, movement,
+ownership/access, displayed costs/stock/prerequisites and visible army slots.
+Destination coordinates use the unfiltered public domain above; do not consult
+pathfinding, hidden obstacles, enemies or undiscovered objects to prune it.
+The old baseline retains its separate adjacent-attempt mask. The server still
+checks actual reachability, movement,
 collisions, access, costs, prerequisites, stock and army invariants atomically.
 A rejection reports only information the player is entitled to receive. For two
 worlds with identical permitted history/context but different hidden state, the
@@ -568,8 +675,8 @@ occurs. Automatic battle resolution remains the agreed external subsystem; any
 unsupported surrounding choice still follows the stop rule. The old baseline's
 uniform supported-dialog policy remains available only in its labelled cohort.
 
-Count every policy choice, including open/close/back and rejected attempts, toward
-a separate total-decision budget. The current headless action cap counts only
+Count every policy choice, including destination selections, open/close/back and
+rejected attempts, toward a separate total-decision budget. The current headless action cap counts only
 adventure commands and is insufficient for window loops. Navigation can consume
 zero game time but receives no reward/penalty. A deliberate budget cutoff is
 bootstrap-eligible only at that player's verified next decision, with matching
@@ -580,27 +687,46 @@ failure, not a substitute for such a cutoff.
 
 #### Proposed implementation and real-game validation stages
 
-1. **Freeze versions and audit visibility.** Keep the movement baseline intact.
-   Agree the field/context matrix, minimal operations and town-panel scope;
-   document observations, costs and mechanical effects without advice on their
-   usefulness. Use the reviewed boundary fixes. Codex owns learner contracts;
-   coordinate engine transport and capture changes with Claude's workstream.
+1. **Freeze versions and audit visibility.** Keep the adjacent-step baseline
+   intact. Destination selection/engine routing is agreed; resolve the proposed
+   unknown-target, travel-mode, interruption and encounter semantics before
+   implementation. Agree the field/context matrix, internal operations and
+   town-panel scope. Document permitted observations and mechanical effects;
+   engine path cost remains excluded even if a normal GUI would display it.
+   Use the reviewed boundary fixes. Codex owns learner contracts; coordinate
+   engine transport, pathfinding and capture changes with Claude's workstream.
 2. **Implement history/trajectory v2 and navigation.** Add explicit context,
    consumed-action and terminal/supersession semantics, then map → hero → map →
-   town → map using structured observations. Update the encoder and candidate
-   target bindings, keeping separate player recurrent states. No PPO yet.
-3. **Validate navigation on real VCMI.** Check access denial, stale-context
-   commands, closing/reopening, closed-panel non-refresh and map-visible
+   town → map using structured observations. Add the audited visible-road field
+   to the schema and encoder, and update candidate target bindings, keeping
+   separate player recurrent states. No PPO yet.
+3. **Implement destination routing without previews.** Add typed hero/coordinate
+   support, the player-knowledge route adapter, bounded current-turn execution
+   and structured stop results. Capture every intermediate visible change and
+   distinguish the policy decision from its native command sequence. Record
+   routing configuration and replay both selected targets and actual commands.
+   Audit all planner inputs and remove cost/range/arrival features. No PPO yet.
+4. **Validate movement and navigation on real VCMI.** Check access denial,
+   stale-context commands, closing/reopening, closed-panel non-refresh and map-visible
    exceptions. Verify intervening sightings and final views, isolated players,
    zero-time loops, cutoff/crash handling and replay of recorded context actions
-   alongside native game commands. Synthetic tests alone do not pass this gate.
-4. **Add internal operations incrementally.** One hero army edit, then audited
+   alongside native game commands. Exercise destination equality, zero points,
+   known obstacles/disconnected targets, unknown targets, targets beyond the
+   current turn, terrain/road costs and insufficient points for the next step.
+   Check en-route encounters, native interruption, hero loss, unsupported dialogs
+   and no automatic next-turn continuation. Change hidden terrain/objects while
+   holding player history fixed: candidate domains, planner decisions and
+   pre-discovery outputs must not change. Verify that no cost/reachability
+   features or labels enter policy/value inputs or targets. Validate native
+   coordinate conversion and route replay, including all intervening sightings.
+   Synthetic tests alone do not pass this gate.
+5. **Add internal operations incrementally.** One hero army edit, then audited
    town construction/recruitment and quantity selection. Verify exact costs,
    stock, slot/count changes, rejections and no hidden-mask leakage. Each step
    needs real game evidence, an explicit coverage list and replay verification.
    Exercise unsupported-dialog termination without answering it. Retain failed
    attempts rather than selecting only successful recordings.
-5. **Collect bounded random-interface validation, then review integration.**
+6. **Collect bounded random-interface validation, then review integration.**
    Use predetermined seeds, both colors and matching interface versions. Recheck
    reachable natural outcomes, action consumption, complete histories, rewards
    and player-local bootstrap boundaries. Report natural endings, deliberate
@@ -804,9 +930,11 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The next proposed work is the versioned map/hero/town interface above: first
-agree the field/context audit and town-panel scope, then implement navigation
-and complete histories before adding internal operations. No live contextual
+The next proposed work is the versioned map/hero/town interface above. Destination
+selection with engine routing is agreed; its detailed execution rules remain
+proposed. First resolve those rules, the field/context audit and town-panel scope,
+then implement navigation, complete histories and destination routing before
+adding internal operations. No live contextual
 adapter, collector or PPO loop exists. The bounded headless checks establish
 reachable natural outcomes and validate the reviewed boundary fixes; they do
 not pass the expanded interface's integration gates or authorize training.
