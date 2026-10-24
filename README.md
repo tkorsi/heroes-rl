@@ -5,30 +5,20 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** two independent uniform-random agents play against each
-other with separate fog, automatic battles, and four synchronized recordings.
-The earlier fixed Easy-opponent baseline is retained. A separate, randomly
-initialized recurrent actor-critic prototype and strict learner contracts now
-exist. A new contextual PyTorch adapter, collector, recurrent PPO and checkpoint
-implementation has passed synthetic and bounded native checks; no game-trained
-policy exists. Draft headless
-PR #6 has separately passed bounded native-game, boundary and replay validation
-on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
-map, hero-window and town-window interaction. Its native adapter, strict
-history/trajectory v2 contract and independent auditor are implemented and have
-bounded local real-game evidence. A separate v3 town extension now adds explicit
-construction and exact-count recruitment, with bounded native validation of
-prices, daily limits, stock, armies, rejection and episode boundaries.
-Fresh contextual capture now has independent native replay and terminal-barrier
-verification with bounded local evidence. Natural-outcome reachability and
-ordinary-game sparsity now have separate controls and measurement. Remaining
-experience-correctness checks and explicit launch approval govern readiness;
-a small random cohort need not play competently or reach a natural outcome.
-Training remains disabled. The neural
-implementation and its separate validation scope
-are described under **Contextual neural integration and PPO** below.
-Its agreed movement action selects a destination coordinate for engine routing;
-the existing adjacent-step baseline stays separate. Other platforms are not yet
+**Current milestone:** the contextual environment and randomly initialized
+recurrent actor–critic have passed bounded local validation. The opt-in v4
+interface adds explicit town-garrison-to-visiting-hero troop transfer to map,
+hero and town navigation, construction and exact-count recruitment. Policy and
+value share a recurrent network but use only their player's ordered visible
+history, with separate memory for each player. No game-trained policy exists.
+
+Independent native replay, episode boundaries and natural-outcome controls pass
+within the recorded scope. A predeclared sixteen-game contextual cohort produced
+sixteen valid cutoffs and no natural endings; behavior audits separate that
+sparse feedback from engine correctness. A concrete first-update plan is
+prepared, **not authorized or executed**. Rules, fog and terminal-only rewards
+are unchanged. The earlier uniform-random/video and fixed Easy-opponent
+baselines remain available. Draft PRs remain unmerged; other platforms are not
 validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
@@ -482,11 +472,11 @@ The intended loop, in plain English:
 
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
-| Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles, exercised locally. | Wider native interruption/dialog coverage; additional operations remain deferred. |
-| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons, boundary audits and fresh contextual replay pass within their recorded scope. | Wider event coverage; historical recordings without native capture remain unsupported by contextual replay. |
+| Live action interface | Adjacent-step baseline plus opt-in destination routing, map/hero/town navigation, construction, recruitment and explicit town-to-visitor troop transfer; automatic battles. | Wider native interruption/dialog coverage; additional operations remain deferred. |
+| History and fog | Versioned v2/v3/v4 player-local histories record permitted current windows, ordered notices, command receipts and paired finalization. Real hidden-world comparisons, boundary audits and fresh contextual replay pass within their recorded scope. | Wider event coverage; historical recordings without native capture remain unsupported by contextual replay. |
 | Memory and model | Randomly initialized contextual shared GRU actor–critic with separate player sessions, chronological visible history and bounded live inference checks; legacy prototype retained. | No learned game behavior; broader field/event coverage remains. |
-| Candidate scoring | Contextual typed conditional policy covers navigation, construction, full rectangular coordinates and exact recruitment counts; routing handles are not features. | Semantically indistinguishable dwelling controls remain equally scored; additional action interfaces are deferred. |
-| Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
+| Candidate scoring | Contextual typed conditional policy covers navigation, construction, coordinates, recruitment counts and transfer source/destination/count; routing handles are not features. | Semantically indistinguishable dwelling controls remain equally scored; additional action interfaces are deferred. |
+| Hero/town operations | Explicit owned hero/town windows, native economy panels and v4 town-to-visiting-hero transfer with bounded local evidence. | Reverse transfer, swaps, broader army editing, hero hiring, special panels and live garrisoned-hero edge cases remain deferred. |
 | Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; player-experience correctness and explicit launch approval govern readiness. |
 
 The action-consumption and stream-finalization findings are **resolved in the
@@ -1647,17 +1637,118 @@ launch budget. Without terminal events, zero-reward cutoffs can supply only
 bootstrap-based targets; they provide no observed victory signal and cannot
 establish strategic improvement.
 
-The next authorized implementation is explicit town-garrison-to-visiting-hero
-transfer: selected source/destination slots and exact count, native ownership,
-capacity, split/merge and minimum-army rules, no automatic loading. Hero hiring,
-tavern/map/rule/reward changes remain excluded. Add versioned current town
-views, history and policy support, then validate real effects and replay before
-preparing a small first training proposal. That proposal must bind sources,
-map and random checkpoints, fixed opponents, both-color held-out evaluation,
-local compute/time/episode/update caps, resumable checkpoints and stop rules.
-Preparation does not authorize execution; ask for launch approval only when
-that concrete proposal and its correctness evidence are ready. No gameplay
-optimizer update, training campaign, paid compute or merge has been performed.
+The user subsequently authorized explicit town-garrison-to-visiting-hero
+transfer and preparation of a small first training proposal, while excluding
+hero hiring, tavern/map/rule/reward changes and automatic loading. That work is
+complete within the scope below. Preparation does not authorize execution;
+launch requires separate approval of the concrete plan. No gameplay optimizer
+update, training campaign, paid compute or GitHub PR merge has been performed.
+
+#### Explicit town-to-visitor troop transfer and first-run preparation
+
+The current implementation on `codex/troop-transfer` adds the missing way to
+move recruited troops from a town into its visiting hero's army. It does not
+assign a strategic priority to recruitment, transfer, movement or capture.
+The policy chooses `transfer_stack`, the source slot, destination slot and exact
+positive count. Native rules determine validity; no automatic loading or count
+clamping occurs. Forward movement into an empty slot, partial splits and merging
+with the same creature are supported. Unlike-creature swaps, reverse transfers,
+general army rearrangement and hero hiring remain outside this interface.
+
+This is the opt-in `adventure-armies-v1` profile: protocol 6,
+`heroes-player-history-v4` and `heroes-context-actions-v4`. The current town
+overview exposes the actual upper army and actual owned visiting hero, with
+seven explicit slots each. A nearby or selected hero is not substituted for the
+visitor. A garrisoned hero uses the engine's minimum-army rule; a town garrison
+may be emptied. The native adapter revalidates ownership, slots, counts,
+capacity, overflow and current context under the state lock before issuing
+one command. It checks the acknowledged result against both complete armies,
+resources and context. All ordinary transfer rewards are zero.
+
+Army rows are absent from closed town windows and other panels. Earlier views
+remain timestamped history, never refreshed from hidden current state. The
+actor and critic share a random recurrent network, ingest only their player's
+ordered visible history, and retain separate per-player recurrent state.
+Transfer source, destination and count use typed conditional policy heads with
+reconstructible joint probability. Opaque routing references are not numeric
+features. Version-two model/policy schemas are explicit; old checkpoints are
+not silently promoted. Existing v2/v3 profile behavior remains available.
+
+Local validation with implementation frozen at `d5ef9b0` passed **585 tests,
+zero skipped**, and exact prepared-engine agreement. Evidence is recorded in
+`validation/troop-transfer-2026-10-25.json`; its byte-identical evidence
+assembler is tracked at `validation/assemble_troop_transfer_2026_10_25.py`:
+
+- All ten native attempts are retained: seven valid cutoffs, two controlled
+  natural endings and one intentional process failure. Nine independent native
+  replays pass with 1,915 client packets, 5,294 transactions, 315 requests and
+  zero unchecked records. All 32 rehashed semantic tamper cases are rejected,
+  including changed transfer count/source/destination; positive controls pass.
+- Both colors execute full moves, exact partial splits, same-creature merges at
+  seven-slot capacity, and complete emptying of a town garrison. Counts,
+  untouched slots and resources are conserved. Visitor departure/re-entry and
+  closed/reopened windows supply fresh permitted views. Invalid choices are
+  rejected before sending; no actual server-rejected acknowledgement is claimed.
+- Two unchanged-map town-capture controls reach natural day-eight outcomes,
+  with verified terminal receipts. The intentional crash after acknowledged
+  transfer remains unscored and cannot provide reward, bootstrap or PPO samples.
+- The final fixed-weight v4 diagnostic uses both learner colors. Independent
+  inference reconstructs all 256 actions, 260 values and 441 conditional
+  probabilities exactly. The Blue learner itself samples two successful
+  transfers (counts two and one), with matching native effects; these choices
+  were not imposed by the mechanics probe. Weights remain unchanged and both
+  attempts end at valid limits. The earlier two diagnostic attempts and their
+  source-snapshot limitation are retained separately from this clean rerun.
+- An unchanged v3 native control replays. The saved old v3 neural checkpoint
+  reproduces 61 actions, 61 values and 104 conditional probabilities exactly on
+  its archived natural fixture. Every diagnostic rollout remains excluded from
+  optimizer admission.
+
+Actual server rejection and live garrisoned-hero/minimum-last-stack/overflow
+cases remain outside this local evidence; those paths have source/native-unit
+coverage. Initial/timer-origin completion, broader dialogs, other maps and
+platforms remain unsupported or unvalidated as stated above. The transfer fix
+removes a real action-interface limitation. It does not establish that a random
+policy will choose useful transfers or finish ordinary games more frequently.
+A future both-heroes-dead/towns-retained state still remains nonterminal under
+the unchanged rules and available actions.
+
+The user's separately requested preparation is complete. The tracked
+`configs/first-training-v1.json` declares the following small proposed run;
+**execution is not authorized and has not occurred**:
+
+| Item | Fixed proposal |
+| --- | --- |
+| Initialization | Fresh random actor/value seed 99001; one independent frozen opponent seed 99002. No diagnostic weights or demonstrations. |
+| Collection | Engine seed 99101 in both learner colors: exactly two training attempts, no replacement of failures. |
+| Held-out evaluation | Seeds 99201 and 99202 in both colors before and after the update: four attempts per phase, with paired sampling seeds. |
+| Total limit | Ten attempts, at most 256 total choices and 30 days each; one CPU Torch thread and 60 minutes for the entire operation. |
+| Optimization | At most one PPO update, one epoch and sixteen optimizer steps; Adam 0.0003, gamma/lambda 1, clip/value clip 0.2, value coefficient 0.5, entropy coefficient 0. |
+| Stop conditions | Any unsupported/native/history/replay/probability/identity failure stops the run. Invalid attempts are retained and never replaced or trained on. |
+| Checkpointing | Save model, Adam, frozen pool, progress and RNG state; reload into new objects before after-evaluation. Updates interrupted by time/step limits roll back. No automatic process restart or resume CLI. |
+
+`experiments.learner.first_run` only prepares fresh checkpoints and an immutable
+plan; it launches neither a game nor an optimizer. The dormant
+`experiments.learner.gameplay` entry point requires separate human approval of
+that exact plan hash. It binds all implementation files, native runtime, map,
+validation artifacts and policy identities. Only its fresh, schedule-bound
+training captures can pass its admission gate; it repeats independent native
+replay and behavior-probability checks before updating. Ordinary diagnostics,
+fixtures, held-out evaluation and frozen-opponent trajectories remain excluded.
+The default PPO entry point remains synthetic-only. Executor admission,
+transaction rollback and checkpoint continuation have synthetic tests and code
+review; an actual gameplay update is deliberately not claimed validated yet.
+
+The local preparation is in `runs/first-training-prepared-2026-10-25/`.
+`validation/first-training-preparation-2026-10-25.json` records its exact proposed
+command, random checkpoint identity, budget, source commit and SHA-256 plan
+`ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6`.
+The checkpoint and raw validation evidence remain ignored. Preparation's
+read-only identity check passes and authorization remains `not_granted`.
+Zero natural outcomes alone does not invalidate correct cutoff experience, but
+an update without terminal feedback has no observed victory signal and cannot
+be described as demonstrated strategy improvement. No gameplay training, paid
+compute or GitHub PR merge occurred.
 
 ### Continue in a new chat
 
@@ -1687,22 +1778,23 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The active work is the versioned map/hero/town interface above. Its strict v2
-history/trajectory contract and independent auditor are implemented on
-`codex/contextual-environment`, based on reviewed `4fe0d7c` and the learner branch.
-The user authorized Codex to finish Claude's paused contextual work. Codex has
-implemented native capture/routing, the opt-in transport/producer and bounded
-Mac validation; Claude retains the separately scoped simulation/performance/replay
-workstream. Read `validation/contextual-native-2026-10-24.json` for source-pinned
-checks, all random attempts and remaining limits. The later contextual neural
-integration section describes the live adapter/collector and synthetic-only PPO
-implementation. The later native terminal-barrier and contextual replay section
-describes the new capture and independent verifier on `codex/contextual-replay`.
-Historical contextual recordings remain unsupported. Ordinary outcome evidence
-and diagnostic terminal fixtures stay separate; neither authorizes training.
-The original three rendered self-play runs remain truncated and separate.
-Verified video binding now passes at `4fe0d7c`; a clean throughput benchmark
-has not been accepted. Do not start a training campaign.
+The current handoff is `codex/troop-transfer`, stacked on
+`codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
+barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
+preparation are implemented and locally validated as described above. Read
+`validation/contextual-gaps-2026-10-25.json`,
+`validation/troop-transfer-2026-10-25.json` and
+`validation/first-training-preparation-2026-10-25.json` for current evidence and
+the exact unexecuted proposal. The user authorized Codex to finish the paused
+contextual work; Claude's separately scoped simulation/performance work remains
+coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
+training. The next execution decision requires separate approval of the saved
+plan. Do not launch it or start a campaign without that approval.
+
+Earlier v2/v3 validation and the original three truncated rendered self-play
+runs remain separate historical evidence. Historical contextual recordings
+without the native tape remain unsupported. Verified legacy video binding passes
+at `4fe0d7c`; no clean throughput benchmark has been accepted.
 
 ## Headless self-play environment (issue #4, in progress)
 
