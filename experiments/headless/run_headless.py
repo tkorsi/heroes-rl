@@ -250,9 +250,12 @@ def main() -> None:
         "schedule_definition": {"seed": args.seed, "seed_stride": args.seed_stride, "first_episode": args.first_episode,
                                 "red_policy_seed": args.red_policy_seed, "blue_policy_seed": args.blue_policy_seed,
                                 "start": args.schedule_start, "step": args.schedule_step},
-        "schedule": plan, "warmup": [], "episodes": [], "aggregate": None, "interrupted": None,
-        "measured_start": None,
+        # A duration-bounded run plans far more episodes than it plays; rewriting that plan after
+        # every episode would cost measured time, so it is written once to its own file.
+        "schedule": plan if args.duration is None else None, "schedule_file": "schedule.json",
+        "warmup": [], "episodes": [], "aggregate": None, "interrupted": None, "measured_start": None,
     }
+    scoring.write_json(output / "schedule.json", {"schedule_definition": summary["schedule_definition"], "schedule": plan})
     summary_path = output / "summary.json"
     scoring.write_json(summary_path, summary)
     env = env_module.HeadlessSelfPlayEnv(launcher, output / "episodes", limits, ledger=args.ledger == "full",

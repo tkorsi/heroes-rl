@@ -117,6 +117,15 @@ std::vector<JsonNode> readLines(const boost::filesystem::path & path)
 	return result;
 }
 
+/// One JSON line: VCMI's compact writer keeps formatting newlines in structs
+/// with more than one key, and JSON strings escape their own line breaks.
+std::string jsonLine(const JsonNode & node)
+{
+	auto line = node.toCompactString();
+	line.erase(std::remove_if(line.begin(), line.end(), [](char c) { return c == '\n' || c == '\r'; }), line.end());
+	return line;
+}
+
 std::string text(const JsonNode & node)
 {
 	if(node.isNull())
@@ -127,7 +136,7 @@ std::string text(const JsonNode & node)
 		return node.String();
 	if(node.isNumber())
 		return std::to_string(node.Integer());
-	return node.toCompactString();
+	return jsonLine(node);
 }
 
 /// One player capture the client recorded at a position in the pack stream.
@@ -271,7 +280,7 @@ class Replay
 				view["objects"].Vector().emplace_back(id);
 			frame["players"][std::to_string(player)] = view;
 		}
-		trace << frame.toCompactString() << '\n';
+		trace << jsonLine(frame) << '\n';
 	}
 
 	void writeTraceMap()
@@ -289,7 +298,7 @@ class Replay
 			for(int y = 0; y < map.height; ++y)
 				for(int x = 0; x < map.width; ++x)
 					terrain.emplace_back(static_cast<int64_t>(map.getTile(int3(x, y, z)).getTerrainID().getNum()));
-		trace << header.toCompactString() << '\n';
+		trace << jsonLine(header) << '\n';
 	}
 
 public:
@@ -312,7 +321,7 @@ public:
 					throw Divergence(stage, "kind", "capture or message", text(line["kind"]));
 				const auto & pack = line["pack"];
 				if(pack.getType() != JsonNode::JsonType::DATA_INTEGER || pack.Integer() < last)
-					throw Divergence(stage, "pack", "a client pack position of at least " + std::to_string(last), pack.toCompactString());
+					throw Divergence(stage, "pack", "a client pack position of at least " + std::to_string(last), jsonLine(pack));
 				last = pack.Integer();
 				observations.emplace(static_cast<uint64_t>(last), record);
 				++loaded;
@@ -437,7 +446,7 @@ public:
 				entry["victory"].Bool() = victory;
 				replayedTerminals.Vector().push_back(entry);
 			}
-			expectEqual(after, "terminals", applied["terminals"].toCompactString(), replayedTerminals.toCompactString());
+			expectEqual(after, "terminals", jsonLine(applied["terminals"]), jsonLine(replayedTerminals));
 			if(boundary)
 			{
 				if(applied["digest"].isNull())
@@ -498,7 +507,7 @@ public:
 void writeReport(const std::string & path, const JsonNode & report)
 {
 	std::ofstream output(path, std::ios::out | std::ios::trunc);
-	output << report.toCompactString() << '\n';
+	output << jsonLine(report) << '\n';
 	if(!output)
 		throw std::runtime_error("Cannot write " + path);
 }
@@ -592,7 +601,7 @@ int main(int argc, const char * argv[])
 		std::cerr << error.what() << "\n";
 		status = 3;
 	}
-	std::cout << report.toCompactString() << "\n";
+	std::cout << jsonLine(report) << "\n";
 	logConfigurator.deconfigure();
 	return status;
 }

@@ -10,6 +10,11 @@
 # resume on a later date continues the same validation. A failed smoke stage
 # stops before the long stages. Nothing here uploads data or commits.
 #
+# The build stage prepares vcmi/ from this recipe and configures vcmi/build
+# when it has no CMake cache. A vcmi/ prepared from an older recipe is never
+# changed: the stage stops and prints how to keep it aside and prepare again.
+# Build, test and configure output is kept in $OUT/*.log.
+#
 #   DATA="$HOME/Library/Application Support/vcmi" tools/validate_headless.sh [stage ...]
 #
 # Stages: build tests smoke profile series replays videos benchmark evidence (default: all, in order).
@@ -63,7 +68,7 @@ set_aside() {
   log "Unfinished $1 moved to $moved"
 }
 
-# All 4 smoke attempts played, every selected attempt verified and every tamper case rejected.
+# All 4 smoke attempts played without a failure, every one verified and every tamper case rejected.
 smoke_passed() {
   "$PYTHON" - "$OUT/smoke" <<'EOF'
 import json, sys
@@ -80,6 +85,8 @@ if not isinstance(series, dict):
     problems.append("run_series.py wrote no series.json")
 elif series.get("attempts_played") != 4 or series.get("attempts_missing"):
     problems.append(f"{series.get('attempts_played')} of 4 attempts played, missing {series.get('attempts_missing')}")
+elif series.get("failures") != 0:
+    problems.append(f"{series.get('failures')} of 4 attempts failed: {series.get('failure_details')}")
 if not isinstance(replays, dict):
     problems.append("replay.py series wrote no replay-series.json")
 else:
@@ -106,13 +113,36 @@ for stage in "${STAGES[@]}"; do
   case "$stage" in
     build)
       log "Prepare and build the engine"
-      "$PYTHON" tools/prepare_vcmi.py --check || "$PYTHON" tools/prepare_vcmi.py
+      if ! "$PYTHON" tools/prepare_vcmi.py --check; then
+        if [ -e vcmi ]; then
+          # prepare_vcmi.py never resets a checkout; an older recipe's vcmi/ is kept aside instead.
+          kept="vcmi.before-$(date -u +%Y%m%dT%H%M%SZ)"
+          echo "vcmi/ does not match this recipe (an older recipe or local edits), and prepare_vcmi.py will not change it." >&2
+          echo "Keep it aside, prepare again and reuse its build directory, then rerun this command:" >&2
+          echo "  mv vcmi $kept && $PYTHON tools/prepare_vcmi.py && mv $kept/build vcmi/build" >&2
+          exit 1
+        fi
+        "$PYTHON" tools/prepare_vcmi.py
+      fi
       "$PYTHON" tools/prepare_vcmi.py --check
-      cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay 2>&1 | tail -5
+      if [ ! -f vcmi/build/CMakeCache.txt ]; then
+        log "Configure vcmi/build"
+        cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-/opt/homebrew}" -DENABLE_GOLDMASTER=ON \
+          -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON > "$OUT/configure.log" 2>&1 \
+          || { tail -30 "$OUT/configure.log" >&2; echo "Configure failed; full log: $OUT/configure.log" >&2; exit 1; }
+      fi
+      cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay > "$OUT/build.log" 2>&1 \
+        || { grep -m 20 -E 'error:|FAILED:' "$OUT/build.log" >&2 || true; tail -30 "$OUT/build.log" >&2
+             echo "Build failed; full log: $OUT/build.log" >&2; exit 1; }
+      tail -3 "$OUT/build.log"
       ;;
     tests)
       log "Unit and contract tests"
-      "$PYTHON" -m unittest discover -s tests 2>&1 | tail -5
+      "$PYTHON" -m unittest discover -s tests > "$OUT/tests.log" 2>&1 \
+        || { grep -E '^(ERROR|FAIL):' "$OUT/tests.log" >&2 || true; tail -30 "$OUT/tests.log" >&2
+             echo "Tests failed; full log: $OUT/tests.log" >&2; exit 1; }
+      tail -3 "$OUT/tests.log"
       ;;
     smoke)
       [ -f "$OUT/smoke/ok" ] && { log "smoke: done"; continue; }
@@ -159,9 +189,28 @@ for stage in "${STAGES[@]}"; do
         episode="$(dirname "$(dirname "$trace")")"
         name="$(basename "$episode")"
         [ -f "$OUT/videos/$name.mp4" ] && continue
-        "$PYTHON" experiments/headless/render_replay.py "$episode" --output "$OUT/videos/$name.mp4" > /dev/null || true
+        "$PYTHON" experiments/headless/render_replay.py "$episode" --output "$OUT/videos/$name.mp4" \
+          > "$OUT/videos/$name.log" 2>&1 || log "videos: $name not rendered: $(tail -1 "$OUT/videos/$name.log")"
       done
       ls -l "$OUT/videos"
+      # The selection needs enough videos, one of them a natural ending with a battle. A
+      # shortfall is recorded in the evidence instead of stopping the benchmark.
+      "$PYTHON" - "$OUT/videos" "$VIDEOS" <<'PY' || true
+import json, sys
+from pathlib import Path
+videos = [json.loads(path.read_text()) for path in sorted(Path(sys.argv[1]).glob("*.json"))]
+problems = []
+if len(videos) < int(sys.argv[2]):
+    problems.append(f"{len(videos)} of {sys.argv[2]} videos rendered")
+if not any(video.get("status") == "completed" and video.get("battle_frames_drawn") for video in videos):
+    problems.append("no rendered video shows a natural ending with a battle")
+shortfall = Path(sys.argv[1]) / "shortfall.txt"
+if problems:
+    shortfall.write_text("; ".join(problems) + "\n")
+    print("videos: " + "; ".join(problems), file=sys.stderr)
+elif shortfall.exists():
+    shortfall.unlink()
+PY
       ;;
     benchmark)
       benchmark_complete && { log "benchmark: done"; continue; }
@@ -177,8 +226,11 @@ for stage in "${STAGES[@]}"; do
       # compact_evidence.py records an incomplete benchmark as such.
       [ -f "$OUT/benchmark/benchmark.json" ] && args+=(--benchmark "$OUT/benchmark/benchmark.json")
       [ -f "$OUT/costs.json" ] && args+=(--costs "$OUT/costs.json")
+      [ -f "$OUT/build.log" ] && args+=(--build-log "$OUT/build.log")
+      [ -f "$OUT/tests.log" ] && args+=(--tests-log "$OUT/tests.log")
       videos=("$OUT"/videos/*.json)
       [ -f "${videos[0]}" ] && args+=(--videos "${videos[@]}")
+      [ -f "$OUT/videos/shortfall.txt" ] && args+=(--note "Video selection: $(cat "$OUT/videos/shortfall.txt")")
       "$PYTHON" experiments/headless/compact_evidence.py "${args[@]}"
       ;;
     *)

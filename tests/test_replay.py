@@ -402,6 +402,34 @@ class ReplayToolTests(unittest.TestCase):
         self.assertEqual([path.name for path in replay.episode_directories(self.output / "run")],
                          ["episode-000001", "episode-000002", "episode-000003"])
 
+    def test_series_traces_and_tamper_tests_verified_episodes_with_battles_first(self):
+        run = self.output / "selection"
+        # episode: (status, battles, verifies)
+        plan = {1: ("completed", 0, True), 2: ("truncated", 3, True), 3: ("completed", 2, False),
+                4: ("completed", 1, True), 5: ("completed", 0, True), 6: ("completed", 4, True)}
+        for number, (status, battles, _) in plan.items():
+            path = run / "episodes" / f"episode-{number:06d}"
+            path.mkdir(parents=True)
+            (path / "manifest.json").write_text(json.dumps({"status": status, "players": {
+                "red": {"battles_started": battles}, "blue": {"battles_started": 0}}}))
+        calls = []
+
+        def verify(episode, *, trace, **kwargs):
+            number = int(episode.name.split("-")[1])
+            calls.append((number, trace))
+            return {"episode": number, "status": plan[number][0], "termination_reason": None, "verified": plan[number][2]}
+
+        def tamper(episode, **kwargs):
+            return {"cases": [], "all_detected": True, "episode": episode.name}
+
+        with mock.patch.object(replay, "verify_episode", verify), mock.patch.object(replay, "tamper_episode", tamper), \
+                contextlib.redirect_stdout(io.StringIO()):
+            summary = replay.verify_series(run, binary=Path("unused"), data=Path("unused"), count=4, tamper=2, trace=2,
+                                           allow_platform_mismatch=False, prefer_natural=True)
+        # Natural endings with a battle come first; episode 3 fails, so tracing moves on until two verified traces exist.
+        self.assertEqual(calls, [(3, True), (4, True), (6, True), (1, False)])
+        self.assertEqual([row["episode"] for row in summary["episodes"] if "tamper" in row], [4, 6])
+
     def test_tamper_failures_are_recorded_and_the_series_report_is_written(self):
         run = self.output / "series"
         episode, _, data = self.truncated(pairs=2, output=run / "episodes")

@@ -594,13 +594,19 @@ def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tam
                   allow_platform_mismatch: bool, prefer_natural: bool) -> dict:
     episodes = episode_directories(run)
     if prefer_natural:
+        # Natural endings first, those with a battle ahead of the rest, so traces cover both.
         manifests = {path: json.loads((path / "manifest.json").read_text()) for path in episodes}
-        episodes = sorted(episodes, key=lambda path: (manifests[path]["status"] != "completed", path.name))
+        battles = {path: sum((player or {}).get("battles_started") or 0
+                             for player in (manifests[path].get("players") or {}).values()) for path in episodes}
+        episodes = sorted(episodes, key=lambda path: (manifests[path]["status"] != "completed", not battles[path], path.name))
     selected = episodes[:count] if count else episodes
     rows = []
-    for position, episode in enumerate(selected):
-        result = verify_episode(episode, binary=binary, data=data, trace=position < trace,
+    traced = tamper_runs = 0  # verified episodes traced and tamper-tested so far
+    for episode in selected:
+        tracing = traced < trace
+        result = verify_episode(episode, binary=binary, data=data, trace=tracing,
                                 allow_platform_mismatch=allow_platform_mismatch)
+        traced += tracing and result["verified"]
         row = {"episode": result["episode"], "status": result["status"], "termination_reason": result["termination_reason"],
                "verified": result["verified"], "error": result.get("error"),
                "divergence": (result.get("engine") or {}).get("divergence"),
@@ -611,7 +617,8 @@ def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tam
                "terminal_evidence": result.get("terminal_evidence"),
                "observation_coverage": result.get("observation_coverage"),
                "seconds": (result.get("engine") or {}).get("seconds")}
-        if position < tamper and result["verified"]:
+        if result["verified"] and tamper_runs < tamper:
+            tamper_runs += 1
             try:
                 row["tamper"] = tamper_episode(episode, binary=binary, data=data,
                                                allow_platform_mismatch=allow_platform_mismatch)
@@ -654,7 +661,7 @@ def main(argv: list[str] | None = None) -> int:
         if name == "series":
             command.add_argument("--count", type=int, default=None)
             command.add_argument("--tamper", type=int, default=1, help="Run tamper tests on the first N verified episodes")
-            command.add_argument("--trace", type=int, default=0, help="Write traces for the first N episodes")
+            command.add_argument("--trace", type=int, default=0, help="Write traces until N verified episodes have one")
             command.add_argument("--prefer-natural", action="store_true", help="Verify natural endings first")
     args = parser.parse_args(argv)
     binary = args.binary.expanduser().resolve()

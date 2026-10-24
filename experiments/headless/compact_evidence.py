@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 
@@ -30,14 +32,25 @@ def compact_series(series: dict) -> dict:
         "wall_seconds", "arguments", "host", "build_type", "toolchain", "identity")} | {
         "aggregate": {key: value for key, value in (series.get("aggregate") or {}).items() if key != "coverage_totals"},
         "coverage_totals": (series.get("aggregate") or {}).get("coverage_totals"),
-        # One row per attempt: episode, seed, status, reason, outcome, days and decision cycles.
+        # One row per attempt: episode, seed, status, reason, outcome, days, decision cycles, and battle
+        # participations, where a battle between the two players counts once for each of them.
         "attempt_rows": [[row["episode"], row["engine_seed"], row["status"], row["termination_reason"],
                           next((color for color, outcome in (row.get("outcomes") or {}).items() if outcome == "win"), None),
                           max(row["red"]["last_day"], row["blue"]["last_day"]),
                           row["red"]["resolved"] + row["blue"]["resolved"],
                           row["red"]["battles"] + row["blue"]["battles"]] for row in series.get("episodes", [])],
         "attempt_row_fields": ["episode", "engine_seed", "status", "termination_reason", "winner", "days",
-                               "decision_cycles", "battles_started_by_either_side"]}
+                               "decision_cycles", "battle_participations_red_plus_blue"]}
+
+
+def log_record(path: Path, kind: str) -> dict:
+    text = path.read_text(errors="replace")
+    record = {"file": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "bytes": path.stat().st_size}
+    if kind == "tests":
+        ran = re.findall(r"^Ran (\d+) tests?", text, re.MULTILINE)
+        results = re.findall(r"^(OK.*|FAILED.*)$", text, re.MULTILINE)
+        record.update(tests_run=int(ran[-1]) if ran else None, result=results[-1] if results else None)
+    return record
 
 
 def compact_tamper(tamper: dict) -> dict:
@@ -71,6 +84,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--videos", type=Path, nargs="*", default=[], help="render_replay.py sidecar .json files")
     parser.add_argument("--benchmark", type=Path, help="benchmark.py benchmark.json")
     parser.add_argument("--costs", type=Path, help="cost_breakdown.py output")
+    parser.add_argument("--build-log", type=Path, help="Engine build output")
+    parser.add_argument("--tests-log", type=Path, help="Unit and contract test output")
     parser.add_argument("--note", action="append", default=[], help="A limitation or observation to record")
     args = parser.parse_args(argv)
     series, replays, benchmark, costs = load(args.series), load(args.replays), load(args.benchmark), load(args.costs)
@@ -105,6 +120,8 @@ def main(argv: list[str] | None = None) -> int:
                                           for r in c["repetitions"]]} for c in benchmark.get("configurations", [])]}
         if benchmark else "missing",
         "costs": costs or "missing",
+        "build_log": log_record(args.build_log, "build") if args.build_log else "missing",
+        "tests_log": log_record(args.tests_log, "tests") if args.tests_log else "missing",
         "notes": notes,
     }
     args.output.write_text(json.dumps(evidence, indent=1, sort_keys=True) + "\n")

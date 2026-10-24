@@ -545,8 +545,16 @@ videos, benchmark, compact evidence) and resumes after an interruption:
 Without `OUT`, its first run pins the output directory in
 `runs/validation-current` (remove that file to start a new validation). A stage
 that did not finish is moved aside to `<name>.interrupted-<UTC time>` and run
-again, and a smoke stage that does not play all four attempts and verify them,
-tamper tests included, stops the run before the long stages.
+again, and a smoke stage in which any of the four attempts fails or does not
+verify, tamper tests included, stops the run before the long stages. The build
+stage configures `vcmi/build` when it has no CMake cache; a `vcmi/` prepared
+from an older recipe is never changed, and the stage prints the one-time
+commands that keep it aside and prepare again. Build and test output is kept in
+`$OUT/build.log` and `$OUT/tests.log` and hashed into the evidence. Replay
+verification puts natural endings with a battle first and traces episodes until
+three verified ones have a trace; a video selection with fewer videos, or
+without a natural ending that shows a battle, is recorded as a note in the
+evidence.
 
 `series.json` reports natural endings, truncations and failures separately,
 wins by color, episode lengths and any missing attempt; its steady-state rates

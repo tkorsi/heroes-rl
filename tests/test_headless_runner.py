@@ -148,8 +148,10 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse(configuration["stretch_target_1000_per_second_met"])
         two = report["configurations"][1]["repetitions"][0]
         indices = sorted(row for worker in (output / "workers-2/rep-0").glob("worker-[0-9]")
-                         for row in [e["index"] for e in json.loads((worker / "summary.json").read_text())["schedule"][:2]])
+                         for row in [e["index"] for e in json.loads((worker / "schedule.json").read_text())["schedule"][:2]])
         self.assertEqual(indices, [0, 1, 2, 3])  # the same schedule, interleaved across workers
+        # The long benchmark plan stays out of the summary that is rewritten after every measured episode.
+        self.assertIsNone(json.loads((output / "workers-2/rep-0/worker-0/summary.json").read_text())["schedule"])
 
     def test_attempt_series_preserves_every_planned_attempt_across_workers(self):
         output = self.base / "attempts"
