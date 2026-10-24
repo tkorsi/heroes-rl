@@ -1,0 +1,42 @@
+{
+  "army_each": [
+    {
+      "amount": 25,
+      "type": "core:pikeman"
+    }
+  ],
+  "engine_verified": false,
+  "schema": 1,
+  "seed": 10000,
+  "sha256": "1e128b2a20c2bbbdc671bb87e0bfce64bc9c206ae1989a93d05a37cdfdf6b191",
+  "size": 16,
+  "starts": {
+    "blue": {
+      "anchor": [
+        13,
+        10,
+        0
+      ],
+      "hero": "orrin",
+      "visitable": [
+        12,
+        10,
+        0
+      ]
+    },
+    "red": {
+      "anchor": [
+        4,
+        4,
+        0
+      ],
+      "hero": "edric",
+      "visitable": [
+        3,
+        4,
+        0
+      ]
+    }
+  },
+  "terminal_rule": "last surviving hero wins; no seven-day town-loss event"
+}
