@@ -1,0 +1,1318 @@
+{
+  "accepted_coverage": [
+    "Construction and baseline recruitment on both player colors",
+    "Exact native resource deductions and one issued/acknowledged request",
+    "Building presence, daily cap/reset, forbidden/already-built and insufficient-resource rejection",
+    "Explicit creature/card/count/destination; invalid and out-of-slider API selection retains request/history",
+    "Base/upgraded card prices and shared stock; exact requested army changes and unchanged separate hero army",
+    "Full unlike army gives visible no-room notice, adapter consumption, no server request and unchanged stock/resources",
+    "Full army with same-creature slot recruits into that slot without other stack changes",
+    "Closed panel nonrefresh, immutable old prefixes, explicit reopen and paired cutoff from detail/recruitment panels",
+    "Native seven-day townless terminal with paired -1/+1; process killed after acknowledged build is unscored and has no bootstrap."
+  ],
+  "base_commit": "48d8e1a55c7bca3161c4ec644a385dd443e7798c",
+  "base_pr": 7,
+  "baseline_map": {
+    "path": "experiments/explorer/maps/random-baseline-v1.vmap",
+    "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+  },
+  "contextual_replay": {
+    "log": {
+      "path": "runs/town-contextual-replay-guard-final.log",
+      "sha256": "82fe8ba88a98d4aba3a7dadd603b53c5f370ef64852c551d2980c9ca98bfdc59"
+    },
+    "real_v3_cli_rejected": true,
+    "status": "explicitly_unsupported"
+  },
+  "date": "2026-10-24",
+  "economic_examples": {
+    "exact_build_cost_and_native_request": {
+      "content_name": "building.core.castle.dwellingUpLvl1.name",
+      "cost": [
+        0,
+        0,
+        5,
+        0,
+        0,
+        0,
+        1000
+      ],
+      "report": "runs/town-acceptance/construction-red/report.json",
+      "resources_after": [
+        15,
+        2,
+        10,
+        2,
+        2,
+        2,
+        4000
+      ],
+      "resources_before": [
+        15,
+        2,
+        15,
+        2,
+        2,
+        2,
+        5000
+      ],
+      "returned_to": "overview"
+    },
+    "exact_native_recruitment": {
+      "army_after": [
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "army_before": [],
+      "cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        60
+      ],
+      "count": 1,
+      "creature": 0,
+      "destination": "town_garrison",
+      "report": "runs/town-acceptance/upgraded-red/report.json",
+      "slot": 0,
+      "stock_after": 13,
+      "stock_before": 14
+    },
+    "explicit_native_stock_purchase_for_budget_test": {
+      "army_after": [
+        [
+          0,
+          0,
+          14
+        ]
+      ],
+      "army_before": [],
+      "cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        840
+      ],
+      "count": 14,
+      "creature": 0,
+      "destination": "town_garrison",
+      "report": "runs/town-recruitment-budget-second/report.json",
+      "slot": 0,
+      "stock_after": 0,
+      "stock_before": 14
+    },
+    "full_army_same_creature_native_merge": {
+      "army_after": [
+        [
+          0,
+          0,
+          2
+        ],
+        [
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          3,
+          1
+        ],
+        [
+          3,
+          4,
+          1
+        ],
+        [
+          4,
+          5,
+          1
+        ],
+        [
+          5,
+          6,
+          1
+        ],
+        [
+          6,
+          7,
+          1
+        ]
+      ],
+      "army_before": [
+        [
+          0,
+          0,
+          1
+        ],
+        [
+          1,
+          2,
+          1
+        ],
+        [
+          2,
+          3,
+          1
+        ],
+        [
+          3,
+          4,
+          1
+        ],
+        [
+          4,
+          5,
+          1
+        ],
+        [
+          5,
+          6,
+          1
+        ],
+        [
+          6,
+          7,
+          1
+        ]
+      ],
+      "cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        60
+      ],
+      "count": 1,
+      "creature": 0,
+      "destination": "town_garrison",
+      "report": "runs/town-acceptance/capacity-merge/report.json",
+      "slot": 0,
+      "stock_after": 13,
+      "stock_before": 14
+    },
+    "native_construction_affordability": {
+      "price": [
+        10,
+        0,
+        10,
+        0,
+        0,
+        0,
+        5000
+      ],
+      "prior_real_builds": [
+        {
+          "cost": [
+            0,
+            0,
+            5,
+            0,
+            0,
+            0,
+            2500
+          ],
+          "day": 1,
+          "name": "building.core.castle.citadel.name"
+        }
+      ],
+      "report": "runs/town-acceptance/construction-budget/report.json",
+      "resources": [
+        12,
+        2,
+        7,
+        2,
+        2,
+        2,
+        2875
+      ]
+    },
+    "native_no_capacity_is_consumed_without_purchase": {
+      "destination": "town_garrison",
+      "report": "runs/town-acceptance/capacity-full/report.json",
+      "resources": [
+        14,
+        2,
+        14,
+        2,
+        2,
+        2,
+        5000
+      ],
+      "stock": 14
+    },
+    "native_recruitment_affordability": {
+      "day": 6,
+      "invalid_count": 1,
+      "prior_real_purchases": 1,
+      "report": "runs/town-recruitment-budget-second/report.json",
+      "resources": [
+        0,
+        2,
+        0,
+        2,
+        2,
+        2,
+        35
+      ],
+      "slider_max": 0,
+      "stock": 9,
+      "unit_cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        100
+      ]
+    },
+    "repeat_recruitment_merges_same_creature": {
+      "army_after": [
+        [
+          0,
+          0,
+          2
+        ]
+      ],
+      "army_before": [
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        60
+      ],
+      "count": 1,
+      "creature": 0,
+      "destination": "town_garrison",
+      "report": "runs/town-acceptance/upgraded-red/report.json",
+      "slot": 0,
+      "stock_after": 12,
+      "stock_before": 13
+    },
+    "upgraded_card_exact_purchase_shared_stock": {
+      "army_after": [
+        [
+          0,
+          0,
+          2
+        ],
+        [
+          1,
+          1,
+          1
+        ]
+      ],
+      "army_before": [
+        [
+          0,
+          0,
+          2
+        ]
+      ],
+      "cost": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        75
+      ],
+      "count": 1,
+      "creature": 1,
+      "destination": "town_garrison",
+      "report": "runs/town-acceptance/upgraded-red/report.json",
+      "slot": 1,
+      "stock_after": 11,
+      "stock_before": 12
+    }
+  },
+  "fixtures": {
+    "capacity-full": {
+      "path": "runs/town-fixtures/capacity-full/fixture.json",
+      "sha256": "75fc6d555a40d3e08c3ecfd1760c36d26daa0e62ea146c50f7de2341a0f9ef26"
+    },
+    "capacity-merge": {
+      "path": "runs/town-fixtures/capacity-merge/fixture.json",
+      "sha256": "2d2c901eb5f3c7b506f1d6b70fe39246245b4e20aa8817546ad03023fd90d571"
+    },
+    "natural-townless": {
+      "path": "runs/town-fixtures/natural-townless/fixture.json",
+      "sha256": "f07d9b8b92741cd2a1e0e1db21496e6cb1a3452408a468469be7cc0bdb41d956"
+    }
+  },
+  "interfaces": {
+    "new": {
+      "actions": "heroes-context-actions-v3",
+      "environment": "adventure-town-v1",
+      "history": "heroes-player-history-v3",
+      "protocol": 5
+    },
+    "preserved": [
+      "adventure-windows-v1",
+      "movement-v1"
+    ]
+  },
+  "legacy_regression": {
+    "engine_seed": 88001,
+    "manifest": {
+      "path": "runs/town-movement-regression/episodes/episode-000001/manifest.json",
+      "sha256": "7a795ac2ee3abd3394fb19315ac133c42815f03b8d2e93736145f91fb09d683e"
+    },
+    "native_offline_replay_verified": true,
+    "outcomes": {
+      "blue": "win",
+      "red": "loss"
+    },
+    "policy_seeds": {
+      "blue": 101,
+      "red": 1
+    },
+    "rewards": {
+      "blue": 1,
+      "red": -1
+    },
+    "status": "completed",
+    "throughput_claim_accepted": false,
+    "verification_log": {
+      "path": "runs/town-movement-replay.log",
+      "sha256": "d508cde4930d1436c3b1e949a8864bdf92832e67f0a3973a3c67fc96ea7fd3c6"
+    }
+  },
+  "logs": [
+    {
+      "path": "runs/town-construction-build-01.log",
+      "sha256": "292570cdaee0ad6a7f385f53414a2cc23c59172924eae9f7c1c06eb2d256a9df"
+    },
+    {
+      "path": "runs/town-construction-build-02.log",
+      "sha256": "3c8dec2a63c788e797902b7f8fbf0ea3ec6bab82dc68d9c866d4f3ae74afcdfa"
+    },
+    {
+      "path": "runs/town-construction-source-check.log",
+      "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+    },
+    {
+      "path": "runs/town-recruitment-build-01.log",
+      "sha256": "0c4b4732a266f946c948b4d1b4533eebcdfcabe271401e9bde9f2acd4c68a254"
+    },
+    {
+      "path": "runs/town-recruitment-build-02.log",
+      "sha256": "ebc8784ea2cda441db2ad3666b7dc79e15be9f9ea48df3758f340a2a1a5227e6"
+    },
+    {
+      "path": "runs/town-recruitment-source-check.log",
+      "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+    },
+    {
+      "path": "runs/town-complete-tests.log",
+      "sha256": "dffdd28ab85b706ddb8a6a101a235377d6e564b7f75851b2c67f6ba18cce06c5"
+    },
+    {
+      "path": "runs/town-final-guard-tests.log",
+      "sha256": "f4500b20193d4f7d40af95c4802bbc7c871511d53de29bcfe9246b666d323e18"
+    },
+    {
+      "path": "runs/town-movement-replay.log",
+      "sha256": "d508cde4930d1436c3b1e949a8864bdf92832e67f0a3973a3c67fc96ea7fd3c6"
+    },
+    {
+      "path": "runs/town-contextual-replay-guard.log",
+      "sha256": "23f522268ffd20e5cc2aa84bc92fe3fa6e88e397c12a680782c1ca0a9d1e7400"
+    },
+    {
+      "path": "runs/town-contextual-replay-guard-final.log",
+      "sha256": "82fe8ba88a98d4aba3a7dadd603b53c5f370ef64852c551d2980c9ca98bfdc59"
+    }
+  ],
+  "merged": false,
+  "native_attempts": [
+    {
+      "actions_attempted": 7,
+      "case": "construction",
+      "checks": {
+        "failed": [
+          "native_town_execution"
+        ],
+        "passed": [
+          "forbidden_build_control_rejected_without_consumption",
+          "foreign_building_ref_rejected_without_consumption",
+          "independent_history_manifest_audit"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93001,
+      "episode_status": "truncated",
+      "error": "TypeError: CaseRun.check() got multiple values for argument 'name'",
+      "explorer_rl_sha256": "83bdaa4f904ac011f459ce2f34cc1a1797dbd0cb759f2c11e0e252c7aa61305d",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/00-construction.json",
+        "scoring_binding_verified": false,
+        "sha256": "c99bf32ec866529ac02c22faddef1b450151afd50d504efd7ecabbc70e85ce61"
+      },
+      "manifest": {
+        "path": "runs/town-construction-first/construction/episode-000001/manifest.json",
+        "sha256": "db221dc7b91307b08e7954a7649b43de28599c2860995312ffa835c7e88751e5"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "failed",
+      "project_identity": {
+        "commit": "672d3b9b6757eebb6ae86e1bdcf08d1ea7704374",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-construction-first/report.json",
+        "sha256": "f2a2f6eabdf7f74e5321704ad29ec7a76bab0cd2880b4bfc11a5aea36b4379aa"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 25,
+      "case": "construction",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "already_built_rejected",
+          "closed_panel_fresh_reopen_and_daily_reset",
+          "daily_build_cap_rejected",
+          "exact_build_cost_and_native_request",
+          "forbidden_build_control_rejected_without_consumption",
+          "foreign_building_ref_rejected_without_consumption",
+          "independent_history_manifest_audit",
+          "native_conditional_requirement_panel",
+          "native_daily_build_cap",
+          "paired_cutoff_from_building_details",
+          "repeated_build_from_closed_details_rejected"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93001,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "83bdaa4f904ac011f459ce2f34cc1a1797dbd0cb759f2c11e0e252c7aa61305d",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/01-construction.json",
+        "scoring_binding_verified": false,
+        "sha256": "14f9997a961ac855e8e1a4371799d13e7d243004e564d155f34b6b31fa34e877"
+      },
+      "manifest": {
+        "path": "runs/town-construction-second/construction/episode-000001/manifest.json",
+        "sha256": "617ddf1b85c0ca92d597c6a47b8d7718aaaa6afcdecd4c8b9d212d3ea671c01b"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "1beba77938b4f5031eb2a679361f1f242b006bf2",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-construction-second/report.json",
+        "sha256": "619a0aac2ae5b6832dc0d221864c5af3e4b755f402c932e7ea72aca4d8ee1c60"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 23,
+      "case": "construction-budget",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "independent_history_manifest_audit",
+          "insufficient_construction_resources_rejected",
+          "native_construction_affordability"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93001,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "83bdaa4f904ac011f459ce2f34cc1a1797dbd0cb759f2c11e0e252c7aa61305d",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/02-construction-budget.json",
+        "scoring_binding_verified": false,
+        "sha256": "dad0500d1a3802ef90db13c377eb47d761232544b76b024adc67f58bd7509084"
+      },
+      "manifest": {
+        "path": "runs/town-construction-budget-first/construction-budget/episode-000001/manifest.json",
+        "sha256": "79628f9ddcbaa1c7729d915b9219b3150413693321c27f8822aecf3235497122"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "1beba77938b4f5031eb2a679361f1f242b006bf2",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-construction-budget-first/report.json",
+        "sha256": "539ec02c7f93b07fb653a9244458e784573f1c68067d8024da1260bd0a9f9390"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 19,
+      "case": "recruitment",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "destination_hero_unchanged_and_recruitment_cutoff",
+          "exact_native_recruitment",
+          "foreign_creature_offer_rejected",
+          "foreign_destination_rejected",
+          "independent_history_manifest_audit",
+          "invalid_count_types_rejected_before_submission",
+          "out_of_slider_quantity_rejected",
+          "repeat_recruitment_merges_same_creature"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93001,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/03-recruitment.json",
+        "scoring_binding_verified": false,
+        "sha256": "9638e0beb8d6ef58174889c5ca02251315c99749c96671f4ca05a9730cf21b91"
+      },
+      "manifest": {
+        "path": "runs/town-recruitment-first/recruitment/episode-000001/manifest.json",
+        "sha256": "4a485e9a5411503f90ecadf0e6d29fc59aae3354263774ebe5239c2bbed3d32d"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "6cb7f785925a574a8af99cbef07895a88a8bca47",
+        "dirty": true
+      },
+      "report": {
+        "path": "runs/town-recruitment-first/report.json",
+        "sha256": "8fab797222505307db69e38eeadb7a8a37122a4f9696f007045dcf06cf3f1532"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 5,
+      "case": "capacity",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "independent_history_manifest_audit",
+          "native_no_capacity_is_consumed_without_purchase"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93107,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/04-capacity.json",
+        "scoring_binding_verified": false,
+        "sha256": "b29654d8f5cde206fcc6ed9fda4c55fa34c7f7102c542327f85974640cb4a4f3"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/capacity-full/capacity/episode-000001/manifest.json",
+        "sha256": "aee8bfcd6bef4beb117b6f68eddee10ca4c04f6e4bfc0ca4ce5e6c326672b19e"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/capacity-full/report.json",
+        "sha256": "a29f3efba06b03dcd86c7b121c800c9d8ae408920e40bc793fe8e36fed307813"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 5,
+      "case": "capacity",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "full_army_same_creature_native_merge",
+          "independent_history_manifest_audit"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93108,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/05-capacity.json",
+        "scoring_binding_verified": false,
+        "sha256": "ebf6b32d1102180411b6aece64a8353140fa651f727c4320be8d622256f87237"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/capacity-merge/capacity/episode-000001/manifest.json",
+        "sha256": "4a503002825ce939a082061c046c8ec5cab13efb6afd6e729ae101eb6c72e1be"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/capacity-merge/report.json",
+        "sha256": "ce96c359d6828724ed01e91a096efe78b37935697e533e065169b08f48a67c51"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 26,
+      "case": "construction",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "already_built_rejected",
+          "closed_panel_fresh_reopen_and_daily_reset",
+          "daily_build_cap_rejected",
+          "exact_build_cost_and_native_request",
+          "forbidden_build_control_rejected_without_consumption",
+          "foreign_building_ref_rejected_without_consumption",
+          "independent_history_manifest_audit",
+          "native_conditional_requirement_panel",
+          "native_daily_build_cap",
+          "paired_cutoff_from_building_details",
+          "repeated_build_from_closed_details_rejected"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93102,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/06-construction.json",
+        "scoring_binding_verified": false,
+        "sha256": "016f3a6330a3023d11d93564017851c1b889dc576a5d713bb59f68df08bea62d"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/construction-blue/construction/episode-000001/manifest.json",
+        "sha256": "00791848869af5b8b2063a67b44173b5707ac9f414fa9e413585824da480933a"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/construction-blue/report.json",
+        "sha256": "ca58befefb364df17655d15a6d9e9ca450caff9c049d78c8e9a916432c873034"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 23,
+      "case": "construction-budget",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "independent_history_manifest_audit",
+          "insufficient_construction_resources_rejected",
+          "native_construction_affordability"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93103,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/07-construction-budget.json",
+        "scoring_binding_verified": false,
+        "sha256": "767f34be8e951027a31afaf62f192151629a7922d9cf566211f19db1ad70c326"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/construction-budget/construction-budget/episode-000001/manifest.json",
+        "sha256": "3eda24d7a066236b4e5361039160ce9e2b9377294e911725ab025a7f4e68bcdd"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/construction-budget/report.json",
+        "sha256": "5d1474f8637875504a2c505644080c29521778ef1f728b177a443014ac2c912c"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 25,
+      "case": "construction",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "already_built_rejected",
+          "closed_panel_fresh_reopen_and_daily_reset",
+          "daily_build_cap_rejected",
+          "exact_build_cost_and_native_request",
+          "forbidden_build_control_rejected_without_consumption",
+          "foreign_building_ref_rejected_without_consumption",
+          "independent_history_manifest_audit",
+          "native_conditional_requirement_panel",
+          "native_daily_build_cap",
+          "paired_cutoff_from_building_details",
+          "repeated_build_from_closed_details_rejected"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93101,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/08-construction.json",
+        "scoring_binding_verified": false,
+        "sha256": "6150acf736a1e3d4a0789eb8a9a7237759d4ceef703f12ebd76641796a266502"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/construction-red/construction/episode-000001/manifest.json",
+        "sha256": "f5867b9f35fee63613b2cb62baefa54624412f2329b093c5b91372bfd1908c8f"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/construction-red/report.json",
+        "sha256": "408ce4d5d1b6686620c4b20e9305d3090681d5cc4230f983d0df9d3e60e00d57"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 4,
+      "case": "crash-boundary",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "independent_history_manifest_audit",
+          "native_v3_crash_after_build_is_unscored",
+          "owned_process_killed"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93111,
+      "episode_status": "failed",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": false,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/09-crash-boundary.json",
+        "scoring_binding_verified": false,
+        "sha256": "621f0fdac2ae55790988058f279d58386f1143808eed48a15fad883d3a1f4636"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/crash-boundary/crash-boundary/episode-000001/manifest.json",
+        "sha256": "068d7e7ac6464b9e02d68637fb9ca44be5636fda357d16abede2bd4ba89a91a3"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/crash-boundary/report.json",
+        "sha256": "d1a16b3875b52d8b13ec04cea9039716479f37a3b8811c9d508382f2dbfaa6b6"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "process_exit_without_verified_terminal"
+    },
+    {
+      "actions_attempted": 13,
+      "case": "natural-boundary",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "independent_history_manifest_audit",
+          "native_v3_terminal_finalization"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93110,
+      "episode_status": "completed",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/10-natural-boundary.json",
+        "scoring_binding_verified": true,
+        "sha256": "084e7f0160a17a38a3b4ff34e19aeb3d8a5de5062deed984ec003737da912cab"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/natural-boundary/natural-boundary/episode-000001/manifest.json",
+        "sha256": "d8ecead13856fc4bad5d35b0f45f62afe606b138d59a2f0807bb7377bec36329"
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/natural-boundary/report.json",
+        "sha256": "53a1fff7ba1a5dcaa0940aa17002cc7a73da7853014d27768c1103f2601cd579"
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "termination_reason": "natural_terminal"
+    },
+    {
+      "actions_attempted": 20,
+      "case": "recruitment",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "destination_hero_unchanged_and_recruitment_cutoff",
+          "exact_native_recruitment",
+          "foreign_creature_offer_rejected",
+          "foreign_destination_rejected",
+          "independent_history_manifest_audit",
+          "invalid_count_types_rejected_before_submission",
+          "out_of_slider_quantity_rejected",
+          "repeat_recruitment_merges_same_creature"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93105,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/11-recruitment.json",
+        "scoring_binding_verified": false,
+        "sha256": "1dc67b18a06abc62e4e84550a8c98d1a1228d5656dad6d4bef8d1ccbf13bd9c3"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/recruitment-blue/recruitment/episode-000001/manifest.json",
+        "sha256": "96ccd2c88c6177ae4addc74eb92ee53c91e26451a7e5f9b35b13227e3428f665"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/recruitment-blue/report.json",
+        "sha256": "e1e1c0d2b83b1542cdc90d7ea2db70d71270baa06cd82f7346fe05281bab6a7f"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 120,
+      "case": "recruitment-budget",
+      "checks": {
+        "failed": [
+          "native_town_execution"
+        ],
+        "passed": [
+          "explicit_native_stock_purchase_for_budget_test",
+          "independent_history_manifest_audit",
+          "zero_stock_positive_count_rejected"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93109,
+      "episode_status": "truncated",
+      "error": "ProbeFailure: Native game ended before next owned decision",
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/12-recruitment-budget.json",
+        "scoring_binding_verified": false,
+        "sha256": "2a6f45bef8b27267197e8125a5c5112801614c07ed211b34431ec514b36f9192"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/recruitment-budget/recruitment-budget/episode-000001/manifest.json",
+        "sha256": "ae53521b7c1bc409ab2751cc1316596eedd0d1bb62c376e52d01928563e74a15"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "failed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/recruitment-budget/report.json",
+        "sha256": "e47464a975b84a29642d275f7d292ed79008e2247db797165784a0a57fec883c"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "game_day_limit"
+    },
+    {
+      "actions_attempted": 19,
+      "case": "recruitment",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "destination_hero_unchanged_and_recruitment_cutoff",
+          "exact_native_recruitment",
+          "foreign_creature_offer_rejected",
+          "foreign_destination_rejected",
+          "independent_history_manifest_audit",
+          "invalid_count_types_rejected_before_submission",
+          "out_of_slider_quantity_rejected",
+          "repeat_recruitment_merges_same_creature"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93104,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/13-recruitment.json",
+        "scoring_binding_verified": false,
+        "sha256": "fda6da44f8ac72176332fddaf5a32f5342f6b3cf10fea64e198a0c1475eb0816"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/recruitment-red/recruitment/episode-000001/manifest.json",
+        "sha256": "8ffe3d7f06e80fdba0dfaaf793280fd12773046dcfd7aec74509fb83363e4e1d"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/recruitment-red/report.json",
+        "sha256": "16b97240c44ede96c57b7185bf6c3a229358b03c8fd6f6b7d53b8f37d38c85e7"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 25,
+      "case": "recruitment-upgrade",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "destination_hero_unchanged_and_recruitment_cutoff",
+          "exact_native_recruitment",
+          "foreign_creature_offer_rejected",
+          "foreign_destination_rejected",
+          "independent_history_manifest_audit",
+          "invalid_count_types_rejected_before_submission",
+          "out_of_slider_quantity_rejected",
+          "repeat_recruitment_merges_same_creature",
+          "upgraded_card_exact_purchase_shared_stock"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93106,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/14-recruitment-upgrade.json",
+        "scoring_binding_verified": false,
+        "sha256": "ddc2edf399ec1c5527dd218846311c294c31f4a7943b3d2ef09ffc55d5a4887d"
+      },
+      "manifest": {
+        "path": "runs/town-acceptance/upgraded-red/recruitment-upgrade/episode-000001/manifest.json",
+        "sha256": "77651f49de7cff45e7703bd0ba52608365e5160b67e7f873c9d811586186ea9b"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "ffe377ebdff2dba22e079e5cc4a677e83d844ed0",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-acceptance/upgraded-red/report.json",
+        "sha256": "90fa52697d6aec41d2c4f77cf4604d073da8b8f477ae17fa844b70038bed27ae"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    },
+    {
+      "actions_attempted": 95,
+      "case": "recruitment-budget",
+      "checks": {
+        "failed": [],
+        "passed": [
+          "explicit_native_stock_purchase_for_budget_test",
+          "independent_history_manifest_audit",
+          "native_recruitment_affordability",
+          "resource_limited_recruit_count_rejected",
+          "zero_stock_positive_count_rejected"
+        ],
+        "unverified": []
+      },
+      "engine_seed": 93001,
+      "episode_status": "truncated",
+      "error": null,
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "final_readonly_audit": {
+        "consistent": true,
+        "learner_eligible": true,
+        "manifest_bound": true,
+        "path": "runs/town-final-audits/15-recruitment-budget.json",
+        "scoring_binding_verified": false,
+        "sha256": "8317475878263b6a05aa43d26c2127c0815220ec11e07823dccde16159d3a9c0"
+      },
+      "manifest": {
+        "path": "runs/town-recruitment-budget-second/recruitment-budget/episode-000001/manifest.json",
+        "sha256": "f84e2d8cb9302356b705fcc8c2d33b156a5378d5d0ea9b8e6de86a0ca91d34e8"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_status": "passed",
+      "project_identity": {
+        "commit": "8053e66c638d76003477aba2841298ccb7a1a4b3",
+        "dirty": false
+      },
+      "report": {
+        "path": "runs/town-recruitment-budget-second/report.json",
+        "sha256": "b6dd59b117389d9982e09427a3191baf95c0322a313e7c46f9ed871a4a153aa9"
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "termination_reason": "collection_window"
+    }
+  ],
+  "paid_compute": false,
+  "platform": "Local macOS; AppleClang17 Release; one native game process per probe",
+  "remaining_limits": [
+    "No training, neural adapter, collector, PPO or town random-policy natural-outcome rate.",
+    "Contextual replay is unsupported; legacy replay verifies legacy movement only.",
+    "Garrisoned-hero destination is source-audited, not exercised; JSON map initialization cannot produce it and no garrison swap is offered.",
+    "Actual server-negative purchase acknowledgement, Grail prompt and conditional auto-merge boundaries are not exercised live.",
+    "Bounded event/visibility coverage is not exhaustive.",
+    "The two failed diagnostics are retained: reporting-field collision and bounded failure to create an affordability shortage."
+  ],
+  "repository": "https://github.com/tkorsi/heroes-rl",
+  "schema": "heroes-town-native-validation-v1",
+  "scope": "Bounded native mechanics and contract validation; diagnostics excluded from training and random-policy outcome claims",
+  "sequence": [
+    "Construction compiled and passed real-game cost, daily-cap, affordability and history checks at 1beba77 before recruitment implementation.",
+    "Recruitment cohort at ffe377e passed 10 of 11 probes; the budget case did not reach its target shortage within 10 days.",
+    "Review tightened the exact slider formula and rejected-selection immutability at 8053e66; the original reproductions reject and all 16 native history pairs re-audit.",
+    "Budget follow-up at 8053e66 and inspected seed 93001 reached insufficient funds on day 6: 35 gold, 100 unit price, 9 stock, slider 0."
+  ],
+  "tests": {
+    "construction_prefix_bytes_preserved": true,
+    "contextual_tests_passed": 166,
+    "executed": 415,
+    "full_suite_log": {
+      "path": "runs/town-complete-tests.log",
+      "sha256": "dffdd28ab85b706ddb8a6a101a235377d6e564b7f75851b2c67f6ba18cce06c5"
+    },
+    "passed": 401,
+    "post_validation_change": "Replay rejection message now explicitly names history-v2 and history-v3; behavior unchanged; targeted recruitment tests and actual CLI rejection rerun.",
+    "replay_guard_targeted_tests_passed": 14,
+    "review_findings_fixed": [
+      "Slider maximum must equal displayed stock/resource affordability with native signed-int cap; capacity cannot narrow support.",
+      "Rejected creature selection cannot mutate context revision or selected-card/panel state."
+    ],
+    "skip_reason": "Optional PyTorch-dependent learner tests; no training",
+    "skipped": 14,
+    "v2_canonical_bytes_preserved": true
+  },
+  "training_performed": false,
+  "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+  "v2_regression": {
+    "cases": [
+      {
+        "case": "navigation",
+        "history_audit_passed": true,
+        "status": "unverified",
+        "unverified_checks": [
+          "red_underlying_window_change_while_closed",
+          "blue_underlying_window_change_while_closed",
+          "paired_hidden_world_invariance"
+        ]
+      },
+      {
+        "case": "day-cutoff",
+        "history_audit_passed": true,
+        "status": "passed",
+        "unverified_checks": []
+      }
+    ],
+    "report": {
+      "path": "runs/town-v2-regression/validation.json",
+      "sha256": "29ddff2d4565da2397afd9df54d847945b525814126480cd8e33930724a7484c"
+    },
+    "scope": "Navigation/day-cutoff only; no new closed-army-change or hidden-world evidence"
+  },
+  "validated_code_commit": "8053e66c638d76003477aba2841298ccb7a1a4b3"
+}

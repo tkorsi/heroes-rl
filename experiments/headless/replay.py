@@ -72,7 +72,7 @@ def require_legacy_interface(metadata: dict) -> None:
             or metadata.get("action_schema") in ("heroes-context-actions-v2", "heroes-context-actions-v3")
             or metadata.get("type") == "contextual"
             or metadata.get("protocol_version") not in (None, 3)):
-        raise ReplayError("Contextual replay is unsupported: legacy digests do not verify history-v2")
+        raise ReplayError("Contextual replay is unsupported: legacy digests do not verify history-v2 or history-v3")
 
 
 # -- player-capture digest -------------------------------------------------

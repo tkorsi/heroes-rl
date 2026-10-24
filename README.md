@@ -14,7 +14,10 @@ PR #6 has separately passed bounded native-game, boundary and replay validation
 on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
 map, hero-window and town-window interaction. Its native adapter, strict
 history/trajectory v2 contract and independent auditor are implemented and have
-bounded local real-game evidence. Contextual replay, wider interaction coverage
+bounded local real-game evidence. A separate v3 town extension now adds explicit
+construction and exact-count recruitment, with bounded native validation of
+prices, daily limits, stock, armies, rejection and episode boundaries.
+Contextual replay, wider interaction coverage
 and a live neural adapter remain unfinished; training remains disabled.
 Its agreed movement action selects a destination coordinate for engine routing;
 the existing adjacent-step baseline stays separate. Other platforms are not yet
@@ -426,19 +429,20 @@ five groups and 200 hidden-world variants; it does not run the full pathfinder
 in a game. The 88 contextual contract, auditor and probe tests also pass. The
 planner stage preceded the live contextual adapter. Its compact stage evidence is in
 `validation/contextual-integration-2026-10-24.json`.
-**Next stage authorized, 24 October:** implement town construction and creature
-recruitment through explicit structured panel navigation, then validate each
-increment in real VCMI. Work proceeds on `codex/town-economy` from draft PR #7
-at `48d8e1a`. Preserve the existing contextual interface and movement baseline
-with explicit version/provenance separation. The policy selects the building,
+**Town stage, 24 October:** construction and creature recruitment are implemented
+on `codex/town-economy`, based on draft PR #7 at `48d8e1a`. Construction passed
+real VCMI validation before recruitment was added. The separate v3 interface
+preserves v2 and movement-v1 behavior; compact evidence, retained failed
+diagnostics and coverage limits are in `validation/town-native-2026-10-24.json`.
+The policy selects the building,
 creature, count and supported destination; the adapter supplies no strategy,
 automatic purchase/quantity or new reward. Options, costs, prerequisites and
 stock appear only where the normal town interface displays them. Keep the
 authored map, tavern restriction and hero count unchanged; isolated validation
 fixtures must declare every difference and never become training experience.
-Broader army editing and special interfaces remain deferred. This stage is
-implementation work, not a claim that these operations have passed validation.
-No training is authorized. Keep the adjacent-step `movement-v1` baseline
+Broader army editing and special interfaces remain deferred. The bounded
+diagnostics establish the listed mechanics, not complete gameplay coverage or
+learning readiness. No training is authorized. Keep the adjacent-step `movement-v1` baseline
 as a separately identified comparison. All contexts are structured headless
 interfaces; opening one does not create a rendered window or use image recognition.
 
@@ -472,7 +476,7 @@ The intended loop, in plain English:
 | History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons and boundary audits pass within their recorded scope. | Contextual replay and wider event coverage; legacy replay cannot verify v2. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
-| Hero/town operations | Explicit owned hero/town open/read/close; hero army/skills/mana/level and town army/faction only while open. | Town construction, then recruitment are the authorized implementation stage; broader army editing and special panels remain deferred. |
+| Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
 | Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
 
 The action-consumption and stream-finalization findings are **resolved in the
@@ -550,8 +554,7 @@ defaults, serialized records and prefix hashes remain unchanged. Mixing versions
 within either player's history or a paired finalization is invalid. The v3
 environment uses a separate history API/file/manifest declaration; it does not
 make legacy or v2 records interchangeable with town-operation experience.
-This contract is the implementation target; native acceptance evidence is
-reported separately below when available.
+Native acceptance evidence and its limits are reported below.
 
 In v3, a town context also identifies its active panel and optional selected
 entry. Each town action names its owned town handle and binds to the held
@@ -598,6 +601,56 @@ from a server-issued request. All ordinary rewards remain zero. New panels obey
 the same immutable-history, intervening-event and paired-finalization rules;
 cutoff continuation explicitly unwinds their parent panels outside the frozen
 learner prefixes. Contextual replay, including v3, remains unsupported.
+
+**Town validation:** at `1beba77`, real construction checks passed before
+recruitment implementation. At `ffe377e`, the expanded cohort passed construction
+and recruitment on both colors, selected base/upgraded prices and shared stock,
+same-creature merging, full-army no-room feedback, the seven-day natural terminal
+fixture and a process crash after an acknowledged build. These histories were
+independently re-audited under the stricter `8053e66` contract. A final native
+affordability probe at `8053e66` reached nine available archers priced at 100 gold
+with only 35 gold available; its positive purchase was rejected unchanged.
+The full suite passed 401 tests with 14 optional PyTorch skips. V2 navigation and
+day-cutoff regressions retain valid histories; those navigation cases do not
+establish additional hidden-world or closed-army-change coverage. A fresh legacy
+movement game ended naturally and its offline replay verified.
+
+All diagnostic attempts are retained. The initial construction probe failed
+because of a reporting-field collision, then passed after that probe was fixed.
+One recruitment-budget probe reached its declared day limit without creating
+the desired shortage; it remains a failed diagnostic over an unscored valid
+cutoff. The successful follow-up declares its different inspected seed; neither
+is random-policy performance evidence. Capacity fixtures change only one town's
+initial army, with exact field/byte isolation checked. The natural fixture is the
+separately declared townless map. Neither the authored baseline, its tavern
+restriction nor its hero count was changed.
+
+The town upper-army route to a garrisoned hero is source-audited but not validated
+in a real game: the pinned JSON format cannot initialize that state and this
+interface has no garrison-swap action. An actual server-rejected purchase,
+Grail/conditional auto-merge boundaries and exhaustive event coverage also remain
+unverified. The ordinary no-room branch is a validated UI rejection without a
+server request. No town-interface random-policy natural-outcome rate, contextual
+replay, live neural adapter, collector, PPO or training is claimed. Raw records
+remain local; compact provenance and coverage are committed in
+`validation/town-native-2026-10-24.json`.
+
+Reproduce the bounded probes with the prepared native build and local game data:
+
+```sh
+python3 validation/probes/validate_town_native.py --case construction \
+  --binary vcmi/build/bin/vcmiclient --data "$HOME/Library/Application Support/vcmi" \
+  --output runs/my-town-construction
+python3 validation/probes/validate_town_native.py --case recruitment-upgrade \
+  --binary vcmi/build/bin/vcmiclient --data "$HOME/Library/Application Support/vcmi" \
+  --output runs/my-town-recruitment
+python3 validation/probes/create_town_fixtures.py --kind capacity-full \
+  --output runs/my-capacity-fixture
+python3 validation/probes/validate_town_native.py --case capacity \
+  --fixture runs/my-capacity-fixture/fixture.json \
+  --binary vcmi/build/bin/vcmiclient --data "$HOME/Library/Application Support/vcmi" \
+  --output runs/my-capacity-check
+```
 
 Informational notices are separate ordered events. VCMI's `InfoWindow` carries
 no query or server reply, including in its `MODAL` display mode. The audited
