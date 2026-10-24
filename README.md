@@ -5,9 +5,10 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** a working uniform-random movement baseline against a fixed
-Easy opponent, with automatic battles and verified natural outcomes. No policy
-training has been performed yet. Native gameplay has been tested on macOS;
+**Current milestone:** two independent uniform-random agents play against each
+other with separate fog, automatic battles, and four synchronized recordings.
+The earlier fixed Easy-opponent baseline is retained. No policy training has
+been performed yet. Native gameplay has been tested on macOS;
 other platforms are not yet validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
@@ -19,9 +20,11 @@ This is the canonical project document. Last agreement: **24 October 2026**.
 
 Build an agent that learns adventure-map strategy in Heroes III through
 reinforcement learning, and make the development of its behaviour observable.
-The original long-term idea was self-play from random initialization. The first
-opponent is now a **fixed built-in computer opponent on Easy**, with battles
-resolved automatically. Self-play remains a later research direction.
+The original long-term idea was self-play from random initialization. After a
+first baseline against a fixed built-in opponent on Easy, the next experiment
+uses **two copies of our random agent**, with equal action capabilities and
+separate observations. Battles resolve automatically. This first self-play
+experiment establishes the environment; learning updates come later.
 
 There are two separate tracks:
 
@@ -57,10 +60,11 @@ improving play. Terminal-only rewards may produce no learning for a long time.
   natural defeat -1. Log technical timeouts/errors separately, never as losses.
 - Only player-visible information may enter the learner. A spectator recording
   can show more for human inspection, but must never feed hidden state to it.
-- Freeze opponent settings during comparisons. Use Easy (difficulty index 0)
-  with an active built-in adventure AI; an idle EmptyAI is not a meaningful
-  opponent. Easy is the lowest difficulty, not proof that one AI module is
-  empirically the weakest of every available module.
+- Freeze opponent settings during comparisons. The earlier built-in baseline
+  uses active Nullkiller on Easy (difficulty index 0). Random self-play uses
+  ExplorerRL on both sides with independent Python RNGs and the same action
+  interface. Keep these cohorts separate. Easy is the lowest game difficulty,
+  not evidence that an AI module is empirically the weakest available.
 - Preserve seeds, map hashes, engine/code versions, policy/checkpoint identity,
   outcomes, and termination reasons. A seed alone does not establish deterministic
   replay; the current built-in AI has additional randomness.
@@ -112,12 +116,13 @@ meaningful game events before an Easy opponent ends the game. First measure
 the random-policy baseline and the rate of natural endings. This tests the
 environment and whether terminal feedback is reachable; it is not training.
 
-Then try a small recurrent policy with PPO and terminal win/loss rewards,
-keeping the opponent, combat resolver, map rules, and action interface fixed.
-Compare against the random baseline and frozen checkpoints. Log exploration,
-neutral battles, mine ownership, survival, and wins as **metrics**, not added
-rewards. If feedback is too sparse, discuss the smallest next experiment rather
-than silently introducing reward shaping.
+An initial learning candidate is a small recurrent policy with PPO and terminal
+win/loss rewards, after validating random self-play below. Compare against the
+random baseline and frozen checkpoints within the same opponent, combat, map
+and action configuration. Log exploration, neutral battles, mine ownership,
+survival, and wins as **metrics**, not added rewards. If feedback is too sparse,
+discuss the smallest next experiment rather than silently introducing reward
+shaping.
 
 The first implementation uses `experiments/explorer/random_policy.py` over the
 ExplorerRL bridge. Red is our agent; Blue is Nullkiller on Easy. A seeded Python
@@ -151,6 +156,36 @@ unscored. The top-level manifest `reward` is authoritative; socket terminal mess
 are evidence pending process and recording checks. Engine and policy seeds are
 separate; the engine logs its actual initial seed, while deterministic replay of
 the whole opponent/engine is still unverified.
+
+## Experiment 2 — random self-play
+
+**H2:** Two independent copies of our movement policy can play the same authored
+scenario with their own fog, equal available actions, real automatic battles,
+and evidence from both players. This is a no-learning environment experiment,
+not a claim that self-play has already improved either policy.
+
+`run_self_play.py` starts one `RandomPolicy` instance per side, with separate
+localhost sockets, RNG seeds and action ledgers. Each native ExplorerRL instance
+uses its own player callback. The policies receive visible tiles/objects, their
+own state and the same nine-action attempt interface; no spectator observation
+is sent to either policy. Neither side recruits, builds or receives scripted
+strategic choices. Normal game rules and automatic BattleAI combat remain fixed.
+
+The renderer captures four streams under one client-state lock:
+`omniscient-red`, `player-red`, `omniscient-blue`, and `player-blue`. Each pair
+shares its own hero/town camera; all four share sample IDs, timestamps and game
+days. Open-map rendering does not reveal the map to either player. The player
+videos show that side's map knowledge; spectator sidebars remain spectator UI.
+
+Schema 3 manifests preserve per-player policies, actions, terminal messages and
+outcomes. A scored result requires both agents to have acted, agreeing engine
+and socket terminals for both sides, complementary win/loss, a clean exit and
+valid recordings. `rewards_by_player` is authoritative only after these checks.
+Limits or errors leave **both rewards and outcomes null**. Losing a hero while
+still owning a town is not a defeat: that agent can end turns until the engine
+ends the game or a declared limit is reached. Random wandering may never produce
+a winner within the budget, which is itself useful evidence about sparse
+terminal feedback.
 
 ## Git and local artifacts
 
@@ -217,11 +252,12 @@ the single source of purpose and decisions; do not maintain competing charters.
   exposed a startup acknowledgement error, a shutdown exception and a shutdown
   queue race, respectively; they remain unscored. Earlier successful attempts
   3 and 5 are retained. The final series uses attempts 6–8 after the queue fix.
-- Client/server/ExplorerRL/Nullkiller builds, 44 tests, exact dependency-source
+- Client/server/ExplorerRL/Nullkiller builds, 65 tests, exact dependency-source
   verification and video visual checks pass. The native concurrency regression
-  fails on the old queue and passes after the fix. Mining, natural victory,
-  nested game dialogs and swapping the external agent to Blue remain unverified
-  live paths. The older bare-duel map drafts also remain unvalidated.
+  fails on the old queue and passes after the fix. Self-play now exercises the
+  external bridge on both colors, automatic neutral battles and mine capture.
+  Nested game dialogs remain unverified live paths. The older bare-duel map
+  drafts also remain unvalidated.
 - Stage 1's earlier built-in-only smoke checks covered paired capture,
   player-only Blue and omniscient-only capture. Those frame-limited runs are
   unscored; evidence remains in `validation/recording-dual-view-2026-10-24.json`.
@@ -240,6 +276,35 @@ These three runs establish reachable terminal feedback, not a win-rate estimate
 or a learning result. The agent's current movement-only action space leaves it
 unable to use the town economy as its opponent does. A training comparison must
 retain and report that limitation or explicitly change the action interface.
+
+Random self-play gives both sides the same movement-only capabilities. Its
+results are recorded separately in `validation/self-play-2026-10-24.json`.
+All three runs reached the 180-second wall limit with no policy error and four
+valid recordings each; outcomes and rewards remain null. They reached days
+19, 23 and 22. Episode 1 included two neutral battles, a town capture and a
+hero-versus-hero battle: Blue held both towns after losing its hero, while Red
+kept its hero but no town. Episode 2 included a neutral battle for each side.
+Episode 3's Red agent captured a mine. No natural self-play ending was observed
+in this series, so the full two-terminal shutdown path remains unverified live.
+
+| Episode | Engine seed | Red / Blue policy seeds | Red / Blue actions sent | Red / Blue explored tiles, of 400 | Result |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 22345 | 1 / 101 | 104 / 112 | 189 / 332 | Wall limit, unscored |
+| 2 | 22346 | 2 / 102 | 97 / 150 | 257 / 298 | Wall limit, unscored |
+| 3 | 22347 | 3 / 103 | 119 / 100 | 188 / 155 | Wall limit, unscored |
+
+Each one-minute overview includes all three predetermined episodes, 20 seconds
+per episode, without selecting by outcome: `videos/self-play-player-red-60s.mp4`,
+`videos/self-play-player-blue-60s.mp4`, and matching
+`videos/self-play-omniscient-red-60s.mp4` / `videos/self-play-omniscient-blue-60s.mp4`.
+These are uniformly accelerated recordings, not exact action replays.
+
+Policy threads are stopped before snapshots and ledger hashes are frozen.
+Native terminal routing is regression-tested in both arrival orders; scoring
+requires actual delivery to both Python policies. A pre-existing, unobserved
+race can omit final event-list details when an action result overlaps terminal
+delivery; final state counters and terminal outcomes are checked separately.
+Native worker errors or missing terminal evidence never produce a scored result.
 
 ## Run the first agent experiment
 
@@ -284,6 +349,42 @@ Video integration tests require `ffmpeg` and `ffprobe`; the native shutdown test
 requires a C++ compiler and the prepared VCMI sources. Missing prerequisites are
 reported as skipped tests, not as gameplay validation. Historical local video
 paths in the experiment results are not downloadable assets in this repository.
+
+## Run random self-play
+
+After preparing the dependency and enabling/building ExplorerRL as above:
+
+```sh
+python3 experiments/explorer/run_self_play.py \
+  --output runs/my-self-play --episode 1 --seed 22345 \
+  --red-policy-seed 1 --blue-policy-seed 101
+```
+
+Defaults are a 180-second wall limit, 40 game days, 2,000 actions per side,
+4 captured samples per second, and a 0.03-second pause per external choice.
+The pause controls presentation timing, not choice probabilities. Every output
+directory must be new. Each run contains four MP4s, four frame ledgers, two
+`agents/<color>/policy.jsonl` files, isolated logs/settings, and `manifest.json`.
+The existing fixed-opponent launcher remains available for separate comparisons.
+
+Create matching overview clips from a directory containing only the intended
+self-play runs; `--player` selects both the camera and the outcome label:
+
+```sh
+python3 experiments/recording/video.py montage runs/my-self-play \
+  --output videos/self-play-red-fog.mp4 --seconds 60 --samples 0 \
+  --view player --player red
+python3 experiments/recording/video.py montage runs/my-self-play \
+  --output videos/self-play-blue-fog.mp4 --seconds 60 --samples 0 \
+  --view player --player blue
+python3 experiments/recording/video.py montage runs/my-self-play \
+  --output videos/self-play-open.mp4 --seconds 60 --samples 0 \
+  --view omniscient --player red
+```
+
+Use `--view omniscient --player blue` for Blue's matching open-map camera.
+Self-play defaults to Red when no player is specified. Overlays explicitly label
+the run **random self-play — no training**, including unknown outcomes for limits.
 
 ## Recorder commands
 

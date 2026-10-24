@@ -88,7 +88,45 @@ def classify_agent_run(returncode: int, reason: str | None, log: str, player_ind
     return status, outcome, termination, reward
 
 
-def validate_experiment_metadata(metadata: dict, player_index: int, log: str, agent_player: int | None = None) -> dict:
+def classify_self_play_run(returncode: int, reason: str | None, log: str,
+                           executions: dict[str, dict]) -> tuple[str, dict, str, dict]:
+    """Require two independent, complementary terminal deliveries before scoring."""
+    unknown = {color: None for color in ("red", "blue")}
+    def unscored(status, termination):
+        return status, unknown.copy(), termination, unknown.copy()
+    if set(executions) != set(unknown):
+        return unscored("failed", "missing_agent_evidence")
+    if (any(state.get("error") for state in executions.values())
+            or "ExplorerRL: " in log or "ExplorerRL terminal delivery failed" in log):
+        return unscored("failed", "policy_error")
+    limits = {state.get("limit") for state in executions.values()} - {None}
+    if reason or limits:
+        termination = reason or sorted(limits)[0]
+        status = "timeout" if termination in {"wall_time_limit", "frame_limit", "agent_action_limit", "game_day_limit"} else "failed"
+        return unscored(status, termination)
+    if returncode != 0:
+        return unscored("failed", "process_exit_without_verified_terminal")
+    if any(not state.get("ready") or state.get("actions_sent", 0) < 1 for state in executions.values()):
+        return unscored("failed", "agent_never_acted")
+    if log.count("Experiment self-play complete. Ending game.") != 1:
+        return unscored("failed", "unverified_self_play_terminal")
+    outcomes = {}
+    for index, color in enumerate(("red", "blue")):
+        matches = re.findall(rf"Experiment player {index} (won|lost)\. Terminal received\.", log)
+        terminal = executions[color].get("terminal")
+        if len(matches) != 1 or not terminal:
+            return unscored("failed", "unverified_agent_terminal")
+        outcome = {"won": "win", "lost": "loss"}[matches[0]]
+        if terminal.get("outcome") != outcome:
+            return unscored("failed", "unverified_agent_terminal")
+        outcomes[color] = outcome
+    if set(outcomes.values()) != {"win", "loss"}:
+        return unscored("failed", "noncomplementary_agent_terminals")
+    return "completed", outcomes, "natural_terminal", {color: 1 if outcome == "win" else -1 for color, outcome in outcomes.items()}
+
+
+def validate_experiment_metadata(metadata: dict, player_index: int, log: str, agent_player: int | None = None,
+                                 agent_players: list[int] | None = None) -> dict:
     """Verify effective engine state and actual AI flags, independently of requested settings."""
     if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
         raise ValueError("Missing or unsupported effective experiment metadata")
@@ -121,7 +159,15 @@ def validate_experiment_metadata(metadata: dict, player_index: int, log: str, ag
     if player_index not in indexed or indexed[player_index]["human"]:
         raise ValueError("Requested observer player is absent or is not controlled by AI")
     ai_players = {index for index, player in indexed.items() if not player["human"]}
-    if agent_player is not None:
+    if agent_players is not None:
+        if agent_player is not None or agent_players != [0, 1] or metadata.get("requested_agent_players") != agent_players:
+            raise ValueError("Actual engine did not route both requested self-play sides")
+        if set(indexed) != set(agent_players) or ai_players != set(agent_players) or len({p["team_index"] for p in indexed.values()}) != 2:
+            raise ValueError("Self-play requires exactly two opposing AI players")
+        if any(indexed[i].get("adventure_ai") != "ExplorerRL" for i in agent_players):
+            raise ValueError("Both self-play sides must actually use ExplorerRL")
+        ai_players = set()
+    elif agent_player is not None:
         if metadata.get("requested_agent_player") != agent_player or agent_player not in ai_players:
             raise ValueError("Actual engine did not route the requested agent side")
         if indexed[agent_player].get("adventure_ai") != "ExplorerRL":
@@ -145,6 +191,7 @@ def validate_experiment_metadata(metadata: dict, player_index: int, log: str, ag
             "difficulty_index": 0, "observer_player_index": player_index,
             "initial_visible_tiles": indexed[player_index]["visible_tiles"], "total_tiles": total_tiles,
             "ai_players": [ai_evidence[index] for index in sorted(ai_evidence)],
+            "initial_visibility_by_player": {PLAYER_COLORS[i]: indexed[i]["visible_tiles"] for i in sorted(indexed)},
             "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification"}
 
 
@@ -169,8 +216,10 @@ def _finalize_recordings(manifest: dict, output: Path, player_index: int, log: s
         raise ValueError("Native recorder reported a failure in its log, even if its error marker could not be written")
     metadata_path = output / "frames" / "experiment-metadata.json"
     metadata = json.loads(metadata_path.read_text())
-    evidence = validate_experiment_metadata(metadata, player_index, log, manifest.get("agent_player_index"))
-    if "agent_player_index" in manifest:
+    self_play = manifest.get("kind") == "random-self-play"
+    evidence = validate_experiment_metadata(metadata, player_index, log, manifest.get("agent_player_index"),
+                                            manifest.get("agent_player_indices"))
+    if "agent_player_index" in manifest or self_play:
         seeds = re.findall(r"Experiment engine RNG: initial_seed=(\d+) initial_sample=(\d+)", log)
         if len(seeds) != 1 or int(seeds[0][0]) != manifest["seed"]:
             raise ValueError("Missing or mismatched authoritative engine seed evidence")
@@ -181,10 +230,24 @@ def _finalize_recordings(manifest: dict, output: Path, player_index: int, log: s
     manifest["effective_experiment_state"] = metadata
     manifest["visibility_validation"] = evidence
     streams = {}
-    for view, recording in manifest["recordings"].items():
-        directory = output / "frames" / view
-        entries = validate_capture_view(directory, view, player_index, evidence["total_tiles"])
-        streams[view] = entries
+    for key, recording in manifest["recordings"].items():
+        mode = recording.get("perspective", {}).get("mode", key)
+        observer = recording.get("perspective", {}).get("observer_player_index", player_index)
+        if self_play:
+            expected_key = {f"{view}-{color}": (view, index, color)
+                            for index, color in enumerate(("red", "blue")) for view in ("omniscient", "player")}
+            if key not in expected_key:
+                raise ValueError("Unexpected self-play recording stream")
+            expected_mode, expected_observer, color = expected_key[key]
+            perspective = recording.get("perspective", {})
+            if (mode != expected_mode or type(observer) is not int or observer != expected_observer
+                    or perspective.get("observer_player") != color
+                    or perspective.get("player") != (color if mode == "player" else None)
+                    or perspective.get("player_index") != (observer if mode == "player" else None)):
+                raise ValueError("Self-play stream identity differs from its required view/player")
+        directory = output / "frames" / key
+        entries = validate_capture_view(directory, mode, observer, evidence["total_tiles"])
+        streams[key] = entries
         recording["capture"].update(frames=len(entries), ledger_sha256=digest(directory / "frames.jsonl"),
                                     elapsed_seconds=entries[-1]["elapsed_seconds"] - entries[0]["elapsed_seconds"],
                                     initial_visible_tiles=entries[0]["visible_tiles"],
@@ -192,10 +255,18 @@ def _finalize_recordings(manifest: dict, output: Path, player_index: int, log: s
                                     initial_game_day=entries[0]["game_day"], final_game_day=entries[-1]["game_day"])
     if set(streams) == {"omniscient", "player"}:
         manifest["paired_capture_validation"] = video.validate_paired_frames(streams["omniscient"], streams["player"])
+    if self_play:
+        expected = {f"{view}-{color}" for color in ("red", "blue") for view in ("omniscient", "player")}
+        if set(streams) != expected:
+            raise ValueError("Self-play requires both perspectives for both players")
+        manifest["paired_capture_validation_by_player"] = {
+            color: video.validate_paired_frames(streams[f"omniscient-{color}"], streams[f"player-{color}"])
+            for color in ("red", "blue")}
+        manifest["synchronized_capture_validation"] = video.validate_synchronized_frames(streams)
     if not no_encode:
-        for view, recording in manifest["recordings"].items():
-            name = "omniscient.mp4" if view == "omniscient" else f"player-{PLAYER_COLORS[player_index]}.mp4"
-            recording["encoded_video"] = video.encode(output / "frames" / view, output / name,
+        for key, recording in manifest["recordings"].items():
+            name = key + ".mp4" if self_play else ("omniscient.mp4" if key == "omniscient" else f"player-{PLAYER_COLORS[player_index]}.mp4")
+            recording["encoded_video"] = video.encode(output / "frames" / key, output / name,
                                                       recording["capture"]["fps"])
             recording["video"] = name
     for recording in manifest["recordings"].values():
@@ -210,6 +281,9 @@ def fail_recording(manifest: dict, output: Path, error: BaseException, reason: s
                     termination_reason=reason, recording_error=str(error))
     if "reward" in manifest:
         manifest["reward"] = None
+    if "rewards_by_player" in manifest:
+        manifest["rewards_by_player"] = {color: None for color in manifest["rewards_by_player"]}
+        manifest["outcomes_by_player"] = {color: None for color in manifest["outcomes_by_player"]}
     for recording in manifest["recordings"].values():
         recording["recording_valid"] = False
         if recording.get("video"):
@@ -227,15 +301,33 @@ def finalize_recordings(manifest: dict, output: Path, player_index: int, log: st
     write_json(output / "manifest.json", manifest)
 
 
-def record(args: argparse.Namespace, policy=None) -> dict:
+def freeze_policy_evidence(controller) -> tuple[dict, str]:
+    """Drain delivered terminals, then stop the writer before freezing evidence."""
+    if controller.thread is not None:
+        controller.thread.join(timeout=1)
+    controller.close()
+    return controller.snapshot(), digest(controller.path)
+
+
+def record(args: argparse.Namespace, policy=None, *, policies=None) -> dict:
+    all_policies = list(policies.values()) if policies is not None else ([policy] if policy is not None else [])
     try:
-        return _record(args, policy)
+        return _record(args, policy, policies=policies)
     finally:
-        if policy is not None:
-            policy.close()
+        errors = []
+        for controller in all_policies:
+            try:
+                controller.close()
+            except Exception as error:
+                errors.append(error)
+        if errors:
+            raise RuntimeError("Could not stop every policy connection") from errors[0]
 
 
-def _record(args: argparse.Namespace, policy=None) -> dict:
+def _record(args: argparse.Namespace, policy=None, *, policies=None) -> dict:
+    self_play = policies is not None
+    if self_play and (policy is not None or set(policies) != {0, 1} or len({id(p) for p in policies.values()}) != 2):
+        raise ValueError("Self-play requires distinct Red and Blue policy instances and no single policy")
     if sys.platform != "darwin":
         raise ValueError("This runner currently uses the macOS VCMI profile override")
     binary = args.binary.expanduser().resolve()
@@ -259,9 +351,15 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
         raise ValueError("Select a supported view and player color")
     player_index = PLAYER_COLORS.index(args.player)
     views = ("omniscient", "player") if args.view == "both" else (args.view,)
-    if policy is not None:
+    if self_play and (args.view != "both" or player_index != 0):
+        raise ValueError("Self-play records both views for both players, with Red as the default observer")
+    controllers = policies if self_play else ({player_index: policy} if policy is not None else {})
+    if controllers:
         if b"EXPLORER_RL_PLAYER" not in binary.read_bytes() or not (binary.parent / "AI/libExplorerRL.dylib").is_file():
             raise ValueError("Build the player-routing client and ExplorerRL module first")
+    if self_play and (b"EXPLORER_RL_PLAYERS" not in binary.read_bytes() or b"VCMI_RECORD_PLAYERS" not in binary.read_bytes()
+                      or b"EXPLORER_RL_PORT_" not in (binary.parent / "AI/libExplorerRL.dylib").read_bytes()):
+        raise ValueError("Rebuild the self-play client, multi-player recorder and ExplorerRL module")
     if not args.no_encode and not all(shutil.which(tool) for tool in ("ffmpeg", "ffprobe")):
         raise ValueError("ffmpeg and ffprobe must be on PATH")
     subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], check=True)
@@ -293,6 +391,15 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
                    "VCMI_EXPERIMENT_NO_CHEATS": "1"}
     if policy is not None:
         capture_env.update(policy.start(output, str(args.episode), player_index))
+    elif self_play:
+        capture_env.pop("VCMI_RECORD_PLAYER")
+        capture_env.update(VCMI_RECORD_PLAYERS="0,1", EXPLORER_RL_PLAYERS="0,1",
+                           EXPLORER_RL_EPISODE=str(args.episode), EXPLORER_RL_TIMEOUT="60")
+        for index, controller in sorted(controllers.items()):
+            folder = output / "agents" / PLAYER_COLORS[index]
+            folder.mkdir(parents=True)
+            endpoint = controller.start(folder, str(args.episode), index)
+            capture_env[f"EXPLORER_RL_PORT_{index}"] = endpoint["EXPLORER_RL_PORT"]
     manifest = {
         "schema_version": 2, "kind": "recorder-smoke", "episode": args.episode,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -324,6 +431,23 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
                         agent_player_index=player_index, outcome_player=args.player,
                         outcome_player_index=player_index, reward=None)
         manifest["limits"].update(max_actions=policy.max_actions, max_days=policy.max_days)
+    if self_play:
+        manifest.update(schema_version=3, kind="random-self-play", agent_player_indices=[0, 1],
+                        policy={"label": "Two uniform random agents (no learning)", "checkpoint": None, "learning": False},
+                        policies_by_player={PLAYER_COLORS[i]: p.description for i, p in sorted(controllers.items())},
+                        opponent={"module": "ExplorerRL", "kind": "independent_uniform_random", "learning": False},
+                        outcome_player=None, outcome_player_index=None,
+                        outcomes_by_player={"red": None, "blue": None}, rewards_by_player={"red": None, "blue": None})
+        manifest["limits"]["by_player"] = {PLAYER_COLORS[i]: {"max_actions": p.max_actions, "max_days": p.max_days}
+                                              for i, p in sorted(controllers.items())}
+        manifest["recordings"] = {f"{view}-{color}": {
+            "perspective": {"mode": view, "player": color if view == "player" else None,
+                            "player_index": index if view == "player" else None,
+                            "observer_player": color, "observer_player_index": index},
+            "capture": {"fps": args.fps, "frames": 0, "source": "native SDL game surface",
+                        "directory": f"frames/{view}-{color}"}, "video": None, "recording_valid": False,
+        } for index, color in enumerate(("red", "blue")) for view in views}
+    if controllers:
         manifest["policy_source"] = {"file": "experiments/explorer/random_policy.py",
                                      "sha256": digest(ROOT / "experiments/explorer/random_policy.py")}
         manifest["engine"]["ai_libraries"] = {name: digest(binary.parent / "AI" / name)
@@ -341,8 +465,10 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
                                             **capture_env}, stdout=log,
                                        stderr=subprocess.STDOUT, start_new_session=True)
             while process.poll() is None:
-                if policy is not None and policy.stop_reason:
-                    reason = policy.stop_reason
+                stopping = [(index, controller.stop_reason) for index, controller in controllers.items() if controller.stop_reason]
+                if stopping:
+                    index, reason = stopping[0]
+                    manifest["termination_player"] = PLAYER_COLORS[index]
                     break
                 if (frames / "recording-error.txt").exists():
                     reason = "recorder_error"
@@ -354,13 +480,14 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
                     reason = "wall_time_limit"
                     break
                 time.sleep(0.1)
-            if policy is not None and reason:
-                policy.prepare_stop()
+            if reason:
+                for controller in controllers.values():
+                    controller.prepare_stop()
             stop_owned_process(process)
         returncode = process.returncode
     except BaseException as error:
-        if policy is not None:
-            policy.prepare_stop()
+        for controller in controllers.values():
+            controller.prepare_stop()
         if process:
             try:
                 stop_owned_process(process)
@@ -377,13 +504,21 @@ def _record(args: argparse.Namespace, policy=None) -> dict:
             reason = "recorder_error"
         elif (frames / "recording-limit-reached.txt").exists():
             reason = "frame_limit"
-        if policy is not None:
-            # Native terminal delivery happens before test-map shutdown; allow the socket reader to drain.
-            if policy.thread is not None:
-                policy.thread.join(timeout=1)
-            execution = policy.snapshot()
+        if self_play:
+            executions, ledgers = {}, {}
+            for index, controller in sorted(controllers.items()):
+                color = PLAYER_COLORS[index]
+                executions[color], ledger_digest = freeze_policy_evidence(controller)
+                relative = f"agents/{color}/policy.jsonl"
+                ledgers[color] = {"file": relative, "sha256": ledger_digest}
+            manifest.update(policy_executions=executions, policy_ledgers=ledgers)
+            status, outcomes, termination, rewards = classify_self_play_run(returncode, reason, log_text, executions)
+            manifest.update(outcomes_by_player=outcomes, rewards_by_player=rewards)
+            outcome = None
+        elif policy is not None:
+            execution, ledger_digest = freeze_policy_evidence(policy)
             manifest["policy_execution"] = execution
-            manifest["policy_ledger"] = {"file": "policy.jsonl", "sha256": digest(output / "policy.jsonl")}
+            manifest["policy_ledger"] = {"file": "policy.jsonl", "sha256": ledger_digest}
             status, outcome, termination, manifest["reward"] = classify_agent_run(
                 returncode, reason, log_text, player_index, execution)
         else:

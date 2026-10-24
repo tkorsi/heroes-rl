@@ -86,9 +86,13 @@ void ExplorerRL::finish()
 
 void ExplorerRL::connectPolicy()
 {
-	const int port = environmentInteger("EXPLORER_RL_PORT", 0, 1, 65535);
+	// Each instance has its own callback, state and socket. Plural routing never
+	// falls back to a shared port, so a missing endpoint fails explicitly.
+	const std::string portKey = std::getenv("EXPLORER_RL_PLAYERS")
+		? "EXPLORER_RL_PORT_" + std::to_string(playerID.getNum()) : "EXPLORER_RL_PORT";
+	const int port = environmentInteger(portKey.c_str(), 0, 1, 65535);
 	if(port == 0)
-		throw std::runtime_error("EXPLORER_RL_PORT is required");
+		throw std::runtime_error(portKey + " is required");
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
 	if(fd < 0)

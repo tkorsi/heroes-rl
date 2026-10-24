@@ -1,0 +1,758 @@
+{
+  "schema_version": 1,
+  "kind": "random-self-play-validation",
+  "date": "2026-10-24",
+  "scope": "Three predetermined bounded real VCMI episodes with two independent uniform-random agents. No training updates.",
+  "scenario": {
+    "name": "random-baseline-v1.vmap",
+    "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+  },
+  "difficulty_index": 0,
+  "adventure_ai_by_player": {
+    "red": "ExplorerRL",
+    "blue": "ExplorerRL"
+  },
+  "combat": "BattleAI; automatic; spectator battle display skipped",
+  "limits": {
+    "by_player": {
+      "blue": {
+        "max_actions": 2000,
+        "max_days": 40
+      },
+      "red": {
+        "max_actions": 2000,
+        "max_days": 40
+      }
+    },
+    "max_frames_per_view": 1800,
+    "wall_seconds": 180
+  },
+  "series_selection": {
+    "engine_seeds": [
+      22345,
+      22346,
+      22347
+    ],
+    "red_policy_seeds": [
+      1,
+      2,
+      3
+    ],
+    "blue_policy_seeds": [
+      101,
+      102,
+      103
+    ],
+    "rule": "All three predetermined episodes retained regardless of outcome; no outcome-based filtering."
+  },
+  "engine": {
+    "ai_libraries": {
+      "libBattleAI.dylib": "e4c70b929eaa643f44770d9b97a78b56720b733dcbbcc21a9bffc6ed2715da17",
+      "libExplorerRL.dylib": "3e5aef17d9e4c01b667df37f7e3dc33b099a93bf268ae71929dd4d160372d539",
+      "libNullkiller.dylib": "5fff7abdd0943437e7bbefc99b3312a728e30e2c3394fabcc031d9739e99de51"
+    },
+    "binary_sha256": "ec7e7590ec79d8845a0ae0cacbf84d4000919b32b532424c5428548d5ba4e236",
+    "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+    "dirty": true
+  },
+  "engine_recipe": {
+    "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+    "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+    "engine/ExplorerRL/ExplorerRL.cpp": "a12d6696d5c889e0ef5c25fdd25756889808c310cb109f896f1221ad63be435e",
+    "engine/ExplorerRL/ExplorerRL.h": "97f1161490ec0f5e1f2fb3731187b8fcfcd230de71192bec651059435e710eca",
+    "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+    "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+    "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+    "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+    "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+    "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+    "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+    "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+    "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+    "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+    "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+    "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+    "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+    "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738"
+  },
+  "build_log_sha256": "65960786925f8d25d8f8edb879398a38dcb09c338cbaeff25d88d2ad1afaf2f6",
+  "postprocessing_note": "The native engine and random policy stayed fixed across the series. Python capture validation and evidence freezing were hardened during the series; original manifests are preserved. Final tooling revalidated all ledgers, identities, frame pairs, cameras, synchronization and classifications.",
+  "final_tooling_source_sha256": {
+    "experiments/explorer/random_policy.py": "35b97a8606777a73a26db5e9d641f1dfe1b95420178f30da3ccba595bd66aacd",
+    "experiments/explorer/run_self_play.py": "bf8fcaabc809981cacca14292b46d64e63472965d81f36e7e9862164828dc9c5",
+    "experiments/recording/record.py": "479a182a7ed6b159a48078f7ba870a352e56b99d9f3f6e44d492ad0e159fa079",
+    "experiments/recording/video.py": "91879562c6f9f89910d5d86a507ebc62ad9affe4e5a4e44419492135f11118dd"
+  },
+  "checks": {
+    "source_recipe": "python3 tools/prepare_vcmi.py --check",
+    "tests": "python3 -m unittest discover -s tests -v",
+    "tests_passed": 65,
+    "native_build_targets": [
+      "vcmiclient",
+      "vcmiserver",
+      "ExplorerRL",
+      "Nullkiller"
+    ],
+    "visual_inspection": "Native early Red/Blue fog and matching open-map frames; overview labels and sampled frames.",
+    "limitations": [
+      "Not training or a strength estimate; deterministic whole-game replay unverified.",
+      "Only movement/end-turn and supported dialogs, no recruitment/building/spells.",
+      "Spectator sidebar remains spectator UI; player view describes map knowledge.",
+      "Pre-existing unobserved terminal-edge event-drain race may omit final event details; state counters/outcomes verified separately.",
+      "Native worker exceptions or missing terminal deliveries are unscored.",
+      "All three episodes hit the wall limit: the complete two-terminal shutdown path is regression-tested but not yet verified in a natural self-play ending."
+    ]
+  },
+  "episodes": [
+    {
+      "episode": 1,
+      "run": "runs/self-play-001",
+      "manifest_sha256": "9b0bc66b52ab4fbfcef79ebf2a5d84e826a1e6487160a4acae261d45e2667b7e",
+      "engine_seed": 22345,
+      "policy_seeds": {
+        "blue": 101,
+        "red": 1
+      },
+      "status": "timeout",
+      "termination_reason": "wall_time_limit",
+      "returncode": 0,
+      "wall_seconds": 180.42,
+      "outcomes_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "rewards_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "recording_valid": true,
+      "synchronization": {
+        "frames": 405,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true,
+        "streams": [
+          "omniscient-red",
+          "player-red",
+          "omniscient-blue",
+          "player-blue"
+        ]
+      },
+      "pairs": {
+        "blue": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "red": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "players": {
+        "red": {
+          "observations": 104,
+          "actions_sent": 104,
+          "actions_accepted": 103,
+          "actions_rejected": 0,
+          "successful_displacements": 84,
+          "unique_hero_positions": 37,
+          "completed_turns": 18,
+          "last_day": 19,
+          "policy_ledger": {
+            "file": "agents/red/policy.jsonl",
+            "sha256": "ff83eec95639d12067993cf365cf7dd9c9b3da6586859be7fcdf27ebf3770144"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 189,
+          "final_own_heroes": 1,
+          "final_own_towns": 0,
+          "max_own_mines": 0,
+          "completed_automatic_battles": 1,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 0
+        },
+        "blue": {
+          "observations": 112,
+          "actions_sent": 112,
+          "actions_accepted": 112,
+          "actions_rejected": 0,
+          "successful_displacements": 93,
+          "unique_hero_positions": 55,
+          "completed_turns": 18,
+          "last_day": 18,
+          "policy_ledger": {
+            "file": "agents/blue/policy.jsonl",
+            "sha256": "d6013d645e162689c8e799fa1b326d94a0ad3974fb82e183a12ce13fe1e69aec"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 332,
+          "final_own_heroes": 0,
+          "final_own_towns": 2,
+          "max_own_mines": 0,
+          "completed_automatic_battles": 3,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 5
+        }
+      },
+      "videos": {
+        "omniscient-blue": {
+          "path": "runs/self-play-001/omniscient-blue.mp4",
+          "sha256": "4db5a293048e47561faa68d985eed67dbb788f2fbaec4729fb406d330b5a5f0a",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 332
+        },
+        "omniscient-red": {
+          "path": "runs/self-play-001/omniscient-red.mp4",
+          "sha256": "86acc44c4789dfad84a2087347c544f1885ee40b4865f51a2003a2b9b523f8a3",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 189
+        },
+        "player-blue": {
+          "path": "runs/self-play-001/player-blue.mp4",
+          "sha256": "8a32cbc588550cf6ba56a6ced2fe9e72effdabdb02a99834454e751121b9f303",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 332
+        },
+        "player-red": {
+          "path": "runs/self-play-001/player-red.mp4",
+          "sha256": "81c963813a7a5ef59170c42f1ebe25ba63321ac4256eaceee6a280e6cc3744cf",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 189
+        }
+      },
+      "synchronization_revalidated": {
+        "frames": 405,
+        "streams": [
+          "omniscient-blue",
+          "omniscient-red",
+          "player-blue",
+          "player-red"
+        ],
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "pairs_revalidated": {
+        "red": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "blue": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "initial_visible_tile_overlap": 0
+    },
+    {
+      "episode": 2,
+      "run": "runs/self-play-002",
+      "manifest_sha256": "776cdbb5623560d285da69b69701ade067da00c9cb4a08fa7703ed9af5b9768e",
+      "engine_seed": 22346,
+      "policy_seeds": {
+        "blue": 102,
+        "red": 2
+      },
+      "status": "timeout",
+      "termination_reason": "wall_time_limit",
+      "returncode": 0,
+      "wall_seconds": 180.343,
+      "outcomes_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "rewards_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "recording_valid": true,
+      "synchronization": {
+        "frames": 405,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true,
+        "streams": [
+          "omniscient-red",
+          "player-red",
+          "omniscient-blue",
+          "player-blue"
+        ]
+      },
+      "pairs": {
+        "blue": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "red": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "players": {
+        "red": {
+          "observations": 97,
+          "actions_sent": 97,
+          "actions_accepted": 96,
+          "actions_rejected": 0,
+          "successful_displacements": 74,
+          "unique_hero_positions": 47,
+          "completed_turns": 22,
+          "last_day": 23,
+          "policy_ledger": {
+            "file": "agents/red/policy.jsonl",
+            "sha256": "6ad368452f917bb7a9815f21b6efa22c85468c5805cd69ff3f757b73b332a0f0"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 257,
+          "final_own_heroes": 1,
+          "final_own_towns": 1,
+          "max_own_mines": 0,
+          "completed_automatic_battles": 1,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 0
+        },
+        "blue": {
+          "observations": 150,
+          "actions_sent": 150,
+          "actions_accepted": 150,
+          "actions_rejected": 0,
+          "successful_displacements": 128,
+          "unique_hero_positions": 68,
+          "completed_turns": 22,
+          "last_day": 22,
+          "policy_ledger": {
+            "file": "agents/blue/policy.jsonl",
+            "sha256": "b841b4e50f76b4df27a3c77c8bb9aaeedea8d6ed339dd5d66e4396f9fea699d2"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 298,
+          "final_own_heroes": 1,
+          "final_own_towns": 1,
+          "max_own_mines": 0,
+          "completed_automatic_battles": 1,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 0
+        }
+      },
+      "videos": {
+        "omniscient-blue": {
+          "path": "runs/self-play-002/omniscient-blue.mp4",
+          "sha256": "0802dc641aaefb0e4cee61b8c5f81d85adbc53b1d88c6bbfcf4925e78048ef2a",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 298
+        },
+        "omniscient-red": {
+          "path": "runs/self-play-002/omniscient-red.mp4",
+          "sha256": "6a78f8a8e64bf84762d8de3114566029253337ca073aebb5ec6822c95e498979",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 257
+        },
+        "player-blue": {
+          "path": "runs/self-play-002/player-blue.mp4",
+          "sha256": "32bb7f0770993532f1eac71b8c1ea12676c1c090f7000c949364f4a820325821",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 298
+        },
+        "player-red": {
+          "path": "runs/self-play-002/player-red.mp4",
+          "sha256": "e920e5f3cd62b44a6827800e3436398f2e261801f08694593eabc7a00128c0c8",
+          "frames": 405,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 257
+        }
+      },
+      "synchronization_revalidated": {
+        "frames": 405,
+        "streams": [
+          "omniscient-blue",
+          "omniscient-red",
+          "player-blue",
+          "player-red"
+        ],
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "pairs_revalidated": {
+        "red": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "blue": {
+          "frames": 405,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "initial_visible_tile_overlap": 0
+    },
+    {
+      "episode": 3,
+      "run": "runs/self-play-003",
+      "manifest_sha256": "d3d2858e7a590e88f3def546d891374d50ad67a7f52dbbed4daf5bfcd7ccf45e",
+      "engine_seed": 22347,
+      "policy_seeds": {
+        "blue": 103,
+        "red": 3
+      },
+      "status": "timeout",
+      "termination_reason": "wall_time_limit",
+      "returncode": 0,
+      "wall_seconds": 180.401,
+      "outcomes_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "rewards_by_player": {
+        "blue": null,
+        "red": null
+      },
+      "recording_valid": true,
+      "synchronization": {
+        "frames": 414,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true,
+        "streams": [
+          "omniscient-red",
+          "player-red",
+          "omniscient-blue",
+          "player-blue"
+        ]
+      },
+      "pairs": {
+        "blue": {
+          "frames": 414,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "red": {
+          "frames": 414,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "players": {
+        "red": {
+          "observations": 119,
+          "actions_sent": 119,
+          "actions_accepted": 119,
+          "actions_rejected": 0,
+          "successful_displacements": 97,
+          "unique_hero_positions": 41,
+          "completed_turns": 22,
+          "last_day": 22,
+          "policy_ledger": {
+            "file": "agents/red/policy.jsonl",
+            "sha256": "376da5b35277c597a0878513c11a30a341baab39705e87b5dea82b997d70849c"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 188,
+          "final_own_heroes": 1,
+          "final_own_towns": 1,
+          "max_own_mines": 1,
+          "completed_automatic_battles": 0,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 0
+        },
+        "blue": {
+          "observations": 100,
+          "actions_sent": 100,
+          "actions_accepted": 99,
+          "actions_rejected": 0,
+          "successful_displacements": 78,
+          "unique_hero_positions": 30,
+          "completed_turns": 21,
+          "last_day": 22,
+          "policy_ledger": {
+            "file": "agents/blue/policy.jsonl",
+            "sha256": "9baeacc9bfcc83c1642e9cf46453fff88088f13d866e984ccb6d579ff65f1c68"
+          },
+          "initial_visible_tiles": 92,
+          "final_visible_tiles": 155,
+          "final_own_heroes": 1,
+          "final_own_towns": 1,
+          "max_own_mines": 0,
+          "completed_automatic_battles": 0,
+          "reported_terminal_outcome": null,
+          "own_identity_verified": true,
+          "observed_tile_count_verified": true,
+          "no_hero_with_town_observations": 0
+        }
+      },
+      "videos": {
+        "omniscient-blue": {
+          "path": "runs/self-play-003/omniscient-blue.mp4",
+          "sha256": "af2ac96ac4ec91ab3a0d7132681332f6e53baddbec0b1af49e687845cd80a35e",
+          "frames": 414,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 155
+        },
+        "omniscient-red": {
+          "path": "runs/self-play-003/omniscient-red.mp4",
+          "sha256": "70fedb29435ae6e0201d9797ff075a542d992a86b7d39c3537841193fc9f458d",
+          "frames": 414,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 188
+        },
+        "player-blue": {
+          "path": "runs/self-play-003/player-blue.mp4",
+          "sha256": "5f77cb0419833496888ac663390813a5979ed1e8cd875c5b5865805146980d77",
+          "frames": 414,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 155
+        },
+        "player-red": {
+          "path": "runs/self-play-003/player-red.mp4",
+          "sha256": "fc3b0314860da7ad0d90a9dc1df4d03a6fe4fd6a2a2cf3a97790bd9c423f15c0",
+          "frames": 414,
+          "visible_tiles_initial": 92,
+          "visible_tiles_final": 188
+        }
+      },
+      "synchronization_revalidated": {
+        "frames": 414,
+        "streams": [
+          "omniscient-blue",
+          "omniscient-red",
+          "player-blue",
+          "player-red"
+        ],
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "pairs_revalidated": {
+        "red": {
+          "frames": 414,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        },
+        "blue": {
+          "frames": 414,
+          "matched_fields": [
+            "sample_id",
+            "game_day",
+            "observer_player_index",
+            "visible_tiles",
+            "camera_center",
+            "elapsed_seconds",
+            "width",
+            "height"
+          ],
+          "shared_sample_ids_verified": true
+        }
+      },
+      "initial_visible_tile_overlap": 0
+    }
+  ],
+  "overviews": [
+    {
+      "path": "videos/self-play-player-red-60s.mp4",
+      "sha256": "683f10a8219f6cb271d5d225980a00973d2adffc9e5fd56fcf1a45f4be99292d",
+      "manifest_sha256": "452ef91ecac02867c5d792d953b38b1587b2aa944b56f2488d1c804e3dc9182a",
+      "player": "red",
+      "view": "player",
+      "seconds": 60.0,
+      "episodes": [
+        1,
+        2,
+        3
+      ],
+      "full_source_frame_coverage": false
+    },
+    {
+      "path": "videos/self-play-omniscient-red-60s.mp4",
+      "sha256": "8d7aef39a2b74b5a030dc716406e8c26abef67c6660d4c5e361919a6c19e3797",
+      "manifest_sha256": "c6c9ce0c844c9c4d4be930c637dce9a62858edb294b007f94365f8c1d961cd23",
+      "player": "red",
+      "view": "omniscient",
+      "seconds": 60.0,
+      "episodes": [
+        1,
+        2,
+        3
+      ],
+      "full_source_frame_coverage": false
+    },
+    {
+      "path": "videos/self-play-player-blue-60s.mp4",
+      "sha256": "d31a50e0fd38e59941d2f047c4d7227231916d56728948ae2846d5f7b3ed5edd",
+      "manifest_sha256": "e71bae37af858ca5ed09e0a50ab3f2223d01a5fbff9be06f94719799ae918a42",
+      "player": "blue",
+      "view": "player",
+      "seconds": 60.0,
+      "episodes": [
+        1,
+        2,
+        3
+      ],
+      "full_source_frame_coverage": false
+    },
+    {
+      "path": "videos/self-play-omniscient-blue-60s.mp4",
+      "sha256": "0a9b806a77d5a4eb189349ee748e0d2bffeed80e6f628b8d7861b20683aba6b7",
+      "manifest_sha256": "601c893c920714a5b4ca259dc316009b0a8a67095079783fbcb653ff66bd810b",
+      "player": "blue",
+      "view": "omniscient",
+      "seconds": 60.0,
+      "episodes": [
+        1,
+        2,
+        3
+      ],
+      "full_source_frame_coverage": false
+    }
+  ]
+}

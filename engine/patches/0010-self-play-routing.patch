@@ -1,0 +1,173 @@
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -253,14 +253,15 @@
+ 
+ void CClient::initPlayerInterfaces()
+ {
+-	const auto explorerPlayer = configuredExplorerPlayer();
+-	if(explorerPlayer)
+-	{
+-		if(!gameState().players.contains(*explorerPlayer) || !playerEnvironments.contains(*explorerPlayer))
+-			throw std::runtime_error("EXPLORER_RL_PLAYER must name an active player controlled by this client");
+-		const auto & player = gameState().getStartInfo()->playerInfos.at(*explorerPlayer);
++	const auto explorerPlayers = configuredExplorerPlayers();
++	explorerTerminalsReceived.clear();
++	for(const auto explorerPlayer : explorerPlayers)
++	{
++		if(!gameState().players.contains(explorerPlayer) || !playerEnvironments.contains(explorerPlayer))
++			throw std::runtime_error("ExplorerRL must name active players controlled by this client");
++		const auto & player = gameState().getStartInfo()->playerInfos.at(explorerPlayer);
+ 		if(!player.isControlledByAI() && !settings["session"]["onlyai"].Bool())
+-			throw std::runtime_error("EXPLORER_RL_PLAYER cannot replace a human player interface");
++			throw std::runtime_error("ExplorerRL cannot replace a human player interface");
+ 	}
+ 
+ 	for(const auto & playerInfo : gameState().getStartInfo()->playerInfos)
+@@ -279,7 +280,7 @@
+ 					if (gameState().getPlayerTeam(allyInfo.first) == gameState().getPlayerTeam(playerInfo.first) && allyInfo.second.isControlledByHuman())
+ 						alliedToHuman = true;
+ 
+-				auto AiToGive = explorerPlayer == color ? "ExplorerRL" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
++				auto AiToGive = explorerPlayers.contains(color) ? "ExplorerRL" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
+ 				logNetwork->info("Player %s will be lead by %s", color.toString(), AiToGive);
+ 				installNewPlayerInterface(CDynLibHandler::getNewAI(AiToGive), color);
+ 			}
+@@ -311,12 +312,45 @@
+ 
+ std::optional<PlayerColor> CClient::configuredExplorerPlayer() const
+ {
+-	const char * configured = std::getenv("EXPLORER_RL_PLAYER");
+-	if(!configured)
+-		return std::nullopt;
+-	if(configured[0] < '0' || configured[0] > '7' || configured[1] != '\0')
+-		throw std::runtime_error("EXPLORER_RL_PLAYER must be exactly one player index from 0 to 7");
+-	return PlayerColor(configured[0] - '0');
++	const auto players = configuredExplorerPlayers();
++	if(players.size() == 1)
++		return *players.begin();
++	return std::nullopt;
++}
++
++std::set<PlayerColor> CClient::configuredExplorerPlayers() const
++{
++	const char * singular = std::getenv("EXPLORER_RL_PLAYER");
++	const char * plural = std::getenv("EXPLORER_RL_PLAYERS");
++	if(singular && plural)
++		throw std::runtime_error("Set either EXPLORER_RL_PLAYER or EXPLORER_RL_PLAYERS, never both");
++	std::set<PlayerColor> players;
++	if(!singular && !plural)
++		return players;
++	const std::string configured = plural ? plural : singular;
++	if(configured.empty() || configured.size() % 2 == 0 || (!plural && configured.size() != 1))
++		throw std::runtime_error("ExplorerRL player indices must be distinct digits from 0 to 7 separated by commas");
++	for(size_t i = 0; i < configured.size(); ++i)
++	{
++		if(i % 2 == 1)
++		{
++			if(configured[i] != ',')
++				throw std::runtime_error("EXPLORER_RL_PLAYERS requires comma-separated player indices");
++			continue;
++		}
++		if(configured[i] < '0' || configured[i] > '7' || !players.emplace(configured[i] - '0').second)
++			throw std::runtime_error("ExplorerRL player indices must be distinct digits from 0 to 7");
++	}
++	return players;
++}
++
++bool CClient::recordExplorerTerminal(PlayerColor player, bool won)
++{
++	const auto expected = configuredExplorerPlayers();
++	if(!expected.contains(player) || !explorerTerminalsReceived.insert(player).second)
++		return false;
++	logAi->info("Experiment player %d %s. Terminal received.", player.getNum(), won ? "won" : "lost");
++	return explorerTerminalsReceived.size() == expected.size();
+ }
+ 
+ std::string CClient::aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const
+@@ -394,7 +428,7 @@
+ 
+ int CClient::sendRequest(const CPackForServer & request, PlayerColor player, bool waitTillRealize)
+ {
+-	ui32 requestID = requestCounter++;
++	const int requestID = requestCounter.fetch_add(1, std::memory_order_relaxed);
+ 	logNetwork->trace("Sending a request \"%s\". It'll have an ID=%d.", typeid(request).name(), requestID);
+ 
+ 	waitingRequest.pushBack(requestID);
+diff --git a/client/Client.h b/client/Client.h
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -9,6 +9,7 @@
+  */
+ #pragma once
+ 
++#include <atomic>
+ #include <memory>
+ #include <vcmi/Environment.h>
+ 
+@@ -127,8 +128,9 @@
+ class CClient : public Environment, public IClient
+ {
+ 	std::shared_ptr<CGameState> gamestate;
+-	int requestCounter = 1;
++	std::atomic<int> requestCounter{1};
+ 	std::set<PlayerColor> advInterfaceReadySent;
++	std::set<PlayerColor> explorerTerminalsReceived;
+ 
+ public:
+ 	std::map<PlayerColor, std::shared_ptr<CGameInterface>> playerint;
+@@ -163,6 +165,8 @@
+ 	void initPlayerEnvironments();
+ 	void initPlayerInterfaces();
+ 	std::optional<PlayerColor> configuredExplorerPlayer() const;
++	std::set<PlayerColor> configuredExplorerPlayers() const;
++	bool recordExplorerTerminal(PlayerColor player, bool won);
+ 	std::string aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const; //empty means no AI -> human
+ 	std::string aiNameForPlayer(bool battleAI, bool alliedToHuman) const;
+ 	void installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInterface, PlayerColor color, bool battlecb = false);
+diff --git a/client/CServerHandler.cpp b/client/CServerHandler.cpp
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -94,6 +94,9 @@
+ 		metadata["requested_agent_player"].Integer() = explorerPlayer->getNum();
+ 	else
+ 		metadata["requested_agent_player"] = JsonNode();
++	metadata["requested_agent_players"].Vector();
++	for(const auto explorerPlayer : client.configuredExplorerPlayers())
++		metadata["requested_agent_players"].Vector().emplace_back(explorerPlayer.getNum());
+ 	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
+ 	{
+ 		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -421,12 +421,23 @@
+ 		}
+ 	}
+ 
+-	// Default test-map sessions end on Red. Agent experiments wait for their
+-	// selected player's synchronous gameOver callback, including terminal delivery.
+-	const auto endingPlayer = cl.configuredExplorerPlayer().value_or(PlayerColor(0));
+-	if(!settings["session"]["testmap"].isNull() && pack.player == endingPlayer)
+-	{
+-		if(pack.player == PlayerColor(0))
++	// A self-play result is complete only after every configured player's own
++	// natural terminal pack and synchronous gameOver callback have arrived.
++	const auto explorerPlayers = cl.configuredExplorerPlayers();
++	const bool selfPlay = explorerPlayers.size() > 1;
++	bool experimentComplete = false;
++	if(!settings["session"]["testmap"].isNull())
++	{
++		if(selfPlay && (pack.victoryLossCheckResult.victory() || pack.victoryLossCheckResult.loss()))
++			experimentComplete = cl.recordExplorerTerminal(pack.player, pack.victoryLossCheckResult.victory());
++		else if(!selfPlay)
++			experimentComplete = pack.player == cl.configuredExplorerPlayer().value_or(PlayerColor(0));
++	}
++	if(experimentComplete)
++	{
++		if(selfPlay)
++			logAi->info("Experiment self-play complete. Ending game.");
++		else if(pack.player == PlayerColor(0))
+ 			logAi->info("Red player %s. Ending game.", pack.victoryLossCheckResult.victory() ? "won" : "lost");
+ 		else
+ 			logAi->info("Experiment player %d %s. Ending game.", pack.player.getNum(), pack.victoryLossCheckResult.victory() ? "won" : "lost");
