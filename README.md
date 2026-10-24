@@ -1756,6 +1756,9 @@ no paid compute or GitHub PR merge occurred.
 
 #### First bounded gameplay experiment: stopped result
 
+Implementation and results are on `codex/first-gameplay-run` in
+[draft PR #13](https://github.com/tkorsi/heroes-rl/pull/13), stacked on PR #12.
+
 On 25 October the user approved the existing plan
 `ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6`
 for one execution: ten attempts, at most one PPO update/sixteen optimizer steps,
@@ -1868,7 +1871,7 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The current handoff is `codex/first-gameplay-run`, stacked on
+The current handoff is `codex/first-gameplay-run` (draft PR #13), stacked on
 `codex/troop-transfer` (draft PR #12), then `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
 barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
 preparation are implemented and locally validated as described above. Read
