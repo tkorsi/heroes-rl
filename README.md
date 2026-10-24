@@ -479,8 +479,8 @@ The intended loop, in plain English:
 | --- | --- | --- |
 | Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles, exercised locally. | Wider native interruption/dialog coverage; additional operations remain deferred. |
 | History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons and boundary audits pass within their recorded scope. | Contextual replay and wider event coverage; legacy replay cannot verify v2. |
-| Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
-| Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
+| Memory and model | Randomly initialized contextual shared GRU actor–critic with separate player sessions, chronological visible history and bounded live inference checks; legacy prototype retained. | No learned game behavior; broader field/event coverage remains. |
+| Candidate scoring | Contextual typed conditional policy covers navigation, construction, full rectangular coordinates and exact recruitment counts; routing handles are not features. | Semantically indistinguishable dwelling controls remain equally scored; additional action interfaces are deferred. |
 | Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
 | Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; natural contextual outcomes, replay and further coverage remain gates. |
 
@@ -1177,7 +1177,8 @@ map/hero/town interface, including construction and exact-count recruitment;
 implement recurrent PPO, collection, frozen opponents and checkpoint resumption.
 Only synthetic optimizer tests and bounded real games with fixed, untrained
 weights are authorized. No optimizer update on gameplay is permitted. This work
-starts from validated town PR #8 at `8f6c715`, on `codex/contextual-ppo`, keeping
+is published in draft [PR #9](https://github.com/tkorsi/heroes-rl/pull/9), stacked
+on validated town PR #8 at `8f6c715`, on `codex/contextual-ppo`, keeping
 history/action v1 and contextual v2/v3 compatibility separate. No native source
 change is required for the neural adapter.
 
@@ -1745,9 +1746,10 @@ the single source of purpose and decisions; do not maintain competing charters.
   cheat (runs 003/004). They validate recording only, **not** play under fog.
 - No Heroes learner training has been performed here. The later 1,000-attempt
   headless series below uses uniform-random agents for environment validation.
-- An isolated, randomly initialized shared recurrent policy/value component,
-  strict player-history input and per-player trajectory validation now exist.
-  It has no live bridge adapter, collector, PPO update or checkpoint league.
+- At the original prototype milestone, an isolated, randomly initialized shared
+  recurrent policy/value component and strict player-history/trajectory validation
+  existed without a live adapter, collector, PPO update or checkpoint league.
+  The later contextual neural integration above supersedes that implementation status.
   Existing bridge-v2 recordings are not eligible learner histories.
   All 129 tests pass, including 45 synthetic learner checks; exact prepared-engine
   source verification also passes. Compact evidence:
