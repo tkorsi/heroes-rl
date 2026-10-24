@@ -2,15 +2,20 @@
 #include "ExplorerRL.h"
 
 #include "../../lib/battle/BattleAction.h"
+#include "../../lib/battle/BattleSide.h"
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/gameState/CGameState.h"
 #include "../../lib/gameState/EVictoryLossCheckResult.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/networkPacks/PacksForClient.h"
+#include "../../lib/networkPacks/PacksForClientBattle.h"
 
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <cerrno>
 #include <cstdlib>
 #include <poll.h>
@@ -35,6 +40,80 @@ int environmentInteger(const char * key, int fallback, int minimum, int maximum)
 	if(!*value || *end || result < minimum || result > maximum)
 		throw std::runtime_error(std::string("Invalid ") + key);
 	return static_cast<int>(result);
+}
+
+int64_t microsecondsSince(std::chrono::steady_clock::time_point start)
+{
+	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
+}
+
+/// The player's own callback as a VisibleState world. Objects are listed only
+/// for tiles its team sees, and only when the callback reports them visible.
+struct CallbackWorld
+{
+	const CCallback & callback;
+	int3 size;
+
+	int width() const { return size.x; }
+	int height() const { return size.y; }
+	int levels() const { return size.z; }
+	bool tileVisible(int x, int y, int z) const { return callback.isVisible(int3(x, y, z)); }
+
+	void visibleObjectsAt(int x, int y, int z, std::vector<explorer_rl::VisibleObject> & out) const
+	{
+		const auto * tile = callback.getTile(int3(x, y, z), false);
+		if(!tile)
+			return;
+		for(const auto objectID : tile->visitableObjects)
+		{
+			const auto * object = callback.getObj(objectID, false);
+			if(!object || !callback.isVisible(object))
+				continue;
+			out.push_back({object->id.getNum(), x, y, z, object->ID.getNum(), object->subID.getNum(), object->getOwner().getNum()});
+		}
+	}
+};
+
+JsonNode visibleObjectJson(const explorer_rl::VisibleObject & object)
+{
+	JsonNode result;
+	result["id"].Integer() = object.id; // routing only; the adapter replaces it with an opaque handle
+	result["x"].Integer() = object.x;
+	result["y"].Integer() = object.y;
+	result["z"].Integer() = object.z;
+	result["type"].Integer() = object.type;
+	result["subtype"].Integer() = object.subtype;
+	result["owner"].Integer() = object.owner;
+	return result;
+}
+
+JsonNode visibleChangeJson(const explorer_rl::VisibleChange & change, int64_t sequence, int day)
+{
+	JsonNode event;
+	event["kind"].String() = "visible_update";
+	event["sequence"].Integer() = sequence;
+	event["day"].Integer() = day;
+	auto & appeared = event["appeared"].Vector();
+	for(const auto & object : change.appeared)
+		appeared.push_back(visibleObjectJson(object));
+	auto & updated = event["changed"].Vector();
+	for(const auto & object : change.changed)
+		updated.push_back(visibleObjectJson(object));
+	auto & disappeared = event["disappeared"].Vector();
+	for(const auto id : change.disappeared)
+		disappeared.emplace_back(id);
+	for(const auto * key : {"revealed", "hidden"})
+	{
+		auto & tiles = event[key].Vector();
+		for(const auto & tile : std::string(key) == "revealed" ? change.revealed : change.hidden)
+		{
+			JsonNode position;
+			for(const int coordinate : tile)
+				position.Vector().emplace_back(coordinate);
+			tiles.push_back(std::move(position));
+		}
+	}
+	return event;
 }
 
 void waitSocket(int fd, short events, int timeoutSeconds)
@@ -64,6 +143,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	human = false;
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
+	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	worker = std::thread([this] { run(); });
 }
 
@@ -102,6 +182,9 @@ void ExplorerRL::connectPolicy()
 	const int yes = 1;
 	::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes));
 #endif
+	// Each message is one complete line; coalescing small writes only adds latency.
+	const int noDelay = 1;
+	::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
 	timeval timeout{timeoutSeconds, 0};
 	::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 	::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
@@ -117,7 +200,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = 2;
+	result["protocol_version"].Integer() = 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -125,20 +208,34 @@ JsonNode ExplorerRL::message(const std::string & type) const
 
 void ExplorerRL::sendMessage(const JsonNode & message)
 {
+	std::lock_guard lock(sendMutex);
+	{
+		std::lock_guard stateLock(stateMutex);
+		// gameOver runs on the network thread. Either this write completes
+		// before its terminal write, or it is suppressed: terminal stays last.
+		if(terminal)
+		{
+			// The terminal record is assembled under sendMutex after this
+			// returns, so returning these events keeps the history gap-free.
+			const auto & undelivered = message["events"];
+			if(undelivered.getType() == JsonNode::JsonType::DATA_VECTOR)
+				events.insert(events.begin(), undelivered.Vector().begin(), undelivered.Vector().end());
+			return;
+		}
+	}
+	writeMessage(message);
+}
+
+void ExplorerRL::writeMessage(const JsonNode & message)
+{
+	const auto encodeStart = std::chrono::steady_clock::now();
 	// VCMI's compact writer can retain formatting newlines. JSON strings escape
 	// their own newlines, so removing literal CR/LF produces a JSONL record.
 	std::string line = message.toCompactString();
 	line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
 	line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
 	line += '\n';
-	std::lock_guard lock(sendMutex);
-	{
-		std::lock_guard stateLock(stateMutex);
-		// gameOver runs on the network thread. Either this write completes
-		// before its terminal write, or it is suppressed: terminal stays last.
-		if(terminal && message["type"].String() != "terminal")
-			return;
-	}
+	const auto encodeMicros = microsecondsSince(encodeStart);
 	const int fd = socketFD.load();
 	if(fd < 0)
 		throw std::runtime_error("Policy socket is not connected");
@@ -156,6 +253,9 @@ void ExplorerRL::sendMessage(const JsonNode & message)
 			throw std::runtime_error("Cannot write policy socket");
 		offset += static_cast<size_t>(sent);
 	}
+	lastEncodeMicros = encodeMicros;
+	lastSendMicros = microsecondsSince(encodeStart) - encodeMicros;
+	lastMessageBytes = static_cast<int64_t>(line.size());
 }
 
 JsonNode ExplorerRL::receiveMessage()
@@ -203,6 +303,9 @@ void ExplorerRL::run() noexcept
 		ready["adventure_actions"].Integer() = 9;
 		ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
 		ready["battle_ai"].String() = getBattleAIName();
+		// Ordered player-visible changes between decisions; see VisibleState.h.
+		ready["observation_events"].String() = "visible_update-v1";
+		ready["profiling"].Bool() = profile;
 		sendMessage(ready);
 		while(true)
 		{
@@ -297,6 +400,43 @@ void ExplorerRL::playerBlocked(int reason, bool start)
 	changed.notify_all();
 }
 
+void ExplorerRL::battleStart(const BattleID & battleID, const CCreatureSet * army1, const CCreatureSet * army2, int3 tile,
+	const CGHeroInstance * hero1, const CGHeroInstance * hero2, BattleSide side, bool replayAllowed)
+{
+	// The opponent kind is shown to a player entering its own battle.
+	const bool left = side == BattleSide::LEFT_SIDE;
+	const auto * opposingHero = left ? hero2 : hero1;
+	const auto * opposingArmy = left ? army2 : army1;
+	JsonNode event;
+	event["kind"].String() = "battle_start";
+	event["side"].String() = left ? "attacker" : "defender";
+	if(opposingHero)
+		event["opponent"].String() = "hero";
+	else if(dynamic_cast<const CGTownInstance *>(opposingArmy))
+		event["opponent"].String() = "town_garrison";
+	else if(const auto * object = dynamic_cast<const CGObjectInstance *>(opposingArmy); object && object->getOwner() == PlayerColor::NEUTRAL)
+		event["opponent"].String() = "neutral";
+	else
+		event["opponent"].String() = "other";
+	{
+		std::lock_guard lock(stateMutex);
+		battleSide = side;
+		battleWon.reset();
+		events.push_back(std::move(event));
+	}
+	CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
+}
+
+void ExplorerRL::battleEnd(const BattleID & battleID, const BattleResult * result, QueryID queryID)
+{
+	{
+		std::lock_guard lock(stateMutex);
+		if(result && battleSide && (result->winner == BattleSide::ATTACKER || result->winner == BattleSide::DEFENDER))
+			battleWon = result->winner == *battleSide;
+	}
+	CAdventureAI::battleEnd(battleID, result, queryID);
+}
+
 void ExplorerRL::battleEnded()
 {
 	{
@@ -305,6 +445,12 @@ void ExplorerRL::battleEnded()
 		++completedBattles;
 		JsonNode event;
 		event["kind"].String() = "battle_complete";
+		if(battleWon)
+			event["won"].Bool() = *battleWon;
+		else
+			event["won"] = JsonNode();
+		battleSide.reset();
+		battleWon.reset();
 		events.push_back(std::move(event));
 	}
 	changed.notify_all();
@@ -331,6 +477,67 @@ JsonNode ExplorerRL::takeEvents()
 	JsonNode result;
 	result.Vector() = std::move(events);
 	events.clear();
+	return result;
+}
+
+std::shared_lock<std::shared_mutex> ExplorerRL::readGameState() const
+{
+	return std::shared_lock(CGameState::mutex);
+}
+
+void ExplorerRL::noteVisibleChanges()
+{
+	// Callers guarantee a stable state: the worker holds readGameState(), and
+	// network callbacks run on the single thread that applies packets.
+	const auto start = std::chrono::steady_clock::now();
+	auto snapshot = explorer_rl::captureVisible(CallbackWorld{*callback, callback->getMapSize()});
+	const int day = callback->getDate(Date::DAY);
+	std::lock_guard lock(stateMutex);
+	const auto change = visibleTracker.update(std::move(snapshot));
+	++visibleCaptures;
+	visibleCaptureMicros += microsecondsSince(start);
+	if(!change.empty())
+		events.push_back(visibleChangeJson(change, visibleSequence++, day));
+}
+
+void ExplorerRL::visibleChangeTrigger() noexcept
+{
+	try
+	{
+		{
+			std::lock_guard lock(stateMutex);
+			if(stopping || terminal || !failure.empty())
+				return;
+		}
+		noteVisibleChanges();
+	}
+	catch(const std::exception & error)
+	{
+		{
+			std::lock_guard lock(stateMutex);
+			if(failure.empty())
+				failure = std::string("Visible change capture failed: ") + error.what();
+		}
+		changed.notify_all();
+	}
+}
+
+JsonNode ExplorerRL::takeProfile()
+{
+	JsonNode result;
+	if(!profile)
+		return result;
+	{
+		std::lock_guard lock(sendMutex);
+		result["previous_message_encode_us"].Integer() = lastEncodeMicros;
+		result["previous_message_send_us"].Integer() = lastSendMicros;
+		result["previous_message_bytes"].Integer() = lastMessageBytes;
+	}
+	std::lock_guard lock(stateMutex);
+	result["visible_captures"].Integer() = visibleCaptures;
+	result["visible_capture_us"].Integer() = visibleCaptureMicros;
+	visibleCaptures = 0;
+	visibleCaptureMicros = 0;
 	return result;
 }
 
@@ -383,7 +590,7 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 
 JsonNode ExplorerRL::playerState()
 {
-	std::shared_lock gameLock(CGameState::mutex);
+	// Callers hold readGameState() on the worker; see noteVisibleChanges().
 	JsonNode result;
 	result["day"].Integer() = callback->getDate(Date::DAY);
 	const auto heroes = callback->getHeroesInfo();
@@ -439,7 +646,7 @@ JsonNode ExplorerRL::playerState()
 
 JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & heroID, int3 & position)
 {
-	std::shared_lock gameLock(CGameState::mutex);
+	// Callers hold readGameState(); see noteVisibleChanges().
 	auto heroes = callback->getHeroesInfo();
 	heroes.erase(std::remove_if(heroes.begin(), heroes.end(), [this](const auto * hero) { return hero->getOwner() != playerID; }), heroes.end());
 	if(heroes.size() > 1)
@@ -540,8 +747,22 @@ void ExplorerRL::runTurn(QueryID queryID)
 		std::array<bool, 9> mask;
 		ObjectInstanceID heroID;
 		int3 position;
-		auto state = observation(mask, heroID, position);
-		state["state"] = playerState();
+		JsonNode state;
+		const auto buildStart = std::chrono::steady_clock::now();
+		{
+			// No packet can be applied while this lock is held, so the events end
+			// exactly at the state described by this decision snapshot.
+			const auto gameLock = readGameState();
+			noteVisibleChanges();
+			state = observation(mask, heroID, position);
+			state["state"] = playerState();
+			state["events"] = takeEvents();
+		}
+		if(profile)
+		{
+			state["perf"] = takeProfile();
+			state["perf"]["build_us"].Integer() = microsecondsSince(buildStart);
+		}
 		sendMessage(state);
 		const auto response = receiveMessage();
 		if(ended())
@@ -551,7 +772,12 @@ void ExplorerRL::runTurn(QueryID queryID)
 		const auto action = response["action"].Integer();
 		if(action < 0 || action >= static_cast<int64_t>(mask.size()) || !mask[action])
 			throw std::runtime_error("Policy selected a masked or unsupported action");
-		const auto before = playerState();
+		JsonNode before;
+		{
+			const auto gameLock = readGameState();
+			before = playerState();
+		}
+		const auto requestStart = std::chrono::steady_clock::now();
 		const bool accepted = executeRequest([this, action, heroID, position] {
 			if(action == 8)
 			{
@@ -566,13 +792,23 @@ void ExplorerRL::runTurn(QueryID queryID)
 		});
 		if(ended())
 			return;
+		const auto requestMicros = microsecondsSince(requestStart);
 		auto result = message("action_result");
 		result["action_id"].Integer() = actionID++;
 		result["action"].Integer() = action;
 		result["accepted"].Bool() = accepted;
 		result["before"] = before;
-		result["after"] = playerState();
-		result["events"] = takeEvents();
+		{
+			const auto gameLock = readGameState();
+			noteVisibleChanges();
+			result["after"] = playerState();
+			result["events"] = takeEvents();
+		}
+		if(profile)
+		{
+			result["perf"] = takeProfile();
+			result["perf"]["request_us"].Integer() = requestMicros;
+		}
 		sendMessage(result);
 		if(action == 8 && accepted)
 		{
@@ -595,11 +831,16 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 	changed.notify_all();
 	try
 	{
+		// Holding sendMutex first lets an in-flight worker message finish, or
+		// return its events, before this record takes the remaining ones.
+		std::lock_guard sendLock(sendMutex);
 		auto record = message("terminal");
 		record["outcome"].String() = result.victory() ? "win" : "loss";
+		// Packet callbacks run on the applying thread, so the state is stable here.
+		noteVisibleChanges();
 		record["events"] = takeEvents();
 		record["state"] = playerState();
-		sendMessage(record);
+		writeMessage(record);
 	}
 	catch(const std::exception & error)
 	{
@@ -637,6 +878,11 @@ void ExplorerRL::handleDecision(Decision decision)
 		request[key] = value;
 	const auto id = decisionID++;
 	request["decision_id"].Integer() = id;
+	{
+		const auto gameLock = readGameState();
+		noteVisibleChanges();
+		request["events"] = takeEvents();
+	}
 	sendMessage(request);
 	const auto response = receiveMessage();
 	if(ended())
@@ -736,6 +982,18 @@ void ExplorerRL::showMarketWindow(const IMarket *, const CGHeroInstance *, Query
 void ExplorerRL::showUniversityWindow(const IMarket *, const CGHeroInstance *, QueryID) { unsupported("university"); }
 void ExplorerRL::showTavernWindow(const CGObjectInstance *, const CGHeroInstance *, QueryID) { unsupported("tavern"); }
 void ExplorerRL::heroExchangeStarted(ObjectInstanceID, ObjectInstanceID, QueryID) { unsupported("hero exchange"); }
+
+void ExplorerRL::heroMoved(const TryMoveHero &, bool) { visibleChangeTrigger(); }
+void ExplorerRL::objectRemovedAfter() { visibleChangeTrigger(); }
+void ExplorerRL::newObject(const CGObjectInstance *) { visibleChangeTrigger(); }
+void ExplorerRL::objectPropertyChanged(const SetObjectProperty *) { visibleChangeTrigger(); }
+void ExplorerRL::tileRevealed(const FowTilesType &) { visibleChangeTrigger(); }
+void ExplorerRL::tileHidden(const FowTilesType &) { visibleChangeTrigger(); }
+void ExplorerRL::heroCreated(const CGHeroInstance *) { visibleChangeTrigger(); }
+void ExplorerRL::heroInGarrisonChange(const CGTownInstance *) { visibleChangeTrigger(); }
+void ExplorerRL::battleResultsApplied() { visibleChangeTrigger(); }
+void ExplorerRL::playerStartsTurn(PlayerColor) { visibleChangeTrigger(); }
+void ExplorerRL::invalidatePaths() { visibleChangeTrigger(); }
 
 std::optional<BattleAction> ExplorerRL::makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &)
 {
