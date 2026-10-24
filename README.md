@@ -345,15 +345,32 @@ playable. Without it, the client crashed on its first packet. The patch:
 - accepts `VCMI_EXPERIMENT_DIR` for experiment evidence.
 
 ExplorerRL protocol v3 adds ordered, sanitized player-visible events between
-decisions. After every relevant engine callback, each side captures its own
-team-fog view (visible tiles plus objects on them that its callback reports
-visible) and emits the difference from its previous capture as a
-`visible_update`. Raw callback arguments are never forwarded. A disappearance
-carries no cause or later position, and a hidden removal produces nothing.
-The first capture is reported against an empty view, so the event stream alone
+decisions (`visible_update-v2`). After every relevant engine callback, each
+side captures its own team-fog view and emits the difference from its previous
+capture as a `visible_update`. A capture holds the visible tiles with their
+terrain and blocked/visitable flags (derived only from objects the player can
+see there), the objects on them that its callback reports visible, and the
+player's own state: hero position, movement, seven resources, hero army, town
+positions and mine count. Raw callback arguments are never forwarded. A
+disappearance carries no cause or later position, a hidden tile carries no
+facts, and a hidden removal or hidden tile change produces nothing. The first
+capture is reported against an empty view, so the event stream alone
 reconstructs what the player saw at every point. The Python adapter checks
-this at every decision snapshot. `battle_start`/`battle_complete` mark battle
-boundaries for the side involved.
+this at every decision snapshot, including tile facts and own state.
+`battle_start`/`battle_complete` mark battle boundaries for the side involved.
+
+Each player's stream is also projected onto the learner's
+`heroes-player-history-v1` frames (`experiments/headless/history_v1.py`):
+a complete `view` at each visible change, a `decision` with its view and
+attempt mask, the player's own `action` and its `result`. Sequence numbers
+count only that player's frames, owners are relative to the player and object
+identities are the player's opaque handles. Visible events that v1 cannot
+represent (battle details, visits, dialogs and their answers) stay in the full
+record stream and are counted per player in the manifest; a frame order that
+v1 forbids marks only the projection invalid for that episode. The frames
+decode with the learner's `decode_frame` and `HistoryCursor`; run the check
+with `HEROES_LEARNER_PATH=<folder containing learner/> python3 -m unittest
+tests.test_headless` while the learner contract is not on `main`.
 
 `experiments/headless/env.py` is the agent-environment cycle:
 
@@ -361,15 +378,19 @@ boundaries for the side involved.
   profile directory, ports and seed. It returns the first request.
 - `step(value)` answers the current player's request and returns the next
   request or the episode end. A request carries only that player's sanitized
-  records since its previous response.
+  records and history-v1 frames since its previous request, and no global
+  step counter, which would reveal how much the opponent did.
 - Engine object IDs stay in the adapter's private routing table. Learner
   records use opaque per-player handles, assigned on the player's own first
   legitimate observation.
 - `memory(color)` keeps last-seen facts that never refresh from hidden state.
 - Rewards are 0 on ordinary transitions. +1/-1 exists only after both
   terminals, a clean exit and validated engine evidence.
-- Day, action and collection horizons are `truncated`. A truncation reports
-  the unanswered decision observation as the only bootstrap boundary.
+- Day, action and collection horizons are `truncated`. Both players pass a
+  day horizon within one round, so play continues until each player reaches
+  its own first decision past it; that decision is the player's bootstrap
+  boundary, reported with its history-v1 sequence. The action horizon is a
+  runaway guard and stops at once with one boundary.
 - Watchdog, crash, protocol violation, engine error and unclean shutdown are
   `failed`. Neither truncations nor failures are scored, and a dead hero with
   a surviving town is never a loss.

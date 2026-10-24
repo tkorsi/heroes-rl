@@ -47,17 +47,40 @@ int64_t microsecondsSince(std::chrono::steady_clock::time_point start)
 	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
 }
 
+/// Terrain and flags of a tile the player sees, from the objects it can see there.
+explorer_rl::VisibleTile visibleTileFacts(const CCallback & callback, const TerrainTile & tile)
+{
+	auto anyVisible = [&callback](const std::vector<ObjectInstanceID> & objects)
+	{
+		return std::any_of(objects.begin(), objects.end(), [&callback](const auto objectID)
+		{
+			const auto * object = callback.getObj(objectID, false);
+			return object && callback.isVisible(object);
+		});
+	};
+	return {tile.getTerrainID().getNum(), anyVisible(tile.blockingObjects), anyVisible(tile.visitableObjects)};
+}
+
 /// The player's own callback as a VisibleState world. Objects are listed only
 /// for tiles its team sees, and only when the callback reports them visible.
 struct CallbackWorld
 {
 	const CCallback & callback;
+	PlayerColor player;
 	int3 size;
 
 	int width() const { return size.x; }
 	int height() const { return size.y; }
 	int levels() const { return size.z; }
 	bool tileVisible(int x, int y, int z) const { return callback.isVisible(int3(x, y, z)); }
+
+	explorer_rl::VisibleTile tileFacts(int x, int y, int z) const
+	{
+		const auto * tile = callback.getTile(int3(x, y, z), false);
+		if(!tile)
+			throw std::runtime_error("A visible tile has no terrain");
+		return visibleTileFacts(callback, *tile);
+	}
 
 	void visibleObjectsAt(int x, int y, int z, std::vector<explorer_rl::VisibleObject> & out) const
 	{
@@ -72,7 +95,84 @@ struct CallbackWorld
 			out.push_back({object->id.getNum(), x, y, z, object->ID.getNum(), object->subID.getNum(), object->getOwner().getNum()});
 		}
 	}
+
+	explorer_rl::OwnState ownState() const
+	{
+		explorer_rl::OwnState own;
+		for(int resource = 0; resource < GameConstants::RESOURCE_QUANTITY; ++resource)
+			own.resources.push_back(callback.getResourceAmount(GameResID(resource)));
+		for(const auto * hero : callback.getHeroesInfo())
+		{
+			if(hero->getOwner() != player)
+				continue;
+			const auto position = hero->visitablePos();
+			own.hero = std::array<int, 3>{position.x, position.y, position.z};
+			own.movement = hero->movementPointsRemaining();
+			own.movementMax = hero->movementPointsLimit();
+			for(const auto & [slot, stack] : hero->Slots())
+				own.army.push_back({slot.getNum(), stack->getCreatureID().getNum(), stack->getCount()});
+			break;
+		}
+		for(const auto * town : callback.getTownsInfo())
+			if(town->getOwner() == player)
+			{
+				const auto position = town->visitablePos();
+				own.towns.push_back({position.x, position.y, position.z});
+			}
+		std::sort(own.towns.begin(), own.towns.end());
+		for(const auto * object : callback.getMyObjects())
+			if(object->getOwner() == player && object->ID == Obj::MINE)
+				++own.mines;
+		return own;
+	}
 };
+
+JsonNode positionJson(const std::array<int, 3> & position)
+{
+	JsonNode result;
+	for(const int coordinate : position)
+		result.Vector().emplace_back(coordinate);
+	return result;
+}
+
+JsonNode tileFactJson(const explorer_rl::TileFact & fact)
+{
+	JsonNode result;
+	result["x"].Integer() = fact.position[0];
+	result["y"].Integer() = fact.position[1];
+	result["z"].Integer() = fact.position[2];
+	result["terrain"].Integer() = fact.tile.terrain;
+	result["blocked"].Bool() = fact.tile.blocked;
+	result["visitable"].Bool() = fact.tile.visitable;
+	return result;
+}
+
+JsonNode ownStateJson(const explorer_rl::OwnState & own)
+{
+	JsonNode result;
+	result["hero"] = own.hero ? positionJson(*own.hero) : JsonNode();
+	result["movement"].Integer() = own.movement;
+	result["movement_max"].Integer() = own.movementMax;
+	auto & resources = result["resources"].Vector();
+	for(const auto amount : own.resources)
+		resources.emplace_back(amount);
+	auto & army = result["army"].Vector();
+	army.clear();
+	for(const auto & stack : own.army)
+	{
+		JsonNode entry;
+		entry["slot"].Integer() = stack.slot;
+		entry["creature"].Integer() = stack.creature;
+		entry["count"].Integer() = stack.count;
+		army.push_back(std::move(entry));
+	}
+	auto & towns = result["towns"].Vector();
+	towns.clear();
+	for(const auto & town : own.towns)
+		towns.push_back(positionJson(town));
+	result["mines"].Integer() = own.mines;
+	return result;
+}
 
 JsonNode visibleObjectJson(const explorer_rl::VisibleObject & object)
 {
@@ -102,17 +202,19 @@ JsonNode visibleChangeJson(const explorer_rl::VisibleChange & change, int64_t se
 	auto & disappeared = event["disappeared"].Vector();
 	for(const auto id : change.disappeared)
 		disappeared.emplace_back(id);
-	for(const auto * key : {"revealed", "hidden"})
-	{
-		auto & tiles = event[key].Vector();
-		for(const auto & tile : std::string(key) == "revealed" ? change.revealed : change.hidden)
-		{
-			JsonNode position;
-			for(const int coordinate : tile)
-				position.Vector().emplace_back(coordinate);
-			tiles.push_back(std::move(position));
-		}
-	}
+	auto & revealed = event["revealed"].Vector();
+	revealed.clear();
+	for(const auto & fact : change.revealed)
+		revealed.push_back(tileFactJson(fact));
+	auto & tilesChanged = event["tiles_changed"].Vector();
+	tilesChanged.clear();
+	for(const auto & fact : change.tilesChanged)
+		tilesChanged.push_back(tileFactJson(fact));
+	auto & hidden = event["hidden"].Vector();
+	hidden.clear();
+	for(const auto & tile : change.hidden)
+		hidden.push_back(positionJson(tile));
+	event["own"] = change.own ? ownStateJson(*change.own) : JsonNode();
 	return event;
 }
 
@@ -304,8 +406,13 @@ void ExplorerRL::run() noexcept
 		ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
 		ready["battle_ai"].String() = getBattleAIName();
 		// Ordered player-visible changes between decisions; see VisibleState.h.
-		ready["observation_events"].String() = "visible_update-v1";
+		ready["observation_events"].String() = "visible_update-v2";
 		ready["profiling"].Bool() = profile;
+		{
+			auto gameState = readGameState();
+			const auto size = callback->getMapSize();
+			ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
+		}
 		sendMessage(ready);
 		while(true)
 		{
@@ -489,9 +596,13 @@ void ExplorerRL::noteVisibleChanges()
 {
 	// Callers guarantee a stable state: the worker holds readGameState(), and
 	// network callbacks run on the single thread that applies packets.
-	const auto start = std::chrono::steady_clock::now();
-	auto snapshot = explorer_rl::captureVisible(CallbackWorld{*callback, callback->getMapSize()});
 	const int day = callback->getDate(Date::DAY);
+	// Before the first day nobody has acted, so nothing observable can be
+	// missed; the first capture of day one reports the whole initial view.
+	if(day < 1)
+		return;
+	const auto start = std::chrono::steady_clock::now();
+	auto snapshot = explorer_rl::captureVisible(CallbackWorld{*callback, playerID, callback->getMapSize()});
 	std::lock_guard lock(stateMutex);
 	const auto change = visibleTracker.update(std::move(snapshot));
 	++visibleCaptures;
@@ -596,6 +707,15 @@ JsonNode ExplorerRL::playerState()
 	const auto heroes = callback->getHeroesInfo();
 	result["own_heroes"].Integer() = heroes.size();
 	result["own_towns"].Integer() = callback->getTownsInfo().size();
+	std::vector<int3> towns;
+	for(const auto * town : callback->getTownsInfo())
+		if(town->getOwner() == playerID)
+			towns.push_back(town->visitablePos());
+	std::sort(towns.begin(), towns.end(), [](const int3 & a, const int3 & b) { return std::tie(a.x, a.y, a.z) < std::tie(b.x, b.y, b.z); });
+	auto & townPositions = result["towns"].Vector();
+	townPositions.clear();
+	for(const auto & town : towns)
+		townPositions.push_back(positionJson({town.x, town.y, town.z}));
 	int mines = 0;
 	for(const auto * object : callback->getMyObjects())
 		if(object->getOwner() == playerID && object->ID == Obj::MINE)
@@ -604,6 +724,7 @@ JsonNode ExplorerRL::playerState()
 	for(int resource = 0; resource < GameConstants::RESOURCE_QUANTITY; ++resource)
 		result["resources"].Vector().emplace_back(callback->getResourceAmount(GameResID(resource)));
 	result["hero_id"].Integer() = -1;
+	result["army"].Vector().clear();
 	result["movement"].Integer() = 0;
 	result["movement_max"].Integer() = 0;
 	result["x"] = JsonNode();
@@ -691,9 +812,10 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 				item["x"].Integer() = x;
 				item["y"].Integer() = y;
 				item["z"].Integer() = z;
-				item["terrain"].Integer() = tile->getTerrainID().getNum();
-				item["blocked"].Bool() = tile->blocked();
-				item["visitable"].Bool() = tile->visitable();
+				const auto facts = visibleTileFacts(*callback, *tile);
+				item["terrain"].Integer() = facts.terrain;
+				item["blocked"].Bool() = facts.blocked;
+				item["visitable"].Bool() = facts.visitable;
 				auto & objects = item["objects"].Vector();
 				for(const auto objectID : tile->visitableObjects)
 				{
@@ -994,6 +1116,9 @@ void ExplorerRL::heroInGarrisonChange(const CGTownInstance *) { visibleChangeTri
 void ExplorerRL::battleResultsApplied() { visibleChangeTrigger(); }
 void ExplorerRL::playerStartsTurn(PlayerColor) { visibleChangeTrigger(); }
 void ExplorerRL::invalidatePaths() { visibleChangeTrigger(); }
+void ExplorerRL::receivedResource() { visibleChangeTrigger(); }
+void ExplorerRL::heroMovePointsChanged(const CGHeroInstance *) { visibleChangeTrigger(); }
+void ExplorerRL::garrisonsChanged(ObjectInstanceID, ObjectInstanceID) { visibleChangeTrigger(); }
 
 std::optional<BattleAction> ExplorerRL::makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &)
 {

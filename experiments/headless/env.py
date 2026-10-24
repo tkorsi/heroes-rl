@@ -69,7 +69,7 @@ class Request:
     kind: str  # "action" or "decision"
     record: dict  # learner record of the observation or decision
     since_last: list[dict]  # this player's records since its previous response, ending with ``record``
-    env_step: int
+    frames: list[dict]  # this player's history-v1 frames since its previous request; shared, do not mutate
     mask: list[bool] | None = None
     choices: list[int] | None = None
     reward: int = 0  # ordinary transitions are never rewarded
@@ -83,7 +83,8 @@ class EpisodeEnd:
     outcomes: dict
     rewards: dict  # +1/-1 per player only for a verified natural result, else None
     final_records: dict  # per player: records since its last response
-    bootstrap: dict  # per player: the unanswered decision observation at a truncation, else None
+    final_frames: dict  # per player: history-v1 frames since its last request
+    bootstrap: dict  # per player at a truncation: its first decision past the horizon (unanswered there), else None
     manifest: dict
     done: bool = True
 
@@ -106,9 +107,11 @@ class _Side:
     accepted: int = 0
     rejected: int = 0
     unread_from: int = 0  # first history record not yet shown to the agent
+    unread_frames_from: int = 0  # first history-v1 frame not yet shown to the agent
     ready_at: float | None = None
     terminal_at: float | None = None
-    pending_record: dict | None = None
+    cutoff: dict | None = None  # this player's first decision observation past a declared horizon
+    cutoff_seq: int | None = None  # that decision's history-v1 sequence while the projection is valid
     bytes_received: int = 0
     perf: dict = field(default_factory=dict)
 
@@ -132,8 +135,8 @@ class VcmiLauncher:
         content = self.binary.read_bytes()
         if b"VCMI_EXPERIMENT_DIR" not in content or b"EXPLORER_RL_PLAYERS" not in content:
             raise ValueError("Client lacks the headless simulation patch; rebuild vcmi/build")
-        if not self.ai_library.is_file() or b"visible_update-v1" not in self.ai_library.read_bytes():
-            raise ValueError(f"Rebuild the protocol-3 ExplorerRL module: {self.ai_library}")
+        if not self.ai_library.is_file() or b"visible_update-v2" not in self.ai_library.read_bytes():
+            raise ValueError(f"Rebuild the protocol-3 ExplorerRL module with visible_update-v2: {self.ai_library}")
         if not (self.data / "Data").is_dir():
             raise ValueError(f"Missing original game assets: {self.data / 'Data'}")
         if not self.game_map.is_file() or self.game_map.suffix.lower() not in {".vmap", ".h3m"}:
@@ -242,7 +245,8 @@ class HeadlessSelfPlayEnv:
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            side = _Side(player, color, BridgeValidator(player, str(episode)), PlayerHistory(player, color), listener)
+            side = _Side(player, color, BridgeValidator(player, str(episode)), PlayerHistory(player, color, str(episode)),
+                         listener)
             if self.ledger_enabled:
                 folder = self.episode_dir / "agents" / color
                 folder.mkdir(parents=True)
@@ -277,8 +281,8 @@ class HeadlessSelfPlayEnv:
             # stream explains which, so continue with the queued messages.
             self._note_problem("bridge_write_failed", f"{side.color}: {error}")
         self._write_ledger(side, "policy", response)
-        side.pending_record = None  # answered: no longer a bootstrap boundary
         if "action" in response:
+            side.history.act(response["action"])
             side.actions_sent += 1
         else:
             side.decisions_sent += 1
@@ -295,6 +299,8 @@ class HeadlessSelfPlayEnv:
             raise ValueError("Truncate only at a pending request, with a declared horizon")
         side = self.sides[self.request.player]
         side.limit = reason
+        if self.request.kind == "action" and side.cutoff is None:
+            side.cutoff, side.cutoff_seq = self.request.record, side.history.v1.decision
         self._note_problem(reason, f"{side.color} stopped at a declared horizon")
         self.request = None
         return self._finish(None)
@@ -303,6 +309,11 @@ class HeadlessSelfPlayEnv:
         """A copy of one player's complete learner history."""
         side = next(side for side in self.sides.values() if side.color == color)
         return json.loads(json.dumps(side.history.records))
+
+    def history_v1(self, color: str) -> list[dict]:
+        """A copy of one player's complete heroes-player-history-v1 frames."""
+        side = next(side for side in self.sides.values() if side.color == color)
+        return json.loads(json.dumps(side.history.v1.frames))
 
     def memory(self, color: str) -> list[dict]:
         side = next(side for side in self.sides.values() if side.color == color)
@@ -432,13 +443,14 @@ class HeadlessSelfPlayEnv:
             return None
         if kind == "ready":
             side.ready_at = received - self.started
+            side.history.start(message["map_size"])
             return None
         if kind == "error":
             side.error = str(message.get("message"))
             self._note_problem("engine_error", f"{side.color}: {side.error}")
             return None
         try:
-            record = side.history.ingest(message, self.env_step)
+            record = side.history.ingest(message)
         except ProtocolError as error:
             self._note_problem("protocol_error", f"{side.color}: {error}")
             return None
@@ -453,13 +465,19 @@ class HeadlessSelfPlayEnv:
                 side.rejected += 1
         elif kind == "terminal":
             side.terminal_at = received - self.started
-            side.pending_record = None
             return None
         if kind == "observation":
-            if record["day"] > self.limits.max_days or side.actions_sent >= self.limits.max_actions:
-                side.limit = "game_day_limit" if record["day"] > self.limits.max_days else "agent_action_limit"
-                side.pending_record = record  # the verified bootstrap boundary for this player
-                self._note_problem(side.limit, f"{side.color} reached the horizon")
+            past_day = record["day"] > self.limits.max_days
+            if side.cutoff is None and (past_day or side.actions_sent >= self.limits.max_actions):
+                side.limit = "game_day_limit" if past_day else "agent_action_limit"
+                side.cutoff, side.cutoff_seq = record, side.history.v1.decision
+            # Both players pass a day horizon within one round, so play continues
+            # until each has its own next-decision boundary. The action horizon is
+            # a runaway guard and stops at once, also during that continuation.
+            over_actions = side.actions_sent >= self.limits.max_actions
+            if side.cutoff is not None and (over_actions or all(s.cutoff is not None for s in self.sides.values())):
+                self._note_problem("agent_action_limit" if over_actions else side.limit,
+                                   f"{side.color} reached the horizon")
                 return None
         if kind in {"observation", "decision"} and self.request is None:
             return self._issue(side.player, record)
@@ -470,8 +488,9 @@ class HeadlessSelfPlayEnv:
         kind = "action" if record["type"] == "observation" else "decision"
         since_last = json.loads(json.dumps(side.history.records[side.unread_from:record["index"] + 1]))
         side.unread_from = record["index"] + 1
-        side.pending_record = record
-        self.request = Request(side.color, player, kind, record, since_last, self.env_step,
+        frames = side.history.v1.frames[side.unread_frames_from:]
+        side.unread_frames_from = len(side.history.v1.frames)
+        self.request = Request(side.color, player, kind, record, since_last, frames,
                                mask=record.get("action_mask") if kind == "action" else None,
                                choices=[c["choice"] for c in record["choices"]] if kind == "decision" else None)
         self.request_time = time.monotonic()
@@ -539,16 +558,18 @@ class HeadlessSelfPlayEnv:
             "deterministic_replay_verified": False,
         }
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
-        bootstrap = {side.color: (side.pending_record if status == "truncated" else None) for side in self.sides.values()}
+        bootstrap = {side.color: (side.cutoff if status == "truncated" else None) for side in self.sides.values()}
         final = {side.color: json.loads(json.dumps(side.history.records[side.unread_from:])) for side in self.sides.values()}
-        self.result = EpisodeEnd(status, termination, outcomes, rewards, final, bootstrap, manifest)
+        final_frames = {side.color: side.history.v1.frames[side.unread_frames_from:] for side in self.sides.values()}
+        self.result = EpisodeEnd(status, termination, outcomes, rewards, final, final_frames, bootstrap, manifest)
         self.process = None
         return self.result
 
     def _execution(self, side: _Side) -> dict:
         terminal = {"outcome": side.validator.terminal} if side.validator.terminal else None
         return {"ready": side.validator.ready, "actions_sent": side.actions_sent, "error": side.error,
-                "limit": side.limit, "terminal": terminal}
+                "limit": side.limit, "terminal": terminal,
+                "cutoff": None if side.cutoff is None else {"day": side.cutoff["day"], "history_v1_seq": side.cutoff_seq}}
 
     def _counters(self, side: _Side) -> dict:
         history = side.history
@@ -559,7 +580,7 @@ class HeadlessSelfPlayEnv:
                 "records": len(history.records), "visible_updates": side.validator.next_visible_sequence,
                 "bytes_received": side.bytes_received, "ready_seconds": side.ready_at,
                 "terminal_seconds": side.terminal_at, "native_perf_totals": side.perf,
-                "coverage": coverage(history.records)}
+                "coverage": coverage(history.records), "history_v1": history.v1.summary()}
 
     def _engine_evidence(self, log_text: str) -> tuple[dict | None, str | None]:
         metadata_path = self.episode_dir / "engine" / "experiment-metadata.json"

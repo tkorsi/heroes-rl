@@ -1,7 +1,8 @@
 """A miniature stand-in for the headless client, for environment tests only.
 
-It speaks bridge protocol 3 to both players with a tiny hidden world, per-team
-persistent fog and the same snapshot-diff event semantics as VisibleState.h.
+It speaks bridge protocol 3 to both players with a tiny hidden world in one
+corner of a 20x20 map, per-team persistent fog and the same snapshot-diff event
+semantics as VisibleState.h, including tile facts and the own state.
 It is not VCMI and proves nothing about real gameplay or throughput.
 """
 import json
@@ -12,7 +13,8 @@ import sys
 import time
 
 DIRECTIONS = [(0, -1), (1, -1), (1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1)]
-WIDTH, HEIGHT = 8, 6
+WIDTH, HEIGHT = 20, 20
+ROCK = (2, 4)  # a static blocking tile
 SCENARIO = json.loads(os.environ.get("FAKE_ENGINE_SCENARIO", "{}"))
 MODE = SCENARIO.get("mode", "natural")
 EPISODE = os.environ["EXPLORER_RL_EPISODE"]
@@ -30,8 +32,8 @@ class World:
             30: {"x": 3, "y": 3, "type": 53, "subtype": 0, "owner": 255},
             40: {"x": 2, "y": 1, "type": 79, "subtype": 6, "owner": 255},
         }
-        self.fog = {0: {(x, y, 0) for x in range(4) for y in range(HEIGHT)},
-                    1: {(x, y, 0) for x in range(4, WIDTH) for y in range(HEIGHT)}}
+        self.fog = {0: {(x, y, 0) for x in range(4) for y in range(6)},
+                    1: {(x, y, 0) for x in range(4, 8) for y in range(6)}}
         self.resources = {0: [0] * 7, 1: [0] * 7}
         self.movement = {0: 3, 1: 3}
         self.day = 1
@@ -50,14 +52,28 @@ class World:
                             result.setdefault(oid, {"id": oid, "z": 0, **fact})
         return result
 
+    def tile(self, x, y):
+        occupied = any((f["x"], f["y"]) == (x, y) for f in self.objects.values())
+        return {"terrain": (x + y) % 3, "blocked": (x, y) == ROCK, "visitable": occupied}
+
+    def own(self, player):
+        hero = self.objects.get(self.hero(player))
+        return {"hero": [hero["x"], hero["y"], 0] if hero else None,
+                "movement": self.movement[player] if hero else 0, "movement_max": 3 if hero else 0,
+                "resources": list(self.resources[player]),
+                "army": [{"slot": 0, "creature": 1, "count": 10}] if hero else [],
+                "towns": sorted([f["x"], f["y"], 0] for f in self.objects.values() if f["type"] == 98 and f["owner"] == player),
+                "mines": sum(1 for f in self.objects.values() if f["type"] == 53 and f["owner"] == player)}
+
     def state(self, player):
         oid = self.hero(player)
         hero = self.objects.get(oid)
-        return {"day": self.day, "own_heroes": 1 if hero else 0,
+        own = self.own(player)
+        return {"day": self.day, "own_heroes": 1 if hero else 0, "army": own["army"], "towns": own["towns"],
                 "own_towns": sum(1 for f in self.objects.values() if f["type"] == 98 and f["owner"] == player),
                 "own_mines": sum(1 for f in self.objects.values() if f["type"] == 53 and f["owner"] == player),
                 "resources": list(self.resources[player]), "hero_id": oid if hero else -1,
-                "movement": self.movement[player], "movement_max": 3,
+                "movement": own["movement"], "movement_max": own["movement_max"],
                 "x": hero["x"] if hero else None, "y": hero["y"] if hero else None, "z": 0 if hero else None,
                 "visible_tiles": len(self.fog[player]), "completed_battles": 0}
 
@@ -68,16 +84,22 @@ class Tracker:
         self.sequence = 0
 
     def update(self, world, player):
-        tiles, objects = set(world.fog[player]), world.visible_objects(player)
-        before_tiles, before_objects = self.previous or (set(), {})
+        tiles = {t: world.tile(t[0], t[1]) for t in world.fog[player]}
+        objects, own = world.visible_objects(player), world.own(player)
+        before_tiles, before_objects, before_own = self.previous or ({}, {}, None)
+        order = lambda t: (t[2], t[1], t[0])  # noqa: E731
         change = {"kind": "visible_update", "sequence": self.sequence, "day": world.day,
                   "appeared": [o for i, o in sorted(objects.items()) if i not in before_objects],
                   "changed": [o for i, o in sorted(objects.items()) if i in before_objects and before_objects[i] != o],
                   "disappeared": [i for i in sorted(before_objects) if i not in objects],
-                  "revealed": [list(t) for t in sorted(tiles - before_tiles, key=lambda t: (t[2], t[1], t[0]))],
-                  "hidden": [list(t) for t in sorted(before_tiles - tiles, key=lambda t: (t[2], t[1], t[0]))]}
-        self.previous = (tiles, objects)
-        if any(change[k] for k in ("appeared", "changed", "disappeared", "revealed", "hidden")):
+                  "revealed": [{"x": t[0], "y": t[1], "z": t[2], **tiles[t]}
+                               for t in sorted(tiles.keys() - before_tiles.keys(), key=order)],
+                  "tiles_changed": [{"x": t[0], "y": t[1], "z": t[2], **tiles[t]}
+                                    for t in sorted(tiles.keys() & before_tiles.keys(), key=order) if tiles[t] != before_tiles[t]],
+                  "hidden": [list(t) for t in sorted(before_tiles.keys() - tiles.keys(), key=order)],
+                  "own": own if own != before_own else None}
+        self.previous = (tiles, objects, own)
+        if any(change[k] for k in ("appeared", "changed", "disappeared", "revealed", "tiles_changed", "hidden", "own")):
             self.sequence += 1
             return [change]
         return []
@@ -127,8 +149,7 @@ def observation(world, bridge):
             if (x, y, 0) in world.fog[player]:
                 objects = [{"id": oid, "type": f["type"], "subtype": f["subtype"], "owner": f["owner"]}
                            for oid, f in sorted(world.objects.items()) if (f["x"], f["y"]) == (x, y)]
-                tiles.append({"x": x, "y": y, "z": 0, "terrain": 2, "blocked": False, "visitable": bool(objects),
-                              "objects": objects})
+                tiles.append({"x": x, "y": y, "z": 0, **world.tile(x, y), "objects": objects})
     mask = [False] * 9
     mask[8] = True
     if hero and world.movement[player] > 0:
@@ -245,15 +266,15 @@ def main():
     bridges = {p: Bridge(p, int(os.environ[f"EXPLORER_RL_PORT_{p}"])) for p in (0, 1)}
     for bridge in bridges.values():
         bridge.send(bridge.message("ready", adventure_actions=9, battle_ai="BattleAI",
-                                   observation_events=SCENARIO.get("observation_events", "visible_update-v1"),
-                                   profiling=False))
+                                   observation_events=SCENARIO.get("observation_events", "visible_update-v2"),
+                                   profiling=False, map_size=[WIDTH, HEIGHT, 1]))
     write_metadata(world)
     for bridge in bridges.values():
         bridge.note(world)  # the first capture is reported against an empty view
     if MODE == "leak":
         bridges[0].events.append({"kind": "visible_update", "sequence": bridges[0].tracker.sequence, "day": 1,
                                   "appeared": [{"id": 20, "z": 0, **world.objects[20]}], "changed": [],
-                                  "disappeared": [], "revealed": [], "hidden": []})
+                                  "disappeared": [], "revealed": [], "tiles_changed": [], "hidden": [], "own": None})
         bridges[0].tracker.sequence += 1
     if MODE == "exit_early":
         raise SystemExit(0)

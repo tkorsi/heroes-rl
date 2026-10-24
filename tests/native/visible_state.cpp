@@ -1,6 +1,6 @@
 // Exercises the production ExplorerRL visibility tracker with synthetic worlds.
-// The fixture owns hidden state; the tracker may only learn what tileVisible
-// and visibleObjectsAt expose, exactly like the engine adapter.
+// The fixture owns hidden state; the tracker may only learn what tileVisible,
+// tileFacts, visibleObjectsAt and ownState expose, exactly like the engine adapter.
 #include "VisibleState.h"
 
 #include <algorithm>
@@ -9,8 +9,10 @@
 #include <random>
 #include <set>
 
+using explorer_rl::OwnState;
 using explorer_rl::VisibleChange;
 using explorer_rl::VisibleObject;
+using explorer_rl::VisibleTile;
 using explorer_rl::VisibleTracker;
 
 namespace
@@ -33,12 +35,24 @@ struct World
 	int sizeY = 5;
 	std::set<std::array<int, 3>> visible; // one team's fog: tiles it currently sees
 	std::vector<VisibleObject> objects; // complete hidden truth
+	std::set<std::array<int, 3>> blocking; // tiles with a blocking object, hidden truth too
+	OwnState own{std::array<int, 3>{1, 1, 0}, 1500, 1500, {20, 5, 20, 5, 5, 5, 7500}, {{0, 1, 10}}, {}, 0};
 	mutable int hiddenQueries = 0;
 
 	int width() const { return sizeX; }
 	int height() const { return sizeY; }
 	int levels() const { return 1; }
 	bool tileVisible(int x, int y, int z) const { return visible.contains({x, y, z}); }
+	OwnState ownState() const { return own; }
+
+	VisibleTile tileFacts(int x, int y, int z) const
+	{
+		if(!tileVisible(x, y, z))
+			++hiddenQueries; // the tracker must never ask about a hidden tile
+		const bool occupied = std::any_of(objects.begin(), objects.end(),
+			[x, y, z](const auto & object) { return object.x == x && object.y == y && object.z == z; });
+		return {(x + y) % 10, blocking.contains({x, y, z}), occupied};
+	}
 
 	void visibleObjectsAt(int x, int y, int z, std::vector<VisibleObject> & out) const
 	{
@@ -182,6 +196,48 @@ void independentPlayers()
 	expect(blueMove.changed.size() == 1 && blueMove.changed[0].y == 3, "Blue must see the move in its own view");
 }
 
+void tileFactsFollowVisibility()
+{
+	World world = twoSidedWorld();
+	VisibleTracker tracker;
+	const auto first = capture(tracker, world);
+	for(const auto & fact : first.revealed)
+		expect(fact.tile == world.tileFacts(fact.position[0], fact.position[1], fact.position[2]), "revealed tile without its facts");
+	world.blocking.insert({4, 4, 0}); // a hidden tile becomes blocked
+	world.find(3)->y = 3;             // and the hidden enemy steps to another hidden tile
+	expect(capture(tracker, world).empty(), "a hidden tile change produced an event");
+	world.find(1)->x = 0;             // our hero steps within view: two tiles change occupancy
+	const auto moved = capture(tracker, world);
+	expect(moved.tilesChanged.size() == 2 && moved.revealed.empty() && moved.hidden.empty(),
+		"visible tile occupancy changes must be reported with current facts");
+	for(const auto & fact : moved.tilesChanged)
+		expect(fact.position[0] <= 2, "a tile fact was reported for a hidden tile");
+	world.reveal(4, 4);               // seeing the column again shows its current facts only
+	const auto seen = capture(tracker, world);
+	expect(seen.revealed.size() == 5 && seen.tilesChanged.empty(), "re-revealed tiles must arrive as revealed facts");
+	for(const auto & fact : seen.revealed)
+		if(fact.position == std::array<int, 3>{4, 4, 0})
+			expect(fact.tile.blocked, "a revealed tile must carry its current facts");
+}
+
+void ownStateChanges()
+{
+	World world = twoSidedWorld();
+	VisibleTracker tracker;
+	const auto first = capture(tracker, world);
+	expect(first.own && *first.own == world.own, "the first capture must report the complete own state");
+	world.own.resources[6] += 1000; // new-day income, no map change
+	const auto income = capture(tracker, world);
+	expect(income.own && *income.own == world.own && income.appeared.empty() && income.revealed.empty(),
+		"an own-state change alone must produce an event with the complete own state");
+	expect(!capture(tracker, world).own, "an unchanged own state must not be repeated");
+	world.own.hero.reset();
+	world.own.army.clear();
+	world.own.movement = world.own.movementMax = 0;
+	const auto lost = capture(tracker, world);
+	expect(lost.own && !lost.own->hero && lost.own->army.empty(), "losing the hero must be reported as an own-state change");
+}
+
 void randomizedReconstruction()
 {
 	std::mt19937 rng(12345);
@@ -193,9 +249,20 @@ void randomizedReconstruction()
 		VisibleTracker tracker;
 		std::map<int64_t, VisibleObject> folded;
 		std::set<std::array<int, 3>> foldedTiles;
+		std::map<std::array<int, 3>, VisibleTile> foldedFacts;
+		std::optional<OwnState> foldedOwn;
 		for(int step = 0; step < 40; ++step)
 		{
-			const int operation = static_cast<int>(rng() % 4);
+			const int operation = static_cast<int>(rng() % 6);
+			if(operation == 4)
+				world.own.resources[rng() % world.own.resources.size()] += static_cast<int>(rng() % 3);
+			else if(operation == 5)
+			{
+				const std::array<int, 3> tile{static_cast<int>(rng() % world.sizeX), static_cast<int>(rng() % world.sizeY), 0};
+				if(!world.blocking.erase(tile))
+					world.blocking.insert(tile);
+			}
+			else
 			if(operation == 0)
 				world.visible.insert({static_cast<int>(rng() % world.sizeX), static_cast<int>(rng() % world.sizeY), 0});
 			else if(operation == 1 && !world.visible.empty())
@@ -215,11 +282,28 @@ void randomizedReconstruction()
 				folded[object.id] = object;
 			for(const auto id : change.disappeared)
 				folded.erase(id);
-			for(const auto & tile : change.revealed)
-				foldedTiles.insert(tile);
+			for(const auto & fact : change.revealed)
+			{
+				expect(!foldedTiles.contains(fact.position), "a visible tile was revealed again");
+				foldedTiles.insert(fact.position);
+				foldedFacts[fact.position] = fact.tile;
+			}
+			for(const auto & fact : change.tilesChanged)
+			{
+				expect(foldedTiles.contains(fact.position), "facts changed for a tile the player does not see");
+				foldedFacts[fact.position] = fact.tile;
+			}
 			for(const auto & tile : change.hidden)
+			{
 				foldedTiles.erase(tile);
+				foldedFacts.erase(tile);
+			}
+			if(change.own)
+				foldedOwn = *change.own;
 			expect(foldedTiles == world.visible, "folded tile changes differ from the team's fog");
+			for(const auto & tile : world.visible)
+				expect(foldedFacts.at(tile) == world.tileFacts(tile[0], tile[1], tile[2]), "folded tile facts differ from the visible tiles");
+			expect(foldedOwn == world.own, "folded own state differs from the player's own state");
 			std::map<int64_t, VisibleObject> truth;
 			for(const auto & object : world.objects)
 				if(world.visible.contains({object.x, object.y, object.z}))
@@ -238,7 +322,9 @@ int main()
 	hiddenAndVisibleRemoval();
 	visibleOwnerChangeAndRehiding();
 	independentPlayers();
+	tileFactsFollowVisibility();
+	ownStateChanges();
 	randomizedReconstruction();
-	std::cout << "visible-state tracker: 7 scenarios, 200 randomized folds\n";
+	std::cout << "visible-state tracker: 9 scenarios, 200 randomized folds\n";
 	return 0;
 }

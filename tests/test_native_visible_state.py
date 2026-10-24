@@ -24,7 +24,7 @@ class NativeVisibleStateTests(unittest.TestCase):
                            check=True, capture_output=True, text=True, timeout=60)
             result = subprocess.run([str(executable)], check=True, capture_output=True,
                                     text=True, timeout=10)
-            self.assertIn("7 scenarios, 200 randomized folds", result.stdout)
+            self.assertIn("9 scenarios, 200 randomized folds", result.stdout)
 
 
 if __name__ == "__main__":

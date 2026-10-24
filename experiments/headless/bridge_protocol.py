@@ -8,11 +8,14 @@ stream contains none. Any violation is a technical failure of the episode.
 from __future__ import annotations
 
 PROTOCOL_VERSION = 3
-OBSERVATION_EVENTS = "visible_update-v1"
+OBSERVATION_EVENTS = "visible_update-v2"
 ACTIONS = 9
 END_TURN = 8
 EVENT_KINDS = {"visible_update", "battle_start", "battle_complete", "visit", "decision"}
 OBJECT_FIELDS = ("id", "x", "y", "z", "type", "subtype", "owner")
+TILE_FIELDS = ("x", "y", "z", "terrain", "blocked", "visitable")
+OWN_FIELDS = ("hero", "movement", "movement_max", "resources", "army", "towns", "mines")
+RESOURCES = 7
 
 
 class ProtocolError(ValueError):
@@ -48,8 +51,31 @@ def _validate_object(entry) -> None:
              and all(_integer(entry[key]) for key in OBJECT_FIELDS), "Malformed visible object")
 
 
-def _validate_tile(tile) -> None:
+def _validate_position(tile) -> None:
     _require(isinstance(tile, list) and len(tile) == 3 and all(_integer(x) for x in tile), "Malformed tile coordinate")
+
+
+def _validate_tile_fact(tile) -> None:
+    _require(isinstance(tile, dict) and set(tile) == set(TILE_FIELDS)
+             and all(_integer(tile[key]) for key in ("x", "y", "z", "terrain"))
+             and type(tile["blocked"]) is bool and type(tile["visitable"]) is bool, "Malformed visible tile facts")
+
+
+def validate_own(own) -> None:
+    """The complete own state carried by a visible update when it changed."""
+    _require(isinstance(own, dict) and set(own) == set(OWN_FIELDS), "Malformed own state")
+    if own["hero"] is not None:
+        _validate_position(own["hero"])
+    _require(all(_integer(own[key]) and own[key] >= 0 for key in ("movement", "movement_max", "mines")),
+             "Own movement and mine count must be non-negative integers")
+    _require(isinstance(own["resources"], list) and len(own["resources"]) == RESOURCES
+             and all(_integer(x) for x in own["resources"]), "Own state must list the seven resource amounts")
+    _require(isinstance(own["army"], list) and all(
+        isinstance(stack, dict) and set(stack) == {"slot", "creature", "count"} and all(_integer(v) for v in stack.values())
+        for stack in own["army"]), "Malformed own army")
+    _require(isinstance(own["towns"], list), "Own towns must be a list")
+    for town in own["towns"]:
+        _validate_position(town)
 
 
 class BridgeValidator:
@@ -79,6 +105,9 @@ class BridgeValidator:
             _require(not self.ready, "Duplicate bridge handshake")
             _require(message.get("adventure_actions") == ACTIONS and message.get("observation_events") == OBSERVATION_EVENTS,
                      "Bridge does not provide the required action interface and visible event stream")
+            size = message.get("map_size")
+            _require(isinstance(size, list) and len(size) == 3 and all(_integer(x) and x > 0 for x in size),
+                     "Bridge handshake must state the public map size")
             self.ready = True
             return kind
         _require(self.ready, "Bridge must send its handshake before any game message")
@@ -152,7 +181,12 @@ class BridgeValidator:
                     _validate_object(entry)
             _require(isinstance(event.get("disappeared"), list) and all(_integer(x) for x in event["disappeared"]),
                      "Visible update disappearance list is malformed")
-            for key in ("revealed", "hidden"):
+            for key in ("revealed", "tiles_changed", "hidden"):
                 _require(isinstance(event.get(key), list), "Visible update tile lists are required")
-                for tile in event[key]:
-                    _validate_tile(tile)
+            for tile in event["revealed"] + event["tiles_changed"]:
+                _validate_tile_fact(tile)
+            for tile in event["hidden"]:
+                _validate_position(tile)
+            _require("own" in event, "Visible update must state whether the own state changed")
+            if event["own"] is not None:
+                validate_own(event["own"])

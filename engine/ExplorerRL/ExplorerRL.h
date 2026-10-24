@@ -45,8 +45,9 @@ public:
 	void heroExchangeStarted(ObjectInstanceID, ObjectInstanceID, QueryID) override;
 	std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &) override;
 
-	// Triggers for player-visible change capture. Their raw arguments are never
-	// forwarded: a move can name a hidden endpoint and some removals are hidden.
+	// Triggers for player-visible and own-state change capture. Their raw
+	// arguments are never forwarded: a move can name a hidden endpoint and some
+	// removals are hidden.
 	void heroMoved(const TryMoveHero &, bool) override;
 	void objectRemovedAfter() override;
 	void newObject(const CGObjectInstance *) override;
@@ -58,6 +59,9 @@ public:
 	void battleResultsApplied() override;
 	void playerStartsTurn(PlayerColor) override;
 	void invalidatePaths() override;
+	void receivedResource() override;
+	void heroMovePointsChanged(const CGHeroInstance *) override;
+	void garrisonsChanged(ObjectInstanceID, ObjectInstanceID) override;
 
 private:
 	std::shared_ptr<CCallback> callback;
