@@ -40,6 +40,13 @@ def compact_series(series: dict) -> dict:
                                "decision_cycles", "battles_started_by_either_side"]}
 
 
+def compact_tamper(tamper: dict) -> dict:
+    # A failed or skipped tamper run stays distinguishable from one that never ran.
+    return {"all_detected": tamper.get("all_detected"), "error": tamper.get("error"), "skipped": tamper.get("skipped"),
+            "crashed_cases": tamper.get("crashed_cases") or [],
+            "cases": {case["case"]: case["detected"] for case in tamper.get("cases", [])}}
+
+
 def compact_replays(replays: dict) -> dict:
     rows = []
     for row in replays.get("episodes", []):
@@ -50,9 +57,9 @@ def compact_replays(replays: dict) -> dict:
                      "observations_checked": (row.get("summary") or {}).get("observations_checked"),
                      "received_updates_checked": {color: check.get("captures_checked")
                                                   for color, check in (row.get("players") or {}).items()},
+                     "observation_coverage_ok": (row.get("observation_coverage") or {}).get("ok"),
                      "terminal_evidence": row.get("terminal_evidence"), "seconds": row.get("seconds"),
-                     "tamper": {case["case"]: case["detected"] for case in (row.get("tamper") or {}).get("cases", [])}
-                     or None})
+                     "tamper": compact_tamper(row["tamper"]) if "tamper" in row else None})
     return {"aggregate": replays.get("aggregate"), "episodes": rows}
 
 

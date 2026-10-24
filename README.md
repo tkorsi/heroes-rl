@@ -448,10 +448,17 @@ none` turns it off), the engine writes into `<episode>/engine`:
   server's logical state: the game state, queries, randomizer, battles, hero
   pool, player messages, turn order and turn timers. Statistics are left out
   because they hold wall-clock time, and so are their timestamps inside sent
-  packs. The log is flushed at each such boundary.
+  packs. Every record is flushed as it is written.
 - `observations-p<N>.jsonl`: for each player, the client pack position and
   digest of every capture that produced a visible update and of the capture
-  each policy message ended at.
+  each policy message ended at. The ledger is flushed before each policy
+  message is sent.
+
+The server confirms an input to the client before it logs the input as
+applied, so before the environment stops an engine it waits (at most 5 s)
+until `replay.jsonl` covers the largest client pack position named in the
+players' ledgers. The manifest's `replay` entry hashes the evidence files,
+names any that are missing, and reports that wait under `tail`.
 
 `vcmireplay` loads the recorded StartInfo and seed into the real game handler,
 feeds it the recorded packs and stops at the first difference in an outcome,
@@ -461,9 +468,19 @@ pack position. `experiments/headless/replay.py` adds the policy side: it folds
 the visible updates each player actually received (from the bridge ledger) and
 checks every capture and message digest with a Python mirror of the native
 digest (`tests/test_native_visible_state.py` pins the two together). A
-natural ending must also replay its game-end boundary and both terminals. An
-episode the environment stopped replays as a prefix up to the last complete
-record; observations after it are counted, not required.
+natural ending must also replay its game-end boundary and both terminals.
+
+Every evidence file must still match the hash and size the manifest recorded.
+`vcmireplay` accounts for every observation record: a position must be at
+least 1 and may not decrease within a player's ledger, and each player's
+checked records plus those past the replayed range must equal the records
+loaded. An episode is verified only when nothing is past that range and the
+checked counts equal the records in each prepared ledger. The received
+visible updates and the ledger captures must be numbered without gaps. An
+episode the environment stopped may end its log with one input whose applied
+record was cut; any other break in the record pairs is an error, and its
+received evidence may lack only the engine's captures after the last update it
+delivered and at most one message the engine sent as it was stopped.
 
 Randomness audit. The server's game randomizer is seeded from the recorded
 seed and is part of the state digest. BattleAI and ExplorerRL run in the
@@ -483,11 +500,15 @@ python3 experiments/headless/replay.py series runs/headless-smoke --data <game d
 ```
 
 `verify` writes `<episode>/verification/replay-verification.json`, and with
-`--trace` a per-input trace for rendering. `tamper` changes the seed, an input
-byte, a boundary digest and a player capture digest, removes an input (and
-renumbers the rest), swaps two inputs and alters a received visible update;
-each must be rejected. `series` writes `replay-series.json`. All of this
-material names engine IDs and hidden state and is never a policy input.
+`--trace` a per-input trace for rendering, which records each battle's tile and
+its two players. `tamper` changes the seed, an input byte, a boundary digest
+and a player capture digest, removes an input (and renumbers the rest), swaps
+two inputs and alters a received visible update; each must be rejected. A
+verifier crash on a tampered recording counts as a rejection but is listed
+apart from detected divergences, and an episode with fewer than four inputs is
+skipped with the reason recorded. `series` writes `replay-series.json` even
+when a tamper run fails. All of this material names engine IDs and hidden
+state and is never a policy input.
 
 ### Offline video
 
@@ -496,8 +517,10 @@ episode, never during simulation: an omniscient view labelled as
 verification-only, and each player's fog view, where tiles seen now are in
 full color, tiles seen before are dimmed with that player's last-seen objects,
 and never-seen tiles are black. Memory changes only through the player's own
-sightings. Battles and boundaries are labelled. It uses only the standard
-library and ffmpeg (H.264).
+sightings. Battles and boundaries are labelled; a fog view marks only battles
+that player fought. Long episodes are thinned to the frame budget, but every
+frame with a new sighting or a battle, the game end and the final frame are
+kept. It uses only the standard library and ffmpeg (H.264).
 
 ```bash
 python3 experiments/headless/render_replay.py runs/headless-smoke/episodes/episode-000001 --output videos/episode-000001.mp4
@@ -519,9 +542,16 @@ python3 experiments/headless/cost_breakdown.py runs/profiled/worker-0
 smoke, profile, 1,000-attempt series, replay verification with tamper tests,
 videos, benchmark, compact evidence) and resumes after an interruption:
 `DATA="$HOME/Library/Application Support/vcmi" tools/validate_headless.sh`.
+Without `OUT`, its first run pins the output directory in
+`runs/validation-current` (remove that file to start a new validation). A stage
+that did not finish is moved aside to `<name>.interrupted-<UTC time>` and run
+again, and a smoke stage that does not play all four attempts and verify them,
+tamper tests included, stops the run before the long stages.
 
 `series.json` reports natural endings, truncations and failures separately,
-wins by color, episode lengths and any missing attempt. The benchmark defaults
+wins by color, episode lengths and any missing attempt; its steady-state rates
+are given per worker and for all workers. `benchmark.json` is marked complete
+only after its last configuration. The benchmark defaults
 to the evidence the scoring needs (engine info log and metadata); add
 `--ledger full --replay record` to measure with replay evidence too.
 
