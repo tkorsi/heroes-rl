@@ -1821,6 +1821,25 @@ reproducible read-only audit and assembler are
 has SHA-256 `df8834bac83c7444ceff5396f06015ab9f14b7f90aea4dd62c1b7a6b3bb2f089`
 and weights `f4af57d1e47702200b576d0110b2ede13be1db25fc60976af8f82fc114d7b48c`.
 
+The checkpoint comparator was then repaired **after preserving the original
+execution evidence**. It now recursively compares mapping contents, including
+`OrderedDict`, while preserving exact container types, keys and tensor equality.
+The new regression first reproduced the failure (two errors in four focused
+tests); after the repair all nine gameplay-checkpoint/receipt tests pass. A
+separate read-only check using the corrected production helper reloads the
+actual saved model, Adam, RNG, progress and frozen opponent exactly, and detects
+a deliberately changed in-memory tensor. The checkpoint bytes remain unchanged.
+No game, optimization step, checkpoint rewrite or after-evaluation was performed
+by this fix verification.
+
+`validation/checkpoint-comparator-fix-2026-10-25.json` and its dated verifier
+record that separate result. Only `experiments/learner/gameplay.py` and
+`tests/test_gameplay_checkpoint.py` differ from the approved implementation.
+The old plan now correctly fails its source-identity gate; it must not be reused
+with an approval hash to bypass the repair's changed source. Future execution
+requires a newly reviewed plan and explicit authorization. The original
+experiment remains stopped with the four after-evaluation games absent.
+
 ### Continue in a new chat
 
 Use English and read `AGENTS.md` plus this README first. The public `main`

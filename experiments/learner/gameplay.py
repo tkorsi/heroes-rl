@@ -7,6 +7,7 @@ The default PPO entry point and every diagnostic collector remain ineligible.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 import json
@@ -250,8 +251,8 @@ def _transactional_update(model, optimizer, rollouts, *, config, generator, rema
 def assert_same_state(left, right):
     if isinstance(left, torch.Tensor):
         require(isinstance(right, torch.Tensor) and torch.equal(left, right), "Resume tensor differs")
-    elif type(left) is dict:
-        require(type(right) is dict and left.keys() == right.keys(), "Resume dictionary differs")
+    elif isinstance(left, Mapping):
+        require(type(right) is type(left) and left.keys() == right.keys(), "Resume mapping differs")
         for key in left: assert_same_state(left[key], right[key])
     elif type(left) in (tuple, list):
         require(type(right) is type(left) and len(left) == len(right), "Resume sequence differs")

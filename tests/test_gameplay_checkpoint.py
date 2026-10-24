@@ -1,4 +1,6 @@
 """Synthetic serialization/admission checks; no game or gameplay update."""
+from collections import OrderedDict
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 import unittest
@@ -59,6 +61,9 @@ class GameplayCheckpointTests(unittest.TestCase):
                                        allowed_provenance=("approved_gameplay",))
             self.assertEqual(restored.progress, TrainingProgress())
             self.assertEqual(weights_sha256(clone), weights_sha256(model))
+            from experiments.learner.gameplay import assert_same_state
+            assert_same_state(model.state_dict(), clone.state_dict())
+            assert_same_state(optimizer.state_dict(), clone_optimizer.state_dict())
             self.assertFalse(optimizer.state)
             invalid = torch.load(path, weights_only=True)
             invalid["provenance"] = "random_initialization"
@@ -67,6 +72,24 @@ class GameplayCheckpointTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "optimizer provenance"):
                 load_checkpoint(invalid_path, clone, clone_optimizer, **load_args,
                                 allowed_provenance=("random_initialization",))
+
+    def test_resume_comparison_recurses_into_ordered_tensor_mappings(self):
+        from experiments.learner.gameplay import assert_same_state
+        state = {"model": OrderedDict(weight=torch.tensor([1.0, 2.0])),
+                 "optimizer": {"state": {0: {"exp_avg": torch.tensor([0.1, 0.2])}}},
+                 "rng": [torch.tensor([7, 8]), (1, None)]}
+        assert_same_state(state, deepcopy(state))
+        changed = deepcopy(state)
+        changed["model"]["weight"][0] = 9.0
+        with self.assertRaisesRegex(ValueError, "Resume tensor differs"):
+            assert_same_state(state, changed)
+        for changed_model in (OrderedDict(other=torch.tensor([1.0, 2.0])),
+                              {"weight": torch.tensor([1.0, 2.0])}):
+            with self.subTest(container=type(changed_model).__name__):
+                changed = deepcopy(state)
+                changed["model"] = changed_model
+                with self.assertRaisesRegex(ValueError, "Resume mapping differs"):
+                    assert_same_state(state, changed)
 
     def test_deadline_after_one_synthetic_step_restores_complete_state(self):
         from experiments.learner.gameplay import BudgetExpired, UpdateRolledBack, _transactional_update
