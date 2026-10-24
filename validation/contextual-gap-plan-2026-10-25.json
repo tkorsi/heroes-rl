@@ -10,6 +10,11 @@
     "learner_seats_per_seed": [0, 1],
     "planned_attempts": 16,
     "policy_seed": 98103,
+    "execution_batches": [
+      {"engine_seeds": [98111, 98112, 98113, 98114], "policy_seed": 98103, "logical_episode_offset": 0},
+      {"engine_seeds": [98115, 98116, 98117, 98118], "policy_seed": 98119, "logical_episode_offset": 8}
+    ],
+    "batch_note": "The CLI supports four engine seeds per invocation. Offset the second policy RNG base by 16 to preserve the predeclared logical-episode seeds; no gameplay run preceded this batching correction.",
     "opponent_seed": 95002,
     "opponent_sampling_seed": 95004,
     "max_days": 100,
