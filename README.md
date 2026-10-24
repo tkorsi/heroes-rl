@@ -543,6 +543,24 @@ python3 validation/probes/audit_contextual_histories.py \
   --manifest <manifest.json> --output <new-audit.json>
 ```
 
+The independent native acceptance driver is
+`validation/probes/validate_contextual_native.py`. It refuses an environment
+without the opt-in contextual API before launching a game. Its bounded cases
+cover navigation, exploration, partial movement, closed-window battles,
+cutoffs and owned-process failures; an optional same-seed pair compares hidden
+opponent movement variants. A separate seeded uniform-random cohort supplies
+outcome coverage. Every attempt is preserved; absent conditions are unverified,
+and failed audits cannot pass an individual acceptance gate. These are evaluation
+probes, not agent strategies or training examples.
+
+`validation/probes/create_contextual_fixtures.py` prepares optional paired maps
+from an actual initial v2 player frame. The base is byte-identical to the authored
+map; variants change only unknown terrain/roads or append a fully hidden neutral
+guard. Existing objects and victory rules remain unchanged. Its archive tests
+do not prove that VCMI loads a variant or that its initial player view is equal:
+both must be checked in the real engine before interpreting a paired comparison.
+Terrain/road variants provide bounded coverage, not an exhaustive isolation proof.
+
 #### Proposed minimum interactions and parameters
 
 Start with map controls and open/read/close windows, then add the smallest audited
