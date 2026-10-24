@@ -186,6 +186,11 @@ class ContextualMixin:
             raise ValueError("history_v4 requires adventure-armies-v1")
         return self.history(color)
 
+    def history_v5(self, color):
+        if self.context_profile != contract.HEROES_PROFILE:
+            raise ValueError("history_v5 requires adventure-heroes-v1")
+        return self.history(color)
+
     def history(self, color):
         if color not in COLORS:
             raise ValueError("Unknown player color")

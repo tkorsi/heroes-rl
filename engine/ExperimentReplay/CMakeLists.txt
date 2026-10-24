@@ -7,7 +7,7 @@ if(ENABLE_CLIENT)
 	target_sources(vcmireplay PRIVATE ContextualReplay.cpp ContextualReplay.h ReplayClientHost.cpp
 		../AI/ExplorerRL/ExplorerRL.cpp ../AI/ExplorerRL/Contextual.cpp
 		../AI/ExplorerRL/ContextualEvidence.cpp ../AI/ExplorerRL/TownEconomy.cpp
-		../AI/ExplorerRL/TownRecruitment.cpp ../AI/ExplorerRL/TownTransfer.cpp ../AI/ExplorerRL/Notice.cpp
+		../AI/ExplorerRL/TownRecruitment.cpp ../AI/ExplorerRL/Tavern.cpp ../AI/ExplorerRL/TownTransfer.cpp ../AI/ExplorerRL/Notice.cpp
 		../AI/ExplorerRL/KnowledgePlanner.cpp)
 	target_link_libraries(vcmireplay PRIVATE vcmiclientcommon)
 	target_compile_definitions(vcmireplay PRIVATE HEROES_CONTEXTUAL_REPLAY=1)

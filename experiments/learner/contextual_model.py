@@ -22,8 +22,10 @@ MODEL_SCHEMA = "heroes-context-model-v1"
 DISTRIBUTION_SCHEMA = "heroes-context-policy-v1"
 ARMIES_MODEL_SCHEMA = "heroes-context-model-v2"
 ARMIES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v2"
+HEROES_MODEL_SCHEMA = "heroes-context-model-v3"
+HEROES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v3"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
-            "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack")
+            "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero")
 # Verification, command identifiers and technical boundaries are not observations.
 _METADATA = frozenset(("issued", "cutoff", "cutoff_finalized", "finalized", "failure", "superseded"))
 
@@ -36,7 +38,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA):
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -55,11 +57,17 @@ class ModelConfig:
 
 
 def model_schema_for(profile_or_schema):
-    return ARMIES_MODEL_SCHEMA if c.profile_for(profile_or_schema).army_transfer else MODEL_SCHEMA
+    profile = c.profile_for(profile_or_schema)
+    if profile.hero_recruitment:
+        return HEROES_MODEL_SCHEMA
+    return ARMIES_MODEL_SCHEMA if profile.army_transfer else MODEL_SCHEMA
 
 
 def distribution_schema_for(profile_or_schema):
-    return ARMIES_DISTRIBUTION_SCHEMA if c.profile_for(profile_or_schema).army_transfer else DISTRIBUTION_SCHEMA
+    profile = c.profile_for(profile_or_schema)
+    if profile.hero_recruitment:
+        return HEROES_DISTRIBUTION_SCHEMA
+    return ARMIES_DISTRIBUTION_SCHEMA if profile.army_transfer else DISTRIBUTION_SCHEMA
 
 
 def weights_sha256(model):
@@ -108,7 +116,8 @@ def _selection(observation, ref):
     panel = observation.window.town_panel
     for entry in (*panel.controls, *panel.buildings,
                   *((panel.building,) if panel.building else ()),
-                  *(panel.recruitment.offers if panel.recruitment else ())):
+                  *(panel.recruitment.offers if panel.recruitment else ()),
+                  *(panel.tavern.offers if panel.tavern else ())):
         if entry.ref == ref:
             return _semantic(entry)
     return _node("unresolved_selection")
@@ -167,6 +176,10 @@ def _semantic(value):
         return _node("recruitment", _set("cards", cards), _node("stock", _number(value.stock)),
                      _node("unit_cost", _semantic(value.unit_cost)), _node("slider_max", _number(value.slider_max)),
                      _semantic(value.destination))
+    if type(value) is c.TavernPanel:
+        cards = [_node("card", _semantic(card), _semantic(card.ref == value.selected_offer_ref)) for card in value.offers]
+        return _node("tavern", _set("cards", cards), _node("selected_detail", _semantic(value.selected_detail)),
+                     _node("gold_cost", _number(value.gold_cost)), _node("recruit_status", _text(value.recruit_status)))
     if type(value) is c.Notice:
         return _node("notice", _text(value.display_mode),
                      ("ordered", "notice_text", tuple(_semantic(token) for token in value.text)),
@@ -175,13 +188,13 @@ def _semantic(value):
         children = []
         for field in fields(value):
             name, item = field.name, getattr(value, field.name)
-            # This additive v4 field must not add even an "absent" node to old
-            # observations: archived v1 values/probabilities remain exact.
-            if type(value) is c.TownPanel and name == "armies" and item is None:
+            # Additive profile fields must not add even an "absent" node to
+            # old observations: archived values/probabilities remain exact.
+            if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
             if name in ("handle", "ref", "control_ref", "selected_offer_ref", "subject", "selection", "schema"):
                 continue
-            if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction") and type(item) is int:
+            if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class") and type(item) is int:
                 encoded = _text(f"category:{item}")
             elif name in ("children", "controls", "buildings", "army") and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
@@ -457,6 +470,10 @@ class ContextualDistribution:
             return ("open_building", "back") if offers.panel.buildings else ("back",)
         if context.panel == "building":
             return ("construct", "back") if offers.panel.building.status == "allowed" else ("back",)
+        if context.panel == "tavern":
+            tavern = offers.panel.tavern
+            return (("back",) + (("select_hero",) if tavern.offers else ())
+                    + (("hire_hero",) if tavern.recruit_status == "allowed" else ()))
         recruitment = offers.panel.recruitment
         return ("back", "select_recruit", "recruit") if recruitment.slider_max else ("back", "select_recruit")
 
@@ -492,19 +509,19 @@ class ContextualDistribution:
                 x, y = index % width, index // width
         elif kind == "open_panel":
             controls = self.offers.panel.controls
-            # There is one semantic hall action even if malformed support repeats
-            # an equivalent hall control; never double-count an action's mass.
-            hall_count = sum(control.panel == "hall" for control in controls)
-            if hall_count > 1:
-                raise ValueError("Duplicate semantic hall controls")
+            # Hall and tavern each have one semantic navigation action;
+            # duplicate controls must never double-count its probability mass.
+            if any(sum(control.panel == panel for control in controls) > 1 for panel in ("hall", "tavern")):
+                raise ValueError("Duplicate semantic town panel controls")
             selected = next((i for i, control in enumerate(controls) if action and control.panel == action.panel
-                             and (control.panel == "hall" or control.ref == action.selection)), None)
+                             and (control.panel in ("hall", "tavern") or control.ref == action.selection)), None)
             index = choose("control", self._logits([_semantic(control) for control in controls]), selected)
             control = controls[index]
             subject, panel = self.offers.context.subject, control.panel
             selection = control.ref if panel == "recruitment" else None
-        elif kind in ("open_building", "select_recruit"):
-            choices = self.offers.panel.buildings if kind == "open_building" else self.offers.panel.recruitment.offers
+        elif kind in ("open_building", "select_recruit", "select_hero"):
+            choices = (self.offers.panel.buildings if kind == "open_building" else
+                       self.offers.panel.tavern.offers if kind == "select_hero" else self.offers.panel.recruitment.offers)
             index = choose("selection", self._logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
@@ -538,10 +555,12 @@ class ContextualDistribution:
                 else: high = middle
                 depth += 1
             count = low
-        elif kind in ("construct", "back", "recruit"):
+        elif kind in ("construct", "back", "recruit", "hire_hero"):
             subject = self.offers.context.subject
             if kind == "construct":
                 selection = self.offers.panel.building.ref
+            elif kind == "hire_hero":
+                selection = self.offers.panel.tavern.selected_offer_ref
             elif kind == "recruit":
                 recruit = self.offers.panel.recruitment
                 selection, destination = recruit.selected_offer_ref, recruit.destination.ref

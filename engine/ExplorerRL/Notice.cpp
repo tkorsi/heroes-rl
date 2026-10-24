@@ -304,10 +304,12 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 			if(exact(tokens[0], APPEND_TEXT, "core.mineevnt." + std::to_string(resource))
 				&& resourceComponent(components[0], ComponentType::RESOURCE_PER_DAY, resource))
 				supported = true;
-	// CGameHandler::giveHeroExperience: only the recipient's baseline hero.
+	// CGameHandler::giveHeroExperience: the recipient's current owned heroes,
+	// including recruits. A syntactically valid name alone grants no visibility.
+	static const std::regex heroName("hero\\.core\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.name");
 	if(mode == EInfoWindowMode::MODAL && tokens.size() == 2 && components.empty()
 		&& exact(tokens[0], APPEND_LOCAL, "core.genrltxt.1") && tokens[1].operation == REPLACE_TEXT
-		&& (tokens[1].text == "hero.core.orrin.name" || tokens[1].text == "hero.core.edric.name")
+		&& std::regex_match(tokens[1].text, heroName)
 		&& ownHeroNameTextIds.contains(tokens[1].text))
 		supported = true;
 	// visitBattleResultsApplied sends this exact zero-choice modal notice only

@@ -1,0 +1,55 @@
+{
+  "baseline_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "changes": [
+    {
+      "after": "Hero management: two castles",
+      "before": "Random baseline: two castles",
+      "entry": "header.json",
+      "field": "name"
+    },
+    {
+      "after": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings.",
+      "before": "Authored movement baseline: equal Castle starts, one hero each, two sawmills, two six-pikeman neutral stacks and two gold piles. Normal fog and victory rules; level cap 1; no taverns.",
+      "entry": "header.json",
+      "field": "description"
+    },
+    {
+      "after": [],
+      "before": [
+        "core:tavern"
+      ],
+      "entry": "objects.json",
+      "field": "options.buildings.noneOf",
+      "instance": "town_0"
+    },
+    {
+      "after": [],
+      "before": [
+        "core:tavern"
+      ],
+      "entry": "objects.json",
+      "field": "options.buildings.noneOf",
+      "instance": "town_1"
+    }
+  ],
+  "engine_verified": false,
+  "hero_limits": "Use effective native heroesPerPlayerOnMapCap and heroesPerPlayerTotalCap settings; no scenario override",
+  "layout_seed": 0,
+  "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "note": "Generator metadata only; source-pinned native validation is recorded separately.",
+  "preserved": {
+    "automatic_battles": true,
+    "fog": true,
+    "initial_buildings_and_armies": true,
+    "initial_heroes": true,
+    "level_cap": 1,
+    "resources": true,
+    "terminal_only_rewards": true,
+    "terrain_and_objects": true,
+    "victory_and_defeat_rules": true
+  },
+  "scenario_id": "hero-management-v1",
+  "schema": "heroes-hero-management-scenario-v1",
+  "tavern": "Construction is permitted, not prebuilt. All hiring is an explicit policy action at native cost.",
+  "training_performed": false
+}

@@ -5,21 +5,20 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** all ten planned attempts from the first bounded experiment
-are recorded across the original stopped run and a separately authorized
-four-game evaluation continuation. The original run completed one PPO update
-(ten optimizer steps). The continuation loaded its saved checkpoint, performed
-zero optimizer steps and completed all four missing evaluations. All ten games
-were valid 256-choice cutoffs, without a natural outcome or terminal reward.
-The before/after behavior comparison does not establish improved strategy.
+**Current milestone:** the user has authorized a staged capability expansion and
+bounded real-game validation, with no new gameplay optimizer updates. Stage 1
+adds an explicit town Tavern and native hero recruitment; stage 2 adds the
+specified army operations; stage 3 adds enumerated adventure choice dialogs.
+Automatic BattleAI combat, normal fog and terminal-only rewards remain fixed.
+Implementation and validation status are recorded below; source changes alone
+are not evidence that a mechanic works in the real engine.
 
-The contextual v4 interface supports navigation, construction, recruitment and
-explicit troop transfer. Policy and value use only their player's ordered
-visible history with separate recurrent memory. Rules, fog and terminal-only
-rewards are unchanged. The original stopped record is preserved. Both bounded
-authorizations are now consumed; no further game or optimizer update is
-authorized. Raw artifacts and checkpoints remain local. Draft PRs remain
-unmerged; other platforms are not validated.
+The original ten-attempt experiment remains preserved: one PPO update (ten
+optimizer steps), followed by four separately authorized evaluations with zero
+updates. All ten games were valid 256-choice cutoffs, without natural outcomes.
+Their behavior comparison does not establish improved strategy. The restricted
+baseline and its evidence remain separate from the new versioned scenario.
+Raw artifacts and checkpoints stay local; draft PRs remain unmerged.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
@@ -76,10 +75,11 @@ improving play. Terminal-only rewards may produce no learning for a long time.
   can show more for human inspection, but must never feed hidden state to it.
 - Use structured game observations and typed contextual interactions, not
   screenshots, screen coordinates or externally selected random clicks. For the
-  expanded interface, only the adventure map, hero window and town window are
-  in scope. Window-only information and operations require an explicit open
-  action; closing a window stops refreshes of its private panel contents.
-  Additional interfaces, including obelisks and special dialogs, are deferred.
+  expanded interface, the adventure map, hero window, town window and explicitly
+  enumerated adventure choice dialogs are in scope. Window-only information and
+  operations require an explicit open action; closing a window stops refreshes
+  of its private panel contents. Unsupported dialog families fail explicitly;
+  this does not authorize universal interface, spell or artifact support.
 - In the new contextual experiment, the policy chooses a destination `(x, y)`
   and the engine computes and executes a route within the hero's available
   movement points. Do not supply engine path costs, a reachable-this-turn target
@@ -1957,13 +1957,66 @@ to finish the paused contextual work; Claude's separately scoped simulation/perf
 coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
 training. The saved plan received one-execution approval and stopped as
 recorded above. The separately authorized four-game after-evaluation is now
-complete with zero additional optimizer steps. Both authorizations are consumed;
-no additional game, optimization or broader run is authorized.
+complete with zero additional optimizer steps. Those two bounded authorizations
+are consumed. The later capability-expansion approval below permits new bounded
+diagnostics, while new gameplay optimization remains unauthorized.
 
 Earlier v2/v3 validation and the original three truncated rendered self-play
 runs remain separate historical evidence. Historical contextual recordings
 without the native tape remain unsupported. Verified legacy video binding passes
 at `4fe0d7c`; no clean throughput benchmark has been accepted.
+
+## Authorized capability expansion — 25 October 2026
+
+The user explicitly approved Tavern/hero recruitment, the enumerated army
+operations, and typical adventure dialogs, followed by real-game validation,
+coherent commits and explicit branch pushes. Automatic combat remains unchanged.
+The approval and its exact scope are recorded in
+`validation/capability-expansion-authorization-2026-10-25.json`. This supersedes
+the earlier prohibition on additional diagnostic games, but does not authorize
+new gameplay optimization, a training campaign, paid compute or merges.
+
+Deliver in three independently versioned stages:
+
+1. Town Tavern navigation, displayed hero offers and selection, native hiring,
+   multiple owned heroes, and replacement recruitment after losing a hero.
+2. Town/visitor transfer in both directions, native eligible hero exchanges,
+   explicit stack splitting/merging/rearrangement/swaps, available upgrades with
+   native costs, and visiting/garrison hero entry/exit/swap. The policy chooses
+   armies, slots, counts and upgrade; there is no army-optimization macro.
+3. Enumerated native confirmations and option dialogs encountered by these
+   mechanics and the intended scenario. Choices remain external decisions;
+   informational notices are separate and unsupported families fail explicitly.
+
+The new `hero-management-v1.vmap` permits construction of a Tavern in each town.
+It does not prebuild one or grant heroes, armies or resources. Its only gameplay
+configuration changes from the byte-pinned restricted baseline are removing
+`core:tavern` from each town's forbidden-building list. The other changes are
+the scenario name and description. Initial state, terrain, normal victory/fog,
+level cap 1 and automatic battles remain unchanged. Native hero limits apply;
+the scenario introduces no cap override. The generator and its manifest enforce
+these precise differences. `configs/hero-management-v1.json` identifies this
+separate configuration; old baseline cohorts must not be pooled with it.
+
+Stage 1 uses `adventure-heroes-v1`, protocol 7, player history/actions v5 and
+model/policy v3. Opening an owned town's built Tavern exposes its native portrait
+cards, names, price and the selected card's level, class and artifact count.
+Like the real window, the first displayed card is initially selected. The policy
+can select another card and must explicitly choose hiring. Offer armies, skills,
+artifact identities and hidden hero histories are not inputs. Hiring uses one
+native request, closes the Tavern to overview before updates, and verifies exact
+gold debit, hero identity, initial army and visitor creation. Closed windows stop
+refreshing; old observations remain immutable. All owned heroes share the
+player's recurrent history but are selected individually by opaque references.
+
+Source implementation is in progress. Each stage requires source-pinned native
+success/rejection coverage for both colors, exact effects and ordered receipts,
+independent replay/tamper checks, player-local history checks, and bounded fixed-
+weight inference. Scripted mechanics probes are diagnostics only and never
+learner data. Preserve every failed attempt. Synthetic optimizer tests may check
+algorithm correctness; no real-game optimizer steps are authorized. Recovery
+after hero loss must be demonstrated on the unchanged new ordinary scenario,
+without claiming that diagnostic scripts establish ordinary-policy outcome rates.
 
 ## Headless self-play environment (issue #4, in progress)
 

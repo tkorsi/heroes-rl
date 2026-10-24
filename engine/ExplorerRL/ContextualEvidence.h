@@ -23,7 +23,7 @@ class ContextualEvidence final : public ExperimentEvidenceHooks
 {
 public:
 	static constexpr const char * SCHEMA = "heroes-contextual-replay-v1";
-	static ContextualEvidence & live(const std::string & episode, bool town, bool armies = false);
+	static ContextualEvidence & live(const std::string & episode, bool town, bool armies = false, bool heroes = false);
 	static ContextualEvidence * current();
 	static bool replaying();
 	static bool cancelled();
@@ -51,7 +51,7 @@ public:
 	JsonNode summary(uint64_t regeneratedPackets) const;
 
 private:
-	ContextualEvidence(const std::string & episode, bool town, bool armies = false);
+	ContextualEvidence(const std::string & episode, bool town, bool armies = false, bool heroes = false);
 	JsonNode metadata;
 	std::ofstream output;
 	std::vector<JsonNode> records;

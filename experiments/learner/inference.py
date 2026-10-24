@@ -327,7 +327,7 @@ def main(argv=None):
     parser.add_argument("--data", type=Path, default=Path.home() / "Library/Application Support/vcmi")
     parser.add_argument("--map", dest="game_map", type=Path, default=ROOT / "experiments/explorer/maps/random-baseline-v1.vmap")
     parser.add_argument("--checkpoint", type=Path)
-    parser.add_argument("--interface", choices=(contract.ENVIRONMENT, contract.TOWN_ENVIRONMENT, contract.ARMIES_ENVIRONMENT),
+    parser.add_argument("--interface", choices=(contract.ENVIRONMENT, contract.TOWN_ENVIRONMENT, contract.ARMIES_ENVIRONMENT, contract.HEROES_ENVIRONMENT),
                         default=contract.TOWN_ENVIRONMENT)
     parser.add_argument("--purpose", choices=("diagnostic", "ordinary-evaluation"), default="diagnostic")
     parser.add_argument("--init-seed", type=int, default=95001)

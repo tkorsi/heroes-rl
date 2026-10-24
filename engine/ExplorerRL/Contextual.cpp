@@ -236,9 +236,25 @@ JsonNode ExplorerRL::contextualObservation()
 				window["army"] = army(*openTown->getUpperArmy());
 				window["faction"].Integer() = openTown->getFactionID().getNum();
 			}
-			if(townEconomy)
+			if(heroRecruitment && contextState.panel == "tavern")
+			{
+				auto & panel = window["town_panel"];
+				panel["kind"].String() = "tavern";
+				panel["controls"].Vector();
+				panel["buildings"].Vector();
+				panel["building"] = JsonNode();
+				panel["tavern"] = tavernPanel(*openTown);
+			}
+			else if(townEconomy)
 				window["town_panel"] = explorer_rl::townPanel(*callback, *openTown,
 					contextState.panel, contextState.selection, contextState.economy);
+			if(heroRecruitment && contextState.panel == "overview" && openTown->hasBuilt(BuildingID::TAVERN))
+			{
+				JsonNode control;
+				control["panel"].String() = "tavern";
+				control["ref"].String() = "panel-1";
+				window["town_panel"]["controls"].Vector().push_back(std::move(control));
+			}
 			if(armyTransfer && contextState.panel == "overview")
 				window["town_panel"]["armies"] = townArmyExchange(*openTown);
 		}
@@ -396,7 +412,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			return;
 		fields(response, {"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"},
 			{"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"});
-		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (armyTransfer ? 6 : townEconomy ? 5 : 4)
+		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
 			|| response["type"].String() != "context_action" || response["episode"].String() != episode
 			|| !integer(response["player"]) || response["player"].Integer() != playerID.getNum()
 			|| !integer(response["decision_id"]) || response["decision_id"].Integer() != decision
@@ -573,9 +589,21 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 {
 	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
 		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
-	if(action["schema"].String() != (armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
+	if(action["schema"].String() != (heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(heroRecruitment)
+	{
+		bool tavernBack = false;
+		if(kind == "back")
+		{
+			std::lock_guard lock(stateMutex);
+			tavernBack = contextState.context == "town" && contextState.panel == "tavern";
+		}
+		if(kind == "select_hero" || kind == "hire_hero" || tavernBack
+			|| (kind == "open_panel" && action["panel"].isString() && action["panel"].String() == "tavern"))
+			return executeTavernAction(action, decision);
+	}
 	if(armyTransfer && kind == "transfer_stack")
 		return executeTransferAction(action, decision);
 	if(townEconomy)

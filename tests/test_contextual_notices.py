@@ -48,7 +48,7 @@ class ContextualNoticeTests(unittest.TestCase):
     def test_static_ids_do_not_allow_raw_text_global_scopes_or_nearby_unused_ids(self):
         for text_id in ("core.advobtxt.113", "core.advevent.112", "core.restypes.7", "core.mineevnt.8",
                         "core.genrltxt.2", "core.arraytxt.42", "core.arraytxt.58", "core.arraytxt.129",
-                        "core.arraytxt.136", "hero.core.catherine.name", "hero.hota.orrin.name",
+                        "core.arraytxt.136", "hero.hota.orrin.name",
                         "creature.core.pikeman.name.plural", "creatures.hota.pikeman.name.plural",
                         "creatures.core.pikeman.description", "creatures.core.9pikeman.name.plural",
                         "creatures.core.hidden/position.name.plural", "creatures.core.hidden.position.name.plural",
@@ -57,6 +57,17 @@ class ContextualNoticeTests(unittest.TestCase):
                         "heroes.baseline.hidden_enemy_dead", "core.restypes.6\n"):
             with self.subTest(text_id=text_id), self.assertRaises(ValueError):
                 NoticeToken("append_text", text_id=text_id)
+
+    def test_legacy_frame_rejects_expanded_core_hero_notice_names(self):
+        # Tokens are shared across profiles; v5 adds recruited heroes, while
+        # the historical enclosing history schemas retain their old allowlist.
+        from experiments.learner import contextual as c
+        notice = Notice("modal", (NoticeToken("append_text", text_id="core.genrltxt.1"),
+                                  NoticeToken("replace_text", text_id="hero.core.catherine.name")), ())
+        for profile in (c.WINDOWS_PROFILE, c.TOWN_PROFILE, c.ARMIES_PROFILE):
+            with self.assertRaises(ValueError):
+                Frame("notice-test", 0, 0, 1, "event", event=VisibleEvent("notice", notice=notice),
+                      schema=profile.history_schema)
 
     def test_token_payload_is_discriminated_and_numbers_are_signed_int64(self):
         for op in ("append_number", "replace_number", "replace_positive_number"):

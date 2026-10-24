@@ -121,7 +121,8 @@ def cross_check_wire(episode, manifest, tape):
     expected = {"schema": SCHEMA, "episode": manifest["episode"], "interface": profile.environment,
                 "protocol_version": profile.protocol, "history_schema": profile.history_schema,
                 "action_schema": profile.action_schema}
-    if any(header.get(key) != value for key, value in expected.items()):
+    if (type(header.get("protocol_version")) is not int
+            or any(header.get(key) != value for key, value in expected.items())):
         raise ReplayError("Contextual capture header does not match the episode")
     for seq, row in enumerate(tape[1:]):
         if type(row.get("seq")) is not int or row["seq"] != seq:
@@ -262,6 +263,141 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300):
     return report
 
 
+def _hero_recruitment_mutations(tape, add):
+    """Alter only recorded v5 tavern fields and witnessed hire effects.
+
+    These are diagnostic counterexamples, never constructed positive engine
+    evidence. The native verifier must first pass the original recording.
+    """
+    header = tape[0] if tape else {}
+    profile = contract.HEROES_PROFILE
+    expected = {"schema": SCHEMA, "interface": profile.environment, "protocol_version": profile.protocol,
+                "history_schema": profile.history_schema, "action_schema": profile.action_schema}
+    if (any(header.get(key) != value for key, value in expected.items())
+            or type(header.get("protocol_version")) is not int):
+        return
+    selected = set()
+
+    def change(name, index, path, value):
+        if name in selected:
+            return
+        def mutate(rows, i):
+            target = rows[i]
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = deepcopy(value)
+        add(name, index, mutate)
+        selected.add(name)
+
+    observations = []
+    for index, row in enumerate(tape):
+        if row.get("kind") != "message":
+            continue
+        for record_index, record in enumerate(row["message"].get("records", [])):
+            observation = record.get("observation")
+            if observation is None:
+                continue
+            observations.append((index, record_index, row["player"], observation))
+            window = observation.get("window") or {}
+            if window.get("context", {}).get("panel") != "tavern":
+                continue
+            tavern = (window.get("town_panel") or {}).get("tavern")
+            if not tavern:
+                continue
+            prefix = ("message", "records", record_index, "observation", "window", "town_panel", "tavern")
+            change("tavern_gold_price", index, (*prefix, "gold_cost"), tavern["gold_cost"] + 1)
+            offers = tavern["offers"]
+            if offers:
+                card = offers[0]
+                change("tavern_offer_portrait", index, (*prefix, "offers", 0, "portrait"), card["portrait"] + 1)
+                name = next((card["name_text_id"] for card in offers if card["name_text_id"] != offers[0]["name_text_id"]),
+                            "hero.core.edric.name" if card["name_text_id"] == "hero.core.orrin.name" else "hero.core.orrin.name")
+                change("tavern_offer_name", index, (*prefix, "offers", 0, "name_text_id"), name)
+                alternative = next((card["ref"] for card in offers if card["ref"] != tavern["selected_offer_ref"]), None)
+                if alternative is not None:
+                    change("tavern_selected_offer", index, (*prefix, "selected_offer_ref"), alternative)
+            if tavern["selected_detail"] is not None:
+                for field, label in (("level", "level"), ("hero_class", "class"), ("artifact_count", "artifact_count")):
+                    change("tavern_selected_" + label, index, (*prefix, "selected_detail", field), tavern["selected_detail"][field] + 1)
+
+    for index, row in enumerate(tape):
+        if row.get("kind") != "response":
+            continue
+        action = row["response"]["action"]
+        if action["kind"] == "open_panel" and action.get("panel") == "tavern":
+            change("tavern_open_navigation", index, ("response", "action", "panel"), "hall")
+        if action["kind"] not in ("select_hero", "hire_hero"):
+            continue
+        prior = next((entry for entry in reversed(observations) if entry[0] < index and entry[2] == row["player"]), None)
+        if prior is None:
+            continue
+        before = prior[3]
+        tavern = (((before.get("window") or {}).get("town_panel") or {}).get("tavern"))
+        if not tavern:
+            continue
+        alternative = next((card["ref"] for card in tavern["offers"] if card["ref"] != action["selection"]),
+                           action["selection"] + "-changed")
+        change("tavern_hero_selection" if action["kind"] == "select_hero" else "tavern_hire_selection",
+               index, ("response", "action", "selection"), alternative)
+        if action["kind"] != "hire_hero":
+            continue
+        decision = row["response"].get("decision_id")
+        if type(decision) is not int:
+            continue
+        after = None
+        result = None
+        acknowledged = None
+        # A new hero elsewhere/later is not evidence for this hire. Stop at the
+        # matching result or supersession, considering this player's views only.
+        for later in range(index + 1, len(tape)):
+            message = tape[later]
+            if message.get("kind") != "message" or message.get("player") != row["player"]:
+                continue
+            for record_index, record in enumerate(message["message"].get("records", [])):
+                if record.get("observation") is not None:
+                    after = (later, record_index, record["observation"])
+                if record.get("decision_id") == decision:
+                    if record.get("kind") == "acknowledged":
+                        acknowledged = (later, record_index, record)
+                    if record.get("kind") in ("result", "superseded"):
+                        result = record
+                        break
+            if result is not None:
+                break
+        if (result is None or result.get("result", {}).get("status") != "hired"
+                or result["result"].get("accepted") is not True or after is None):
+            continue
+        if acknowledged is not None and acknowledged[2].get("accepted") is True:
+            change("hire_acknowledgement", acknowledged[0],
+                   ("message", "records", acknowledged[1], "accepted"), False)
+        after_index, record_index, observed = after
+        prior_refs = {hero["handle"] for hero in before["heroes"]}
+        added = [(hero_index, hero) for hero_index, hero in enumerate(observed["heroes"]) if hero["handle"] not in prior_refs]
+        if len(added) != 1:
+            continue
+        hero_index, hero = added[0]
+        prefix = ("message", "records", record_index, "observation")
+        change("hired_hero_creation", after_index, (*prefix, "heroes"),
+               [value for value in observed["heroes"] if value["handle"] != hero["handle"]])
+        change("hired_hero_gold_effect", after_index, (*prefix, "resources", 6), observed["resources"][6] + 1)
+        # Keep the coordinate structurally in bounds. This is a replay negative,
+        # not a movement heuristic or action supplied to a game policy.
+        for axis, extent in enumerate(observed["size"][:2]):
+            if extent > 1:
+                change("hired_hero_position", after_index, (*prefix, "heroes", hero_index, "position", axis),
+                       (hero["position"][axis] + 1) % extent)
+                break
+        exchange = (((observed.get("window") or {}).get("town_panel") or {}).get("armies") or {})
+        visitor = exchange.get("destination")
+        if visitor is not None and visitor.get("subject") == hero["handle"]:
+            stack = next(((slot_index, slot) for slot_index, slot in enumerate(visitor["slots"]) if slot["count"]), None)
+            if stack is not None:
+                slot_index, slot = stack
+                change("hired_hero_army_count", after_index,
+                       (*prefix, "window", "town_panel", "armies", "destination", "slots", slot_index, "count"),
+                       slot["count"] + 1)
+
+
 def tamper_cases(tape):
     """Fresh diagnostic copies; hashes are recomputed before semantic checks."""
     cases = []
@@ -364,6 +500,7 @@ def tamper_cases(tape):
                 rows[i]["response"]["action"]["kind"] = "end_turn"
             add("window_navigation", index, navigation)
             selected.add("navigation")
+    _hero_recruitment_mutations(tape, add)
     closes = [i for i, row in enumerate(tape) if row.get("kind") == "close"]
     if closes:
         add("missing_natural_close", closes[-1], lambda rows, i: rows.pop(i))
