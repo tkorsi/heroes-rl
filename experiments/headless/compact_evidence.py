@@ -5,7 +5,8 @@ Raw runs, engine logs, ledgers, replays and videos stay out of Git. This keeps
 what a reviewer needs to check the claims: identity of the build and host, the
 attempt series with every attempt's status, replay verification and tamper
 results, video hashes, benchmark rates with their spread, and the cost
-breakdown. Each input is optional; a missing input is recorded as missing.
+breakdown. Each input is optional; a missing input is recorded as missing,
+and a benchmark that stopped before its last configuration as incomplete.
 """
 from __future__ import annotations
 
@@ -66,6 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--note", action="append", default=[], help="A limitation or observation to record")
     args = parser.parse_args(argv)
     series, replays, benchmark, costs = load(args.series), load(args.replays), load(args.benchmark), load(args.costs)
+    notes = list(args.note)
+    if benchmark and benchmark.get("complete") is not True:
+        notes.append("The benchmark is incomplete: it stopped before its last configuration, so its configurations "
+                     "are partial and are not a benchmark result.")
     evidence = {
         "schema_version": 1, "kind": "headless-real-game-validation",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -73,7 +78,8 @@ def main(argv: list[str] | None = None) -> int:
         "replays": compact_replays(replays) if replays else "missing",
         "videos": [{key: value for key, value in load(path).items() if key != "output"} | {"file": path.with_suffix(".mp4").name}
                    for path in args.videos] or "missing",
-        "benchmark": {"host": benchmark.get("host"), "build_type": benchmark.get("build_type"),
+        "benchmark": {"complete": benchmark.get("complete") is True, "finished_at": benchmark.get("finished_at"),
+                      "host": benchmark.get("host"), "build_type": benchmark.get("build_type"),
                       "toolchain": benchmark.get("toolchain"),
                       "identity": benchmark.get("identity"), "workload": benchmark.get("workload"),
                       "method": benchmark.get("method"),
@@ -92,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
                                           for r in c["repetitions"]]} for c in benchmark.get("configurations", [])]}
         if benchmark else "missing",
         "costs": costs or "missing",
-        "notes": args.note,
+        "notes": notes,
     }
     args.output.write_text(json.dumps(evidence, indent=1, sort_keys=True) + "\n")
     print(f"Wrote {args.output} ({args.output.stat().st_size} bytes)")

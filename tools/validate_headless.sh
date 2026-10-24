@@ -2,8 +2,13 @@
 # Real-game validation of the headless simulation, replay and video work (issue #4).
 #
 # Runs on a machine with locally supplied Heroes III data. Each stage writes
-# under $OUT and is skipped when its result already exists, so an interrupted
-# validation resumes where it stopped. Nothing here uploads data or commits.
+# under $OUT and is skipped once its completion marker exists. An unfinished
+# stage output is moved aside to <name>.interrupted-<UTC time> and the stage
+# reruns from scratch, so an interrupted validation resumes where it stopped
+# and keeps every earlier file. Without OUT, the first run picks
+# runs/validation-<UTC date> and pins it in runs/validation-current, so a
+# resume on a later date continues the same validation. A failed smoke stage
+# stops before the long stages. Nothing here uploads data or commits.
 #
 #   DATA="$HOME/Library/Application Support/vcmi" tools/validate_headless.sh [stage ...]
 #
@@ -13,7 +18,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 DATA="${DATA:?Set DATA to the directory that contains the game Data folder}"
-OUT="${OUT:-runs/validation-$(date -u +%Y-%m-%d)}"
+PIN=runs/validation-current
+if [ -z "${OUT:-}" ]; then
+  OUT="$(cat "$PIN" 2>/dev/null || true)"
+  if [ -z "$OUT" ]; then
+    OUT="runs/validation-$(date -u +%Y-%m-%d)"
+    mkdir -p "$(dirname "$PIN")"
+    echo "$OUT" > "$PIN"
+  fi
+  RESUME="rerun the same command; $PIN pins this output until you remove it"
+else
+  RESUME="rerun the same command with OUT=\"$OUT\""
+fi
 WORKERS="${WORKERS:-8}"
 ATTEMPTS="${ATTEMPTS:-1000}"
 REPLAYS="${REPLAYS:-20}"
@@ -33,6 +49,54 @@ mkdir -p "$OUT"
 
 log() { printf '\n[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 
+# Moves a stage output that lacks its completion marker aside; nothing is deleted.
+set_aside() {
+  [ -e "$1" ] || return 0
+  local moved
+  moved="$1.interrupted-$(date -u +%Y%m%dT%H%M%SZ)"
+  log "Unfinished $1 moved to $moved"
+  mv "$1" "$moved"
+}
+
+# All 4 smoke attempts played, every selected attempt verified and every tamper case rejected.
+smoke_passed() {
+  "$PYTHON" - "$OUT/smoke" <<'EOF'
+import json, sys
+from pathlib import Path
+
+def load(name):
+    try:
+        return json.loads((Path(sys.argv[1]) / name).read_text())
+    except (OSError, ValueError):
+        return None
+
+series, replays, problems = load("series.json"), load("replay-series.json"), []
+if not isinstance(series, dict):
+    problems.append("run_series.py wrote no series.json")
+elif series.get("attempts_played") != 4 or series.get("attempts_missing"):
+    problems.append(f"{series.get('attempts_played')} of 4 attempts played, missing {series.get('attempts_missing')}")
+if not isinstance(replays, dict):
+    problems.append("replay.py series wrote no replay-series.json")
+else:
+    rows = replays.get("episodes") or []
+    verified = sum(1 for row in rows if row.get("verified") is True)
+    if not rows or verified != len(rows):
+        problems.append(f"{verified} of {len(rows)} selected attempts verified")
+    if (replays.get("aggregate") or {}).get("tamper_all_detected") is not True:
+        problems.append("no tamper test ran, or a tampered recording was accepted")
+for problem in problems:
+    print(f"smoke: {problem}", file=sys.stderr)
+sys.exit(1 if problems else 0)
+EOF
+}
+
+# benchmark.py marks its report complete only after the last configuration.
+benchmark_complete() {
+  "$PYTHON" -c 'import json, sys; sys.exit(json.load(open(sys.argv[1])).get("complete") is not True)' \
+    "$OUT/benchmark/benchmark.json" 2> /dev/null
+}
+
+log "Output: $OUT (to resume after an interruption, $RESUME)"
 for stage in "${STAGES[@]}"; do
   case "$stage" in
     build)
@@ -46,21 +110,32 @@ for stage in "${STAGES[@]}"; do
       "$PYTHON" -m unittest discover -s tests 2>&1 | tail -5
       ;;
     smoke)
-      [ -f "$OUT/smoke/series.json" ] && { log "smoke: done"; continue; }
+      [ -f "$OUT/smoke/ok" ] && { log "smoke: done"; continue; }
+      set_aside "$OUT/smoke"
       log "Smoke: 4 attempts on 2 workers with replay evidence"
+      # Both exit codes are recorded in the files that smoke_passed checks.
       "$PYTHON" experiments/headless/run_series.py --output "$OUT/smoke" --attempts 4 --workers 2 \
         "${ENGINE[@]}" --profile || true
       "$PYTHON" experiments/headless/replay.py series "$OUT/smoke" "${VERIFIER[@]}" --tamper 1 --trace 1 || true
+      smoke_passed || { echo "Smoke failed; fix it before the long stages (evidence in $OUT/smoke)" >&2; exit 1; }
+      date -u +%Y-%m-%dT%H:%M:%SZ > "$OUT/smoke/ok"
       ;;
     profile)
       [ -f "$OUT/costs.json" ] && { log "profile: done"; continue; }
-      log "Profiled single-worker series for the cost breakdown"
-      "$PYTHON" experiments/headless/run_series.py --output "$OUT/profile" --attempts 16 --workers 1 \
-        "${ENGINE[@]}" --profile
-      "$PYTHON" experiments/headless/cost_breakdown.py "$OUT/profile/worker-0" --output "$OUT/costs.json" > /dev/null
+      if [ ! -f "$OUT/profile/series.json" ]; then
+        set_aside "$OUT/profile"
+        log "Profiled single-worker series for the cost breakdown"
+        # A missing attempt is recorded in series.json; the breakdown covers the attempts played.
+        "$PYTHON" experiments/headless/run_series.py --output "$OUT/profile" --attempts 16 --workers 1 \
+          "${ENGINE[@]}" --profile || log "profile: run_series.py exited $?; see $OUT/profile/series.json"
+        [ -f "$OUT/profile/series.json" ] || { echo "profile: run_series.py wrote no series.json" >&2; exit 1; }
+      fi
+      "$PYTHON" experiments/headless/cost_breakdown.py "$OUT/profile/worker-0" --output "$OUT/costs.json" > /dev/null \
+        || { echo "profile: cost_breakdown.py failed" >&2; set_aside "$OUT/profile"; exit 1; }
       ;;
     series)
       [ -f "$OUT/attempts/series.json" ] && { log "series: done"; continue; }
+      set_aside "$OUT/attempts"
       log "Predetermined series: $ATTEMPTS attempts on $WORKERS workers"
       "$PYTHON" experiments/headless/run_series.py --output "$OUT/attempts" --attempts "$ATTEMPTS" \
         --workers "$WORKERS" "${ENGINE[@]}"
@@ -84,7 +159,8 @@ for stage in "${STAGES[@]}"; do
       ls -l "$OUT/videos"
       ;;
     benchmark)
-      [ -f "$OUT/benchmark/benchmark.json" ] && { log "benchmark: done"; continue; }
+      benchmark_complete && { log "benchmark: done"; continue; }
+      set_aside "$OUT/benchmark"
       log "Benchmark: 1, 2, 4 and 8 workers, 3 repetitions of 180 s"
       "$PYTHON" experiments/headless/benchmark.py --output "$OUT/benchmark" "${ENGINE[@]}"
       ;;
@@ -93,6 +169,7 @@ for stage in "${STAGES[@]}"; do
       args=(--output "$OUT/evidence.json")
       [ -f "$OUT/attempts/series.json" ] && args+=(--series "$OUT/attempts/series.json")
       [ -f "$OUT/attempts/replay-series.json" ] && args+=(--replays "$OUT/attempts/replay-series.json")
+      # compact_evidence.py records an incomplete benchmark as such.
       [ -f "$OUT/benchmark/benchmark.json" ] && args+=(--benchmark "$OUT/benchmark/benchmark.json")
       [ -f "$OUT/costs.json" ] && args+=(--costs "$OUT/costs.json")
       videos=("$OUT"/videos/*.json)

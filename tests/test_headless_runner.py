@@ -2,13 +2,16 @@
 
 A stand-in ``vcmiclient`` script runs the miniature fake engine, so the real
 launcher, profile isolation, seed schedule, warm-up, synchronized measured
-windows and aggregation are exercised. Nothing here measures VCMI.
+windows and aggregation are exercised. tools/validate_headless.sh runs in a
+copy of the tree with the real series driver, cost breakdown and compactor and
+stand-ins for the replay verifier and the benchmark. Nothing here measures VCMI.
 """
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -26,6 +29,45 @@ settings = os.path.join(config, "vcmi", "settings.json") if "XDG_CONFIG_HOME" in
     else os.path.join(os.environ["VCMI_USER_DATA_DIR"], "config", "settings.json")
 os.environ["FAKE_ENGINE_SEED"] = str(json.load(open(settings))["server"]["seed"])
 os.execv(sys.executable, [sys.executable, {str(FAKE_ENGINE)!r}])
+'''
+
+STUB_REPLAY = '''import json, os, sys
+from pathlib import Path
+# Test stand-in for replay.py series: every episode verifies and every tamper case is rejected unless STUB_REPLAY_FAIL.
+run, verified = Path(sys.argv[2]), "STUB_REPLAY_FAIL" not in os.environ
+rows = [{"episode": int(path.name.split("-")[1]), "verified": verified}
+        for path in sorted(run.glob("worker-*/episodes/episode-*"))]
+(run / "replay-series.json").write_text(json.dumps({"episodes": rows, "aggregate": {
+    "verified": sum(row["verified"] for row in rows), "attempted": len(rows), "tamper_all_detected": verified}}))
+sys.exit(0 if verified else 1)
+'''
+
+STUB_BENCHMARK = '''import json, os, sys
+from pathlib import Path
+# Test stand-in for benchmark.py: STUB_BENCHMARK_FAIL stops it before its last configuration.
+output = Path(sys.argv[sys.argv.index("--output") + 1])
+output.mkdir(parents=True, exist_ok=False)
+report = {"configurations": [], "complete": False, "finished_at": None}
+(output / "benchmark.json").write_text(json.dumps(report))
+if "STUB_BENCHMARK_FAIL" in os.environ:
+    sys.exit(1)
+report.update(complete=True, finished_at="2026-01-01T00:00:00+00:00")
+(output / "benchmark.json").write_text(json.dumps(report))
+'''
+
+INTERRUPT_SECOND_CONFIGURATION = '''import sys
+sys.path.insert(0, sys.argv[1])
+import benchmark
+real = benchmark.run_configuration
+
+def run_configuration(args, workers, repetition, directory):
+    if workers > 1:
+        raise KeyboardInterrupt  # Ctrl-C during the second configuration
+    return real(args, workers, repetition, directory)
+
+benchmark.run_configuration = run_configuration
+sys.argv = ["benchmark.py", *sys.argv[2:]]
+benchmark.main()
 '''
 
 
@@ -52,6 +94,25 @@ class RunnerTests(unittest.TestCase):
         return subprocess.run([sys.executable, str(ROOT / "experiments/headless" / name), *arguments, *self.common],
                               capture_output=True, text=True, timeout=timeout)
 
+    def validation_tree(self) -> Path:
+        tree = self.base / "tree"
+        (tree / "tools").mkdir(parents=True)
+        shutil.copy2(ROOT / "tools/validate_headless.sh", tree / "tools")
+        headless = tree / "experiments/headless"
+        headless.mkdir(parents=True)
+        for name in ("run_series.py", "cost_breakdown.py", "compact_evidence.py"):
+            (headless / name).symlink_to(ROOT / "experiments/headless" / name)
+        (headless / "replay.py").write_text(STUB_REPLAY)
+        (headless / "benchmark.py").write_text(STUB_BENCHMARK)
+        return tree
+
+    def validate(self, tree: Path, *stages, **environment):
+        settings = {key: value for key, value in os.environ.items() if key != "OUT"}
+        settings.update({"DATA": str(self.base / "data"), "BINARY": str(self.binary), "MAP": str(self.map),
+                         "PYTHON": sys.executable, "ATTEMPTS": "2", "WORKERS": "1", **environment})
+        return subprocess.run([str(tree / "tools/validate_headless.sh"), *stages], env=settings,
+                              capture_output=True, text=True, timeout=300)
+
     def test_series_follows_its_frozen_schedule_slice_after_warmup(self):
         output = self.base / "series"
         result = self.run_tool("run_headless.py", "--output", str(output), "--episodes", "3", "--schedule-start", "1",
@@ -75,6 +136,8 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         report = json.loads((output / "benchmark.json").read_text())
         self.assertEqual([c["workers"] for c in report["configurations"]], [1, 2])
+        self.assertTrue(report["complete"])
+        self.assertIsNotNone(report["finished_at"])
         for configuration in report["configurations"]:
             entry = configuration["repetitions"][0]
             self.assertEqual(entry["failures"], 0)
@@ -103,6 +166,126 @@ class RunnerTests(unittest.TestCase):
         breakdown = json.loads(costs.stdout)
         self.assertEqual(breakdown["episodes"], 3)
         self.assertGreater(breakdown["adapter_totals"]["ingest"], 0)
+
+    def test_interrupted_benchmark_stays_incomplete_in_the_evidence(self):
+        output = self.base / "bench"
+        result = subprocess.run([sys.executable, "-c", INTERRUPT_SECOND_CONFIGURATION, str(ROOT / "experiments/headless"),
+                                 "--output", str(output), "--workers", "1,2", "--repetitions", "1", "--duration", "2",
+                                 "--warmup-allowance", "2", "--max-days", "3", *self.common],
+                                capture_output=True, text=True, timeout=300)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("KeyboardInterrupt", result.stderr)
+        report = json.loads((output / "benchmark.json").read_text())
+        self.assertEqual([c["workers"] for c in report["configurations"]], [1])
+        self.assertEqual((report["complete"], report["finished_at"]), (False, None))
+        evidence = self.base / "evidence.json"
+        subprocess.run([sys.executable, str(ROOT / "experiments/headless/compact_evidence.py"), "--output", str(evidence),
+                        "--benchmark", str(output / "benchmark.json")], capture_output=True, timeout=60, check=True)
+        compact = json.loads(evidence.read_text())
+        self.assertFalse(compact["benchmark"]["complete"])
+        self.assertTrue(any("benchmark is incomplete" in note for note in compact["notes"]))
+
+    def test_attempt_series_reports_steady_state_per_worker_and_series_wide(self):
+        output = self.base / "attempts"
+        result = self.run_tool("run_series.py", "--output", str(output), "--attempts", "4", "--workers", "2",
+                               "--max-days", "3", timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        series = json.loads((output / "series.json").read_text())
+        aggregate = series["aggregate"]
+        stepping = sum(row["engine_wait_seconds"] + row["agent_seconds"] for row in series["episodes"])
+        resolved = aggregate["resolved_actions"]
+        self.assertNotIn("steady_state_resolved_actions_per_second", aggregate)
+        self.assertEqual(aggregate["steady_state_resolved_actions_per_second_per_worker"], round(resolved / stepping, 3))
+        self.assertEqual(aggregate["steady_state_resolved_actions_per_second_all_workers"],
+                         round(resolved / (stepping / 2), 3))
+        # Steady state leaves out launch and reset time, so the series-wide rate is at least the end-to-end rate.
+        self.assertGreaterEqual(aggregate["steady_state_resolved_actions_per_second_all_workers"] + 0.001,
+                                aggregate["end_to_end_resolved_actions_per_second"])
+
+    def test_replay_record_without_ledger_is_refused_before_any_output(self):
+        output = self.base / "series"
+        refused = self.run_tool("run_headless.py", "--output", str(output), "--ledger", "none")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("use --ledger full", refused.stderr)
+        self.assertFalse(output.exists())
+        corrected = self.run_tool("run_headless.py", "--output", str(output), "--ledger", "none", "--replay", "none",
+                                  "--max-days", "3")
+        self.assertEqual(corrected.returncode, 0, corrected.stdout + corrected.stderr)
+        attempts = self.base / "attempts"
+        refused = self.run_tool("run_series.py", "--output", str(attempts), "--attempts", "2", "--workers", "2",
+                                "--ledger", "none")
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("use --ledger full", refused.stderr)
+        self.assertFalse(attempts.exists())
+
+    def test_validation_stops_after_a_failed_smoke_and_redoes_it(self):
+        tree = self.validation_tree()
+        out = self.base / "validation"
+        failed = self.validate(tree, "smoke", "series", OUT=str(out), STUB_REPLAY_FAIL="1")
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertIn("smoke: 0 of 4 selected attempts verified", failed.stderr)
+        self.assertIn("Smoke failed", failed.stderr)
+        self.assertFalse((out / "smoke/ok").exists())
+        self.assertFalse((out / "attempts").exists())  # the long stages never started
+        passed = self.validate(tree, "smoke", "series", OUT=str(out))
+        self.assertEqual(passed.returncode, 0, passed.stdout + passed.stderr)
+        self.assertEqual(len(list(out.glob("smoke.interrupted-*/replay-series.json"))), 1)  # the failed smoke is kept
+        self.assertTrue((out / "smoke/ok").is_file())
+        self.assertEqual(json.loads((out / "attempts/series.json").read_text())["attempts_played"], 2)
+        self.assertIn("smoke: done", self.validate(tree, "smoke", OUT=str(out)).stdout)
+        self.assertFalse((tree / "runs/validation-current").exists())  # an explicit OUT is not pinned
+
+    def test_validation_resumes_interrupted_stages_without_losing_evidence(self):
+        tree = self.validation_tree()
+        out = self.base / "validation"
+        # A series interrupted mid-run leaves its directory without series.json.
+        (out / "attempts/worker-0").mkdir(parents=True)
+        (out / "attempts/worker-0/partial").write_text("kept")
+        # A profile series that returned 1 under set -e leaves series.json but no costs.json.
+        profile = self.run_tool("run_series.py", "--output", str(out / "profile"), "--attempts", "2", "--workers", "1",
+                                "--max-days", "3", "--profile")
+        self.assertEqual(profile.returncode, 0, profile.stdout + profile.stderr)
+        stopped = self.validate(tree, "benchmark", OUT=str(out), STUB_BENCHMARK_FAIL="1")
+        self.assertNotEqual(stopped.returncode, 0)
+        result = self.validate(tree, "profile", "series", "benchmark", "evidence", OUT=str(out))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(json.loads((out / "costs.json").read_text())["episodes"], 2)  # from the existing profile
+        moved = list(out.glob("attempts.interrupted-*"))
+        self.assertEqual(len(moved), 1)
+        self.assertEqual((moved[0] / "worker-0/partial").read_text(), "kept")
+        self.assertEqual(json.loads((out / "attempts/series.json").read_text())["attempts_played"], 2)
+        self.assertEqual(len(list(out.glob("benchmark.interrupted-*/benchmark.json"))), 1)
+        self.assertTrue(json.loads((out / "benchmark/benchmark.json").read_text())["complete"])
+        self.assertTrue(json.loads((out / "evidence.json").read_text())["benchmark"]["complete"])
+
+    def test_validation_redoes_a_profile_whose_breakdown_failed(self):
+        tree = self.validation_tree()
+        out = self.base / "validation"
+        broken = self.validate(tree, "profile", OUT=str(out), BINARY=str(self.base / "missing/vcmiclient"))
+        self.assertNotEqual(broken.returncode, 0)
+        self.assertIn("cost_breakdown.py failed", broken.stderr)
+        self.assertFalse((out / "costs.json").exists())
+        redone = self.validate(tree, "profile", OUT=str(out))
+        self.assertEqual(redone.returncode, 0, redone.stdout + redone.stderr)
+        self.assertEqual(len(list(out.glob("profile.interrupted-*/series.json"))), 1)
+        self.assertEqual(json.loads((out / "costs.json").read_text())["episodes"], 16)
+
+    def test_validation_pins_its_default_output_across_dates(self):
+        tree = self.validation_tree()
+        first = self.validate(tree, "smoke")
+        self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+        pinned = (tree / "runs/validation-current").read_text().strip()
+        self.assertRegex(pinned, r"^runs/validation-\d{4}-\d{2}-\d{2}$")
+        self.assertIn(f"Output: {pinned}", first.stdout)
+        self.assertTrue((tree / pinned / "smoke/ok").is_file())
+        # A validation started on an earlier UTC date resumes there instead of starting over.
+        (tree / pinned).rename(tree / "runs/validation-2000-01-01")
+        (tree / "runs/validation-current").write_text("runs/validation-2000-01-01\n")
+        resumed = self.validate(tree, "smoke")
+        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertIn("Output: runs/validation-2000-01-01", resumed.stdout)
+        self.assertIn("smoke: done", resumed.stdout)
+        self.assertFalse((tree / pinned).exists())
 
 
 if __name__ == "__main__":

@@ -50,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.attempts < 1 or not 1 <= args.workers <= args.attempts:
         parser.error("Use at least one attempt and 1..attempts workers")
+    if args.replay == "record" and args.ledger != "full":
+        parser.error("--replay record verifies observations against the bridge ledger; use --ledger full")
     if not args.skip_check:
         subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], check=True)
     output = args.output.expanduser().resolve()
@@ -91,6 +93,15 @@ def main(argv: list[str] | None = None) -> int:
                 for index in range(args.attempts)}
     played = {row["episode"] for row in rows}
     aggregate = run_headless.aggregate(rows, wall) if rows else {}
+    if aggregate:
+        # Workers step in parallel, so resolved actions over the summed stepping time is a per-worker rate. The
+        # series-wide rate divides by the mean stepping time of the workers that played.
+        stepping = sum(row["engine_wait_seconds"] + row["agent_seconds"] for row in rows)
+        stepping_workers = sum(1 for summary in summaries if summary["episodes"])
+        steady = "steady_state_resolved_actions_per_second"
+        aggregate[steady + "_per_worker"] = aggregate.pop(steady)
+        aggregate[steady + "_all_workers"] = (round(aggregate["resolved_actions"] * stepping_workers / stepping, 3)
+                                              if stepping else None)
     lengths = sorted(max(row["red"]["last_day"], row["blue"]["last_day"]) for row in rows)
     report = {**plan, "finished_at": datetime.now(timezone.utc).isoformat(), "wall_seconds": round(wall, 3),
               "worker_returncodes": returncodes, "host": summaries[0]["host"] if summaries else None,

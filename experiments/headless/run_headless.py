@@ -222,6 +222,8 @@ def main() -> None:
     last = max([e["index"] for e in schedule(args) + warmup_schedule(args)])
     if args.seed + last * args.seed_stride > 2147483647:
         parser.error("The seed schedule exceeds the signed 32-bit range")
+    if args.replay == "record" and args.ledger != "full":
+        parser.error("--replay record verifies observations against the bridge ledger; use --ledger full")
 
     launcher = env_module.VcmiLauncher(args.binary, args.data, args.map, args.log_level)
     try:
@@ -253,8 +255,6 @@ def main() -> None:
     }
     summary_path = output / "summary.json"
     scoring.write_json(summary_path, summary)
-    if args.replay == "record" and args.ledger != "full":
-        parser.error("--replay record verifies observations against the bridge ledger; use --ledger full")
     env = env_module.HeadlessSelfPlayEnv(launcher, output / "episodes", limits, ledger=args.ledger == "full",
                                          profile=args.profile, snapshot_every=args.snapshot_every,
                                          replay=args.replay == "record")

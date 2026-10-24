@@ -13,7 +13,8 @@ their measured window at the same wall-clock time. The episode in progress
 when the window closes is truncated as ``collection_window``. Throughput is
 end to end: launches, startup, every step, shutdown and relaunch inside the
 window all count. Steady-state rates (time spent stepping only) are reported
-separately and never replace it.
+separately and never replace it. The report is rewritten after every
+configuration and marked ``complete`` only after the last one.
 
 A decision cycle is one submitted adventure action that the engine resolved
 with an ``action_result``. Accepted actions and rejected attempts are also
@@ -186,7 +187,7 @@ def main() -> None:
                          "warmup_episodes_per_worker": args.warmup_episodes,
                          "warmup_allowance_seconds": args.warmup_allowance,
                          "decision_cycle": "submitted adventure action resolved by an engine action_result"},
-              "configurations": []}
+              "configurations": [], "complete": False, "finished_at": None}
     path = output / "benchmark.json"
     run_headless.scoring.write_json(path, report)
     single = None
@@ -211,6 +212,9 @@ def main() -> None:
             "scaling_efficiency_mean": round(mean / (workers * single), 4) if single else None,
             "stretch_target_1000_per_second_met": mean >= 1000.0})
         run_headless.scoring.write_json(path, report)
+    # Only now is the report a result; an interrupted or failed benchmark stays incomplete.
+    report.update(complete=True, finished_at=datetime.now(timezone.utc).isoformat())
+    run_headless.scoring.write_json(path, report)
     print(json.dumps([{k: c[k] for k in ("workers", "end_to_end_decision_cycles_per_second", "scaling_efficiency_mean")}
                       for c in report["configurations"]], indent=2))
 
