@@ -17,7 +17,7 @@ import tempfile
 import torch
 
 SCHEMA = "heroes-context-checkpoint-v1"
-PROVENANCES = ("random_initialization", "synthetic_optimizer_test")
+PROVENANCES = ("random_initialization", "synthetic_optimizer_test", "approved_gameplay")
 
 
 def _contracts(interface):
@@ -207,10 +207,20 @@ def _write(path, payload):
     return str(path)
 
 
+def _check_gameplay_provenance(provenance, source_metadata, interface):
+    if provenance != "approved_gameplay":
+        return
+    value = source_metadata.get("plan_sha256") if type(source_metadata) is dict else None
+    if (interface != "adventure-armies-v1" or type(value) is not str or len(value) != 64
+            or any(char not in "0123456789abcdef" for char in value)):
+        raise ValueError("Gameplay checkpoint requires the exact approved v4 preparation-plan identity")
+
+
 def _payload(model, checkpoint, provenance, source_metadata, generators, python_generators, pool, interface):
     _text(checkpoint)
     if provenance not in PROVENANCES:
-        raise ValueError("Real-game training checkpoints are not enabled")
+        raise ValueError("Unsupported checkpoint provenance")
+    _check_gameplay_provenance(provenance, source_metadata, interface)
     if next(model.parameters()).device.type != "cpu":
         raise ValueError("Only the validated CPU checkpoint path is enabled")
     contracts = _contracts(interface)
@@ -232,6 +242,11 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
                 "model_state", "source_metadata", "rng", "opponent_pool", "resume"}
     if type(payload) is not dict or set(payload) != expected or payload["schema"] != SCHEMA or payload["kind"] != kind:
         raise ValueError("Unsupported checkpoint schema or purpose")
+    if kind == "optimizer" and payload["provenance"] not in ("synthetic_optimizer_test", "approved_gameplay"):
+        raise ValueError("Optimizer checkpoints require optimizer provenance")
+    if (type(allowed_provenance) is not tuple or not allowed_provenance
+            or any(value not in PROVENANCES for value in allowed_provenance)):
+        raise ValueError("Explicit supported checkpoint provenance allowlist required")
     if payload["torch_version"] != str(torch.__version__) or payload["provenance"] not in allowed_provenance:
         raise ValueError("Checkpoint version or provenance differs")
     if payload["contracts"] != _contracts(interface):
@@ -245,6 +260,7 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
         raise ValueError("Checkpoint model or frozen pool has an incompatible encoder version")
     _text(payload["checkpoint"])
     _json(payload["source_metadata"])
+    _check_gameplay_provenance(payload["provenance"], payload["source_metadata"], interface)
     if expected_source_metadata is not None and payload["source_metadata"] != _json(expected_source_metadata):
         raise ValueError("Checkpoint source metadata differs")
     return payload
@@ -353,14 +369,16 @@ def _validate_adam_state(optimizer, state):
 
 def save_checkpoint(path, model, optimizer, *, checkpoint, ppo_config, progress, source_metadata,
                     opponent_pool, sampler_state, generators=None, python_generators=None,
-                    at_rollout_boundary=False, interface="adventure-town-v1"):
+                    at_rollout_boundary=False, interface="adventure-town-v1", provenance="synthetic_optimizer_test"):
+    if provenance not in ("synthetic_optimizer_test", "approved_gameplay"):
+        raise ValueError("Optimizer checkpoints require optimizer provenance")
     if at_rollout_boundary is not True or type(progress) is not TrainingProgress or optimizer is None:
         raise ValueError("Optimizer checkpoint requires an explicit between-rollout boundary")
     if type(opponent_pool) is not FrozenOpponentPool or not opponent_pool.identities:
         raise ValueError("Resume requires its nonempty frozen opponent pool")
     layout = _optimizer_layout(model, optimizer)
     _validate_adam_state(optimizer, optimizer.state_dict())
-    payload = _payload(model, checkpoint, "synthetic_optimizer_test", source_metadata,
+    payload = _payload(model, checkpoint, provenance, source_metadata,
                        generators or {}, python_generators or {}, opponent_pool, interface)
     payload["kind"] = "optimizer"
     payload["resume"] = {"ppo_config": _json(ppo_config), "progress": vars(progress),
@@ -371,11 +389,12 @@ def save_checkpoint(path, model, optimizer, *, checkpoint, ppo_config, progress,
 
 
 def load_checkpoint(path, model, optimizer, *, expected_ppo_config, expected_source_metadata,
-                    generators=None, python_generators=None, at_rollout_boundary=False, interface="adventure-town-v1"):
+                    generators=None, python_generators=None, at_rollout_boundary=False, interface="adventure-town-v1",
+                    allowed_provenance=("synthetic_optimizer_test",)):
     if at_rollout_boundary is not True or optimizer is None:
         raise ValueError("Resume requires an explicit between-rollout boundary")
     layout = _optimizer_layout(model, optimizer)
-    payload = _read(path, "optimizer", expected_source_metadata, ("synthetic_optimizer_test",), interface)
+    payload = _read(path, "optimizer", expected_source_metadata, allowed_provenance, interface)
     resume = payload["resume"]
     if (type(resume) is not dict or set(resume) != {"ppo_config", "progress", "sampler_state", "optimizer_class", "optimizer_state", "parameter_names", "at_rollout_boundary"}
             or resume["at_rollout_boundary"] is not True or resume["ppo_config"] != _json(expected_ppo_config)

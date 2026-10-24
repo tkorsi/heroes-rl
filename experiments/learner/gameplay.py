@@ -213,19 +213,38 @@ def native_update(model, optimizer, folders, plan, *, receipts, generator, remai
     # This explicit precheck also runs inside the numerical kernel; neither
     # trusts saved hidden tensors or a serialized behavior-probability claim.
     _verify_behavior(model, rollouts, tuple(encode_history(item.history) for item in rollouts))
+    result = _transactional_update(model, optimizer, rollouts, config=config, generator=generator,
+                                   remaining=remaining, max_optimizer_steps=cfg["max_optimizer_steps"])
+    return replace(result, purpose="approved_gameplay"), rollouts
+
+
+class UpdateRolledBack(RuntimeError):
+    def __init__(self, error, completed_steps):
+        super().__init__(f"{type(error).__name__}: {error}; complete behavior/optimizer/RNG state restored")
+        self.completed_steps = completed_steps
+
+
+def _transactional_update(model, optimizer, rollouts, *, config, generator, remaining, max_optimizer_steps):
+    """An interrupted update never leaves a partially updated policy/resume state."""
     state, optimizer_state = deepcopy(model.state_dict()), deepcopy(optimizer.state_dict())
     rng, minibatch_rng = torch.get_rng_state(), generator.get_state()
+    completed_steps = 0
+
+    def completed():
+        nonlocal completed_steps
+        completed_steps += 1
+
     try:
         result = _update(model, optimizer, rollouts, config=config, generator=generator,
-                         before_step=remaining, max_optimizer_steps=plan["configuration"]["max_optimizer_steps"])
+                         before_step=remaining, after_step=completed, max_optimizer_steps=max_optimizer_steps)
         remaining()
-    except BaseException:
+    except BaseException as error:
         model.load_state_dict(state)
         optimizer.load_state_dict(optimizer_state)
         torch.set_rng_state(rng)
         generator.set_state(minibatch_rng)
-        raise
-    return replace(result, purpose="approved_gameplay"), rollouts
+        raise UpdateRolledBack(error, completed_steps) from error
+    return result
 
 
 def assert_same_state(left, right):
@@ -284,6 +303,8 @@ def execute(plan_path, approved_sha256, output):
         for phase, schedule in (("before", evaluation), ("training", training), ("after", evaluation)):
             if phase == "after":
                 remaining()
+                report["optimizer_update_attempted"] = True
+                write_json(output / "report.json", report)
                 result, rollouts = native_update(model, optimizer, folders, plan, receipts=tuple(receipts),
                                                 generator=generator, remaining=remaining)
                 report.update(updates=1, optimizer_steps=result.optimizer_steps, training_performed=True, ppo=asdict(result))
@@ -381,10 +402,17 @@ def execute(plan_path, approved_sha256, output):
         report["status"] = "completed"
     except BaseException as error:
         report.update(status="stopped", error=f"{type(error).__name__}: {error}")
+        if isinstance(error, UpdateRolledBack):
+            report.update(update_rolled_back=True, rolled_back_optimizer_steps=error.completed_steps,
+                          training_performed=error.completed_steps > 0)
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
-        if env is not None: env.close()
+        if env is not None:
+            try:
+                env.close()
+            except BaseException as error:
+                report.update(status="stopped", cleanup_error=f"{type(error).__name__}: {error}")
         report["wall_seconds"] = time.monotonic() - started
         write_json(output / "report.json", report)
     return report

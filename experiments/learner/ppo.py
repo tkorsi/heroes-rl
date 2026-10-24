@@ -2,7 +2,9 @@
 
 Every minibatch reconstructs recurrent state with the *current* parameters from
 the complete player prefix. Only the loss window participates in backpropagation;
-stored behavior hidden tensors are never used. No game runner imports this module.
+stored behavior hidden tensors are never used. The public entry point admits
+synthetic tests only; a separate approval-bound runner verifies native replay
+before using the shared numerical kernel.
 """
 from __future__ import annotations
 
@@ -141,7 +143,7 @@ def clipped_losses(log_probs, values, old_log_probs, old_values, advantages, ret
     return total, policy_loss, value_loss, ((ratio - 1) - log_ratio).mean(), ((ratio - 1).abs() > config.clip_ratio).float().mean()
 
 
-def _admit(rollouts, model):
+def _admit(rollouts, model, *, native=False):
     from .contextual_model import weights_sha256
     from .contextual_rollout import ContextualRollout
     if type(rollouts) is not tuple or not rollouts or any(type(item) is not ContextualRollout for item in rollouts):
@@ -149,9 +151,10 @@ def _admit(rollouts, model):
     current = weights_sha256(model)
     identities = set()
     for item in rollouts:
-        if (item.purpose != "synthetic" or item.origin != "synthetic" or item.role != "learner"
+        purpose, origin = ("training", "native") if native else ("synthetic", "synthetic")
+        if (item.purpose != purpose or item.origin != origin or item.role != "learner"
                 or not item.optimization_eligible or item.boundary not in ("natural", "cutoff")):
-            raise ValueError("Optimizer updates admit only eligible synthetic learner trajectories")
+            raise ValueError("Optimizer updates admit only eligible " + purpose + " learner trajectories")
         if not item.samples or any(not sample.eligible for sample in item.samples):
             raise ValueError("PPO cannot skip an ineligible sample or bridge a trajectory gap")
         identities.add((item.behavior_checkpoint, item.weights_sha256))
@@ -222,10 +225,21 @@ class PPOReport:
 
 def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
     """Run synthetic optimizer validation. Native/diagnostic data always rejects."""
+    _admit(rollouts, model)
+    return _update(model, optimizer, rollouts, config=config, generator=generator)
+
+
+def _update(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None):
+    """Shared numerical kernel; callers must establish admission before entering.
+
+    The public default entry point remains synthetic-only. The separately gated
+    gameplay runner verifies native artifacts and replay before using this kernel.
+    """
     from .contextual_model import encode_history
     if type(config) is not PPOConfig or type(generator) is not torch.Generator or generator.device.type != "cpu":
         raise ValueError("Expected explicit PPO config and CPU minibatch RNG")
-    _admit(rollouts, model)
+    if max_optimizer_steps is not None and (type(max_optimizer_steps) is not int or max_optimizer_steps < 1):
+        raise ValueError("Optimizer-step cap must be a positive integer")
     owned = {id(p) for p in model.parameters() if p.requires_grad}
     optimized = [id(p) for group in optimizer.param_groups for p in group["params"]]
     if set(optimized) != owned or len(optimized) != len(owned):
@@ -251,6 +265,9 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
             # this window's graph; detach only before that history interval.
             begin = 0 if start == 0 else item.samples[start - 1].decision.decision_seq + 1
             windows.append(LossWindow(rollout_index, indices, begin, item.samples[indices[-1]].decision.decision_seq))
+    planned_steps = config.epochs * math.ceil(len(windows) / config.windows_per_minibatch)
+    if max_optimizer_steps is not None and planned_steps > max_optimizer_steps:
+        raise ValueError("Complete PPO update exceeds its predeclared optimizer-step cap")
     totals = [0.0] * 4
     weighted_count = steps = 0
     for _ in range(config.epochs):
@@ -274,10 +291,16 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
             make = log_probs.new_tensor
             loss, policy, value, kl, clipped = clipped_losses(log_probs, values, make(old_log_probs), make(old_values),
                                                            make(batch_advantages), make(returns), config)
+            if before_step is not None:
+                before_step()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
+            if before_step is not None:
+                before_step()
             optimizer.step()
+            if after_step is not None:
+                after_step()
             count = len(new_log_probs)
             for index, metric in enumerate((policy, value, kl, clipped)):
                 totals[index] += metric.detach().item() * count
