@@ -105,6 +105,22 @@ class RecruitmentTests(unittest.TestCase):
         self.assertFalse(depleted.decision.offers.permits(purchase(count=1)))
         self.assertTrue(depleted.decision.offers.permits(action("select_recruit", subject="town", selection="creature-1")))
 
+    def test_slider_matches_exact_visible_affordability_without_capacity_masking(self):
+        context = c.Context("town", "town", "recruitment", "dwelling-0")
+        for maximum in (0, 1, 9):
+            with self.subTest(narrowed=maximum), self.assertRaises(ValueError):
+                recruit_observation(context, payload=panel(maximum=maximum))
+        resources = (1, 2, 3, 4, 5, 6, 119)
+        obs = recruit_observation(context, payload=panel(maximum=1), resources=resources)
+        self.assertEqual(obs.window.town_panel.recruitment.slider_max, 1)
+        with self.assertRaises(ValueError): recruit_observation(context, payload=panel(), resources=resources)
+        multiple = replace(panel(maximum=2), unit_cost=(3, 0, 5, 0, 0, 0, 60))
+        recruit_observation(context, payload=multiple, resources=(7, 0, 24, 0, 0, 0, 7000))
+        free = replace(panel(stock=2**31 - 1, maximum=2147483645), unit_cost=(0,) * 7)
+        recruit_observation(context, payload=free, resources=(0,) * 7)
+        with self.assertRaises(ValueError):
+            recruit_observation(context, payload=replace(free, slider_max=2**31 - 1), resources=(0,) * 7)
+
     def test_selection_is_an_explicit_adapter_transition(self):
         history = history_at_recruitment()
         selected = action("select_recruit", subject="town", selection="creature-1")
@@ -119,6 +135,21 @@ class RecruitmentTests(unittest.TestCase):
         self.assertFalse(history.decision.offers.permits(purchase()))
         self.assertTrue(history.decision.offers.permits(purchase(selection="creature-1")))
         self.assertFalse(any(frame.kind in ("issued", "acknowledged") for frame in history.frames))
+
+    def test_rejected_selection_cannot_change_card_or_context_revision(self):
+        for change_context, change_card in ((True, False), (False, True), (True, True)):
+            history = history_at_recruitment()
+            seq = submit(history, action("select_recruit", subject="town", selection="creature-1"))
+            if change_context:
+                history.emit("context", context=history.context, revision=history.revision + 1, decision_seq=seq)
+            if change_card:
+                history.emit("view", observation=recruit_observation(history.context, payload=panel(selected="creature-1")))
+            with self.subTest(context=change_context, card=change_card), self.assertRaises(ValueError):
+                history.emit("result", result=c.Result("rejected", False), decision_seq=seq)
+        history = history_at_recruitment()
+        seq = submit(history, action("select_recruit", subject="town", selection="creature-1"))
+        history.emit("result", result=c.Result("rejected", False), decision_seq=seq)
+        self.assertEqual(history.context.panel, "recruitment")
 
     def test_success_and_server_rejection_bind_one_command_and_overview(self):
         for accepted in (True, False):

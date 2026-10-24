@@ -381,7 +381,7 @@ def recruitment_budget(run):
             panel = run.open_recruitment(control.ref)
             panel = run.select_creature(panel.offers[0].creature)
             resources = run.inspect_request().observation.resources
-            affordability = min((amount // price for amount, price in zip(resources, panel.unit_cost) if price), default=2**31 - 1)
+            affordability = min(2**31 - 3, min((amount // price for amount, price in zip(resources, panel.unit_cost) if price), default=2**31 - 3))
             base.ensure(panel.slider_max == min(panel.stock, affordability), "Slider differs from displayed stock/affordability")
             if panel.stock > affordability:
                 run.call(run.purchase(panel, affordability + 1), "resource_limited_recruit_count_rejected", expect_rejection=True)

@@ -479,6 +479,14 @@ class Observation:
             own = self.heroes if self.window.context.kind == "hero" else self.towns
             if self.window.context.subject not in {entry.handle for entry in own}:
                 raise ValueError("Window subject must be an accessible owned object")
+            if self.window.context.panel == "recruitment":
+                panel = self.window.town_panel.recruitment
+                # Pinned CCreature::maxAmount starts at this native integer cap
+                # and the UI limits it by shared stock. Capacity is not a term.
+                maximum = min(panel.stock, 2147483645,
+                              *(amount // price for amount, price in zip(self.resources, panel.unit_cost) if price))
+                if panel.slider_max != maximum:
+                    raise ValueError("Recruitment slider must equal displayed stock/resource affordability")
 
     @property
     def context(self):
@@ -1157,12 +1165,16 @@ class PlayerHistory:
                 if (self.commands != 1 or self.accepted_commands != int(result.accepted)
                         or self.context != target or self.capacity_notice):
                     raise ValueError("Purchase requires one native acknowledgement and explicit overview return")
-            if action.kind == "select_recruit" and result.accepted:
+            if action.kind == "select_recruit":
                 observed = next((frame.observation for frame in reversed(self._frames)
                                  if frame.observation is not None), self.decision.observation)
-                if (self.consumer != "adapter" or observed.context != self.context
-                        or observed.window.town_panel.recruitment.selected_offer_ref != action.selection):
+                if self.consumer != "adapter" or observed.context != self.context:
+                    raise ValueError("Creature selection requires adapter consumption in the same panel")
+                if result.accepted and observed.window.town_panel.recruitment.selected_offer_ref != action.selection:
                     raise ValueError("Selection result must match the visible selected creature")
+                if not result.accepted and (self.context_changes != 0 or self.revision != self.decision.revision
+                                            or observed.window != self.decision.observation.window):
+                    raise ValueError("Rejected selection cannot change the displayed card or context revision")
             if result.accepted and action.kind != "end_turn" and self.context != target:
                 raise ValueError("Navigation result requires matching explicit context change")
             if result.accepted and action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit") and self.context_changes != 1:
