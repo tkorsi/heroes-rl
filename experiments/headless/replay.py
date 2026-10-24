@@ -16,7 +16,9 @@ engine-side evidence in ``<episode>/engine``:
 
 ``vcmireplay`` re-runs the recorded inputs through the real game handler and
 stops at the first divergence of an outcome, sent-pack digest, state digest or
-player capture digest. This module adds the second half of the chain: it folds
+player capture digest. This module first checks that the evidence files are the
+ones the environment hashed into the manifest, and requires the replay to
+reach every player capture. It adds the second half of the chain: it folds
 each player's received visible updates and checks that their digests equal the
 engine-side captures, so the policy's observations are tied to the replayed
 state. It also runs tamper tests that must each be detected, and verifies a
@@ -51,6 +53,7 @@ DIGEST_PRIME = 1099511628211
 MASK = (1 << 64) - 1
 POLICY_MESSAGES = ("observation", "action_result", "decision", "terminal")
 DEFAULT_REPLAY_BINARY = ROOT / "vcmi/build/bin/vcmireplay"
+TAMPER_MIN_INPUTS = 4
 
 
 class ReplayError(ValueError):
@@ -175,20 +178,36 @@ def write_jsonl(path: Path, records: list[dict]) -> None:
     path.write_text("".join(json.dumps(record, separators=(",", ":")) + "\n" for record in records))
 
 
-def complete_replay_records(records: list[dict]) -> tuple[list[dict], int]:
-    """The longest prefix that ends with a complete input/applied pair."""
+def complete_replay_records(records: list[dict], *, cut_short: bool) -> tuple[list[dict], int]:
+    """Init, start and the complete input/applied pairs, and the number of records after them.
+
+    The recorder writes an input before the server handles it and the applied
+    record after, so an engine the environment stopped leaves at most one
+    trailing input. Any other break in the pairs is not the engine's recording.
+    """
     if len(records) < 2 or records[0].get("kind") != "init" or records[1].get("kind") != "start":
         raise ReplayError("Replay log lacks its init and start records")
     end = 2
     while end + 1 < len(records) and records[end].get("kind") == "input" and records[end + 1].get("kind") == "applied":
         end += 2
-    return records[:end], len(records) - end
+    unpaired = len(records) - end
+    if unpaired and not (cut_short and unpaired == 1 and records[end].get("kind") == "input"):
+        raise ReplayError(f"Replay log record {end + 1} of {len(records)} ({records[end].get('kind')!r}) "
+                          "breaks the input/applied pairs")
+    return records[:end], unpaired
 
 
 def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: bool) -> dict:
-    """Check one player's received visible updates against the engine's capture digests."""
+    """Check one player's received visible updates against the engine's capture digests.
+
+    Both sides number updates from 0, so a gap on either side is a mismatch. A
+    recording the environment cut short may end with engine evidence the policy
+    never received, but only captures after the last received update and the
+    one message in flight when the engine stopped.
+    """
     entries, bridge_tail = read_jsonl(bridge_path, allow_partial_tail=cut_short)
     ledger, ledger_tail = read_jsonl(observation_path, allow_partial_tail=cut_short)
+    sequences = [record["sequence"] for record in ledger if record.get("kind") == "capture"]
     captures = {record["sequence"]: record for record in ledger if record.get("kind") == "capture"}
     messages = [record for record in ledger if record.get("kind") == "message"]
     if [record["index"] for record in messages] != list(range(len(messages))):
@@ -202,6 +221,9 @@ def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: 
         if first_mismatch is None:
             first_mismatch = {"at": where, "engine": expected, "received": actual}
 
+    gap = next((position for position, sequence in enumerate(sequences) if sequence != position), None)
+    if gap is not None:
+        mismatch(f"capture {gap} sequence", sequences[gap], gap)
     for entry in entries:
         if entry.get("direction") != "engine":
             continue
@@ -210,13 +232,18 @@ def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: 
         if kind == "ready":
             fold = VisibleFold(message["map_size"])
             continue
-        if kind not in POLICY_MESSAGES or fold is None:
+        if kind not in POLICY_MESSAGES:
+            continue
+        if fold is None:
+            mismatch(f"{kind} message before ready", "a ready line first", kind)
             continue
         for event in message.get("events", []):
             if event.get("kind") != "visible_update":
                 continue
             fold.apply(event)
             sequence = event["sequence"]
+            if sequence != checked_captures:
+                mismatch(f"visible update {checked_captures} sequence", checked_captures, sequence)
             capture = captures.get(sequence)
             digest = fold.digest()
             if capture is None:
@@ -235,9 +262,13 @@ def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: 
             elif record["digest"] != fold.digest():
                 mismatch(f"{kind} message {checked_messages}", record["digest"], fold.digest())
         checked_messages += 1
-    engine_only = {"captures": len(captures) - checked_captures, "messages": len(messages) - checked_messages}
+    # Received updates and captures are both numbered from 0, so engine-only
+    # captures follow the last received one; messages match by position.
+    engine_only = {"captures": len(sequences) - checked_captures, "messages": len(messages) - checked_messages}
     if not cut_short and first_mismatch is None and any(engine_only.values()):
         mismatch("engine-only evidence", engine_only, "a complete episode delivers every capture and message")
+    if first_mismatch is None and engine_only["messages"] > 1:
+        mismatch("engine-only evidence", engine_only, "a stopped engine leaves at most one message in flight")
     return {"verified": first_mismatch is None, "captures_checked": checked_captures,
             "messages_checked": checked_messages, "engine_only_after_cut": engine_only if cut_short else None,
             "partial_tail_bytes": {"bridge": bridge_tail, "observations": ledger_tail},
@@ -300,24 +331,60 @@ def run_replay(binary: Path, environment: dict, log: Path, observations: Path | 
     return outcome
 
 
-def prepare_evidence(episode_dir: Path, directory: Path, cut_short: bool) -> dict:
-    """Clean copies of the engine evidence, without a tail an interrupted engine left."""
+def check_recorded_evidence(episode_dir: Path, manifest: dict) -> None:
+    """The engine evidence on disk must be exactly the files the environment hashed when the episode ended."""
+    recorded = manifest.get("replay")
+    if not isinstance(recorded, dict):
+        raise ReplayError("The manifest records no replay evidence")
+    if recorded.get("missing") or recorded.get("recorded") is not True:
+        raise ReplayError(f"The episode's replay evidence is incomplete; missing: {recorded.get('missing')}")
+    files = recorded.get("files") or {}
+    engine = episode_dir / "engine"
+    present = sorted(path.relative_to(episode_dir).as_posix()
+                     for path in (engine / "replay.jsonl", *engine.glob("observations-p*.jsonl")) if path.is_file())
+    if sorted(files) != present:
+        raise ReplayError(f"Replay evidence on disk {present} is not the evidence the manifest hashed {sorted(files)}")
+    for name in present:
+        path = episode_dir / name
+        if (files[name].get("sha256"), files[name].get("bytes")) != (scoring.digest(path), path.stat().st_size):
+            raise ReplayError(f"{name} changed after the environment hashed it")
+
+
+def prepare_evidence(episode_dir: Path, directory: Path, manifest: dict) -> dict:
+    """Clean copies of the engine evidence the manifest hashed, without a tail an interrupted engine left."""
+    cut_short = manifest["status"] != "completed"
+    check_recorded_evidence(episode_dir, manifest)
     engine = episode_dir / "engine"
     records, tail_bytes = read_jsonl(engine / "replay.jsonl", allow_partial_tail=cut_short)
-    records, unpaired = complete_replay_records(records)
-    if unpaired and not cut_short:
-        raise ReplayError(f"A complete episode's replay log has {unpaired} unpaired trailing records")
+    records, unpaired = complete_replay_records(records, cut_short=cut_short)
     observations = directory / "observations"
     observations.mkdir(parents=True)
-    observation_tails = {}
+    observation_tails, observation_records = {}, {}
     for path in sorted(engine.glob("observations-p*.jsonl")):
         lines, tail = read_jsonl(path, allow_partial_tail=cut_short)
         write_jsonl(observations / path.name, lines)
         observation_tails[path.name] = tail
+        observation_records[path.stem[len("observations-p"):]] = len(lines)
     write_jsonl(directory / "replay.jsonl", records)
     return {"log": directory / "replay.jsonl", "observations": observations, "records": records,
+            "observation_records": observation_records,
             "dropped": {"replay_partial_tail_bytes": tail_bytes, "replay_unpaired_records": unpaired,
                         "observation_partial_tail_bytes": observation_tails}}
+
+
+def observation_coverage(summary: dict, written: dict[str, int]) -> dict:
+    """Whether vcmireplay compared every player capture record it was given with replayed state.
+
+    ``written`` counts the records of each player's prepared ledger. A record the
+    replay never reached, also one past the end of a cut-short log, ties nothing
+    the policy received to the engine.
+    """
+    loaded, checked = summary.get("observations_loaded"), summary.get("observations_checked")
+    unchecked, after_prefix = summary.get("observations_unchecked"), summary.get("observations_after_prefix")
+    players = {player: {"written": count, "loaded": (loaded or {}).get(player), "checked": (checked or {}).get(player),
+                        "unchecked": (unchecked or {}).get(player)} for player, count in sorted(written.items())}
+    return {"players": players, "after_prefix": after_prefix,
+            "ok": after_prefix == 0 and loaded == written and checked == written}
 
 
 def expected_terminals(manifest: dict) -> list[dict] | None:
@@ -343,9 +410,10 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
               "termination_reason": manifest["termination_reason"], "created_at": datetime.now(timezone.utc).isoformat(),
               "replay_binary_sha256": scoring.digest(binary), "cut_short": cut_short, "verified": False}
     try:
-        evidence = prepare_evidence(episode_dir, directory, cut_short)
+        evidence = prepare_evidence(episode_dir, directory, manifest)
         report["dropped"] = evidence["dropped"]
         report["replay_log_sha256"] = scoring.digest(episode_dir / "engine" / "replay.jsonl")
+        report["replay_tail"] = manifest["replay"].get("tail")
         environment, _ = replay_profile(directory, episode_dir, data, manifest.get("launch", {}).get("requested_settings"))
         engine = run_replay(binary, environment, evidence["log"], evidence["observations"], directory / "engine-report.json",
                             prefix=cut_short, trace=directory / "trace.jsonl" if trace else None,
@@ -366,7 +434,9 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
             "game_end_boundaries": (summary.get("boundaries") or {}).get("game_end", 0)}
         natural_ok = terminals is None or (report["terminal_evidence"]["matches"]
                                            and report["terminal_evidence"]["game_end_boundaries"] >= 1)
-        report["verified"] = bool(engine.get("verified") and all(p.get("verified") for p in players.values()) and natural_ok)
+        report["observation_coverage"] = observation_coverage(summary, evidence["observation_records"])
+        report["verified"] = bool(engine.get("verified") and all(p.get("verified") for p in players.values()) and natural_ok
+                                  and report["observation_coverage"]["ok"])
     except (ReplayError, OSError, KeyError, subprocess.TimeoutExpired) as error:
         report["error"] = f"{type(error).__name__}: {error}"
     shutil.rmtree(directory / "profile", ignore_errors=True)
@@ -386,8 +456,8 @@ def tamper_cases(records: list[dict], observations: dict[str, list[dict]]) -> li
     Returns (name, expectation, replay records, observation files) tuples.
     """
     inputs = [index for index in range(2, len(records), 2)]
-    if len(inputs) < 4:
-        raise ReplayError("Tamper tests need at least four recorded inputs")
+    if len(inputs) < TAMPER_MIN_INPUTS:
+        raise ReplayError(f"Tamper tests need at least {TAMPER_MIN_INPUTS} recorded inputs")
     middle = inputs[len(inputs) // 2]
     cases = []
 
@@ -439,7 +509,11 @@ def tamper_cases(records: list[dict], observations: dict[str, list[dict]]) -> li
 
 def tamper_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path | None = None,
                    allow_platform_mismatch: bool = False, timeout: float = 3600.0) -> dict:
-    """Run every tamper case of a verified episode; each must be rejected."""
+    """Run every tamper case of a verified episode; each must be rejected.
+
+    A verifier crash or timeout on a case rejects it too, but is reported apart
+    from a detected divergence.
+    """
     episode_dir = episode_dir.expanduser().resolve()
     manifest = json.loads((episode_dir / "manifest.json").read_text())
     cut_short = manifest["status"] != "completed"
@@ -447,32 +521,44 @@ def tamper_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
-    evidence = prepare_evidence(episode_dir, directory / "original", cut_short)
-    observations = {path.name: read_jsonl(path, allow_partial_tail=False)[0]
-                    for path in sorted(evidence["observations"].glob("observations-p*.jsonl"))}
-    environment, _ = replay_profile(directory, episode_dir, data, manifest.get("launch", {}).get("requested_settings"))
-    results = []
-    for name, expectation, records, files in tamper_cases(evidence["records"], observations):
-        case = directory / name
-        (case / "observations").mkdir(parents=True)
-        write_jsonl(case / "replay.jsonl", records)
-        for filename, lines in files.items():
-            write_jsonl(case / "observations" / filename, lines)
-        outcome = run_replay(binary, environment, case / "replay.jsonl", case / "observations", case / "report.json",
-                             prefix=cut_short, allow_platform_mismatch=allow_platform_mismatch, timeout=timeout)
-        results.append({"case": name, "expectation": expectation, "detected": not outcome.get("verified"),
-                        "divergence": outcome.get("divergence"), "error": outcome.get("error"),
-                        "returncode": outcome["returncode"]})
-        shutil.rmtree(case)
-    # The observation chain: an altered received update must break the cross-check.
-    bridge_case = _tamper_bridge(episode_dir, directory, cut_short)
-    if bridge_case is not None:
-        results.append(bridge_case)
+    evidence = prepare_evidence(episode_dir, directory / "original", manifest)
+    inputs = (len(evidence["records"]) - 2) // 2
+    results, skipped = [], None
+    if inputs < TAMPER_MIN_INPUTS:
+        skipped = f"{inputs} complete recorded inputs; tamper tests need at least {TAMPER_MIN_INPUTS}"
+    else:
+        observations = {path.name: read_jsonl(path, allow_partial_tail=False)[0]
+                        for path in sorted(evidence["observations"].glob("observations-p*.jsonl"))}
+        environment, _ = replay_profile(directory, episode_dir, data, manifest.get("launch", {}).get("requested_settings"))
+        for name, expectation, records, files in tamper_cases(evidence["records"], observations):
+            case = directory / name
+            (case / "observations").mkdir(parents=True)
+            write_jsonl(case / "replay.jsonl", records)
+            for filename, lines in files.items():
+                write_jsonl(case / "observations" / filename, lines)
+            try:
+                outcome = run_replay(binary, environment, case / "replay.jsonl", case / "observations",
+                                     case / "report.json", prefix=cut_short,
+                                     allow_platform_mismatch=allow_platform_mismatch, timeout=timeout)
+            except (ReplayError, subprocess.TimeoutExpired) as error:
+                results.append({"case": name, "expectation": expectation, "detected": True,
+                                "crashed": f"{type(error).__name__}: {error}", "divergence": None, "error": None,
+                                "returncode": None})
+            else:
+                results.append({"case": name, "expectation": expectation, "detected": not outcome.get("verified"),
+                                "crashed": None, "divergence": outcome.get("divergence"), "error": outcome.get("error"),
+                                "returncode": outcome["returncode"]})
+            shutil.rmtree(case)
+        # The observation chain: an altered received update must break the cross-check.
+        bridge_case = _tamper_bridge(episode_dir, directory, cut_short)
+        if bridge_case is not None:
+            results.append(bridge_case)
     shutil.rmtree(directory / "profile", ignore_errors=True)
     shutil.rmtree(directory / "original", ignore_errors=True)
     report = {"schema_version": 1, "kind": "headless-replay-tamper-tests", "episode": manifest["episode"],
-              "created_at": datetime.now(timezone.utc).isoformat(), "cases": results,
-              "all_detected": bool(results) and all(result["detected"] for result in results)}
+              "created_at": datetime.now(timezone.utc).isoformat(), "cases": results, "skipped": skipped,
+              "crashed_cases": [result["case"] for result in results if result["crashed"]],
+              "all_detected": None if skipped else bool(results) and all(result["detected"] for result in results)}
     scoring.write_json(directory / "tamper-report.json", report)
     return report
 
@@ -492,8 +578,8 @@ def _tamper_bridge(episode_dir: Path, directory: Path, cut_short: bool) -> dict 
                 check = cross_check_player(path, observations, cut_short=cut_short)
                 path.unlink()
                 return {"case": "received_update_red", "expectation": "an altered received update breaks the capture chain",
-                        "detected": not check["verified"], "divergence": check["first_mismatch"], "error": None,
-                        "returncode": None}
+                        "detected": not check["verified"], "crashed": None, "divergence": check["first_mismatch"],
+                        "error": None, "returncode": None}
     return None
 
 
@@ -523,10 +609,14 @@ def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tam
                                                                          "messages_checked", "first_mismatch")}
                            for color, check in (result.get("players") or {}).items()},
                "terminal_evidence": result.get("terminal_evidence"),
+               "observation_coverage": result.get("observation_coverage"),
                "seconds": (result.get("engine") or {}).get("seconds")}
         if position < tamper and result["verified"]:
-            row["tamper"] = tamper_episode(episode, binary=binary, data=data,
-                                           allow_platform_mismatch=allow_platform_mismatch)
+            try:
+                row["tamper"] = tamper_episode(episode, binary=binary, data=data,
+                                               allow_platform_mismatch=allow_platform_mismatch)
+            except (ReplayError, OSError, KeyError, subprocess.TimeoutExpired) as error:
+                row["tamper"] = {"error": f"{type(error).__name__}: {error}", "all_detected": False}
         rows.append(row)
         print(json.dumps({"episode": row["episode"], "status": row["status"], "verified": row["verified"],
                           "tamper_detected": row.get("tamper", {}).get("all_detected")}), flush=True)
@@ -534,14 +624,18 @@ def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tam
     for row in rows:
         for kind, number in ((row.get("summary") or {}).get("boundaries") or {}).items():
             boundaries[kind] = boundaries.get(kind, 0) + number
+    # A tamper run that failed counts as undetected; a skipped one ran nothing.
+    tampered = [row["tamper"] for row in rows if "tamper" in row and not row["tamper"].get("skipped")]
     summary = {"schema_version": 1, "kind": "headless-replay-series", "run": str(run),
                "created_at": datetime.now(timezone.utc).isoformat(), "episodes": rows,
                "aggregate": {"verified": sum(row["verified"] for row in rows), "attempted": len(rows),
                              "natural_verified": sum(row["verified"] and row["status"] == "completed" for row in rows),
                              "boundaries": boundaries,
-                             "tamper_runs": sum("tamper" in row for row in rows),
-                             "tamper_all_detected": all(row["tamper"]["all_detected"] for row in rows if "tamper" in row)
-                             if any("tamper" in row for row in rows) else None}}
+                             "tamper_runs": len(tampered),
+                             "tamper_skipped": sum(bool(row.get("tamper", {}).get("skipped")) for row in rows),
+                             "tamper_crashed_cases": sum(len(report.get("crashed_cases") or []) for report in tampered),
+                             "tamper_all_detected": all(report["all_detected"] for report in tampered)
+                             if tampered else None}}
     scoring.write_json(run / "replay-series.json", summary)
     return summary
 
@@ -575,7 +669,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "tamper":
         result = tamper_episode(args.target, binary=binary, data=data,
                                 allow_platform_mismatch=args.allow_platform_mismatch)
-        print(json.dumps({"all_detected": result["all_detected"],
+        print(json.dumps({"all_detected": result["all_detected"], "skipped": result["skipped"],
+                          "crashed": result["crashed_cases"],
                           "cases": {case["case"]: case["detected"] for case in result["cases"]}}))
         return 0 if result["all_detected"] else 1
     result = verify_series(args.target.expanduser().resolve(), binary=binary, data=data, count=args.count,

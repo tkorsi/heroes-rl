@@ -84,6 +84,7 @@ class World:
         self.resources = {0: [0] * 7, 1: [0] * 7}
         self.movement = {0: 3, 1: 3}
         self.day = 1
+        self.packs = 1  # client packs applied; the first day's new-turn pack precedes every capture
 
     def hero(self, player):
         return 10 if player == 0 else 20
@@ -131,6 +132,7 @@ class Tracker:
         self.sequence = 0
         self.ledger = None  # engine-side capture digests when replay evidence is recorded
         self.digest = None
+        self.pack = None
         self.messages = 0
 
     def update(self, world, player):
@@ -150,19 +152,19 @@ class Tracker:
                   "own": own if own != before_own else None}
         self.previous = (tiles, objects, own)
         if self.ledger is not None:
-            self.digest = view_digest(world, player)
+            self.digest, self.pack = view_digest(world, player), world.packs
         if any(change[k] for k in ("appeared", "changed", "disappeared", "revealed", "tiles_changed", "hidden", "own")):
             if self.ledger is not None:
-                self.ledger.write(json.dumps({"kind": "capture", "sequence": self.sequence, "pack": 0, "pack_type": 0,
-                                              "digest": self.digest}) + "\n")
+                self.ledger.write(json.dumps({"kind": "capture", "sequence": self.sequence, "pack": self.pack,
+                                              "pack_type": 0, "digest": self.digest}) + "\n")
             self.sequence += 1
             return [change]
         return []
 
     def note_message(self, message_type):
         if self.ledger is not None and self.digest is not None and message_type in POLICY_MESSAGES:
-            self.ledger.write(json.dumps({"kind": "message", "type": message_type, "index": self.messages, "pack": 0,
-                                          "pack_type": 0, "digest": self.digest}) + "\n")
+            self.ledger.write(json.dumps({"kind": "message", "type": message_type, "index": self.messages,
+                                          "pack": self.pack, "pack_type": 0, "digest": self.digest}) + "\n")
             self.messages += 1
             self.ledger.flush()
 
@@ -240,6 +242,7 @@ def move(world, bridges, player, action):
     hero["x"] += dx
     hero["y"] += dy
     world.movement[player] -= 1
+    world.packs += 1
     for ox in (-1, 0, 1):
         for oy in (-1, 0, 1):
             x, y = hero["x"] + ox, hero["y"] + oy
@@ -358,6 +361,7 @@ def main():
                 end_game(world, bridges, 0)
             play_turn(world, bridges, player)
             world.movement[player] = 3
+            world.packs += 1
         world.day += 1
         if MODE == "decision" and world.day == 2:
             end_game(world, bridges, 1)
