@@ -95,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
     report = {**plan, "finished_at": datetime.now(timezone.utc).isoformat(), "wall_seconds": round(wall, 3),
               "worker_returncodes": returncodes, "host": summaries[0]["host"] if summaries else None,
               "build_type": summaries[0]["build_type"] if summaries else None,
+              "toolchain": summaries[0].get("toolchain") if summaries else None,
               "identity": summaries[0]["identity"] if summaries else None,
               "attempts_played": len(rows), "attempts_missing": sorted(expected - played),
               "attempts_unplanned": sorted(played - expected),

@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import resource
 import subprocess
 import sys
@@ -61,6 +62,27 @@ def host_description() -> dict:
     except (OSError, ValueError, IndexError, subprocess.CalledProcessError):
         pass
     return info
+
+
+def toolchain(binary: Path) -> dict:
+    """Compiler, generator and VCMI version of the build that produced ``binary``."""
+    result = {"cxx_compiler": None, "cxx_version": None, "generator": None, "vcmi_version": None}
+    cache = binary.parent.parent / "CMakeCache.txt"
+    try:
+        for line in cache.read_text().splitlines():
+            for key, field_name in (("CMAKE_CXX_COMPILER:", "cxx_compiler"), ("CMAKE_GENERATOR:", "generator")):
+                if line.startswith(key):
+                    result[field_name] = line.split("=", 1)[1]
+        if result["cxx_compiler"]:
+            result["cxx_version"] = subprocess.check_output([result["cxx_compiler"], "--version"], text=True,
+                                                            stderr=subprocess.STDOUT, timeout=10).splitlines()[0]
+        version = (ROOT / "vcmi/cmake_modules/VersionDefinition.cmake").read_text()
+        parts = [re.search(rf"set\(VCMI_VERSION_{part} (\d+)\)", version) for part in ("MAJOR", "MINOR", "PATCH")]
+        if all(parts):
+            result["vcmi_version"] = ".".join(match.group(1) for match in parts)
+    except (OSError, subprocess.SubprocessError, IndexError):
+        pass
+    return result
 
 
 def build_type(binary: Path) -> str | None:
@@ -215,7 +237,7 @@ def main() -> None:
     limits = env_module.Limits(max_days=args.max_days, max_actions=args.max_actions, watchdog_seconds=args.watchdog)
     summary = {
         "schema_version": 1, "kind": "headless-self-play-series", "created_at": datetime.now(timezone.utc).isoformat(),
-        "host": host_description(), "build_type": build_type(launcher.binary),
+        "host": host_description(), "build_type": build_type(launcher.binary), "toolchain": toolchain(launcher.binary),
         "identity": {**launcher.identity(), "engine": env_module._git_state(ROOT / "vcmi"),
                      "project": env_module._git_state(ROOT), "engine_recipe": scoring.engine_recipe_digests(ROOT)},
         "workload": {"map": str(args.map), "agents": "independent seeded uniform-random agents, both colors",

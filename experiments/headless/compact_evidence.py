@@ -26,7 +26,7 @@ def compact_series(series: dict) -> dict:
     return {key: series.get(key) for key in (
         "attempts", "workers", "attempts_played", "attempts_missing", "attempts_unplanned", "natural_completions",
         "truncations", "failures", "status_counts", "natural_wins_by_color", "episode_days", "failure_details",
-        "wall_seconds", "arguments", "host", "build_type", "identity")} | {
+        "wall_seconds", "arguments", "host", "build_type", "toolchain", "identity")} | {
         "aggregate": {key: value for key, value in (series.get("aggregate") or {}).items() if key != "coverage_totals"},
         "coverage_totals": (series.get("aggregate") or {}).get("coverage_totals"),
         # One row per attempt: episode, seed, status, reason, outcome, days and decision cycles.
@@ -74,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         "videos": [{key: value for key, value in load(path).items() if key != "output"} | {"file": path.with_suffix(".mp4").name}
                    for path in args.videos] or "missing",
         "benchmark": {"host": benchmark.get("host"), "build_type": benchmark.get("build_type"),
+                      "toolchain": benchmark.get("toolchain"),
                       "identity": benchmark.get("identity"), "workload": benchmark.get("workload"),
                       "method": benchmark.get("method"),
                       "configurations": [{

@@ -174,6 +174,7 @@ def main() -> None:
     report = {"schema_version": 1, "kind": "headless-self-play-benchmark",
               "created_at": datetime.now(timezone.utc).isoformat(), "host": run_headless.host_description(),
               "build_type": run_headless.build_type(launcher.binary),
+              "toolchain": run_headless.toolchain(launcher.binary),
               "identity": {**launcher.identity(), "engine": run_headless.env_module._git_state(ROOT / "vcmi"),
                            "project": run_headless.env_module._git_state(ROOT),
                            "engine_recipe": run_headless.scoring.engine_recipe_digests(ROOT)},
