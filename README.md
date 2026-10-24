@@ -11,8 +11,10 @@ The earlier fixed Easy-opponent baseline is retained. A separate, randomly
 initialized recurrent actor-critic prototype and strict learner contracts now
 exist; they are not connected to VCMI and have not been trained. Draft headless
 PR #6 has separately passed bounded native-game, boundary and replay validation
-on macOS at `4fe0d7c`; it remains unmerged. The next interface design is structured
-map, hero-window and town-window interaction, specified below but not implemented.
+on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
+map, hero-window and town-window interaction. Its strict history/trajectory v2
+contract and independent auditor are implemented; native integration and real-game
+validation of this interface remain in progress.
 Its agreed movement action selects a destination coordinate for engine routing;
 the existing adjacent-step baseline stays separate. Other platforms are not yet
 validated.
@@ -405,11 +407,13 @@ change is agreed or implemented by this document.
 
 ### Contextual map, hero and town interface — agreement and proposal
 
-**Status:** the constraints in this section, including destination selection and
-engine routing, are agreed requirements. The concrete v2 schemas, route execution
-details, initial internal-window operations and implementation stages are
-proposals, not implemented behavior. This revision changes documentation only
-and does not authorize training. Keep the adjacent-step `movement-v1` baseline
+**Status:** destination selection, engine routing and the minimal structured
+map/hero/town loop are authorized for implementation and bounded local validation.
+`experiments/learner/contextual.py` implements the v2 record and trajectory contract;
+the native producer and adapter are being implemented separately by Claude. The
+details below describe the intended execution, not yet validated native behavior.
+Construction, recruitment and army editing remain later stages. No training is
+authorized. Keep the adjacent-step `movement-v1` baseline
 as a separately identified comparison. All contexts are structured headless
 interfaces; opening one does not create a rendered window or use image recognition.
 
@@ -440,9 +444,9 @@ The intended loop, in plain English:
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
 | Live action interface | One selected owned hero, eight adjacent movement attempts and end-turn; automatic battles. | Explicit hero targeting, destination-coordinate engine routing and map/hero/town context navigation. |
-| History and fog | PR #6 records per-player visible events and current map/own-state views; local replay and transient-sighting checks pass. The learner tile schema has terrain but no road field. | Context/field visibility audit, permitted road encoding, window observations and complete terminal/supersession history. |
+| History and fog | PR #6 records per-player visible events; local replay and transient-sighting checks pass. The separate strict v2 contract has visible roads, windows, command issuance/acknowledgement, supersession and paired finalization. | Native field/context audit, history-v2 production and real-game proof that every permitted event and final view is retained. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
-| Candidate scoring | Generic typed scorer; movement adapter only. Opaque candidate keys are not features. | Typed entity/control references and parameter domains; history/trajectory v1 still accepts only indices 0–8. |
+| Candidate scoring | Generic typed scorer; movement adapter only. The v2 contract uses opaque subject handles and full rectangular coordinate domains. | Native typed transport and contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
 | Hero/town operations | No structured open/close, construction, recruitment, army editing or quantity-choice transport. | Implement and validate each declared operation against VCMI. Calling a generic scorer with a new type does not implement it. |
 | Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
 
@@ -453,11 +457,11 @@ remaining history-v1 limitation is separate: final visible changes after a
 superseded decision invalidate the projection. A natural game result does not
 make that incomplete player trajectory eligible for learning.
 
-#### Proposed observation and history boundary
+#### Observation and history boundary
 
-Introduce a new environment identifier, for example `adventure-windows-v1`, with
-`heroes-player-history-v2` and `heroes-context-actions-v2`. These are proposed
-names. Store versions, supported operations, map/engine hashes and checkpoint
+The implemented contract identifies `adventure-windows-v1`,
+`heroes-player-history-v2` and `heroes-context-actions-v2`. Store versions,
+supported operations, map/engine hashes and checkpoint
 compatibility in manifests. Never pool these results with `movement-v1` without
 identifying the interface and observation differences. Record the destination
 execution rules, pathfinder configuration and tie-breaking behavior as part of
@@ -505,6 +509,39 @@ prefix. Distinguish an adapter-consumed navigation action from a server-issued
 game command. Both require an observable result; neither acknowledgement alone
 proves a strategic effect. Keep raw engine IDs and omniscient replay data outside
 this contract. Context changes never reset recurrent memory.
+
+The first implemented wire format is deliberately narrower than the future
+panel design above. A decision frame contains the current observation, offers
+and revision; its context is carried by the optional active window. Map views
+contain visible terrain/roads/objects, own resources and hero/town map entries.
+Hero windows add army slots, four primary skills, mana and level. Town windows
+add army slots and faction only; building details and deeper controls are
+deferred. The only window action is `close`. Unknown fields are rejected at every
+nested record boundary, including raw engine IDs and path-cost/reachability data.
+
+Records are immutable and append-only. Navigation consumption is distinguished
+from native command issuance and acknowledgement. An unacted decision must be
+superseded before a new visible view or event enters its history. A consumed
+action without a trustworthy result remains recorded but never becomes a
+completed sample. Natural finalization binds both complete player prefixes to
+complementary engine/socket outcomes and a clean exit. A collection cutoff is
+provisional until both players have real held decisions, readers finish without
+failure and bounded continuation/shutdown evidence is verified. Technical and
+unsupported failures provide neither terminal rewards nor bootstrap targets.
+
+`validation/probes/audit_contextual_histories.py` independently reconstructs both
+streams and checks their immutable prefixes, paired proofs and manifest hashes.
+Without a manifest it reports structural consistency only, with no effective
+learner eligibility. A valid record with zero completed samples remains distinct
+from a usable learner trajectory. Its output explicitly does not prove native
+visibility or closed-window freshness; those require the real-game probes.
+
+```sh
+python3 -m unittest discover -s tests -p 'test_contextual_*.py' -v
+python3 validation/probes/audit_contextual_histories.py \
+  --red <red-history-v2.jsonl> --blue <blue-history-v2.jsonl> \
+  --manifest <manifest.json> --output <new-audit.json>
+```
 
 #### Proposed minimum interactions and parameters
 
@@ -930,12 +967,13 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The next proposed work is the versioned map/hero/town interface above. Destination
-selection with engine routing is agreed; its detailed execution rules remain
-proposed. First resolve those rules, the field/context audit and town-panel scope,
-then implement navigation, complete histories and destination routing before
-adding internal operations. No live contextual
-adapter, collector or PPO loop exists. The bounded headless checks establish
+The active work is the versioned map/hero/town interface above. Its strict v2
+history/trajectory contract and independent auditor are implemented on
+`codex/contextual-environment`, based on reviewed `4fe0d7c` and the learner branch.
+Claude owns native capture/routing and the opt-in headless transport/producer;
+Codex owns contract review, independent probes and bounded Mac acceptance. The
+native extension has not yet been locally validated. No live contextual neural
+adapter, collector or PPO loop exists. The earlier bounded headless checks establish
 reachable natural outcomes and validate the reviewed boundary fixes; they do
 not pass the expanded interface's integration gates or authorize training.
 The original three rendered self-play runs remain truncated and separate.

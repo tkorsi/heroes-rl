@@ -523,8 +523,8 @@ class PlayerHistory:
         if kind in ("view", "decision"):
             if frame.observation.context != self.context:
                 raise ValueError("Window fields need an explicit matching context change")
-            if kind == "view" and self.decision is not None and self.action is None:
-                raise ValueError("Supersede held decision before changing its view")
+        if kind in ("view", "event") and self.decision is not None and self.action is None:
+            raise ValueError("Supersede held decision before adding visible history")
         if kind == "decision":
             if self.decision is not None or self.action is not None:
                 raise ValueError("Prior decision/action has not completed")
@@ -638,11 +638,15 @@ class PlayerHistory:
                 raise ValueError("Movement results require observed position and points")
             if result.status == "reached" and result.destination_reached is not True:
                 raise ValueError("Reached status requires observed arrival")
+            if self.native_rejected and result.status not in ("interrupted", "rejected", "hero_unavailable"):
+                raise ValueError("Rejected native movement requires an interruption, rejection or unavailable hero")
             if result.status == "no_route_known" and result.destination_reached is not False:
                 raise ValueError("A known-route failure cannot claim arrival")
             before = next(hero for hero in self.decision.observation.heroes if hero.handle == action.subject)
             changed = ((result.position is not None and result.position != before.position)
                        or (result.movement is not None and result.movement != before.movement))
+            if result.status == "no_route_known" and (self.commands != 0 or changed):
+                raise ValueError("Known-route failure requires no native command or movement effect")
             if (changed or result.status == "interaction") and self.accepted_commands == 0:
                 raise ValueError("Movement effects require an acknowledged accepted native command")
             if result.position is not None:
@@ -662,6 +666,8 @@ class PlayerHistory:
             target = Context() if action.kind == "close" else Context(action.kind[5:], action.subject) if action.kind.startswith("open_") else self.context
             if action.kind == "end_turn" and result.accepted and (self.commands != 1 or self.accepted_commands != 1):
                 raise ValueError("Successful turn ending requires exactly one accepted native command")
+            if action.kind == "end_turn" and not result.accepted and self.accepted_commands != 0:
+                raise ValueError("Accepted native turn ending cannot be reported as rejected")
             if result.accepted and action.kind != "end_turn" and self.context != target:
                 raise ValueError("Navigation result requires matching explicit context change")
             if not result.accepted and self.context != self.decision.observation.context:
