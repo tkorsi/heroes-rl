@@ -11,7 +11,7 @@ PROTOCOL_VERSION = 3
 OBSERVATION_EVENTS = "visible_update-v2"
 ACTIONS = 9
 END_TURN = 8
-EVENT_KINDS = {"visible_update", "battle_start", "battle_complete", "visit", "decision"}
+EVENT_KINDS = {"visible_update", "battle_start", "battle_complete", "visit", "decision", "level_up"}
 OBJECT_FIELDS = ("id", "x", "y", "z", "type", "subtype", "owner")
 TILE_FIELDS = ("x", "y", "z", "terrain", "blocked", "visitable")
 OWN_FIELDS = ("hero", "movement", "movement_max", "resources", "army", "towns", "mines")
@@ -92,6 +92,8 @@ class BridgeValidator:
         self.awaiting_turn_end = False
         self.last_day = 0
         self.next_visible_sequence = 0
+        self.snapshot_every = 1  # observations carrying the visible tile list, from the handshake
+        self.observations = 0
 
     def check(self, message) -> str:
         """Validate the next engine message and return its type."""
@@ -108,6 +110,9 @@ class BridgeValidator:
             size = message.get("map_size")
             _require(isinstance(size, list) and len(size) == 3 and all(_integer(x) and x > 0 for x in size),
                      "Bridge handshake must state the public map size")
+            snapshot_every = message.get("snapshot_every", 1)
+            _require(_integer(snapshot_every) and snapshot_every >= 0, "Bridge snapshot period is malformed")
+            self.snapshot_every = snapshot_every
             self.ready = True
             return kind
         _require(self.ready, "Bridge must send its handshake before any game message")
@@ -121,7 +126,12 @@ class BridgeValidator:
                      and self.submitted is None and not self.awaiting_turn_end,
                      "Observation action sequence is incomplete or out of order")
             _require(_integer(day) and day >= max(self.last_day, 1), "Observation game day is invalid")
-            _require(isinstance(message.get("tiles"), list), "Observation must contain player-visible tiles")
+            due = self.snapshot_every > 0 and self.observations % self.snapshot_every == 0
+            self.observations += 1
+            if due:
+                _require(isinstance(message.get("tiles"), list), "Observation is missing its declared visible tile list")
+            else:
+                _require("tiles" not in message, "Observation carries a tile list outside the declared period")
             _require(isinstance(message.get("state"), dict), "Observation must contain the player's own state")
             self.last_day = day
             self.last_action_id = action_id

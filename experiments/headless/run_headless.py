@@ -185,12 +185,15 @@ def main() -> None:
                         help="Collection window in seconds; the episode in progress at its end is truncated")
     parser.add_argument("--log-level", default="info", choices=["trace", "debug", "info"])
     parser.add_argument("--profile", action="store_true", help="Ask ExplorerRL for per-message timing fields")
+    parser.add_argument("--snapshot-every", type=int, default=1,
+                        help="Verify the event fold against a full visible-tile snapshot every N decisions (0: never)")
     parser.add_argument("--ledger", default="full", choices=["full", "none"],
                         help="full: write each side's bridge stream (internal evidence with engine IDs)")
     parser.add_argument("--skip-check", action="store_true", help="Skip tools/prepare_vcmi.py --check")
     args = parser.parse_args()
     if (args.episodes < 1 or args.first_episode < 1 or args.seed < 1 or args.seed_stride < 1
-            or args.schedule_start < 0 or args.schedule_step < 1 or args.warmup_episodes < 0):
+            or args.schedule_start < 0 or args.schedule_step < 1 or args.warmup_episodes < 0
+            or not 0 <= args.snapshot_every <= 1000000):
         parser.error("Use positive episode counts, episode numbers, seeds and strides")
     last = max([e["index"] for e in schedule(args) + warmup_schedule(args)])
     if args.seed + last * args.seed_stride > 2147483647:
@@ -216,7 +219,8 @@ def main() -> None:
         "workload": {"map": str(args.map), "agents": "independent seeded uniform-random agents, both colors",
                      "limits": {"max_days": args.max_days, "max_actions_per_player": args.max_actions,
                                 "watchdog_seconds": args.watchdog, "collection_window_seconds": args.duration},
-                     "log_level": args.log_level, "ledger": args.ledger, "profile": args.profile},
+                     "log_level": args.log_level, "ledger": args.ledger, "profile": args.profile,
+                     "snapshot_every": args.snapshot_every},
         "schedule_definition": {"seed": args.seed, "seed_stride": args.seed_stride, "first_episode": args.first_episode,
                                 "red_policy_seed": args.red_policy_seed, "blue_policy_seed": args.blue_policy_seed,
                                 "start": args.schedule_start, "step": args.schedule_step},
@@ -226,7 +230,7 @@ def main() -> None:
     summary_path = output / "summary.json"
     scoring.write_json(summary_path, summary)
     env = env_module.HeadlessSelfPlayEnv(launcher, output / "episodes", limits, ledger=args.ledger == "full",
-                                         profile=args.profile)
+                                         profile=args.profile, snapshot_every=args.snapshot_every)
     warmup_env = env_module.HeadlessSelfPlayEnv(
         launcher, output / "warmup", env_module.Limits(max_days=args.warmup_max_days, max_actions=args.max_actions,
                                                        watchdog_seconds=args.watchdog), ledger=False)

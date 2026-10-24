@@ -210,8 +210,13 @@ class HeadlessSelfPlayEnv:
     """Agent-environment cycle over one isolated engine process per episode."""
 
     def __init__(self, launcher, output: Path, limits: Limits = Limits(), *, ledger: bool = True,
-                 profile: bool = False, agents: dict | None = None):
+                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1):
+        if type(snapshot_every) is not int or not 0 <= snapshot_every <= 1000000:
+            raise ValueError("snapshot_every must be an integer from 0 to 1000000")
         self.launcher, self.limits, self.ledger_enabled, self.profile = launcher, limits, ledger, profile
+        # Decision observations repeat the visible tiles every N decisions (never
+        # when 0) so the adapter can verify its event fold; events are never thinned.
+        self.snapshot_every = snapshot_every
         self.output = output.expanduser().resolve()
         self.agent_descriptions = agents or {}
         self.process = None
@@ -240,7 +245,8 @@ class HeadlessSelfPlayEnv:
         self.sides = {}
         environment = {"EXPLORER_RL_PLAYERS": "0,1", "EXPLORER_RL_EPISODE": str(episode),
                        "EXPLORER_RL_TIMEOUT": str(self.limits.bridge_timeout),
-                       "EXPLORER_RL_PROFILE": "1" if self.profile else "0"}
+                       "EXPLORER_RL_PROFILE": "1" if self.profile else "0",
+                       "EXPLORER_RL_SNAPSHOT_EVERY": str(self.snapshot_every)}
         for player, color in enumerate(COLORS):
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))

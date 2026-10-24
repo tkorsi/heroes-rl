@@ -278,6 +278,32 @@ class BridgeValidatorTests(unittest.TestCase):
         with self.assertRaisesRegex(ProtocolError, "out of order"):
             early.check(observation(1, columns(0, 0), [], []))
 
+    def test_snapshot_period_is_declared_and_enforced(self):
+        def result(action_id):
+            return {"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1", "action_id": action_id,
+                    "action": 0, "accepted": True, "before": {}, "after": {}, "events": []}
+        first = observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)])
+        for declared, second_has_tiles, fails in ((1, False, True), (2, False, False), (2, True, True), (0, True, True)):
+            with self.subTest(declared=declared, second_has_tiles=second_has_tiles):
+                validator = bridge_protocol.BridgeValidator(0, "1")
+                validator.check(self.ready(snapshot_every=declared))
+                opening = dict(first)
+                if declared == 0:
+                    del opening["tiles"]
+                validator.check(opening)
+                validator.respond(0)
+                validator.check(result(0))
+                second = observation(1, columns(0, 0), [], [])
+                if not second_has_tiles:
+                    del second["tiles"]
+                if fails:
+                    with self.assertRaisesRegex(ProtocolError, "tile list"):
+                        validator.check(second)
+                else:
+                    validator.check(second)
+        with self.assertRaises(ProtocolError):
+            bridge_protocol.BridgeValidator(0, "1").check(self.ready(snapshot_every=-1))
+
 
 class FakeLauncher:
     def __init__(self, **scenario):
@@ -329,9 +355,10 @@ class HeadlessEnvTests(unittest.TestCase):
     def tearDown(self):
         self.directory.cleanup()
 
-    def make(self, limits=None, **scenario):
+    def make(self, limits=None, *, snapshot_every=1, **scenario):
         env = env_module.HeadlessSelfPlayEnv(FakeLauncher(**scenario), self.output / str(len(list(self.output.iterdir()))),
-                                             limits or env_module.Limits(watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10))
+                                             limits or env_module.Limits(watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
+                                             snapshot_every=snapshot_every)
         self.addCleanup(env.close)
         return env
 
@@ -441,7 +468,8 @@ class HeadlessEnvTests(unittest.TestCase):
                 self.assertEqual(end.outcomes, {"red": None, "blue": None})
 
     def test_interleaved_decision_for_the_waiting_player(self):
-        end, requests = play(self.make(mode="decision"), {"red": ScriptedAgent([2]), "blue": ScriptedAgent()})
+        env = self.make(mode="decision")
+        end, requests = play(env, {"red": ScriptedAgent([2]), "blue": ScriptedAgent()})
         self.assertEqual(end.status, "completed")
         self.assertEqual(end.rewards, {"red": -1, "blue": 1})
         order = [(r.color, r.kind) for r in requests[:3]]
@@ -449,6 +477,26 @@ class HeadlessEnvTests(unittest.TestCase):
         decision = requests[1].record
         self.assertEqual(decision["hero"], 1)  # Blue's own hero handle, never its engine ID
         self.assertNotIn("hero_id", decision)
+        # A level-up without a query is reported, never mistaken for a dialog.
+        level_ups = [e for record in env.history("blue") for e in record.get("events", []) if e["kind"] == "level_up"]
+        self.assertEqual(level_ups, [{"kind": "level_up", "primary_skill": 1, "secondary_skills": [7]}])
+        self.assertEqual(end.manifest["players"]["blue"]["history_v1"]["unrepresented_events"]["level_up"], 1)
+
+    def test_periodic_snapshots_still_verify_and_never_thin_the_events(self):
+        full_env = self.make(mode="natural", end_day=3)
+        full, _ = play(full_env, self.random_players())
+        periodic_env = self.make(mode="natural", end_day=3, snapshot_every=3)
+        periodic, _ = play(periodic_env, self.random_players())
+        self.assertEqual((periodic.status, periodic.termination_reason), ("completed", "natural_terminal"))
+        strip = lambda records: [{k: v for k, v in r.items() if k != "tiles"} for r in records]
+        for color in ("red", "blue"):
+            observations = [r for r in periodic_env.history(color) if r["type"] == "observation"]
+            self.assertGreater(len(observations), 3)
+            self.assertEqual([r["tiles"] is not None for r in observations], [i % 3 == 0 for i in range(len(observations))])
+            # Same seeds, same events: only the redundant tile lists are thinned.
+            self.assertEqual(strip(periodic_env.history(color)), strip(full_env.history(color)))
+            self.assertEqual(periodic_env.history_v1(color), full_env.history_v1(color))
+            self.assertTrue(periodic.manifest["players"][color]["history_v1"]["valid"])
 
     def test_terminal_racing_an_action_result_keeps_the_history_gap_free(self):
         end, _ = play(self.make(mode="terminal_race", end_day=2), {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})

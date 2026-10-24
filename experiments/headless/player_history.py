@@ -123,6 +123,11 @@ class PlayerHistory:
             self.v1.note_unrepresented(kind)
             return {"kind": kind, "handle": self._observe(event["object_id"]), "type": event.get("object_type"),
                     "subtype": event.get("object_subtype"), "owner": event.get("owner")}
+        if kind == "level_up":
+            # Applied by the server without a query: at most one skill was offered.
+            self.v1.note_unrepresented(kind)
+            return {"kind": kind, "primary_skill": event.get("primary_skill"),
+                    "secondary_skills": list(event.get("secondary_skills", []))}
         if kind == "decision":
             self.v1.note_unrepresented("dialog_answer")
             return {"kind": kind, "decision_kind": event.get("decision_kind"),
@@ -213,7 +218,8 @@ class PlayerHistory:
     def _observation(self, message: dict) -> dict:
         self.day = max(self.day, message["day"])
         snapshot_tiles, snapshot_objects, tiles = {}, {}, []
-        for tile in message["tiles"]:
+        snapshot = "tiles" in message  # the engine may send the redundant tile list periodically
+        for tile in message.get("tiles", []):
             key = (tile["x"], tile["y"], tile["z"])
             snapshot_tiles[key] = {"position": list(key), **{fact: tile.get(fact) for fact in TILE_FACTS}}
             objects = []
@@ -228,8 +234,9 @@ class PlayerHistory:
                 objects.append({"handle": handle, "type": entry["type"], "subtype": entry["subtype"], "owner": entry["owner"]})
             tiles.append({"x": key[0], "y": key[1], "z": key[2], **{fact: tile.get(fact) for fact in TILE_FACTS},
                           "objects": objects})
-        if (snapshot_tiles != self.tiles or snapshot_objects != self.visible
-                or self._own_from_state(message["state"]) != self.own):
+        if snapshot and (snapshot_tiles != self.tiles or snapshot_objects != self.visible):
+            raise ProtocolError("Visible event history diverged from the decision snapshot")
+        if self._own_from_state(message["state"]) != self.own:
             raise ProtocolError("Visible event history diverged from the decision snapshot")
         if [message.get("width"), message.get("height"), message.get("levels")] != self.map_size:
             raise ProtocolError("Decision snapshot map size differs from the handshake")
@@ -240,7 +247,7 @@ class PlayerHistory:
                 "x": message.get("x"), "y": message.get("y"), "z": message.get("z"),
                 "width": message.get("width"), "height": message.get("height"), "levels": message.get("levels"),
                 "movement": message.get("movement"), "movement_max": message.get("movement_max"),
-                "tiles": tiles, "state": self._state(message["state"])}
+                "tiles": tiles if snapshot else None, "state": self._state(message["state"])}
 
     def _decision(self, message: dict) -> dict:
         result = {key: copy.deepcopy(value) for key, value in message.items()

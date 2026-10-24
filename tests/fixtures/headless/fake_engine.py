@@ -18,6 +18,7 @@ ROCK = (2, 4)  # a static blocking tile
 SCENARIO = json.loads(os.environ.get("FAKE_ENGINE_SCENARIO", "{}"))
 MODE = SCENARIO.get("mode", "natural")
 EPISODE = os.environ["EXPLORER_RL_EPISODE"]
+SNAPSHOT_EVERY = int(os.environ.get("EXPLORER_RL_SNAPSHOT_EVERY", "1"))
 SEED = int(os.environ.get("FAKE_ENGINE_SEED", "1"))
 
 
@@ -115,6 +116,7 @@ class Bridge:
         self.tracker = Tracker()
         self.action_id = 0
         self.decision_id = 0
+        self.observations = 0
 
     def message(self, message_type, **fields):
         return {"type": message_type, "protocol_version": SCENARIO.get("protocol_version", 3), "player": self.player,
@@ -157,11 +159,15 @@ def observation(world, bridge):
         for index, (dx, dy) in enumerate(DIRECTIONS):
             mask[index] = 0 <= hero["x"] + dx < WIDTH and 0 <= hero["y"] + dy < HEIGHT
     action_id = bridge.action_id + SCENARIO.get("action_id_offset", 0)
-    return bridge.message("observation", action_id=action_id, day=world.day,
-                          hero_id=world.hero(player) if hero else -1, x=hero["x"] if hero else None,
-                          y=hero["y"] if hero else None, z=0 if hero else None, width=WIDTH, height=HEIGHT,
-                          levels=1, movement=world.movement[player], movement_max=3, tiles=tiles,
-                          action_mask=mask, state=world.state(player), events=bridge.take())
+    message = bridge.message("observation", action_id=action_id, day=world.day,
+                             hero_id=world.hero(player) if hero else -1, x=hero["x"] if hero else None,
+                             y=hero["y"] if hero else None, z=0 if hero else None, width=WIDTH, height=HEIGHT,
+                             levels=1, movement=world.movement[player], movement_max=3, tiles=tiles,
+                             action_mask=mask, state=world.state(player), events=bridge.take())
+    if not (SNAPSHOT_EVERY and bridge.observations % SNAPSHOT_EVERY == 0):
+        del message["tiles"]
+    bridge.observations += 1
+    return message
 
 
 def move(world, bridges, player, action):
@@ -244,6 +250,8 @@ def play_turn(world, bridges, player):
                 raise SystemExit("bad decision answer")
             other.events.append({"kind": "decision", "decision_kind": "hero_level_up",
                                  "decision_id": other.decision_id, "choice": answer["choice"]})
+            # A later level-up offering one skill is applied without a query.
+            other.events.append({"kind": "level_up", "primary_skill": 1, "secondary_skills": [7]})
             other.decision_id += 1
         if MODE == "terminal_race" and world.day == SCENARIO.get("end_day", 2) and player == 0:
             if action < 8:
@@ -268,7 +276,7 @@ def main():
     for bridge in bridges.values():
         bridge.send(bridge.message("ready", adventure_actions=9, battle_ai="BattleAI",
                                    observation_events=SCENARIO.get("observation_events", "visible_update-v2"),
-                                   profiling=False, map_size=[WIDTH, HEIGHT, 1]))
+                                   profiling=False, map_size=[WIDTH, HEIGHT, 1], snapshot_every=SNAPSHOT_EVERY))
     write_metadata(world)
     for bridge in bridges.values():
         bridge.note(world)  # the first capture is reported against an empty view

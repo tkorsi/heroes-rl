@@ -119,7 +119,8 @@ def run_configuration(args, workers: int, repetition: int, directory: Path) -> l
                    "--warmup-episodes", str(args.warmup_episodes), "--start-at", f"{start_at:.3f}",
                    "--duration", str(args.duration), "--max-days", str(args.max_days),
                    "--max-actions", str(args.max_actions), "--log-level", args.log_level,
-                   "--ledger", args.ledger, "--raw-latencies", "--skip-check"]
+                   "--ledger", args.ledger, "--snapshot-every", str(args.snapshot_every),
+                   "--raw-latencies", "--skip-check"] + (["--profile"] if args.profile else [])
         log = (directory / f"worker-{worker}.log").open("w")
         processes.append((subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT), log, output))
     summaries = []
@@ -148,6 +149,9 @@ def main() -> None:
     parser.add_argument("--max-actions", type=int, default=2000)
     parser.add_argument("--log-level", default="info", choices=["trace", "debug", "info"])
     parser.add_argument("--ledger", default="none", choices=["full", "none"])
+    parser.add_argument("--snapshot-every", type=int, default=1,
+                        help="Full visible-tile verification period in decisions (0: never)")
+    parser.add_argument("--profile", action="store_true", help="Collect ExplorerRL per-message timing fields")
     parser.add_argument("--skip-check", action="store_true", help="Skip tools/prepare_vcmi.py --check")
     args = parser.parse_args()
     worker_counts = [int(value) for value in args.workers.split(",")]
