@@ -20,8 +20,11 @@ bounded local real-game evidence. A separate v3 town extension now adds explicit
 construction and exact-count recruitment, with bounded native validation of
 prices, daily limits, stock, armies, rejection and episode boundaries.
 Fresh contextual capture now has independent native replay and terminal-barrier
-verification with bounded local evidence. Ordinary natural outcomes and wider
-interaction coverage remain gates; training remains disabled. The neural
+verification with bounded local evidence. Natural-outcome reachability and
+ordinary-game sparsity now have separate controls and measurement. Remaining
+experience-correctness checks and explicit launch approval govern readiness;
+a small random cohort need not play competently or reach a natural outcome.
+Training remains disabled. The neural
 implementation and its separate validation scope
 are described under **Contextual neural integration and PPO** below.
 Its agreed movement action selects a destination coordinate for engine routing;
@@ -480,11 +483,11 @@ The intended loop, in plain English:
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
 | Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles, exercised locally. | Wider native interruption/dialog coverage; additional operations remain deferred. |
-| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons and boundary audits pass within their recorded scope. | Contextual replay and wider event coverage; legacy replay cannot verify v2. |
+| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons, boundary audits and fresh contextual replay pass within their recorded scope. | Wider event coverage; historical recordings without native capture remain unsupported by contextual replay. |
 | Memory and model | Randomly initialized contextual shared GRU actor–critic with separate player sessions, chronological visible history and bounded live inference checks; legacy prototype retained. | No learned game behavior; broader field/event coverage remains. |
 | Candidate scoring | Contextual typed conditional policy covers navigation, construction, full rectangular coordinates and exact recruitment counts; routing handles are not features. | Semantically indistinguishable dwelling controls remain equally scored; additional action interfaces are deferred. |
 | Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
-| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; natural contextual outcomes, replay and further coverage remain gates. |
+| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; player-experience correctness and explicit launch approval govern readiness. |
 
 The action-consumption and stream-finalization findings are **resolved in the
 reviewed draft head `4fe0d7c`**, not still-open design blockers. Integration must
@@ -1539,22 +1542,122 @@ resource-limit condition, and ordinary natural outcomes. The authenticated
 neutral battle-request origin has source/native-unit coverage, not a new natural
 terminal fixture in this cohort. No throughput or cross-platform claim is made.
 
-Before gameplay optimization, establish contextual natural outcomes on ordinary
-games and resolve the remaining event/action coverage above. The explicit
-request-origin terminal barrier and fresh contextual replay have bounded native
-evidence; that does not open the training gate.
-The synthetic-only optimizer admission must be changed only with explicit
-training authorization and review. No learning campaign is authorized by this
-implementation.
+#### Follow-up: validation gaps and ordinary completion
 
-The smallest proposed later training check, **only after those gates pass and
-the user approves**, is one PPO update from random initialization against one
-frozen initial opponent: four valid ordinary episodes split across learner
-colors, at most sixteen collection attempts, two PPO epochs, then four fixed
-held-out seed/color evaluations. Stop before the update if the capped collection
-does not supply the declared valid natural outcomes. Keep terminal-only rewards,
-the same map/fog/actions and all attempts. This would test the first real update
-and resumption, not demonstrate strategy improvement or authorize a campaign.
+The 25 October follow-up keeps gameplay sources, native binaries, rewards,
+action support, the ordinary map and model weights unchanged. It fixes
+diagnostic setup and acceptance checks, adds reproducible behavior auditing,
+and separates actual interface defects from valid untrained behavior. Its
+ordinary roster was committed before launch in
+`validation/contextual-gap-plan-2026-10-25.json`: eight new engine seeds in both
+learner seats, the same saved untrained learner and frozen opponent, 100 days
+and 2,048 choices per attempt. Two runner batches preserve the predeclared RNG
+sequence by offsetting the second batch's policy-seed base. Every attempt is
+retained; diagnostic controls never enter this cohort or the learner.
+
+The following bounded real-game checks now pass, with independent native
+replay and zero unchecked records:
+
+- **Recruitment affordability:** the former setup exhausted wood/ore before
+  spending enough gold; waiting then increased gold. Explicit displayed
+  Marketplace and Resource Silo purchases reach stock 14, gold 475, price 60
+  and slider maximum 7. Count 8 is rejected unchanged; buying exactly 7 costs
+  420 and leaves stock 7, gold 55 and maximum 0. Another positive purchase is
+  rejected unchanged. No initial resources or prices are modified.
+- **Closed hero windows, both colors:** a declared single-neutral-stack-count
+  diagnostic produces a real automatic battle. The same hero survives with
+  20 creatures instead of 25. Closed-window fields remain absent, the old
+  snapshot remains immutable, and reopening supplies the changed army.
+- **Resources, neutral battles and mines, both colors:** each selected object
+  has its actual visit, issued/accepted command, visible native effect and
+  cessation of further route steps after the event. The initial mine probes
+  exposed an invalid test assumption: visibility of the object does not imply
+  knowledge of its entrance approach. Those failed diagnostics remain valid,
+  unscored, replayed cutoffs. The corrected evaluator makes a separate explicit
+  move to an observed frontier before retrying; the product planner and policy
+  are unchanged. Fixture comparison also rejects JSON Boolean/numeric aliases.
+- **Neutral terminal requests, both colors:** isolated townless/stronger-guard
+  inputs preserve ordinary defeat and fog rules. Actual day-two last-hero
+  defeats end through authenticated neutral `MakeAction` requests, with exact
+  server/client receipts, complete histories and final capture close. Three
+  completed recordings replay. The first attempt ended before the other player
+  acted and remains failed, unscored and ineligible; its evidence is retained.
+- **Unchanged-map capture and victory, both colors:** controlled interface
+  tests relocate the defender through its visible controls, capture its town,
+  then explicitly end turns. Both games end naturally on day eight while the
+  defender retained its hero until the seven-day loss. These are mechanics
+  checks, not random-policy results or demonstrations. They establish that
+  existing routing, capture and natural victory are reachable without army
+  transfer, a new action, or a map/rule change.
+
+`validation/probes/audit_ordinary_behavior.py` reproduces the preceding
+four-game behavior counts from manifest-bound player histories alone. It treats
+closed hero-window armies as timestamped historical observations. That cohort
+had only one town-targeting move among 426 moves made while an opponent town
+was visible. Navigation consumed 77.3% of all choices; all 1,998 recruited
+creatures entered town garrisons. In one game both heroes died while both towns
+survived. Standard defeat requires losing both heroes and towns (or seven days
+without a town); the unchanged map forbids taverns. With no hero sources or
+moving armies, this state cannot become conquering through the supported
+actions. It remains nonterminal, never a synthetic loss or draw. Other games
+retain heroes and still make few capture attempts. Sparse terminal feedback is
+therefore an observed behavior/capability limitation, not evidence that the
+engine cannot end a normal game. Army transfer is outside the current interface
+and is not required for the demonstrated capture route.
+
+The new 16-attempt ordinary cohort also finished with **0/16 natural endings
+and 16/16 valid day cutoffs**, with no unsupported-interface, technical or
+collection failures. Its 26,874 choices include 20,241 navigation actions
+(75.3%), 65 constructions and 668 recruitments. All 7,769 recruited creatures
+entered town garrisons; no town changed ownership. Only five of 1,949 moves made
+while an opponent town was visible selected such a town. There were twelve
+hero-loss events and one both-heroes-dead episode. These observed actions and
+limits explain the measured sparsity without inventing rewards or concluding
+that ordinary victories are impossible. The eight engine seeds are paired
+across seats, not sixteen independent seed samples.
+
+`validation/contextual-gaps-2026-10-25.json` records the complete follow-up:
+all sixteen ordinary attempts and thirteen mechanics attempts, exact sources,
+all retained failed probes, native replay and neural audits. The dated
+`validation/assemble_contextual_gaps_2026_10_25.py` is a byte-identical tracked
+copy of the evidence assembler. Raw recordings remain ignored. Final local
+validation passes 546 tests with zero skips and exact prepared-engine agreement.
+Across the separate cohorts, the 29 attempts comprise five diagnostic natural
+endings, 23 valid cutoffs and one failed early neutral-terminal attempt. All 28
+valid recordings independently replay with zero unchecked records; all sixteen
+ordinary neural recordings reproduce their action probabilities and values
+exactly. These counts do not pool diagnostics into ordinary outcome frequency.
+
+Initial/timer-origin terminals remain explicitly outside the supported profile.
+The actual recorded starts have no human players and timers disabled; the
+pinned timer implementation acts only for human players. Source/config tests
+and receipt rejection tests cover those exclusions, not hypothetical timer
+games. An actual server-rejected movement acknowledgement remains unit-covered
+but was not induced by the serialized, prevalidated ordinary action interface;
+no live rejection claim is made. Broader dialogs, army editing, other maps,
+platforms and throughput remain outside this bounded validation.
+
+The user's later readiness clarification supersedes the earlier proposal to
+require four ordinary natural endings before a first update. A zero-outcome
+untrained cohort is sparse-feedback evidence, not by itself a correctness
+failure or a requirement for competent behavior before learning. The relevant
+conditions are correct player-local experience, native action effects and
+replay, validated natural/cutoff/failure boundaries, and an explicit reviewed
+launch budget. Without terminal events, zero-reward cutoffs can supply only
+bootstrap-based targets; they provide no observed victory signal and cannot
+establish strategic improvement.
+
+The next authorized implementation is explicit town-garrison-to-visiting-hero
+transfer: selected source/destination slots and exact count, native ownership,
+capacity, split/merge and minimum-army rules, no automatic loading. Hero hiring,
+tavern/map/rule/reward changes remain excluded. Add versioned current town
+views, history and policy support, then validate real effects and replay before
+preparing a small first training proposal. That proposal must bind sources,
+map and random checkpoints, fixed opponents, both-color held-out evaluation,
+local compute/time/episode/update caps, resumable checkpoints and stop rules.
+Preparation does not authorize execution; ask for launch approval only when
+that concrete proposal and its correctness evidence are ready. No gameplay
+optimizer update, training campaign, paid compute or merge has been performed.
 
 ### Continue in a new chat
 
