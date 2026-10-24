@@ -5,21 +5,20 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** the first bounded headless gameplay experiment completed
-one PPO update (ten optimizer steps), then stopped during checkpoint reload
-verification after six of ten planned attempts. The saved model/Adam/RNG state
-reloads correctly in an independent read-only audit; the executor's ordered-map
-comparison caused the stop. Four after-evaluation attempts were not launched.
-All six games were valid 256-choice cutoffs, with no natural outcome or terminal
-reward. Changed policy/value weights do not demonstrate improved strategy.
+**Current milestone:** all ten planned attempts from the first bounded experiment
+are recorded across the original stopped run and a separately authorized
+four-game evaluation continuation. The original run completed one PPO update
+(ten optimizer steps). The continuation loaded its saved checkpoint, performed
+zero optimizer steps and completed all four missing evaluations. All ten games
+were valid 256-choice cutoffs, without a natural outcome or terminal reward.
+The before/after behavior comparison does not establish improved strategy.
 
 The contextual v4 interface supports navigation, construction, recruitment and
 explicit troop transfer. Policy and value use only their player's ordered
 visible history with separate recurrent memory. Rules, fog and terminal-only
-rewards are unchanged. The original run remains stopped. The user has separately
-authorized exactly the four missing after-evaluation games from its saved
-checkpoint, with no new optimizer steps and only the original remaining time
-budget. Raw artifacts and the saved checkpoint remain local. Draft PRs remain
+rewards are unchanged. The original stopped record is preserved. Both bounded
+authorizations are now consumed; no further game or optimizer update is
+authorized. Raw artifacts and checkpoints remain local. Draft PRs remain
 unmerged; other platforms are not validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
@@ -1844,7 +1843,7 @@ with an approval hash to bypass the repair's changed source. Future execution
 requires a newly reviewed plan and explicit authorization. The original
 experiment remains stopped with the four after-evaluation games absent.
 
-#### Authorized evaluation-only continuation
+#### Completed evaluation-only continuation
 
 The user has separately authorized the four missing after-evaluation attempts
 from the saved post-update checkpoint, without any additional PPO update or
@@ -1855,12 +1854,62 @@ colors, with the original paired policy-sampling seeds. Each attempt retains
 the 256-choice/30-day limits and one Torch CPU thread. The remaining execution
 budget is 3,435.148213 seconds after subtracting the original run's elapsed time.
 
-A separate evaluation-only plan will bind the current implementation and the
-original stopped report, saved checkpoint, frozen opponent, map and native
-runtime. The original plan remains invalid against changed source and will not
-be bypassed or rewritten. All new experience is diagnostic and excluded from
-optimizer admission. Correctness failures stop the continuation without
-replacement attempts. The original stopped result remains immutable.
+The separate evaluation-only runner `experiments.learner.evaluate_continuation`
+strictly loads the saved model and frozen opponent without constructing an
+optimizer or restoring training RNG. Its new plan binds implementation `914ede1`,
+the original stopped report and checkpoint, unchanged map and native runtime.
+Plan SHA-256 is
+`a4c7945e4ab3dbd6f83c9626242da6ca608242e1ef5f710418488d8d11fbc5a8`.
+The original plan still fails its source-identity gate; no bypass occurred.
+Seven new tests and nine existing checkpoint/receipt tests pass, with an
+independent review and exact prepared-engine agreement before launch.
+
+All four authorized attempts completed in **64.610123 seconds**, bringing the
+original execution plus continuation to **229.461910 seconds** of the 3,600-second
+budget. Every game reached a valid 256-choice collection cutoff; all terminal
+outcomes/rewards remain null, and all ordinary sample rewards are zero. There
+were no technical failures, replacements or retries. Each history, native replay
+and behavior reconstruction passed, with zero unchecked replay records. Both
+policy hashes and the original checkpoint/report bytes remain unchanged.
+**No additional PPO update or optimizer step occurred.** All new trajectories
+are diagnostic and excluded from optimizer admission.
+
+The paired comparison below reports the learner's own behavior. All eight
+before/after games have the same unscored cutoff result; the 256-choice cap is
+shared across both players, so the learner's choice count can differ. Arrows
+mean before → after; movement counts only actions whose returned endpoint
+changed. Recruitment and transfer columns count creatures in accepted actions.
+
+| Engine seed / learner | Last sampled day | Learner choices | Changed movement endpoint | Built | Recruited | Transferred | Observed battles |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 99201 / Red | 16 → 13 | 148 → 163 | 1 → 3 | 1 → 1 | 27 → 23 | 0 → 0 | 0 → 0 |
+| 99201 / Blue | 17 → 19 | 162 → 138 | 4 → 0 | 1 → 1 | 26 → 14 | 21 → 14 | 1 → 0 |
+| 99202 / Red | 21 → 21 | 112 → 112 | 1 → 1 | 1 → 1 | 25 → 25 | 0 → 0 | 0 → 0 |
+| 99202 / Blue | 16 → 16 | 119 → 119 | 1 → 1 | 1 → 1 | 14 → 14 | 12 → 12 | 0 → 0 |
+
+Across the four learner trajectories, window navigation changes from 388/541
+choices (71.7%) to 391/532 (73.5%). Movement attempts change from 47 to 41,
+with changed endpoints from seven to five. There are four constructions in each
+phase, recruitment actions decrease from 19 to 16 (92 → 76 creatures), and
+transfer actions from 14 to 13 (33 → 26 creatures). The learner observes one
+completed battle before and none after. No owned town changes or observed
+captures appear in either phase. These are descriptive counts, not evidence
+of improvement or deterioration. Matched seeds do not keep later observations
+or environment RNG consumption fixed after different policy choices. Four games
+per phase and no observed terminal feedback cannot establish strategic gain.
+
+`validation/after-evaluation-comparison-2026-10-25.json` records every pair,
+learner-only and both-player aggregates, exact identities and elapsed times.
+Its read-only assembler is `validation/compare_after_evaluation_2026_10_25.py`.
+In a fresh process it exactly reconstructs all **2,048 seeded actions, 2,064
+values and 3,657 conditional probabilities** across the eight evaluation games.
+All 340 original evidence bindings are reconciled: captured files are unchanged;
+the two intentionally repaired implementation files match their historical Git
+blobs. The new evidence binds 439 artifacts, including the original stopped
+result, current source, four native replays and preflight logs. Raw continuation
+data remains in `runs/after-evaluation-2026-10-25/`. This closes the authorized
+comparison; it does not restart the stopped original run or authorize another
+game or update.
 
 ### Continue in a new chat
 
@@ -1890,20 +1939,23 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The current handoff is `codex/first-gameplay-run` (draft PR #13), stacked on
-`codex/troop-transfer` (draft PR #12), then `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
+The current handoff is `codex/after-evaluation`, stacked on
+`codex/first-gameplay-run` (draft PR #13), `codex/troop-transfer` (draft PR #12),
+then `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
 barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
 preparation are implemented and locally validated as described above. Read
 `validation/contextual-gaps-2026-10-25.json`,
 `validation/troop-transfer-2026-10-25.json` and
 `validation/first-training-preparation-2026-10-25.json` for current evidence and
 the original proposal, plus `validation/first-gameplay-2026-10-25.json` for its
-stopped execution. The user authorized Codex to finish the paused
-contextual work; Claude's separately scoped simulation/performance work remains
+stopped execution, and `validation/after-evaluation-comparison-2026-10-25.json`
+for the completed four-game evaluation continuation. The user authorized Codex
+to finish the paused contextual work; Claude's separately scoped simulation/performance work remains
 coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
 training. The saved plan received one-execution approval and stopped as
-recorded above. A separate authorization now covers only its four missing
-after-evaluation games; no additional optimization or broader run is authorized.
+recorded above. The separately authorized four-game after-evaluation is now
+complete with zero additional optimizer steps. Both authorizations are consumed;
+no additional game, optimization or broader run is authorized.
 
 Earlier v2/v3 validation and the original three truncated rendered self-play
 runs remain separate historical evidence. Historical contextual recordings
