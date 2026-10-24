@@ -1,0 +1,422 @@
+{
+  "date": "2026-10-24",
+  "scope": "Real native paired-perspective recorder validation; built-in AI only; no RL training",
+  "runs": [
+    {
+      "run": "runs/recorder-dual-005",
+      "manifest_sha256": "f61564cddc80f414d8a86071bdf1a480c6d50325f43ff64996f8535341dcce4a",
+      "kind": "recorder-smoke",
+      "episode": 5,
+      "map": {
+        "name": "Key to Victory.h3m",
+        "sha256": "2086c92b1494bba66f80164d654afcad6d3065fcc458d1e5a7f43ad02421c7e1"
+      },
+      "seed": 12345,
+      "policy": {
+        "checkpoint": null,
+        "label": "Built-in Nullkiller (no learning)"
+      },
+      "opponent": {
+        "difficulty": "Easy",
+        "difficulty_index": 0,
+        "module": "Nullkiller"
+      },
+      "observer": {
+        "player": "red",
+        "player_index": 0
+      },
+      "status": "timeout",
+      "outcome": null,
+      "outcome_player": "red",
+      "termination_reason": "frame_limit",
+      "recording_valid": true,
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 0,
+            "use_object_graph": false
+          },
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 65,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "2dc9e711fbcb4a5f98f4d5fa82339286c5db53fa7c0bc15c6e69d71d4a82814b",
+        "observer_player_index": 0,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 2592,
+        "validated": true
+      },
+      "paired_capture_validation": {
+        "frames": 120,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "observer_player_index",
+          "visible_tiles",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "engine": {
+        "binary": "vcmi/build/bin/vcmiclient",
+        "binary_sha256": "340098a1ca3de5bb383fd39a35c1defa94e509746705bb81c38681c79731bf29",
+        "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+        "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+        "engine/ExplorerRL/ExplorerRL.cpp": "97152e4d36b3b9963c2a76dbef298471fc6fdd326665d5a104d6a9e835843f13",
+        "engine/ExplorerRL/ExplorerRL.h": "6afbd62a997b598cec003b94a0c7cb9c1a01901efc964d86a108011597d70db0",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "06a7610686bad46b12c310ce85f5125fbaf6e7e2c7247895b18361701e54aa7f",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b"
+      },
+      "recordings": {
+        "omniscient": {
+          "capture": {
+            "directory": "frames/omniscient",
+            "elapsed_seconds": 24.673905,
+            "final_game_day": 3,
+            "final_visible_tiles": 221,
+            "fps": 6,
+            "frames": 120,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 65,
+            "ledger_sha256": "3338af8e1a26159224437b0d1c785a28ada3902c0f8ab3e67a4c846bf3e427ed",
+            "source": "native SDL game surface"
+          },
+          "encoded_video": {
+            "capture_elapsed_seconds": 24.673905,
+            "codec": "h264",
+            "duration_seconds": 20.0,
+            "fps": 6,
+            "frames": 120,
+            "height": 720,
+            "output": "runs/recorder-dual-005/omniscient.mp4",
+            "pixel_format": "yuv420p",
+            "width": 960
+          },
+          "perspective": {
+            "mode": "omniscient",
+            "player": null,
+            "player_index": null
+          },
+          "recording_valid": true,
+          "video": "omniscient.mp4",
+          "video_sha256": "4129657e8f4c964afffbd935a6a0a079589f91806a1c2455c3706aff92df9406"
+        },
+        "player": {
+          "capture": {
+            "directory": "frames/player",
+            "elapsed_seconds": 24.673905,
+            "final_game_day": 3,
+            "final_visible_tiles": 221,
+            "fps": 6,
+            "frames": 120,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 65,
+            "ledger_sha256": "b7fef8b1bee78b046f54e19da60f797d62db4cec80cbc21f91d1610f7beed4c6",
+            "source": "native SDL game surface"
+          },
+          "encoded_video": {
+            "capture_elapsed_seconds": 24.673905,
+            "codec": "h264",
+            "duration_seconds": 20.0,
+            "fps": 6,
+            "frames": 120,
+            "height": 720,
+            "output": "runs/recorder-dual-005/player-red.mp4",
+            "pixel_format": "yuv420p",
+            "width": 960
+          },
+          "perspective": {
+            "mode": "player",
+            "player": "red",
+            "player_index": 0
+          },
+          "recording_valid": true,
+          "video": "player-red.mp4",
+          "video_sha256": "a544f9ea7ebe9f2e43ebc4ce5029f48410830f1e47dbb800c7713668bb60fe53"
+        }
+      },
+      "player_cheated_packet_seen": false,
+      "map_reveal_command_seen": false
+    },
+    {
+      "run": "runs/recorder-player-006",
+      "manifest_sha256": "8bb3ccc7f524caaf2cff96d797fb5939533b0b10d10ab30128d1ef27d5e7e639",
+      "kind": "recorder-smoke",
+      "episode": 6,
+      "map": {
+        "name": "Key to Victory.h3m",
+        "sha256": "2086c92b1494bba66f80164d654afcad6d3065fcc458d1e5a7f43ad02421c7e1"
+      },
+      "seed": 54321,
+      "policy": {
+        "checkpoint": null,
+        "label": "Built-in Nullkiller (no learning)"
+      },
+      "opponent": {
+        "difficulty": "Easy",
+        "difficulty_index": 0,
+        "module": "Nullkiller"
+      },
+      "observer": {
+        "player": "blue",
+        "player_index": 1
+      },
+      "status": "timeout",
+      "outcome": null,
+      "outcome_player": "red",
+      "termination_reason": "frame_limit",
+      "recording_valid": true,
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 0,
+            "use_object_graph": false
+          },
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 97,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "2dc9e711fbcb4a5f98f4d5fa82339286c5db53fa7c0bc15c6e69d71d4a82814b",
+        "observer_player_index": 1,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 2592,
+        "validated": true
+      },
+      "engine": {
+        "binary": "vcmi/build/bin/vcmiclient",
+        "binary_sha256": "9742ea856977cdbe7caafade22cd6dab27672703ca6ede0c22292dce61da6e44",
+        "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+        "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+        "engine/ExplorerRL/ExplorerRL.cpp": "97152e4d36b3b9963c2a76dbef298471fc6fdd326665d5a104d6a9e835843f13",
+        "engine/ExplorerRL/ExplorerRL.h": "6afbd62a997b598cec003b94a0c7cb9c1a01901efc964d86a108011597d70db0",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b"
+      },
+      "recordings": {
+        "player": {
+          "capture": {
+            "directory": "frames/player",
+            "elapsed_seconds": 5.929852,
+            "final_game_day": 2,
+            "final_visible_tiles": 160,
+            "fps": 6,
+            "frames": 36,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 97,
+            "ledger_sha256": "d63d57c67c759fd1b55a345e00f48a1e2771d3a83c713ae3cca850afead8a2e2",
+            "source": "native SDL game surface"
+          },
+          "perspective": {
+            "mode": "player",
+            "player": "blue",
+            "player_index": 1
+          },
+          "recording_valid": true,
+          "video": null
+        }
+      },
+      "player_cheated_packet_seen": false,
+      "map_reveal_command_seen": false
+    },
+    {
+      "run": "runs/recorder-omniscient-007",
+      "manifest_sha256": "271d20773c80ec79604a8c1483a67284f17655c1f11ba46dbecfc796219a6e3c",
+      "kind": "recorder-smoke",
+      "episode": 7,
+      "map": {
+        "name": "Key to Victory.h3m",
+        "sha256": "2086c92b1494bba66f80164d654afcad6d3065fcc458d1e5a7f43ad02421c7e1"
+      },
+      "seed": 54321,
+      "policy": {
+        "checkpoint": null,
+        "label": "Built-in Nullkiller (no learning)"
+      },
+      "opponent": {
+        "difficulty": "Easy",
+        "difficulty_index": 0,
+        "module": "Nullkiller"
+      },
+      "observer": {
+        "player": "red",
+        "player_index": 0
+      },
+      "status": "timeout",
+      "outcome": null,
+      "outcome_player": "red",
+      "termination_reason": "frame_limit",
+      "recording_valid": true,
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 0,
+            "use_object_graph": false
+          },
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 65,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "2dc9e711fbcb4a5f98f4d5fa82339286c5db53fa7c0bc15c6e69d71d4a82814b",
+        "observer_player_index": 0,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 2592,
+        "validated": true
+      },
+      "engine": {
+        "binary": "vcmi/build/bin/vcmiclient",
+        "binary_sha256": "9742ea856977cdbe7caafade22cd6dab27672703ca6ede0c22292dce61da6e44",
+        "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+        "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+        "engine/ExplorerRL/ExplorerRL.cpp": "97152e4d36b3b9963c2a76dbef298471fc6fdd326665d5a104d6a9e835843f13",
+        "engine/ExplorerRL/ExplorerRL.h": "6afbd62a997b598cec003b94a0c7cb9c1a01901efc964d86a108011597d70db0",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b"
+      },
+      "recordings": {
+        "omniscient": {
+          "capture": {
+            "directory": "frames/omniscient",
+            "elapsed_seconds": 3.886166,
+            "final_game_day": 1,
+            "final_visible_tiles": 106,
+            "fps": 6,
+            "frames": 24,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 65,
+            "ledger_sha256": "d24f491d5e645685bc7d054ba24e176036694cb8c5dfe2623d08089caf5d3aa8",
+            "source": "native SDL game surface"
+          },
+          "perspective": {
+            "mode": "omniscient",
+            "player": null,
+            "player_index": null
+          },
+          "recording_valid": true,
+          "video": null
+        }
+      },
+      "player_cheated_packet_seen": false,
+      "map_reveal_command_seen": false
+    }
+  ],
+  "previews": [
+    {
+      "path": "videos/dual-view-005-player.mp4",
+      "sha256": "ce9199d84afaacd0f7e137ea1160a64b06856121c24ddc09e970ce43829ae4aa",
+      "video": {
+        "width": 1280,
+        "height": 720,
+        "frames": 600,
+        "duration_seconds": 20.0,
+        "codec": "h264",
+        "pixel_format": "yuv420p"
+      },
+      "view": "player",
+      "manifest_sha256": "b1050f14343783068d24df3b4441e16fe5f39d20ab9123030f1c0970f2451516",
+      "selected_episodes": [
+        5
+      ]
+    },
+    {
+      "path": "videos/dual-view-005-omniscient.mp4",
+      "sha256": "a72cdb22a0a482b617d8b22ad90386cc17b1a1947987a93a6d1c694a40ec080f",
+      "video": {
+        "width": 1280,
+        "height": 720,
+        "frames": 600,
+        "duration_seconds": 20.0,
+        "codec": "h264",
+        "pixel_format": "yuv420p"
+      },
+      "view": "omniscient",
+      "manifest_sha256": "f567d8819c730cacb56187f4e39884d043f36c87f6c9cebf8fea8ff74736f0e9",
+      "selected_episodes": [
+        5
+      ]
+    }
+  ],
+  "checks": {
+    "native_client_server_nullkiller_build": "passed",
+    "python_tests": 20,
+    "python_tests_result": "passed",
+    "dependency_recipe_exact_match": "passed",
+    "paired_samples": 120,
+    "pairs_with_different_pixels": 120,
+    "visual_review": [
+      "Red paired frame30: terrain and minimap masked only in player view",
+      "Red player frame120: exploration expanded while distant map remains hidden",
+      "Blue player-only frame30: blue territory visible and red territory hidden",
+      "Both labelled MP4 previews at5s inspected"
+    ],
+    "single_view_modes": "player-only blue and omniscient-only red passed native runs"
+  },
+  "limitations": [
+    "All runs stopped at frame limits and have no scored outcome.",
+    "Effective cheats/open_map/object_graph flags and actual fog counts checked; this is not a full audit of every built-in AI callback.",
+    "Player view uses the selected team fog with spectator sidebars, not an internal AI-state visualization.",
+    "The paired demo predates a log-only change casting difficulty to int; final binaries verified with both single-view runs.",
+    "Historical recorder-smoke-003/004 had open-map cheats enabled and are not fog-valid."
+  ]
+}

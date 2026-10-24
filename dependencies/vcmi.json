@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "name": "VCMI",
+  "repository": "https://github.com/vcmi/vcmi.git",
+  "ref": "1.7.5",
+  "commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+  "directory": "vcmi",
+  "patch_directory": "engine/patches",
+  "overlays": [
+    {
+      "source": "engine/ExplorerRL",
+      "destination": "AI/ExplorerRL"
+    }
+  ],
+  "initialize_upstream_submodules": true,
+  "license": {
+    "source_code": "GPL-2.0-or-later",
+    "upstream_license_file": "license.txt",
+    "upstream_notice": "docs/readme.md",
+    "original_game_assets": "Heroes III game data is separately copyrighted, supplied by the user, and is not downloaded or redistributed by this project."
+  }
+}

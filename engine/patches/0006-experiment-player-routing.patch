@@ -1,0 +1,144 @@
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -41,6 +41,7 @@
+ #include "../lib/pathfinder/CGPathNode.h"
+ #include "../lib/serializer/GameConnection.h"
+ 
++#include <cstdlib>
+ #include <memory>
+ #include <vcmi/events/EventBus.h>
+ 
+@@ -252,6 +253,16 @@
+ 
+ void CClient::initPlayerInterfaces()
+ {
++	const auto explorerPlayer = configuredExplorerPlayer();
++	if(explorerPlayer)
++	{
++		if(!gameState().players.contains(*explorerPlayer) || !playerEnvironments.contains(*explorerPlayer))
++			throw std::runtime_error("EXPLORER_RL_PLAYER must name an active player controlled by this client");
++		const auto & player = gameState().getStartInfo()->playerInfos.at(*explorerPlayer);
++		if(!player.isControlledByAI() && !settings["session"]["onlyai"].Bool())
++			throw std::runtime_error("EXPLORER_RL_PLAYER cannot replace a human player interface");
++	}
++
+ 	for(const auto & playerInfo : gameState().getStartInfo()->playerInfos)
+ 	{
+ 		PlayerColor color = playerInfo.first;
+@@ -268,7 +279,7 @@
+ 					if (gameState().getPlayerTeam(allyInfo.first) == gameState().getPlayerTeam(playerInfo.first) && allyInfo.second.isControlledByHuman())
+ 						alliedToHuman = true;
+ 
+-				auto AiToGive = aiNameForPlayer(playerInfo.second, false, alliedToHuman);
++				auto AiToGive = explorerPlayer == color ? "ExplorerRL" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
+ 				logNetwork->info("Player %s will be lead by %s", color.toString(), AiToGive);
+ 				installNewPlayerInterface(CDynLibHandler::getNewAI(AiToGive), color);
+ 			}
+@@ -296,6 +307,16 @@
+ 		installNewBattleInterface(CDynLibHandler::getNewBattleAI(settings["ai"]["combatNeutralAI"].String()), PlayerColor::NEUTRAL);
+ 
+ 	logNetwork->trace("Initialized player interfaces %d ms", GAME->server().th->getDiff());
++}
++
++std::optional<PlayerColor> CClient::configuredExplorerPlayer() const
++{
++	const char * configured = std::getenv("EXPLORER_RL_PLAYER");
++	if(!configured)
++		return std::nullopt;
++	if(configured[0] < '0' || configured[0] > '7' || configured[1] != '\0')
++		throw std::runtime_error("EXPLORER_RL_PLAYER must be exactly one player index from 0 to 7");
++	return PlayerColor(configured[0] - '0');
+ }
+ 
+ std::string CClient::aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const
+diff --git a/client/Client.h b/client/Client.h
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -160,6 +160,7 @@
+ 	void initMapHandler();
+ 	void initPlayerEnvironments();
+ 	void initPlayerInterfaces();
++	std::optional<PlayerColor> configuredExplorerPlayer() const;
+ 	std::string aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const; //empty means no AI -> human
+ 	std::string aiNameForPlayer(bool battleAI, bool alliedToHuman) const;
+ 	void installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInterface, PlayerColor color, bool battlecb = false);
+diff --git a/client/CServerHandler.cpp b/client/CServerHandler.cpp
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -75,7 +75,7 @@
+ 
+ namespace
+ {
+-void writeExperimentMetadata(const CGameState & gameState)
++void writeExperimentMetadata(const CGameState & gameState, const CClient & client)
+ {
+ 	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+ 	if(!recordingDirectory || !*recordingDirectory)
+@@ -90,6 +90,10 @@
+ 	metadata["map_uri"].String() = options->mapname;
+ 	metadata["map_name"].String() = gameState.getMap().name.toString();
+ 	metadata["game_day"].Integer() = gameState.day;
++	if(const auto explorerPlayer = client.configuredExplorerPlayer())
++		metadata["requested_agent_player"].Integer() = explorerPlayer->getNum();
++	else
++		metadata["requested_agent_player"] = JsonNode();
+ 	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
+ 	{
+ 		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
+@@ -112,6 +116,11 @@
+ 		state["player_index"].Integer() = color.getNum();
+ 		state["team_index"].Integer() = player.team.getNum();
+ 		state["human"].Bool() = player.isHuman();
++		const auto interface = client.playerint.find(color);
++		if(interface != client.playerint.end())
++			state["adventure_ai"].String() = interface->second->dllName;
++		else
++			state["adventure_ai"] = JsonNode();
+ 		state["visible_tiles"].Integer() = std::count_if(fog.begin(), fog.end(), [](uint8_t visible) { return visible != 0; });
+ 		state["total_tiles"].Integer() = std::distance(fog.begin(), fog.end());
+ 		logGlobal->info("Experiment initial visibility: player=%d team=%d visible_tiles=%d total_tiles=%d",
+@@ -710,9 +719,6 @@
+ 
+ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
+ {
+-	// Validate and record actual state received from the server before any AI interface is created.
+-	writeExperimentMetadata(*gameState);
+-
+ 	if(GAME->mainmenu())
+ 		GAME->mainmenu()->disable();
+ 
+@@ -735,6 +741,10 @@
+ 	default:
+ 		throw std::runtime_error("Invalid mode");
+ 	}
++
++	// Interfaces are installed, but gameplay packets (including the first turn)
++	// are still queued until GAMEPLAY below. Record both initial fog and actual AI modules.
++	writeExperimentMetadata(*gameState, *client);
+ 
+ 	ENGINE->discord().setPlayingStatus(si, &gameState->getMap(), howManyPlayerInterfaces());
+ 
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -421,10 +421,15 @@
+ 		}
+ 	}
+ 
+-	// In auto testing pack.mode we always close client if red pack.player won or lose
+-	if(!settings["session"]["testmap"].isNull() && pack.player == PlayerColor(0))
+-	{
+-		logAi->info("Red player %s. Ending game.", pack.victoryLossCheckResult.victory() ? "won" : "lost");
++	// Default test-map sessions end on Red. Agent experiments wait for their
++	// selected player's synchronous gameOver callback, including terminal delivery.
++	const auto endingPlayer = cl.configuredExplorerPlayer().value_or(PlayerColor(0));
++	if(!settings["session"]["testmap"].isNull() && pack.player == endingPlayer)
++	{
++		if(pack.player == PlayerColor(0))
++			logAi->info("Red player %s. Ending game.", pack.victoryLossCheckResult.victory() ? "won" : "lost");
++		else
++			logAi->info("Experiment player %d %s. Ending game.", pack.player.getNum(), pack.victoryLossCheckResult.victory() ? "won" : "lost");
+ 
+ 		// A bounded experiment recording must finish without a spectator dialog.
+ 		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");

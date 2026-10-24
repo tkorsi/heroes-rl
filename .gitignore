@@ -1,0 +1,33 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+# Local credentials and machine-specific configuration.
+.env
+.env.*
+!.env.example
+# Unrelated local projects and installed games; preserve them outside Git.
+/HotA/
+/HotA.app/
+/VCMI.app/
+/breakout-rl/
+/breakout-rl.zip
+/build-logs/
+/INSTALLATION-REPORT.txt
+# Generated experiment outputs and the prepared external engine dependency.
+/runs/
+/videos/
+/vcmi/
+# Original game assets and installers are local dependencies, never source.
+*.h3m
+*.lod
+*.exe
+*.app/
+*.dmg
+*.pkg
+*.dll
+*.dylib
+*.so
+*.pt
+*.pth
+*.ckpt

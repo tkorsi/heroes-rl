@@ -1,0 +1,7 @@
+add_library(ExplorerRL SHARED ExplorerRL.cpp ExplorerRL.h main.cpp StdInc.cpp StdInc.h)
+target_include_directories(ExplorerRL PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ExplorerRL PRIVATE vcmi)
+add_dependencies(ExplorerRL BattleAI)
+install(TARGETS ExplorerRL LIBRARY DESTINATION ${AI_LIB_DIR})
+vcmi_set_output_dir(ExplorerRL "AI")
+enable_pch(ExplorerRL)

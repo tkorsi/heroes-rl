@@ -1,0 +1,355 @@
+diff --git a/client/CPlayerInterface.cpp b/client/CPlayerInterface.cpp
+index 81f2505..e1bff82 100644
+--- a/client/CPlayerInterface.cpp
++++ b/client/CPlayerInterface.cpp
+@@ -1362,6 +1362,10 @@ void CPlayerInterface::objectPropertyChanged(const SetObjectProperty * sop)
+ 
+ void CPlayerInterface::initializeHeroTownList()
+ {
++	// Spectators have no PlayerState, owned objects, or saved player preferences.
++	if(playerID.isSpectator())
++		return;
++
+ 	if(localState->getWanderingHeroes().empty())
+ 	{
+ 		for(auto & hero : cb->getHeroesInfo())
+diff --git a/client/Client.cpp b/client/Client.cpp
+index adad66c..cb6d4b7 100644
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -235,7 +235,8 @@ void CClient::initPlayerEnvironments()
+ 			hasHumanPlayer = true;
+ 	}
+ 
+-	if(!hasHumanPlayer && !settings["session"]["headless"].Bool())
++	// Preserve options supplied by an explicit spectator session.
++	if(!hasHumanPlayer && !settings["session"]["headless"].Bool() && !settings["session"]["spectate"].Bool())
+ 	{
+ 		Settings session = settings.write["session"];
+ 		session["spectate"].Bool() = true;
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+index 295572d..077dcd8 100644
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -49,6 +49,8 @@
+ #include "../lib/GameConstants.h"
+ #include "../lib/CPlayerState.h"
+ 
++#include <cstdlib>
++
+ // TODO: as Tow suggested these template should all be part of CClient
+ // This will require rework spectator interface properly though
+ 
+@@ -424,7 +426,10 @@ void ApplyClientNetPackVisitor::visitPlayerEndsGame(PlayerEndsGame & pack)
+ 	{
+ 		logAi->info("Red player %s. Ending game.", pack.victoryLossCheckResult.victory() ? "won" : "lost");
+ 
+-		GAME->onShutdownRequested(settings["session"]["spectate"].Bool()); // if spectator is active ask to close client or not
++		// A bounded experiment recording must finish without a spectator dialog.
++		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++		const bool recording = recordingDirectory && *recordingDirectory;
++		GAME->onShutdownRequested(settings["session"]["spectate"].Bool() && !recording);
+ 	}
+ }
+ 
+diff --git a/client/adventureMap/AdventureMapShortcuts.cpp b/client/adventureMap/AdventureMapShortcuts.cpp
+index 586efce..c9356e0 100644
+--- a/client/adventureMap/AdventureMapShortcuts.cpp
++++ b/client/adventureMap/AdventureMapShortcuts.cpp
+@@ -623,7 +623,8 @@ void AdventureMapShortcuts::moveHeroDirectional(const Point & direction)
+ 
+ bool AdventureMapShortcuts::optionCanViewQuests()
+ {
+-	return optionInMapView() && !GAME->interface()->cb->getPlayerState(GAME->interface()->playerID)->quests.empty();
++	return optionInMapView() && !GAME->interface()->playerID.isSpectator()
++		&& !GAME->interface()->cb->getPlayerState(GAME->interface()->playerID)->quests.empty();
+ }
+ 
+ bool AdventureMapShortcuts::optionCanToggleLevel()
+diff --git a/client/adventureMap/AdventureMapWidget.cpp b/client/adventureMap/AdventureMapWidget.cpp
+index e3bc8d3..10e6ed8 100644
+--- a/client/adventureMap/AdventureMapWidget.cpp
++++ b/client/adventureMap/AdventureMapWidget.cpp
+@@ -398,7 +398,8 @@ std::shared_ptr<CInfoBar> AdventureMapWidget::getInfoBar()
+ 
+ void AdventureMapWidget::setPlayerColor(const PlayerColor & player)
+ {
+-	setPlayerChildren(this, player);
++	// Adventure panel icons have frames for playable colors only.
++	setPlayerChildren(this, player.isValidPlayer() ? player : PlayerColor(0));
+ }
+ 
+ void AdventureMapWidget::setPlayerChildren(CIntObject * widget, const PlayerColor & player)
+diff --git a/client/adventureMap/CResDataBar.cpp b/client/adventureMap/CResDataBar.cpp
+index 7a6e167..ebd6f7e 100644
+--- a/client/adventureMap/CResDataBar.cpp
++++ b/client/adventureMap/CResDataBar.cpp
+@@ -85,7 +85,9 @@ void CResDataBar::showAll(Canvas & to)
+ 	//TODO: all this should be labels, but they require proper text update on change
+ 	for (auto & entry : resourcePositions)
+ 	{
+-		std::string text = std::to_string(GAME->interface()->cb->getResourceAmount(entry.first));
++		// A spectator has no treasury; do not query a nonexistent player state.
++		std::string text = GAME->interface()->playerID.isSpectator() ? "-"
++			: std::to_string(GAME->interface()->cb->getResourceAmount(entry.first));
+ 
+ 		to.drawText(pos.topLeft() + entry.second, FONT_SMALL, Colors::WHITE, ETextAlignment::TOPLEFT, text);
+ 	}
+@@ -101,6 +103,9 @@ void CResDataBar::setPlayerColor(PlayerColor player)
+ 
+ void CResDataBar::showPopupWindow(const Point & cursorPosition)
+ {
++	if(GAME->interface()->playerID.isSpectator())
++		return;
++
+ 	if((cursorPosition.x - pos.x) > 600)
+ 		return;
+ 
+diff --git a/client/eventsSDL/InputHandler.cpp b/client/eventsSDL/InputHandler.cpp
+index da1f40c..5d2fa96 100644
+--- a/client/eventsSDL/InputHandler.cpp
++++ b/client/eventsSDL/InputHandler.cpp
+@@ -36,6 +36,8 @@
+ #include <SDL_clipboard.h>
+ #include <SDL_power.h>
+ 
++#include <cstdlib>
++
+ InputHandler::InputHandler()
+ 	: enableMouse(settings["input"]["enableMouse"].Bool())
+ 	, enableTouch(settings["input"]["enableTouch"].Bool())
+@@ -241,7 +243,8 @@ void InputHandler::preprocessEvent(const SDL_Event & ev)
+ #ifdef VCMI_ANDROID
+ 		ENGINE->user().onShutdownRequested(false);
+ #else
+-		ENGINE->user().onShutdownRequested(true);
++		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++		ENGINE->user().onShutdownRequested(!(recordingDirectory && *recordingDirectory));
+ #endif
+ 		return;
+ 	}
+diff --git a/client/renderSDL/ScalableImage.cpp b/client/renderSDL/ScalableImage.cpp
+index 8eb3b03..a181b5f 100644
+--- a/client/renderSDL/ScalableImage.cpp
++++ b/client/renderSDL/ScalableImage.cpp
+@@ -399,12 +399,13 @@ void ScalableImageInstance::setEffectColor(const ColorRGBA & color)
+ 
+ void ScalableImageInstance::playerColored(const PlayerColor & player)
+ {
+-	parameters.player = player;
++	// The image cache has entries only for the eight players and neutral.
++	parameters.player = player.isValidPlayer() || player == PlayerColor::CANNOT_DETERMINE ? player : PlayerColor::NEUTRAL;
+ 
+ 	if (parameters.palette)
+-		parameters.playerColored(player);
++		parameters.playerColored(parameters.player);
+ 
+-	image->preparePlayerColoredImage(player);
++	image->preparePlayerColoredImage(parameters.player);
+ }
+ 
+ void ScalableImageParameters::playerColored(PlayerColor playerColor)
+diff --git a/client/renderSDL/ScreenHandler.cpp b/client/renderSDL/ScreenHandler.cpp
+index 09819e1..8189fbe 100644
+--- a/client/renderSDL/ScreenHandler.cpp
++++ b/client/renderSDL/ScreenHandler.cpp
+@@ -40,12 +40,164 @@
+ #endif
+ 
+ #include <SDL.h>
++#include <SDL_image.h>
++
++#include <chrono>
++#include <cstdio>
++#include <cstdlib>
++#include <iomanip>
++#include <locale>
++#include <sstream>
+ 
+ // TODO: should be made into a private members of ScreenHandler
+ SDL_Renderer * mainRenderer = nullptr;
+ 
+ static constexpr Point heroes3Resolution = Point(800, 600);
+ 
++/// Opt-in experiment capture of the game surface, before window scaling and cursor rendering.
++class ScreenHandler::FrameRecorder
++{
++	using Clock = std::chrono::steady_clock;
++	using File = std::unique_ptr<std::FILE, decltype(&std::fclose)>;
++
++	boost::filesystem::path directory;
++	File manifest{nullptr, &std::fclose};
++	Clock::time_point started;
++	Clock::time_point nextFrame;
++	std::chrono::duration<double> interval;
++	unsigned int maxFrames = 0;
++	unsigned int frameCount = 0;
++	bool stopped = false;
++
++	static unsigned int readSetting(const char * name, unsigned int fallback, unsigned int maximum)
++	{
++		const char * value = std::getenv(name);
++		if(!value)
++			return fallback;
++
++		unsigned int result = 0;
++		for(const char * digit = value; *digit; ++digit)
++		{
++			if(*digit < '0' || *digit > '9' || result > (maximum - (*digit - '0')) / 10)
++				throw std::runtime_error(std::string(name) + " must be an integer from 1 to " + std::to_string(maximum));
++			result = result * 10 + (*digit - '0');
++		}
++		if(result == 0 || result > maximum)
++			throw std::runtime_error(std::string(name) + " must be an integer from 1 to " + std::to_string(maximum));
++		return result;
++	}
++
++	static File createFile(const boost::filesystem::path & path)
++	{
++		// Exclusive creation prevents overwriting another run, including after initialization.
++		File file(std::fopen(path.string().c_str(), "wbx"), &std::fclose);
++		if(!file)
++			throw std::runtime_error("Cannot exclusively create recording file: " + path.string());
++		return file;
++	}
++
++	static void writeText(std::FILE * file, const std::string & text)
++	{
++		if(std::fwrite(text.data(), 1, text.size(), file) != text.size() || std::fflush(file) != 0)
++			throw std::runtime_error("Cannot write recording metadata");
++	}
++
++	void reportError(const std::string & message)
++	{
++		stopped = true;
++		logGlobal->error("Experiment recording failed: %s", message);
++		try
++		{
++			// Before exclusive manifest creation this directory may belong to a previous run.
++			// Do not add an error marker that would invalidate that run's existing evidence.
++			if(manifest && directory.is_absolute() && boost::filesystem::is_directory(directory))
++			{
++				auto errorFile = createFile(directory / "recording-error.txt");
++				writeText(errorFile.get(), message + "\n");
++			}
++		}
++		catch(const std::exception & error)
++		{
++			logGlobal->error("Cannot write recording error marker: %s", error.what());
++		}
++	}
++
++public:
++	explicit FrameRecorder(const char * outputDirectory)
++		: directory(outputDirectory)
++	{
++		try
++		{
++			if(directory.empty() || !directory.is_absolute())
++				throw std::runtime_error("VCMI_RECORD_DIR must be an absolute directory path");
++			boost::filesystem::create_directories(directory);
++			for(const auto & entry : boost::filesystem::directory_iterator(directory))
++			{
++				const auto name = entry.path().filename().string();
++				if(name == "frames.jsonl" || name.rfind("recording-", 0) == 0 || (name.rfind("frame", 0) == 0 && entry.path().extension() == ".png"))
++					throw std::runtime_error("Recording directory contains previous output: " + entry.path().string());
++			}
++			interval = std::chrono::duration<double>(1.0 / readSetting("VCMI_RECORD_FPS", 6, 60));
++			maxFrames = readSetting("VCMI_RECORD_MAX_FRAMES", 3600, 1000000);
++			manifest = createFile(directory / "frames.jsonl");
++			logGlobal->info("Experiment recording enabled: %s (maximum %u frames)", directory.string(), maxFrames);
++		}
++		catch(const std::exception & error)
++		{
++			reportError(error.what());
++			throw;
++		}
++	}
++
++	void capture(SDL_Surface * surface)
++	{
++		if(stopped)
++			return;
++		const auto now = Clock::now();
++		if(frameCount && now < nextFrame)
++			return;
++
++		try
++		{
++			if(!frameCount)
++				started = now;
++			std::ostringstream filename;
++			filename.imbue(std::locale::classic());
++			filename << "frame" << std::setfill('0') << std::setw(6) << frameCount + 1 << ".png";
++			auto file = createFile(directory / filename.str());
++			SDL_RWops * output = SDL_RWFromFP(file.get(), SDL_FALSE);
++			if(!output)
++				throw std::runtime_error(std::string("Cannot open PNG output: ") + SDL_GetError());
++			if(IMG_SavePNG_RW(surface, output, 1) != 0)
++				throw std::runtime_error(std::string("Cannot save PNG frame: ") + IMG_GetError());
++			if(std::fflush(file.get()) != 0)
++				throw std::runtime_error("Cannot flush PNG frame");
++
++			std::ostringstream metadata;
++			metadata.imbue(std::locale::classic());
++			metadata << "{\"index\":" << frameCount + 1
++				<< ",\"file\":\"" << filename.str() << "\",\"elapsed_seconds\":"
++				<< std::fixed << std::setprecision(6) << std::chrono::duration<double>(now - started).count()
++				<< ",\"width\":" << surface->w << ",\"height\":" << surface->h << "}\n";
++			writeText(manifest.get(), metadata.str());
++			++frameCount;
++			// Do not synthesize catch-up frames if PNG encoding or gameplay took longer than the interval.
++			nextFrame = now + std::chrono::duration_cast<Clock::duration>(interval);
++			if(frameCount == maxFrames)
++			{
++				auto limitFile = createFile(directory / "recording-limit-reached.txt");
++				writeText(limitFile.get(), std::to_string(frameCount) + "\n");
++				stopped = true;
++				logGlobal->info("Experiment recording reached frame limit: %u", frameCount);
++			}
++		}
++		catch(const std::exception & error)
++		{
++			reportError(error.what());
++		}
++	}
++};
++
+ std::tuple<int, int> ScreenHandler::getSupportedScalingRange() const
+ {
+ 	// H3 resolution, any resolution smaller than that is not correctly supported
+@@ -213,6 +365,9 @@ EWindowMode ScreenHandler::getPreferredWindowMode() const
+ 
+ ScreenHandler::ScreenHandler()
+ {
++	if(const char * directory = std::getenv("VCMI_RECORD_DIR"))
++		frameRecorder = std::make_unique<FrameRecorder>(directory);
++
+ #ifdef VCMI_WINDOWS
+ 	// set VCMI as "per-monitor DPI awareness". This completely disables any DPI-scaling by system.
+ 	// Might not be the best solution since VCMI can't automatically adjust to DPI changes (including moving to monitors with different DPI scaling)
+@@ -661,6 +816,10 @@ Canvas ScreenHandler::getScreenCanvas() const
+ 
+ void ScreenHandler::updateScreenTexture()
+ {
++	// updateScreenTexture runs under the interface mutex after the current UI is drawn.
++	if(frameRecorder && screen && GAME && GAME->interface() && GAME->server().getState() == EClientState::GAMEPLAY)
++		frameRecorder->capture(screen);
++
+ 	if(colorScheme == ColorScheme::NONE)
+ 	{
+ 		SDL_UpdateTexture(screenTexture, nullptr, screen->pixels, screen->pitch);
+diff --git a/client/renderSDL/ScreenHandler.h b/client/renderSDL/ScreenHandler.h
+index 5098e6c..fa40b13 100644
+--- a/client/renderSDL/ScreenHandler.h
++++ b/client/renderSDL/ScreenHandler.h
+@@ -44,6 +44,9 @@ enum class EUpscalingFilter
+ /// This class is responsible for management of game window and its main rendering surface
+ class ScreenHandler final : public IScreenHandler
+ {
++	class FrameRecorder;
++	std::unique_ptr<FrameRecorder> frameRecorder;
++
+ 	SDL_Window * mainWindow = nullptr;
+ 	SDL_Texture * screenTexture = nullptr;
+ 	SDL_Surface * screen = nullptr;

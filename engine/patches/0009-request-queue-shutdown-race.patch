@@ -1,0 +1,56 @@
+diff --git a/client/Client.h b/client/Client.h
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -55,13 +55,15 @@
+ 	std::vector<T> items;
+ 	std::mutex mx;
+ 	std::condition_variable cond;
+-	std::atomic<bool> isTerminating = false;
++	bool isTerminating = false; // protected by mx together with items
+ 
+ public:
+ 	void requestTermination()
+ 	{
++		TLock lock(mx);
+ 		isTerminating = true;
+-		clear();
++		items.clear();
++		cond.notify_all();
+ 	}
+ 
+ 	void clear()
+@@ -73,9 +75,9 @@
+ 
+ 	void pushBack(const T & item)
+ 	{
+-		assert(!isTerminating);
+-
+-		TLock lock(mx);
++		TLock lock(mx);
++		if(isTerminating)
++			throw TerminationRequestedException();
+ 		items.push_back(item);
+ 		cond.notify_all();
+ 	}
+@@ -83,7 +85,7 @@
+ 	void waitWhileContains(const T & item)
+ 	{
+ 		TLock lock(mx);
+-		cond.wait(lock, [this, &item](){ return !vstd::contains(items, item);});
++		cond.wait(lock, [this, &item](){ return isTerminating || !vstd::contains(items, item);});
+ 
+ 		if (isTerminating)
+ 			throw TerminationRequestedException();
+@@ -91,9 +93,9 @@
+ 
+ 	bool tryRemovingElement(const T & item) //returns false if element was not present
+ 	{
+-		assert(!isTerminating);
+-
+-		TLock lock(mx);
++		TLock lock(mx);
++		if(isTerminating)
++			return false; // A late acknowledgement cannot revive a terminated request queue.
+ 		auto itr = vstd::find(items, item);
+ 		if(itr == items.end()) //not in container
+ 		{
