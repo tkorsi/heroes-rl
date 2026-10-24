@@ -974,6 +974,52 @@ class HeadlessEnvTests(unittest.TestCase):
                 self.assertEqual(end.bootstrap, {"red": None, "blue": None})
                 self.assert_superseded(env, end, "red")
 
+    def test_a_game_that_ended_before_a_horizon_took_effect_completes_naturally(self):
+        # Red's action horizon is declared at the decision the terminal supersedes, so no action follows it.
+        limits = env_module.Limits(max_actions=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        for exited in (False, True):
+            with self.subTest(engine_exited=exited):
+                env = self.make(limits, mode="terminal_before_reply", end_day=2, exit_delay=0 if exited else 1.0)
+                settle = env._settle
+
+                def settle_after_the_terminals(env=env, settle=settle, exited=exited):
+                    if exited:
+                        self.wait_for(lambda: self.queued(env, "exit"))
+                    else:  # both terminals arrived before the stop took effect; the engine is still shutting down
+                        self.wait_for(lambda: sum(item[0] == "message" and item[2].get("type") == "terminal"
+                                                  for item in list(env.events.queue)) == 2)
+                        self.assertIsNone(env.process.poll())
+                    return settle()
+                env._settle = settle_after_the_terminals
+                end, _ = play(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+                self.assertEqual((end.status, end.termination_reason, end.rewards),
+                                 ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+                self.assertEqual((end.bootstrap, end.bootstrap_v1_seq), ({"red": None, "blue": None},) * 2)
+                self.assertIsNone(end.manifest["natural_terminal_after_horizon"])
+                for color in COLORS:
+                    self.assertEqual((end.manifest["players"][color]["cutoff"], end.manifest["players"][color]["limit"]),
+                                     (None, None))
+                self.assert_superseded(env, end, "red")
+
+    def test_a_horizon_answer_the_engine_never_took_leaves_the_natural_ending_scored(self):
+        fast = env_module.Limits(max_days=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        end, _ = play(self.make(fast, mode="reply_unconsumed", end_day=2),
+                      {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+        red = end.manifest["players"]["red"]
+        self.assertEqual((red["actions_unconsumed"], red["cutoff"]), (1, None))
+        self.assertIsNone(end.manifest["natural_terminal_after_horizon"])
+
+    def test_a_natural_ending_after_an_answered_horizon_stays_unscored(self):
+        # Red answers its first decision past the day horizon while Blue plays on to its own boundary.
+        fast = env_module.Limits(max_days=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        end, _ = play(self.make(fast, mode="natural", end_day=2), {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("truncated", "game_day_limit"))
+        self.assertEqual(end.manifest["natural_terminal_after_horizon"], {"red": "win", "blue": "loss"})
+        self.assertIsNotNone(end.bootstrap["red"])
+        self.assertEqual(end.manifest["players"]["red"]["cutoff"]["day"], 2)
+
     def test_replay_manifest_names_every_absent_ledger(self):
         env = self.make(env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
                         mode="natural", end_day=5)
