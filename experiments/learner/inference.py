@@ -168,7 +168,7 @@ def ordinary_summary(attempts, *, planned_attempts):
                         "Seats share engine seeds and opponents; attempts are paired, not independent seed samples.",
                         "Cutoffs and failures are unscored, never draws; they remain in the all-attempt denominator.",
                         "Completed-only outcome fractions are conditional on reaching a natural end within the budgets.",
-                        "Contextual replay remains unsupported; collection remains diagnostic and excluded from PPO."],
+                        "Replay verification is separate from collection; diagnostics remain excluded from PPO."],
     }
 
 
@@ -219,7 +219,7 @@ def run(args):
                           "map": str(args.game_map.resolve()), "map_sha256": digest(args.game_map)},
         "plan": [{"engine_seed": seed, "opponent": opponent, "learner_seats": [0, 1]}
                  for seed, opponent in plan],
-        "attempts": [], "contextual_replay": "unsupported",
+        "attempts": [], "contextual_replay": "not_verified_by_collector",
     }
     if ordinary:
         planned = {"schema": "heroes-contextual-ordinary-evaluation-plan-v1", "purpose": purpose,

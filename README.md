@@ -19,8 +19,10 @@ history/trajectory v2 contract and independent auditor are implemented and have
 bounded local real-game evidence. A separate v3 town extension now adds explicit
 construction and exact-count recruitment, with bounded native validation of
 prices, daily limits, stock, armies, rejection and episode boundaries.
-Contextual replay and wider interaction coverage remain unfinished; training
-remains disabled. The neural implementation and its separate validation scope
+Fresh contextual capture now has independent native replay and terminal-barrier
+verification with bounded local evidence. Ordinary natural outcomes and wider
+interaction coverage remain gates; training remains disabled. The neural
+implementation and its separate validation scope
 are described under **Contextual neural integration and PPO** below.
 Its agreed movement action selects a destination coordinate for engine routing;
 the existing adjacent-step baseline stays separate. Other platforms are not yet
@@ -605,7 +607,8 @@ A valid consumed operation that the native UI rejects is recorded distinctly
 from a server-issued request. All ordinary rewards remain zero. New panels obey
 the same immutable-history, intervening-event and paired-finalization rules;
 cutoff continuation explicitly unwinds their parent panels outside the frozen
-learner prefixes. Contextual replay, including v3, remains unsupported.
+learner prefixes. Historical contextual recordings remain unsupported by replay;
+fresh v2/v3 capture uses the separate native verifier described below.
 
 **Town validation:** at `1beba77`, real construction checks passed before
 recruitment implementation. At `ffe377e`, the expanded cohort passed construction
@@ -681,12 +684,12 @@ hook must run before text translation and cover the separate new-week path.
 Unrecognized notice shapes remain explicit unsupported stops.
 
 Legacy server replay and visible-state digests do not verify these new fields.
-Contextual replay must fail closed as unsupported until native checks bind
-window operations and payloads, roads, ordered recipient-specific notices, and
-the policy-action/native-command association. Merely checking new file hashes
-does not establish their semantic correctness. Bounded live interface acceptance
-can proceed separately; no contextual record may inherit a verified label from
-the legacy replay path.
+Fresh contextual replay independently checks window operations and payloads,
+roads, ordered recipient-specific notices, and policy-action/native-command
+associations. It also reconstructs both delivered histories from raw bridge
+messages. Historical recordings without the native transaction tape remain
+unsupported. File hashes alone do not establish semantic correctness, and no
+contextual record may inherit a verified label from the legacy replay path.
 
 Records are immutable and append-only. Navigation consumption is distinguished
 from native command issuance and acknowledgement. An unacted decision must be
@@ -1253,7 +1256,8 @@ failures and collection errors separately. Its collector records remain
 diagnostics, excluded from optimization. The default diagnostic purpose makes
 no outcome-rate claim; the explicit ordinary-evaluation purpose requires the
 unchanged authored baseline map and reports the observed frequency within its
-declared finite cohort. Contextual replay remains explicitly unsupported.
+declared finite cohort. Collection never grants a replay-verification label;
+the separate contextual replay command checks fresh recordings afterward.
 
 Validation at `c3edda8` (core/runner), `0b90703` (natural fixture) and `8a24a4a`
 (corrected crash probe) passed on local macOS arm64, Python 3.13.5 and locked
@@ -1452,16 +1456,92 @@ file hashes. A cutoff verifies only its exact captured prefix. Historical
 contextual recordings without this tape remain unsupported, and legacy replay
 does not acquire a contextual verification label.
 
-Implementation and native validation are in progress on
-`codex/contextual-replay`. The next ordinary cohort is predeclared before any new
-game: unchanged map and saved untrained checkpoints, engine seeds `97111` and
-`97112` in both learner colors, policy seed `97103`, and at most 2,048 choices or
-100 days per game. Every attempt is retained. Diagnostic fixtures and development
-probes remain separate from the ordinary outcome denominator.
+Implementation is on `codex/contextual-replay`, stacked on PR #10. The gameplay
+sources and native build were frozen at `609083a` for the final validation.
+The initial `29139c4` navigation capture replayed correctly, but two terminal
+fixtures exposed recursive recorder destruction at process exit. Both crashed
+attempts remained unscored, with all 150 samples ineligible. The fix removes
+registry access from its owned object's destructor; a real-library regression
+checks explicit release and both forms of process teardown. All three development
+attempts are retained separately from the final cohort.
+
+Local macOS arm64 validation on 25 October passed:
+
+- **514 tests, zero skips**, including native barrier/lifetime checks and the
+  synthetic PPO/checkpoint tests. Six focused inference tests also pass after a
+  later report-label-only correction. Exact prepared-engine verification passes.
+- **28 final native attempts:** four natural diagnostic endings, twenty declared
+  cutoffs and four intentional process failures. These are separate probe and
+  evaluation cohorts, not a pooled outcome-rate estimate.
+- **23 contextual replays** check all 22,941 captured client packets, 64,995
+  transactions, 16,537 messages, 8,232 responses and 4,117 native requests with
+  zero unchecked records. A separate legacy cutoff replay also passes. The
+  natural recording passes its positive control and rejects all **15 rehashed
+  semantic mutations**, including destination, construction, exact recruitment,
+  notices, window payloads, recipient/order changes and missing final close.
+- Four townless fixtures cover both losing colors and learner seats. Native
+  replay reaches the exact regenerated terminal receipt, and losing histories
+  retain the final hero-removal event and view. All nine fresh neural attempts
+  reproduce 56,430 frames, 7,564 values, 7,556 action probabilities and 12,816
+  conditional probabilities with zero difference. All eighteen player rollouts
+  reject optimizer admission; the eight ordinary cutoff values come from each
+  player's actual next decision. The injected crash has no reward/bootstrap.
+- Current replay-verified ordinary histories contain two complete enemy sightings
+  between Red decisions that snapshots would miss. A closed Blue town window
+  stays absent during a defender battle and shows the changed garrison only
+  after explicit reopening. Historical panel values remain earlier observations.
+- Construction and exact recruitment pass on both colors, alongside shared
+  upgraded stock, full-army rejection/merging, construction affordability and a
+  crash after acknowledged construction. The recruitment-affordability probe
+  did **not** reach a resource-limited slider within either its ten-day limit or
+  a separate extended 400-choice/120-second bound. Both attempts remain valid,
+  replay-verified, unscored cutoffs; the missing condition is not claimed passed.
+
+The predeclared ordinary cohort used the unchanged map and saved untrained
+checkpoints, engine seeds `97111` and `97112` in both learner colors, policy seed
+`97103`, and at most 2,048 choices or 100 days per game. All four reached the day
+cutoff: **0/4 natural, 4/4 valid cutoffs**, with zero unsupported-interface,
+technical or collection failures. The completed-only win fraction is undefined;
+cutoffs are not draws. No seed, policy, map, reward or capability was changed to
+obtain an ending.
+
+The permitted histories explain limits of these trials: no town changed
+ownership, 5,561 of 7,191 choices (77.3%) were navigation, and all 1,998 recruited
+creatures went to town garrisons. Only one move selected a currently observed
+opponent town. Both players lost their heroes in the first game while retaining
+towns; this interface cannot hire replacement heroes or transfer garrison troops
+into a field army. Other trials retained at least one hero. These observations
+identify capability and behavior limitations; four cutoffs do not prove that
+ordinary natural outcomes are impossible or that every engine defect is absent.
+
+Compact source/checkpoint/artifact hashes, every attempt, audits and remaining
+gates are in `validation/contextual-replay-2026-10-25.json`. Raw evidence remains
+under ignored `runs/`. Captured collector reports preserve their original
+historical `unsupported` string; separate verification reports establish replay
+success. Future collector reports say `not_verified_by_collector`. No original
+manifest is rewritten to grant itself a verification label.
+
+Reproduce independent verification on a fresh captured episode:
+
+```sh
+.venv/bin/python -m experiments.headless.contextual_replay \
+  runs/my-contextual-run/episode-000001 --data <game-data-directory> \
+  --output runs/my-contextual-replay
+.venv/bin/python -m experiments.headless.contextual_replay \
+  runs/my-contextual-run/episode-000001 --data <game-data-directory> \
+  --output runs/my-contextual-tamper --tamper
+```
+
+Remaining limits include initial/timer-origin completion, fresh hero-window
+casualty and broader encounter/interruption coverage, the unmet recruitment
+resource-limit condition, and ordinary natural outcomes. The authenticated
+neutral battle-request origin has source/native-unit coverage, not a new natural
+terminal fixture in this cohort. No throughput or cross-platform claim is made.
 
 Before gameplay optimization, establish contextual natural outcomes on ordinary
-games and verify complete native terminal drainage and contextual replay.
-Broader event/action coverage and the prior town edge cases also remain gates.
+games and resolve the remaining event/action coverage above. The explicit
+request-origin terminal barrier and fresh contextual replay have bounded native
+evidence; that does not open the training gate.
 The synthetic-only optimizer admission must be changed only with explicit
 training authorization and review. No learning campaign is authorized by this
 implementation.
@@ -1512,8 +1592,10 @@ Mac validation; Claude retains the separately scoped simulation/performance/repl
 workstream. Read `validation/contextual-native-2026-10-24.json` for source-pinned
 checks, all random attempts and remaining limits. The later contextual neural
 integration section describes the live adapter/collector and synthetic-only PPO
-implementation. Contextual replay remains explicitly unsupported. Earlier legacy outcomes and the contextual terminal fixture do not
-establish a contextual random-policy outcome rate or authorize training.
+implementation. The later native terminal-barrier and contextual replay section
+describes the new capture and independent verifier on `codex/contextual-replay`.
+Historical contextual recordings remain unsupported. Ordinary outcome evidence
+and diagnostic terminal fixtures stay separate; neither authorizes training.
 The original three rendered self-play runs remain truncated and separate.
 Verified video binding now passes at `4fe0d7c`; a clean throughput benchmark
 has not been accepted. Do not start a training campaign.
@@ -1523,8 +1605,9 @@ has not been accepted. Do not start a training campaign.
 Status: the legacy `movement-v1` environment has passed bounded real-game,
 natural-ending, boundary and replay checks on the local Mac at `4fe0d7c`, with
 later regression evidence in `validation/contextual-native-2026-10-24.json`.
-The opt-in contextual interface has its own evidence and explicitly unsupported
-replay status above. Neither interface has an accepted clean throughput benchmark.
+The opt-in contextual interface has its own fresh-capture replay evidence above;
+historical contextual recordings remain unsupported. Neither interface has an
+accepted clean throughput benchmark.
 PR #6 remains draft and unmerged; this is environment validation, not training.
 
 `vcmiclient --headless` plays the real VCMI rules with no window, renderer,
