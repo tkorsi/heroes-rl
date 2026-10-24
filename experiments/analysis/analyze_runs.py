@@ -24,6 +24,7 @@ CAVEATS = [
     "Offline analysis of recorded attempts; it does not run games, train or evaluate a policy.",
     "Only verified natural endings are scored. Timeouts, limits, technical failures and inconsistent evidence are unscored.",
     "A reported socket terminal is evidence, not a score; a nested terminal.reward is ignored.",
+    "Ledger metrics require a matching hash, player/episode identity and nondecreasing timestamps; a usable ledger terminal must agree with the score.",
     "Losing all heroes is not a game defeat. Hero-loss intervals are bounded by observed ledger states, not exact transition times.",
     "Cohorts with different map, engine, policy, opponent, side or limits are not pooled.",
     "A handful of games does not establish improvement, a win rate or statistical significance.",
@@ -82,6 +83,8 @@ def cohort_components(manifest: dict) -> dict:
                    "checkpoint": field(manifest, "policy", "checkpoint"),
                    "learning": field(manifest, "policy", "learning"),
                    "action_space": field(manifest, "policy", "action_space"),
+                   "dialog_policy": field(manifest, "policy", "dialog_policy"),
+                   "step_delay_seconds": field(manifest, "policy", "step_delay_seconds"),
                    "source_sha256": field(manifest, "policy_source", "sha256")},
         "opponent": {"module": field(manifest, "opponent", "module"),
                      "difficulty": field(manifest, "opponent", "difficulty"),
@@ -90,6 +93,9 @@ def cohort_components(manifest: dict) -> dict:
         "selected_side": {"agent_player_index": field(manifest, "agent_player_index"),
                           "outcome_player": field(manifest, "outcome_player")},
         "limits": limits if isinstance(limits, dict) else UNKNOWN,
+        "capture_fps_by_view": {
+            name: field(view, "capture", "fps")
+            for name, view in sorted(as_dict(field(manifest, "recordings")).items())},
     }
 
 
@@ -118,7 +124,7 @@ def seeds(manifest: dict, diagnostics: list) -> dict:
 
 # --- Outcome verification ------------------------------------------------------------------------
 
-def verification_checks(manifest: dict) -> list[dict]:
+def verification_checks(manifest: dict, ledger: dict | None = None) -> list[dict]:
     """Every condition required before the manifest reward may be counted."""
     execution = field(manifest, "policy_execution")
     status, reason = field(manifest, "status"), field(manifest, "termination_reason")
@@ -144,12 +150,17 @@ def verification_checks(manifest: dict) -> list[dict]:
           f"ready={field(execution, 'ready')!r}, actions_sent={actions!r}")
     error, limit = field(execution, "error"), field(execution, "limit")
     check("no_policy_error_or_limit", error is None and limit is None, f"error={error!r}, limit={limit!r}")
-    check("natural_outcome_value", outcome in REWARDS, f"outcome={outcome!r}")
+    valid_outcome = isinstance(outcome, str) and outcome in REWARDS
+    check("natural_outcome_value", valid_outcome, f"outcome={outcome!r}")
     reported = field(terminal, "outcome")
-    check("socket_terminal_matches", outcome in REWARDS and reported == outcome,
+    check("socket_terminal_matches", valid_outcome and reported == outcome,
           f"manifest outcome={outcome!r}, socket terminal outcome={reported!r}")
-    check("reward_matches_outcome", outcome in REWARDS and is_int(reward) and reward == REWARDS[outcome],
+    check("reward_matches_outcome", valid_outcome and is_int(reward) and reward == REWARDS[outcome],
           f"top-level reward={reward!r} for outcome={outcome!r}")
+    # A ledger is supplementary, but a usable ledger must not contradict the score.
+    if ledger and ledger.get("used_for_metrics") and ledger.get("terminal_outcome") is not None:
+        check("ledger_terminal_matches", valid_outcome and ledger["terminal_outcome"] == outcome,
+              f"manifest outcome={outcome!r}, ledger terminal outcome={ledger['terminal_outcome']!r}")
     return checks
 
 
@@ -226,6 +237,8 @@ def analyze_ledger(run: Path, manifest: dict, diagnostics: list) -> dict:
                                       "Policy ledger hash differs from the manifest; ledger metrics are withheld"))
         return result
     entries = []
+    previous_elapsed = 0.0
+    expected_player, expected_episode = field(manifest, "agent_player_index"), field(manifest, "episode")
     for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
         try:
             entry = json.loads(line)
@@ -233,10 +246,45 @@ def analyze_ledger(run: Path, manifest: dict, diagnostics: list) -> dict:
             diagnostics.append(diagnostic("error", "ledger_malformed", f"Ledger line {number} is not JSON: {error}"))
             return result
         if (not isinstance(entry, dict) or not is_number(entry.get("elapsed_seconds"))
-                or entry.get("direction") not in {"engine", "policy"} or not isinstance(entry.get("message"), dict)):
+                or not isinstance(entry.get("direction"), str)
+                or entry["direction"] not in {"engine", "policy"} or not isinstance(entry.get("message"), dict)):
             diagnostics.append(diagnostic("error", "ledger_malformed",
                                           f"Ledger line {number} is not {{elapsed_seconds, direction, message}}"))
             return result
+        elapsed, message = entry["elapsed_seconds"], entry["message"]
+        if elapsed < previous_elapsed:
+            diagnostics.append(diagnostic("error", "ledger_time_invalid",
+                                          f"Ledger line {number} has a negative or decreasing timestamp"))
+            return result
+        previous_elapsed = elapsed
+        if entry["direction"] == "engine":
+            if not is_int(expected_player) or not (is_int(expected_episode) or isinstance(expected_episode, str)):
+                diagnostics.append(diagnostic("error", "ledger_identity_unknown",
+                                              "Manifest must identify the player and episode to use ledger metrics"))
+                return result
+            if (not is_int(message.get("player")) or message["player"] != expected_player
+                    or message.get("episode") != str(expected_episode)):
+                diagnostics.append(diagnostic("error", "ledger_identity_mismatch",
+                                              f"Ledger line {number} has the wrong player or episode"))
+                return result
+            kind = message.get("type")
+            if not isinstance(kind, str):
+                diagnostics.append(diagnostic("error", "ledger_malformed",
+                                              f"Ledger line {number} has no string message type"))
+                return result
+            if kind in {"action_result", "terminal"} and "events" in message:
+                event_list = message["events"]
+                if (not isinstance(event_list, list)
+                        or any(not isinstance(event, dict) or not isinstance(event.get("kind"), str)
+                               for event in event_list)):
+                    diagnostics.append(diagnostic("error", "ledger_malformed",
+                                                  f"Ledger line {number} has invalid event kinds"))
+                    return result
+            if kind == "terminal" and (not isinstance(message.get("outcome"), str)
+                                       or message["outcome"] not in REWARDS):
+                diagnostics.append(diagnostic("error", "ledger_malformed",
+                                              f"Ledger line {number} has an invalid terminal outcome"))
+                return result
         entries.append(entry)
     result["parsed"] = True
     result["entries"] = len(entries)
@@ -265,7 +313,7 @@ def analyze_ledger(run: Path, manifest: dict, diagnostics: list) -> dict:
             events.update(event.get("kind", UNKNOWN) for event in message["events"] if isinstance(event, dict))
     reported = field(manifest, "policy_execution", "terminal", "outcome")
     if terminal_outcome is not None and reported != terminal_outcome:
-        diagnostics.append(diagnostic("warning", "ledger_terminal_mismatch",
+        diagnostics.append(diagnostic("error", "ledger_terminal_mismatch",
                                       f"Ledger terminal {terminal_outcome!r} differs from execution terminal {reported!r}"))
     mines = [s["own_mines"] for s in snapshots if is_int(s["own_mines"])]
     result.update(used_for_metrics=True, state_observations=len(snapshots), terminal_outcome=terminal_outcome,
@@ -351,6 +399,11 @@ def load_attempt(raw: str, number: int, seen: dict) -> tuple[dict, dict | None, 
         return attempt, None, run
     schema, kind = manifest.get("schema_version"), manifest.get("kind")
     attempt.update(schema_version=schema, kind=kind)
+    if not is_int(schema) or not isinstance(kind, str):
+        attempt["validity"] = "malformed"
+        diagnostics.append(diagnostic("error", "manifest_schema_invalid",
+                                      "Manifest schema_version must be an integer and kind must be a string"))
+        return attempt, None, run
     if (schema, kind) not in SUPPORTED_MANIFESTS:
         attempt["validity"] = "unsupported"
         diagnostics.append(diagnostic("error", "manifest_unsupported",
@@ -380,10 +433,10 @@ def analyze_attempt(raw: str, number: int, seen: dict) -> dict:
     if isinstance(terminal, dict) and "reward" in terminal:
         diagnostics.append(diagnostic("info", "legacy_terminal_reward_ignored",
                                       "Nested policy_execution.terminal.reward is ignored; only top-level reward counts"))
-    checks = verification_checks(manifest)
+    ledger = analyze_ledger(run, manifest, diagnostics)
+    checks = verification_checks(manifest, ledger)
     classification = classify(manifest, checks, diagnostics)
     components = cohort_components(manifest)
-    ledger = analyze_ledger(run, manifest, diagnostics)
     reported = field(terminal, "outcome", default=None)
     attempt.update(
         episode=field(manifest, "episode"),
@@ -515,6 +568,8 @@ def markdown(report: dict) -> str:
                   f"- Policy: {cell(c['policy']['label'])}; algorithm {cell(c['policy']['algorithm'])}; "
                   f"learning {cell(c['policy']['learning'])}; checkpoint {cell(c['policy']['checkpoint'])}; "
                   f"source `{cell(c['policy']['source_sha256'])}`",
+                  f"- Pacing: policy delay {cell(c['policy']['step_delay_seconds'])} seconds; "
+                  f"capture FPS by view {cell(json.dumps(c['capture_fps_by_view'], sort_keys=True))}",
                   f"- Opponent: {cell(c['opponent']['module'])} {cell(c['opponent']['difficulty'])} "
                   f"(index {cell(c['opponent']['difficulty_index'])})",
                   f"- Agent side: player index {cell(c['selected_side']['agent_player_index'])} "

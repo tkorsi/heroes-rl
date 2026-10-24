@@ -50,6 +50,13 @@ class SyntheticRuns:
     def close(self):
         self.directory.cleanup()
 
+    def win(self, name: str) -> str:
+        ledger = [json.loads(line) for line in (FIXTURE / "policy.jsonl").read_text().splitlines()]
+        for entry in ledger:
+            if entry["message"].get("type") == "terminal":
+                entry["message"]["outcome"] = "win"
+        return self.run(name, win, ledger=ledger)
+
 
 def win(manifest):
     manifest.update(outcome="win", reward=1)
@@ -89,13 +96,15 @@ class AnalysisTestCase(unittest.TestCase):
 
 class OutcomeVerificationTests(AnalysisTestCase):
     def test_valid_win_and_loss_are_verified_and_scored(self):
-        report = self.analyze(self.runs.run("loss"), self.runs.run("win", win))
+        report = self.analyze(self.runs.run("loss"), self.runs.win("win"))
         loss, victory = report["attempts"]
         self.assertEqual((loss["classification"], loss["scored_outcome"], loss["scored_reward"]),
                          ("verified_natural", "loss", -1))
         self.assertEqual((victory["classification"], victory["scored_outcome"], victory["scored_reward"]),
                          ("verified_natural", "win", 1))
         self.assertTrue(all(check["passed"] for check in loss["verification"]))
+        self.assertTrue(all(check["passed"] for check in victory["verification"]))
+        self.assertEqual(victory["ledger"]["terminal_outcome"], "win")
         self.assertTrue(loss["synthetic_fixture"])
         summary = report["summary"]
         self.assertEqual(len(summary["cohorts"]), 1)
@@ -180,8 +189,32 @@ class OutcomeVerificationTests(AnalysisTestCase):
         for attempt in report["attempts"]:
             self.assertIn("legacy_terminal_reward_ignored", [d["code"] for d in attempt["diagnostics"]])
 
+    def test_verified_ledger_terminal_contradiction_is_unscored(self):
+        # Deliberately change only the manifest; its declared ledger still reports loss.
+        attempt = self.analyze(self.runs.run("contradictory", win))["attempts"][0]
+        self.assertTrue(attempt["ledger"]["hash_verified"])
+        self.assertTrue(attempt["ledger"]["used_for_metrics"])
+        self.assertEqual(attempt["classification"], "inconsistent")
+        self.assertIsNone(attempt["scored_outcome"])
+        self.assertIsNone(attempt["scored_reward"])
+        self.assertIn("ledger_terminal_mismatch", [d["code"] for d in attempt["diagnostics"]])
+        self.assertFalse(next(c["passed"] for c in attempt["verification"]
+                              if c["check"] == "ledger_terminal_matches"))
+
 
 class InputValidityTests(AnalysisTestCase):
+    def test_wrongly_typed_scalar_fields_do_not_abort_other_attempts(self):
+        variants = [("schema_version", []), ("kind", {}), ("schema_version", 2.0),
+                    ("outcome", {}), ("outcome", ["loss"])]
+        paths = [self.runs.run(f"bad-{index}", lambda m, k=key, v=value: m.update({k: v}))
+                 for index, (key, value) in enumerate(variants)]
+        report = self.analyze(*paths, self.runs.run("good"))
+        self.assertEqual(len(report["attempts"]), len(paths) + 1)
+        self.assertEqual([a["validity"] for a in report["attempts"][:3]], ["malformed"] * 3)
+        self.assertEqual([a["classification"] for a in report["attempts"][3:5]], ["inconsistent"] * 2)
+        self.assertEqual(report["attempts"][-1]["scored_reward"], -1)
+        self.assertIn("invalid: malformed", analysis.markdown(report))
+
     def test_every_requested_attempt_is_listed_with_diagnostics(self):
         empty = self.runs.root / "empty"
         empty.mkdir()
@@ -252,7 +285,7 @@ class CohortAndSeedTests(AnalysisTestCase):
             del m["opponent"]
 
         variants = (other_map, blue_side, other_limits, other_engine, checkpoint, unknown_opponent)
-        report = self.analyze(self.runs.run("base"), self.runs.run("base-win", win),
+        report = self.analyze(self.runs.run("base"), self.runs.win("base-win"),
                               *(self.runs.run(v.__name__, v) for v in variants))
         cohorts = report["summary"]["cohorts"]
         self.assertEqual(len(cohorts), 1 + len(variants))
@@ -263,6 +296,19 @@ class CohortAndSeedTests(AnalysisTestCase):
         unknown = cohorts[-1]
         self.assertEqual(unknown["components"]["opponent"]["module"], "unknown")
         self.assertIn("opponent.module", unknown["unknown_metadata"])
+
+    def test_policy_delay_and_capture_cadence_split_bounded_cohorts(self):
+        def slower_policy(m):
+            m["policy"]["step_delay_seconds"] = 5.0
+
+        def slower_capture(m):
+            for view in m["recordings"].values():
+                view["capture"]["fps"] = 1
+
+        report = self.analyze(self.runs.run("base"), self.runs.run("slow-policy", slower_policy),
+                              self.runs.run("slow-capture", slower_capture))
+        self.assertEqual(len(report["summary"]["cohorts"]), 3)
+        self.assertIsNone(report["summary"]["overall"]["verified_outcomes"])
 
     def test_repeated_seed_pairs_are_flagged_and_retained(self):
         def second_seed(m):
@@ -285,6 +331,39 @@ class CohortAndSeedTests(AnalysisTestCase):
 
 
 class LedgerAndMetricTests(AnalysisTestCase):
+    def test_malformed_nested_ledger_fields_withhold_metrics_without_aborting_batch(self):
+        variants = []
+        for value in ([], {}, None):
+            variants.append(engine(0.1, "terminal", outcome="loss", events=[{"kind": value}]))
+        variants += [engine(0.1, {}, outcome="loss"), engine(0.1, "terminal", outcome=[]),
+                     {"elapsed_seconds": 0.1, "direction": [], "message": {}}]
+        paths = [self.runs.run(f"bad-ledger-{index}", ledger=[entry])
+                 for index, entry in enumerate(variants)]
+        report = self.analyze(*paths, self.runs.run("good"))
+        for attempt in report["attempts"][:-1]:
+            self.assertIn("ledger_malformed", [d["code"] for d in attempt["diagnostics"]])
+            self.assertFalse(attempt["ledger"]["used_for_metrics"])
+            self.assertIsNone(attempt["metrics"]["ledger_event_counts"])
+        self.assertTrue(report["attempts"][-1]["ledger"]["used_for_metrics"])
+
+    def test_ledger_identity_and_timestamp_errors_withhold_metrics(self):
+        wrong_player = engine(0.1, "observation", state=state(1, 0, 1))
+        wrong_player["message"]["player"] = 1
+        wrong_episode = engine(0.1, "observation", state=state(1, 0, 1))
+        wrong_episode["message"]["episode"] = "another-episode"
+        backwards = [engine(10.0, "observation", state=state(1, 0, 1)),
+                     engine(1.0, "observation", state=state(2, 0, 1))]
+        negative = [engine(-0.1, "observation", state=state(1, 0, 1))]
+        variants = [([wrong_player], "ledger_identity_mismatch"), ([wrong_episode], "ledger_identity_mismatch"),
+                    (backwards, "ledger_time_invalid"), (negative, "ledger_time_invalid")]
+        report = self.analyze(*(self.runs.run(f"invalid-{index}", ledger=ledger)
+                                for index, (ledger, _) in enumerate(variants)))
+        for attempt, (_, code) in zip(report["attempts"], variants):
+            self.assertIn(code, [d["code"] for d in attempt["diagnostics"]])
+            self.assertTrue(attempt["ledger"]["hash_verified"])
+            self.assertFalse(attempt["ledger"]["used_for_metrics"])
+            self.assertNotIn("town_only_intervals", attempt["ledger"])
+
     def test_metrics_are_surfaced_from_recorded_evidence(self):
         attempt = self.analyze(self.runs.run("loss"))["attempts"][0]
         m = attempt["metrics"]
