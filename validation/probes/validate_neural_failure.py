@@ -30,6 +30,7 @@ def main(argv=None):
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--engine-seed", type=int, default=95201)
     args = parser.parse_args(argv)
+    args.output = args.output.expanduser().resolve()
     args.output.mkdir(parents=True, exist_ok=False)
     torch.set_num_threads(1)
     loaded = load_policy_checkpoint(args.checkpoint)
