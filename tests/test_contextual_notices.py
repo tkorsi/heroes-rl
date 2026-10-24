@@ -37,7 +37,7 @@ class ContextualNoticeTests(unittest.TestCase):
                "heroes.baseline.all_opponents_defeated", "heroes.baseline.opponent_won",
                "heroes.baseline.seven_days_without_town", "heroes.baseline.opponent_lost_last_town",
                *(f"core.restypes.{n}" for n in range(7)), *(f"core.mineevnt.{n}" for n in range(7)),
-               *(f"core.genrltxt.{n}" for n in (1, 5, 7, 8, 659)),
+               *(f"core.genrltxt.{n}" for n in (1, 5, 7, 8, 30, 659)),
                *(f"core.arraytxt.{n}" for n in (*range(32, 42), *range(43, 58), *range(130, 136))),
                "creatures.core.pikeman.name.singular", "creatures.core.efreetSultan.name.plural")
         for text_id in ids:
@@ -126,6 +126,62 @@ class ContextualNoticeTests(unittest.TestCase):
                 Notice("info", text, components)
         with self.assertRaises(ValueError):
             Notice("query", (), ())
+
+    def test_trophy_components_preserve_only_delivered_static_content(self):
+        notice = Notice("modal", (NoticeToken("append_text", text_id="core.genrltxt.30"),),
+                        (NoticeComponent("artifact", content_id="core:spellBook"),
+                         NoticeComponent("spell_scroll", content_id="core:magicArrow")))
+        frame = notice_frame(notice)
+        self.assertEqual(decode_frame(encode_frame(frame)), frame)
+        for kind in ("artifact", "spell_scroll"):
+            for content_id in (None, 99, True, "99", "object-99", "hota:spellBook", "core:99",
+                               "core:hidden.position", "core:spellBook/99", "core:spellBook\n",
+                               "core:雪", "core:" + "a" * 65):
+                with self.subTest(kind=kind, content_id=content_id), self.assertRaises(ValueError):
+                    NoticeComponent(kind, content_id=content_id)
+            for extras in ({"amount": 1}, {"resource": "gold"}, {"owner": "self"}):
+                with self.subTest(kind=kind, extras=extras), self.assertRaises(ValueError):
+                    NoticeComponent(kind, content_id="core:spellBook", **extras)
+        for component in (NoticeComponent("resource", resource="gold", amount=1),
+                          NoticeComponent("flag", owner="self")):
+            with self.assertRaises(ValueError):
+                replace(component, content_id="core:spellBook")
+        for field in ("instance_id", "engine_id", "description", "inventory"):
+            wire = encode_frame(frame)
+            wire["event"]["notice"]["components"][0][field] = 99
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                decode_frame(wire)
+
+    def test_legacy_notice_wire_and_canonical_hash_are_unchanged(self):
+        # Fixed pre-trophy history-v2 wire; never generated from today's encoder.
+        legacy = json.loads('''{
+          "accepted":null,"action":null,"command_index":null,"consumer":null,
+          "context":null,"cutoff_verification":null,"day":1,"decision_seq":null,
+          "episode":"notice-test","event":{"kind":"notice","notice":{
+          "components":[{"amount":500,"kind":"resource","owner":null,"resource":"gold"}],
+          "display_mode":"info","text":[{"number":null,"op":"append_text","owner":null,
+          "text_id":"core.advevent.113"},{"number":null,"op":"replace_text","owner":null,
+          "text_id":"core.restypes.6"}]},"object_kind":null,"object_subtype":null,
+          "owner":null,"side":null,"subject":null,"won":null},"kind":"event",
+          "observation":null,"offers":null,"outcome":null,"player":0,"reason":null,
+          "result":null,"revision":null,"schema":"heroes-player-history-v2","seq":0,
+          "verification":null}''')
+        frame = decode_frame(legacy)
+        self.assertEqual(encode_frame(frame), legacy)
+        history = PlayerHistory("notice-test", 0)
+        history.append(frame)
+        expected = "b41155537336d02a1f082ef61df682bd89d6da12f142390eb56703f233bfa7dd"
+        self.assertEqual(history.digest(), expected)
+        from validation.probes.audit_contextual_histories import _digest
+        self.assertEqual(_digest(history.frames), expected)
+        for component in (NoticeComponent("resource_per_day", resource="wood", amount=2),
+                          NoticeComponent("flag", owner="self")):
+            wire = encode_frame(notice_frame(replace(gold_notice(), components=(component,))))
+            self.assertNotIn("content_id", wire["event"]["notice"]["components"][0])
+        trophy = Notice("modal", (NoticeToken("append_text", text_id="core.genrltxt.30"),),
+                        (NoticeComponent("artifact", content_id="core:spellBook"),))
+        self.assertEqual(encode_frame(notice_frame(trophy))["event"]["notice"]["components"][0]["content_id"],
+                         "core:spellBook")
 
     def test_notice_is_exclusive_event_payload_and_preserves_existing_constructors(self):
         notice = gold_notice()

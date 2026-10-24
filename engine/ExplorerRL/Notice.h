@@ -23,7 +23,8 @@ public:
 /// Validate the complete native template and all pools before returning the
 /// learner's Notice JSON. No localization, unused substitutions, native IDs or
 /// unrelated packet fields survive. The caller supplies only its own heroes'
-/// name IDs; this parser does not query the world or alter game state.
+/// name IDs. Trophy types resolve only in the static content library; this
+/// parser does not query the world, inspect inventories or alter game state.
 JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	const std::vector<Component> & components, PlayerColor recipient,
 	const std::set<std::string> & ownHeroNameTextIds);

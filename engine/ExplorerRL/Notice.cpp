@@ -1,6 +1,10 @@
 #include "StdInc.h"
 #include "Notice.h"
 
+#include "../../lib/GameLibrary.h"
+#include "../../lib/entities/artifact/CArtHandler.h"
+#include "../../lib/spells/CSpellHandler.h"
+
 #include <array>
 #include <regex>
 #include <type_traits>
@@ -184,6 +188,41 @@ bool flagComponent(const Component & component, int player)
 		&& component.subType == ComponentSubType(PlayerColor(player));
 }
 
+std::string trophyContentID(const Component & component)
+{
+	// UIHelper::getArtifactsComponents supplies only the displayed artifact
+	// type or scroll spell. Resolve that delivered ID in the static catalog;
+	// never inspect an artifact instance, inventory, hero or game-state object.
+	if(component.value || !LIBRARY)
+		unsupported("Unsupported trophy component");
+	const Entity * content = nullptr;
+	if(component.type == ComponentType::ARTIFACT)
+	{
+		const auto id = component.subType.as<ArtifactID>();
+		if(component.subType != ComponentSubType(id) || id.getNum() < 0 || id == ArtifactID::SPELL_SCROLL
+			|| !LIBRARY->arth || static_cast<size_t>(id.getNum()) >= LIBRARY->arth->size())
+			unsupported("Invalid trophy artifact type");
+		content = LIBRARY->artifacts()->getById(id);
+	}
+	else if(component.type == ComponentType::SPELL_SCROLL)
+	{
+		const auto id = component.subType.as<SpellID>();
+		if(component.subType != ComponentSubType(id) || id.getNum() < 0
+			|| !LIBRARY->spellh || static_cast<size_t>(id.getNum()) >= LIBRARY->spellh->size())
+			unsupported("Invalid trophy spell type");
+		content = LIBRARY->spells()->getById(id);
+	}
+	else
+		unsupported("Unsupported trophy component type");
+	if(!content)
+		unsupported("Missing trophy content type");
+	const auto key = content->getJsonKey();
+	static const std::regex coreKey("core:[A-Za-z][A-Za-z0-9_]{0,63}");
+	if(!std::regex_match(key, coreKey))
+		unsupported("Unsupported trophy content key");
+	return key;
+}
+
 JsonNode textToken(const char * operation, const std::string & id)
 {
 	JsonNode result;
@@ -251,6 +290,7 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	bool supported = false;
 	bool dropPlayerReplacement = false;
 	std::string normalizedResult;
+	std::vector<std::string> trophyContent;
 	// CGResource::collectRes: the quantity is in the component, not text.
 	if(mode == EInfoWindowMode::INFO && tokens.size() == 2 && components.size() == 1
 		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.113"))
@@ -270,6 +310,16 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 		&& (tokens[1].text == "hero.core.orrin.name" || tokens[1].text == "hero.core.edric.name")
 		&& ownHeroNameTextIds.contains(tokens[1].text))
 		supported = true;
+	// visitBattleResultsApplied sends this exact zero-choice modal notice only
+	// to the victor. Its ordered components are the trophies displayed by the
+	// native UI, including each scroll's displayed spell, not hidden inventory.
+	if(mode == EInfoWindowMode::MODAL && tokens.size() == 1 && !components.empty()
+		&& exact(tokens[0], APPEND_LOCAL, "core.genrltxt.30"))
+	{
+		for(const auto & component : components)
+			trophyContent.push_back(trophyContentID(component));
+		supported = true;
+	}
 	// NewTurnProcessor::createInfoWindow; only this precise public announcement
 	// grammar may carry creature names. Numeric growth may be signed natively.
 	if(mode == EInfoWindowMode::MODAL && components.empty())
@@ -320,10 +370,16 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	}
 	static const std::array<const char *, 7> resources{"wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold"};
 	auto & outputComponents = result["components"].Vector();
-	for(const auto & component : components)
+	for(size_t index = 0; index < components.size(); ++index)
 	{
+		const auto & component = components[index];
 		JsonNode value;
-		if(component.type == ComponentType::FLAG)
+		if(!trophyContent.empty())
+		{
+			value["kind"].String() = component.type == ComponentType::ARTIFACT ? "artifact" : "spell_scroll";
+			value["content_id"].String() = trophyContent[index];
+		}
+		else if(component.type == ComponentType::FLAG)
 		{
 			value["kind"].String() = "flag";
 			value["owner"].String() = relative(component.subType.as<PlayerColor>().getNum(), recipient);

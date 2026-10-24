@@ -1,6 +1,9 @@
 // Real MetaString/Component parser tests. No game instance or fake callback.
 #include "StdInc.h"
 #include "Notice.h"
+#include "lib/GameLibrary.h"
+#include "lib/entities/artifact/CArtHandler.h"
+#include "lib/spells/CSpellHandler.h"
 
 #include <array>
 #include <cstdlib>
@@ -153,6 +156,81 @@ void outcomes()
 	reject([&] { parse(EInfoWindowMode::MODAL, near, {Component(ComponentType::FLAG, PlayerColor(0))}); }, "Near-match raw result");
 }
 
+void trophies()
+{
+	// Static content only: no game state, server, client, map or callbacks.
+	LIBRARY = new GameLibrary;
+	LIBRARY->initializeFilesystem(false);
+	LIBRARY->initializeLibrary();
+	MetaString text;
+	text.appendLocalString(EMetaText::GENERAL_TXT, 30);
+	const ArtifactID artifact(ArtifactID::decode("core:centaurAxe"));
+	const SpellID spell(SpellID::decode("core:magicArrow"));
+	const std::vector<Component> components{
+		Component(ComponentType::ARTIFACT, artifact),
+		Component(ComponentType::SPELL_SCROLL, spell),
+		Component(ComponentType::ARTIFACT, artifact)};
+	for(int recipient : {0, 1})
+	{
+		const auto notice = parse(EInfoWindowMode::MODAL, text, components, recipient);
+		expect(notice["display_mode"].String() == "modal", "Native trophy presentation mode");
+		expect(notice["text"].Vector().size() == 1 && notice["text"][0]["text_id"].String() == "core.genrltxt.30",
+			"Exact native trophy template");
+		expect(notice["components"].Vector().size() == 3, "Preserve trophy order and duplicates");
+		expect(notice["components"][0]["kind"].String() == "artifact"
+			&& notice["components"][0]["content_id"].String() == "core:centaurAxe", "Static artifact identity");
+		expect(notice["components"][1]["kind"].String() == "spell_scroll"
+			&& notice["components"][1]["content_id"].String() == "core:magicArrow", "Displayed scroll spell identity");
+		expect(notice["components"][2] == notice["components"][0], "Repeated trophy preserved");
+		for(const auto & component : notice["components"].Vector())
+			expect(component.Struct().size() == 2, "No instance ID, inventory, quantity or owner added");
+	}
+	for(auto mode : {EInfoWindowMode::INFO, EInfoWindowMode::AUTO})
+		reject([&] { parse(mode, text, components); }, "Wrong trophy presentation mode");
+	reject([&] { parse(EInfoWindowMode::MODAL, text); }, "Empty trophy list");
+	reject([&] { parse(EInfoWindowMode::MODAL, MetaString::createFromTextID("core.genrltxt.30"), components); },
+		"Text-ID operation is not native local-string operation");
+	auto extra = text;
+	extra.replaceNumber(7);
+	reject([&] { parse(EInfoWindowMode::MODAL, extra, components); }, "Unused trophy operation");
+	for(const auto & bad : std::vector<Component>{
+		Component(ComponentType::ARTIFACT, artifact, 1),
+		Component(ComponentType::SPELL_SCROLL, spell, 0),
+		Component(ComponentType::ARTIFACT, spell),
+		Component(ComponentType::SPELL_SCROLL, artifact),
+		Component(ComponentType::ARTIFACT, ArtifactID(-1)),
+		Component(ComponentType::ARTIFACT, ArtifactID(ArtifactID::SPELL_SCROLL)),
+		Component(ComponentType::ARTIFACT, ArtifactID(std::numeric_limits<int32_t>::max())),
+		Component(ComponentType::SPELL_SCROLL, SpellID(SpellID::PRESET)),
+		Component(ComponentType::SPELL_SCROLL, SpellID(std::numeric_limits<int32_t>::max())),
+		Component(ComponentType::SPELL, spell),
+		Component(ComponentType::RESOURCE, GameResID(6), 500)})
+	{
+		auto mixed = components;
+		mixed.push_back(bad);
+		reject([&] { parse(EInfoWindowMode::MODAL, text, mixed); }, "Reject whole trophy list with invalid component");
+	}
+	reject([&] { parse(EInfoWindowMode::MODAL, text, std::vector<Component>(33, components[0])); }, "Bound trophy list");
+	// The real static spell object permits metadata mutation. Malformed fixture
+	// keys exercise rejection only; no game is created and originals are restored.
+	auto nativeSpell = LIBRARY->spellh->objects.at(spell.getNum());
+	const auto scope = nativeSpell->modScope;
+	const auto name = nativeSpell->identifier;
+	for(const auto & [badScope, badName] : std::vector<std::pair<std::string, std::string>>{
+		{"mod", name}, {"core", "1numeric"}, {"core", "../../private"}, {"core", ""},
+		{"core", std::string(65, 'a')}, {"core", "magicArrow:17"}})
+	{
+		nativeSpell->modScope = badScope;
+		nativeSpell->identifier = badName;
+		reject([&] { parse(EInfoWindowMode::MODAL, text, components); }, "Reject non-core or malformed static content key");
+	}
+	nativeSpell->modScope = scope;
+	nativeSpell->identifier = name;
+	LIBRARY->spellh->objects.at(spell.getNum()).reset();
+	reject([&] { parse(EInfoWindowMode::MODAL, text, components); }, "Reject missing static content entry");
+	LIBRARY->spellh->objects.at(spell.getNum()) = nativeSpell;
+}
+
 void malformedPoolsAndUnsupported()
 {
 	const std::vector<Component> gold{Component(ComponentType::RESOURCE, GameResID(6), 500)};
@@ -197,8 +275,14 @@ void malformedPoolsAndUnsupported()
 }
 }
 
-int main()
+int main(int argc, char ** argv)
 {
+	if(argc == 2 && std::string(argv[1]) == "--trophies")
+	{
+		trophies();
+		std::cout << "native trophy notice parser: " << checks << " checks passed\n";
+		return 0;
+	}
 	resourcesAndMines();
 	experienceAndWeeks();
 	outcomes();

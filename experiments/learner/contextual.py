@@ -303,13 +303,14 @@ NOTICE_TEXT_IDS = frozenset({
     "heroes.baseline.seven_days_without_town", "heroes.baseline.opponent_lost_last_town",
     *(f"core.restypes.{index}" for index in range(7)),
     *(f"core.mineevnt.{index}" for index in range(7)),
-    *(f"core.genrltxt.{index}" for index in (1, 5, 7, 8, 659)),
+    *(f"core.genrltxt.{index}" for index in (1, 5, 7, 8, 30, 659)),
     *(f"core.arraytxt.{index}" for index in (*range(32, 42), *range(43, 58), *range(130, 136))),
 })
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
 # sequence and that the referenced creature is legitimate player information.
 _CREATURE_NOTICE_TEXT_ID = re.compile(r"creatures\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.name\.(?:singular|plural)")
+_NOTICE_CONTENT_ID = re.compile(r"core:[A-Za-z][A-Za-z0-9_]{0,63}")
 NOTICE_RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
 
 
@@ -350,15 +351,23 @@ class NoticeComponent:
     resource: str | None = None
     amount: int | None = None
     owner: str | None = None
+    # Static artifact/spell definition shown by a delivered trophy component;
+    # never an instance identifier, inventory query or description/utility text.
+    content_id: str | None = None
 
     def __post_init__(self):
         if self.kind in ("resource", "resource_per_day"):
-            if self.resource not in NOTICE_RESOURCES or self.owner is not None:
+            if self.resource not in NOTICE_RESOURCES or self.owner is not None or self.content_id is not None:
                 raise ValueError("Resource notice component requires only a known resource and amount")
             _integer(self.amount, low=-(2**31), high=2**31 - 1, name="notice resource amount")
         elif self.kind == "flag":
-            if self.resource is not None or self.amount is not None or self.owner not in ("self", "opponent"):
+            if (self.resource is not None or self.amount is not None or self.content_id is not None
+                    or self.owner not in ("self", "opponent")):
                 raise ValueError("Flag notice component requires only a relative player")
+        elif self.kind in ("artifact", "spell_scroll"):
+            if (any(value is not None for value in (self.resource, self.amount, self.owner))
+                    or type(self.content_id) is not str or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
+                raise ValueError("Trophy notice component requires only a static core content ID")
         else:
             raise ValueError("Unsupported notice component")
 
@@ -895,8 +904,15 @@ def decode_notice(raw):
 def encode_frame(frame):
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
+    data = asdict(frame)
+    if frame.event is not None and frame.event.notice is not None:
+        for component in data["event"]["notice"]["components"]:
+            # Preserve existing history-v2 bytes/hashes for ordinary notices;
+            # the additive trophy variant alone carries a static content ID.
+            if component["content_id"] is None:
+                del component["content_id"]
     # JSON conversion changes immutable tuples to arrays without sharing mutable data.
-    return json.loads(json.dumps(asdict(frame)))
+    return json.loads(json.dumps(data))
 
 
 def decode_frame(raw):
