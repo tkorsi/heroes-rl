@@ -74,6 +74,10 @@ class Request:
     choices: list[int] | None = None
     reward: int = 0  # ordinary transitions are never rewarded
     done: bool = False
+    # True at and after this player's own horizon boundary: the request is
+    # answered so the other player can reach its boundary, but transitions
+    # from here on belong to no training trajectory.
+    past_horizon: bool = False
 
 
 @dataclass
@@ -84,9 +88,10 @@ class EpisodeEnd:
     rewards: dict  # +1/-1 per player only for a verified natural result, else None
     final_records: dict  # per player: records since its last response
     final_frames: dict  # per player: history-v1 frames since its last request
-    bootstrap: dict  # per player at a truncation: its first decision past the horizon (unanswered there), else None
+    bootstrap: dict  # per player at a truncation: its first decision past the horizon, else None
     manifest: dict
     done: bool = True
+    bootstrap_v1_seq: dict = field(default_factory=dict)  # per player: that decision's history-v1 sequence, else None
 
 
 @dataclass
@@ -111,6 +116,8 @@ class _Side:
     ready_at: float | None = None
     terminal_at: float | None = None
     cutoff: dict | None = None  # this player's first decision observation past a declared horizon
+    cutoff_reason: str | None = None  # the horizon that decision passed
+    write_error: str | None = None  # a response the engine could no longer receive
     cutoff_seq: int | None = None  # that decision's history-v1 sequence while the projection is valid
     bytes_received: int = 0
     perf: dict = field(default_factory=dict)
@@ -188,22 +195,21 @@ class VcmiLauncher:
 
 
 def stop_process_group(process: subprocess.Popen) -> None:
-    """Stop only the private process group this environment started."""
-    if process.poll() is not None:
-        return
+    """Stop the private process group this environment started, stragglers included."""
+    group = process.pid  # started with start_new_session, so the leader's PID names the group
     try:
-        os.killpg(process.pid, signal.SIGTERM)
+        os.killpg(group, signal.SIGTERM)
     except ProcessLookupError:
-        process.wait(timeout=5)
-        return
+        pass
     try:
         process.wait(timeout=3)
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        process.wait(timeout=5)
+        pass
+    try:
+        os.killpg(group, signal.SIGKILL)  # anything still alive in the group
+    except ProcessLookupError:
+        pass
+    process.wait(timeout=5)
 
 
 class HeadlessSelfPlayEnv:
@@ -217,6 +223,7 @@ class HeadlessSelfPlayEnv:
         # Decision observations repeat the visible tiles every N decisions (never
         # when 0) so the adapter can verify its event fold; events are never thinned.
         self.snapshot_every = snapshot_every
+        self._identity_cache = None
         self.output = output.expanduser().resolve()
         self.agent_descriptions = agents or {}
         self.process = None
@@ -242,6 +249,7 @@ class HeadlessSelfPlayEnv:
         self.engine_wait = self.agent_wait = 0.0
         self.step_latencies = []  # seconds from each response until the next request or the end
         self.last_engine_message = None
+        self.shutdown_deadline = None
         self.sides = {}
         environment = {"EXPLORER_RL_PLAYERS": "0,1", "EXPLORER_RL_EPISODE": str(episode),
                        "EXPLORER_RL_TIMEOUT": str(self.limits.bridge_timeout),
@@ -283,9 +291,10 @@ class HeadlessSelfPlayEnv:
         try:
             side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
         except OSError as error:
-            # The engine closes the socket after its own terminal or failure; the
-            # stream explains which, so continue with the queued messages.
-            self._note_problem("bridge_write_failed", f"{side.color}: {error}")
+            # The engine closes the socket after its own terminal or failure. Its
+            # queued messages and exit status say which: a missing terminal still
+            # fails the episode through the end-of-stream and exit paths.
+            side.write_error = f"{type(error).__name__}: {error}"
         self._write_ledger(side, "policy", response)
         if "action" in response:
             side.history.act(response["action"])
@@ -304,9 +313,9 @@ class HeadlessSelfPlayEnv:
         if self.request is None or reason not in scoring.HEADLESS_TRUNCATIONS:
             raise ValueError("Truncate only at a pending request, with a declared horizon")
         side = self.sides[self.request.player]
-        side.limit = reason
         if self.request.kind == "action" and side.cutoff is None:
-            side.cutoff, side.cutoff_seq = self.request.record, side.history.v1.decision
+            side.cutoff, side.cutoff_seq, side.cutoff_reason = self.request.record, side.history.v1.decision, reason
+        side.limit = side.cutoff_reason or reason
         self._note_problem(reason, f"{side.color} stopped at a declared horizon")
         self.request = None
         return self._finish(None)
@@ -326,6 +335,7 @@ class HeadlessSelfPlayEnv:
         return side.history.memory()
 
     def close(self) -> None:
+        self.request = None
         if getattr(self, "stopping", None) is not None:
             self.stopping.set()
         if self.process is not None:
@@ -364,20 +374,31 @@ class HeadlessSelfPlayEnv:
             # Responses are tiny single lines; never let Nagle's algorithm hold them.
             connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             side.connection = connection
-            buffer = b""
+            if stopping.is_set():
+                return  # close() may have run before the connection was published
+            buffer, scanned = bytearray(), 0
             while True:
-                chunk = connection.recv(1 << 16)
+                try:
+                    chunk = connection.recv(1 << 16)
+                except (ConnectionResetError, BrokenPipeError):
+                    chunk = b""  # an engine that exits with unread input resets the connection
                 if not chunk:
+                    if buffer:
+                        raise ProtocolError("Bridge stream ended inside a message")
                     events.put(("eof", side.player, None, time.monotonic()))
                     return
                 side.bytes_received += len(chunk)
                 buffer += chunk
-                *lines, buffer = buffer.split(b"\n")
+                start = 0
+                while (newline := buffer.find(b"\n", scanned)) >= 0:
+                    events.put(("message", side.player, json.loads(buffer[start:newline]), time.monotonic()))
+                    start = scanned = newline + 1
+                if start:
+                    del buffer[:start]
+                scanned = len(buffer)
                 if len(buffer) > MAX_MESSAGE_BYTES:
                     raise ProtocolError("Bridge message exceeds 16 MiB")
-                for line in lines:
-                    events.put(("message", side.player, json.loads(line), time.monotonic()))
-        except (OSError, ValueError) as error:
+        except Exception as error:  # a reader must report every failure, never die silently
             if not stopping.is_set():
                 events.put(("bridge_error", side.player, f"{type(error).__name__}: {error}", time.monotonic()))
 
@@ -398,7 +419,9 @@ class HeadlessSelfPlayEnv:
             if self.reason or exited is not None:
                 return self._finish(exited)
             if all_terminal:
-                deadline_kind, timeout = "shutdown", self.limits.shutdown_seconds
+                if self.shutdown_deadline is None:
+                    self.shutdown_deadline = time.monotonic() + self.limits.shutdown_seconds
+                deadline_kind, timeout = "shutdown", max(0.0, self.shutdown_deadline - time.monotonic())
             elif not all_ready:
                 deadline_kind = "startup"
                 timeout = max(0.0, self.started + self.limits.startup_seconds - time.monotonic())
@@ -439,14 +462,24 @@ class HeadlessSelfPlayEnv:
         except subprocess.TimeoutExpired:
             return None
 
-    def _ingest(self, side: _Side, message: dict, received: float) -> Request | None:
+    def _ingest(self, side: _Side, message: dict, received: float, draining: bool = False) -> Request | None:
+        """Validate, record and fold one engine message.
+
+        While draining after the engine exited, a message is only recorded: it
+        never becomes a request and never declares a horizon.
+        """
         self.last_engine_message = received
         self._write_ledger(side, "engine", message)
         try:
-            kind = side.validator.check(message)
+            return self._ingest_checked(side, message, received, draining)
         except ProtocolError as error:
             self._note_problem("protocol_error", f"{side.color}: {error}")
-            return None
+        except (KeyError, TypeError, ValueError, AttributeError, IndexError) as error:
+            self._note_problem("protocol_error", f"{side.color}: malformed message ({type(error).__name__}: {error})")
+        return None
+
+    def _ingest_checked(self, side: _Side, message: dict, received: float, draining: bool) -> Request | None:
+        kind = side.validator.check(message)
         if kind == "ready":
             side.ready_at = received - self.started
             side.history.start(message["map_size"])
@@ -455,11 +488,7 @@ class HeadlessSelfPlayEnv:
             side.error = str(message.get("message"))
             self._note_problem("engine_error", f"{side.color}: {side.error}")
             return None
-        try:
-            record = side.history.ingest(message)
-        except ProtocolError as error:
-            self._note_problem("protocol_error", f"{side.color}: {error}")
-            return None
+        record = side.history.ingest(message)
         if "perf" in message:
             for key, value in message["perf"].items():
                 if type(value) is int:
@@ -472,18 +501,23 @@ class HeadlessSelfPlayEnv:
         elif kind == "terminal":
             side.terminal_at = received - self.started
             return None
+        if draining:
+            return None
         if kind == "observation":
             past_day = record["day"] > self.limits.max_days
             if side.cutoff is None and (past_day or side.actions_sent >= self.limits.max_actions):
-                side.limit = "game_day_limit" if past_day else "agent_action_limit"
+                side.cutoff_reason = "game_day_limit" if past_day else "agent_action_limit"
                 side.cutoff, side.cutoff_seq = record, side.history.v1.decision
             # Both players pass a day horizon within one round, so play continues
             # until each has its own next-decision boundary. The action horizon is
             # a runaway guard and stops at once, also during that continuation.
             over_actions = side.actions_sent >= self.limits.max_actions
             if side.cutoff is not None and (over_actions or all(s.cutoff is not None for s in self.sides.values())):
-                self._note_problem("agent_action_limit" if over_actions else side.limit,
-                                   f"{side.color} reached the horizon")
+                reason = "agent_action_limit" if over_actions else side.cutoff_reason
+                for other in self.sides.values():
+                    if other.cutoff is not None:
+                        other.limit = other.cutoff_reason
+                self._note_problem(reason, f"{side.color} reached the horizon")
                 return None
         if kind in {"observation", "decision"} and self.request is None:
             return self._issue(side.player, record)
@@ -492,13 +526,16 @@ class HeadlessSelfPlayEnv:
     def _issue(self, player: int, record: dict) -> Request:
         side = self.sides[player]
         kind = "action" if record["type"] == "observation" else "decision"
+        # One copy for the agent; the stored history is never handed out.
         since_last = json.loads(json.dumps(side.history.records[side.unread_from:record["index"] + 1]))
         side.unread_from = record["index"] + 1
         frames = side.history.v1.frames[side.unread_frames_from:]
         side.unread_frames_from = len(side.history.v1.frames)
+        record = since_last[-1]
         self.request = Request(side.color, player, kind, record, since_last, frames,
                                mask=record.get("action_mask") if kind == "action" else None,
-                               choices=[c["choice"] for c in record["choices"]] if kind == "decision" else None)
+                               choices=[c["choice"] for c in record["choices"]] if kind == "decision" else None,
+                               past_horizon=side.cutoff is not None)
         self.request_time = time.monotonic()
         return self.request
 
@@ -525,8 +562,12 @@ class HeadlessSelfPlayEnv:
                 kind, player, payload, received = self.events.get_nowait()
             except queue.Empty:
                 break
-            if kind == "message" and not stopped_by_environment:
-                self._ingest(self.sides[player], payload, received)
+            if kind != "message":
+                continue
+            if stopped_by_environment:
+                self._write_ledger(self.sides[player], "engine", payload)  # evidence only
+            else:
+                self._ingest(self.sides[player], payload, received, draining=True)
         self.request = None
         for side in self.sides.values():
             if side.ledger is not None:
@@ -535,8 +576,16 @@ class HeadlessSelfPlayEnv:
         log_text = (self.episode_dir / "logs" / "process.log").read_text(errors="replace")
         executions = {side.color: self._execution(side) for side in self.sides.values()}
         status, outcomes, termination, rewards = scoring.classify_headless_self_play(returncode, self.reason, log_text, executions)
+        natural_after_horizon = None
+        horizon = next((side.cutoff_reason for side in self.sides.values() if side.cutoff is not None), None)
+        if status == "completed" and horizon:
+            # A natural ending during the horizon continuation follows actions
+            # that belong to no trajectory, so it is reported but never scored.
+            natural_after_horizon, outcomes = outcomes, {c: None for c in COLORS}
+            status, termination, rewards = "truncated", horizon, {c: None for c in COLORS}
+            self.detail = "natural terminal after a player's horizon"
         evidence, evidence_error = self._engine_evidence(log_text)
-        if status == "completed" and evidence_error:
+        if status in {"completed", "truncated"} and evidence_error:
             status, termination = "failed", "engine_evidence_invalid"
             outcomes, rewards = {c: None for c in COLORS}, {c: None for c in COLORS}
         terminals = [side.terminal_at for side in self.sides.values() if side.terminal_at is not None]
@@ -546,6 +595,7 @@ class HeadlessSelfPlayEnv:
             "created_at": self.created_at, "status": status, "termination_reason": termination,
             "failure_detail": self.detail if status != "completed" else None,
             "outcomes_by_player": outcomes, "rewards_by_player": rewards, "returncode": returncode,
+            "natural_terminal_after_horizon": natural_after_horizon,
             "limits": {"max_days": self.limits.max_days, "max_actions_per_player": self.limits.max_actions,
                        "watchdog_seconds": self.limits.watchdog_seconds, "bridge_timeout": self.limits.bridge_timeout},
             "env_steps": self.env_step,
@@ -557,24 +607,26 @@ class HeadlessSelfPlayEnv:
             "players": {side.color: {**executions[side.color], **self._counters(side)} for side in self.sides.values()},
             "engine_evidence": evidence, "engine_evidence_error": evidence_error,
             "agents": self.agent_descriptions, "ledger": self.ledger_enabled,
-            "identity": {**(self.launcher.identity() if hasattr(self.launcher, "identity") else {}),
-                         "engine": _git_state(ROOT / "vcmi"), "project": _git_state(ROOT),
-                         "engine_recipe": scoring.engine_recipe_digests(ROOT)},
+            "identity": self._identity(),
             "launch": self.launch_info,
             "deterministic_replay_verified": False,
         }
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
-        bootstrap = {side.color: (side.cutoff if status == "truncated" else None) for side in self.sides.values()}
+        bootstrap = {side.color: (json.loads(json.dumps(side.cutoff)) if status == "truncated" and side.cutoff else None)
+                     for side in self.sides.values()}
+        bootstrap_seq = {side.color: (side.cutoff_seq if status == "truncated" and side.cutoff is not None else None)
+                         for side in self.sides.values()}
         final = {side.color: json.loads(json.dumps(side.history.records[side.unread_from:])) for side in self.sides.values()}
         final_frames = {side.color: side.history.v1.frames[side.unread_frames_from:] for side in self.sides.values()}
-        self.result = EpisodeEnd(status, termination, outcomes, rewards, final, final_frames, bootstrap, manifest)
+        self.result = EpisodeEnd(status, termination, outcomes, rewards, final, final_frames, bootstrap, manifest,
+                                 bootstrap_v1_seq=bootstrap_seq)
         self.process = None
         return self.result
 
     def _execution(self, side: _Side) -> dict:
         terminal = {"outcome": side.validator.terminal} if side.validator.terminal else None
         return {"ready": side.validator.ready, "actions_sent": side.actions_sent, "error": side.error,
-                "limit": side.limit, "terminal": terminal,
+                "limit": side.limit, "terminal": terminal, "write_error": side.write_error,
                 "cutoff": None if side.cutoff is None else {"day": side.cutoff["day"], "history_v1_seq": side.cutoff_seq}}
 
     def _counters(self, side: _Side) -> dict:
@@ -587,6 +639,14 @@ class HeadlessSelfPlayEnv:
                 "bytes_received": side.bytes_received, "ready_seconds": side.ready_at,
                 "terminal_seconds": side.terminal_at, "native_perf_totals": side.perf,
                 "coverage": coverage(history.records), "history_v1": history.v1.summary()}
+
+    def _identity(self) -> dict:
+        """Build identity, computed once per environment: it hashes binaries and runs git."""
+        if self._identity_cache is None:
+            self._identity_cache = {**(self.launcher.identity() if hasattr(self.launcher, "identity") else {}),
+                                    "engine": _git_state(ROOT / "vcmi"), "project": _git_state(ROOT),
+                                    "engine_recipe": scoring.engine_recipe_digests(ROOT)}
+        return self._identity_cache
 
     def _engine_evidence(self, log_text: str) -> tuple[dict | None, str | None]:
         metadata_path = self.episode_dir / "engine" / "experiment-metadata.json"

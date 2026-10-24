@@ -28,6 +28,8 @@ from history_v1 import HistoryV1, relative_owner
 
 FACT_FIELDS = ("x", "y", "z", "type", "subtype", "owner")
 TILE_FACTS = ("terrain", "blocked", "visitable")
+DECISION_FIELDS = {"kind", "decision_id", "primary_skill", "text", "safe_to_autoaccept", "choices"}
+CHOICE_FIELDS = {"choice", "secondary_skill", "component_type", "component_subtype", "value"}
 
 
 def _position_key(position: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -75,7 +77,7 @@ class PlayerHistory:
         self.map_size = list(map_size)
 
     def ingest(self, message: dict) -> dict:
-        """Fold one validated engine message and return its learner record."""
+        """Fold one validated engine message and return its stored learner record (do not mutate)."""
         kind = message["type"]
         record = {"type": kind, "player": self.player, "color": self.color, "index": len(self.records)}
         if kind in {"observation", "action_result", "decision", "terminal"}:
@@ -96,7 +98,7 @@ class PlayerHistory:
         record.update(day=self.day, turn=self.turns_completed + 1,
                       battles_started=self.battles_started, battles_completed=self.battles_completed)
         self.records.append(record)
-        return copy.deepcopy(record)
+        return record
 
     def act(self, action: int) -> None:
         """The player's own adventure action, as submitted to the engine."""
@@ -163,8 +165,10 @@ class PlayerHistory:
             # Keep the last observed position and attributes; only visibility changes.
             self.last_seen[handle]["visible"] = False
             result["disappeared"].append(handle)
-        for key in ("appeared", "changed"):
-            for entry in event[key]:
+        # Handles follow visible facts, never the engine's object-ID order.
+        appeared = sorted(event["appeared"], key=lambda e: (e["z"], e["y"], e["x"], e["type"], e["subtype"], e["owner"], e["id"]))
+        for key, entries in (("appeared", appeared), ("changed", event["changed"])):
+            for entry in entries:
                 fact = self._fact(entry)
                 position = (fact["x"], fact["y"], fact["z"])
                 if position not in self.tiles:
@@ -183,6 +187,8 @@ class PlayerHistory:
                                             "owner": relative_owner(fact["owner"], self.player)}
                 self.last_seen[handle] = {"fact": dict(fact), "day": day, "sequence": event["sequence"], "visible": True}
                 result[key].append({"handle": handle, **fact})
+        for key in ("changed", "disappeared"):
+            result[key].sort(key=lambda entry: entry if type(entry) is int else entry["handle"])
         if event["own"] is not None:
             self.own = copy.deepcopy(event["own"])
             result["own"] = copy.deepcopy(event["own"])
@@ -250,8 +256,16 @@ class PlayerHistory:
                 "tiles": tiles if snapshot else None, "state": self._state(message["state"])}
 
     def _decision(self, message: dict) -> dict:
-        result = {key: copy.deepcopy(value) for key, value in message.items()
-                  if key not in {"type", "player", "episode", "protocol_version", "events", "hero_id"}}
+        # An allowlist: a new engine field must be reviewed before it can reach a learner.
+        unknown = set(message) - DECISION_FIELDS - {"type", "player", "episode", "protocol_version", "events", "hero_id"}
+        if unknown:
+            raise ProtocolError(f"Decision carries unreviewed fields: {sorted(unknown)}")
+        result = {key: copy.deepcopy(message[key]) for key in DECISION_FIELDS if key in message and key != "choices"}
+        result["choices"] = []
+        for choice in message["choices"]:
+            if not isinstance(choice, dict) or set(choice) - CHOICE_FIELDS:
+                raise ProtocolError("Decision choice carries unreviewed fields")
+            result["choices"].append(dict(choice))
         if "hero_id" in message:
             result["hero"] = self._observe(message["hero_id"])
         return result

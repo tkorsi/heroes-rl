@@ -338,14 +338,20 @@ playable. Without it, the client crashed on its first packet. The patch:
   authoritative state update still runs;
 - turns the main loop into a wait for one shutdown request with an exit status;
 - exits 0 only after both ExplorerRL terminals were delivered, and nonzero after
-  a packet-handling exception, a lost server connection, a refused server start
-  or missing game data;
+  a packet-handling exception, a lost server connection, a refused server start,
+  missing game data, a silent game end or a failure that ExplorerRL reports;
+  a failure is never replaced by a later success;
+- starts the game from the lobby by waiting on lobby updates with a deadline,
+  never by sleeping, and starts no LAN discovery for a client-hosted server;
+- calls `packApplied()` on every interface once each server pack is applied;
+- makes the server's `PackageApplied` carry the real result, so a rejected move
+  or end of turn is reported as rejected (upstream always reported success);
 - calls every AI's `finish()` before destruction;
 - skips the stdin console;
 - accepts `VCMI_EXPERIMENT_DIR` for experiment evidence.
 
 ExplorerRL protocol v3 adds ordered, sanitized player-visible events between
-decisions (`visible_update-v2`). After every relevant engine callback, each
+decisions (`visible_update-v2`). After every applied server pack, each
 side captures its own team-fog view and emits the difference from its previous
 capture as a `visible_update`. A capture holds the visible tiles with their
 terrain and blocked/visitable flags (derived only from objects the player can
@@ -356,8 +362,15 @@ disappearance carries no cause or later position, a hidden tile carries no
 facts, and a hidden removal or hidden tile change produces nothing. The first
 capture is reported against an empty view, so the event stream alone
 reconstructs what the player saw at every point. The Python adapter checks
-this at every decision snapshot, including tile facts and own state.
-`battle_start`/`battle_complete` mark battle boundaries for the side involved.
+this at every decision snapshot, including tile facts and own state. The
+visible-tile list in decision observations only repeats what the events
+established, so `EXPLORER_RL_SNAPSHOT_EVERY=N` (`--snapshot-every`) may send it
+every N decisions (0: never) for speed; the handshake declares the period, the
+own state is still checked at every decision, and events are never thinned.
+Event objects stay hidden even on visible tiles, as in the game's own UI, and
+within one update handles follow visible facts, never engine-ID order.
+`battle_start`/`battle_complete` mark battle boundaries for the side involved,
+and `level_up` reports a level-up the server applied without a choice.
 
 Each player's stream is also projected onto the learner's
 `heroes-player-history-v1` frames (`experiments/headless/history_v1.py`):
@@ -389,11 +402,17 @@ tests.test_headless` while the learner contract is not on `main`.
 - Day, action and collection horizons are `truncated`. Both players pass a
   day horizon within one round, so play continues until each player reaches
   its own first decision past it; that decision is the player's bootstrap
-  boundary, reported with its history-v1 sequence. The action horizon is a
-  runaway guard and stops at once with one boundary.
-- Watchdog, crash, protocol violation, engine error and unclean shutdown are
-  `failed`. Neither truncations nor failures are scored, and a dead hero with
-  a surviving town is never a loss.
+  boundary (`EpisodeEnd.bootstrap` and `bootstrap_v1_seq`). Requests at and
+  after a player's boundary carry `past_horizon=True`: they are answered so
+  that the other player can reach its boundary, but belong to no training
+  trajectory. A natural ending during that continuation is reported in the
+  manifest (`natural_terminal_after_horizon`) and stays an unscored
+  truncation. The action horizon is a runaway guard and stops at once.
+- Only a stop the environment declares can be a truncation. Watchdog, crash,
+  protocol violation, engine error, unclean shutdown and invalid engine
+  evidence are `failed`, also during a horizon continuation. Neither
+  truncations nor failures are scored, and a dead hero with a surviving town
+  is never a loss.
 
 The workload is the authored map with two independent seeded uniform-random
 agents. Run a predetermined series and record its frozen seed schedule:

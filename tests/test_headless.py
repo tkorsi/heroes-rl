@@ -160,7 +160,9 @@ class PlayerHistoryTests(unittest.TestCase):
         blue_message["player"] = 1
         blue.ingest(blue_message)
         self.assertEqual(red._handles, {7: 1, 8: 2})
-        self.assertEqual(blue._handles, {8: 1, 9: 2})  # same engine object, unrelated per-player handle
+        # Same engine object, unrelated per-player handle; within one update
+        # handles follow the scan order of visible facts, never engine IDs.
+        self.assertEqual(blue._handles, {9: 1, 8: 2})
         self.assertNotIn(9, red._handles)
 
     def test_tile_facts_and_own_state_must_match_the_snapshot(self):
@@ -446,6 +448,31 @@ class HeadlessEnvTests(unittest.TestCase):
                     self.assertEqual((frame["kind"], frame["mask"], frame["day"]), ("decision", record["action_mask"], record["day"]))
                     if reason == "game_day_limit":
                         self.assertEqual(record["day"], 2)
+
+    def test_requests_past_a_players_horizon_are_marked(self):
+        env = self.make(env_module.Limits(max_days=1), mode="natural", end_day=5)
+        end, requests = play(env, self.random_players())
+        self.assertEqual(end.termination_reason, "game_day_limit")
+        for color in ("red", "blue"):
+            marks = [(r.record["day"], r.past_horizon) for r in requests if r.color == color and r.kind == "action"]
+            self.assertTrue(marks and all(past == (day > 1) for day, past in marks), marks)
+            self.assertEqual(end.bootstrap_v1_seq[color], end.manifest["players"][color]["cutoff"]["history_v1_seq"])
+
+    def test_endings_during_the_horizon_continuation(self):
+        # Red passes the day horizon first and plays on until Blue reaches its own boundary.
+        fast = env_module.Limits(max_days=1, watchdog_seconds=1.5, startup_seconds=20, shutdown_seconds=1.5)
+        crash, _ = play(self.make(fast, mode="crash", crash_day=2), self.random_players())
+        self.assertEqual((crash.status, crash.termination_reason), ("failed", "process_exit_without_verified_terminal"))
+        self.assertEqual(crash.bootstrap, {"red": None, "blue": None})
+        natural, _ = play(self.make(fast, mode="natural", end_day=2), self.random_players())
+        self.assertEqual((natural.status, natural.termination_reason), ("truncated", "game_day_limit"))
+        self.assertEqual(natural.rewards, {"red": None, "blue": None})
+        self.assertEqual(natural.manifest["natural_terminal_after_horizon"], {"red": "win", "blue": "loss"})
+        self.assertIsNotNone(natural.bootstrap["red"])
+        self.assertIsNone(natural.bootstrap["blue"])  # Blue never reached a boundary of its own
+        evidence, _ = play(self.make(fast, mode="missing_metadata", end_day=5), self.random_players())
+        self.assertEqual((evidence.status, evidence.termination_reason), ("failed", "engine_evidence_invalid"))
+        self.assertEqual(evidence.bootstrap, {"red": None, "blue": None})
 
     def test_technical_failures_are_never_scored(self):
         fast = env_module.Limits(watchdog_seconds=1.5, startup_seconds=20, shutdown_seconds=1.5)

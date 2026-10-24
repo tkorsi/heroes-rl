@@ -135,10 +135,10 @@ def classify_headless_self_play(returncode: int | None, reason: str | None, log:
         return _unscored_self_play("failed", "missing_agent_evidence")
     if _policy_failure(log, executions):
         return _unscored_self_play("failed", "policy_error")
-    limits = {state.get("limit") for state in executions.values()} - {None}
-    termination = reason or (sorted(limits)[0] if limits else None)
-    if termination:
-        return _unscored_self_play("truncated" if termination in HEADLESS_TRUNCATIONS else "failed", termination)
+    # Only a stop the environment itself declared can be a truncation; an
+    # engine that exits on its own is judged by its exit status and terminals.
+    if reason:
+        return _unscored_self_play("truncated" if reason in HEADLESS_TRUNCATIONS else "failed", reason)
     if returncode != 0:
         delivered = all(state.get("terminal") for state in executions.values())
         return _unscored_self_play("failed", "unclean_exit_after_terminals" if delivered

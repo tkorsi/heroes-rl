@@ -78,6 +78,24 @@ def validate_own(own) -> None:
         _validate_position(town)
 
 
+def _validate_informational_event(event: dict) -> None:
+    kind = event["kind"]
+    if kind == "battle_start":
+        _require(event.get("side") in {"attacker", "defender"}
+                 and event.get("opponent") in {"hero", "town_garrison", "neutral", "other"}, "Malformed battle start")
+    elif kind == "battle_complete":
+        _require(event.get("won") is None or type(event.get("won")) is bool, "Malformed battle completion")
+    elif kind == "visit":
+        _require(all(_integer(event.get(key)) for key in ("object_id", "object_type", "object_subtype", "owner")),
+                 "Malformed visit event")
+    elif kind == "decision":
+        _require(isinstance(event.get("decision_kind"), str) and _integer(event.get("decision_id"))
+                 and _integer(event.get("choice")), "Malformed dialog answer event")
+    elif kind == "level_up":
+        _require(_integer(event.get("primary_skill")) and isinstance(event.get("secondary_skills"), list)
+                 and all(_integer(skill) for skill in event["secondary_skills"]), "Malformed level-up event")
+
+
 class BridgeValidator:
     """Ordering and shape checks for one player's engine messages."""
 
@@ -182,6 +200,7 @@ class BridgeValidator:
         for event in events:
             _require(isinstance(event, dict) and event.get("kind") in EVENT_KINDS, "Unknown or malformed event")
             if event["kind"] != "visible_update":
+                _validate_informational_event(event)
                 continue
             _require(event.get("sequence") == self.next_visible_sequence, "Visible update sequence has a gap")
             self.next_visible_sequence += 1
