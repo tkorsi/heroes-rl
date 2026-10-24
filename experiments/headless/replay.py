@@ -284,13 +284,15 @@ def run_replay(binary: Path, environment: dict, log: Path, observations: Path | 
     inherited = {key: value for key, value in os.environ.items()
                  if not key.startswith(("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_", "VCMI_USER_DATA_DIR", "XDG_"))}
     started = time.monotonic()
-    result = subprocess.run(command, cwd=binary.parent, env={**inherited, **environment}, stdin=subprocess.DEVNULL,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout)
+    console = report.with_name(report.stem + "-console.log")
+    with console.open("wb") as output:
+        result = subprocess.run(command, cwd=binary.parent, env={**inherited, **environment}, stdin=subprocess.DEVNULL,
+                                stdout=output, stderr=subprocess.STDOUT, timeout=timeout)
     seconds = time.monotonic() - started
     try:
         outcome = json.loads(report.read_text())
     except (OSError, json.JSONDecodeError):
-        tail = result.stdout.decode(errors="replace")[-2000:]
+        tail = console.read_bytes()[-2000:].decode(errors="replace")
         raise ReplayError(f"vcmireplay exited {result.returncode} without a report: {tail}") from None
     if outcome.get("schema") != REPORT_SCHEMA or result.returncode not in (0, 1, 3):
         raise ReplayError(f"Unexpected vcmireplay result {result.returncode}")

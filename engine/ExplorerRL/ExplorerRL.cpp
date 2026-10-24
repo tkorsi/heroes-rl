@@ -598,6 +598,9 @@ void ExplorerRL::noteLedgerMessage(const char * type)
 	std::fprintf(observationLedger, "{\"kind\":\"message\",\"type\":\"%s\",\"index\":%lld,\"pack\":%llu,\"pack_type\":%u,\"digest\":\"%016llx\"}\n",
 		type, static_cast<long long>(ledgerMessages++), static_cast<unsigned long long>(lastCapture->pack),
 		static_cast<unsigned>(lastCapture->packType), static_cast<unsigned long long>(lastCapture->digest));
+	// Before the message is sent: whatever a policy received has its engine
+	// evidence on disk, even if the environment then stops the engine.
+	std::fflush(observationLedger);
 }
 
 void ExplorerRL::visibleChangeTrigger() noexcept
