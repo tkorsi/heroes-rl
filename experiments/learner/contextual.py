@@ -303,7 +303,7 @@ NOTICE_TEXT_IDS = frozenset({
     "heroes.baseline.seven_days_without_town", "heroes.baseline.opponent_lost_last_town",
     *(f"core.restypes.{index}" for index in range(7)),
     *(f"core.mineevnt.{index}" for index in range(7)),
-    *(f"core.genrltxt.{index}" for index in (1, 5, 7, 659)),
+    *(f"core.genrltxt.{index}" for index in (1, 5, 7, 8, 659)),
     *(f"core.arraytxt.{index}" for index in (*range(32, 42), *range(43, 58), *range(130, 136))),
 })
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"

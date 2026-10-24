@@ -177,7 +177,19 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	env = std::move(ENV);
 	callback = std::move(CB);
 	cbc = callback;
-	playerID = *callback->getPlayerID();
+	const auto callbackPlayer = callback->getPlayerID();
+	if(!callbackPlayer)
+		throw std::runtime_error("ExplorerRL requires a player-specific callback");
+	playerID = *callbackPlayer;
+	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
+	{
+		const std::string name(interface);
+		if(name != "movement-v1" && name != "adventure-windows-v1")
+			throw std::runtime_error("Unsupported ExplorerRL interface");
+		contextual = name == "adventure-windows-v1";
+	}
+	if(contextual && playerID != PlayerColor(0) && playerID != PlayerColor(1))
+		throw std::runtime_error("Contextual interface requires the two baseline players");
 	callback->waitTillRealize = false;
 	human = false;
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
@@ -272,7 +284,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = 3;
+	result["protocol_version"].Integer() = contextual ? 4 : 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -368,17 +380,26 @@ void ExplorerRL::run() noexcept
 	{
 		connectPolicy();
 		auto ready = message("ready");
-		ready["adventure_actions"].Integer() = 9;
-		ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
-		ready["battle_ai"].String() = getBattleAIName();
-		// Ordered player-visible changes between decisions; see VisibleState.h.
-		ready["observation_events"].String() = "visible_update-v2";
-		ready["profiling"].Bool() = profile;
-		ready["snapshot_every"].Integer() = snapshotEvery;
+		if(contextual)
 		{
-			const auto gameLock = readGameState();
-			const auto size = callback->getMapSize();
-			ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
+			ready["interface"].String() = "adventure-windows-v1";
+			ready["history_schema"].String() = "heroes-player-history-v2";
+			ready["action_schema"].String() = "heroes-context-actions-v2";
+		}
+		else
+		{
+			ready["adventure_actions"].Integer() = 9;
+			ready["action_mask_semantics"].String() = "player-visible primitive attempts; server validates movement";
+			ready["battle_ai"].String() = getBattleAIName();
+			// Ordered player-visible changes between decisions; see VisibleState.h.
+			ready["observation_events"].String() = "visible_update-v2";
+			ready["profiling"].Bool() = profile;
+			ready["snapshot_every"].Integer() = snapshotEvery;
+			{
+				const auto gameLock = readGameState();
+				const auto size = callback->getMapSize();
+				ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
+			}
 		}
 		if(!buildAndSend([&ready] { return ready; }))
 			return;
@@ -403,7 +424,10 @@ void ExplorerRL::run() noexcept
 				query = turns.front();
 				turns.pop_front();
 			}
-			runTurn(query);
+			if(contextual)
+				runContextualTurn(query);
+			else
+				runTurn(query);
 		}
 	}
 	catch(const std::exception & error)
@@ -450,8 +474,20 @@ void ExplorerRL::requestSent(const CPackForServer *, int requestID)
 {
 	if(std::this_thread::get_id() == worker.get_id())
 	{
-		std::lock_guard lock(stateMutex);
+		std::unique_lock lock(stateMutex, std::defer_lock);
+		if(!contextualIssueLockHeld)
+			lock.lock();
 		pendingRequest = requestID;
+		if(contextual && contextState.issueArmed && contextState.executing && contextState.decision)
+		{
+			const auto command = contextState.commands++;
+			contextState.requests.emplace(requestID, explorer_rl::ContextualState::Request{*contextState.decision, command});
+			auto record = contextState.record("issued", callback->getDate(Date::DAY));
+			record["decision_id"].Integer() = *contextState.decision;
+			record["command_index"].Integer() = command;
+			contextState.records.push_back(std::move(record));
+			contextState.issueArmed = false;
+		}
 	}
 }
 
@@ -462,6 +498,22 @@ void ExplorerRL::requestRealized(PackageApplied * pack)
 		// BattleAI uses the same callback. Parent moves and nested dialogs
 		// have separate IDs; responses may precede requestSent returning.
 		acknowledgements[pack->requestID] = pack->result;
+		if(contextual)
+		{
+			const auto found = contextState.requests.find(pack->requestID);
+			if(found != contextState.requests.end())
+			{
+				if(contextState.decision == found->second.decision && !terminal)
+				{
+					auto record = contextState.record("acknowledged", callback->getDate(Date::DAY));
+					record["decision_id"].Integer() = found->second.decision;
+					record["command_index"].Integer() = found->second.command;
+					record["accepted"].Bool() = pack->result;
+					contextState.records.push_back(std::move(record));
+				}
+				contextState.requests.erase(found);
+			}
+		}
 	}
 	changed.notify_all();
 }
@@ -494,11 +546,17 @@ void ExplorerRL::battleStart(const BattleID & battleID, const CCreatureSet * arm
 		|| object->ID == Obj::CREATURE_GENERATOR2 || object->ID == Obj::CREATURE_GENERATOR3 || object->ID == Obj::CREATURE_GENERATOR4);
 	event["opponent"].String() = explorer_rl::opponentKind(opposingHero != nullptr,
 		dynamic_cast<const CGTownInstance *>(opposingArmy) != nullptr, unowned);
+	if(contextual)
+	{
+		event.Struct().erase("opponent");
+		contextualEvent(event);
+	}
 	{
 		std::lock_guard lock(stateMutex);
 		battleSide = side;
 		battleWon.reset();
-		events.push_back(std::move(event));
+		if(!contextual)
+			events.push_back(std::move(event));
 	}
 	CAdventureAI::battleStart(battleID, army1, army2, tile, hero1, hero2, side, replayAllowed);
 }
@@ -527,7 +585,18 @@ void ExplorerRL::battleEnded()
 			event["won"] = JsonNode();
 		battleSide.reset();
 		battleWon.reset();
-		events.push_back(std::move(event));
+		if(contextual)
+		{
+			const auto day = callback->getDate(Date::DAY);
+			if(!contextState.executing)
+				contextState.supersede(day, "visible_event");
+			++contextState.interactions;
+			auto record = contextState.record("event", day);
+			record["event"] = std::move(event);
+			contextState.records.push_back(std::move(record));
+		}
+		else
+			events.push_back(std::move(event));
 	}
 	changed.notify_all();
 }
@@ -536,6 +605,20 @@ void ExplorerRL::heroVisit(const CGHeroInstance * hero, const CGObjectInstance *
 {
 	if(!start || !hero || !object || hero->getOwner() != playerID)
 		return;
+	if(contextual)
+	{
+		JsonNode event;
+		event["kind"].String() = "visit";
+		{
+			std::lock_guard lock(stateMutex);
+			event["subject"].String() = contextState.handle(object->id.getNum());
+		}
+		event["object_kind"].Integer() = object->ID.getNum();
+		event["object_subtype"].Integer() = object->subID.getNum();
+		event["owner"].String() = object->getOwner() == playerID ? "self" : object->getOwner().isValidPlayer() ? "opponent" : "neutral";
+		contextualEvent(std::move(event));
+		return;
+	}
 	// This event is explicitly delivered for our hero's own interaction.
 	JsonNode event;
 	event["kind"].String() = "visit";
@@ -563,6 +646,11 @@ ExplorerRL::GameStateRead ExplorerRL::readGameState() const
 
 void ExplorerRL::noteVisibleChanges()
 {
+	if(contextual)
+	{
+		captureContextual();
+		return;
+	}
 	// Callers guarantee a stable state: the worker holds readGameState(), and
 	// network callbacks run on the single thread that applies packets.
 	const int day = callback->getDate(Date::DAY);
@@ -605,21 +693,38 @@ void ExplorerRL::visibleChangeTrigger() noexcept
 {
 	try
 	{
+		bool finalContextual = false;
 		{
 			std::lock_guard lock(stateMutex);
-			if(stopping || terminal || !failure.empty())
+			if(stopping || (terminal && !contextual) || !failure.empty())
 				return;
+			finalContextual = contextual && terminal;
+		}
+		if(finalContextual)
+		{
+			// Finalization belongs to the external process/stream verifier. Keep
+			// later permitted final packs, without manufacturing another decision.
+			std::lock_guard sendLock(sendMutex);
+			captureContextual();
+			auto envelope = takeContextualRecords();
+			if(!envelope["records"].Vector().empty())
+				writeMessage(envelope);
+			return;
 		}
 		noteVisibleChanges();
 	}
 	catch(const std::exception & error)
 	{
+		bool finalFailure;
 		{
 			std::lock_guard lock(stateMutex);
 			if(failure.empty())
 				failure = std::string("Visible change capture failed: ") + error.what();
+			finalFailure = terminal;
 		}
 		changed.notify_all();
+		if(finalFailure)
+			reportExperimentFailure("ExplorerRL final visible capture failed");
 	}
 }
 
@@ -655,17 +760,41 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 			// The consumption watermark is committed where no pack can be applied. The pack that ends this
 			// player's game was either applied already, and the action is never issued, or is applied after
 			// the request has left. gameOver runs only after that pack is applied and reads the watermark,
-			// so it names exactly the actions issued before the end. The state lock is released before
-			// request(), whose requestSent() takes it again.
+			// so it names exactly the actions issued before the end. Contextual
+			// requests also serialize visible events with the actual native send.
 			const bool playing = callback->getPlayerStatus(playerID, false) == EPlayerStatus::INGAME;
-			std::lock_guard lock(stateMutex);
+			std::unique_lock lock(stateMutex);
 			if(!failure.empty())
 				throw std::runtime_error(failure);
 			if(!playing || stopping || terminal)
 				return false;
-			submittedActionID = policyActionID;
+			if(contextual)
+			{
+				if(contextState.decision != policyActionID)
+					return false;
+				if(contextState.routeInteractions && *contextState.routeInteractions != contextState.interactions)
+				{
+					contextState.issueArmed = false;
+					return false;
+				}
+				submittedActionID = policyActionID;
+				// Serialize the actual send and its requestSent notification with
+				// visible events. A notice already queued cannot be followed by a
+				// further route command. The synchronous notification uses this lock.
+				contextualIssueLockHeld = true;
+				try { request(); }
+				catch(...) { contextualIssueLockHeld = false; throw; }
+				contextualIssueLockHeld = false;
+			}
+			else
+			{
+				submittedActionID = policyActionID;
+				lock.unlock();
+				request();
+			}
 		}
-		request();
+		else
+			request();
 	}
 	if(issued)
 		*issued = true;
@@ -991,6 +1120,11 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		// Holding sendMutex first lets an in-flight worker message finish, or
 		// return its events, before this record takes the remaining ones.
 		std::lock_guard sendLock(sendMutex);
+		if(contextual)
+		{
+			contextualTerminal(result.victory() ? "win" : "loss");
+			return;
+		}
 		auto record = message("terminal");
 		record["outcome"].String() = result.victory() ? "win" : "loss";
 		{
@@ -1017,15 +1151,24 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 
 void ExplorerRL::unsupported(const std::string & operation)
 {
+	bool finalFailure;
 	{
 		std::lock_guard lock(stateMutex);
 		failure = "Unsupported scenario interaction: " + operation;
+		finalFailure = terminal;
 	}
 	changed.notify_all();
+	if(finalFailure)
+		reportExperimentFailure("ExplorerRL unsupported final interaction: " + operation);
 }
 
 void ExplorerRL::enqueueDecision(QueryID query, JsonNode payload)
 {
+	if(contextual)
+	{
+		unsupported("unsupported_interaction: query dialog");
+		return;
+	}
 	if(query == QueryID(-1))
 	{
 		unsupported("non-query dialog");
@@ -1083,6 +1226,11 @@ void ExplorerRL::handleDecision(Decision decision)
 
 void ExplorerRL::heroGotLevel(const CGHeroInstance * hero, PrimarySkill primary, std::vector<SecondarySkill> & skills, QueryID query)
 {
+	if(contextual)
+	{
+		unsupported("unsupported_interaction: hero level-up");
+		return;
+	}
 	if(!hero || hero->getOwner() != playerID)
 	{
 		unsupported("level-up of a hero the player does not own");
@@ -1124,6 +1272,11 @@ void ExplorerRL::heroGotLevel(const CGHeroInstance * hero, PrimarySkill primary,
 
 void ExplorerRL::showBlockingDialog(const std::string & text, const std::vector<Component> & components, QueryID query, int, bool selection, bool cancel, bool safeToAutoaccept)
 {
+	if(contextual)
+	{
+		unsupported("unsupported_interaction: blocking dialog");
+		return;
+	}
 	// These flags describe VCMI's ordinary finite-choice query protocol.
 	// Unknown window-specific operations are handled separately and rejected.
 	if(selection && components.empty())

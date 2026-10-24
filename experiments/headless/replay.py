@@ -63,6 +63,18 @@ class ReplayError(ValueError):
     pass
 
 
+def require_legacy_interface(metadata: dict) -> None:
+    """The v1 replay digests do not bind contextual windows, notices or commands."""
+    if (metadata.get("kind") == "contextual-headless-self-play"
+            or metadata.get("environment") == "adventure-windows-v1"
+            or metadata.get("interface") == "adventure-windows-v1"
+            or metadata.get("history_schema") == "heroes-player-history-v2"
+            or metadata.get("action_schema") == "heroes-context-actions-v2"
+            or metadata.get("type") == "contextual"
+            or metadata.get("protocol_version") not in (None, 3)):
+        raise ReplayError("Contextual replay is unsupported: legacy digests do not verify history-v2")
+
+
 # -- player-capture digest -------------------------------------------------
 class Digest:
     """FNV-1a over signed 64-bit little-endian values (engine/ExplorerRL/VisibleState.h)."""
@@ -231,6 +243,7 @@ def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: 
         if entry.get("direction") != "engine":
             continue
         message = entry["message"]
+        require_legacy_interface(message)
         kind = message.get("type")
         if kind == "ready":
             fold = VisibleFold(message["map_size"])
@@ -336,6 +349,7 @@ def run_replay(binary: Path, environment: dict, log: Path, observations: Path | 
 
 def check_recorded_evidence(episode_dir: Path, manifest: dict) -> None:
     """The engine evidence on disk must be exactly the files the environment hashed when the episode ended."""
+    require_legacy_interface(manifest)
     recorded = manifest.get("replay")
     if not isinstance(recorded, dict):
         raise ReplayError("The manifest records no replay evidence")
@@ -411,6 +425,7 @@ def manifest_labels(manifest: dict, episode_dir: Path) -> dict:
     being one the environment writes, is the environment's own label: a
     replayed prefix cannot confirm it.
     """
+    require_legacy_interface(manifest)
     status, reason = manifest.get("status"), manifest.get("termination_reason")
     if (status not in ("completed", "truncated", "failed") or not isinstance(reason, str)
             or (status == "completed") != (reason == "natural_terminal")
@@ -448,6 +463,7 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     episode_dir = episode_dir.expanduser().resolve()
     manifest_bytes = (episode_dir / "manifest.json").read_bytes()
     manifest = json.loads(manifest_bytes)
+    require_legacy_interface(manifest)
     cut_short = manifest["status"] != "completed"
     directory = (output or episode_dir / "verification").expanduser().resolve()
     if directory.exists():
@@ -572,6 +588,7 @@ def tamper_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     """
     episode_dir = episode_dir.expanduser().resolve()
     manifest = json.loads((episode_dir / "manifest.json").read_text())
+    require_legacy_interface(manifest)
     cut_short = manifest["status"] != "completed"
     directory = (output or episode_dir / "tamper").expanduser().resolve()
     if directory.exists():

@@ -3,6 +3,7 @@
 #include "../../lib/callback/CAdventureAI.h"
 #include "../../lib/json/JsonNode.h"
 #include "VisibleState.h"
+#include "Contextual.h"
 
 #include <array>
 #include <atomic>
@@ -37,10 +38,20 @@ public:
 	void heroGotLevel(const CGHeroInstance *, PrimarySkill, std::vector<SecondarySkill> &, QueryID) override;
 	void commanderGotLevel(const CCommanderInstance *, std::vector<ui32>, QueryID) override;
 	void showBlockingDialog(const std::string &, const std::vector<Component> &, QueryID, int, bool, bool, bool) override;
+	void showStructuredInfoDialog(EInfoWindowMode, const MetaString &, const std::vector<Component> &, int) override;
+	void showInfoDialog(EInfoWindowMode, const std::string &, const std::vector<Component> &, int) override;
 	void showGarrisonDialog(const CArmedInstance *, const CGHeroInstance *, bool, QueryID, const MetaString &) override;
 	void showTeleportDialog(const CGHeroInstance *, TeleportChannelID, TTeleportExitsList, bool, QueryID) override;
 	void showMapObjectSelectDialog(QueryID, const Component &, const MetaString &, const MetaString &, const std::vector<ObjectInstanceID> &) override;
 	void showRecruitmentDialog(const CGDwelling *, const CArmedInstance *, int, QueryID) override;
+	void showShipyardDialog(const IShipyard *) override;
+	void showPuzzleMap() override;
+	void viewWorldMap() override;
+	void showWorldViewEx(const std::vector<ObjectPosInfo> &, bool) override;
+	void showHillFortWindow(const CGObjectInstance *, const CGHeroInstance *) override;
+	void showThievesGuildWindow(const CGObjectInstance *) override;
+	void showQuestLog() override;
+	void askToAssembleArtifact(const ArtifactLocation &) override;
 	void showMarketWindow(const IMarket *, const CGHeroInstance *, QueryID) override;
 	void showUniversityWindow(const IMarket *, const CGHeroInstance *, QueryID) override;
 	void showTavernWindow(const CGObjectInstance *, const CGHeroInstance *, QueryID) override;
@@ -85,6 +96,9 @@ private:
 	int64_t submittedActionID = -1; ///< the last policy action issued to the server, protected by stateMutex
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
+	bool contextual = false;
+	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
+	explorer_rl::ContextualState contextState; ///< protected by stateMutex
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex
 	int64_t visibleSequence = 0; ///< protected by stateMutex
 	std::optional<BattleSide> battleSide; ///< own side in the current battle, protected by stateMutex
@@ -152,4 +166,12 @@ private:
 		bool * issued = nullptr);
 	bool ended();
 	void unsupported(const std::string & operation);
+	void runContextualTurn(QueryID queryID);
+	void captureContextual(); ///< stable game state; acquires stateMutex
+	JsonNode contextualObservation(); ///< stable game state and stateMutex held
+	JsonNode takeContextualRecords(); ///< acquires stateMutex
+	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
+	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex
+	bool executeContextualAction(const JsonNode & action, int64_t decision);
+	void contextualResult(JsonNode result, int64_t decision);
 };

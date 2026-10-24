@@ -35,6 +35,9 @@ ROOT = HERE.parents[1]
 _VIDEO_SPEC = importlib.util.spec_from_file_location("recording_video", ROOT / "experiments/recording/video.py")
 video = importlib.util.module_from_spec(_VIDEO_SPEC)
 _VIDEO_SPEC.loader.exec_module(video)
+_REPLAY_SPEC = importlib.util.spec_from_file_location("headless_replay_scope", HERE / "replay.py")
+replay = importlib.util.module_from_spec(_REPLAY_SPEC)
+_REPLAY_SPEC.loader.exec_module(replay)
 
 # The replay verification report version whose manifest label checks the drawn labels rely on.
 VERIFICATION_VERSION = 2
@@ -317,6 +320,10 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
     if changed:
         raise video.VideoError(f"Inputs differ from what the replay verified ({', '.join(changed)}); verify again")
     manifest = json.loads(manifest_bytes)
+    try:
+        replay.require_legacy_interface(manifest)
+    except replay.ReplayError as error:
+        raise video.VideoError(str(error)) from None
     header, frames = read_trace(trace_path, trace_bytes)
     renderer = TraceRenderer(header, manifest)
     budget = max(1, int(fps * max_seconds))

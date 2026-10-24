@@ -37,7 +37,7 @@ class ContextualNoticeTests(unittest.TestCase):
                "heroes.baseline.all_opponents_defeated", "heroes.baseline.opponent_won",
                "heroes.baseline.seven_days_without_town", "heroes.baseline.opponent_lost_last_town",
                *(f"core.restypes.{n}" for n in range(7)), *(f"core.mineevnt.{n}" for n in range(7)),
-               *(f"core.genrltxt.{n}" for n in (1, 5, 7, 659)),
+               *(f"core.genrltxt.{n}" for n in (1, 5, 7, 8, 659)),
                *(f"core.arraytxt.{n}" for n in (*range(32, 42), *range(43, 58), *range(130, 136))),
                "creatures.core.pikeman.name.singular", "creatures.core.efreetSultan.name.plural")
         for text_id in ids:

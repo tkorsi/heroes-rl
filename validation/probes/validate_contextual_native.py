@@ -867,7 +867,15 @@ def injected_failure(run, before_truncate):
     ensure(frame.observation.heroes, "Crash fixture needs an owned hero")
     run.call(run.contract.Action("end_turn"), "acknowledged_native_turn_before_crash")
     ensure(not run.state.done, "Episode ended before failure injection")
+    # The other socket can deliver its next turn before this player's result
+    # batch arrives. Wait for the original player's next real decision; never
+    # assume an AEC step returning the other seat completes our transition.
+    while run.state.player != frame.player and run.live():
+        run.call(run.contract.Action("end_turn"), "return_to_original_player_before_crash")
+    ensure(not run.state.done and run.state.player == frame.player,
+           "Original player's next decision was not reached before failure injection")
     records = [run.contract.decode_frame(raw) for raw in run.history(COLORS[frame.player])]
+    records = [record for record in records if record.decision_seq == frame.seq]
     ensure(any(record.kind == "consumed" for record in records)
            and any(record.kind == "acknowledged" and record.accepted is True for record in records)
            and any(record.kind == "result" for record in records),

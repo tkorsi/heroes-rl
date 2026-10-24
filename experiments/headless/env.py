@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -28,6 +29,8 @@ import subprocess
 import sys
 import threading
 import time
+
+IMPORTED_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
@@ -283,8 +286,18 @@ def await_replay_tail(engine: Path, running, timeout: float) -> float:
 class HeadlessSelfPlayEnv:
     """Agent-environment cycle over one isolated engine process per episode."""
 
+    def __new__(cls, *args, interface=None, **kwargs):
+        if cls is HeadlessSelfPlayEnv and interface == "adventure-windows-v1":
+            from contextual_env import ContextualMixin
+            contextual_type = type("ContextualSelfPlayEnv", (ContextualMixin, cls), {})
+            return object.__new__(contextual_type)
+        if interface is not None:
+            raise ValueError("Unknown headless interface")
+        return object.__new__(cls)
+
     def __init__(self, launcher, output: Path, limits: Limits = Limits(), *, ledger: bool = True,
-                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1, replay: bool = True):
+                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1, replay: bool = True,
+                 interface: str | None = None):
         if type(snapshot_every) is not int or not 0 <= snapshot_every <= 1000000:
             raise ValueError("snapshot_every must be an integer from 0 to 1000000")
         self.launcher, self.limits, self.ledger_enabled, self.profile = launcher, limits, ledger, profile
@@ -429,6 +442,10 @@ class HeadlessSelfPlayEnv:
         side = next(side for side in self.sides.values() if side.color == color)
         return json.loads(json.dumps(side.history.records))
 
+    def history_v2(self, color: str) -> list[dict]:
+        """Contextual histories require the explicit adventure-windows-v1 interface."""
+        raise ValueError("Legacy adjacent-step mode does not expose history-v2")
+
     def history_v1(self, color: str) -> list[dict]:
         """A copy of one player's complete heroes-player-history-v1 frames."""
         side = next(side for side in self.sides.values() if side.color == color)
@@ -496,7 +513,7 @@ class HeadlessSelfPlayEnv:
                 start = 0
                 while (newline := buffer.find(b"\n", scanned)) >= 0:
                     decoding = time.perf_counter()
-                    message = json.loads(buffer[start:newline])
+                    message = self._decode_message(buffer[start:newline])
                     side.decode_seconds += time.perf_counter() - decoding
                     events.put(("message", side.player, message, time.monotonic()))
                     start = scanned = newline + 1
@@ -508,6 +525,8 @@ class HeadlessSelfPlayEnv:
         except Exception as error:  # a reader must report every failure, never die silently
             if not stopping.is_set():
                 events.put(("bridge_error", side.player, f"{type(error).__name__}: {error}", time.monotonic()))
+
+    _decode_message = staticmethod(json.loads)
 
     @staticmethod
     def _watch_process(process: subprocess.Popen, events: queue.Queue) -> None:

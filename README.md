@@ -218,9 +218,12 @@ terminal feedback.
 
 ## Next workstreams — simulation and learning
 
-**Claude owns the entire headless simulation, performance and offline replay
-workstream**, tracked in [issue #4](https://github.com/tkorsi/heroes-rl/issues/4).
-Codex owns the learning design, policy/value implementation and integration.
+**Claude owns headless simulation, performance and offline replay**, tracked in
+[issue #4](https://github.com/tkorsi/heroes-rl/issues/4). On 24 October the user
+explicitly authorized Codex to finish the unfinished contextual adapter while
+Claude was paused; Codex now owns that native/Python integration and its local
+validation. Claude's other simulation/replay work remains separately scoped.
+Codex also owns learning design and policy/value implementation.
 Deliver engine work in staged draft PRs starting from the merged `main` branch.
 Keep this README as the canonical agreement rather than creating another charter.
 
@@ -409,15 +412,15 @@ change is agreed or implemented by this document.
 
 **Status:** destination selection, engine routing and the minimal structured
 map/hero/town loop are authorized for implementation and bounded local validation.
-`experiments/learner/contextual.py` implements the v2 record and trajectory contract;
-the native producer and adapter are being implemented separately by Claude. The
-details below describe the intended execution, not yet validated native behavior.
+`experiments/learner/contextual.py` implements the v2 record and trajectory contract.
+The opt-in native producer and Python adapter now implement the minimal loop;
+bounded real-game acceptance is in progress. The details below define the
+execution contract; a declared capability alone is not a validation result.
 The first knowledge-planner stage (`b4cc7b2`) builds locally on macOS and its
 generated dependency matches the root recipe. Its grid/prefix regression covers
 five groups and 200 hidden-world variants; it does not run the full pathfinder
 in a game. The 88 contextual contract, auditor and probe tests also pass. The
-planner is not yet called by a live contextual adapter, so no contextual episode
-or route/window acceptance result is established. Compact stage evidence is in
+planner stage preceded the live contextual adapter. Its compact stage evidence is in
 `validation/contextual-integration-2026-10-24.json`.
 Construction, recruitment and army editing remain later stages. No training is
 authorized. Keep the adjacent-step `movement-v1` baseline
@@ -450,11 +453,11 @@ The intended loop, in plain English:
 
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
-| Live action interface | One selected owned hero, eight adjacent movement attempts and end-turn; automatic battles. | Explicit hero targeting, destination-coordinate engine routing and map/hero/town context navigation. |
-| History and fog | PR #6 records per-player visible events; local replay and transient-sighting checks pass. The separate strict v2 contract has visible roads, windows, command issuance/acknowledgement, supersession and paired finalization. | Native field/context audit, history-v2 production and real-game proof that every permitted event and final view is retained. |
+| Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles. | Complete bounded acceptance of the contextual interface; additional operations remain deferred. |
+| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. PR #6's legacy history/replay evidence remains separate. | Complete native acceptance and contextual replay; legacy replay cannot verify v2. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement adapter only. The v2 contract uses opaque subject handles and full rectangular coordinate domains. | Native typed transport and contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
-| Hero/town operations | No structured open/close, construction, recruitment, army editing or quantity-choice transport. | Implement and validate each declared operation against VCMI. Calling a generic scorer with a new type does not implement it. |
+| Hero/town operations | Explicit owned hero/town open/read/close; hero army/skills/mana/level and town army/faction only while open. | Construction, recruitment, army editing and deeper panels remain deferred. |
 | Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
 
 The action-consumption and stream-finalization findings are **resolved in the
@@ -563,6 +566,10 @@ complementary engine/socket outcomes and a clean exit. A collection cutoff is
 provisional until both players have real held decisions, readers finish without
 failure and bounded continuation/shutdown evidence is verified. Technical and
 unsupported failures provide neither terminal rewards nor bootstrap targets.
+The technical cutoff finalizer may explicitly close a window and end a turn to
+obtain the other player's real boundary, at most eight actions per player. These
+actions are recorded in separate live evidence outside each frozen learner
+prefix; they are never policy experience or automatic route continuation.
 
 `validation/probes/audit_contextual_histories.py` independently reconstructs both
 streams and checks their immutable prefixes, paired proofs and manifest hashes.

@@ -12,6 +12,7 @@
 #include "../../lib/pathfinder/NodeStorage.h"
 #include "../../lib/pathfinder/PathfinderOptions.h"
 #include "../../lib/pathfinder/PathfindingRules.h"
+#include "../../lib/pathfinder/TurnInfo.h"
 
 #include <unordered_map>
 
@@ -426,6 +427,10 @@ private:
 
 RoutePlan planRoute(const CCallback & player, const CGHeroInstance & hero, const int3 & destination)
 {
+	if(!player.getPlayerID() || *player.getPlayerID() != hero.getOwner())
+		throw std::logic_error("Knowledge routing requires the owned hero's player callback");
+	if(hero.getTurnInfo(0)->hasFlyingMovement() || hero.getTurnInfo(0)->hasWaterWalking())
+		throw std::runtime_error("Unsupported scenario interaction: special movement bonus");
 	RoutePlan plan;
 	if(hero.inBoat())
 		return plan; // sailing is outside the travel modes
