@@ -40,7 +40,9 @@
 ///
 /// --prefix accepts a log the environment cut short by stopping the engine:
 /// its records are replayed in full, and observations the clients recorded
-/// after the last replayed pack are counted instead of required.
+/// after the last replayed pack are counted instead of required. Every loaded
+/// observation is either checked or counted: a record must name a client pack
+/// position of at least 1, and positions may not decrease within a player's file.
 namespace
 {
 using namespace experiment_replay;
@@ -194,6 +196,7 @@ class Replay
 	std::unique_ptr<CGameHandler> gameHandler;
 	std::map<int, std::shared_ptr<CCallback>> callbacks; ///< per recorded player, over the replayed state
 	std::multimap<uint64_t, ObservationRecord> observations; ///< by client pack position
+	std::map<int, int64_t> observationsLoaded;
 	std::map<int, int64_t> observationsChecked;
 	std::ofstream trace;
 	int64_t inputs = 0;
@@ -236,10 +239,13 @@ class Replay
 		battles.clear();
 		for(const auto & battle : state.currentBattles)
 		{
-			JsonNode tile;
-			for(const int64_t value : {int64_t{battle->tile.x}, int64_t{battle->tile.y}, int64_t{battle->tile.z}})
-				tile.Vector().emplace_back(value);
-			battles.push_back(std::move(tile));
+			// Where, and which players' clients took part: only they saw the battle.
+			JsonNode entry;
+			for(const int64_t value : {int64_t{battle->tile.x}, int64_t{battle->tile.y}, int64_t{battle->tile.z},
+					int64_t{battle->getSidePlayer(BattleSide::ATTACKER).getNum()},
+					int64_t{battle->getSidePlayer(BattleSide::DEFENDER).getNum()}})
+				entry.Vector().emplace_back(value);
+			battles.push_back(std::move(entry));
 		}
 		auto & objects = frame["objects"].Vector();
 		for(const auto & object : state.getMap().getObjects())
@@ -294,13 +300,24 @@ public:
 			const auto path = directory / ("observations-p" + std::to_string(player) + ".jsonl");
 			if(!boost::filesystem::exists(path))
 				continue;
+			int64_t last = 1; // a capture follows at least the client's first applied pack
+			int64_t loaded = 0;
 			for(const auto & line : readLines(path))
 			{
-				ObservationRecord record{player, line["kind"].String(),
-					line[line["kind"].String() == "capture" ? "sequence" : "index"].Integer(),
+				const auto & kind = line["kind"].String();
+				ObservationRecord record{player, kind, line[kind == "capture" ? "sequence" : "index"].Integer(),
 					static_cast<uint16_t>(line["pack_type"].Integer()), line["digest"].String()};
-				observations.emplace(static_cast<uint64_t>(line["pack"].Integer()), record);
+				const std::string stage = "observation p" + std::to_string(player) + " " + kind + " " + std::to_string(record.number);
+				if(kind != "capture" && kind != "message")
+					throw Divergence(stage, "kind", "capture or message", text(line["kind"]));
+				const auto & pack = line["pack"];
+				if(pack.getType() != JsonNode::JsonType::DATA_INTEGER || pack.Integer() < last)
+					throw Divergence(stage, "pack", "a client pack position of at least " + std::to_string(last), pack.toCompactString());
+				last = pack.Integer();
+				observations.emplace(static_cast<uint64_t>(last), record);
+				++loaded;
 			}
+			observationsLoaded[player] = loaded;
 			observationsChecked[player] = 0;
 		}
 	}
@@ -438,6 +455,12 @@ public:
 			throw Divergence("observation p" + std::to_string(unreached->second.player) + " " + unreached->second.kind + " "
 				+ std::to_string(unreached->second.number), "pack", std::to_string(unreached->first),
 				"replay ended at client pack " + std::to_string(server.outgoing.clientCount));
+		std::map<int, int64_t> unchecked;
+		for(auto entry = unreached; entry != observations.end(); ++entry)
+			++unchecked[entry->second.player];
+		for(const auto & [player, loaded] : observationsLoaded)
+			expectEqual("observations p" + std::to_string(player), "records checked or after the prefix", std::to_string(loaded),
+				std::to_string(observationsChecked[player] + unchecked[player]));
 
 		JsonNode summary;
 		summary["inputs"].Integer() = inputs;
@@ -449,6 +472,11 @@ public:
 			summary["boundaries"][kind].Integer() = count;
 		for(const auto & [player, count] : observationsChecked)
 			summary["observations_checked"][std::to_string(player)].Integer() = count;
+		for(const auto & [player, count] : observationsLoaded)
+		{
+			summary["observations_loaded"][std::to_string(player)].Integer() = count;
+			summary["observations_unchecked"][std::to_string(player)].Integer() = unchecked[player];
+		}
 		terminals.Vector();
 		summary["terminals"] = terminals;
 		return summary;
@@ -461,6 +489,8 @@ public:
 		result["client_packs"].Integer() = server.outgoing.clientCount;
 		for(const auto & [player, count] : observationsChecked)
 			result["observations_checked"][std::to_string(player)].Integer() = count;
+		for(const auto & [player, count] : observationsLoaded)
+			result["observations_loaded"][std::to_string(player)].Integer() = count;
 		return result;
 	}
 };
@@ -526,13 +556,14 @@ int main(int argc, const char * argv[])
 	Replay replay;
 	try
 	{
+		// Malformed evidence fails before the game library loads.
+		const auto records = readLines(logPath);
+		if(!observationDirectory.empty())
+			replay.loadObservations(observationDirectory);
 		LIBRARY = new GameLibrary;
 		LIBRARY->initializeFilesystem(false);
 		logConfigurator.configure();
 		LIBRARY->initializeLibrary();
-		const auto records = readLines(logPath);
-		if(!observationDirectory.empty())
-			replay.loadObservations(observationDirectory);
 		if(!tracePath.empty())
 			replay.openTrace(tracePath);
 		report["summary"] = replay.run(records, allowPlatformMismatch, prefix,

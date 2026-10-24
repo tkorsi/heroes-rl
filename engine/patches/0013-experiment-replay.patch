@@ -108,6 +108,23 @@ new file mode 100644
 +DLL_LINKAGE ExperimentPackPosition experimentPackPosition();
 +
 +VCMI_LIB_NAMESPACE_END
+diff --git a/lib/serializer/BinaryDeserializer.h b/lib/serializer/BinaryDeserializer.h
+--- a/lib/serializer/BinaryDeserializer.h
++++ b/lib/serializer/BinaryDeserializer.h
+@@ -260,7 +260,12 @@ private:
+ 			auto createdPtr = app->createPtr(*this, cb);
+ 			auto dataNonConst = dynamic_cast<ncpT *>(createdPtr);
+ 			assert(createdPtr);
+-			assert(dataNonConst);
++			if(dataNonConst == nullptr)
++			{
++				// A stream naming a registered type of another class must not reach loadPtr.
++				delete createdPtr;
++				throw std::runtime_error("Serialized type " + std::to_string(tid) + " is not the expected class");
++			}
+ 			data = dataNonConst;
+ 			ptrAllocated(data, pid);
+ 			app->loadPtr(*this, cb, dataNonConst);
 diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
 --- a/server/CGameHandler.cpp
 +++ b/server/CGameHandler.cpp
@@ -258,7 +275,7 @@ diff --git a/server/ExperimentReplay.cpp b/server/ExperimentReplay.cpp
 new file mode 100644
 --- /dev/null
 +++ b/server/ExperimentReplay.cpp
-@@ -0,0 +1,483 @@
+@@ -0,0 +1,481 @@
 +/*
 + * ExperimentReplay.cpp, part of VCMI engine
 + *
@@ -652,7 +669,9 @@ new file mode 100644
 +
 +void Recorder::line(const std::string & json)
 +{
-+	output << json << '\n';
++	// Flushed per record: the environment may stop the engine at any decision,
++	// and the inputs behind every observation a client sent must be on disk.
++	output << json << '\n' << std::flush;
 +	if(!output)
 +		throw std::runtime_error("Cannot write the replay log");
 +}
@@ -697,7 +716,6 @@ new file mode 100644
 +		+ ",\"client_connection\":" + std::to_string(clientConnection) + ",\"hosts\":[" + hosts + "]"
 +		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
 +		+ ",\"parts\":" + partsJson(gameHandler) + "}");
-+	output.flush();
 +}
 +
 +void Recorder::afterStart(CGameHandler & gameHandler, IGameServer &)
@@ -706,7 +724,6 @@ new file mode 100644
 +		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
 +		+ ",\"parts\":" + partsJson(gameHandler) + ",\"sent\":" + sentJson(outgoing) + "}");
 +	outgoing.clearFlags();
-+	output.flush();
 +}
 +
 +void Recorder::input(GameConnectionID connection, const CPackForServer & pack)
@@ -733,8 +750,6 @@ new file mode 100644
 +		+ ",\"parts\":" + (boundary ? partsJson(gameHandler) : std::string("null"))
 +		+ ",\"sent\":" + sentJson(outgoing) + ",\"terminals\":" + terminals + "}");
 +	++sequence;
-+	if(boundary)
-+		output.flush();
 +}
 +
 +void Recorder::sent(const CPackForClient & pack, int target)
