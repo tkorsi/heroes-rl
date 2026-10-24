@@ -1,0 +1,42 @@
+{
+  "schema": "heroes-contextual-validation-gap-plan-v1",
+  "purpose": "Resolve declared native coverage gaps and investigate bounded ordinary-game completion without learning",
+  "starting_commit": "06692963b91b3ac634bb6ce40aadde6af4b30c2b",
+  "training_performed": false,
+  "optimizer_updates": 0,
+  "paid_compute": false,
+  "ordinary_cohort": {
+    "engine_seeds": [98111, 98112, 98113, 98114, 98115, 98116, 98117, 98118],
+    "learner_seats_per_seed": [0, 1],
+    "planned_attempts": 16,
+    "policy_seed": 98103,
+    "opponent_seed": 95002,
+    "opponent_sampling_seed": 95004,
+    "max_days": 100,
+    "max_requests": 2048,
+    "baseline_map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+    "checkpoint_path": "runs/contextual-neural-fixed-95011-95012/untrained-policy.pt",
+    "checkpoint_file_sha256": "32f9377d844f56861d32ac2be2088ed244f14f2cec2e1d172f30983ca119bc71",
+    "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+    "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+    "retain_all_attempts": true,
+    "stop_on_first_natural_outcome": false,
+    "count_cutoffs_as_draws": false,
+    "source_freeze": "Record exact gameplay source and binary identities before launch; preserve development failures separately if an actual blocker requires a fix",
+    "interpretation": "Paired finite fixed-weight evaluation, not independent seed samples or a population win-rate estimate; no change to map, rules, rewards, action support, weights or strategy"
+  },
+  "separate_mechanics_checks": [
+    "Recruitment resource-limited slider and exact affordable count through native displayed controls",
+    "Hero-window casualty freshness and encounter route cessation",
+    "Town capture and normal elimination from both colors on the unchanged baseline",
+    "Neutral automatic battle request as an authoritative natural terminal origin",
+    "Supported-profile timer and initialization exclusions remain fail closed"
+  ],
+  "mechanics_scope": "Explicit test actions and any declared isolated initial-state fixtures are diagnostics only, never demonstrations, ordinary-frequency evidence or optimization input",
+  "required_validation": [
+    "Real native episodes and independent contextual replay for valid fresh recordings",
+    "Player-local immutable history and fog checks; rewards only on verified natural endings",
+    "Frozen neural probability/value reconstruction and optimizer-admission rejection",
+    "All relevant tests and exact root/generated VCMI agreement"
+  ]
+}
