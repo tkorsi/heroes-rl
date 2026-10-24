@@ -11,6 +11,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -433,6 +434,24 @@ def play(env, players, episode=1, seed=7):
         requests.append(step)
         step = env.step(players[step.color].act(step))
     return step, requests
+
+
+class StopProcessGroupTests(unittest.TestCase):
+    def test_a_group_refused_with_eperm_is_still_stopped_and_reaped(self):
+        # macOS killpg() answers EPERM while the group's only member is an unreaped zombie.
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        calls = []
+
+        def refusing_killpg(group, sig):
+            calls.append(sig)
+            if sig == signal.SIGTERM:
+                process.kill()
+            raise PermissionError(1, "Operation not permitted")
+        with mock.patch.object(env_module.os, "killpg", refusing_killpg):
+            env_module.stop_process_group(process)
+        self.assertEqual(calls, [signal.SIGTERM, signal.SIGKILL])
+        self.assertIsNotNone(process.returncode)
 
 
 class HeadlessEnvTests(unittest.TestCase):

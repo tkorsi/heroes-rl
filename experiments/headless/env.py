@@ -202,9 +202,11 @@ class VcmiLauncher:
 def stop_process_group(process: subprocess.Popen) -> None:
     """Stop the private process group this environment started, stragglers included."""
     group = process.pid  # started with start_new_session, so the leader's PID names the group
+    # macOS refuses with EPERM, not ESRCH, while the group's only member is an unreaped zombie.
+    gone = (ProcessLookupError, PermissionError)
     try:
         os.killpg(group, signal.SIGTERM)
-    except ProcessLookupError:
+    except gone:
         pass
     try:
         process.wait(timeout=3)
@@ -212,7 +214,7 @@ def stop_process_group(process: subprocess.Popen) -> None:
         pass
     try:
         os.killpg(group, signal.SIGKILL)  # anything still alive in the group
-    except ProcessLookupError:
+    except gone:
         pass
     process.wait(timeout=5)
 

@@ -545,14 +545,17 @@ python3 experiments/headless/cost_breakdown.py runs/profiled/worker-0
 smoke, profile, 1,000-attempt series, replay verification with tamper tests,
 videos, benchmark, compact evidence) and resumes after an interruption:
 `DATA="$HOME/Library/Application Support/vcmi" tools/validate_headless.sh`.
-Without `OUT`, its first run pins the output directory in
+It stops at once unless `PYTHON` (default `python3`) is Python 3.11 or newer;
+macOS's own `/usr/bin/python3` is older. Without `OUT`, its first run pins the output directory in
 `runs/validation-current` (remove that file to start a new validation). A stage
 that did not finish is moved aside to `<name>.interrupted-<UTC time>` and run
 again, and a smoke stage in which any of the four attempts fails or does not
 verify, tamper tests included, stops the run before the long stages. The build
-stage configures `vcmi/build` when it has no CMake cache; a `vcmi/` prepared
-from an older recipe is never changed, and the stage prints the one-time
-commands that keep it aside and prepare again. Each build and test run keeps
+stage configures `vcmi/build` when it has no CMake cache, leaving out the
+components this project never builds (launcher, map editor, MMAI, Discord,
+Nullkiller2 and translations), so it needs neither Qt nor onnxruntime. A
+`vcmi/` prepared from an older recipe is never changed, and the stage prints
+the one-time commands that keep it aside and prepare again. Each build and test run keeps
 its own timestamped log, and `$OUT/build.log` and `$OUT/tests.log` collect
 every run, so a resumed run adds to the evidence instead of replacing it; both
 are hashed into the evidence. Replay

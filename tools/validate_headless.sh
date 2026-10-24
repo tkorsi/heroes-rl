@@ -40,6 +40,9 @@ ATTEMPTS="${ATTEMPTS:-1000}"
 REPLAYS="${REPLAYS:-20}"
 VIDEOS="${VIDEOS:-3}"
 PYTHON="${PYTHON:-python3}"
+"$PYTHON" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2> /dev/null \
+  || { echo "PYTHON=$PYTHON is not Python 3.11 or newer; set PYTHON, for example PYTHON=/opt/homebrew/bin/python3.11" >&2
+       exit 1; }
 BINARY="${BINARY:-$ROOT/vcmi/build/bin/vcmiclient}"
 REPLAY_BINARY="${REPLAY_BINARY:-$ROOT/vcmi/build/bin/vcmireplay}"
 MAP="${MAP:-$ROOT/experiments/explorer/maps/random-baseline-v1.vmap}"
@@ -145,7 +148,9 @@ for stage in "${STAGES[@]}"; do
         log "Configure vcmi/build"
         cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_PREFIX_PATH="${CMAKE_PREFIX_PATH:-/opt/homebrew}" -DENABLE_GOLDMASTER=ON \
-          -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON > "$OUT/configure.log" 2>&1 \
+          -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON \
+          -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF -DENABLE_MMAI=OFF -DENABLE_DISCORD=OFF \
+          -DENABLE_NULLKILLER2_AI=OFF -DENABLE_TRANSLATIONS=OFF > "$OUT/configure.log" 2>&1 \
           || { tail -30 "$OUT/configure.log" >&2; echo "Configure failed; full log: $OUT/configure.log" >&2; exit 1; }
       fi
       run_logged build cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay \
