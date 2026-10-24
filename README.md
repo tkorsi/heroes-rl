@@ -430,7 +430,8 @@ in a game. The 88 contextual contract, auditor and probe tests also pass. The
 planner stage preceded the live contextual adapter. Its compact stage evidence is in
 `validation/contextual-integration-2026-10-24.json`.
 **Town stage, 24 October:** construction and creature recruitment are implemented
-on `codex/town-economy`, based on draft PR #7 at `48d8e1a`. Construction passed
+in [draft PR #8](https://github.com/tkorsi/heroes-rl/pull/8) on
+`codex/town-economy`, based on draft PR #7 at `48d8e1a`. Construction passed
 real VCMI validation before recruitment was added. The separate v3 interface
 preserves v2 and movement-v1 behavior; compact evidence, retained failed
 diagnostics and coverage limits are in `validation/town-native-2026-10-24.json`.
