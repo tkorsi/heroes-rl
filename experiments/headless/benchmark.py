@@ -211,7 +211,8 @@ def main() -> None:
             "end_to_end_decision_cycles_per_second": {"mean": round(mean, 3), "min": min(rates), "max": max(rates),
                                                       "relative_spread": round((max(rates) - min(rates)) / mean, 4) if mean else None},
             "scaling_efficiency_mean": round(mean / (workers * single), 4) if single else None,
-            "stretch_target_1000_per_second_met": mean >= 1000.0})
+            # The stretch target's timed path includes replay-log writes; a rate without them is not judged.
+            "stretch_target_1000_per_second_met": mean >= 1000.0 if args.replay == "record" else None})
         run_headless.scoring.write_json(path, report)
     # Only now is the report a result; an interrupted or failed benchmark stays incomplete.
     report.update(complete=True, finished_at=datetime.now(timezone.utc).isoformat())

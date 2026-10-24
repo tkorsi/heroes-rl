@@ -92,7 +92,7 @@ class RenderReplayTests(unittest.TestCase):
                   for name, path in (("manifest", episode / "manifest.json"),
                                      ("trace", episode / "verification" / "trace.jsonl"))}
         (episode / "verification" / "replay-verification.json").write_text(
-            json.dumps({"verified": verified, "inputs": inputs}))
+            json.dumps({"schema_version": render_replay.VERIFICATION_VERSION, "verified": verified, "inputs": inputs}))
         return episode
 
     def test_memory_changes_only_through_the_players_own_sightings(self):
@@ -201,6 +201,19 @@ class RenderReplayTests(unittest.TestCase):
         with self.assertRaises(render_replay.video.VideoError):
             render_replay.render(episode, self.base / "x.mp4")
 
+    def test_refuses_a_verification_that_predates_the_label_checks(self):
+        # An older verifier accepted manifest labels the replay never checked, such as a winner on a cut-short episode.
+        replay_spec = importlib.util.spec_from_file_location("render_test_replay", ROOT / "experiments/headless/replay.py")
+        replay = importlib.util.module_from_spec(replay_spec)
+        replay_spec.loader.exec_module(replay)
+        self.assertEqual(render_replay.VERIFICATION_VERSION, replay.REPORT_VERSION)
+        episode = self.episode()
+        path = episode / "verification" / "replay-verification.json"
+        path.write_text(json.dumps({**json.loads(path.read_text()), "schema_version": 1}))
+        with self.assertRaisesRegex(render_replay.video.VideoError, "verify again"):
+            render_replay.render(episode, self.base / "old.mp4")
+        self.assertFalse((self.base / "old.mp4").exists())
+
     def test_refuses_inputs_that_differ_from_the_verified_ones(self):
         # A verified label covers only the exact trace and manifest the verification hashed.
         for name in ("trace", "manifest", "unbound"):
@@ -217,7 +230,8 @@ class RenderReplayTests(unittest.TestCase):
                     path = episode / "manifest.json"
                     path.write_text(path.read_text().replace('"red": "win", "blue": "loss"', '"red": "loss", "blue": "win"'))
                 else:
-                    (episode / "verification" / "replay-verification.json").write_text(json.dumps({"verified": True}))
+                    (episode / "verification" / "replay-verification.json").write_text(
+                        json.dumps({"schema_version": render_replay.VERIFICATION_VERSION, "verified": True}))
                 output = self.base / f"{name}.mp4"
                 with self.assertRaisesRegex(render_replay.video.VideoError, "differ from what the replay verified"):
                     render_replay.render(episode, output)

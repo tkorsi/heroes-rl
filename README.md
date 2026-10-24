@@ -1039,8 +1039,8 @@ tests.test_headless` while the learner contract is not on `main`.
   legitimate observation.
 - `memory(color)` keeps last-seen facts that never refresh from hidden state.
   A visible object is seen again at every capture and decision, so its
-  last-seen day and capture sequence follow them; a hidden one keeps those of
-  its last observation.
+  last-seen day follows them and its capture sequence follows the latest
+  visible update; a hidden one keeps those of its last observation.
 - Rewards are 0 on ordinary transitions. +1/-1 exists only after both
   terminals, a clean exit and validated engine evidence.
 - Day, action and collection horizons are `truncated`. Both players pass a
@@ -1124,7 +1124,15 @@ pack position. `experiments/headless/replay.py` adds the policy side: it folds
 the visible updates each player actually received (from the bridge ledger) and
 checks every capture and message digest with a Python mirror of the native
 digest (`tests/test_native_visible_state.py` pins the two together). A
-natural ending must also replay its game-end boundary and both terminals.
+natural ending must also replay its game-end boundary and both terminals,
+whether it was scored or reported after a horizon. The manifest's labels must
+be ones the environment writes: a completed episode is a natural terminal
+with one winner, one loser and the rewards they earn, a truncated one names a
+declared horizon, and only a completed episode names outcomes or rewards. Its
+episode number must be the one its directory names, and its seed must be the
+integer the replay log recorded. Why a cut-short episode stopped, beyond its
+status and termination reason being such a pair, is the environment's own
+label: a replayed prefix cannot confirm it.
 
 Every evidence file must still match the hash and size the manifest recorded.
 `vcmireplay` accounts for every observation record: a position must be at
@@ -1178,8 +1186,9 @@ that player fought. Long episodes are thinned to the frame budget, but every
 frame with a new sighting or a battle, the game end and the final frame are
 kept. It uses only the standard library and ffmpeg (H.264). The verification
 report records the SHA-256 of the manifest and trace it verified, and the
-renderer refuses inputs whose bytes differ, so a video never shows an
-unverified or edited episode.
+renderer refuses inputs whose bytes differ and a report from before the
+manifest label checks, so a video never shows a trace, episode number, seed
+or winner that the replay did not check.
 
 ```bash
 python3 experiments/headless/render_replay.py runs/headless-smoke/episodes/episode-000001 --output videos/episode-000001.mp4
@@ -1225,7 +1234,9 @@ wins by color, episode lengths and any missing attempt; its steady-state rates
 are given per worker and for all workers. `benchmark.json` is marked complete
 only after its last configuration. The benchmark defaults
 to the evidence the scoring needs (engine info log and metadata); add
-`--ledger full --replay record` to measure with replay evidence too.
+`--ledger full --replay record` to measure with replay evidence too. The
+stretch target's timed path includes replay-log writes, so only such a run
+judges it; otherwise `stretch_target_1000_per_second_met` is null.
 
 Deferred: persistent workers (each episode launches a new engine process), and
 a typed action transport for economy choices.
