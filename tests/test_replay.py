@@ -104,6 +104,20 @@ def own_only_stream(movements):
     return bridge, ledger
 
 
+class RecorderContractTests(unittest.TestCase):
+    def test_recorder_records_the_neutral_player_the_host_connection_owns(self):
+        # The live server lets the host connection act for PlayerColor::NEUTRAL (neutral battle stacks). A recorder
+        # that enumerates another value records connections without it, and every replay then rejects the first
+        # neutral battle action.
+        patch = (ROOT / "engine/patches/0013-experiment-replay.patch").read_text()
+        line = next(line for line in patch.splitlines() if "constexpr int PLAYER_IDS[]" in line)
+        players = [int(value) for value in line.split("{", 1)[1].split("}", 1)[0].split(",")]
+        self.assertEqual(players, [0, 1, 2, 3, 4, 5, 6, 7, -1])
+        identifiers = ROOT / "vcmi/lib/constants/EntityIdentifiers.cpp"
+        if identifiers.is_file():  # the prepared engine, where present, must agree
+            self.assertIn("const PlayerColor PlayerColor::NEUTRAL(-1);", identifiers.read_text())
+
+
 class ReplayToolTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory(prefix="heroes-replay-test-")

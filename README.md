@@ -428,7 +428,9 @@ per-episode status and termination reason, and per-player counts: accepted,
 rejected and moving actions, end turns, town-only turns, dialogs, battles and
 days. Totals over both players call the battle count
 `battle_participations_red_plus_blue`, because a battle between the two
-players counts once for each. It also records step-latency percentiles,
+players counts once for each, and `dialog_choices_sent` counts dialog answers
+(such as level-up choices), not decision cycles. The agents sample only from
+the mask, so a rejected attempt is one the engine refused despite the mask. It also records step-latency percentiles,
 startup and shutdown time, log volume, peak memory and end-to-end resolved
 actions per second, which include relaunch time. Steady-state rates divide by
 the stepping time between both bridges being ready and both terminals; they

@@ -32,7 +32,7 @@ def synthetic_trace(frames=12):
     rows = []
     for seq in range(-1, frames - 1):
         blue_x = 14 - max(0, seq)  # the blue hero walks west into red's sight
-        objects = [[1, 3, 7, 0, 34, 0, 0], [2, blue_x, 7, 0, 34, 1, 1], [3, 4, 7, 0, 98, 0, 0], [4, 6, 12, 0, 54, 0, 255]]
+        objects = [[1, 3, 7, 0, 34, 0, 0], [2, blue_x, 7, 0, 34, 1, 1], [3, 4, 7, 0, 98, 0, 0], [4, 6, 12, 0, 54, 0, -1]]
         red_columns, blue_columns = set(range(0, 8)), set(range(blue_x - 2, blue_x + 3))
         rows.append({"kind": "frame", "seq": seq, "day": 1 + max(0, seq) // 4,
                      "boundary": "game_end" if seq == frames - 2 else ("end_turn" if seq == 3 else None),
@@ -61,7 +61,7 @@ def glimpse_trace(frames=41):
 def changed_frames(kinds):
     """One changed frame per character: b battle, e game end, anything else plain."""
     return [{"kind": "frame", "seq": index - 1, "day": 1, "boundary": "game_end" if kind == "e" else None,
-             "battles": [[1, 1, 0, 0, 255]] if kind == "b" else [], "objects": [[1, index, 0, 0, 34, 0, 0]],
+             "battles": [[1, 1, 0, 0, -1]] if kind == "b" else [], "objects": [[1, index, 0, 0, 34, 0, 0]],
              "players": {"0": {"visible": visible(set()), "objects": []}}} for index, kind in enumerate(kinds)]
 
 
@@ -155,7 +155,7 @@ class RenderReplayTests(unittest.TestCase):
         objects = {entry[0]: tuple(entry[1:]) for entry in frame["objects"]}
         marked = lambda panel: pixel(panel, 6 * TILE - 1, 12 * TILE + 8) == render_replay.BATTLE  # noqa: E731
         # Blue against the neutral stack on tile (6, 12), red against blue, and a legacy entry without sides.
-        for battle, red, blue in (([6, 12, 0, 1, 255], False, True), ([6, 12, 0, 0, 1], True, True),
+        for battle, red, blue in (([6, 12, 0, 1, -1], False, True), ([6, 12, 0, 0, 1], True, True),
                                   ([6, 12, 0], False, False)):
             frame["battles"] = [battle]
             with self.subTest(battle=battle):

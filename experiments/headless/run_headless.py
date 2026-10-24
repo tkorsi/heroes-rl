@@ -142,7 +142,7 @@ def episode_row(end, plan: dict, wall: float, logs_bytes: int, raw_latencies: li
         coverage = player["coverage"]
         row[color] = {"actions_sent": player["actions_sent"], "resolved": player["actions_accepted"] + player["actions_rejected"],
                       "accepted": player["actions_accepted"], "rejected": player["actions_rejected"],
-                      "decisions": player["decisions_sent"], "turns": player["turns_completed"],
+                      "dialog_choices_sent": player["decisions_sent"], "turns": player["turns_completed"],
                       "last_day": player["last_day"], "battles": player["battles_started"],
                       "end_turns": coverage["end_turns"], "moves": coverage["successful_moves"],
                       "town_only_turns": coverage["town_only_turns"], "dialogs": coverage["dialogs"],
@@ -163,7 +163,7 @@ def aggregate(rows: list[dict], wall_seconds: float) -> dict:
     stepping = sum(row["engine_wait_seconds"] + row["agent_seconds"] for row in rows)
     natural = sum(1 for row in rows if row["status"] == "completed")
     totals = {key: sum(row[c][key] for row in rows for c in ("red", "blue"))
-              for key in ("decisions", "turns", "battles", "end_turns", "moves", "town_only_turns", "dialogs")}
+              for key in ("dialog_choices_sent", "turns", "battles", "end_turns", "moves", "town_only_turns", "dialogs")}
     # Summed over both players, a battle between them counts once for each.
     totals["battle_participations_red_plus_blue"] = totals.pop("battles")
     coverage = {key: sum(row[c]["coverage"][key] for row in rows for c in ("red", "blue"))

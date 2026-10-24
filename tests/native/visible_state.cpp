@@ -108,7 +108,7 @@ World twoSidedWorld()
 		{1, 1, 1, 0, 34, 0, 0},   // own hero
 		{2, 2, 3, 0, 34, 1, 1},   // enemy hero, visible
 		{3, 4, 2, 0, 34, 2, 1},   // enemy hero, hidden
-		{4, 1, 4, 0, 53, 0, 255}, // neutral mine, visible
+		{4, 1, 4, 0, 53, 0, -1}, // neutral mine, visible (PlayerColor::NEUTRAL)
 	};
 	return world;
 }

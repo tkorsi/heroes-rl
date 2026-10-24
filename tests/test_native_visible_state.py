@@ -16,7 +16,7 @@ SPEC.loader.exec_module(replay)
 
 def two_sided_world_update() -> dict:
     """tests/native/visible_state.cpp twoSidedWorld() as the bridge reports its first capture."""
-    objects = {1: (1, 1, 0, 34, 0, 0), 2: (2, 3, 0, 34, 1, 1), 4: (1, 4, 0, 53, 0, 255)}
+    objects = {1: (1, 1, 0, 34, 0, 0), 2: (2, 3, 0, 34, 1, 1), 4: (1, 4, 0, 53, 0, -1)}
     occupied = {(x, y) for x, y, *_ in objects.values()}
     revealed = [{"x": x, "y": y, "z": 0, "terrain": (x + y) % 10, "blocked": False, "visitable": (x, y) in occupied}
                 for y in range(5) for x in range(3)]

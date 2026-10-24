@@ -18,7 +18,7 @@ and the simulation result itself is unaffected.
 from __future__ import annotations
 
 SCHEMA = "heroes-player-history-v1"
-PLAYER_COLORS = 8  # VCMI player colors 0..7; 254/255 are unflaggable/neutral
+PLAYER_COLORS = 8  # VCMI player colors 0..7; -1 is neutral and -2 unflaggable (PlayerColor in the pinned VCMI)
 
 
 def relative_owner(owner: int, own_color: int) -> str:

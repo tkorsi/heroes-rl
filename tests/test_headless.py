@@ -202,8 +202,8 @@ class HistoryV1Tests(unittest.TestCase):
     def setUp(self):
         self.history = history()
         self.own = obj(1, 0, 0, owner=0)
-        self.history.ingest(observation(0, columns(0, 2), [self.own, obj(2, 2, 1), obj(3, 1, 2, owner=255, kind=53)], [
-            update(0, appeared=[self.own, obj(2, 2, 1), obj(3, 1, 2, owner=255, kind=53)], revealed=columns(0, 2), own=OWN)]))
+        self.history.ingest(observation(0, columns(0, 2), [self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)], [
+            update(0, appeared=[self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)], revealed=columns(0, 2), own=OWN)]))
 
     def result(self, action, accepted, events):
         state = {"day": 1, "hero_id": 1, "resources": [0] * 7}
@@ -244,7 +244,7 @@ class HistoryV1Tests(unittest.TestCase):
         self.history.ingest(self.result(8, True, [{"kind": "battle_start", "side": 0, "opponent": "neutral"},
                                                   {"kind": "battle_complete", "won": True},
                                                   {"kind": "visit", "object_id": 3, "object_type": 53,
-                                                   "object_subtype": 0, "owner": 255}]))
+                                                   "object_subtype": 0, "owner": -1}]))
         self.assertEqual(self.history.v1.summary()["unrepresented_events"],
                          {"battle_complete": 1, "battle_start": 1, "visit": 1})
 

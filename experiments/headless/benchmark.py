@@ -77,7 +77,7 @@ def summarize_configuration(workers: int, summaries: list[dict], window: float, 
             round(resolved / sum(stepping), 3) if sum(stepping) else None,
         "breakdown": {key: totals.get(key) for key in ("moves", "end_turns", "town_only_turns", "dialogs",
                                                        "battle_participations_red_plus_blue",
-                                                       "decisions", "turns")},
+                                                       "dialog_choices_sent", "turns")},
         "coverage_totals": totals.get("coverage_totals", {}),
         "per_finished_episode": {
             "decision_cycles_mean": round(sum(r["red"]["resolved"] + r["blue"]["resolved"] for r in finished) / len(finished), 3)

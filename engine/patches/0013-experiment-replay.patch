@@ -275,7 +275,7 @@ diff --git a/server/ExperimentReplay.cpp b/server/ExperimentReplay.cpp
 new file mode 100644
 --- /dev/null
 +++ b/server/ExperimentReplay.cpp
-@@ -0,0 +1,481 @@
+@@ -0,0 +1,482 @@
 +/*
 + * ExperimentReplay.cpp, part of VCMI engine
 + *
@@ -461,7 +461,8 @@ new file mode 100644
 +	return result + "\"";
 +}
 +
-+constexpr int PLAYER_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, 255};
++// PlayerColor::NEUTRAL is -1 in this VCMI; the host connection owns it, so neutral battle actions are its packs.
++constexpr int PLAYER_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, -1};
 +}
 +
 +uint64_t digestBytes(const std::vector<std::byte> & bytes, uint64_t state)
