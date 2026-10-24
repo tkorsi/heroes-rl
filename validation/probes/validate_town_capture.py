@@ -59,10 +59,10 @@ def attacker_destination(observation, attempted):
 
 class CaptureRun(base.CaseRun):
     def expected_offers(self, frame):
-        return contract.Offers.from_observation(frame.observation, schema=contract.TOWN_ACTION_SCHEMA)
+        return contract.Offers.from_observation(frame.observation, schema=contract.profile_for(self.interface).action_schema)
 
     def action(self, kind, **parameters):
-        return contract.Action(kind, schema=contract.TOWN_ACTION_SCHEMA, **parameters)
+        return contract.Action(kind, schema=contract.profile_for(self.interface).action_schema, **parameters)
 
 
 def capture_case(run, attacker):
@@ -133,7 +133,7 @@ def capture_case(run, attacker):
     base.ensure("heroes.baseline.seven_days_without_town" in notices, "Native seven-day notice was not observed")
     from experiments.headless.contextual_evidence import terminal_barrier, terminal_capture_close
     barrier = terminal_barrier(run.env.episode_dir, episode=terminal.episode,
-                               interface=contract.TOWN_ENVIRONMENT, outcomes=[expected[color] for color in base.COLORS])
+                               interface=run.interface, outcomes=[expected[color] for color in base.COLORS])
     close = terminal_capture_close(run.env.episode_dir, barrier)
     run.check("standard_capture_then_seven_day_ending", "passed", outcomes=expected,
               surviving_defender_decisions=defender_townless_alive,
@@ -147,6 +147,8 @@ def main(argv=None):
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=98201)
+    parser.add_argument("--interface", choices=(contract.TOWN_ENVIRONMENT, contract.ARMIES_ENVIRONMENT),
+                        default=contract.TOWN_ENVIRONMENT)
     parser.add_argument("--attacker", choices=("red", "blue", "both"), default="both")
     parser.add_argument("--max-days", type=int, default=20)
     parser.add_argument("--max-decisions", type=int, default=100)
@@ -164,7 +166,6 @@ def main(argv=None):
         parser.error("Output already exists; preserve every attempt")
     args.map = ROOT / "experiments/explorer/maps/random-baseline-v1.vmap"
     source_contents(args.map)
-    args.interface = contract.TOWN_ENVIRONMENT
     env = base.load("heroes_capture_probe_env", ROOT / "experiments/headless/env.py")
     auditor = base.load("heroes_capture_probe_auditor", ROOT / "validation/probes/audit_contextual_histories.py")
     env.VcmiLauncher(args.binary, args.data, args.map).preflight()

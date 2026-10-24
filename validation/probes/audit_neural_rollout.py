@@ -151,6 +151,8 @@ def audit_episode(folder, loaded, *, townless_color=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, required=True)
+    parser.add_argument("--interface", choices=(c.ENVIRONMENT, c.TOWN_ENVIRONMENT, c.ARMIES_ENVIRONMENT),
+                        default=c.TOWN_ENVIRONMENT)
     parser.add_argument("--episode", type=Path, action="append", required=True)
     parser.add_argument("--expect-townless-color", choices=COLORS)
     parser.add_argument("--output", type=Path, required=True)
@@ -158,7 +160,7 @@ def main(argv=None):
     if args.output.exists():
         parser.error("Audit output exists; retain previous evidence")
     torch.set_num_threads(1)
-    loaded = load_policy_checkpoint(args.checkpoint)
+    loaded = load_policy_checkpoint(args.checkpoint, interface=args.interface)
     report = {"schema": "heroes-neural-rollout-audit-v1", "checkpoint_sha256": digest(args.checkpoint),
               "probe_sha256": digest(__file__), "optimizer_updates": 0, "episodes": [],
               "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"}

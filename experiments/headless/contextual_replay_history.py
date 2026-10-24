@@ -96,7 +96,7 @@ def _bound_metadata(directory, manifest, final):
     continuation = final.get("continuation")
     exact(continuation, {"limit_per_player", "actions", "allowed_actions", "learner_excluded"},
           "continuation declaration")
-    allowed = ["back", "close", "end_turn"] if profile == contract.TOWN_PROFILE else ["close", "end_turn"]
+    allowed = ["back", "close", "end_turn"] if profile != contract.WINDOWS_PROFILE else ["close", "end_turn"]
     _require(type(continuation["limit_per_player"]) is int
              and continuation["limit_per_player"] == CONTINUATION_LIMIT
              and type(continuation["actions"]) is list and len(continuation["actions"]) == 2

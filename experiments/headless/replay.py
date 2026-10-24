@@ -66,13 +66,13 @@ class ReplayError(ValueError):
 def require_legacy_interface(metadata: dict) -> None:
     """The v1 replay digests do not bind contextual windows, notices or commands."""
     if (metadata.get("kind") == "contextual-headless-self-play"
-            or metadata.get("environment") in ("adventure-windows-v1", "adventure-town-v1")
-            or metadata.get("interface") in ("adventure-windows-v1", "adventure-town-v1")
-            or metadata.get("history_schema") in ("heroes-player-history-v2", "heroes-player-history-v3")
-            or metadata.get("action_schema") in ("heroes-context-actions-v2", "heroes-context-actions-v3")
+            or metadata.get("environment") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1")
+            or metadata.get("interface") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1")
+            or metadata.get("history_schema") in ("heroes-player-history-v2", "heroes-player-history-v3", "heroes-player-history-v4")
+            or metadata.get("action_schema") in ("heroes-context-actions-v2", "heroes-context-actions-v3", "heroes-context-actions-v4")
             or metadata.get("type") == "contextual"
             or metadata.get("protocol_version") not in (None, 3)):
-        raise ReplayError("Contextual replay is unsupported: legacy digests do not verify history-v2 or history-v3")
+        raise ReplayError("Contextual replay is unsupported: legacy digests do not verify contextual histories")
 
 
 # -- player-capture digest -------------------------------------------------

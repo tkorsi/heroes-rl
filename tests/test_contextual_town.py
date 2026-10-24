@@ -255,6 +255,19 @@ class TownProtocolTests(unittest.TestCase):
                          {"history_schema": c.TOWN_SCHEMA}, {"action_schema": c.TOWN_ACTION_SCHEMA}, {"protocol_version": 5}):
             with self.assertRaises(ReplayError): require_legacy_interface(metadata)
 
+    def test_v4_env_requires_explicit_interface_and_legacy_replay_refuses_it(self):
+        with tempfile.TemporaryDirectory() as temp:
+            armies = HeadlessSelfPlayEnv(SimpleNamespace(), Path(temp), interface=c.ARMIES_ENVIRONMENT)
+            town = HeadlessSelfPlayEnv(SimpleNamespace(), Path(temp), interface=c.TOWN_ENVIRONMENT)
+            self.assertEqual(armies.context_profile, c.ARMIES_PROFILE)
+            with self.assertRaises(ValueError): armies.history_v3("red")
+            with self.assertRaises(ValueError): town.history_v4("red")
+            legacy = HeadlessSelfPlayEnv(SimpleNamespace(), Path(temp))
+            with self.assertRaises(ValueError): legacy.history_v4("red")
+        for metadata in ({"environment": c.ARMIES_ENVIRONMENT}, {"interface": c.ARMIES_ENVIRONMENT},
+                         {"history_schema": c.ARMIES_SCHEMA}, {"action_schema": c.ARMIES_ACTION_SCHEMA}, {"protocol_version": 6}):
+            with self.assertRaises(ReplayError): require_legacy_interface(metadata)
+
     def test_v3_manifest_binding_and_mixed_pair_rejection(self):
         pair = tuple(building_history(player) for player in (0, 1))
         for history in pair: history.emit("cutoff", decision_seq=history.decision.seq, reason="synthetic-budget")

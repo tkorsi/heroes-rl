@@ -27,9 +27,9 @@ def observation():
 
 class Fixture:
     """Explicit synthetic producer streams with independent persisted artifacts."""
-    def __init__(self, directory, *, natural=False, town=False, reverse=False, late_cutoff_view=False):
+    def __init__(self, directory, *, natural=False, town=False, reverse=False, late_cutoff_view=False, profile=None):
         self.directory = directory
-        self.profile = c.TOWN_PROFILE if town else c.WINDOWS_PROFILE
+        self.profile = profile or (c.TOWN_PROFILE if town else c.WINDOWS_PROFILE)
         self.producers = [ContextualProducer("1", p, interface=self.profile.environment) for p in (0, 1)]
         self.rows = [[], []]
         self.natural = natural
@@ -103,7 +103,7 @@ class Fixture:
             socket_outcomes=self.outcomes if self.natural else [None, None],
             engine_verified_outcomes=dict(zip(("red", "blue"), self.outcomes)) if self.natural else None,
             continuation=dict(limit_per_player=8, actions=[p.continuation_steps for p in self.producers],
-                allowed_actions=["back", "close", "end_turn"] if self.profile == c.TOWN_PROFILE else ["close", "end_turn"],
+                allowed_actions=["back", "close", "end_turn"] if self.profile != c.WINDOWS_PROFILE else ["close", "end_turn"],
                 learner_excluded=True),
             raw_bridge_sha256={color: sha(self.directory / f"agents/{color}/bridge.jsonl") for color in ("red", "blue")})
         dump(self.directory / "contextual-finalization.json", self.final)
@@ -192,6 +192,15 @@ class HistoryReplayTests(unittest.TestCase):
             for p in result["players"].values():
                 self.assertIsNotNone(p["cutoff_decision_seq"])
                 self.assertNotEqual(p["learner"]["sha256"], p["live"]["sha256"])
+
+    def test_armies_profile_reconstructs_both_boundaries_without_legacy_downgrade(self):
+        for natural in (False, True):
+            fixture = Fixture(self.root / str(natural), natural=natural, profile=c.ARMIES_PROFILE)
+            result = fixture.verify()
+            self.assertTrue(result["verified"])
+            self.assertEqual(result["boundary"], "natural" if natural else "cutoff")
+            fixture.manifest["history_schema"] = c.TOWN_SCHEMA
+            with self.assertRaises(ValueError): fixture.verify()
 
     def test_delivered_flags_request_identity_and_continuation_cannot_be_forged(self):
         mutations = [lambda m: m.update(delivered=False), lambda m: m.update(outside_learner_prefix=True),

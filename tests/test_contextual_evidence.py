@@ -40,6 +40,16 @@ class TerminalEvidenceTests(unittest.TestCase):
             self.assertTrue(result["verified"])
             self.assertEqual(result["files"], {name: evidence.file_identity(self.root / name) for name in evidence.FILES})
 
+    def test_armies_profile_barrier_requires_both_exact_versioned_receipts(self):
+        server, client = write_barriers(self.root)
+        for name, record in zip(evidence.FILES, (server, client)):
+            record["interface"] = "adventure-armies-v1"
+            (self.root / name).write_text(json.dumps(record) + "\n")
+        result = evidence.terminal_barrier(self.root, episode="1", interface="adventure-armies-v1",
+                                           outcomes=["win", "loss"])
+        self.assertTrue(result["verified"])
+        with self.assertRaises(ValueError): self.validate()
+
     def test_missing_duplicate_partial_and_unknown_fields_fail(self):
         for name in evidence.FILES:
             for mode in ("missing", "duplicate", "partial", "unknown", "duplicate_key"):

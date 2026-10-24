@@ -89,7 +89,8 @@ class CaseRun:
         self.records = self.directory / "attempts.jsonl"
         self.records.touch(exist_ok=False)
         self.interface = getattr(args, "interface", contract.ENVIRONMENT)
-        self.history_version = 3 if self.interface == "adventure-town-v1" else 2
+        self.history_version = {"adventure-windows-v1": 2, "adventure-town-v1": 3,
+                                "adventure-armies-v1": 4}[self.interface]
         days = 1 if name == "day-cutoff" else args.max_days
         limits = env_module.Limits(max_days=days, max_actions=args.max_decisions,
                                    watchdog_seconds=args.watchdog, startup_seconds=args.startup_seconds,
