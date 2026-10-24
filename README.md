@@ -1456,7 +1456,8 @@ file hashes. A cutoff verifies only its exact captured prefix. Historical
 contextual recordings without this tape remain unsupported, and legacy replay
 does not acquire a contextual verification label.
 
-Implementation is on `codex/contextual-replay`, stacked on PR #10. The gameplay
+Implementation is on `codex/contextual-replay` in
+[draft PR #11](https://github.com/tkorsi/heroes-rl/pull/11), stacked on PR #10. The gameplay
 sources and native build were frozen at `609083a` for the final validation.
 The initial `29139c4` navigation capture replayed correctly, but two terminal
 fixtures exposed recursive recorder destruction at process exit. Both crashed
