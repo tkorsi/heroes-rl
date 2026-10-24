@@ -1845,6 +1845,9 @@ experiment remains stopped with the four after-evaluation games absent.
 
 #### Completed evaluation-only continuation
 
+Code and results are on `codex/after-evaluation` in
+[draft PR #14](https://github.com/tkorsi/heroes-rl/pull/14), stacked on PR #13.
+
 The user has separately authorized the four missing after-evaluation attempts
 from the saved post-update checkpoint, without any additional PPO update or
 optimizer step. The direct human instruction and exact scope are retained in
@@ -1939,7 +1942,7 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The current handoff is `codex/after-evaluation`, stacked on
+The current handoff is `codex/after-evaluation` (draft PR #14), stacked on
 `codex/first-gameplay-run` (draft PR #13), `codex/troop-transfer` (draft PR #12),
 then `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
 barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
