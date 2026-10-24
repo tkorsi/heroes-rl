@@ -534,24 +534,26 @@ replay validation, a natural-outcome estimate or a performance benchmark.
 Use English and read `AGENTS.md` plus this README first. The public `main`
 contains merged self-play PR #3 and offline analysis PR #2, including evidence
 validation fixes. Claude's headless implementation is now in draft
-[PR #6](https://github.com/tkorsi/heroes-rl/pull/6), reviewed locally at
-`40e34a3adcb7d80779810203b2c68785b035b61b`. It is not merged or accepted.
+[PR #6](https://github.com/tkorsi/heroes-rl/pull/6), initially reviewed locally at
+`40e34a3` and then at `3a25545` after its neutral-player fix. It is not merged
+or accepted for learner integration.
 Check its current status rather than treating this snapshot as live.
 
 Codex has now specified the learner's observation/history and per-player
 trajectory interfaces and implemented an isolated recurrent policy/value
 component against them. Local review of PR #6 reached three natural endings in
-four random self-play attempts, but all four native replays failed at the first
-neutral battle action. The contract review also found action-consumption and
-stream-finalization races, stale last-seen timestamps, and missing binding of
-render inputs to replay verification. Keep these fixes with Claude, then repeat
-local validation; the cloud checkout has no proprietary game assets. Compact
-evidence is in `validation/headless-review-2026-10-24.json`.
+four random self-play attempts. Their original replay failure was fixed in
+`5b7c9e9`; Claude's subsequent local validation verifies 20 selected natural
+replays. Action-consumption and stream-finalization races, stale last-seen
+timestamps, and missing binding of render inputs to replay verification remain
+unresolved. Keep these fixes with Claude, then repeat local validation. Compact
+evidence, including the later fix, is in `validation/headless-review-2026-10-24.json`
+and `validation/headless-neutral-fix-2026-10-24.json`.
 Do not start a training campaign until headless validation establishes correct
 episode boundaries and reachable natural outcomes. The original three rendered
 self-play runs remain truncated; the new headless smoke is separate evidence.
-Schema 3 offline analysis, successful native replay, verified videos and the
-full throughput benchmark remain pending.
+Schema 3 offline analysis, acceptance of video evidence and the full throughput
+benchmark remain pending.
 
 ## Git and local artifacts
 
@@ -632,7 +634,8 @@ the single source of purpose and decisions; do not maintain competing charters.
 - Historical `videos/recorder-demo-60s.mp4` and
   `validation/recording-2026-10-24.json` used Nullkiller's automatic open-map
   cheat (runs 003/004). They validate recording only, **not** play under fog.
-- No Heroes learner training or 1,000-episode run has been performed here.
+- No Heroes learner training has been performed here. The later 1,000-attempt
+  headless series below uses uniform-random agents for environment validation.
 - An isolated, randomly initialized shared recurrent policy/value component,
   strict player-history input and per-player trajectory validation now exist.
   It has no live bridge adapter, collector, PPO update or checkpoint league.
@@ -656,15 +659,27 @@ the single source of purpose and decisions; do not maintain competing charters.
   ordering checks. Eleven intermediate enemy-position samples across seven
   decision intervals are absent from both adjacent own decisions. These
   demonstrate intermediate capture without establishing exhaustive coverage.
-- PR #6 is **not accepted for training**: native replay verified 0/4 episodes,
-  failing on neutral-player identity. Review also reproduced a submitted action
+- At the original `40e34a3`, native replay verified 0/4 episodes, failing on
+  neutral-player identity. Review also reproduced a submitted action
   being recorded despite failed delivery, a trailing reader error being ignored
   during finalization, stale last-seen observation times, and altered render
   inputs retaining a verified label. The terminal races were injected checks,
   not failures observed in the four-game smoke. No verified video, full series,
-  throughput benchmark or training was run. Evidence and exact commands:
+  throughput benchmark or training was run by this review. Evidence and commands:
   `validation/headless-review-2026-10-24.json`. Engine, replay and performance
   fixes remain Claude's workstream in issue #4.
+- Claude then fixed neutral-player recording in `5b7c9e9`; `3a25545` adds only
+  an ignore rule. Independently inspected local reports now verify 4/4 new smoke
+  replays and 20/20 selected natural replays, with all 24 tamper cases detected
+  across those sets. His 1,000-attempt series reports 133 natural endings, 867
+  day-limit truncations and zero failures. Three offline videos were generated;
+  their trace/manifest binding issue remains unresolved. The benchmark was still
+  incomplete at inspection. The current source-only review checkout ran 164 tests
+  with two dependency-related skips; the original build-backed check passed all
+  163 tests. `validation/headless-neutral-fix-2026-10-24.json` records this later
+  evidence separately. **Training remains blocked** by action consumption and
+  stream finalization. Last-seen memory and video evidence binding also need
+  fixes; video success is not a condition of learner episode validity.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |

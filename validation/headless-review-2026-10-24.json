@@ -609,10 +609,23 @@
   },
   "issue": 4,
   "kind": "headless-pr-review",
+  "latest_followup": {
+    "current_pr_head": "3a25545c2094b07f0a71476b2deae46a3bb44e24",
+    "open_finding_ids": [
+      "action_consumption",
+      "stream_finalization",
+      "last_seen_time",
+      "render_evidence_binding"
+    ],
+    "record": "validation/headless-neutral-fix-2026-10-24.json",
+    "resolved_finding_ids": [
+      "neutral_replay"
+    ]
+  },
   "learner_contract_commit": "dd15f4466610173ec8550d1abfa00088dfeb334a",
   "paid_compute_used": false,
   "pull_request": 6,
-  "remaining_gates": [
+  "remaining_gates_at_original_review": [
     "Fix action-consumption and trailing-stream finalization races before accepting terminal trajectories.",
     "Fix neutral replay metadata, rerun actual neutral-battle replays and tamper checks, then verify offline videos bound to exact evidence.",
     "Fix last-seen times using permitted observations only.",
