@@ -58,6 +58,10 @@ improving play. Terminal-only rewards may produce no learning for a long time.
 - Start without demonstrations, scripted strategies, coordinate heuristics, or
   handcrafted exploration/mining rewards. Initial reward: natural victory +1,
   natural defeat -1. Log technical timeouts/errors separately, never as losses.
+- Learn both policy and value from experience. We define the observation/action
+  interface and learning algorithm, not strategic priorities or a handcrafted
+  position-value formula. "Terminal-only reward" means +1/-1 at a verified
+  natural result and 0 on ordinary transitions; the reward convention is unchanged.
 - Only player-visible information may enter the learner. A spectator recording
   can show more for human inspection, but must never feed hidden state to it.
 - Freeze opponent settings during comparisons. The earlier built-in baseline
@@ -264,6 +268,58 @@ and measure their frequency under the headless baseline. Evaluate frozen
 checkpoints on held-out seeds, both colors and a fixed opponent set; do not use
 win rate against the current copy of itself as the sole measure of progress.
 
+### Player information and memory
+
+An observation is information available to that player now. Memory is the
+history of its permitted observations, actions and results, or a learned
+representation of that history. Both policy and value may use it. The GRU is
+an initial implementation candidate; the model must learn what to retain and
+how to use it. It is not a scripted strategy or access to the engine's full state.
+
+For example, when an enemy becomes hidden, the agent may remember where and
+when it last saw that enemy and the attributes visible then. Historical facts
+must remain distinguishable from current observations. Never refresh a remembered
+position from hidden engine state or interpret disappearance as confirmed death.
+Any belief about later movement is an inference learned from experience.
+
+Preserve VCMI's normal team-fog rules. Its revealed territory is generally
+persistent; visibility is not a moving line-of-sight circle around one hero.
+The current bridge sends player-filtered snapshots at the agent's decision
+points. It does not yet provide a complete history of visible opponent movement
+between decisions. An enemy could appear and disappear during the opposing turn
+without entering a snapshot; a recurrent network cannot recover an event it
+never received. Issue #4 therefore includes sanitized player-visible events
+between decisions as part of the environment contract.
+
+Do not pass raw engine callbacks or numeric global object IDs into the learned
+representation. Movement callbacks can include a hidden endpoint, and some
+removal callbacks disclose hidden events. Filter each field against information
+available to that player at that time. Keep engine IDs internal; if identity is
+needed, assign opaque per-player episode-local handles only on legitimate first
+observation. Do not enumerate hidden objects to populate memory or handles.
+
+These are requirements for the future observation/history adapter. The current
+random agents use only the attempt mask for movement; their diagnostic logs are
+not learned memory. No learned policy, value or memory has been implemented.
+
+### Continue in a new chat
+
+Use English and read `AGENTS.md` plus this README first. The public `main`
+contains merged self-play PR #3 and offline analysis PR #2, including evidence
+validation fixes. At the 24 October handoff, Claude's **Build headless VCMI
+simulation and replay** task was working on issue #4; no headless PR had been
+published. Check its current status rather than treating this snapshot as live.
+
+Codex's next bounded task is to specify the learner's observation/history
+encoding and per-player trajectory interface, then implement the smallest
+recurrent policy/value component against that contract. Keep engine, replay and
+throughput work with Claude. Review staged engine PRs and run real-game checks
+locally when available; the cloud checkout has no proprietary game assets.
+Do not start a training campaign until headless validation establishes correct
+episode boundaries and reachable natural outcomes. Keep unresolved gaps visible:
+the current three self-play runs were truncated, schema 3 offline analysis is
+pending, and no headless throughput or replay fidelity has been measured here.
+
 ## Git and local artifacts
 
 This is one Git project. Open its root in SourceTree to see all Python code,
@@ -305,8 +361,9 @@ with references to external game assets. See [third-party notices](THIRD_PARTY_N
 for the pinned upstream license and attribution. No repository-wide license for
 independent project code has been selected yet.
 
-Raw recordings live under `runs/`; exported videos under `videos/`. Both are
-ignored by Git, along with build products and proprietary Heroes III game data.
+Raw recordings live under `runs/`; exported videos under `videos/`; generated
+analysis reports under `reports/`. All are ignored by Git, along with build
+products and proprietary Heroes III game data.
 Compact validation manifests belong in `validation/`. Keep this document as
 the single source of purpose and decisions; do not maintain competing charters.
 

@@ -17,6 +17,7 @@ __pycache__/
 # Generated experiment outputs and the prepared external engine dependency.
 /runs/
 /videos/
+/reports/
 /vcmi/
 # Original game assets and installers are local dependencies, never source.
 *.h3m
