@@ -497,7 +497,9 @@ def _tamper_bridge(episode_dir: Path, directory: Path, cut_short: bool) -> dict 
 
 # -- command line ----------------------------------------------------------------
 def episode_directories(run: Path) -> list[Path]:
-    return sorted(path.parent for path in (run / "episodes").glob("episode-*/manifest.json"))
+    """Episodes of a run_headless.py series, or of every worker of a run_series.py series."""
+    manifests = [*run.glob("episodes/episode-*/manifest.json"), *run.glob("worker-*/episodes/episode-*/manifest.json")]
+    return sorted((path.parent for path in manifests), key=lambda path: path.name)
 
 
 def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tamper: int, trace: int,

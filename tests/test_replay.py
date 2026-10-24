@@ -216,6 +216,13 @@ class ReplayToolTests(unittest.TestCase):
         self.assertFalse(result["verified"])
         self.assertEqual(result["engine"]["divergence"]["field"], "digest")
 
+    def test_series_finds_episodes_of_every_worker(self):
+        for path in ("episodes/episode-000002", "worker-0/episodes/episode-000001", "worker-1/episodes/episode-000003"):
+            (self.output / "run" / path).mkdir(parents=True)
+            (self.output / "run" / path / "manifest.json").write_text("{}")
+        self.assertEqual([path.name for path in replay.episode_directories(self.output / "run")],
+                         ["episode-000001", "episode-000002", "episode-000003"])
+
     def test_replay_needs_the_bridge_ledger(self):
         with self.assertRaises(ValueError):
             env_module.HeadlessSelfPlayEnv(FakeLauncher(), self.output / "x", ledger=False, replay=True)
