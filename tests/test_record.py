@@ -19,6 +19,13 @@ class TerminationTests(unittest.TestCase):
             self.assertEqual(record.classify_run(0, None, f"Red player {word}. Ending game."),
                              ("completed", outcome, "natural_terminal"))
 
+    def test_selected_side_terminal_and_agent_limits(self):
+        self.assertEqual(record.classify_run(0, None, "Experiment player 1 lost. Ending game.", 1),
+                         ("completed", "loss", "natural_terminal"))
+        self.assertEqual(record.classify_run(0, None, "Red player lost. Ending game.", 1)[0], "failed")
+        for reason in ("agent_action_limit", "game_day_limit"):
+            self.assertEqual(record.classify_run(0, reason, "Red player won. Ending game.")[0:2], ("timeout", None))
+
     def test_limits_and_errors_are_unscored_even_if_terminal_log_arrived(self):
         for reason in ("wall_time_limit", "frame_limit", "recorder_error"):
             result = record.classify_run(-15, reason, "Red player lost. Ending game.")
@@ -29,6 +36,49 @@ class TerminationTests(unittest.TestCase):
         for code, text in ((0, ""), (-11, "Red player won. Ending game."),
                            (0, "Red player won. Ending game.\nRed player lost. Ending game.")):
             self.assertEqual(record.classify_run(code, None, text)[0:2], ("failed", None))
+
+
+class AgentScoringTests(unittest.TestCase):
+    def setUp(self):
+        self.execution = {"ready": True, "actions_sent": 3, "error": None,
+                          "terminal": {"outcome": "loss"}}
+        self.log = "Red player lost. Ending game."
+
+    def test_only_matching_natural_results_receive_reward(self):
+        for player, label in ((0, "Red player"), (1, "Experiment player 1")):
+            for word, outcome, reward in (("won", "win", 1), ("lost", "loss", -1)):
+                with self.subTest(player=player, outcome=outcome):
+                    self.execution["terminal"] = {"outcome": outcome}
+                    self.assertEqual(record.classify_agent_run(
+                        0, None, f"{label} {word}. Ending game.", player, self.execution),
+                        ("completed", outcome, "natural_terminal", reward))
+
+    def test_missing_or_mismatched_socket_terminal_is_unscored(self):
+        for terminal in (None, {"outcome": "win"}):
+            with self.subTest(terminal=terminal):
+                self.execution["terminal"] = terminal
+                self.assertEqual(record.classify_agent_run(0, None, self.log, 0, self.execution),
+                                 ("failed", None, "unverified_agent_terminal", None))
+
+    def test_agent_must_complete_handshake_and_send_an_action(self):
+        for update in ({"ready": False}, {"actions_sent": 0}):
+            with self.subTest(update=update):
+                self.assertEqual(record.classify_agent_run(0, None, self.log, 0,
+                                                          {**self.execution, **update}),
+                                 ("failed", None, "agent_never_acted", None))
+
+    def test_errors_and_limits_override_reported_terminal(self):
+        for reason, status in (("wall_time_limit", "timeout"), ("frame_limit", "timeout"),
+                               ("agent_action_limit", "timeout"), ("game_day_limit", "timeout"),
+                               ("recorder_error", "failed")):
+            with self.subTest(reason=reason):
+                self.assertEqual(record.classify_agent_run(0, reason, self.log, 0, self.execution),
+                                 (status, None, reason, None))
+        self.assertEqual(record.classify_agent_run(-6, None, self.log, 0, self.execution),
+                         ("failed", None, "process_exit_without_verified_terminal", None))
+        self.execution["error"] = "late protocol failure"
+        self.assertEqual(record.classify_agent_run(0, None, self.log, 0, self.execution),
+                         ("failed", None, "policy_error", None))
 
 
 def synthetic_png(path: Path) -> None:
@@ -109,6 +159,29 @@ class VisibilityEvidenceTests(unittest.TestCase):
                     self.log.replace("cheats_allowed=0", "cheats_allowed=1", 1)):
             with self.subTest(log=log), self.assertRaises(ValueError):
                 record.validate_experiment_metadata(self.metadata, 1, log)
+
+    def test_requires_actual_agent_and_opponent_routing_on_opposing_teams(self):
+        self.metadata["requested_agent_player"] = 0
+        self.metadata["players"][0]["adventure_ai"] = "ExplorerRL"
+        self.metadata["players"][1]["adventure_ai"] = "Nullkiller"
+        opponent_log = self.log.splitlines()[1]
+        evidence = record.validate_experiment_metadata(self.metadata, 0, opponent_log, agent_player=0)
+        self.assertEqual([p["player_index"] for p in evidence["ai_players"]], [1])
+        for field, value in (("adventure_ai", "Nullkiller"), ("team_index", 1)):
+            changed = copy.deepcopy(self.metadata)
+            changed["players"][0][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                record.validate_experiment_metadata(changed, 0, opponent_log, agent_player=0)
+        changed = copy.deepcopy(self.metadata)
+        changed["requested_agent_player"] = None
+        with self.assertRaises(ValueError):
+            record.validate_experiment_metadata(changed, 0, opponent_log, agent_player=0)
+
+    def test_failed_capture_clears_natural_reward_as_well_as_outcome(self):
+        self.manifest.update(status="completed", outcome="win", reward=1)
+        record.fail_recording(self.manifest, self.output, ValueError("bad frames"), "invalid_recording")
+        self.assertIsNone(self.manifest["reward"])
+        self.assertIsNone(self.manifest["outcome"])
 
     def test_rejects_missing_new_frame_metadata_and_wrong_observer(self):
         for entry in self.streams["omniscient"]:

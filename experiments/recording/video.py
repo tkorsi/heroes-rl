@@ -257,7 +257,7 @@ def discover(roots: list[Path], view: str = "player") -> tuple[list[dict], list[
     for path in sorted(paths):
         try:
             data = json.loads(path.read_text())
-            if data["schema_version"] not in {1, 2} or data["kind"] not in {"recorder-smoke", "rl-evaluation"}:
+            if data["schema_version"] not in {1, 2} or data["kind"] not in {"recorder-smoke", "rl-evaluation", "random-baseline"}:
                 raise VideoError(f"Unsupported run manifest: {path}")
             if type(data["episode"]) is not int or data["episode"] <= 0:
                 raise VideoError(f"Episode must be a positive integer: {path}")
@@ -352,7 +352,9 @@ FONT = {char: [int(row) for row in rows.split(",")] for char, rows in _FONT_ROWS
 
 
 def overlay_lines(source: dict) -> list[str]:
-    kind = "RECORDER SMOKE (NO RL TRAINING)" if source["kind"] == "recorder-smoke" else "RL POLICY EVALUATION"
+    kind = {"recorder-smoke": "RECORDER SMOKE (NO RL TRAINING)",
+            "random-baseline": "RANDOM BASELINE (NO TRAINING)",
+            "rl-evaluation": "RL POLICY EVALUATION"}[source["kind"]]
     perspective = source["perspective"]
     view = f"PLAYER {perspective['player']} | FOG OF WAR" if perspective["mode"] == "player" else "OMNISCIENT | FULL MAP"
     outcome_label = "OUTCOME" + (f" {source['outcome_player']}" if source.get("outcome_player") else "")

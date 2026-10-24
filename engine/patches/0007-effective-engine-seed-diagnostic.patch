@@ -1,0 +1,23 @@
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -603,10 +603,18 @@
+ 	CMapService mapService;
+ 	gs = std::make_shared<CGameState>();
+ 	int requestedSeed = settings["server"]["seed"].Integer();
++	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++	const bool recording = recordingDirectory && *recordingDirectory;
++	if(recording && requestedSeed <= 0)
++		throw std::runtime_error("Experiment recordings require a positive configured server seed");
+ 	randomizer = std::make_unique<GameRandomizer>(*gs);
+ 	if (requestedSeed != 0)
+ 		randomizer->setSeed(requestedSeed);
+-	logGlobal->info("Using random seed: %d", randomizer->getDefault().nextInt());
++	// Preserve the original RNG draw: it was previously mislabeled as the seed.
++	const int initialSample = randomizer->getDefault().nextInt();
++	logGlobal->info("Initial RNG sample: %d", initialSample);
++	if(recording)
++		logGlobal->info("Experiment engine RNG: initial_seed=%d initial_sample=%d", requestedSeed, initialSample);
+ 	gs->preInit(LIBRARY);
+ 	logGlobal->info("Gamestate created!");
+ 	gs->init(&mapService, si, *randomizer, progressTracking);

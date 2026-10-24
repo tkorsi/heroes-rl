@@ -86,13 +86,15 @@ The recorder disables engine cheats before game-state creation. This also
 turns off Nullkiller's automatic map reveal and hidden-object graph. Record
 actual initial fog counts and effective AI flags, then the chosen side's visible
 tile count per sample. Treat these checks as evidence of configured fog, not a
-complete audit of every built-in AI information access. The future learner still
-needs its own validated player-visible observation interface.
+complete audit of every built-in AI information access. ExplorerRL has a separate
+player-visible observation interface: own heroes/towns/resources and tiles/objects
+checked against the player's visibility callback. The random policy reads only
+the attempt mask when choosing movement.
 
-## First experiment proposal after recording
+## Experiment 1 — uniform random movement baseline
 
 **H1:** On a small fixed two-player map, an untrained policy selecting among
-valid primitive adventure actions can leave its starting area and encounter
+permitted primitive adventure attempts can leave its starting area and encounter
 meaningful game events before an Easy opponent ends the game. First measure
 the random-policy baseline and the rate of natural endings. This tests the
 environment and whether terminal feedback is reachable; it is not training.
@@ -104,11 +106,37 @@ neutral battles, mine ownership, survival, and wins as **metrics**, not added
 rewards. If feedback is too sparse, discuss the smallest next experiment rather
 than silently introducing reward shaping.
 
-Before that experiment, build and validate the adventure interface and a map
-with the agreed castle/neutral/mine interactions. The existing ExplorerRL draft
-supports one hero, eight one-tile moves and end-turn, and explicitly rejects
-several dialogs. Its old two-hero maps have **no towns, mines or neutral armies**.
-Those drafts must not be represented as the requested full scenario.
+The first implementation uses `experiments/explorer/random_policy.py` over the
+ExplorerRL bridge. Red is our agent; Blue is Nullkiller on Easy. A seeded Python
+RNG selects uniformly among the player-visible mask's permitted attempts: eight
+adjacent directions plus end-turn. The mask is not a guarantee of legal movement:
+the server validates every attempt, including any unknown neighboring tile.
+Actions, results and player-visible observations are saved in `policy.jsonl`.
+
+The authored `random-baseline-v1.vmap` is a fixed 20×20 map with two Castle towns,
+one hero and 25 pikemen per side, two sawmills, two neutral stacks of six pikemen,
+and two gold piles. It uses normal fog and elimination rules. The initial stats
+are equal; the town footprints and map edges do not give identical initial
+visibility. Use both sides in a later evaluation before drawing strength claims.
+
+This is a deliberately limited movement experiment: the agent cannot recruit,
+build in towns, transfer troops or cast spells. Tavern construction is forbidden
+for both sides to keep one hero per side, and heroes are capped at level 1.
+Nullkiller can otherwise use its normal town economy. Visits, pickups, captures
+and battles are real engine interactions. Dialog choices supported by the bridge
+are also selected by the external policy; unsupported dialogs fail explicitly.
+After losing its hero, the agent can end turns while its town remains, allowing
+the engine to establish a natural result. The old `explorer-*` bare-duel maps
+remain unvalidated drafts, separate from this authored scenario.
+
+The baseline has no neural network, optimizer or learning updates. Record actions,
+actual displacement, visited positions, fog expansion, visits, battles and owned
+mines as metrics. A successful environment check requires the agent to actually
+act and a natural ending to agree between its socket message and the engine log,
+with a clean process exit. Wall/day/action/frame limits and technical errors are
+unscored. The top-level manifest `reward` is authoritative; socket terminal messages
+are evidence pending process and recording checks. Engine and policy seeds are separate; the engine logs its actual initial
+seed, while deterministic replay of the whole opponent/engine is still unverified.
 
 ## Git and local artifacts
 
@@ -141,22 +169,67 @@ the single source of purpose and decisions; do not maintain competing charters.
 ## Current status
 
 - VCMI 1.7.5 is installed locally and its source/build are available.
-- An older, unvalidated ExplorerRL bridge and tiny duel-map generator exist.
-- Stage 1 records synchronized open-map and player-fog views. A real Easy
-  Nullkiller game produced 120 paired samples and two 20-second MP4s. Red's
-  explored area grew from 65 to 221 of 2,592 tiles across days 1–3; both AIs'
-  actual map-reveal and object-graph flags were off.
-- Native player-only (Blue) and omniscient-only modes also passed bounded runs.
-  All runs ended at frame limits with unknown outcomes, never scored defeats.
-- Client/server/Nullkiller builds, 20 Python tests, exact dependency-source
-  verification, and visual checks of map/minimap fog pass.
-- Current previews: `videos/dual-view-005-player.mp4` and
-  `videos/dual-view-005-omniscient.mp4`. Compact evidence:
-  `validation/recording-dual-view-2026-10-24.json`.
+- Experiment 1 now runs our external random agent against Nullkiller Easy in
+  the real engine. Three final runs completed naturally on the same native
+  build, with matching engine/socket losses and clean exits. Normal fog and
+  paired open-map/player recordings were verified for every run.
+- The agent left its castle, expanded explored territory, and picked up 500
+  gold in policy seed 1. Each run included one automatic battle against the
+  opponent. No mine capture or neutral battle was observed in this series.
+- Final previews are `videos/experiment-001-final-player-60s.mp4` and
+  `videos/experiment-001-final-omniscient-60s.mp4`. Each includes all three final
+  episodes (6, 7, 8), in recording order, at 20 seconds per episode. They use
+  the same paired samples; whole clips are rescaled in time, not action replays.
+  Compact evidence: `validation/random-baseline-2026-10-24.json`.
+- Eight total integration attempts are preserved locally. Attempts 1, 2 and 4
+  exposed a startup acknowledgement error, a shutdown exception and a shutdown
+  queue race, respectively; they remain unscored. Earlier successful attempts
+  3 and 5 are retained. The final series uses attempts 6–8 after the queue fix.
+- Client/server/ExplorerRL/Nullkiller builds, 44 tests, exact dependency-source
+  verification and video visual checks pass. The native concurrency regression
+  fails on the old queue and passes after the fix. Mining, natural victory,
+  nested game dialogs and swapping the external agent to Blue remain unverified
+  live paths. The older bare-duel map drafts also remain unvalidated.
+- Stage 1's earlier built-in-only smoke checks covered paired capture,
+  player-only Blue and omniscient-only capture. Those frame-limited runs are
+  unscored; evidence remains in `validation/recording-dual-view-2026-10-24.json`.
 - Historical `videos/recorder-demo-60s.mp4` and
   `validation/recording-2026-10-24.json` used Nullkiller's automatic open-map
   cheat (runs 003/004). They validate recording only, **not** play under fog.
 - No Heroes learner training or 1,000-episode run has been performed here.
+
+| Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 12345 | 7 | 27 | 15 | 92 → 139 | Loss, day 2 |
+| 2 | 12346 | 6 | 14 | 11 | 92 → 189 | Loss, day 2 |
+| 3 | 12347 | 8 | 10 | 8 | 92 → 121 | Loss, day 2 |
+
+These three runs establish reachable terminal feedback, not a win-rate estimate
+or a learning result. The agent's current movement-only action space leaves it
+unable to use the town economy as its opponent does. A training comparison must
+retain and report that limitation or explicitly change the action interface.
+
+## Run the first agent experiment
+
+Build the bridge as well as the engine (the normal recorder build does not enable
+ExplorerRL by default):
+
+```sh
+cmake -S vcmi -B vcmi/build -DENABLE_EXPLORER_RL=ON
+cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL Nullkiller --parallel 8
+python3 experiments/explorer/create_scenario.py
+python3 experiments/explorer/run_random.py \
+  --map experiments/explorer/maps/random-baseline-v1.vmap \
+  --output runs/my-first-agent --episode 1 --seed 12345 --policy-seed 1
+```
+
+This records both perspectives by default, with a 240-second wall limit,
+40-game-day limit and 2,000-action limit. The default 0.15-second pause before
+sending a choice makes actions visible; it changes timing, not action selection.
+The manifest records actual AI-module routing, seeds, action metrics, terminal
+evidence, and both videos. Use `--player blue` to swap agent/opponent sides.
+The summary reel uses the same `video.py montage --view player|omniscient`
+commands below and labels these clips **random baseline — no training**.
 
 ## Recorder commands
 
@@ -232,8 +305,9 @@ Use `--view omniscient` for an open-map overview. Player view is the default;
 missing player views are skipped explicitly, never replaced by open-map clips.
 Legacy schema v1 recordings are available only as omniscient views. Each montage
 labels the view and selected player, and retains the no-training label for smoke
-runs. The current test-map terminal detector reports Red's result; manifests and
-montages label the outcome owner even when recording another side.
+runs and random baselines. Built-in recorder smoke runs report Red's outcome;
+external-agent runs report the selected agent's outcome. Manifests and montages
+always label the outcome owner.
 
 Use `--samples 0` to show every available episode. At 30 output frames/second,
 1,000 episodes fit in 60 seconds as 1–2 frames each, so the sampled overview is
@@ -250,6 +324,6 @@ python3 -m unittest discover -s tests -v
 ```
 
 Outputs are never overwritten. Keep full recordings locally; share or archive
-them explicitly when needed. The recorder is currently a built-in-AI smoke-run
-launcher. Connecting it to the learner and scheduled checkpoint evaluations is
-the next integration, after the adventure environment is validated.
+them explicitly when needed. The smoke launcher remains available for recorder checks; `run_random.py` connects
+our external baseline agent. A trained policy and scheduled checkpoint evaluation
+remain future work.

@@ -59,20 +59,36 @@ def stop_owned_process(process: subprocess.Popen) -> None:
         process.wait(timeout=5)
 
 
-def classify_run(returncode: int, reason: str | None, log: str) -> tuple[str, str | None, str]:
-    outcomes = set(re.findall(r"Red player (won|lost)\. Ending game\.", log))
+def classify_run(returncode: int, reason: str | None, log: str, outcome_player: int = 0) -> tuple[str, str | None, str]:
+    player_label = "Red player" if outcome_player == 0 else f"Experiment player {outcome_player}"
+    outcomes = set(re.findall(re.escape(player_label) + r" (won|lost)\. Ending game\.", log))
     outcome = ({"won": "win", "lost": "loss"}[next(iter(outcomes))]
                if len(outcomes) == 1 else None)
     if reason:
         # Even a delayed terminal log cannot turn an interrupted run into a scored game.
-        return ("timeout" if reason in {"wall_time_limit", "frame_limit"} else "failed",
+        return ("timeout" if reason in {"wall_time_limit", "frame_limit", "agent_action_limit", "game_day_limit"} else "failed",
                 None, reason)
     if returncode == 0 and outcome:
         return "completed", outcome, "natural_terminal"
     return "failed", None, "process_exit_without_verified_terminal"
 
 
-def validate_experiment_metadata(metadata: dict, player_index: int, log: str) -> dict:
+def classify_agent_run(returncode: int, reason: str | None, log: str, player_index: int,
+                       execution: dict) -> tuple[str, str | None, str, int | None]:
+    """Score only agreeing natural results after the external agent has acted."""
+    status, outcome, termination = classify_run(returncode, reason, log, player_index)
+    terminal = execution["terminal"]
+    if execution["error"]:
+        status, outcome, termination = "failed", None, "policy_error"
+    elif not execution["ready"] or execution["actions_sent"] == 0:
+        status, outcome, termination = "failed", None, "agent_never_acted"
+    elif status == "completed" and (not terminal or terminal["outcome"] != outcome):
+        status, outcome, termination = "failed", None, "unverified_agent_terminal"
+    reward = (1 if outcome == "win" else -1) if status == "completed" else None
+    return status, outcome, termination, reward
+
+
+def validate_experiment_metadata(metadata: dict, player_index: int, log: str, agent_player: int | None = None) -> dict:
     """Verify effective engine state and actual AI flags, independently of requested settings."""
     if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
         raise ValueError("Missing or unsupported effective experiment metadata")
@@ -105,6 +121,16 @@ def validate_experiment_metadata(metadata: dict, player_index: int, log: str) ->
     if player_index not in indexed or indexed[player_index]["human"]:
         raise ValueError("Requested observer player is absent or is not controlled by AI")
     ai_players = {index for index, player in indexed.items() if not player["human"]}
+    if agent_player is not None:
+        if metadata.get("requested_agent_player") != agent_player or agent_player not in ai_players:
+            raise ValueError("Actual engine did not route the requested agent side")
+        if indexed[agent_player].get("adventure_ai") != "ExplorerRL":
+            raise ValueError("Agent side is not actually controlled by ExplorerRL")
+        if any(indexed[i].get("adventure_ai") != "Nullkiller" for i in ai_players - {agent_player}):
+            raise ValueError("Opponent is not the fixed Nullkiller AI")
+        if len(indexed) != 2 or len(ai_players) != 2 or len({p["team_index"] for p in indexed.values()}) != 2:
+            raise ValueError("First random-agent experiment requires exactly two opposing AI players")
+        ai_players = ai_players - {agent_player}
     ai_evidence = {}
     pattern = r"Experiment AI visibility: player=(\d+) cheats_allowed=(\d+) open_map=(\d+) use_object_graph=(\d+)"
     for values in re.findall(pattern, log):
@@ -143,7 +169,14 @@ def _finalize_recordings(manifest: dict, output: Path, player_index: int, log: s
         raise ValueError("Native recorder reported a failure in its log, even if its error marker could not be written")
     metadata_path = output / "frames" / "experiment-metadata.json"
     metadata = json.loads(metadata_path.read_text())
-    evidence = validate_experiment_metadata(metadata, player_index, log)
+    evidence = validate_experiment_metadata(metadata, player_index, log, manifest.get("agent_player_index"))
+    if "agent_player_index" in manifest:
+        seeds = re.findall(r"Experiment engine RNG: initial_seed=(\d+) initial_sample=(\d+)", log)
+        if len(seeds) != 1 or int(seeds[0][0]) != manifest["seed"]:
+            raise ValueError("Missing or mismatched authoritative engine seed evidence")
+        manifest["effective_engine_rng"] = {"initial_seed": int(seeds[0][0]),
+                                            "initial_sample": int(seeds[0][1]),
+                                            "deterministic_replay_verified": False}
     evidence.update(metadata_file="frames/experiment-metadata.json", metadata_sha256=digest(metadata_path))
     manifest["effective_experiment_state"] = metadata
     manifest["visibility_validation"] = evidence
@@ -175,6 +208,8 @@ def fail_recording(manifest: dict, output: Path, error: BaseException, reason: s
     manifest["process_termination_reason"] = manifest.get("termination_reason")
     manifest.update(status="failed", outcome=None, recording_valid=False,
                     termination_reason=reason, recording_error=str(error))
+    if "reward" in manifest:
+        manifest["reward"] = None
     for recording in manifest["recordings"].values():
         recording["recording_valid"] = False
         if recording.get("video"):
@@ -192,7 +227,15 @@ def finalize_recordings(manifest: dict, output: Path, player_index: int, log: st
     write_json(output / "manifest.json", manifest)
 
 
-def record(args: argparse.Namespace) -> dict:
+def record(args: argparse.Namespace, policy=None) -> dict:
+    try:
+        return _record(args, policy)
+    finally:
+        if policy is not None:
+            policy.close()
+
+
+def _record(args: argparse.Namespace, policy=None) -> dict:
     if sys.platform != "darwin":
         raise ValueError("This runner currently uses the macOS VCMI profile override")
     binary = args.binary.expanduser().resolve()
@@ -216,6 +259,9 @@ def record(args: argparse.Namespace) -> dict:
         raise ValueError("Select a supported view and player color")
     player_index = PLAYER_COLORS.index(args.player)
     views = ("omniscient", "player") if args.view == "both" else (args.view,)
+    if policy is not None:
+        if b"EXPLORER_RL_PLAYER" not in binary.read_bytes() or not (binary.parent / "AI/libExplorerRL.dylib").is_file():
+            raise ValueError("Build the player-routing client and ExplorerRL module first")
     if not args.no_encode and not all(shutil.which(tool) for tool in ("ffmpeg", "ffprobe")):
         raise ValueError("ffmpeg and ffprobe must be on PATH")
     subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], check=True)
@@ -245,6 +291,8 @@ def record(args: argparse.Namespace) -> dict:
                    "VCMI_RECORD_FPS": str(args.fps), "VCMI_RECORD_MAX_FRAMES": str(args.max_frames),
                    "VCMI_RECORD_VIEWS": args.view, "VCMI_RECORD_PLAYER": str(player_index),
                    "VCMI_EXPERIMENT_NO_CHEATS": "1"}
+    if policy is not None:
+        capture_env.update(policy.start(output, str(args.episode), player_index))
     manifest = {
         "schema_version": 2, "kind": "recorder-smoke", "episode": args.episode,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -271,6 +319,15 @@ def record(args: argparse.Namespace) -> dict:
         "status": "running", "outcome": None, "outcome_player": "red", "outcome_player_index": 0,
         "recording_valid": False,
     }
+    if policy is not None:
+        manifest.update(kind="random-baseline", policy=policy.description,
+                        agent_player_index=player_index, outcome_player=args.player,
+                        outcome_player_index=player_index, reward=None)
+        manifest["limits"].update(max_actions=policy.max_actions, max_days=policy.max_days)
+        manifest["policy_source"] = {"file": "experiments/explorer/random_policy.py",
+                                     "sha256": digest(ROOT / "experiments/explorer/random_policy.py")}
+        manifest["engine"]["ai_libraries"] = {name: digest(binary.parent / "AI" / name)
+             for name in ("libExplorerRL.dylib", "libNullkiller.dylib", "libBattleAI.dylib")}
     manifest_path = output / "manifest.json"
     write_json(manifest_path, manifest)
     started = time.monotonic()
@@ -279,9 +336,14 @@ def record(args: argparse.Namespace) -> dict:
     try:
         with (logs / "process.log").open("w") as log:
             process = subprocess.Popen(command, cwd=binary.parent,
-                                       env={**os.environ, **capture_env}, stdout=log,
+                                       env={**{key: value for key, value in os.environ.items()
+                                               if not key.startswith(("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_"))},
+                                            **capture_env}, stdout=log,
                                        stderr=subprocess.STDOUT, start_new_session=True)
             while process.poll() is None:
+                if policy is not None and policy.stop_reason:
+                    reason = policy.stop_reason
+                    break
                 if (frames / "recording-error.txt").exists():
                     reason = "recorder_error"
                     break
@@ -292,9 +354,13 @@ def record(args: argparse.Namespace) -> dict:
                     reason = "wall_time_limit"
                     break
                 time.sleep(0.1)
+            if policy is not None and reason:
+                policy.prepare_stop()
             stop_owned_process(process)
         returncode = process.returncode
     except BaseException as error:
+        if policy is not None:
+            policy.prepare_stop()
         if process:
             try:
                 stop_owned_process(process)
@@ -311,7 +377,17 @@ def record(args: argparse.Namespace) -> dict:
             reason = "recorder_error"
         elif (frames / "recording-limit-reached.txt").exists():
             reason = "frame_limit"
-        status, outcome, termination = classify_run(returncode, reason, log_text)
+        if policy is not None:
+            # Native terminal delivery happens before test-map shutdown; allow the socket reader to drain.
+            if policy.thread is not None:
+                policy.thread.join(timeout=1)
+            execution = policy.snapshot()
+            manifest["policy_execution"] = execution
+            manifest["policy_ledger"] = {"file": "policy.jsonl", "sha256": digest(output / "policy.jsonl")}
+            status, outcome, termination, manifest["reward"] = classify_agent_run(
+                returncode, reason, log_text, player_index, execution)
+        else:
+            status, outcome, termination = classify_run(returncode, reason, log_text)
         manifest.update(status=status, outcome=outcome, termination_reason=termination)
         write_json(manifest_path, manifest)
     except BaseException as error:

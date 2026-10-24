@@ -26,6 +26,7 @@ public:
 	void requestRealized(PackageApplied * pack) override;
 	void playerBlocked(int reason, bool start) override;
 	void battleEnded() override;
+	void heroVisit(const CGHeroInstance *, const CGObjectInstance *, bool) override;
 	void gameOver(PlayerColor player, const EVictoryLossCheckResult & result) override;
 	void heroGotLevel(const CGHeroInstance *, PrimarySkill, std::vector<SecondarySkill> &, QueryID) override;
 	void commanderGotLevel(const CCommanderInstance *, std::vector<ui32>, QueryID) override;
@@ -33,6 +34,11 @@ public:
 	void showGarrisonDialog(const CArmedInstance *, const CGHeroInstance *, bool, QueryID, const MetaString &) override;
 	void showTeleportDialog(const CGHeroInstance *, TeleportChannelID, TTeleportExitsList, bool, QueryID) override;
 	void showMapObjectSelectDialog(QueryID, const Component &, const MetaString &, const MetaString &, const std::vector<ObjectInstanceID> &) override;
+	void showRecruitmentDialog(const CGDwelling *, const CArmedInstance *, int, QueryID) override;
+	void showMarketWindow(const IMarket *, const CGHeroInstance *, QueryID) override;
+	void showUniversityWindow(const IMarket *, const CGHeroInstance *, QueryID) override;
+	void showTavernWindow(const CGObjectInstance *, const CGHeroInstance *, QueryID) override;
+	void heroExchangeStarted(ObjectInstanceID, ObjectInstanceID, QueryID) override;
 	std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &) override;
 
 private:
@@ -42,7 +48,14 @@ private:
 	std::mutex stateMutex;
 	std::mutex sendMutex;
 	std::condition_variable changed;
+	struct Decision
+	{
+		QueryID query;
+		JsonNode payload;
+	};
 	std::deque<QueryID> turns;
+	std::deque<Decision> decisions;
+	std::vector<JsonNode> events;
 	std::unordered_map<int, bool> acknowledgements;
 	bool stopping = false;
 	bool terminal = false;
@@ -54,6 +67,8 @@ private:
 	std::string receiveBuffer;
 	int timeoutSeconds = 30;
 	int64_t actionID = 0;
+	int64_t decisionID = 0;
+	int64_t completedBattles = 0;
 
 	void run() noexcept;
 	void runTurn(QueryID queryID);
@@ -62,7 +77,11 @@ private:
 	JsonNode receiveMessage();
 	JsonNode message(const std::string & type) const;
 	JsonNode observation(std::array<bool, 9> & mask, ObjectInstanceID & heroID, int3 & position);
-	bool executeRequest(const std::function<void()> & request);
+	JsonNode playerState();
+	JsonNode takeEvents();
+	void enqueueDecision(QueryID query, JsonNode payload);
+	void handleDecision(Decision decision);
+	bool executeRequest(const std::function<void()> & request, bool waitForAdventure = true);
 	bool ended();
 	void unsupported(const std::string & operation);
 };

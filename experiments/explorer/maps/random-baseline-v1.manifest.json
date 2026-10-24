@@ -1,0 +1,109 @@
+{
+  "army_each": [
+    {
+      "amount": 25,
+      "type": "core:pikeman"
+    }
+  ],
+  "engine_verified": false,
+  "layout_seed": 0,
+  "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "objects": {
+    "hero": 2,
+    "mine": 2,
+    "monster": 2,
+    "resource": 2,
+    "town": 2
+  },
+  "rules": {
+    "additional_heroes": "taverns forbidden for both sides; no other hero sources",
+    "defeat": "standard loss of all heroes and towns, or seven days without a town",
+    "fog": "normal engine team fog; no reveal events",
+    "hero_level_limit": 1,
+    "hero_specialties": "Orrin: archery; Edric: griffins; neither applies to the starting pikemen",
+    "neutral_stacks": "six pikemen each, savage, never flee, no growth; no reward artifact/resources",
+    "reward_shaping": false,
+    "symmetry": "equal starting armies and primary stats; approximate geometric symmetry does not promise equal initial visibility",
+    "towns": "fort and first-tier dwelling; other construction is not scripted or automated for the agent",
+    "victory": "standard engine elimination of opponents"
+  },
+  "scenario_id": "random-baseline-v1",
+  "schema_version": 1,
+  "seed_effect": "cosmetic dirt variants only; engine seed is supplied separately",
+  "size": [
+    20,
+    20,
+    1
+  ],
+  "starts": {
+    "blue": {
+      "hero": "edric",
+      "hero_anchor": [
+        16,
+        7,
+        0
+      ],
+      "town_anchor": [
+        17,
+        7,
+        0
+      ],
+      "visitable": [
+        15,
+        7,
+        0
+      ]
+    },
+    "red": {
+      "hero": "orrin",
+      "hero_anchor": [
+        5,
+        7,
+        0
+      ],
+      "town_anchor": [
+        6,
+        7,
+        0
+      ],
+      "visitable": [
+        4,
+        7,
+        0
+      ]
+    }
+  },
+  "targets": {
+    "gold_0": [
+      4,
+      10,
+      0
+    ],
+    "gold_1": [
+      15,
+      10,
+      0
+    ],
+    "guard_0": [
+      6,
+      12,
+      0
+    ],
+    "guard_1": [
+      13,
+      12,
+      0
+    ],
+    "mine_0": [
+      5,
+      16,
+      0
+    ],
+    "mine_1": [
+      14,
+      16,
+      0
+    ]
+  },
+  "verification_note": "Generator metadata only; consult committed run validation for engine loading and gameplay."
+}

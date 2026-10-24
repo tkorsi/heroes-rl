@@ -1,0 +1,19 @@
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -434,7 +434,14 @@
+ 		// A bounded experiment recording must finish without a spectator dialog.
+ 		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+ 		const bool recording = recordingDirectory && *recordingDirectory;
+-		GAME->onShutdownRequested(settings["session"]["spectate"].Bool() && !recording);
++		if(recording)
++		{
++			// Pack handling runs on the network thread. Shutdown throws an exception
++			// caught by the GUI main loop, so enqueue it after gameOver delivered the terminal.
++			ENGINE->dispatchMainThread([]() { GAME->onShutdownRequested(false); });
++		}
++		else
++			GAME->onShutdownRequested(settings["session"]["spectate"].Bool());
+ 	}
+ }
+ 

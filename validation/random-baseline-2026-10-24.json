@@ -1,0 +1,860 @@
+{
+  "schema_version": 1,
+  "kind": "random-baseline-validation",
+  "date": "2026-10-24",
+  "hypothesis": "An untrained uniform movement policy can leave its castle and reach real events and natural terminal feedback against fixed Nullkiller Easy.",
+  "scope": "Three final Red-agent episodes; no learner, optimizer, checkpoint or training updates.",
+  "scenario": {
+    "path": "experiments/explorer/maps/random-baseline-v1.vmap",
+    "name": "random-baseline-v1.vmap",
+    "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+    "width": 20,
+    "height": 20,
+    "levels": 1
+  },
+  "opponent": {
+    "difficulty": "Easy",
+    "difficulty_index": 0,
+    "module": "Nullkiller"
+  },
+  "combat": "BattleAI; automatic; spectator battle display skipped",
+  "final_native_engine": {
+    "ai_libraries": {
+      "libBattleAI.dylib": "e4c70b929eaa643f44770d9b97a78b56720b733dcbbcc21a9bffc6ed2715da17",
+      "libExplorerRL.dylib": "ae8910d97eaaba7adc1cd3e0158d573970185089c185a93482127f20d08e1f1e",
+      "libNullkiller.dylib": "5fff7abdd0943437e7bbefc99b3312a728e30e2c3394fabcc031d9739e99de51"
+    },
+    "binary": "/Users/orsi/Documents/ChatGPT/Heroes/vcmi/build/bin/vcmiclient",
+    "binary_sha256": "9c0a5812ff6b2df44c1d5b391a8c0eef0fcfb06992261ca7fa5712b6bdc52059",
+    "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+    "dirty": true
+  },
+  "final_native_recipe": {
+    "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+    "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+    "engine/ExplorerRL/ExplorerRL.cpp": "d66f61b2dad23c0c405bb1f4b67a031c7527aae678389b4454b0fd407de93bf2",
+    "engine/ExplorerRL/ExplorerRL.h": "97f1161490ec0f5e1f2fb3731187b8fcfcd230de71192bec651059435e710eca",
+    "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+    "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+    "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+    "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+    "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+    "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+    "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+    "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+    "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+    "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+    "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+    "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f"
+  },
+  "engine_build_log_sha256": "4d459e764faa64ed54f35cfc4122198b93d06e2cec8d3458c1272d965e947518",
+  "series_selection": {
+    "predetermined_policy_seeds": [
+      1,
+      2,
+      3
+    ],
+    "engine_seeds": [
+      12345,
+      12346,
+      12347
+    ],
+    "final_attempts": [
+      6,
+      7,
+      8
+    ],
+    "rule": "One clean run of each predefined seed pair on the final native build. Retry technical failures; preserve all attempts. Selection does not use win/loss outcome."
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "run": "runs/random-baseline-001",
+      "manifest_sha256": "d409a75addeef4ea22d0d6ed78ea35942a59d226ee14b179e696d90230a5291b",
+      "engine_seed": 12345,
+      "policy_seed": 1,
+      "status": "failed",
+      "outcome": null,
+      "reward": null,
+      "termination_reason": "policy_error",
+      "returncode": 0,
+      "reported_terminal_outcome": null,
+      "actions_sent": 0,
+      "included_in_final_series": false,
+      "note": "Startup QueryID(-1) acknowledgement failure; fixed before attempt 2."
+    },
+    {
+      "attempt": 2,
+      "run": "runs/random-baseline-002",
+      "manifest_sha256": "db7cecdc73665e4b4a324ffffe2103e540788967b5cd8eb97af7d6cd609c3a2a",
+      "engine_seed": 12345,
+      "policy_seed": 1,
+      "status": "failed",
+      "outcome": null,
+      "reward": null,
+      "termination_reason": "process_exit_without_verified_terminal",
+      "returncode": -6,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 27,
+      "included_in_final_series": false,
+      "note": "Socket reported loss, then network-thread shutdown exception aborted the process; unscored."
+    },
+    {
+      "attempt": 3,
+      "run": "runs/random-baseline-003",
+      "manifest_sha256": "6d7bbcd01421f2eef5df4276497b839bf0a3b651245163e6b1167fc683cdddf5",
+      "engine_seed": 12345,
+      "policy_seed": 1,
+      "status": "completed",
+      "outcome": "loss",
+      "reward": -1,
+      "termination_reason": "natural_terminal",
+      "returncode": 0,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 27,
+      "included_in_final_series": false,
+      "note": "Clean seed 1 run before queue-race fix; retained as intermediate evidence."
+    },
+    {
+      "attempt": 4,
+      "run": "runs/random-baseline-004",
+      "manifest_sha256": "369cdb51f91e38f4ed5167808a1898c59cc9079f6b5f0de35456959bc146c9e5",
+      "engine_seed": 12346,
+      "policy_seed": 2,
+      "status": "timeout",
+      "outcome": null,
+      "reward": null,
+      "termination_reason": "wall_time_limit",
+      "returncode": -9,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 14,
+      "included_in_final_series": false,
+      "note": "Socket reported loss, then request-queue shutdown race hung cleanup; wall timeout, unscored."
+    },
+    {
+      "attempt": 5,
+      "run": "runs/random-baseline-005",
+      "manifest_sha256": "4c99a3acb10249bb8b18c3e15dfa07bf89a316cf63ac3a8ece51f404db442879",
+      "engine_seed": 12347,
+      "policy_seed": 3,
+      "status": "completed",
+      "outcome": "loss",
+      "reward": -1,
+      "termination_reason": "natural_terminal",
+      "returncode": 0,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 10,
+      "included_in_final_series": false,
+      "note": "Clean seed 3 run before rebuilt queue fix; retained as intermediate evidence."
+    },
+    {
+      "attempt": 6,
+      "run": "runs/random-baseline-006",
+      "manifest_sha256": "6d7395cd66a8d0f442b876e93b0248050080b94ce15e65a05563e865bb6d9175",
+      "engine_seed": 12346,
+      "policy_seed": 2,
+      "status": "completed",
+      "outcome": "loss",
+      "reward": -1,
+      "termination_reason": "natural_terminal",
+      "returncode": 0,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 14,
+      "included_in_final_series": true,
+      "note": "Final native build, policy seed 2; clean retry of attempt 4."
+    },
+    {
+      "attempt": 7,
+      "run": "runs/random-baseline-007",
+      "manifest_sha256": "8c1f504108f2e34c746fb07ec69cc562bf593d998c21d4b57e13197ccd61aa3f",
+      "engine_seed": 12345,
+      "policy_seed": 1,
+      "status": "completed",
+      "outcome": "loss",
+      "reward": -1,
+      "termination_reason": "natural_terminal",
+      "returncode": 0,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 27,
+      "included_in_final_series": true,
+      "note": "Final native build, policy seed 1; confirms behavior after queue fix."
+    },
+    {
+      "attempt": 8,
+      "run": "runs/random-baseline-008",
+      "manifest_sha256": "c0087d5bbf71da46368eb41ed9e6fe68b79b130aa31a3c9343edd0075fd9850b",
+      "engine_seed": 12347,
+      "policy_seed": 3,
+      "status": "completed",
+      "outcome": "loss",
+      "reward": -1,
+      "termination_reason": "natural_terminal",
+      "returncode": 0,
+      "reported_terminal_outcome": "loss",
+      "actions_sent": 10,
+      "included_in_final_series": true,
+      "note": "Final native build, policy seed 3; confirms behavior after queue fix."
+    }
+  ],
+  "final_runs": [
+    {
+      "attempt": 6,
+      "engine_seed": 12346,
+      "effective_engine_rng": {
+        "deterministic_replay_verified": false,
+        "initial_sample": 140856652,
+        "initial_seed": 12346
+      },
+      "policy_source": {
+        "file": "experiments/explorer/random_policy.py",
+        "sha256": "e3ef7635b4d5d21034581a03b2f33a285d1cf57c7de168df2fc220397cb2c1e8"
+      },
+      "policy_seed": 2,
+      "policy_ledger": {
+        "file": "policy.jsonl",
+        "sha256": "e74500c389c242931bbdc359740c237ae3087f171390c770a02ee78f482d369f"
+      },
+      "policy_metrics": {
+        "actions_sent": 14,
+        "actions_accepted": 14,
+        "actions_rejected": 0,
+        "successful_displacements": 12,
+        "unique_hero_positions": 11,
+        "completed_turns": 2,
+        "decisions_sent": 0
+      },
+      "initial_state": {
+        "army": [
+          {
+            "count": 25,
+            "creature": 0,
+            "slot": 0
+          }
+        ],
+        "completed_battles": 0,
+        "day": 1,
+        "hero_id": 1,
+        "movement": 1560,
+        "movement_max": 1560,
+        "own_heroes": 1,
+        "own_mines": 0,
+        "own_towns": 1,
+        "resources": [
+          5,
+          2,
+          5,
+          2,
+          2,
+          2,
+          5000
+        ],
+        "visible_tiles": 92,
+        "x": 4,
+        "y": 7,
+        "z": 0
+      },
+      "terminal_state": {
+        "completed_battles": 1,
+        "day": 2,
+        "hero_id": -1,
+        "movement": 0,
+        "movement_max": 0,
+        "own_heroes": 0,
+        "own_mines": 0,
+        "own_towns": 0,
+        "resources": [
+          5,
+          2,
+          5,
+          2,
+          2,
+          2,
+          5375
+        ],
+        "visible_tiles": 189,
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "event_counts": {
+        "visit": 1,
+        "battle_complete": 1
+      },
+      "gold_pickups": [],
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 92,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "99b76df36f6182356cdbf8b73dbb70a28d6481948993b0d8b14209eaea96a31c",
+        "observer_player_index": 0,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 400,
+        "validated": true
+      },
+      "effective_players": [
+        {
+          "adventure_ai": "ExplorerRL",
+          "human": false,
+          "player_index": 0,
+          "team_index": 0,
+          "total_tiles": 400,
+          "visible_tiles": 92
+        },
+        {
+          "adventure_ai": "Nullkiller",
+          "human": false,
+          "player_index": 1,
+          "team_index": 1,
+          "total_tiles": 400,
+          "visible_tiles": 92
+        }
+      ],
+      "paired_capture_validation": {
+        "frames": 47,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "observer_player_index",
+          "visible_tiles",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "frame_pairs_with_different_pixels": 47,
+      "log_terminal_evidence": [
+        "Red player lost. Ending game."
+      ],
+      "log_opponent_battle_evidence": [
+        "Player 1 (blue): I won the Starting battle of Edric attacking Orrin the Knight at (9 9 0)!"
+      ],
+      "recordings": {
+        "omniscient": {
+          "path": "runs/random-baseline-006/omniscient.mp4",
+          "sha256": "960383a0ab82329dd997db044965c9b6a13970fc31dd24b17f2bc474dc830508",
+          "capture": {
+            "directory": "frames/omniscient",
+            "elapsed_seconds": 10.91157,
+            "final_game_day": 2,
+            "final_visible_tiles": 189,
+            "fps": 6,
+            "frames": 47,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "9d5f5613442d2ff94efa1ffe4177e94c0f58b31a238eb9317415ec4fc9cef1eb",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 10.91157,
+            "codec": "h264",
+            "duration_seconds": 7.833333,
+            "fps": 6,
+            "frames": 47,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        },
+        "player": {
+          "path": "runs/random-baseline-006/player-red.mp4",
+          "sha256": "ff55301fac5ac98762ecac9b70b27dc8e62983bbec851616981f3d0ce061934a",
+          "capture": {
+            "directory": "frames/player",
+            "elapsed_seconds": 10.91157,
+            "final_game_day": 2,
+            "final_visible_tiles": 189,
+            "fps": 6,
+            "frames": 47,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "69126d56131980ef5fd16607d8f3d87719b80aa96c3fa075a8e63bf9ba34ff23",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 10.91157,
+            "codec": "h264",
+            "duration_seconds": 7.833008,
+            "fps": 6,
+            "frames": 47,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        }
+      }
+    },
+    {
+      "attempt": 7,
+      "engine_seed": 12345,
+      "effective_engine_rng": {
+        "deterministic_replay_verified": false,
+        "initial_sample": 1272378730,
+        "initial_seed": 12345
+      },
+      "policy_source": {
+        "file": "experiments/explorer/random_policy.py",
+        "sha256": "35b97a8606777a73a26db5e9d641f1dfe1b95420178f30da3ccba595bd66aacd"
+      },
+      "policy_seed": 1,
+      "policy_ledger": {
+        "file": "policy.jsonl",
+        "sha256": "24481d1bca4925f3be491a0f04ba4a84d3ab5c5279586f0ca3828d9f23b2b3ca"
+      },
+      "policy_metrics": {
+        "actions_sent": 27,
+        "actions_accepted": 27,
+        "actions_rejected": 0,
+        "successful_displacements": 24,
+        "unique_hero_positions": 15,
+        "completed_turns": 2,
+        "decisions_sent": 0
+      },
+      "initial_state": {
+        "army": [
+          {
+            "count": 25,
+            "creature": 0,
+            "slot": 0
+          }
+        ],
+        "completed_battles": 0,
+        "day": 1,
+        "hero_id": 1,
+        "movement": 1560,
+        "movement_max": 1560,
+        "own_heroes": 1,
+        "own_mines": 0,
+        "own_towns": 1,
+        "resources": [
+          10,
+          2,
+          10,
+          2,
+          2,
+          2,
+          5000
+        ],
+        "visible_tiles": 92,
+        "x": 4,
+        "y": 7,
+        "z": 0
+      },
+      "terminal_state": {
+        "completed_battles": 1,
+        "day": 2,
+        "hero_id": -1,
+        "movement": 0,
+        "movement_max": 0,
+        "own_heroes": 0,
+        "own_mines": 0,
+        "own_towns": 0,
+        "resources": [
+          10,
+          2,
+          10,
+          2,
+          2,
+          2,
+          5875
+        ],
+        "visible_tiles": 139,
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "event_counts": {
+        "visit": 3,
+        "battle_complete": 1
+      },
+      "gold_pickups": [
+        {
+          "action_id": 9,
+          "gold_delta": 500
+        }
+      ],
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 92,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "8ad199b376f1c0c6a984fe18de616ef23d04ca436d7dff541199f1639e024d21",
+        "observer_player_index": 0,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 400,
+        "validated": true
+      },
+      "effective_players": [
+        {
+          "adventure_ai": "ExplorerRL",
+          "human": false,
+          "player_index": 0,
+          "team_index": 0,
+          "total_tiles": 400,
+          "visible_tiles": 92
+        },
+        {
+          "adventure_ai": "Nullkiller",
+          "human": false,
+          "player_index": 1,
+          "team_index": 1,
+          "total_tiles": 400,
+          "visible_tiles": 123
+        }
+      ],
+      "paired_capture_validation": {
+        "frames": 92,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "observer_player_index",
+          "visible_tiles",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "frame_pairs_with_different_pixels": 92,
+      "log_terminal_evidence": [
+        "Red player lost. Ending game."
+      ],
+      "log_opponent_battle_evidence": [
+        "Player 1 (blue): I won the Starting battle of Edric attacking Orrin the Knight at (5 8 0)!"
+      ],
+      "recordings": {
+        "omniscient": {
+          "path": "runs/random-baseline-007/omniscient.mp4",
+          "sha256": "d3aeeae7c36104635b8c9613d133c4a93ccbe3cd9e17dbe65efe0ea783645bc0",
+          "capture": {
+            "directory": "frames/omniscient",
+            "elapsed_seconds": 22.113793,
+            "final_game_day": 2,
+            "final_visible_tiles": 139,
+            "fps": 6,
+            "frames": 92,
+            "initial_game_day": 0,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "00347f56db89d70daeb90737d51e57e491d07fce63ad3ad6730de635871feaee",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 22.113793,
+            "codec": "h264",
+            "duration_seconds": 15.333333,
+            "fps": 6,
+            "frames": 92,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        },
+        "player": {
+          "path": "runs/random-baseline-007/player-red.mp4",
+          "sha256": "c15c25314896e803190a294a24729c3c4f793fb81bedb1721c7bf8defac8631f",
+          "capture": {
+            "directory": "frames/player",
+            "elapsed_seconds": 22.113793,
+            "final_game_day": 2,
+            "final_visible_tiles": 139,
+            "fps": 6,
+            "frames": 92,
+            "initial_game_day": 0,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "5bad691f2d3ed298eab950a087bbcb817009320dec47cc76447f85e1eb8ffb8e",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 22.113793,
+            "codec": "h264",
+            "duration_seconds": 15.333333,
+            "fps": 6,
+            "frames": 92,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        }
+      }
+    },
+    {
+      "attempt": 8,
+      "engine_seed": 12347,
+      "effective_engine_rng": {
+        "deterministic_replay_verified": false,
+        "initial_sample": 1156883758,
+        "initial_seed": 12347
+      },
+      "policy_source": {
+        "file": "experiments/explorer/random_policy.py",
+        "sha256": "35b97a8606777a73a26db5e9d641f1dfe1b95420178f30da3ccba595bd66aacd"
+      },
+      "policy_seed": 3,
+      "policy_ledger": {
+        "file": "policy.jsonl",
+        "sha256": "8b8fb86fc146431feecdb8af00c50755e68f2576e7b45a7f0f316436578bb63a"
+      },
+      "policy_metrics": {
+        "actions_sent": 10,
+        "actions_accepted": 10,
+        "actions_rejected": 0,
+        "successful_displacements": 8,
+        "unique_hero_positions": 8,
+        "completed_turns": 2,
+        "decisions_sent": 0
+      },
+      "initial_state": {
+        "army": [
+          {
+            "count": 25,
+            "creature": 0,
+            "slot": 0
+          }
+        ],
+        "completed_battles": 0,
+        "day": 1,
+        "hero_id": 1,
+        "movement": 1560,
+        "movement_max": 1560,
+        "own_heroes": 1,
+        "own_mines": 0,
+        "own_towns": 1,
+        "resources": [
+          5,
+          2,
+          5,
+          2,
+          2,
+          2,
+          5000
+        ],
+        "visible_tiles": 92,
+        "x": 4,
+        "y": 7,
+        "z": 0
+      },
+      "terminal_state": {
+        "completed_battles": 1,
+        "day": 2,
+        "hero_id": -1,
+        "movement": 0,
+        "movement_max": 0,
+        "own_heroes": 0,
+        "own_mines": 0,
+        "own_towns": 0,
+        "resources": [
+          5,
+          2,
+          5,
+          2,
+          2,
+          2,
+          5375
+        ],
+        "visible_tiles": 121,
+        "x": null,
+        "y": null,
+        "z": null
+      },
+      "event_counts": {
+        "visit": 1,
+        "battle_complete": 1
+      },
+      "gold_pickups": [],
+      "visibility_validation": {
+        "ai_players": [
+          {
+            "cheats_allowed": false,
+            "open_map": false,
+            "player_index": 1,
+            "use_object_graph": false
+          }
+        ],
+        "cheats_allowed": false,
+        "difficulty_index": 0,
+        "initial_visible_tiles": 92,
+        "metadata_file": "frames/experiment-metadata.json",
+        "metadata_sha256": "99b76df36f6182356cdbf8b73dbb70a28d6481948993b0d8b14209eaea96a31c",
+        "observer_player_index": 0,
+        "requested_no_cheats": true,
+        "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+        "total_tiles": 400,
+        "validated": true
+      },
+      "effective_players": [
+        {
+          "adventure_ai": "ExplorerRL",
+          "human": false,
+          "player_index": 0,
+          "team_index": 0,
+          "total_tiles": 400,
+          "visible_tiles": 92
+        },
+        {
+          "adventure_ai": "Nullkiller",
+          "human": false,
+          "player_index": 1,
+          "team_index": 1,
+          "total_tiles": 400,
+          "visible_tiles": 92
+        }
+      ],
+      "paired_capture_validation": {
+        "frames": 39,
+        "matched_fields": [
+          "sample_id",
+          "game_day",
+          "observer_player_index",
+          "visible_tiles",
+          "elapsed_seconds",
+          "width",
+          "height"
+        ],
+        "shared_sample_ids_verified": true
+      },
+      "frame_pairs_with_different_pixels": 39,
+      "log_terminal_evidence": [
+        "Red player lost. Ending game."
+      ],
+      "log_opponent_battle_evidence": [
+        "Player 1 (blue): I won the Starting battle of Edric attacking Orrin the Knight at (2 8 0)!"
+      ],
+      "recordings": {
+        "omniscient": {
+          "path": "runs/random-baseline-008/omniscient.mp4",
+          "sha256": "a9280d9deba2167ed7f3b2cdc8053cce9f2655f520420919892d84985c2278b1",
+          "capture": {
+            "directory": "frames/omniscient",
+            "elapsed_seconds": 9.233253,
+            "final_game_day": 2,
+            "final_visible_tiles": 121,
+            "fps": 6,
+            "frames": 39,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "c3b5efc29a84d5dabdfbee3cbf0cf33617e3e91ff7a000db5916cfd3b9f53bc1",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 9.233253,
+            "codec": "h264",
+            "duration_seconds": 6.5,
+            "fps": 6,
+            "frames": 39,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        },
+        "player": {
+          "path": "runs/random-baseline-008/player-red.mp4",
+          "sha256": "ccc236b48f780cb1fc6c302b1704db6e98210cd1b0050ae527a5196642b07208",
+          "capture": {
+            "directory": "frames/player",
+            "elapsed_seconds": 9.233253,
+            "final_game_day": 2,
+            "final_visible_tiles": 121,
+            "fps": 6,
+            "frames": 39,
+            "initial_game_day": 1,
+            "initial_visible_tiles": 92,
+            "ledger_sha256": "c1cec334cd232f96baf072ab0da8cfb186eef442c9d592c47f2e893b956d07ad",
+            "source": "native SDL game surface"
+          },
+          "video": {
+            "capture_elapsed_seconds": 9.233253,
+            "codec": "h264",
+            "duration_seconds": 6.5,
+            "fps": 6,
+            "frames": 39,
+            "height": 720,
+            "pixel_format": "yuv420p",
+            "width": 960
+          }
+        }
+      }
+    }
+  ],
+  "previews": [
+    {
+      "path": "videos/experiment-001-final-player-60s.mp4",
+      "sha256": "3849e0ed999ec375b5c5a78bd03c113f6b7adb6504ef6226ab5ab767cc57b3b6",
+      "manifest_sha256": "4433be53cdbb2c7d7595dee062526cbdc469b3b08b3b54471bb45ec0cbc02a9c",
+      "view": "player",
+      "video": {
+        "width": 1280,
+        "height": 720,
+        "frames": 1800,
+        "duration_seconds": 60.0,
+        "codec": "h264",
+        "pixel_format": "yuv420p"
+      },
+      "selected_attempts": [
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "path": "videos/experiment-001-final-omniscient-60s.mp4",
+      "sha256": "32bad0646fa8141adf3f972960c19e4ec50483dc003620cf1c51246cc0b22543",
+      "manifest_sha256": "20ea815e4cfba14a55ac21eb0c19f87c73a751690e5649c82b5606fc2095d16c",
+      "view": "omniscient",
+      "video": {
+        "width": 1280,
+        "height": 720,
+        "frames": 1800,
+        "duration_seconds": 60.0,
+        "codec": "h264",
+        "pixel_format": "yuv420p"
+      },
+      "selected_attempts": [
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "checks": {
+    "native_build": "passed",
+    "tests": 44,
+    "test_result": "passed",
+    "test_log_sha256": "334694f0dc382a9626fce2a33de09a67cefcad9ea065a551bc3832808b0c614a",
+    "dependency_recipe_exact_match": "passed",
+    "queue_regression": "Production template test with -DNDEBUG: normal acknowledgement, late request, 512 racing senders. Fixed template passes; prior template fails on insertion after termination.",
+    "visibility_source_review": "Own-side callbacks for heroes/towns/resources; isVisible checked before tile/object reads; hidden-neighbor mask does not inspect hidden target tiles; Python movement choice reads only the mask.",
+    "visual_review": [
+      "Final paired MP4s at 28 seconds: same hero/camera; player map and minimap hide the Blue castle and distant objects visible in the omniscient view; labels identify random baseline, Red, loss and no training."
+    ]
+  },
+  "limitations": [
+    "Three episodes are an environment baseline, not a win-rate estimate or evidence of learning.",
+    "The agent has movement/end-turn and supported dialog choices only. It cannot recruit, build, transfer armies or cast spells, while Nullkiller can use the town economy.",
+    "No live mining, neutral battle, agent victory, Blue-side external agent or nested dialog path was verified in this series.",
+    "Easy is the lowest configured difficulty, not empirical proof that Nullkiller is the weakest available module.",
+    "Deterministic whole-engine replay remains unverified. Starting own resources differ across these engine seeds; initial states are preserved.",
+    "Player video uses team map fog with spectator sidebars. It is not a visualization of internal agent reasoning. Tactical battles resolve automatically without battle-screen footage.",
+    "MP4s use nominal capture FPS, and overviews rescale complete clips to 20 seconds each. This is visual recording, not exact replay; the initial loading sample may appear briefly.",
+    "Attempt 5 source snapshot included patch 0009 while its binary still predated the rebuild. It is excluded from the final series. Attempts 6-8 have the same rebuilt native binary and engine recipe.",
+    "After attempt 6, report-only scoring cleanup removed nested terminal.reward and extracted classification for testing. Action selection is unchanged. Older raw manifests retain nested reported rewards; only top-level reward determines scoring."
+  ]
+}
