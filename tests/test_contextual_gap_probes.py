@@ -183,6 +183,28 @@ class ContextualGapProbeTests(unittest.TestCase):
         with self.assertRaises(encounters.base.ProbeFailure):
             encounters.encounter_evidence("mine", target, before, after, frames, result)
 
+    def test_unknown_mine_route_requires_a_new_observed_frontier_choice(self):
+        mine = SimpleNamespace(handle="mine", kind=53, owner="neutral", position=(5, 6, 0))
+        hero = SimpleNamespace(handle="own", position=(5, 3, 0))
+        tiles = tuple(SimpleNamespace(position=(x, y, 0), blocked=(x, y) == (5, 6),
+                                      visitable=(x, y) == (5, 6))
+                      for x, y in ((5, 3), (5, 4), (6, 4), (6, 6), (5, 6)))
+        obs = SimpleNamespace(objects=(mine,), heroes=(hero,), tiles=tiles, size=(10, 10, 1))
+        target, original = encounters.observed_encounter_destination(obs, 53, set())
+        self.assertIs(target, mine)
+        self.assertEqual(original, mine.position)
+        # A native no_route_known retains this visible target as setup focus;
+        # the following policy request must explicitly choose a known free tile.
+        target, frontier = encounters.observed_encounter_destination(obs, 53, set(), approach=original)
+        self.assertIsNone(target)
+        self.assertEqual(frontier, (6, 6, 0))
+        self.assertIn(frontier, {t.position for t in tiles if not t.blocked and not t.visitable})
+        self.assertNotEqual(frontier, (5, 7, 0))  # Unobserved mine approach is never an oracle target.
+        target, next_frontier = encounters.observed_encounter_destination(obs, 53, {frontier}, approach=original)
+        self.assertNotEqual(next_frontier, frontier)
+        with self.assertRaises(encounters.base.ProbeFailure):
+            encounters.observed_encounter_destination(obs, 53, {t.position for t in tiles}, approach=original)
+
 
 if __name__ == "__main__":
     unittest.main()

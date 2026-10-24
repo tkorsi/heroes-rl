@@ -127,11 +127,37 @@ def encounter_evidence(kind, target, before, after, frames, result):
     return report
 
 
+def observed_encounter_destination(obs, object_kind, tried_frontiers, approach=None):
+    """Diagnostic-only explicit approach after an unknown route, using visible tiles.
+
+    A visible mine can have an unseen entrance approach. This does not query a
+    pathfinder or reveal a tile: the next external action selects a currently
+    observed free frontier, then retries the actual object in a later decision.
+    """
+    targets = sorted((obj for obj in obs.objects if obj.kind == object_kind and obj.owner == "neutral"
+                      and (object_kind != 79 or obj.subtype == 6)), key=lambda obj: obj.position)
+    if targets and approach is None:
+        return targets[0], targets[0].position
+    known = {tile.position for tile in obs.tiles}
+    candidates = [tile.position for tile in obs.tiles if not tile.blocked and not tile.visitable
+                  and tile.position != obs.heroes[0].position and tile.position not in tried_frontiers and any(
+                      0 <= tile.position[0] + dx < obs.size[0] and 0 <= tile.position[1] + dy < obs.size[1]
+                      and (tile.position[0] + dx, tile.position[1] + dy, 0) not in known
+                      for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)))]
+    base.ensure(candidates, "No untried observed frontier for the diagnostic approach")
+    # Target proximity only chooses an evaluator setup action. This function is
+    # never imported by a learner, collector, policy, planner or optimizer.
+    position = min(candidates, key=lambda p: (sum(abs(a - b) for a, b in zip(p, approach)), p)
+                   if approach is not None else p)
+    return None, position
+
+
 def encounters(run):
     color = run.args.player
     tried_frontiers = set()
     movements = 0
     for name, object_kind in (("resource", 79), ("battle", 54), ("mine", 53)):
+        approach = None
         while True:
             frame = own_decision(run, color)
             obs = frame.observation
@@ -141,29 +167,26 @@ def encounters(run):
             if hero.movement == 0:
                 run.call(contract.Action("end_turn"), "explicit_turn_after_exhausted_movement")
                 continue
-            targets = sorted((obj for obj in obs.objects if obj.kind == object_kind and obj.owner == "neutral"
-                              and (name != "resource" or obj.subtype == 6)), key=lambda obj: obj.position)
-            target = targets[0] if targets else None
+            target, position = observed_encounter_destination(obs, object_kind, tried_frontiers, approach)
             if target is None:
-                known = {tile.position for tile in obs.tiles}
-                frontier = sorted(tile.position for tile in obs.tiles if not tile.blocked and not tile.visitable
-                                  and tile.position != hero.position and tile.position not in tried_frontiers and any(
-                                      0 <= tile.position[0] + dx < obs.size[0] and 0 <= tile.position[1] + dy < obs.size[1]
-                                      and (tile.position[0] + dx, tile.position[1] + dy, 0) not in known
-                                      for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1))))
-                base.ensure(frontier and len(tried_frontiers) < run.args.frontier_attempts,
+                base.ensure(len(tried_frontiers) < run.args.frontier_attempts,
                             f"No observed {name} within the declared exploration bound")
-                position = frontier[0]
                 tried_frontiers.add(position)
-            else:
-                position = target.position
             base.ensure(movements < run.args.movement_attempts, "Encounter movement bound exhausted")
             movements += 1
             _, additions, result = run.call(contract.Action("move_to", hero.handle, *position[:2]),
                                             f"explicit_observed_{name}" if target else "explicit_known_frontier")
             after = own_decision(run, color).observation
-            base.ensure(result is not None and result.status != "no_route_known",
-                        "Selected observed diagnostic target has no supported known route")
+            base.ensure(result is not None, "Diagnostic movement has no completed result")
+            if result.status == "no_route_known":
+                base.ensure(not any(f.kind == "issued" for f in additions)
+                            and after.heroes == obs.heroes, "Unknown route issued or moved a hero")
+                approach = position if target is not None else approach
+                run.check("native_unknown_route_requires_explicit_observed_approach", "passed",
+                          target=target.handle if target is not None else None, destination=position,
+                          decision_seq=frame.seq, native_issued=0)
+                continue
+            approach = None
             if target and any(f.event is not None and f.event.kind == "visit" and f.event.subject == target.handle
                               for f in additions):
                 evidence = encounter_evidence(name, target, obs, after, additions, result)
