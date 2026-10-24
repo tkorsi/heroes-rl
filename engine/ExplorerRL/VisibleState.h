@@ -138,6 +138,74 @@ VisibleSnapshot captureVisible(const World & world)
 	return snapshot;
 }
 
+/// FNV-1a over a canonical sequence of signed 64-bit little-endian values.
+/// The Python verifier implements the same encoding (experiments/headless/replay.py).
+class Digest
+{
+	uint64_t state = 1469598103934665603ULL;
+
+public:
+	void add(int64_t value)
+	{
+		auto bits = static_cast<uint64_t>(value);
+		for(int byte = 0; byte < 8; ++byte, bits >>= 8)
+		{
+			state ^= bits & 0xff;
+			state *= 1099511628211ULL;
+		}
+	}
+	uint64_t value() const { return state; }
+};
+
+/// Digest of one capture, for replay verification only. It covers the visible
+/// tiles in scan order with their facts, the visible objects in engine-ID order
+/// and the own state. It contains engine object IDs, so it stays in engine-side
+/// evidence and never reaches a policy.
+inline uint64_t snapshotDigest(const VisibleSnapshot & snapshot)
+{
+	Digest digest;
+	digest.add(snapshot.width);
+	digest.add(snapshot.height);
+	digest.add(snapshot.levels);
+	for(size_t index = 0; index < snapshot.tiles.size(); ++index)
+	{
+		if(!snapshot.tiles[index])
+			continue;
+		digest.add(static_cast<int64_t>(index));
+		digest.add(snapshot.facts[index].terrain);
+		digest.add(snapshot.facts[index].blocked);
+		digest.add(snapshot.facts[index].visitable);
+	}
+	digest.add(static_cast<int64_t>(snapshot.objects.size()));
+	for(const auto & [id, object] : snapshot.objects)
+		for(const int64_t value : {id, int64_t{object.x}, int64_t{object.y}, int64_t{object.z},
+				int64_t{object.type}, int64_t{object.subtype}, int64_t{object.owner}})
+			digest.add(value);
+	const auto & own = snapshot.own;
+	digest.add(own.hero.has_value());
+	if(own.hero)
+		for(const int coordinate : *own.hero)
+			digest.add(coordinate);
+	digest.add(own.movement);
+	digest.add(own.movementMax);
+	digest.add(static_cast<int64_t>(own.resources.size()));
+	for(const auto amount : own.resources)
+		digest.add(amount);
+	digest.add(static_cast<int64_t>(own.army.size()));
+	for(const auto & stack : own.army)
+	{
+		digest.add(stack.slot);
+		digest.add(stack.creature);
+		digest.add(stack.count);
+	}
+	digest.add(static_cast<int64_t>(own.towns.size()));
+	for(const auto & town : own.towns)
+		for(const int coordinate : town)
+			digest.add(coordinate);
+	digest.add(own.mines);
+	return digest.value();
+}
+
 /// Keeps the previous capture of one player and reports the next difference.
 /// The first capture is reported against an empty view, so the ordered change
 /// stream alone reconstructs the visible objects, tiles and own state at every

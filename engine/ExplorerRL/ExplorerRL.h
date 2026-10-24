@@ -7,9 +7,11 @@
 #include <array>
 #include <atomic>
 #include <condition_variable>
+#include <cstdio>
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <shared_mutex>
 #include <thread>
 #include <unordered_map>
@@ -89,6 +91,19 @@ private:
 	bool profile = false;
 	int64_t visibleCaptureMicros = 0; ///< since the last profiled message, protected by stateMutex
 	int64_t visibleCaptures = 0; ///< protected by stateMutex
+	/// Engine-side replay evidence (VCMI_EXPERIMENT_REPLAY=1): the pack position
+	/// and digest of each reported capture and of each policy message. It names
+	/// engine IDs and counts opponent packs, so it never reaches a policy.
+	bool ledgerEnabled = false;
+	std::FILE * observationLedger = nullptr; ///< protected by stateMutex
+	struct Capture
+	{
+		uint64_t pack;
+		uint16_t packType;
+		uint64_t digest;
+	};
+	std::optional<Capture> lastCapture; ///< protected by stateMutex
+	int64_t ledgerMessages = 0; ///< protected by stateMutex
 	int64_t lastEncodeMicros = 0; ///< protected by sendMutex
 	int64_t lastSendMicros = 0; ///< protected by sendMutex
 	int64_t lastMessageBytes = 0; ///< protected by sendMutex
@@ -124,6 +139,8 @@ private:
 	JsonNode takeEvents();
 	JsonNode takeProfile(); ///< requires sendMutex
 	void noteVisibleChanges();
+	/// Records the capture a message's events end at; requires the game-state read view.
+	void noteLedgerMessage(const char * type);
 	void visibleChangeTrigger() noexcept;
 	void enqueueDecision(QueryID query, JsonNode payload);
 	void handleDecision(Decision decision);

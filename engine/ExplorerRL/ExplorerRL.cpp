@@ -1,9 +1,11 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
+#include "VisibleWorld.h"
 
 #include "../../lib/battle/BattleAction.h"
 #include "../../lib/battle/BattleSide.h"
 #include "../../lib/callback/CCallback.h"
+#include "../../lib/callback/ExperimentHooks.h"
 #include "../../lib/gameState/CGameState.h"
 #include "../../lib/gameState/EVictoryLossCheckResult.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
@@ -46,89 +48,6 @@ int64_t microsecondsSince(std::chrono::steady_clock::time_point start)
 {
 	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
 }
-
-/// An object the player can see, or null. Event objects are hidden from
-/// players even on visible tiles, as in CGameInfoCallback::getVisitableObjs.
-const CGObjectInstance * playerVisibleObject(const CCallback & callback, ObjectInstanceID objectID)
-{
-	const auto * object = callback.getObj(objectID, false);
-	return object && object->ID != Obj::EVENT && callback.isVisible(object) ? object : nullptr;
-}
-
-/// Terrain and flags of a tile the player sees, from the objects it can see there.
-explorer_rl::VisibleTile visibleTileFacts(const CCallback & callback, const TerrainTile & tile)
-{
-	auto anyVisible = [&callback](const std::vector<ObjectInstanceID> & objects)
-	{
-		return std::any_of(objects.begin(), objects.end(), [&callback](const auto objectID)
-		{
-			return playerVisibleObject(callback, objectID) != nullptr;
-		});
-	};
-	return {tile.getTerrainID().getNum(), anyVisible(tile.blockingObjects), anyVisible(tile.visitableObjects)};
-}
-
-/// The player's own callback as a VisibleState world. Objects are listed only
-/// for tiles its team sees, and only when the callback reports them visible.
-struct CallbackWorld
-{
-	const CCallback & callback;
-	PlayerColor player;
-	int3 size;
-
-	int width() const { return size.x; }
-	int height() const { return size.y; }
-	int levels() const { return size.z; }
-	bool tileVisible(int x, int y, int z) const { return callback.isVisible(int3(x, y, z)); }
-
-	explorer_rl::VisibleTile tileFacts(int x, int y, int z) const
-	{
-		const auto * tile = callback.getTile(int3(x, y, z), false);
-		if(!tile)
-			throw std::runtime_error("A visible tile has no terrain");
-		return visibleTileFacts(callback, *tile);
-	}
-
-	void visibleObjectsAt(int x, int y, int z, std::vector<explorer_rl::VisibleObject> & out) const
-	{
-		const auto * tile = callback.getTile(int3(x, y, z), false);
-		if(!tile)
-			return;
-		for(const auto objectID : tile->visitableObjects)
-			if(const auto * object = playerVisibleObject(callback, objectID))
-				out.push_back({object->id.getNum(), x, y, z, object->ID.getNum(), object->subID.getNum(), object->getOwner().getNum()});
-	}
-
-	explorer_rl::OwnState ownState() const
-	{
-		explorer_rl::OwnState own;
-		for(int resource = 0; resource < GameConstants::RESOURCE_QUANTITY; ++resource)
-			own.resources.push_back(callback.getResourceAmount(GameResID(resource)));
-		for(const auto * hero : callback.getHeroesInfo())
-		{
-			if(hero->getOwner() != player)
-				continue;
-			const auto position = hero->visitablePos();
-			own.hero = std::array<int, 3>{position.x, position.y, position.z};
-			own.movement = hero->movementPointsRemaining();
-			own.movementMax = hero->movementPointsLimit();
-			for(const auto & [slot, stack] : hero->Slots())
-				own.army.push_back({slot.getNum(), stack->getCreatureID().getNum(), stack->getCount()});
-			break;
-		}
-		for(const auto * town : callback.getTownsInfo())
-			if(town->getOwner() == player)
-			{
-				const auto position = town->visitablePos();
-				own.towns.push_back({position.x, position.y, position.z});
-			}
-		std::sort(own.towns.begin(), own.towns.end());
-		for(const auto * object : callback.getMyObjects())
-			if(object->getOwner() == player && object->ID == Obj::MINE)
-				++own.mines;
-		return own;
-	}
-};
 
 JsonNode positionJson(const std::array<int, 3> & position)
 {
@@ -266,6 +185,16 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
+	if(const char * replay = std::getenv("VCMI_EXPERIMENT_REPLAY"); replay && std::string(replay) == "1")
+	{
+		const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
+		const std::string path = std::string(directory ? directory : "") + "/observations-p" + std::to_string(playerID.getNum()) + ".jsonl";
+		observationLedger = directory && *directory ? std::fopen(path.c_str(), "w") : nullptr;
+		if(observationLedger)
+			ledgerEnabled = true;
+		else
+			failure = "Cannot create the replay observation ledger " + path; // reported by the worker
+	}
 	worker = std::thread([this] { run(); });
 }
 
@@ -281,6 +210,12 @@ void ExplorerRL::finish()
 		::shutdown(fd, SHUT_RDWR);
 	if(worker.joinable())
 		worker.join();
+	{
+		std::lock_guard lock(stateMutex);
+		if(observationLedger)
+			std::fclose(observationLedger);
+		observationLedger = nullptr;
+	}
 	const int closedFD = socketFD.exchange(-1);
 	if(closedFD >= 0)
 		::close(closedFD);
@@ -638,13 +573,31 @@ void ExplorerRL::noteVisibleChanges()
 	if(day < 1)
 		return;
 	const auto start = std::chrono::steady_clock::now();
-	auto snapshot = explorer_rl::captureVisible(CallbackWorld{*callback, playerID, callback->getMapSize()});
+	auto snapshot = explorer_rl::captureVisible(explorer_rl::CallbackWorld{*callback, playerID, callback->getMapSize()});
+	const auto position = experimentPackPosition();
+	const uint64_t digest = ledgerEnabled ? explorer_rl::snapshotDigest(snapshot) : 0;
 	std::lock_guard lock(stateMutex);
 	const auto change = visibleTracker.update(std::move(snapshot));
 	++visibleCaptures;
 	visibleCaptureMicros += microsecondsSince(start);
-	if(!change.empty())
-		events.push_back(visibleChangeJson(change, visibleSequence++, day));
+	lastCapture = Capture{position.index, position.type, digest};
+	if(change.empty())
+		return;
+	if(observationLedger)
+		std::fprintf(observationLedger, "{\"kind\":\"capture\",\"sequence\":%lld,\"pack\":%llu,\"pack_type\":%u,\"digest\":\"%016llx\"}\n",
+			static_cast<long long>(visibleSequence), static_cast<unsigned long long>(position.index),
+			static_cast<unsigned>(position.type), static_cast<unsigned long long>(digest));
+	events.push_back(visibleChangeJson(change, visibleSequence++, day));
+}
+
+void ExplorerRL::noteLedgerMessage(const char * type)
+{
+	std::lock_guard lock(stateMutex);
+	if(!observationLedger || !lastCapture)
+		return;
+	std::fprintf(observationLedger, "{\"kind\":\"message\",\"type\":\"%s\",\"index\":%lld,\"pack\":%llu,\"pack_type\":%u,\"digest\":\"%016llx\"}\n",
+		type, static_cast<long long>(ledgerMessages++), static_cast<unsigned long long>(lastCapture->pack),
+		static_cast<unsigned>(lastCapture->packType), static_cast<unsigned long long>(lastCapture->digest));
 }
 
 void ExplorerRL::visibleChangeTrigger() noexcept
@@ -844,14 +797,14 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 				item["x"].Integer() = x;
 				item["y"].Integer() = y;
 				item["z"].Integer() = z;
-				const auto facts = visibleTileFacts(*callback, *tile);
+				const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
 				item["terrain"].Integer() = facts.terrain;
 				item["blocked"].Bool() = facts.blocked;
 				item["visitable"].Bool() = facts.visitable;
 				auto & objects = item["objects"].Vector();
 				for(const auto objectID : tile->visitableObjects)
 				{
-					const auto * object = playerVisibleObject(*callback, objectID);
+					const auto * object = explorer_rl::playerVisibleObject(*callback, objectID);
 					if(!object)
 						continue;
 					JsonNode entry;
@@ -883,7 +836,7 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 		const auto * target = callback->getTile(destination, false);
 		if(!target || !source)
 			continue;
-		const auto facts = visibleTileFacts(*callback, *target);
+		const auto facts = explorer_rl::visibleTileFacts(*callback, *target);
 		mask[i] = target->entrableTerrain(source) && (!facts.blocked || facts.visitable);
 	}
 	for(bool allowed : mask)
@@ -920,6 +873,7 @@ void ExplorerRL::runTurn(QueryID queryID)
 				state = observation(mask, heroID, position);
 				state["state"] = playerState();
 				state["events"] = takeEvents();
+				noteLedgerMessage("observation");
 			}
 			if(profile)
 			{
@@ -971,6 +925,7 @@ void ExplorerRL::runTurn(QueryID queryID)
 				noteVisibleChanges();
 				result["after"] = playerState();
 				result["events"] = takeEvents();
+				noteLedgerMessage("action_result");
 			}
 			if(profile)
 			{
@@ -1021,7 +976,11 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		noteVisibleChanges();
 		record["events"] = takeEvents();
 		record["state"] = playerState();
+		noteLedgerMessage("terminal");
 		writeMessage(record);
+		std::lock_guard lock(stateMutex);
+		if(observationLedger)
+			std::fflush(observationLedger);
 	}
 	catch(const std::exception & error)
 	{
@@ -1066,6 +1025,7 @@ void ExplorerRL::handleDecision(Decision decision)
 		const auto gameLock = readGameState();
 		noteVisibleChanges();
 		built["events"] = takeEvents();
+		noteLedgerMessage("decision");
 		return built;
 	});
 	if(!sent)

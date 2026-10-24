@@ -42,7 +42,7 @@ def engine_recipe_digests(root: Path) -> dict:
     """Hashes of every root-owned input that defines the prepared engine source."""
     return {str(path.relative_to(root)): digest(path) for path in sorted([
         root / "dependencies/vcmi.json", *root.glob("engine/patches/*.patch"),
-        *root.glob("engine/ExplorerRL/*")]) if path.is_file()}
+        *root.glob("engine/ExplorerRL/*"), *root.glob("engine/ExperimentReplay/*")]) if path.is_file()}
 
 
 def classify_run(returncode: int, reason: str | None, log: str, outcome_player: int = 0) -> tuple[str, str | None, str]:

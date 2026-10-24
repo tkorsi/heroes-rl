@@ -10,6 +10,10 @@
     {
       "source": "engine/ExplorerRL",
       "destination": "AI/ExplorerRL"
+    },
+    {
+      "source": "engine/ExperimentReplay",
+      "destination": "experimentreplay"
     }
   ],
   "initialize_upstream_submodules": true,

@@ -4,6 +4,8 @@
 #include "VisibleState.h"
 
 #include <algorithm>
+#include <cinttypes>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <random>
@@ -314,6 +316,28 @@ void randomizedReconstruction()
 }
 }
 
+/// The replay digest covers exactly the player's view: hidden truth never
+/// changes it, every visible fact does, and the Python mirror reproduces it.
+void captureDigest()
+{
+	World world = twoSidedWorld();
+	const auto digestOf = [](const World & state) { return explorer_rl::snapshotDigest(explorer_rl::captureVisible(state)); };
+	const auto base = digestOf(world);
+	expect(base == digestOf(world), "the digest must be a function of the capture");
+	world.find(3)->x = 5; // hidden enemy moves inside the fog
+	world.blocking.insert({4, 4, 0}); // hidden tile changes
+	expect(digestOf(world) == base, "hidden truth changed the digest");
+	world.find(2)->owner = 0; // visible owner change
+	expect(digestOf(world) != base, "a visible object change left the digest unchanged");
+	world = twoSidedWorld();
+	world.own.movement -= 100;
+	expect(digestOf(world) != base, "an own-state change left the digest unchanged");
+	world = twoSidedWorld();
+	world.visible.erase({0, 0, 0});
+	expect(digestOf(world) != base, "a visibility change left the digest unchanged");
+	std::printf("capture digest %016" PRIx64 "\n", base);
+}
+
 int main()
 {
 	baselineAndReconstruction();
@@ -325,6 +349,7 @@ int main()
 	tileFactsFollowVisibility();
 	ownStateChanges();
 	randomizedReconstruction();
-	std::cout << "visible-state tracker: 9 scenarios, 200 randomized folds\n";
+	captureDigest();
+	std::cout << "visible-state tracker: 10 scenarios, 200 randomized folds\n";
 	return 0;
 }
