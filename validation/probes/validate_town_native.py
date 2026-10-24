@@ -353,50 +353,69 @@ def capacity(run):
                   resources=list(resources), destination=panel.destination.role)
 
 
+def recruitment_budget_evidence(stock, unit_cost, resources, slider_max):
+    """Accept an actual resource ceiling, never an empty or stock-limited slider."""
+    affordability = min(2**31 - 3, min((amount // price for amount, price in zip(resources, unit_cost)
+                                       if price), default=2**31 - 3))
+    base.ensure(slider_max == min(stock, affordability),
+                "Slider differs from displayed stock and selected-price affordability")
+    base.ensure(stock > affordability,
+                "Displayed recruitment slider is stock-limited, not resource-limited")
+    return {"stock": stock, "unit_cost": list(unit_cost), "resources": list(resources),
+            "slider_max": slider_max, "invalid_count": slider_max + 1}
+
+
+def build_displayed_budget_setup(run, name):
+    """Perform one declared diagnostic build after reading its actual panel."""
+    hall = run.open_hall()
+    choice = next((item for item in hall.buildings if item.name_text_id == name), None)
+    base.ensure(choice is not None and choice.status == "allowed",
+                f"Declared affordability setup is not enabled in the native hall: {name}")
+    details = run.open_building(choice)
+    before = run.inspect_request()
+    _, additions, result = run.call(run.town_action("construct", selection=details.ref),
+                                    "native_recruitment_budget_setup_build")
+    request_evidence(run, additions, result, "built")
+    after = run.inspect_request()
+    base.ensure(tuple(a - b for a, b in zip(before.observation.resources, after.observation.resources)) == details.cost,
+                "Affordability setup build charged a different displayed price")
+    run.check("displayed_recruitment_budget_setup", "passed", content_name=name, day=before.day,
+              price=list(details.cost), resources_before=list(before.observation.resources),
+              resources_after=list(after.observation.resources))
+
+
 def recruitment_budget(run):
-    """Reach a real resource-limited slider by explicit native purchases/builds."""
+    """Spend via Marketplace then Resource Silo; never change initial resources.
+
+    The old greedy Citadel/Blacksmith setup exhausted ore/wood and left only
+    low-tier recruitment below recurring income, so longer waits increased
+    gold. This declared two-build diagnostic preserves ore for the Resource
+    Silo. Acceptance uses displayed prices/resources/stock, not predicted funds.
+    """
     owner = run.state.player
-    purchases = 0
-    while run.live():
-        day = run.inspect_request().day
-        run.open_town()
-        hall = run.open_hall()
-        viewed = []
-        for choice in hall.buildings:
-            if choice.status != "allowed":
-                continue
-            viewed.append(run.open_building(choice))
-            run.call(run.town_action("back"), "back_after_budget_setup_price")
-        if viewed:
-            details = max(viewed, key=lambda value: (sum(value.cost), value.ref))
-            choice = next(choice for choice in run.panel("hall").buildings if choice.ref == details.ref)
-            run.open_building(choice)
-            _, additions, result = run.call(run.town_action("construct", selection=details.ref), "native_recruitment_budget_setup_build")
-            request_evidence(run, additions, result, "built")
-        else:
-            run.call(run.town_action("back"), "close_hall_without_enabled_build")
-        controls = [control for control in run.panel("overview").controls if control.panel == "recruitment"]
-        for control in controls:
-            army = run.inspect_request().observation.window.army
-            panel = run.open_recruitment(control.ref)
-            panel = run.select_creature(panel.offers[0].creature)
-            resources = run.inspect_request().observation.resources
-            affordability = min(2**31 - 3, min((amount // price for amount, price in zip(resources, panel.unit_cost) if price), default=2**31 - 3))
-            base.ensure(panel.slider_max == min(panel.stock, affordability), "Slider differs from displayed stock/affordability")
-            if panel.stock > affordability:
-                run.call(run.purchase(panel, affordability + 1), "resource_limited_recruit_count_rejected", expect_rejection=True)
-                run.check("native_recruitment_affordability", "passed", day=day, stock=panel.stock,
-                          unit_cost=list(panel.unit_cost), resources=list(resources), slider_max=panel.slider_max,
-                          invalid_count=affordability + 1, prior_real_purchases=purchases)
-                return
-            if panel.slider_max > 0:
-                successful_purchase(run, army, panel, panel.slider_max, "explicit_native_stock_purchase_for_budget_test")
-                purchases += 1
-            else:
-                run.call(run.purchase(panel, 1), "zero_stock_positive_count_rejected", expect_rejection=True)
-            run.call(run.town_action("back"), "close_dwelling_after_budget_test")
-        run.next_own_day(owner, day)
-    raise base.ProbeFailure("Resource-limited recruitment was not reached within declared bounds")
+    day = run.inspect_request().day
+    run.open_town()
+    build_displayed_budget_setup(run, "building.core.castle.marketplace.name")
+    run.next_own_day(owner, day)
+    run.open_town()
+    build_displayed_budget_setup(run, "building.core.castle.resourceSilo.name")
+    army = run.inspect_request().observation.window.army
+    panel = run.open_recruitment()
+    resources = run.inspect_request().observation.resources
+    evidence = recruitment_budget_evidence(panel.stock, panel.unit_cost, resources, panel.slider_max)
+    # This count is within displayed stock, so its rejection specifically tests
+    # affordability rather than the stock ceiling or the positive-count rule.
+    run.call(run.purchase(panel, evidence["invalid_count"]), "resource_limited_recruit_count_rejected",
+             expect_rejection=True)
+    run.check("native_recruitment_affordability", "passed", day=run.inspect_request().day, **evidence)
+    if panel.slider_max:
+        _, panel = successful_purchase(run, army, panel, panel.slider_max,
+                                       "exact_affordable_maximum_purchase")
+        evidence = recruitment_budget_evidence(panel.stock, panel.unit_cost,
+                                              run.inspect_request().observation.resources, panel.slider_max)
+        base.ensure(panel.slider_max == 0, "Exact affordable maximum did not exhaust selected-price capacity")
+        run.call(run.purchase(panel, 1), "positive_stock_zero_affordability_rejected", expect_rejection=True)
+        run.check("native_positive_stock_zero_affordability", "passed", **evidence)
 
 
 def natural_boundary(run):
