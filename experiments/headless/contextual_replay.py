@@ -325,6 +325,35 @@ def tamper_cases(tape):
                 rows[i]["response"]["action"]["count"] += 1
             add("exact_recruitment_count", index, recruitment)
             selected.add("recruit")
+        if kind == "transfer_stack" and "transfer" not in selected:
+            # Prefer another actually displayed slot. The changed count remains
+            # supported when the original count exceeds one, and an alternative
+            # destination may also be valid: replay must detect the different
+            # native command/effect, not just reject malformed identifiers.
+            armies = None
+            for prior in reversed(tape[:index]):
+                if prior.get("kind") != "message" or prior.get("player") != tape[index]["player"]:
+                    continue
+                observation = next((record["observation"] for record in
+                                    reversed(prior["message"].get("records", [])) if record.get("observation")), None)
+                if observation is not None:
+                    armies = ((observation.get("window") or {}).get("town_panel") or {}).get("armies")
+                    break
+            source_ref, destination_ref = action["selection"] + "-changed", action["destination"] + "-changed"
+            if armies and armies.get("destination"):
+                source = next((slot for slot in armies["source"]["slots"] if slot["ref"] == action["selection"]), None)
+                source_ref = next((slot["ref"] for slot in armies["source"]["slots"]
+                                   if slot["ref"] != action["selection"]), source_ref)
+                destination_ref = next((slot["ref"] for slot in armies["destination"]["slots"]
+                                        if slot["ref"] != action["destination"] and source
+                                        and slot["creature"] in (None, source["creature"])), destination_ref)
+            add("exact_transfer_count", index, lambda rows, i: rows[i]["response"]["action"].update(
+                count=action["count"] - 1 if action["count"] > 1 else action["count"] + 1))
+            add("explicit_transfer_source_slot", index, lambda rows, i: rows[i]["response"]["action"].update(
+                selection=source_ref))
+            add("explicit_transfer_destination_slot", index, lambda rows, i: rows[i]["response"]["action"].update(
+                destination=destination_ref))
+            selected.add("transfer")
         if kind == "construct" and "construct" not in selected:
             def construction(rows, i):
                 rows[i]["response"]["action"]["selection"] += "-changed"
