@@ -202,6 +202,44 @@ def audit_persisted_policy(folder, loaded, policy_seeds):
     return {"passed": True, "players": players, "history_audit": independent}
 
 
+def retain_failed_evidence(env, collector, attempt, error, *, cleanup_seconds=30.0):
+    """Best-effort failure evidence without inventing a cutoff or losing the cause.
+
+    Collection can be interrupted outside the environment's normal watchdog.
+    Finalize that live process as a technical failure before close() kills it.
+    An already finalized native episode remains immutable even when a later
+    policy/replay audit fails. The caller always performs process cleanup.
+    """
+    if env is None:
+        return
+    folder = env.episode_dir
+    if folder is not None:
+        attempt["episode_directory"] = str(folder)
+    if env.process is not None and env.result is None:
+        try:
+            with wall_limit(cleanup_seconds):
+                reason = "watchdog_timeout" if isinstance(error, TimeoutError) else "protocol_error"
+                env._note_problem(reason, "Fixed-weight diagnostic failed: " + attempt["error"])
+                end = env._finish(None)
+                require(end.status == "failed" and end.outcomes == dict.fromkeys(COLORS)
+                        and end.rewards == dict.fromkeys(COLORS),
+                        "Failure cleanup produced a scored or truncated boundary")
+                attempt.update(episode_status=end.status, termination_reason=end.termination_reason,
+                               failure_finalization="persisted")
+        except Exception as secondary:
+            attempt["failure_finalization_error"] = f"{type(secondary).__name__}: {secondary}"
+    if folder is not None and collector is not None and collector.sessions is not None:
+        try:
+            write_json(folder / "partial-policy-evidence.json", {
+                "incomplete": True, "training_input": False,
+                "players": [{"player": session.history.player,
+                             "decisions": [item.to_dict() for item in session._choices.values()],
+                             "history": [c.encode_frame(frame) for frame in session.history.frames]}
+                            for session in collector.sessions]})
+        except Exception as secondary:
+            attempt["partial_evidence_error"] = f"{type(secondary).__name__}: {secondary}"
+
+
 def run(args):
     settings = Settings(**{name: getattr(args, name) for name in Settings.__dataclass_fields__})
     torch.set_num_threads(1)
@@ -232,7 +270,7 @@ def run(args):
             "native": native, "runtime": runtime, "replay_binary_sha256": digest(replay_binary),
             "frozen": fixed, "environment_limits": asdict(limits), "training_performed": False,
             "optimizer_updates": 0, "optimizer_steps": 0, "collector_purpose": "diagnostic",
-            "wall_scope": "Each collection, reconstruction and replay share one case deadline; finite process cleanup follows"}
+            "wall_scope": "Each collection, reconstruction and replay share one case deadline; failed-episode finalization has a separate 30-second limit, then finite process cleanup follows"}
     write_json(output / "plan.json", plan)
     plan_hash = digest(output / "plan.json")
     report = {"schema": "heroes-v5-fixed-policy-validation-v1", "plan_sha256": plan_hash, "status": "running",
@@ -296,15 +334,7 @@ def run(args):
         except Exception as error:
             attempt.update(status="failed", error=f"{type(error).__name__}: {error}",
                            outcomes=dict.fromkeys(COLORS), rewards=dict.fromkeys(COLORS))
-            if env is not None and env.episode_dir is not None:
-                attempt["episode_directory"] = str(env.episode_dir)
-                if collector is not None and collector.sessions is not None:
-                    write_json(env.episode_dir / "partial-policy-evidence.json", {
-                        "incomplete": True, "training_input": False,
-                        "players": [{"player": session.history.player,
-                                     "decisions": [item.to_dict() for item in session._choices.values()],
-                                     "history": [c.encode_frame(frame) for frame in session.history.frames]}
-                                    for session in collector.sessions]})
+            retain_failed_evidence(env, collector, attempt, error)
         finally:
             if env is not None:
                 try:

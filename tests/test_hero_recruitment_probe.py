@@ -1,10 +1,12 @@
 """Synthetic receipt checks; these do not claim native Tavern validation."""
 from dataclasses import replace
 import unittest
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 from experiments.learner import contextual as c
 from validation.probes.validate_contextual_native import ProbeFailure
-from validation.probes.validate_hero_recruitment import exact_hire
+from validation.probes.validate_hero_recruitment import exact_hire, finalize_diagnostic_failure, close_diagnostic
 
 
 def frame(seq, kind, **payload):
@@ -97,6 +99,64 @@ class HeroRecruitmentProbeTests(unittest.TestCase):
                 exact_hire(before, replace(after, observation=changed,
                            offers=c.Offers.from_observation(changed, schema=c.HEROES_ACTION_SCHEMA)),
                            action, additions, result)
+
+
+class DiagnosticFailureFinalizerTests(unittest.TestCase):
+    @staticmethod
+    def run_fixture():
+        failed = SimpleNamespace(done=True, status="failed", rewards={"red": None, "blue": None},
+                                 outcomes={"red": None, "blue": None}, bootstrap={"red": None, "blue": None})
+        env = SimpleNamespace(result=None, process=object(), _note_problem=Mock(),
+                              _finish=Mock(return_value=failed), close=Mock())
+        run = SimpleNamespace(env=env, end=None, state=SimpleNamespace(done=False), audit_attempted=False,
+                              persist_and_audit=Mock(), check=Mock(), finish=Mock(side_effect=AssertionError("No cutoff")))
+        return run, failed
+
+    def test_live_assertion_failure_uses_real_failure_finalizer_not_cutoff(self):
+        run, failed = self.run_fixture()
+        finalize_diagnostic_failure(run, "ProbeFailure: exact effect differs")
+        run.env._note_problem.assert_called_once_with("protocol_error", "Mechanics diagnostic failed: ProbeFailure: exact effect differs")
+        run.env._finish.assert_called_once_with(None)
+        run.finish.assert_not_called()
+        self.assertIs(run.end, failed)
+        self.assertIs(run.state, failed)
+        run.persist_and_audit.assert_called_once_with()
+        run.check.assert_not_called()
+
+    def test_existing_finalized_evidence_is_never_rewritten(self):
+        run, failed = self.run_fixture()
+        existing = SimpleNamespace(done=True, status="truncated")
+        run.env.result, run.env.process = existing, None
+        finalize_diagnostic_failure(run, "ProbeFailure: post-finalization audit")
+        self.assertIs(run.end, existing)
+        run.env._note_problem.assert_not_called()
+        run.env._finish.assert_not_called()
+        run.persist_and_audit.assert_called_once_with()
+        run.audit_attempted = True
+        run.persist_and_audit.reset_mock()
+        finalize_diagnostic_failure(run, "ProbeFailure: repeated audit")
+        run.persist_and_audit.assert_not_called()
+
+    def test_secondary_failure_and_cleanup_keep_original_diagnostic(self):
+        run, failed = self.run_fixture()
+        run.env._finish.side_effect = RuntimeError("native evidence could not finalize")
+        finalize_diagnostic_failure(run, "ProbeFailure: original")
+        check = run.check.call_args
+        self.assertEqual(check.args, ("failure_evidence_finalization", "failed"))
+        self.assertEqual(check.kwargs["original_error"], "ProbeFailure: original")
+        self.assertIn("native evidence could not finalize", check.kwargs["error"])
+        run.env.close.side_effect = OSError("process cleanup failed")
+        close_diagnostic(run)
+        self.assertEqual(run.check.call_args.args, ("failure_process_cleanup", "failed"))
+
+    def test_failed_finalizer_cannot_fabricate_cutoff_or_scored_outcome(self):
+        for status, reward in (("truncated", None), ("failed", 0), ("failed", -1)):
+            run, failed = self.run_fixture()
+            failed.status = status
+            failed.rewards["red"] = reward
+            finalize_diagnostic_failure(run, "ProbeFailure: original")
+            run.persist_and_audit.assert_not_called()
+            self.assertEqual(run.check.call_args.args, ("failure_evidence_finalization", "failed"))
 
 
 if __name__ == "__main__":

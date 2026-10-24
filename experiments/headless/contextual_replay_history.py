@@ -205,7 +205,7 @@ def _reconstruct(directory, manifest, final, profile, player):
             if producer.cutoff is not None:
                 context = producer.live.context
                 kind = ("end_turn" if context.kind == "map" else "back"
-                        if context.panel in ("hall", "building", "recruitment") else "close")
+                        if context.panel in ("hall", "building", "recruitment", "tavern") else "close")
                 neutral = contract.Action(kind, subject=context.subject if kind == "back" else None,
                                           schema=profile.action_schema)
                 _require(action == neutral and producer.continuation_steps < CONTINUATION_LIMIT,

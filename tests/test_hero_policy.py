@@ -5,7 +5,9 @@ from pathlib import Path
 import signal
 import tempfile
 import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import Mock, patch
 import zipfile
 
 try:
@@ -160,6 +162,107 @@ class HeroPolicyReconstructionTests(unittest.TestCase):
                 detected = True
                 break
         self.assertTrue(detected)
+
+
+class HeroPolicyFailureTests(unittest.TestCase):
+    def environment(self, folder):
+        end = SimpleNamespace(status="failed", termination_reason="watchdog_timeout",
+                              outcomes=dict.fromkeys(probe.COLORS), rewards=dict.fromkeys(probe.COLORS))
+        return SimpleNamespace(episode_dir=folder, process=object(), result=None,
+                               _note_problem=Mock(), _finish=Mock(return_value=end), close=Mock())
+
+    def attempt(self):
+        return {"status": "failed", "error": "TimeoutError: original deadline",
+                "outcomes": dict.fromkeys(probe.COLORS), "rewards": dict.fromkeys(probe.COLORS)}
+
+    def test_external_deadline_finalizes_failure_and_preserves_partial_history(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            env, attempt = self.environment(folder), self.attempt()
+            history = initial(0, schema=c.HEROES_SCHEMA)
+            collector = SimpleNamespace(sessions=(SimpleNamespace(history=history, _choices={}),))
+            probe.retain_failed_evidence(env, collector, attempt, TimeoutError("original deadline"))
+            env._note_problem.assert_called_once_with(
+                "watchdog_timeout", "Fixed-weight diagnostic failed: TimeoutError: original deadline")
+            env._finish.assert_called_once_with(None)
+            self.assertEqual(attempt["error"], "TimeoutError: original deadline")
+            self.assertEqual(attempt["episode_status"], "failed")
+            self.assertEqual(attempt["failure_finalization"], "persisted")
+            partial = json.loads((folder / "partial-policy-evidence.json").read_text())
+            self.assertTrue(partial["incomplete"])
+            self.assertFalse(partial["training_input"])
+            self.assertEqual(partial["players"][0]["history"], [c.encode_frame(frame) for frame in history.frames])
+
+    def test_secondary_finalization_and_evidence_errors_do_not_replace_original(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, attempt = self.environment(Path(directory)), self.attempt()
+            env._finish.side_effect = ValueError("broken native evidence")
+            collector = SimpleNamespace(sessions=())
+            with patch.object(probe, "write_json", side_effect=OSError("disk write failed")):
+                probe.retain_failed_evidence(env, collector, attempt, TimeoutError("original deadline"))
+            self.assertEqual(attempt["error"], "TimeoutError: original deadline")
+            self.assertEqual(attempt["failure_finalization_error"], "ValueError: broken native evidence")
+            self.assertEqual(attempt["partial_evidence_error"], "OSError: disk write failed")
+            self.assertEqual(attempt["outcomes"], dict.fromkeys(probe.COLORS))
+            self.assertEqual(attempt["rewards"], dict.fromkeys(probe.COLORS))
+
+    @unittest.skipUnless(hasattr(signal, "setitimer"), "POSIX cleanup deadline")
+    def test_failed_finalization_has_its_own_deadline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            env, attempt = self.environment(Path(directory)), self.attempt()
+            env._finish.side_effect = lambda _: time.sleep(0.2)
+            probe.retain_failed_evidence(env, None, attempt, TimeoutError("original deadline"), cleanup_seconds=0.02)
+            self.assertTrue(attempt["failure_finalization_error"].startswith("TimeoutError:"))
+            self.assertEqual(attempt["error"], "TimeoutError: original deadline")
+            self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+    def test_later_audit_failure_does_not_rewrite_finalized_native_episode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            manifest = folder / "manifest.json"
+            manifest.write_text('{"status":"truncated"}\n')
+            before = manifest.read_bytes()
+            env, attempt = self.environment(folder), self.attempt()
+            env.result = object()
+            probe.retain_failed_evidence(env, None, attempt, ValueError("replay mismatch"))
+            env._note_problem.assert_not_called()
+            env._finish.assert_not_called()
+            self.assertEqual(manifest.read_bytes(), before)
+
+    def test_runner_stops_pair_after_failed_collection_and_always_closes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("map", "binary", "replay_binary"):
+                (root / name).write_bytes(name.encode())
+            (root / "data").mkdir()
+            args = SimpleNamespace(**{**probe.asdict(probe.Settings()),
+                **{name: root / name for name in ("map", "binary", "replay_binary", "data", "output")}})
+            env = self.environment(None)
+            def fail_collection(collector, current, *, episode, seed, max_requests):
+                self.assertIs(current, env)
+                env.episode_dir = args.output / f"episode-{episode:06d}"
+                env.episode_dir.mkdir()
+                raise TimeoutError("original deadline")
+            launcher = SimpleNamespace(preflight=Mock(), identity=lambda: {"native": "synthetic"})
+            with patch.object(probe, "VcmiLauncher", return_value=launcher), \
+                 patch.object(probe, "hero_map_identity", return_value={"sha256": "synthetic"}), \
+                 patch.object(probe, "runtime_identity", return_value={"runtime": "synthetic"}), \
+                 patch.object(probe, "source_identity", return_value={"source": "synthetic"}), \
+                 patch.object(probe, "implementation_identity", return_value={}), \
+                 patch.object(probe.subprocess, "run"), \
+                 patch.object(probe, "HeadlessSelfPlayEnv", return_value=env) as environment, \
+                 patch.object(probe.ContextualCollector, "run_episode", autospec=True, side_effect=fail_collection):
+                report = probe.run(args)
+            self.assertEqual(report["status"], "failed")
+            self.assertEqual(report["not_started"], 1)
+            self.assertEqual(len(report["attempts"]), 1)
+            self.assertEqual(report["attempts"][0]["error"], "TimeoutError: original deadline")
+            self.assertEqual(report["attempts"][0]["failure_finalization"], "persisted")
+            self.assertEqual(report["attempts"][0]["rewards"], dict.fromkeys(probe.COLORS))
+            self.assertEqual(report["optimizer_steps"], 0)
+            self.assertEqual(json.loads((args.output / "report.json").read_text()), report)
+            environment.assert_called_once()
+            env.close.assert_called_once()
 
 
 def c_model_schema():

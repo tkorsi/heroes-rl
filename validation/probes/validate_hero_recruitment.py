@@ -71,6 +71,44 @@ def exact_hire(before, after, action, additions, result):
             "result_seq": results[0].seq, "native_rejection": False}
 
 
+def finalize_diagnostic_failure(run, error):
+    """Fail a still-live native attempt, without issuing cutoff unwind actions.
+
+    A diagnostic assertion or Python exception invalidates the attempt. The
+    environment's existing bounded shutdown/finalizer records the real streams
+    and process result. Already finalized evidence is never rewritten.
+    """
+    try:
+        existing = getattr(run.env, "result", None)
+        if existing is not None:
+            run.end = run.state = existing
+        elif getattr(run.env, "process", None) is not None:
+            run.env._note_problem("protocol_error", "Mechanics diagnostic failed: " + error)
+            run.end = run.state = run.env._finish(None)
+            base.ensure(run.end.status == "failed"
+                        and all(value is None for value in run.end.rewards.values())
+                        and all(value is None for value in run.end.outcomes.values())
+                        and all(value is None for value in run.end.bootstrap.values()),
+                        "Diagnostic failure was not finalized as an unscored native failure")
+        elif run.state is not None and run.state.done:
+            run.end = run.state
+        else:
+            raise base.ProbeFailure("No native process or finalized episode is available; preserve raw startup evidence")
+        if run.end is not None and not run.audit_attempted:
+            run.persist_and_audit()
+    except Exception as cleanup:
+        run.check("failure_evidence_finalization", "failed", original_error=error,
+                  error=f"{type(cleanup).__name__}: {cleanup}")
+
+
+def close_diagnostic(run):
+    """Retain secondary close errors instead of hiding the diagnostic report."""
+    try:
+        run.env.close()
+    except Exception as cleanup:
+        run.check("failure_process_cleanup", "failed", error=f"{type(cleanup).__name__}: {cleanup}")
+
+
 class HeroRun(town.TownRun):
     def expected_offers(self, frame):
         return contract.Offers.from_observation(frame.observation, schema=contract.HEROES_ACTION_SCHEMA)
@@ -269,14 +307,9 @@ def main(argv=None):
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
         run.check("native_hero_recruitment_execution", "failed", error=error)
-        try:
-            run.finish()
-            if run.end is not None and not run.audit_attempted:
-                run.persist_and_audit()
-        except Exception as cleanup:
-            run.check("failure_evidence_finalization", "failed", error=f"{type(cleanup).__name__}: {cleanup}")
+        finalize_diagnostic_failure(run, error)
     finally:
-        run.env.close()
+        close_diagnostic(run)
     report = run.summary(error)
     report.update(interface=args.interface, training_input=False, ordinary_outcome_claim=False,
                   scope_limits=["No replacement-after-battle-loss assertion in this mechanics case",

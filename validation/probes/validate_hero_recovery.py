@@ -237,14 +237,9 @@ def main(argv=None):
     except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
         run.check("native_hero_recovery_execution", "failed", error=error)
-        try:
-            run.finish()
-            if run.end is not None and not run.audit_attempted:
-                run.persist_and_audit()
-        except Exception as cleanup:
-            run.check("failure_evidence_finalization", "failed", error=f"{type(cleanup).__name__}: {cleanup}")
+        hire.finalize_diagnostic_failure(run, error)
     finally:
-        run.env.close()
+        hire.close_diagnostic(run)
     report = run.summary(error)
     report.update(interface=args.interface, player=args.player, training_input=False,
                   ordinary_outcome_frequency_claim=False, scripted_mechanics_only=True)
