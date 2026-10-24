@@ -1,0 +1,206 @@
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -357,6 +357,7 @@ void ApplyClientNetPackVisitor::visitNewTurn(NewTurn & pack)
+ 	{
+ 		const auto & newWeek = *pack.newWeekNotification;
+ 
++		callAllInterfaces(cl, &CGameInterface::showInfoNotice, newWeek.type, newWeek.text, newWeek.components);
+ 		std::string str = newWeek.text.toString();
+ 		callAllInterfaces(cl, &CGameInterface::showInfoDialog, newWeek.type, str, newWeek.components,(soundBase::soundID)newWeek.soundID);
+ 	}
+@@ -677,6 +678,7 @@ void ApplyFirstClientNetPackVisitor::visitGiveHero(GiveHero & pack)
+ 
+ void ApplyClientNetPackVisitor::visitInfoWindow(InfoWindow & pack)
+ {
++	callInterfaceIfPresent(cl, pack.player, &CGameInterface::showInfoNotice, pack.type, pack.text, pack.components);
+ 	std::string str = pack.text.toString();
+ 
+ 	if(!callInterfaceIfPresent(cl, pack.player, &CGameInterface::showInfoDialog, pack.type, str, pack.components,(soundBase::soundID)pack.soundID))
+diff --git a/lib/callback/CGameInterface.h b/lib/callback/CGameInterface.h
+--- a/lib/callback/CGameInterface.h
++++ b/lib/callback/CGameInterface.h
+@@ -58,6 +58,12 @@ public:
+ 	/// and all of its notifications have been delivered to every interface.
+ 	virtual void packApplied(){};
+ 
++	/// Called on the packet thread with a server notification's structured
++	/// content just before showInfoDialog receives its rendered text, on exactly
++	/// the interfaces showInfoDialog is called on. Windows the client composes
++	/// itself after a battle have no structured counterpart.
++	virtual void showInfoNotice(EInfoWindowMode type, const MetaString & text, const std::vector<Component> & components){};
++
+ 	virtual void setColorScheme(ColorScheme scheme){};
+ };
+ 
+diff --git a/lib/texts/MetaString.cpp b/lib/texts/MetaString.cpp
+--- a/lib/texts/MetaString.cpp
++++ b/lib/texts/MetaString.cpp
+@@ -208,6 +208,121 @@ DLL_LINKAGE std::string MetaString::toString() const
+ 	return dst;
+ }
+ 
++std::optional<std::vector<MetaStringOperation>> MetaString::operations() const
++{
++	using Kind = MetaStringOperation::Kind;
++	std::vector<MetaStringOperation> result;
++	result.reserve(message.size());
++
++	size_t exSt = 0;
++	size_t loSt = 0;
++	size_t nums = 0;
++	size_t textID = 0;
++
++	const auto exact = [&](MetaStringOperation & operation)
++	{
++		if(exSt >= exactStrings.size())
++			return false;
++		operation.text = exactStrings[exSt++];
++		return true;
++	};
++	const auto local = [&](MetaStringOperation & operation)
++	{
++		if(loSt >= localStrings.size())
++			return false;
++		const auto & [type, serial] = localStrings[loSt++];
++		switch(type)
++		{
++			case EMetaText::GENERAL_TXT:
++				operation.text = TextIdentifier("core.genrltxt", serial).get();
++				return true;
++			case EMetaText::ARRAY_TXT:
++				operation.text = TextIdentifier("core.arraytxt", serial).get();
++				return true;
++			case EMetaText::ADVOB_TXT:
++				operation.text = TextIdentifier("core.advevent", serial).get();
++				return true;
++			case EMetaText::JK_TXT:
++				operation.text = TextIdentifier("core.jktext", serial).get();
++				return true;
++			default:
++				return false;
++		}
++	};
++	const auto identifier = [&](MetaStringOperation & operation)
++	{
++		if(textID >= stringsTextID.size())
++			return false;
++		operation.text = stringsTextID[textID++];
++		return true;
++	};
++	const auto number = [&](MetaStringOperation & operation)
++	{
++		if(nums >= numbers.size())
++			return false;
++		operation.number = numbers[nums++];
++		return true;
++	};
++
++	for(const auto & elem : message)
++	{
++		MetaStringOperation operation;
++		bool complete = false;
++		switch(elem)
++		{
++			case EMessage::APPEND_RAW_STRING:
++				operation.kind = Kind::APPEND_RAW_STRING;
++				complete = exact(operation);
++				break;
++			case EMessage::APPEND_LOCAL_STRING:
++				operation.kind = Kind::APPEND_LOCAL_STRING;
++				complete = local(operation);
++				break;
++			case EMessage::APPEND_TEXTID_STRING:
++				operation.kind = Kind::APPEND_TEXTID_STRING;
++				complete = identifier(operation);
++				break;
++			case EMessage::APPEND_NUMBER:
++				operation.kind = Kind::APPEND_NUMBER;
++				complete = number(operation);
++				break;
++			case EMessage::REPLACE_RAW_STRING:
++				operation.kind = Kind::REPLACE_RAW_STRING;
++				complete = exact(operation);
++				break;
++			case EMessage::REPLACE_LOCAL_STRING:
++				operation.kind = Kind::REPLACE_LOCAL_STRING;
++				complete = local(operation);
++				break;
++			case EMessage::REPLACE_TEXTID_STRING:
++				operation.kind = Kind::REPLACE_TEXTID_STRING;
++				complete = identifier(operation);
++				break;
++			case EMessage::REPLACE_NUMBER:
++				operation.kind = Kind::REPLACE_NUMBER;
++				complete = number(operation);
++				break;
++			case EMessage::REPLACE_POSITIVE_NUMBER:
++				operation.kind = Kind::REPLACE_POSITIVE_NUMBER;
++				complete = number(operation);
++				break;
++			case EMessage::APPEND_EOL:
++				operation.kind = Kind::APPEND_EOL;
++				complete = true;
++				break;
++			default:
++				break;
++		}
++		if(!complete)
++			return std::nullopt;
++		result.push_back(std::move(operation));
++	}
++
++	if(exSt != exactStrings.size() || loSt != localStrings.size() || nums != numbers.size() || textID != stringsTextID.size())
++		return std::nullopt;
++	return result;
++}
++
+ DLL_LINKAGE std::string MetaString::buildList() const
+ {
+ 	size_t exSt = 0;
+diff --git a/lib/texts/MetaString.h b/lib/texts/MetaString.h
+--- a/lib/texts/MetaString.h
++++ b/lib/texts/MetaString.h
+@@ -34,6 +34,30 @@ enum class EMetaText : uint8_t
+ 	JK_TXT
+ };
+ 
++/// One formatting operation of a MetaString with the pool entry it consumes, for
++/// consumers that must audit a message's exact structure instead of its rendered
++/// text. Local strings are given as their text identifiers.
++struct DLL_LINKAGE MetaStringOperation
++{
++	enum class Kind : uint8_t
++	{
++		APPEND_RAW_STRING,
++		APPEND_LOCAL_STRING,
++		APPEND_TEXTID_STRING,
++		APPEND_NUMBER,
++		REPLACE_RAW_STRING,
++		REPLACE_LOCAL_STRING,
++		REPLACE_TEXTID_STRING,
++		REPLACE_NUMBER,
++		REPLACE_POSITIVE_NUMBER,
++		APPEND_EOL
++	};
++
++	Kind kind = Kind::APPEND_EOL;
++	std::string text; ///< raw string or text identifier; empty for numbers and line ends
++	int64_t number = 0; ///< numbers only
++};
++
+ /// Class for string formatting tools that also support transfer over network with localization using language of local install
+ /// Can be used to compose resulting text from multiple line segments and with placeholder replacement
+ class DLL_LINKAGE MetaString
+@@ -123,6 +147,11 @@ public:
+ 	/// Convert all stored values into a single, user-readable string
+ 	std::string toString() const;
+ 
++	/// The operations in order, each with its pool entry. Empty when an operation
++	/// lacks its entry, a pool holds an entry no operation consumes, or a local
++	/// string has an unknown type, so a consumer never sees part of a message.
++	std::optional<std::vector<MetaStringOperation>> operations() const;
++
+ 	/// Returns true if current string is empty
+ 	bool empty() const;
+ 
