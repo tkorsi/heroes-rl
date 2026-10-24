@@ -194,11 +194,10 @@ ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool 
 		throw std::runtime_error("Contextual replay boundary does not match natural/cutoff mode");
 }
 
-ContextualEvidence::~ContextualEvidence()
-{
-	if(current() == this)
-		setExperimentEvidenceHooks(nullptr);
-}
+// Registry ownership is released explicitly after replay workers have joined,
+// or by process teardown. Looking up that owner here would resurrect the
+// shared_ptr whose last release is already destroying this object.
+ContextualEvidence::~ContextualEvidence() = default;
 
 void ContextualEvidence::append(JsonNode record)
 {
