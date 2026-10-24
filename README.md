@@ -5,21 +5,20 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** the contextual environment and randomly initialized
-recurrent actor–critic have passed bounded local validation. The opt-in v4
-interface adds explicit town-garrison-to-visiting-hero troop transfer to map,
-hero and town navigation, construction and exact-count recruitment. Policy and
-value share a recurrent network but use only their player's ordered visible
-history, with separate memory for each player. No game-trained policy exists.
+**Current milestone:** the first bounded headless gameplay experiment completed
+one PPO update (ten optimizer steps), then stopped during checkpoint reload
+verification after six of ten planned attempts. The saved model/Adam/RNG state
+reloads correctly in an independent read-only audit; the executor's ordered-map
+comparison caused the stop. Four after-evaluation attempts were not launched.
+All six games were valid 256-choice cutoffs, with no natural outcome or terminal
+reward. Changed policy/value weights do not demonstrate improved strategy.
 
-Independent native replay, episode boundaries and natural-outcome controls pass
-within the recorded scope. A predeclared sixteen-game contextual cohort produced
-sixteen valid cutoffs and no natural endings; behavior audits separate that
-sparse feedback from engine correctness. The prepared first-update plan is
-now authorized for one bounded local experiment; additional training remains
-unauthorized. Rules, fog and terminal-only rewards
-are unchanged. The earlier uniform-random/video and fixed Easy-opponent
-baselines remain available. Draft PRs remain unmerged; other platforms are not
+The contextual v4 interface supports navigation, construction, recruitment and
+explicit troop transfer. Policy and value use only their player's ordered
+visible history with separate recurrent memory. Rules, fog and terminal-only
+rewards are unchanged. This single-run authorization has ended; no retry,
+continuation or broader campaign is authorized. Raw artifacts and the saved
+checkpoint remain local. Draft PRs remain unmerged; other platforms are not
 validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
@@ -478,7 +477,7 @@ The intended loop, in plain English:
 | Memory and model | Randomly initialized contextual shared GRU actor–critic with separate player sessions, chronological visible history and bounded live inference checks; legacy prototype retained. | No learned game behavior; broader field/event coverage remains. |
 | Candidate scoring | Contextual typed conditional policy covers navigation, construction, coordinates, recruitment counts and transfer source/destination/count; routing handles are not features. | Semantically indistinguishable dwelling controls remain equally scored; additional action interfaces are deferred. |
 | Hero/town operations | Explicit owned hero/town windows, native economy panels and v4 town-to-visiting-hero transfer with bounded local evidence. | Reverse transfer, swaps, broader army editing, hero hiring, special panels and live garrisoned-hero edge cases remain deferred. |
-| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; player-experience correctness and explicit launch approval govern readiness. |
+| Learning | One bounded gameplay PPO update completed with ten optimizer steps; saved state independently reloads after an executor comparison failure. | No after-evaluation or evidence of strategic improvement; any further execution requires new approval. |
 
 The action-consumption and stream-finalization findings are **resolved in the
 reviewed draft head `4fe0d7c`**, not still-open design blockers. Integration must
@@ -1738,9 +1737,10 @@ validation artifacts and policy identities. Only its fresh, schedule-bound
 training captures can pass its admission gate; it repeats independent native
 replay and behavior-probability checks before updating. Ordinary diagnostics,
 fixtures, held-out evaluation and frozen-opponent trajectories remain excluded.
-The default PPO entry point remains synthetic-only. Executor admission,
-transaction rollback and checkpoint continuation have synthetic tests and code
-review; an actual gameplay update is deliberately not claimed validated yet.
+The default PPO entry point remains synthetic-only. At preparation, executor
+admission, rollback and checkpoint continuation had synthetic tests and code
+review. The subsequent authorized gameplay execution and its failure are
+recorded below; that result does not retroactively make preparation a live test.
 
 The local preparation is in `runs/first-training-prepared-2026-10-25/`.
 `validation/first-training-preparation-2026-10-25.json` records its exact proposed
@@ -1750,30 +1750,76 @@ The checkpoint and raw validation evidence remain ignored. Preparation's
 read-only identity check passes and authorization remains `not_granted`.
 Zero natural outcomes alone does not invalidate correct cutoff experience, but
 an update without terminal feedback has no observed victory signal and cannot
-be described as demonstrated strategy improvement. No gameplay training, paid
-compute or GitHub PR merge occurred.
+be described as demonstrated strategy improvement. Preparation itself performed
+no gameplay training. The separately authorized execution is recorded below;
+no paid compute or GitHub PR merge occurred.
 
-#### First bounded gameplay experiment: launch authorization
+#### First bounded gameplay experiment: stopped result
 
-On 25 October the user approved the existing saved plan
+On 25 October the user approved the existing plan
 `ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6`
-for one execution: ten attempts, at most one PPO update and sixteen optimizer
-steps, and at most one hour locally on the Mac. This supersedes the earlier
-optimization prohibition only for this exact prepared experiment. The direct
-human instruction was verified in its source chat; its English translation,
-provenance, exact configuration and all stop rules are recorded in
-`validation/first-gameplay-authorization-2026-10-25.json`.
+for one execution: ten attempts, at most one PPO update/sixteen optimizer steps,
+and at most one hour locally on the Mac. The direct human instruction was
+verified in its source chat. Its English translation, exact configuration,
+provenance and stop rules are retained in
+`validation/first-gameplay-authorization-2026-10-25.json`. All 173 implementation
+files, native binaries, map, readiness artifacts and initial random checkpoint
+matched the prepared identities before launch. The executor ran at `e35cb34`;
+that commit changes authorization/documentation, not the frozen implementation
+at `d5ef9b0`.
 
-Before launch, the plan, 173 implementation files, native binaries, map,
-validation artifacts and initial random checkpoint matched their prepared
-identities. Exact prepared-engine verification also passed. The original plan
-and preparation evidence remain immutable; the separate approval supplies the
-existing executor's required plan hash. Output is reserved at
-`runs/first-training-prepared-2026-10-25/approved-execution`, with all raw data
-and checkpoints ignored. Results will distinguish evaluation from the two
-fresh designated training captures and record every attempted game, failure,
-update and checkpoint check. No replacement attempt, automatic retry, added
-update, paid compute or broader campaign is authorized.
+The single execution stopped after **164.851787 seconds** with the following
+retained result. No failed or missing attempt was replaced or retried.
+
+| Phase | Planned / attempted | Result | PPO admission |
+| --- | --- | --- | --- |
+| Before evaluation | 4 / 4 | Four valid 256-choice cutoffs; seeds 99201/99202 in both learner colors | None |
+| Training collection | 2 / 2 | Two valid 256-choice cutoffs; seed 99101 in both colors | Exactly 294 learner samples |
+| After evaluation | 4 / 0 | Not launched after the checkpoint-comparison failure | None |
+
+All six attempts ended as `collection_window`, with null outcome and terminal
+reward; every ordinary sample reward is zero. All 1,536 choices occurred within
+the day limit (latest sampled day 21). Independent native verification passed
+for six collections and both repeated admission replays, with zero unchecked
+records. An independent fresh-process policy reconstruction reproduces 1,536
+actions, 1,548 values and 2,731 conditional probabilities exactly. Only the
+learner trajectories from training episodes five and six entered PPO; evaluation,
+frozen opponents and archived diagnostics were excluded.
+
+One PPO update completed with **ten optimizer steps**, one epoch and the
+prepared coefficients. All 39 model tensors changed: 27 shared encoder/recurrent
+tensors, ten policy-head tensors and two value-head tensors. The initial frozen
+opponent is unchanged. All training rewards were zero, so the update used
+cutoff bootstrap targets without observed victory/defeat feedback. Its recorded
+policy loss is 0.0004181392, value loss 0.0002013332 and approximate KL
+0.0001285808. These numerical diagnostics do not measure strategic improvement.
+
+`resume.pt` was saved before the failure. The executor then raised
+`RuntimeError: Boolean value of Tensor with more than one value is ambiguous`:
+its state comparator recognized only exact `dict` objects, while PyTorch's
+`state_dict()` returns an `OrderedDict`. It fell into scalar equality on tensors.
+The original report remains `stopped`, with no `resume_verified` success and no
+`trained-policy.pt` export. A separate read-only audit reloads the preserved
+model, Adam, global/dedicated RNG, progress and frozen pool exactly using a
+mapping-aware comparison. It neither runs an optimizer nor resumes the game.
+The checkpoint records one update, two training rollouts, 294 decisions and
+`next_phase=after`; that cursor is not permission to continue.
+
+The four paired before/after comparisons remain incomplete: each before game
+is an unscored cutoff and its after counterpart is absent. There is no measured
+change in win rate, no observed terminal learning signal and no claim of better
+strategy. The authorization's failure stop was honored even though time remained.
+Any further game or optimization requires new authorization.
+
+`validation/first-gameplay-2026-10-25.json` binds the complete stopped-run evidence,
+checkpoint identities, all attempts and missing phases, budgets and independent
+audit. Its source inventories describe the actual pre-fix execution. The
+reproducible read-only audit and assembler are
+`validation/audit_first_gameplay_2026_10_25.py` and
+`validation/assemble_first_gameplay_2026_10_25.py`. Raw files remain under
+`runs/first-training-prepared-2026-10-25/approved-execution/`; the saved checkpoint
+has SHA-256 `df8834bac83c7444ceff5396f06015ab9f14b7f90aea4dd62c1b7a6b3bb2f089`
+and weights `f4af57d1e47702200b576d0110b2ede13be1db25fc60976af8f82fc114d7b48c`.
 
 ### Continue in a new chat
 
@@ -1803,18 +1849,19 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-The current handoff is `codex/troop-transfer` (draft PR #12), stacked on
-`codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
+The current handoff is `codex/first-gameplay-run`, stacked on
+`codex/troop-transfer` (draft PR #12), then `codex/contextual-replay` (draft PR #11). Native contextual replay, the terminal
 barrier, v4 explicit troop transfer, the recurrent actor–critic and bounded
 preparation are implemented and locally validated as described above. Read
 `validation/contextual-gaps-2026-10-25.json`,
 `validation/troop-transfer-2026-10-25.json` and
 `validation/first-training-preparation-2026-10-25.json` for current evidence and
-the exact unexecuted proposal. The user authorized Codex to finish the paused
+the original proposal, plus `validation/first-gameplay-2026-10-25.json` for its
+stopped execution. The user authorized Codex to finish the paused
 contextual work; Claude's separately scoped simulation/performance work remains
 coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
-training. The saved plan has now received one-execution approval as recorded
-above; after that bounded execution, any further run requires new approval.
+training. The saved plan received one-execution approval and stopped as
+recorded above. Any further run, continuation or update requires new approval.
 
 Earlier v2/v3 validation and the original three truncated rendered self-play
 runs remain separate historical evidence. Historical contextual recordings

@@ -1,0 +1,2893 @@
+{
+  "artifacts": {
+    "configs/first-training-v1.json": {
+      "bytes": 724,
+      "sha256": "0c49fc9c20cb6a693152f86f65de6f060df1c20a5a8d43b818226b7a2112adea"
+    },
+    "dependencies/learner.in": {
+      "bytes": 96,
+      "sha256": "45dd60d5be8f6ddd2daf0a0c9abadd9580a14ac586a09f7517c00953b21aa9bb"
+    },
+    "dependencies/learner.lock": {
+      "bytes": 17102,
+      "sha256": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932"
+    },
+    "dependencies/vcmi.json": {
+      "bytes": 777,
+      "sha256": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e"
+    },
+    "engine/ExperimentReplay/CMakeLists.txt": {
+      "bytes": 1024,
+      "sha256": "baeec2896b6afaf85d1f7e5207f7dffa9402b9efd4be51e66ae40b1aa590738b"
+    },
+    "engine/ExperimentReplay/ContextualReplay.cpp": {
+      "bytes": 8995,
+      "sha256": "5475e9cd12db1d9ca7ad468fee5df93e1158766310a25a71fea00466fbb4cfb3"
+    },
+    "engine/ExperimentReplay/ContextualReplay.h": {
+      "bytes": 707,
+      "sha256": "7a077ec439e95554848a12812c231096230a6b1d33ba08767cb6386751c833b5"
+    },
+    "engine/ExperimentReplay/ReplayClientHost.cpp": {
+      "bytes": 794,
+      "sha256": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010"
+    },
+    "engine/ExperimentReplay/ReplayMain.cpp": {
+      "bytes": 26209,
+      "sha256": "11be345f4caaa2439a9dfcb987f54d202694fd0a5905967ff372965eb382e745"
+    },
+    "engine/ExperimentReplay/StdInc.cpp": {
+      "bytes": 278,
+      "sha256": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5"
+    },
+    "engine/ExperimentReplay/StdInc.h": {
+      "bytes": 285,
+      "sha256": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9"
+    },
+    "engine/ExplorerRL/CMakeLists.txt": {
+      "bytes": 601,
+      "sha256": "ded97f4ad8f4f6d84b7e5701f5d5baaa1d6e9cebc94854866a82378fc6f20ae9"
+    },
+    "engine/ExplorerRL/Contextual.cpp": {
+      "bytes": 32421,
+      "sha256": "c4294b03cd7ca63057f2a0cb4eef5f4481c98887a6fbe5adfb5a75a94dc43f44"
+    },
+    "engine/ExplorerRL/Contextual.h": {
+      "bytes": 1279,
+      "sha256": "70f729771d9751e1313deb68e53813477dc5535087730ce2eadad1bd6175f608"
+    },
+    "engine/ExplorerRL/ContextualEvidence.cpp": {
+      "bytes": 17011,
+      "sha256": "13ab5f2318599e0f37164e4c3c218b540dee2d679a50b405fd5f4d6fb707cd64"
+    },
+    "engine/ExplorerRL/ContextualEvidence.h": {
+      "bytes": 2952,
+      "sha256": "f07566d28567988b8431e17ec89e829fdd5b3a3508f1606715e5e5280663d042"
+    },
+    "engine/ExplorerRL/ExplorerRL.cpp": {
+      "bytes": 48191,
+      "sha256": "0a8177217f683e355e2a01cea51a4e5576cfed4821288ca9aeed9011bf10668d"
+    },
+    "engine/ExplorerRL/ExplorerRL.h": {
+      "bytes": 9353,
+      "sha256": "243f83f058f46de2fc6044917dcae9c3fc64e39b0434f55867fc2fee340059bb"
+    },
+    "engine/ExplorerRL/KnowledgeGrid.h": {
+      "bytes": 6286,
+      "sha256": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec"
+    },
+    "engine/ExplorerRL/KnowledgePlanner.cpp": {
+      "bytes": 19589,
+      "sha256": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1"
+    },
+    "engine/ExplorerRL/KnowledgePlanner.h": {
+      "bytes": 1368,
+      "sha256": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1"
+    },
+    "engine/ExplorerRL/Notice.cpp": {
+      "bytes": 14929,
+      "sha256": "05c1f04cd0544717f313c074e4d834544bf6b82b277a01615493e25ef60519a3"
+    },
+    "engine/ExplorerRL/Notice.h": {
+      "bytes": 1204,
+      "sha256": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389"
+    },
+    "engine/ExplorerRL/StdInc.cpp": {
+      "bytes": 20,
+      "sha256": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d"
+    },
+    "engine/ExplorerRL/StdInc.h": {
+      "bytes": 64,
+      "sha256": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12"
+    },
+    "engine/ExplorerRL/TownEconomy.cpp": {
+      "bytes": 11688,
+      "sha256": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5"
+    },
+    "engine/ExplorerRL/TownEconomy.h": {
+      "bytes": 2377,
+      "sha256": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4"
+    },
+    "engine/ExplorerRL/TownRecruitment.cpp": {
+      "bytes": 11082,
+      "sha256": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687"
+    },
+    "engine/ExplorerRL/TownTransfer.cpp": {
+      "bytes": 8292,
+      "sha256": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d"
+    },
+    "engine/ExplorerRL/TransferRules.h": {
+      "bytes": 2323,
+      "sha256": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293"
+    },
+    "engine/ExplorerRL/VisibleState.h": {
+      "bytes": 9477,
+      "sha256": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464"
+    },
+    "engine/ExplorerRL/VisibleWorld.h": {
+      "bytes": 3679,
+      "sha256": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1"
+    },
+    "engine/ExplorerRL/main.cpp": {
+      "bytes": 325,
+      "sha256": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf"
+    },
+    "engine/patches/0001-experiment-environment.patch": {
+      "bytes": 1803,
+      "sha256": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d"
+    },
+    "engine/patches/0002-gameplay-recorder-and-spectator.patch": {
+      "bytes": 13946,
+      "sha256": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6"
+    },
+    "engine/patches/0003-disable-map-cheats.patch": {
+      "bytes": 6171,
+      "sha256": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc"
+    },
+    "engine/patches/0004-recording-perspectives.patch": {
+      "bytes": 9171,
+      "sha256": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983"
+    },
+    "engine/patches/0005-paired-frame-capture.patch": {
+      "bytes": 8057,
+      "sha256": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b"
+    },
+    "engine/patches/0006-experiment-player-routing.patch": {
+      "bytes": 6448,
+      "sha256": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149"
+    },
+    "engine/patches/0007-effective-engine-seed-diagnostic.patch": {
+      "bytes": 1193,
+      "sha256": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809"
+    },
+    "engine/patches/0008-recording-natural-shutdown.patch": {
+      "bytes": 809,
+      "sha256": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5"
+    },
+    "engine/patches/0009-request-queue-shutdown-race.patch": {
+      "bytes": 1385,
+      "sha256": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f"
+    },
+    "engine/patches/0010-self-play-routing.patch": {
+      "bytes": 7821,
+      "sha256": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176"
+    },
+    "engine/patches/0011-multi-player-capture.patch": {
+      "bytes": 13111,
+      "sha256": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738"
+    },
+    "engine/patches/0012-headless-simulation.patch": {
+      "bytes": 29084,
+      "sha256": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301"
+    },
+    "engine/patches/0013-experiment-replay.patch": {
+      "bytes": 29638,
+      "sha256": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2"
+    },
+    "engine/patches/0014-contextual-notices.patch": {
+      "bytes": 6331,
+      "sha256": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101"
+    },
+    "engine/patches/0015-contextual-terminal-barrier.patch": {
+      "bytes": 27570,
+      "sha256": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2"
+    },
+    "engine/patches/0016-contextual-client-replay.patch": {
+      "bytes": 3981,
+      "sha256": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d"
+    },
+    "engine/patches/0017-town-army-profile.patch": {
+      "bytes": 1649,
+      "sha256": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef"
+    },
+    "experiments/episodes/scoring.py": {
+      "bytes": 14503,
+      "sha256": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73"
+    },
+    "experiments/explorer/maps/random-baseline-v1.vmap": {
+      "bytes": 2345,
+      "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+    },
+    "experiments/headless/agents.py": {
+      "bytes": 1631,
+      "sha256": "be0f3f09860087640db56781ceaa10d6476a815be21883b9cc340444daa42839"
+    },
+    "experiments/headless/benchmark.py": {
+      "bytes": 15105,
+      "sha256": "470b1689bf6957c3935f653ddce1f2935aeda5daca53740f822bcb0e4eacd451"
+    },
+    "experiments/headless/bridge_protocol.py": {
+      "bytes": 14031,
+      "sha256": "88ea914f146bbc9de651a4859bc32f6ad12f101efe209f95190bf99420116c4f"
+    },
+    "experiments/headless/compact_evidence.py": {
+      "bytes": 8748,
+      "sha256": "f7792f0382d73b8b0c618707659aa16f8659c5b0133b65851fc7c241dc81120a"
+    },
+    "experiments/headless/contextual_env.py": {
+      "bytes": 33068,
+      "sha256": "4b3b3f9db4b25da50cb605dd4b897ed6e0605d9af1a9194253b3bce168a988c4"
+    },
+    "experiments/headless/contextual_evidence.py": {
+      "bytes": 7706,
+      "sha256": "275b220ff0437a0e05ed7ee33b8f1e8b2f772a3bbe7a1058dbf8cdf5ef75dd61"
+    },
+    "experiments/headless/contextual_protocol.py": {
+      "bytes": 7900,
+      "sha256": "37a80f1ebb4f419d335940e3522350f912ac2668fd5bdc4e2f0350beff5c36ac"
+    },
+    "experiments/headless/contextual_replay.py": {
+      "bytes": 28406,
+      "sha256": "5c704fd3375c43141aa46400e9b3b49068fbf06ff5c587cb5b660e6bebc85532"
+    },
+    "experiments/headless/contextual_replay_history.py": {
+      "bytes": 17222,
+      "sha256": "ea826534dbafff162dcdb18c13f0adcfa76632f74084f2487e2c56567ac0a6ce"
+    },
+    "experiments/headless/cost_breakdown.py": {
+      "bytes": 8832,
+      "sha256": "74502aed63a9455d3ef56a2b296a68ca1aea75bc55cd6055a5d9ca6c4a21bd7b"
+    },
+    "experiments/headless/env.py": {
+      "bytes": 52281,
+      "sha256": "513babe630346eb3747aa0c98ab9adc0d0c8f05a937f2becc408a6e2cb4687e4"
+    },
+    "experiments/headless/history_v1.py": {
+      "bytes": 6269,
+      "sha256": "3ca7837f3f821d91839acd7322bb2471ad5ca9559c5f373fb5350044d44aa050"
+    },
+    "experiments/headless/player_history.py": {
+      "bytes": 18259,
+      "sha256": "e496821e9b3178bc37dc438f66c935714ed46f58f18a7b9a23508441c0ca2071"
+    },
+    "experiments/headless/render_replay.py": {
+      "bytes": 21366,
+      "sha256": "0f6e343917a48d2aad0515c72168e50804f1c980d34381bf0e89a89270737802"
+    },
+    "experiments/headless/replay.py": {
+      "bytes": 43511,
+      "sha256": "1dda4e226ec02889a2c2cd10d122d8b0e486012f7200547f31764878ef8e67bd"
+    },
+    "experiments/headless/run_headless.py": {
+      "bytes": 19868,
+      "sha256": "5f57d88d58198fdad59f06c71b3b94876a76c9df6048f1a0878af9d695d5f912"
+    },
+    "experiments/headless/run_series.py": {
+      "bytes": 8023,
+      "sha256": "0752f1a6b3d5e0ed2ee7c75dfb9dd008d95300ad09e0b5365c33b26a93de13d0"
+    },
+    "experiments/learner/__init__.py": {
+      "bytes": 80,
+      "sha256": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8"
+    },
+    "experiments/learner/actions.py": {
+      "bytes": 3927,
+      "sha256": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20"
+    },
+    "experiments/learner/checkpoints.py": {
+      "bytes": 21093,
+      "sha256": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633"
+    },
+    "experiments/learner/contextual.py": {
+      "bytes": 84955,
+      "sha256": "c725b0852a76f980f566e29cc6387a6f6fd957751dbcb75731695ba7119cd9d7"
+    },
+    "experiments/learner/contextual_model.py": {
+      "bytes": 29505,
+      "sha256": "9701da8146ba2e6c580d75ad97fd8d0605d460f89f0b362b1db05691f3b05499"
+    },
+    "experiments/learner/contextual_rollout.py": {
+      "bytes": 37555,
+      "sha256": "4a392b943f381c6cafd480ef4a3144a5eb3e21b4859eda1e8af3570a2f623ee9"
+    },
+    "experiments/learner/contract.py": {
+      "bytes": 11746,
+      "sha256": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3"
+    },
+    "experiments/learner/first_run.py": {
+      "bytes": 15673,
+      "sha256": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c"
+    },
+    "experiments/learner/gameplay.py": {
+      "bytes": 26421,
+      "sha256": "bdad4dfb4ae61c7696606c59c88e587bca5082c29acc5309ddb3647b05325530"
+    },
+    "experiments/learner/inference.py": {
+      "bytes": 21649,
+      "sha256": "cb61e87f038a765a0d289443ecadaa8710af9c428dd7c2d374ba0c80d93767d1"
+    },
+    "experiments/learner/model.py": {
+      "bytes": 13988,
+      "sha256": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde"
+    },
+    "experiments/learner/ppo.py": {
+      "bytes": 17526,
+      "sha256": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c"
+    },
+    "experiments/learner/trajectory.py": {
+      "bytes": 14572,
+      "sha256": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution.log": {
+      "bytes": 19004,
+      "sha256": "f08053502172a4278808bce5db4f2b9ff0c104aacdef7347703219a292496b94"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/blue/bridge.jsonl": {
+      "bytes": 2651757,
+      "sha256": "c76d246288a9a8c06da2f7f804e2e5be7d5b714da3e58fb253f92bff0e69469f"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/blue/history-v4.jsonl": {
+      "bytes": 2863464,
+      "sha256": "f75841de97b9f06585c3c7bcb0b36a5f4721e8da3b05579d24792566c14c89e5"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/blue/live-history-v4.jsonl": {
+      "bytes": 2882368,
+      "sha256": "7f1b6403cf0c9d245dbd7487430127a9ac3569b51e2905b32c6349d0f32d64ed"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/red/bridge.jsonl": {
+      "bytes": 2784190,
+      "sha256": "c5031848545599b799754128bd9495eadb798c313baddee7c282bf615c8570ab"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/red/history-v4.jsonl": {
+      "bytes": 3066751,
+      "sha256": "f11389c415dad0a9bda6c8e64d5f2a434773b42c4efb0696b26e87266a274284"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/agents/red/live-history-v4.jsonl": {
+      "bytes": 3065613,
+      "sha256": "07d021ca079ec0aa0c89266b7481a119812ed49f6b3b167c1252a567e2594de5"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay-history.json": {
+      "bytes": 7221,
+      "sha256": "ac273ffefacbe327a0dfe3efb7f347491c11fc0e512f68c88caffcb117c466ad"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5731,
+      "sha256": "761b54d7995a933c0cfed73b30ef128c03417917fcfbab2e47777d0670131ad1"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/contextual-replay.jsonl": {
+      "bytes": 5857181,
+      "sha256": "30b47a3f5ce85a607ad4195f3f13026aef184ee0092581ea52237fc334894bca"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/native-report.json": {
+      "bytes": 1256,
+      "sha256": "ed62a9748e5bcea5a1822c91f1e08c6789cab39901f5b310bc3ccc57f1d6b380"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/native-report.log": {
+      "bytes": 4735,
+      "sha256": "84600f4a7baf376a00ca83a8b1b4ea086ddfa6c182df16ec9df159e8c3d8679f"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/replay.jsonl": {
+      "bytes": 54048,
+      "sha256": "3663edf9d9c49864757d3aa531449fe2fc21d3e68880d3c836afc399f79f9894"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/contextual-finalization.json": {
+      "bytes": 10182,
+      "sha256": "871822a95ed816864072e1b1f72c373b6e38580445815fbd9a0506ff45043784"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 10153037,
+      "sha256": "8a9cb9424eb436a2c0d3b78ab276c5037f4d1bf91822d7826b9b4826f3455ab5"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 54048,
+      "sha256": "3663edf9d9c49864757d3aa531449fe2fc21d3e68880d3c836afc399f79f9894"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/logs/VCMI_Client_log.txt": {
+      "bytes": 26601,
+      "sha256": "34e7f38967092f49bba044c4d471dcf0e33deb7f43d7b83a2352af44b8f9d53f"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/logs/process.log": {
+      "bytes": 5171,
+      "sha256": "4c31454d0f02cba9f7fc81a76e6fd85b92215e219f948005722dca468766d708"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/manifest.json": {
+      "bytes": 13553,
+      "sha256": "2947df0302a2e5d764e35d148d88030465463757e1fb20b57b65d275e214c62d"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/neural-rollout.json": {
+      "bytes": 20492347,
+      "sha256": "a279b48cd31e6af59dbb5a4c9dcb5a7c743cae345db34f8f215faaca46d780cb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/blue/bridge.jsonl": {
+      "bytes": 3949672,
+      "sha256": "374b06f80654eac76a1ef0ba7adb794b2e3d2e7a2ab2751b1669ea31bbbce734"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/blue/history-v4.jsonl": {
+      "bytes": 4292325,
+      "sha256": "8a6d25ac174a1d8bf6a644620eef857df7f77c7123bee0c90af0f0dd666ade20"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/blue/live-history-v4.jsonl": {
+      "bytes": 4291184,
+      "sha256": "945d59368ca10b05e3d8854b01e76d77042dc746ead39c502fba5a751b2fc799"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/red/bridge.jsonl": {
+      "bytes": 1616034,
+      "sha256": "7a8a6c24425731773243a375b185813d3bec8aff669e0be284d9571456c814b6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/red/history-v4.jsonl": {
+      "bytes": 1800631,
+      "sha256": "8b0a4d343f7361bca7b53a21c989eda43942851f2097dd24bf106d0fbd960b56"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/agents/red/live-history-v4.jsonl": {
+      "bytes": 1819520,
+      "sha256": "785b233cca66820fa9d880758e302ce441bd757abd7c96fe08a8aaf4d1386268"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay-history.json": {
+      "bytes": 7291,
+      "sha256": "dd99b54a05ba063d07962e4b8a2da6f0aa0c49655ad5755a14e71154473c4f61"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5731,
+      "sha256": "068fa6a70d0c18a38ff2339b284cbded0c789273a59eb2d995ba7d02a60e4ce7"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/contextual-replay.jsonl": {
+      "bytes": 6020719,
+      "sha256": "b717ea5f6d5975f3cc8f9a5a31b47ef3bee84653d6505c0ef85f3520f6af8e65"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/native-report.json": {
+      "bytes": 1259,
+      "sha256": "b2c8d796d01ffc4caa76a5ff5e98d058100d033df4bde858a1295befc4ddb015"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/native-report.log": {
+      "bytes": 4738,
+      "sha256": "86ed265c02f1a66d4e9bee3d80d15d6b0189cd95c164d1997d839411fc22bfab"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/replay.jsonl": {
+      "bytes": 62332,
+      "sha256": "3cc361be81c0afde01eeed33869b3975666b811b7b727db9ebf7e6eea0b324c6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/contextual-finalization.json": {
+      "bytes": 10182,
+      "sha256": "8cfac8bbdf871dc2248e124feeaed0337cacafadb5fbf39a175d04486468fed8"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 10426165,
+      "sha256": "348b07e9cc7bdf0b3c5e31c04f6816c2897f1632104803e193cef74a8db479df"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/engine/replay.jsonl": {
+      "bytes": 62332,
+      "sha256": "3cc361be81c0afde01eeed33869b3975666b811b7b727db9ebf7e6eea0b324c6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/logs/VCMI_Client_log.txt": {
+      "bytes": 26600,
+      "sha256": "4c45bdee1bfd228e06d0b5c2cd3c3165c2b0b48df5096696bece9fb4a042717d"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/logs/process.log": {
+      "bytes": 5171,
+      "sha256": "a5210cd5b1c3e88b53b92b61a3e89c8d1ddb924dad90de4cdfe27e806cd3c263"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/manifest.json": {
+      "bytes": 13552,
+      "sha256": "66b3add4f9e0a45ef5ddd99c42bd5bdb8a6a5bf7bc4f3d17094e5659e0f43e04"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/neural-rollout.json": {
+      "bytes": 21042139,
+      "sha256": "7d77253e08335998e0063f8cf9c24adf30f9bd72653fa641015f06ffa40b57e6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/blue/bridge.jsonl": {
+      "bytes": 3704690,
+      "sha256": "a856d126de58255fb84183e559a832b812ba6d2f710bef62775810dbb7bf93b6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/blue/history-v4.jsonl": {
+      "bytes": 4012086,
+      "sha256": "adfb0f2d5816cb1612bff60f015d0dc2522da64ca3e5a0a40f0148a12f6e6394"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/blue/live-history-v4.jsonl": {
+      "bytes": 4010948,
+      "sha256": "9942be6ac182966d44655c50307973d904456762b6cbacee9831b6fc0c887670"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/red/bridge.jsonl": {
+      "bytes": 2199097,
+      "sha256": "b13bb319695f7a68782b05726c044c48d66a42f46ae0189d2b528aab87c48bbf"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/red/history-v4.jsonl": {
+      "bytes": 2379765,
+      "sha256": "fc764b4a1fbaaf48aea097d780862bfdcb2699c4deb3353d5bf27f2d2beef64a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/agents/red/live-history-v4.jsonl": {
+      "bytes": 2422404,
+      "sha256": "5470c40c1e6a8dd1443844855fe9718e842cbe6a2b0dc38a1637cc632622282b"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay-history.json": {
+      "bytes": 7184,
+      "sha256": "198a1029050e6f6c5254c42455152c8c64ab1841161e7c2bb21397cd0eda8cc3"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5704,
+      "sha256": "a8afbe4c3686ec24b51e8aef0d644b4e390b2a928400c57630f229bdc6b35b37"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/contextual-replay.jsonl": {
+      "bytes": 6306190,
+      "sha256": "10dfee31ccf9f0891191a913432c9622732afcae56177191957ba07992c3212a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/native-report.json": {
+      "bytes": 1230,
+      "sha256": "db2c4afd1667106642bebf2e761cf540e4a6d0e21e908132ea24a4e529b0963c"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/native-report.log": {
+      "bytes": 4711,
+      "sha256": "83f4bce0e0964c420877195c22329bda22b038c8156ff826d821f8ee6d3772be"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/replay.jsonl": {
+      "bytes": 51476,
+      "sha256": "9ed74e2f05856e2300a331672305381a5592047d483766690b03bdbac38ee275"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/contextual-finalization.json": {
+      "bytes": 10183,
+      "sha256": "7f7e0a392cbf280a12e5e9945a6764c03227f3d366a82c57484f8b854fd4169e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/engine/contextual-replay.jsonl": {
+      "bytes": 10943295,
+      "sha256": "d5c802a444e7e9dc14436c3676253488394b5fb48cefc4d2502e2dc40f817cab"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/engine/replay.jsonl": {
+      "bytes": 51476,
+      "sha256": "9ed74e2f05856e2300a331672305381a5592047d483766690b03bdbac38ee275"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/logs/VCMI_Client_log.txt": {
+      "bytes": 26455,
+      "sha256": "018cb1b9da4a6ddba79f03c92939db9217f45764ff611e18b1c33946db606fc9"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/logs/process.log": {
+      "bytes": 5117,
+      "sha256": "496264bcdd4e1e3ba80a3981965cf45ababf327de0fba52d8af18f31984c8e16"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/manifest.json": {
+      "bytes": 13554,
+      "sha256": "d44c47ae26235a14af8740475e455246d553e4cbe6915a4660079bc992efdc65"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/neural-rollout.json": {
+      "bytes": 21988817,
+      "sha256": "e63b25c4a8c010145ac13290c8530f47f036aaf6af88156bf56474b242580da0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/blue/bridge.jsonl": {
+      "bytes": 2122801,
+      "sha256": "64b94914a2677bb851bbe8ad2ad464432f94bda1daf77f1b0f3fbcf700e942cb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/blue/history-v4.jsonl": {
+      "bytes": 2359434,
+      "sha256": "b2cfdc784b847b8e0a7bd1bca1145724dc3f63eec48e2161362861fe2a47fe74"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/blue/live-history-v4.jsonl": {
+      "bytes": 2358296,
+      "sha256": "ee9f852b4150f331d4b75b0e77b7e2f9372e330edd0a36e2c9d0e6f7565beece"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/red/bridge.jsonl": {
+      "bytes": 2409507,
+      "sha256": "74ed1abbb7efad8b42fc2e496a306050f76dba7ddb8016b35474fc6e9c069634"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/red/history-v4.jsonl": {
+      "bytes": 2644420,
+      "sha256": "c25b82d28db4a134b5ba2d74e0a6048b522a3471eea845fe41c6b728c2b89a16"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/agents/red/live-history-v4.jsonl": {
+      "bytes": 2707638,
+      "sha256": "5ac3814425c5b6e088ea32ef97dd2355fe8ce5f92a2bd9ff3172beb427d23e2f"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay-history.json": {
+      "bytes": 7276,
+      "sha256": "98e2a3c4368ce6536b0addf56431305e322694d7898dd2244071ea5c4be9e40f"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5704,
+      "sha256": "83004db73cb3f6d7fccd68bf902703d2a5c1ed15902f4d07657d735db75fcd45"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/contextual-replay.jsonl": {
+      "bytes": 4881539,
+      "sha256": "2ccd80e713399f45a472d5dde25f367c648b9360f9d7b07105b64b72e8da0239"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/native-report.json": {
+      "bytes": 1230,
+      "sha256": "ade43564724846a1cd5d15f940abc00263bafd774d1069182f0333a541841666"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/native-report.log": {
+      "bytes": 4711,
+      "sha256": "3c8ac2697dceadca2dcd4290747d38a0ac5c67aa83260686c06dea40a952ce0a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/replay.jsonl": {
+      "bytes": 37551,
+      "sha256": "32cbe2d6de538c18c6b31e9994088207f98a853614c3ed2e8030e07bb173c27a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/contextual-finalization.json": {
+      "bytes": 10181,
+      "sha256": "1a041d544a89941b2044654595d88be33c2c20b9568f4fa56bd6a199b94b9169"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/engine/contextual-replay.jsonl": {
+      "bytes": 8464037,
+      "sha256": "6f5e0882b7c55857b37cfc8e67ed0fe8e3948e6d0d7698ab44dcdc16ac4ac239"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/engine/replay.jsonl": {
+      "bytes": 37551,
+      "sha256": "32cbe2d6de538c18c6b31e9994088207f98a853614c3ed2e8030e07bb173c27a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/logs/VCMI_Client_log.txt": {
+      "bytes": 26455,
+      "sha256": "23e4b449e14f7a2571b7ddbe9483979052c7e836d38b3b55d30b69102df09254"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/logs/process.log": {
+      "bytes": 5117,
+      "sha256": "8736082ffa5f25238f4ab18808afab002e57929024930ba2f97c9617bc3f290a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/manifest.json": {
+      "bytes": 13552,
+      "sha256": "e915e627807828fd71a2ea7575cd7846863dc679c32a13a24e446dd855d2f32c"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/neural-rollout.json": {
+      "bytes": 17305061,
+      "sha256": "bb209f96fe46ddc211661d43597a937e62a1c8156794f889bfcbcfc385797b1a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay-history.json": {
+      "bytes": 8399,
+      "sha256": "1bf3c4ecfd050b8c836f7519c896c28f2796263badf2aa853184e856b51e90e4"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/contextual-replay-verification.json": {
+      "bytes": 5726,
+      "sha256": "51df7b1dcb5a6a4d4ebd2e9a91191927ac4db95151489318025918f7474d124b"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/contextual-replay.jsonl": {
+      "bytes": 8047820,
+      "sha256": "31d255b9ee317ff7969f511ca008f4b25422367fc092dfc95934e7f53e1ff880"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/native-report.json": {
+      "bytes": 1255,
+      "sha256": "925f9c66d00903e421d06133dcf1f4e31b17b3f9f404952a7d9b83d5f60ef2a0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/native-report.log": {
+      "bytes": 4734,
+      "sha256": "53ebbe4a6577e951df5d9b501b227ad4dc9639f50cf70766fa645b35127a4570"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/replay.jsonl": {
+      "bytes": 46155,
+      "sha256": "3cf386ecbe80fa9ed3b4a1685583da137bf59b840d2c620c1b8efbcd4d2b7ebf"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/blue/bridge.jsonl": {
+      "bytes": 1168987,
+      "sha256": "285e179f70842f12de0d48447854a23d8a2205ec5b3a42b7ac1d0f5fc78f2f6a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/blue/history-v4.jsonl": {
+      "bytes": 1290429,
+      "sha256": "b010aff0bfa28f3059b7dcbf342781ba114969c0f35e13e300f5cc6752fcbc0e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/blue/live-history-v4.jsonl": {
+      "bytes": 1304820,
+      "sha256": "d371e1269ce494a27baa5cdd58f74243696b43e9823e910b12e4c9e8435ab5e7"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/red/bridge.jsonl": {
+      "bytes": 6478357,
+      "sha256": "2f5ab4c204b8690737c1e7ef3af799c91a1e437e6dbc32c1f2644f494db3dc5a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/red/history-v4.jsonl": {
+      "bytes": 6867508,
+      "sha256": "4c412f0ef33cec8f91b253243628fbf148c2f7beaecd54484750b2be9f1a4192"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/agents/red/live-history-v4.jsonl": {
+      "bytes": 6866367,
+      "sha256": "8906027525a6d3919c25a64ba60335a30c211b727b76746971d83f5890def744"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-receipt.json": {
+      "bytes": 783,
+      "sha256": "73a7029dc2b2ccab41f15a15403a554a4e64657ae4dc6628beaa97c272e25aeb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay-history.json": {
+      "bytes": 8399,
+      "sha256": "1bf3c4ecfd050b8c836f7519c896c28f2796263badf2aa853184e856b51e90e4"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5727,
+      "sha256": "e877fb6bcf60099b9588b86380c73d0ace86f4d30d03807d788f362fc7403f3b"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/contextual-replay.jsonl": {
+      "bytes": 8047820,
+      "sha256": "31d255b9ee317ff7969f511ca008f4b25422367fc092dfc95934e7f53e1ff880"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/native-report.json": {
+      "bytes": 1256,
+      "sha256": "1e8134022f25abc9f6910bc8559def08bf045d2d5c7a88b96128288a2172767b"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/native-report.log": {
+      "bytes": 4735,
+      "sha256": "cea1b8578b69ef316b04f337ed52c2343f1a0b80f849a66d07ada3ac1b442f6d"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/replay.jsonl": {
+      "bytes": 46155,
+      "sha256": "3cf386ecbe80fa9ed3b4a1685583da137bf59b840d2c620c1b8efbcd4d2b7ebf"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/contextual-finalization.json": {
+      "bytes": 10181,
+      "sha256": "6cfeb81e10ab90f2d8d279030cafb3ae63ea5ba73a0ee1614f6e560c5351f48c"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/engine/contextual-replay.jsonl": {
+      "bytes": 14090572,
+      "sha256": "adf229e64777bd44c1c3498ee33b2ff8e55489beec331c4f2aea837d80815328"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/engine/replay.jsonl": {
+      "bytes": 46155,
+      "sha256": "3cf386ecbe80fa9ed3b4a1685583da137bf59b840d2c620c1b8efbcd4d2b7ebf"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/logs/VCMI_Client_log.txt": {
+      "bytes": 26601,
+      "sha256": "d6db4272ae4cafc77a44fc1c5d2461edb58e1a21d5b354f13cdc6ec25bbe0d92"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/logs/process.log": {
+      "bytes": 5171,
+      "sha256": "c1b233ca3156bfdf40cd1d5160da5218b8b26cfadc1dd291af1f587f6266aaab"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/manifest.json": {
+      "bytes": 13551,
+      "sha256": "aa6b7eeaf94dfaaf28b61d41edec4bef94f32e469e73a3cd22c9edaa906f89bb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/neural-rollout.json": {
+      "bytes": 28324276,
+      "sha256": "887e720e538914cefacce9612cdc345b24f1c542c7cd2629a75b3f2ae1908f25"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay-history.json": {
+      "bytes": 13134,
+      "sha256": "924cecfb2780729c404f62d9f4d1a7762a0f407d9bdf38ff0a23d45047b30bb7"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/contextual-replay-verification.json": {
+      "bytes": 5737,
+      "sha256": "51152cac0e3bafebd6d5944e17be3b7e41513623558ff43e6da4c6eee58114be"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/contextual-replay.jsonl": {
+      "bytes": 11579055,
+      "sha256": "b99ff9ba3accc43d49e3a692cf28e60ae01b4ffd0908504fc6411065eb1e47cc"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/native-report.json": {
+      "bytes": 1258,
+      "sha256": "58fd40ae95757cddfef24e4ba8afe024f4b01f502b10f01eff4d9ad05e516f0c"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/native-report.log": {
+      "bytes": 4737,
+      "sha256": "16ccb5af69b3eca14f2717c9dd1bfc17059131c8b0f5625bb7ed3831a6b855eb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/replay.jsonl": {
+      "bytes": 66885,
+      "sha256": "1d09bfce8b21b3dc9674e693d6a0d671f9fbe85915beb3e72035e68969c3589e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/blue/bridge.jsonl": {
+      "bytes": 2956765,
+      "sha256": "07770c7eda94dbcf0571dff0793ddcc10130a01f01e70083fc2e7e39553aa5ff"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/blue/history-v4.jsonl": {
+      "bytes": 3173018,
+      "sha256": "d787be6767a9636f03a119bbf3d4d5fc9106e25a2fba84c99c5d3c7e53049007"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/blue/live-history-v4.jsonl": {
+      "bytes": 3171882,
+      "sha256": "d7667cf6c245588bb78e7cf8216ff3182c77ab8eb5500626fa76119fc7493726"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/red/bridge.jsonl": {
+      "bytes": 8116579,
+      "sha256": "032a3c68231361b689c6c14720daa58a248c5e977177054ccc70b6b532cff12b"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/red/history-v4.jsonl": {
+      "bytes": 8397022,
+      "sha256": "3c43120226e903751feb75574c567cd0ae9d503806aaf1e6eb84f13f016a6c91"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/agents/red/live-history-v4.jsonl": {
+      "bytes": 8449751,
+      "sha256": "c4cd912f325b14a09fcdd72d4534f7a15d0f6539f5515e63648f342c3f6d6e1d"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-receipt.json": {
+      "bytes": 783,
+      "sha256": "9c431d20a5f21cae997fd5b0d07d75e437a5fd962781f0412aaa3c282e765168"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay-history.json": {
+      "bytes": 13134,
+      "sha256": "924cecfb2780729c404f62d9f4d1a7762a0f407d9bdf38ff0a23d45047b30bb7"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/contextual-replay-verification.json": {
+      "bytes": 5738,
+      "sha256": "ca926dec117abe8c72e3ca7b5da5b4ef54a5b2113f422d2722d8f4ec1bb2f5a7"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/contextual-replay.jsonl": {
+      "bytes": 11579055,
+      "sha256": "b99ff9ba3accc43d49e3a692cf28e60ae01b4ffd0908504fc6411065eb1e47cc"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/native-report.json": {
+      "bytes": 1259,
+      "sha256": "24dd364f086c2aa044b3c97e6f6c908a5fbdf85e84339f475f51890c0974c5c6"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/native-report.log": {
+      "bytes": 4738,
+      "sha256": "8de581b51ba659b701eac24f259a3d832abd111cc8516ffaf3f434b820937247"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/replay.jsonl": {
+      "bytes": 66885,
+      "sha256": "1d09bfce8b21b3dc9674e693d6a0d671f9fbe85915beb3e72035e68969c3589e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/contextual-finalization.json": {
+      "bytes": 10181,
+      "sha256": "ff0e0a7f6802935fb2bac5122a31a2253f748985bf4fb6c063dfd1cd32374b15"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/engine/contextual-replay.jsonl": {
+      "bytes": 20338762,
+      "sha256": "a2c042314be14b86ea6225ed0b5ec58f01bd9b12a84c1b53e1b7c9428a9d0d54"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "0ea058b916c94cf26ac552eb777092d0a6310dc9c71489d852046de218dfedd0"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/engine/replay.jsonl": {
+      "bytes": 66885,
+      "sha256": "1d09bfce8b21b3dc9674e693d6a0d671f9fbe85915beb3e72035e68969c3589e"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/logs/VCMI_Client_log.txt": {
+      "bytes": 26601,
+      "sha256": "8a50ac6fb7f9eb6f34e32f82abc06a6c7b16f5444bb45e2b21c320114bae5a96"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/logs/process.log": {
+      "bytes": 5171,
+      "sha256": "d3a27da77e821a8c8a9e8752aae5ecab1bab6207e548c8a159bbc38d7ef673d2"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/manifest.json": {
+      "bytes": 13551,
+      "sha256": "9a559546881f45d0344d66f5ea4881bcd523ab0ca995225803798e1b2484e9cb"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/neural-rollout.json": {
+      "bytes": 40177581,
+      "sha256": "95029c1ea9968cf095765ae0bd04d6247c673853d5e52bbc0ba498d7ef99adc3"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/independent-review.json": {
+      "bytes": 13699,
+      "sha256": "7b2d6795e2a35e067b72ab45bca0c8871c1f6d27e519dd006a66cb6c5a11922a"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/report.json": {
+      "bytes": 18661,
+      "sha256": "bf6ceac81894310b6a364d6dcc755087b16a21409133398d83db42586f3007b5"
+    },
+    "runs/first-training-prepared-2026-10-25/approved-execution/resume.pt": {
+      "bytes": 1267509,
+      "sha256": "df8834bac83c7444ceff5396f06015ab9f14b7f90aea4dd62c1b7a6b3bb2f089"
+    },
+    "runs/first-training-prepared-2026-10-25/initial-policy.pt": {
+      "bytes": 629366,
+      "sha256": "65e8829865f9d7c5434cea6c6feb5c7d4bd123a62f4e6b0e351c4efc69dc8ffa"
+    },
+    "runs/first-training-prepared-2026-10-25/plan.json": {
+      "bytes": 33517,
+      "sha256": "ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6"
+    },
+    "tests/native/contextual_evidence_lifetime.cpp": {
+      "bytes": 2358,
+      "sha256": "3f2597c991efa8bf3a5fc944b6f9b6481f5d85c0caf86c849182adb8b8d8fb5c"
+    },
+    "tests/native/knowledge_grid.cpp": {
+      "bytes": 9098,
+      "sha256": "eae0a8d20a4242c66e06e60cddc7736778be4ed49ff359b190be7948a291875f"
+    },
+    "tests/native/notices.cpp": {
+      "bytes": 13593,
+      "sha256": "48fa94bd99f54d3562098fe07e393d7c30f39e5964a254f9705d27c13aa83308"
+    },
+    "tests/native/self_play_routing.cpp": {
+      "bytes": 5017,
+      "sha256": "1e6196c3939eafb976fe542c2409210162ad5cab0077ea05265bad065205e25d"
+    },
+    "tests/native/terminal_barrier.cpp": {
+      "bytes": 5484,
+      "sha256": "3bfb6bb08bf3a28dd0ec71f626d4c9fe0c48d3673d0b2dfab8f472488ee1a999"
+    },
+    "tests/native/threadsafevector_shutdown.cpp": {
+      "bytes": 3322,
+      "sha256": "14518696c773128c59e30e2a43a1e5c48767002d1413a27727aa87ead409ca39"
+    },
+    "tests/native/transfer_rules.cpp": {
+      "bytes": 2619,
+      "sha256": "855d742bba517b7afc15110f6411b54b54615b0d79f526841ce6d2ef63cbf9ce"
+    },
+    "tests/native/visible_state.cpp": {
+      "bytes": 14738,
+      "sha256": "b5f0854b5aef7e705e97dddeddc183964dc7725339cce01c6154b63244b12706"
+    },
+    "tests/test_analysis.py": {
+      "bytes": 24263,
+      "sha256": "d7375b142f772f07bc32774eae98d028e8f9173aa8d7661618a38a2bb33a1bef"
+    },
+    "tests/test_contextual_adapter.py": {
+      "bytes": 22302,
+      "sha256": "52b3b60fc05d6e18d8c5a0ba89a90783270ef9d02e2986ec3586b371e78a509c"
+    },
+    "tests/test_contextual_armies.py": {
+      "bytes": 11054,
+      "sha256": "41a0c2ec9f51615b14dd7c8ef83ea5c5c2c202bc9e7022cf82cdbde393040db2"
+    },
+    "tests/test_contextual_armies_model.py": {
+      "bytes": 14271,
+      "sha256": "958a07db6d431348566423a803cca4f756b541beb8063a351d8748b759d88359"
+    },
+    "tests/test_contextual_auditor.py": {
+      "bytes": 18606,
+      "sha256": "eb5c13aa2f11ea0d9c3acd98e2fc8c9c8c604b84c1a7787df0b6db822b59ca54"
+    },
+    "tests/test_contextual_boundary_fixture.py": {
+      "bytes": 11214,
+      "sha256": "86232751c46099ac263dac725279a31165e87f189012d5b6eddf18263d7a70a4"
+    },
+    "tests/test_contextual_casualty_fixture.py": {
+      "bytes": 3976,
+      "sha256": "0e79ed07aac32ccfb459d6c7e15eed027dccc03fa3dd48c864829a16e5947fb3"
+    },
+    "tests/test_contextual_checkpoints.py": {
+      "bytes": 8332,
+      "sha256": "0dae4082e96bc2b0616055814a99d18f5c358cf2636355d8320bfc586b103b4d"
+    },
+    "tests/test_contextual_contract.py": {
+      "bytes": 33026,
+      "sha256": "983bddfe02cdee6e5af3658889f4d751a7e8437b883791151e3d36128bbd5740"
+    },
+    "tests/test_contextual_evidence.py": {
+      "bytes": 6599,
+      "sha256": "ca90c353ebb288a17fd946213674bc3efb7289c7ea72aa0a89501c905469ccf1"
+    },
+    "tests/test_contextual_fixtures.py": {
+      "bytes": 13363,
+      "sha256": "5996f8e98b43a8df0363afa5733d465413223c53b2866071784e27ab56ce15ce"
+    },
+    "tests/test_contextual_gap_probes.py": {
+      "bytes": 12886,
+      "sha256": "f8a54e42ad8bfb22f69d55105303a30bb87b74b3446e457edcb3c81a77c4a82e"
+    },
+    "tests/test_contextual_inference.py": {
+      "bytes": 8129,
+      "sha256": "ee46ddf34b33582c5782fd98beea26cdf064fe27775bbed04c85dd3627af185f"
+    },
+    "tests/test_contextual_model.py": {
+      "bytes": 17599,
+      "sha256": "932acc052526fda878f79bb84c7ac5423b4963ea13cca690ba55b5e61651cc56"
+    },
+    "tests/test_contextual_native_probe.py": {
+      "bytes": 11062,
+      "sha256": "3b33ed7a1b72e1eb7accf678f95b5f446fce8902b6a672707062b9b69bafed97"
+    },
+    "tests/test_contextual_notices.py": {
+      "bytes": 19353,
+      "sha256": "0a55f5822b280f2c25a16385b410aa65ac5b28af42ec11ae3c668d0a84a524d1"
+    },
+    "tests/test_contextual_ppo.py": {
+      "bytes": 11543,
+      "sha256": "1c34d809c382b4bde3b66dd0a1832c5e2c131086dc56093b09bf8afd63b171bd"
+    },
+    "tests/test_contextual_random_probe.py": {
+      "bytes": 3035,
+      "sha256": "c33fefa5a7701e0cd5139dd86b7f3950e7a0057f8765f6e6701da7636089c9d8"
+    },
+    "tests/test_contextual_recruitment.py": {
+      "bytes": 16631,
+      "sha256": "3d15e61c4a700e15f00aee55612970c3160b598435f13a8a1f5c7759e7488236"
+    },
+    "tests/test_contextual_replay.py": {
+      "bytes": 12457,
+      "sha256": "faa688ee63be4c48b159c8c93ab5034566ad284f3a204d847f80c0d62f50d45e"
+    },
+    "tests/test_contextual_replay_boundary.py": {
+      "bytes": 3866,
+      "sha256": "36d0889e460525317e79c8ecbe85f946c64ca11e5150e320a64d0689b30f56ef"
+    },
+    "tests/test_contextual_replay_history.py": {
+      "bytes": 17216,
+      "sha256": "5fcad1c40830c1ecf656603f9ec9fbb8363498ed0d57c6f12d1ffef11a373e54"
+    },
+    "tests/test_contextual_rollout.py": {
+      "bytes": 15496,
+      "sha256": "0475e0ee78dcda1fa973b18ea8537e4227fb9495712bcbc9adbaa64538677dec"
+    },
+    "tests/test_contextual_terminal.py": {
+      "bytes": 8144,
+      "sha256": "35f688098175c4b1a654a1fa848eadbe3f3deda8a9344ad3e2f86efdb1afe557"
+    },
+    "tests/test_contextual_town.py": {
+      "bytes": 19389,
+      "sha256": "0b7bd807369a14f59246759c2d228b039b0db29f826bb0d9987bac2dcc0ee81b"
+    },
+    "tests/test_contextual_transfer_replay.py": {
+      "bytes": 2193,
+      "sha256": "3a8c79bec1df3f360cc804b8fdf1fdb4d9d8546bd81bfd52b2fd8d8580f17d74"
+    },
+    "tests/test_first_run.py": {
+      "bytes": 8051,
+      "sha256": "4fe465d0c4479def5b9492f495de29fbefcabca45f796a43c048e3a48850dbdd"
+    },
+    "tests/test_gameplay_checkpoint.py": {
+      "bytes": 5916,
+      "sha256": "340c137031524a7657a6c3507b0c53b4c2321b53dd94e6cda7842ef4aea3b96d"
+    },
+    "tests/test_gameplay_receipts.py": {
+      "bytes": 7087,
+      "sha256": "6ddf2e7cc4bcbeabba92f58ed26d9dd312403d50b9a4f14792b72954496e493f"
+    },
+    "tests/test_headless.py": {
+      "bytes": 70592,
+      "sha256": "195e8b2cc9c51a6495f68b200f4b4fb3ba01d560af099814549d428d2ae3c1a1"
+    },
+    "tests/test_headless_costs.py": {
+      "bytes": 6000,
+      "sha256": "23f7dd55a0d714a22dd88391976e4af2ecd4be0b05074dcdfd524946f5a921c5"
+    },
+    "tests/test_headless_runner.py": {
+      "bytes": 21631,
+      "sha256": "926be4e041a565770cd5fda81dda234b11db654cccb9a5133c0460bf445e3317"
+    },
+    "tests/test_learner_actions.py": {
+      "bytes": 2183,
+      "sha256": "0d6e5a5cd73fab3823a64fb49972b18f4a0d82d313502ebf6233c78a10321617"
+    },
+    "tests/test_learner_contract.py": {
+      "bytes": 4651,
+      "sha256": "92ae127f3fbf8e63817d6f51f79db7bb9339f42dd168a32010d0e225564bcf55"
+    },
+    "tests/test_learner_model.py": {
+      "bytes": 15800,
+      "sha256": "a2f0ae2b528cfafd0fb0b247a81e196d3ee5db79af5e62a01998527fdb89eb30"
+    },
+    "tests/test_learner_trajectory.py": {
+      "bytes": 14274,
+      "sha256": "3522e5cf5b6c3bfd8cbc123051e2c0caa4f536e3b95a9a0ce199fbbac0abe590"
+    },
+    "tests/test_native_contextual_evidence.py": {
+      "bytes": 3410,
+      "sha256": "f5e276fe57b523ee5a98d96f51a5f251d7031e9939a54bb47de701c4f4ed5e92"
+    },
+    "tests/test_native_knowledge.py": {
+      "bytes": 1400,
+      "sha256": "8caa6166a880c58590dc515832bd3cadcdd6464cd36b1b3a694d4465c0e68a4e"
+    },
+    "tests/test_native_notices.py": {
+      "bytes": 4416,
+      "sha256": "83e9da0f25d56e3bf99b05c424aea1d722245b939bce4003f8a5c8629f6dd959"
+    },
+    "tests/test_native_self_play.py": {
+      "bytes": 1769,
+      "sha256": "f7707ac4c69a8e64e2df94e93947bf050ed983640ce83e1b0eda9362dad5ce21"
+    },
+    "tests/test_native_shutdown.py": {
+      "bytes": 1704,
+      "sha256": "247e0ff2abfdbcf7bfc4a8211f814679bdbaf4c369a8ec674ed5c5409ddaeec4"
+    },
+    "tests/test_native_terminal_barrier.py": {
+      "bytes": 2983,
+      "sha256": "cdcfcbfa6878eb56e6dfaced23e17a30402e80b8cb5692ff9ce1a0cb1866a025"
+    },
+    "tests/test_native_transfer.py": {
+      "bytes": 1214,
+      "sha256": "6ddf0be4224421e41c014ba9e19edad99936c3b33fe9ae1f5abfd876da9427e0"
+    },
+    "tests/test_native_visible_state.py": {
+      "bytes": 3006,
+      "sha256": "7fed501a3d74eda63a8b979df0d595c912c7ea3e735d6230a49449b22933fca8"
+    },
+    "tests/test_neutral_terminal_fixture.py": {
+      "bytes": 9369,
+      "sha256": "675ae0c7b1b684fafc53b622eca9e25fdb05eaddce527a36e6be949f65bd958e"
+    },
+    "tests/test_ordinary_behavior_probe.py": {
+      "bytes": 6350,
+      "sha256": "24233b9b9cac10c65557eb5157010fb1304ccc812ac86bd516b4709c63f62804"
+    },
+    "tests/test_random_policy.py": {
+      "bytes": 16201,
+      "sha256": "b33707499d7fc0f3f5d0b736920f5581f2ef885dbd047959a414e280fe9e515b"
+    },
+    "tests/test_record.py": {
+      "bytes": 14279,
+      "sha256": "c64e18a932e34cb83507207873f3c6336fb94d8d9fe9cf304ebfc671191c7712"
+    },
+    "tests/test_render_replay.py": {
+      "bytes": 13551,
+      "sha256": "e52d1934a3cc21af7da98a61fece60fb6734729917fb589a69f5ef304449a7f8"
+    },
+    "tests/test_replay.py": {
+      "bytes": 35918,
+      "sha256": "be029e01327affd27862c8bcc31947cf247d4e8f3ec8a651f13515b97187573b"
+    },
+    "tests/test_scenario.py": {
+      "bytes": 5324,
+      "sha256": "cf83ba98a718ae97c90ed3f09b8b766da9c8645ec37cfa2df0aaa8faa4ad5698"
+    },
+    "tests/test_self_play.py": {
+      "bytes": 18781,
+      "sha256": "3efe368209f8fde5eac5528a9b2152a2fbca60925192a65b197fee8b03f0458b"
+    },
+    "tests/test_terminal_profile_scope.py": {
+      "bytes": 7555,
+      "sha256": "6b6030a1ab00422da99e32d28ac2b98b09bc1016b33dd586aa20b78ae66ae854"
+    },
+    "tests/test_terminal_rollout.py": {
+      "bytes": 9293,
+      "sha256": "3ad9da0fe1ea3aba2d28871f4d278a907ac7feb4f8fd3b679421bcfff7f89d17"
+    },
+    "tests/test_town_fixtures.py": {
+      "bytes": 11343,
+      "sha256": "be268b879e2b33aff098ca4ae637fecf58b6de8f4a30c3effaef5ee01dba8532"
+    },
+    "tests/test_town_transfer_probe.py": {
+      "bytes": 5788,
+      "sha256": "4cbeae255b6a4c0234e9c0d6ac3110801d51b9de82f9fa551e40e24ae34ca669"
+    },
+    "tests/test_video.py": {
+      "bytes": 23831,
+      "sha256": "1f7560250d97bbc7739025f1fcca9b70546e595280f22cd6d274d09b9480edad"
+    },
+    "tools/prepare_vcmi.py": {
+      "bytes": 12403,
+      "sha256": "3ef5f491dad5c47706543a3dd356f7afe9c0c6bf310b6beede88037e49f55131"
+    },
+    "validation/assemble_first_gameplay_2026_10_25.py": {
+      "bytes": 22926,
+      "sha256": "4e7b405d9ae1247e13d126a10ced585e3e79791f670589dccf7837fd9f597e40"
+    },
+    "validation/audit_first_gameplay_2026_10_25.py": {
+      "bytes": 17846,
+      "sha256": "8ef5fc0a493b3cf9d2dab567f483addef5ffbeedad84c45d72c79fc06990bd6a"
+    },
+    "validation/first-gameplay-authorization-2026-10-25.json": {
+      "bytes": 4948,
+      "sha256": "90a3bb31cf651402361609357d0adf0ae10e75a8dea4341996d1147671b8c4cd"
+    },
+    "validation/probes/audit_contextual_histories.py": {
+      "bytes": 18984,
+      "sha256": "18e6ec709a4b457cd4e4b5bc2b4d54d54e9a730e9aa00471715a70d91dd297e9"
+    },
+    "validation/probes/audit_headless_histories.py": {
+      "bytes": 17430,
+      "sha256": "967acf23641ee0f164f3410ab759ac52e5aee89d4741273af8fda410d348dff6"
+    },
+    "validation/probes/audit_neural_rollout.py": {
+      "bytes": 11349,
+      "sha256": "eac6ee95e226e97b621cd020193430446163173d84ec3be2d28ffe0e447317e1"
+    },
+    "validation/probes/audit_ordinary_behavior.py": {
+      "bytes": 15420,
+      "sha256": "6c5abcd45d56ca60afc1fc3a661d97383e3eff4942694ae65156886f0e9ea690"
+    },
+    "validation/probes/create_boundary_fixture.py": {
+      "bytes": 11843,
+      "sha256": "3551e85626d781b90881e6e24b549fb944e9a76669e6c955e84e7743d0280a6c"
+    },
+    "validation/probes/create_casualty_fixture.py": {
+      "bytes": 6908,
+      "sha256": "e9c9ad9d31245d82f5271496c4a55955f464dbbade961148b12124924ba876c3"
+    },
+    "validation/probes/create_contextual_fixtures.py": {
+      "bytes": 16345,
+      "sha256": "6ec20a024177d762c5e06374d50274d8cd631cb88ecd7ae6c870764f970b8390"
+    },
+    "validation/probes/create_neutral_terminal_fixture.py": {
+      "bytes": 8580,
+      "sha256": "6f6f71117c0bb0c76a1bc6e158968c88acc6c23286d564959ff269388b3431b6"
+    },
+    "validation/probes/create_town_fixtures.py": {
+      "bytes": 8772,
+      "sha256": "97577fa25114b309ad418e3fe22989bfb3acc09a01088d1384d5db8c41d2f3a4"
+    },
+    "validation/probes/recheck_headless_boundaries.py": {
+      "bytes": 9835,
+      "sha256": "f3675f5cb68c8e3abd7616010ddcfbdf6d16b202066ad9f62afdf38467e8db19"
+    },
+    "validation/probes/recheck_headless_history.py": {
+      "bytes": 8495,
+      "sha256": "c8de1774cd2d0ee097aaacc82edd75578c2e998e27eec149d0f1d0aa0475711d"
+    },
+    "validation/probes/recheck_headless_render_binding.py": {
+      "bytes": 5882,
+      "sha256": "7ee156b53b732667445cff2a334d47741c2ec8679af35d2bdbbde02a03039ed1"
+    },
+    "validation/probes/validate_contextual_boundaries.py": {
+      "bytes": 10095,
+      "sha256": "12d20aaec7614591824f2b7de0fa15d67bc6b0704e5f83c91a802055eb6f00f6"
+    },
+    "validation/probes/validate_contextual_encounters.py": {
+      "bytes": 17329,
+      "sha256": "7132a0fd728939c0c6b129f3c139291206df24d2f3ae92283d8a27541b07dc9b"
+    },
+    "validation/probes/validate_contextual_native.py": {
+      "bytes": 62706,
+      "sha256": "12f78b1771971ca05110d71a5283bb7f2269527f4fc2c358b3d63c053621adfb"
+    },
+    "validation/probes/validate_contextual_random.py": {
+      "bytes": 8626,
+      "sha256": "6843b5add4e5be4c5c95c909abe774a362b1b69593ac9ed5c5841de71d1de729"
+    },
+    "validation/probes/validate_headless_action_boundaries.py": {
+      "bytes": 19227,
+      "sha256": "5c315b15071ddf95c35cea869a0cf34486d95e574ad72c28831ddcc417ff6651"
+    },
+    "validation/probes/validate_headless_history.py": {
+      "bytes": 11129,
+      "sha256": "7c7f45d673fe554d75a47d3d5d8d70cc63b3392bfa511bb3f316161d1eba6f0a"
+    },
+    "validation/probes/validate_headless_native_boundaries.py": {
+      "bytes": 11417,
+      "sha256": "a6bcb920c39c701ae7d83d8b7380b5ecf467bfa6dbe0088aae23a62cc7d74c8e"
+    },
+    "validation/probes/validate_headless_render_binding.py": {
+      "bytes": 7493,
+      "sha256": "f2220856e52431ca4e6be0a86249a5e097e2b723130e563674abf1a3a85794dd"
+    },
+    "validation/probes/validate_neural_failure.py": {
+      "bytes": 5135,
+      "sha256": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802"
+    },
+    "validation/probes/validate_neutral_terminal.py": {
+      "bytes": 9905,
+      "sha256": "466296afd2a33b06a2e2880ed99619edb82a9ab5eff7a9ff55a7bc1653de869c"
+    },
+    "validation/probes/validate_preexisting_failures.py": {
+      "bytes": 8726,
+      "sha256": "1f856138ec3c6daf1ba81e503ed61b65b82a6928356c26db0ef8307b71429948"
+    },
+    "validation/probes/validate_town_capture.py": {
+      "bytes": 12357,
+      "sha256": "9baf5d87fa99c2d5edcbf0165e4e12af1eaf382327d98635d92b16a1eed4b897"
+    },
+    "validation/probes/validate_town_native.py": {
+      "bytes": 33130,
+      "sha256": "e3e7f670521ef35f56c27e384bd7fbe0112568054fc6a589bd51f60ad6099b1f"
+    },
+    "validation/probes/validate_town_transfer.py": {
+      "bytes": 17132,
+      "sha256": "ad78ed396df50e5127329062b7d909425a795ab7dc676089de83b188a665becf"
+    },
+    "validation/troop-transfer-2026-10-25.json": {
+      "bytes": 195488,
+      "sha256": "d0a3ae8261d3b7189fcf5210429babc34edd7b19f394c1764b420b62ffc8cb9e"
+    },
+    "vcmi/build/bin/AI/libBattleAI.dylib": {
+      "bytes": 486416,
+      "sha256": "c970befe23e88a4c1599c9c7a2dd5eada7ddddded48cb5d81a6ff06c3cf6b2bb"
+    },
+    "vcmi/build/bin/AI/libEmptyAI.dylib": {
+      "bytes": 64032,
+      "sha256": "fc857816db89a54b7e9d10307d4dc8244812fd4e7b1752e336c74b701b181799"
+    },
+    "vcmi/build/bin/AI/libExplorerRL.dylib": {
+      "bytes": 729968,
+      "sha256": "b023e831792e535bea4ada0000ff4cc429ec579ca5e32571671b7bc13eef1e0a"
+    },
+    "vcmi/build/bin/AI/libMMAI.dylib": {
+      "bytes": 713616,
+      "sha256": "8fd2203a1e988a7c7011cd4534a6cc63353980aae49128d02671a2aae4485a08"
+    },
+    "vcmi/build/bin/AI/libNullkiller.dylib": {
+      "bytes": 2190960,
+      "sha256": "b64dd73ec74270805b9b87f6f4e0ebfd70de4bfb26964f46ce6226b1261cee3d"
+    },
+    "vcmi/build/bin/AI/libNullkiller2.dylib": {
+      "bytes": 2204088,
+      "sha256": "75cdbded24b51aa663771a4a81a68de268533f87c90bedd83e7688b633a9cead"
+    },
+    "vcmi/build/bin/AI/libStupidAI.dylib": {
+      "bytes": 134832,
+      "sha256": "f77c4f978ef708d548d57b78eb154948d079c3d7cf472b2b0d9e4b99ebe3eca2"
+    },
+    "vcmi/build/bin/libvcmi.dylib": {
+      "bytes": 9972688,
+      "sha256": "afa7c5df50a8459767c398ae44f0e5e7ee57b4683c99f55281f611e4176a7a4e"
+    },
+    "vcmi/build/bin/vcmiclient": {
+      "bytes": 11698952,
+      "sha256": "0e65e1a8fe8bdf1f0b363d09e02a215a713c4b2dcc880634d3220206264b935d"
+    },
+    "vcmi/build/bin/vcmireplay": {
+      "bytes": 12369432,
+      "sha256": "be55759e9921ae79136fd7fb7c14b0b4b0b629515ed71c0fb1075f5a73285842"
+    }
+  },
+  "assembled_at_utc": "2026-10-24T23:14:51.852639+00:00",
+  "assembler": "validation/assemble_first_gameplay_2026_10_25.py",
+  "attempts": [
+    {
+      "admission_replay": {
+        "present": false,
+        "verified": false
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": null,
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 563,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 563,
+          "messages": 517,
+          "requests": 96,
+          "responses": 257,
+          "transactions": 1795
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": false,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001",
+      "engine_seed": 99201,
+      "env_steps": 257,
+      "episode": 1,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 6.476465999992797,
+      "learner_player": 0,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000001/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "before",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 16,
+            "close": 35,
+            "construct": 1,
+            "end_turn": 16,
+            "move_to": 11,
+            "open_building": 4,
+            "open_hero": 14,
+            "open_panel": 18,
+            "open_town": 21,
+            "recruit": 4,
+            "select_recruit": 8
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 148,
+          "boundary": "cutoff",
+          "conditional_probabilities": 252,
+          "eligible_samples": 148,
+          "last_observed_day": 17,
+          "last_sampled_day": 16,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 0,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 148
+          },
+          "role": "learner",
+          "sampled_choices": 148,
+          "samples": 148,
+          "value_estimates": 149,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        },
+        {
+          "action_kinds": {
+            "back": 9,
+            "close": 24,
+            "end_turn": 15,
+            "move_to": 17,
+            "open_building": 3,
+            "open_hero": 13,
+            "open_panel": 8,
+            "open_town": 11,
+            "recruit": 2,
+            "select_recruit": 1,
+            "transfer_stack": 5
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 108,
+          "boundary": "cutoff",
+          "conditional_probabilities": 203,
+          "eligible_samples": 108,
+          "last_observed_day": 16,
+          "last_sampled_day": 16,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 1,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 108
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 108,
+          "samples": 108,
+          "value_estimates": 109,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        }
+      ],
+      "policy_seeds": [
+        101003,
+        101004
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    },
+    {
+      "admission_replay": {
+        "present": false,
+        "verified": false
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": null,
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 672,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 672,
+          "messages": 519,
+          "requests": 111,
+          "responses": 258,
+          "transactions": 1904
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": false,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002",
+      "engine_seed": 99201,
+      "env_steps": 258,
+      "episode": 2,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 6.852233249999699,
+      "learner_player": 1,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000002/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "before",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 9,
+            "close": 14,
+            "construct": 1,
+            "end_turn": 17,
+            "move_to": 9,
+            "open_building": 5,
+            "open_hero": 6,
+            "open_panel": 9,
+            "open_town": 9,
+            "recruit": 3,
+            "select_recruit": 7,
+            "transfer_stack": 5
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 94,
+          "boundary": "cutoff",
+          "conditional_probabilities": 183,
+          "eligible_samples": 94,
+          "last_observed_day": 18,
+          "last_sampled_day": 18,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 0,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 94
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 94,
+          "samples": 94,
+          "value_estimates": 95,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        },
+        {
+          "action_kinds": {
+            "back": 18,
+            "close": 33,
+            "construct": 1,
+            "end_turn": 17,
+            "move_to": 16,
+            "open_building": 6,
+            "open_hero": 16,
+            "open_panel": 20,
+            "open_town": 17,
+            "recruit": 6,
+            "select_recruit": 4,
+            "transfer_stack": 8
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 162,
+          "boundary": "cutoff",
+          "conditional_probabilities": 313,
+          "eligible_samples": 162,
+          "last_observed_day": 18,
+          "last_sampled_day": 17,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 1,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 162
+          },
+          "role": "learner",
+          "sampled_choices": 162,
+          "samples": 162,
+          "value_estimates": 163,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        }
+      ],
+      "policy_seeds": [
+        101005,
+        101006
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    },
+    {
+      "admission_replay": {
+        "present": false,
+        "verified": false
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": null,
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 488,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 488,
+          "messages": 521,
+          "requests": 86,
+          "responses": 259,
+          "transactions": 1739
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": false,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003",
+      "engine_seed": 99202,
+      "env_steps": 259,
+      "episode": 3,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 6.907146832993021,
+      "learner_player": 0,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000003/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "before",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 10,
+            "close": 23,
+            "construct": 1,
+            "end_turn": 20,
+            "move_to": 9,
+            "open_building": 3,
+            "open_hero": 10,
+            "open_panel": 15,
+            "open_town": 14,
+            "recruit": 5,
+            "select_recruit": 2
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 112,
+          "boundary": "cutoff",
+          "conditional_probabilities": 189,
+          "eligible_samples": 112,
+          "last_observed_day": 21,
+          "last_sampled_day": 21,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 0,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 112
+          },
+          "role": "learner",
+          "sampled_choices": 112,
+          "samples": 112,
+          "value_estimates": 113,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        },
+        {
+          "action_kinds": {
+            "back": 23,
+            "close": 27,
+            "construct": 1,
+            "end_turn": 20,
+            "move_to": 12,
+            "open_building": 10,
+            "open_hero": 17,
+            "open_panel": 17,
+            "open_town": 10,
+            "recruit": 2,
+            "select_recruit": 5
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 144,
+          "boundary": "cutoff",
+          "conditional_probabilities": 230,
+          "eligible_samples": 144,
+          "last_observed_day": 21,
+          "last_sampled_day": 20,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 1,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 144
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 144,
+          "samples": 144,
+          "value_estimates": 145,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        }
+      ],
+      "policy_seeds": [
+        101007,
+        101008
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    },
+    {
+      "admission_replay": {
+        "present": false,
+        "verified": false
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": null,
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 359,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 359,
+          "messages": 523,
+          "requests": 58,
+          "responses": 260,
+          "transactions": 1549
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": false,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004",
+      "engine_seed": 99202,
+      "env_steps": 260,
+      "episode": 4,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 6.665367375011556,
+      "learner_player": 1,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000004/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "before",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 17,
+            "close": 26,
+            "construct": 1,
+            "end_turn": 16,
+            "move_to": 12,
+            "open_building": 9,
+            "open_hero": 10,
+            "open_panel": 15,
+            "open_town": 17,
+            "recruit": 3,
+            "select_recruit": 4,
+            "transfer_stack": 7
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 137,
+          "boundary": "cutoff",
+          "conditional_probabilities": 254,
+          "eligible_samples": 137,
+          "last_observed_day": 17,
+          "last_sampled_day": 17,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 0,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 137
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 137,
+          "samples": 137,
+          "value_estimates": 138,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        },
+        {
+          "action_kinds": {
+            "back": 9,
+            "close": 27,
+            "construct": 1,
+            "end_turn": 16,
+            "move_to": 11,
+            "open_building": 4,
+            "open_hero": 16,
+            "open_panel": 11,
+            "open_town": 11,
+            "recruit": 4,
+            "select_recruit": 3,
+            "transfer_stack": 6
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 119,
+          "boundary": "cutoff",
+          "conditional_probabilities": 216,
+          "eligible_samples": 119,
+          "last_observed_day": 17,
+          "last_sampled_day": 16,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 1,
+          "purpose": "diagnostic",
+          "reward_counts": {
+            "0": 119
+          },
+          "role": "learner",
+          "sampled_choices": 119,
+          "samples": 119,
+          "value_estimates": 120,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        }
+      ],
+      "policy_seeds": [
+        101009,
+        101010
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    },
+    {
+      "admission_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 501,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 501,
+          "messages": 517,
+          "requests": 83,
+          "responses": 257,
+          "transactions": 1724
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/admission-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-receipt.json",
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 501,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 501,
+          "messages": 517,
+          "requests": 83,
+          "responses": 257,
+          "transactions": 1724
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": true,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005",
+      "engine_seed": 99101,
+      "env_steps": 257,
+      "episode": 5,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 7.557011041993974,
+      "learner_player": 0,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000005/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 29,
+            "close": 38,
+            "construct": 2,
+            "end_turn": 12,
+            "move_to": 21,
+            "open_building": 14,
+            "open_hero": 13,
+            "open_panel": 24,
+            "open_town": 25,
+            "recruit": 5,
+            "select_recruit": 7
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 190,
+          "boundary": "cutoff",
+          "conditional_probabilities": 327,
+          "eligible_samples": 190,
+          "last_observed_day": 13,
+          "last_sampled_day": 12,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 0,
+          "purpose": "training",
+          "reward_counts": {
+            "0": 190
+          },
+          "role": "learner",
+          "sampled_choices": 190,
+          "samples": 190,
+          "value_estimates": 191,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        },
+        {
+          "action_kinds": {
+            "back": 7,
+            "close": 15,
+            "end_turn": 11,
+            "move_to": 7,
+            "open_building": 1,
+            "open_hero": 9,
+            "open_panel": 6,
+            "open_town": 6,
+            "select_recruit": 4
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 66,
+          "boundary": "cutoff",
+          "conditional_probabilities": 106,
+          "eligible_samples": 66,
+          "last_observed_day": 12,
+          "last_sampled_day": 12,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 1,
+          "purpose": "training",
+          "reward_counts": {
+            "0": 66
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 66,
+          "samples": 66,
+          "value_estimates": 67,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        }
+      ],
+      "policy_seeds": [
+        100003,
+        100004
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    },
+    {
+      "admission_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 751,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 751,
+          "messages": 519,
+          "requests": 138,
+          "responses": 258,
+          "transactions": 2100
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/admission-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "check_scope": "Executor marks a completed collection only after history, native replay, fixed-weight and both-player behavior-probability checks. This assembler does not reexecute these checks.",
+      "collection_receipt": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-receipt.json",
+      "collection_replay": {
+        "boundary": {
+          "barrier_id": null,
+          "client_packets": 751,
+          "kind": "cutoff"
+        },
+        "captured_prefix_only": true,
+        "checked": {
+          "client_packets": 751,
+          "messages": 519,
+          "requests": 138,
+          "responses": 258,
+          "transactions": 2100
+        },
+        "present": true,
+        "report": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/collection-replay/contextual-replay-verification.json",
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "verified": true
+      },
+      "declared_optimizer_eligible": true,
+      "directory": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006",
+      "engine_seed": 99101,
+      "env_steps": 258,
+      "episode": 6,
+      "error": null,
+      "executor_all_collection_checks_passed": true,
+      "game_wall_seconds": 8.63406783399114,
+      "learner_player": 1,
+      "manifest": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/manifest.json",
+      "manifest_failure_detail": "Both real own-decision cutoffs captured",
+      "manifest_status": "truncated",
+      "manifest_termination_reason": "collection_window",
+      "native_outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "native_returncode": -15,
+      "native_rewards": {
+        "blue": null,
+        "red": null
+      },
+      "neural_rollout": "runs/first-training-prepared-2026-10-25/approved-execution/episode-000006/neural-rollout.json",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "players": [
+        {
+          "action_kinds": {
+            "back": 15,
+            "close": 36,
+            "construct": 1,
+            "end_turn": 8,
+            "move_to": 27,
+            "open_building": 6,
+            "open_hero": 24,
+            "open_panel": 14,
+            "open_town": 13,
+            "recruit": 3,
+            "select_recruit": 5
+          },
+          "behavior_checkpoint": "random-v4-b1f6bc72889164ab",
+          "bootstrap_samples": 152,
+          "boundary": "cutoff",
+          "conditional_probabilities": 277,
+          "eligible_samples": 152,
+          "last_observed_day": 9,
+          "last_sampled_day": 9,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-ddd80ce951094b27",
+          "opponent_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+          "origin": "native",
+          "player": 0,
+          "purpose": "training",
+          "reward_counts": {
+            "0": 152
+          },
+          "role": "frozen_opponent",
+          "sampled_choices": 152,
+          "samples": 152,
+          "value_estimates": 153,
+          "weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+        },
+        {
+          "action_kinds": {
+            "back": 6,
+            "close": 30,
+            "construct": 1,
+            "end_turn": 8,
+            "move_to": 7,
+            "open_building": 2,
+            "open_hero": 15,
+            "open_panel": 12,
+            "open_town": 15,
+            "recruit": 6,
+            "select_recruit": 2
+          },
+          "behavior_checkpoint": "random-v4-ddd80ce951094b27",
+          "bootstrap_samples": 104,
+          "boundary": "cutoff",
+          "conditional_probabilities": 181,
+          "eligible_samples": 104,
+          "last_observed_day": 9,
+          "last_sampled_day": 8,
+          "nonzero_reward_samples": 0,
+          "opponent_checkpoint": "random-v4-b1f6bc72889164ab",
+          "opponent_weights_sha256": "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f",
+          "origin": "native",
+          "player": 1,
+          "purpose": "training",
+          "reward_counts": {
+            "0": 104
+          },
+          "role": "learner",
+          "sampled_choices": 104,
+          "samples": 104,
+          "value_estimates": 105,
+          "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+        }
+      ],
+      "policy_seeds": [
+        100005,
+        100006
+      ],
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choice_budget_passed": true,
+      "sampled_choices": 256,
+      "sampled_day_budget_passed": true,
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+    }
+  ],
+  "attempts_planned": 10,
+  "attempts_started": 6,
+  "authorization_record": "validation/first-gameplay-authorization-2026-10-25.json",
+  "budget_checks": {
+    "attempts": true,
+    "null_means": "Bounds are not proven for every attempted episode because its persisted rollout is unavailable; this is not a passing budget check.",
+    "optimizer_steps": true,
+    "sampled_budget_attempts_checked": 6,
+    "sampled_budget_attempts_unavailable": [],
+    "sampled_choices": true,
+    "sampled_days": true,
+    "updates": true,
+    "wall_seconds": true
+  },
+  "checkpoint_artifacts": {
+    "resume.pt": "runs/first-training-prepared-2026-10-25/approved-execution/resume.pt",
+    "trained-policy.pt": null
+  },
+  "checkpoint_reload_verified_by_executor": false,
+  "checkpoint_scope": "Executor compares reloaded model, Adam, progress, frozen pool and global/dedicated RNG states, then uses restored objects for after-evaluation. No process-restart/resume CLI is implemented.",
+  "cleanup_error": null,
+  "completed_updates": 1,
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "evaluation_engine_seeds": [
+      99201,
+      99202
+    ],
+    "initialization_seed": 99001,
+    "interface": "adventure-armies-v1",
+    "max_days": 30,
+    "max_optimizer_steps": 16,
+    "max_requests": 256,
+    "max_updates": 1,
+    "opponent_seed": 99002,
+    "policy_seed": 99003,
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "schema": "heroes-first-training-config-v1",
+    "torch_threads": 1,
+    "total_wall_seconds": 3600,
+    "training_engine_seeds": [
+      99101
+    ]
+  },
+  "error": "RuntimeError: Boolean value of Tensor with more than one value is ambiguous",
+  "executor_report": "runs/first-training-prepared-2026-10-25/approved-execution/report.json",
+  "experiment_date": "2026-10-25",
+  "experiment_timezone": "Europe/Kiev",
+  "implementation_sha256": {
+    "configs/first-training-v1.json": "0c49fc9c20cb6a693152f86f65de6f060df1c20a5a8d43b818226b7a2112adea",
+    "dependencies/learner.in": "45dd60d5be8f6ddd2daf0a0c9abadd9580a14ac586a09f7517c00953b21aa9bb",
+    "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+    "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+    "engine/ExperimentReplay/CMakeLists.txt": "baeec2896b6afaf85d1f7e5207f7dffa9402b9efd4be51e66ae40b1aa590738b",
+    "engine/ExperimentReplay/ContextualReplay.cpp": "5475e9cd12db1d9ca7ad468fee5df93e1158766310a25a71fea00466fbb4cfb3",
+    "engine/ExperimentReplay/ContextualReplay.h": "7a077ec439e95554848a12812c231096230a6b1d33ba08767cb6386751c833b5",
+    "engine/ExperimentReplay/ReplayClientHost.cpp": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010",
+    "engine/ExperimentReplay/ReplayMain.cpp": "11be345f4caaa2439a9dfcb987f54d202694fd0a5905967ff372965eb382e745",
+    "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+    "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+    "engine/ExplorerRL/CMakeLists.txt": "ded97f4ad8f4f6d84b7e5701f5d5baaa1d6e9cebc94854866a82378fc6f20ae9",
+    "engine/ExplorerRL/Contextual.cpp": "c4294b03cd7ca63057f2a0cb4eef5f4481c98887a6fbe5adfb5a75a94dc43f44",
+    "engine/ExplorerRL/Contextual.h": "70f729771d9751e1313deb68e53813477dc5535087730ce2eadad1bd6175f608",
+    "engine/ExplorerRL/ContextualEvidence.cpp": "13ab5f2318599e0f37164e4c3c218b540dee2d679a50b405fd5f4d6fb707cd64",
+    "engine/ExplorerRL/ContextualEvidence.h": "f07566d28567988b8431e17ec89e829fdd5b3a3508f1606715e5e5280663d042",
+    "engine/ExplorerRL/ExplorerRL.cpp": "0a8177217f683e355e2a01cea51a4e5576cfed4821288ca9aeed9011bf10668d",
+    "engine/ExplorerRL/ExplorerRL.h": "243f83f058f46de2fc6044917dcae9c3fc64e39b0434f55867fc2fee340059bb",
+    "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+    "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+    "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+    "engine/ExplorerRL/Notice.cpp": "05c1f04cd0544717f313c074e4d834544bf6b82b277a01615493e25ef60519a3",
+    "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+    "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+    "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+    "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+    "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+    "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+    "engine/ExplorerRL/TownTransfer.cpp": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d",
+    "engine/ExplorerRL/TransferRules.h": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293",
+    "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+    "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+    "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+    "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+    "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+    "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+    "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+    "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+    "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+    "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+    "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+    "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+    "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+    "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+    "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+    "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+    "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101",
+    "engine/patches/0015-contextual-terminal-barrier.patch": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2",
+    "engine/patches/0016-contextual-client-replay.patch": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d",
+    "engine/patches/0017-town-army-profile.patch": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef",
+    "experiments/episodes/scoring.py": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73",
+    "experiments/headless/agents.py": "be0f3f09860087640db56781ceaa10d6476a815be21883b9cc340444daa42839",
+    "experiments/headless/benchmark.py": "470b1689bf6957c3935f653ddce1f2935aeda5daca53740f822bcb0e4eacd451",
+    "experiments/headless/bridge_protocol.py": "88ea914f146bbc9de651a4859bc32f6ad12f101efe209f95190bf99420116c4f",
+    "experiments/headless/compact_evidence.py": "f7792f0382d73b8b0c618707659aa16f8659c5b0133b65851fc7c241dc81120a",
+    "experiments/headless/contextual_env.py": "4b3b3f9db4b25da50cb605dd4b897ed6e0605d9af1a9194253b3bce168a988c4",
+    "experiments/headless/contextual_evidence.py": "275b220ff0437a0e05ed7ee33b8f1e8b2f772a3bbe7a1058dbf8cdf5ef75dd61",
+    "experiments/headless/contextual_protocol.py": "37a80f1ebb4f419d335940e3522350f912ac2668fd5bdc4e2f0350beff5c36ac",
+    "experiments/headless/contextual_replay.py": "5c704fd3375c43141aa46400e9b3b49068fbf06ff5c587cb5b660e6bebc85532",
+    "experiments/headless/contextual_replay_history.py": "ea826534dbafff162dcdb18c13f0adcfa76632f74084f2487e2c56567ac0a6ce",
+    "experiments/headless/cost_breakdown.py": "74502aed63a9455d3ef56a2b296a68ca1aea75bc55cd6055a5d9ca6c4a21bd7b",
+    "experiments/headless/env.py": "513babe630346eb3747aa0c98ab9adc0d0c8f05a937f2becc408a6e2cb4687e4",
+    "experiments/headless/history_v1.py": "3ca7837f3f821d91839acd7322bb2471ad5ca9559c5f373fb5350044d44aa050",
+    "experiments/headless/player_history.py": "e496821e9b3178bc37dc438f66c935714ed46f58f18a7b9a23508441c0ca2071",
+    "experiments/headless/render_replay.py": "0f6e343917a48d2aad0515c72168e50804f1c980d34381bf0e89a89270737802",
+    "experiments/headless/replay.py": "1dda4e226ec02889a2c2cd10d122d8b0e486012f7200547f31764878ef8e67bd",
+    "experiments/headless/run_headless.py": "5f57d88d58198fdad59f06c71b3b94876a76c9df6048f1a0878af9d695d5f912",
+    "experiments/headless/run_series.py": "0752f1a6b3d5e0ed2ee7c75dfb9dd008d95300ad09e0b5365c33b26a93de13d0",
+    "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+    "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+    "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+    "experiments/learner/contextual.py": "c725b0852a76f980f566e29cc6387a6f6fd957751dbcb75731695ba7119cd9d7",
+    "experiments/learner/contextual_model.py": "9701da8146ba2e6c580d75ad97fd8d0605d460f89f0b362b1db05691f3b05499",
+    "experiments/learner/contextual_rollout.py": "4a392b943f381c6cafd480ef4a3144a5eb3e21b4859eda1e8af3570a2f623ee9",
+    "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+    "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+    "experiments/learner/gameplay.py": "bdad4dfb4ae61c7696606c59c88e587bca5082c29acc5309ddb3647b05325530",
+    "experiments/learner/inference.py": "cb61e87f038a765a0d289443ecadaa8710af9c428dd7c2d374ba0c80d93767d1",
+    "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+    "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+    "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+    "tests/native/contextual_evidence_lifetime.cpp": "3f2597c991efa8bf3a5fc944b6f9b6481f5d85c0caf86c849182adb8b8d8fb5c",
+    "tests/native/knowledge_grid.cpp": "eae0a8d20a4242c66e06e60cddc7736778be4ed49ff359b190be7948a291875f",
+    "tests/native/notices.cpp": "48fa94bd99f54d3562098fe07e393d7c30f39e5964a254f9705d27c13aa83308",
+    "tests/native/self_play_routing.cpp": "1e6196c3939eafb976fe542c2409210162ad5cab0077ea05265bad065205e25d",
+    "tests/native/terminal_barrier.cpp": "3bfb6bb08bf3a28dd0ec71f626d4c9fe0c48d3673d0b2dfab8f472488ee1a999",
+    "tests/native/threadsafevector_shutdown.cpp": "14518696c773128c59e30e2a43a1e5c48767002d1413a27727aa87ead409ca39",
+    "tests/native/transfer_rules.cpp": "855d742bba517b7afc15110f6411b54b54615b0d79f526841ce6d2ef63cbf9ce",
+    "tests/native/visible_state.cpp": "b5f0854b5aef7e705e97dddeddc183964dc7725339cce01c6154b63244b12706",
+    "tests/test_analysis.py": "d7375b142f772f07bc32774eae98d028e8f9173aa8d7661618a38a2bb33a1bef",
+    "tests/test_contextual_adapter.py": "52b3b60fc05d6e18d8c5a0ba89a90783270ef9d02e2986ec3586b371e78a509c",
+    "tests/test_contextual_armies.py": "41a0c2ec9f51615b14dd7c8ef83ea5c5c2c202bc9e7022cf82cdbde393040db2",
+    "tests/test_contextual_armies_model.py": "958a07db6d431348566423a803cca4f756b541beb8063a351d8748b759d88359",
+    "tests/test_contextual_auditor.py": "eb5c13aa2f11ea0d9c3acd98e2fc8c9c8c604b84c1a7787df0b6db822b59ca54",
+    "tests/test_contextual_boundary_fixture.py": "86232751c46099ac263dac725279a31165e87f189012d5b6eddf18263d7a70a4",
+    "tests/test_contextual_casualty_fixture.py": "0e79ed07aac32ccfb459d6c7e15eed027dccc03fa3dd48c864829a16e5947fb3",
+    "tests/test_contextual_checkpoints.py": "0dae4082e96bc2b0616055814a99d18f5c358cf2636355d8320bfc586b103b4d",
+    "tests/test_contextual_contract.py": "983bddfe02cdee6e5af3658889f4d751a7e8437b883791151e3d36128bbd5740",
+    "tests/test_contextual_evidence.py": "ca90c353ebb288a17fd946213674bc3efb7289c7ea72aa0a89501c905469ccf1",
+    "tests/test_contextual_fixtures.py": "5996f8e98b43a8df0363afa5733d465413223c53b2866071784e27ab56ce15ce",
+    "tests/test_contextual_gap_probes.py": "f8a54e42ad8bfb22f69d55105303a30bb87b74b3446e457edcb3c81a77c4a82e",
+    "tests/test_contextual_inference.py": "ee46ddf34b33582c5782fd98beea26cdf064fe27775bbed04c85dd3627af185f",
+    "tests/test_contextual_model.py": "932acc052526fda878f79bb84c7ac5423b4963ea13cca690ba55b5e61651cc56",
+    "tests/test_contextual_native_probe.py": "3b33ed7a1b72e1eb7accf678f95b5f446fce8902b6a672707062b9b69bafed97",
+    "tests/test_contextual_notices.py": "0a55f5822b280f2c25a16385b410aa65ac5b28af42ec11ae3c668d0a84a524d1",
+    "tests/test_contextual_ppo.py": "1c34d809c382b4bde3b66dd0a1832c5e2c131086dc56093b09bf8afd63b171bd",
+    "tests/test_contextual_random_probe.py": "c33fefa5a7701e0cd5139dd86b7f3950e7a0057f8765f6e6701da7636089c9d8",
+    "tests/test_contextual_recruitment.py": "3d15e61c4a700e15f00aee55612970c3160b598435f13a8a1f5c7759e7488236",
+    "tests/test_contextual_replay.py": "faa688ee63be4c48b159c8c93ab5034566ad284f3a204d847f80c0d62f50d45e",
+    "tests/test_contextual_replay_boundary.py": "36d0889e460525317e79c8ecbe85f946c64ca11e5150e320a64d0689b30f56ef",
+    "tests/test_contextual_replay_history.py": "5fcad1c40830c1ecf656603f9ec9fbb8363498ed0d57c6f12d1ffef11a373e54",
+    "tests/test_contextual_rollout.py": "0475e0ee78dcda1fa973b18ea8537e4227fb9495712bcbc9adbaa64538677dec",
+    "tests/test_contextual_terminal.py": "35f688098175c4b1a654a1fa848eadbe3f3deda8a9344ad3e2f86efdb1afe557",
+    "tests/test_contextual_town.py": "0b7bd807369a14f59246759c2d228b039b0db29f826bb0d9987bac2dcc0ee81b",
+    "tests/test_contextual_transfer_replay.py": "3a8c79bec1df3f360cc804b8fdf1fdb4d9d8546bd81bfd52b2fd8d8580f17d74",
+    "tests/test_first_run.py": "4fe465d0c4479def5b9492f495de29fbefcabca45f796a43c048e3a48850dbdd",
+    "tests/test_gameplay_checkpoint.py": "340c137031524a7657a6c3507b0c53b4c2321b53dd94e6cda7842ef4aea3b96d",
+    "tests/test_gameplay_receipts.py": "6ddf2e7cc4bcbeabba92f58ed26d9dd312403d50b9a4f14792b72954496e493f",
+    "tests/test_headless.py": "195e8b2cc9c51a6495f68b200f4b4fb3ba01d560af099814549d428d2ae3c1a1",
+    "tests/test_headless_costs.py": "23f7dd55a0d714a22dd88391976e4af2ecd4be0b05074dcdfd524946f5a921c5",
+    "tests/test_headless_runner.py": "926be4e041a565770cd5fda81dda234b11db654cccb9a5133c0460bf445e3317",
+    "tests/test_learner_actions.py": "0d6e5a5cd73fab3823a64fb49972b18f4a0d82d313502ebf6233c78a10321617",
+    "tests/test_learner_contract.py": "92ae127f3fbf8e63817d6f51f79db7bb9339f42dd168a32010d0e225564bcf55",
+    "tests/test_learner_model.py": "a2f0ae2b528cfafd0fb0b247a81e196d3ee5db79af5e62a01998527fdb89eb30",
+    "tests/test_learner_trajectory.py": "3522e5cf5b6c3bfd8cbc123051e2c0caa4f536e3b95a9a0ce199fbbac0abe590",
+    "tests/test_native_contextual_evidence.py": "f5e276fe57b523ee5a98d96f51a5f251d7031e9939a54bb47de701c4f4ed5e92",
+    "tests/test_native_knowledge.py": "8caa6166a880c58590dc515832bd3cadcdd6464cd36b1b3a694d4465c0e68a4e",
+    "tests/test_native_notices.py": "83e9da0f25d56e3bf99b05c424aea1d722245b939bce4003f8a5c8629f6dd959",
+    "tests/test_native_self_play.py": "f7707ac4c69a8e64e2df94e93947bf050ed983640ce83e1b0eda9362dad5ce21",
+    "tests/test_native_shutdown.py": "247e0ff2abfdbcf7bfc4a8211f814679bdbaf4c369a8ec674ed5c5409ddaeec4",
+    "tests/test_native_terminal_barrier.py": "cdcfcbfa6878eb56e6dfaced23e17a30402e80b8cb5692ff9ce1a0cb1866a025",
+    "tests/test_native_transfer.py": "6ddf0be4224421e41c014ba9e19edad99936c3b33fe9ae1f5abfd876da9427e0",
+    "tests/test_native_visible_state.py": "7fed501a3d74eda63a8b979df0d595c912c7ea3e735d6230a49449b22933fca8",
+    "tests/test_neutral_terminal_fixture.py": "675ae0c7b1b684fafc53b622eca9e25fdb05eaddce527a36e6be949f65bd958e",
+    "tests/test_ordinary_behavior_probe.py": "24233b9b9cac10c65557eb5157010fb1304ccc812ac86bd516b4709c63f62804",
+    "tests/test_random_policy.py": "b33707499d7fc0f3f5d0b736920f5581f2ef885dbd047959a414e280fe9e515b",
+    "tests/test_record.py": "c64e18a932e34cb83507207873f3c6336fb94d8d9fe9cf304ebfc671191c7712",
+    "tests/test_render_replay.py": "e52d1934a3cc21af7da98a61fece60fb6734729917fb589a69f5ef304449a7f8",
+    "tests/test_replay.py": "be029e01327affd27862c8bcc31947cf247d4e8f3ec8a651f13515b97187573b",
+    "tests/test_scenario.py": "cf83ba98a718ae97c90ed3f09b8b766da9c8645ec37cfa2df0aaa8faa4ad5698",
+    "tests/test_self_play.py": "3efe368209f8fde5eac5528a9b2152a2fbca60925192a65b197fee8b03f0458b",
+    "tests/test_terminal_profile_scope.py": "6b6030a1ab00422da99e32d28ac2b98b09bc1016b33dd586aa20b78ae66ae854",
+    "tests/test_terminal_rollout.py": "3ad9da0fe1ea3aba2d28871f4d278a907ac7feb4f8fd3b679421bcfff7f89d17",
+    "tests/test_town_fixtures.py": "be268b879e2b33aff098ca4ae637fecf58b6de8f4a30c3effaef5ee01dba8532",
+    "tests/test_town_transfer_probe.py": "4cbeae255b6a4c0234e9c0d6ac3110801d51b9de82f9fa551e40e24ae34ca669",
+    "tests/test_video.py": "1f7560250d97bbc7739025f1fcca9b70546e595280f22cd6d274d09b9480edad",
+    "tools/prepare_vcmi.py": "3ef5f491dad5c47706543a3dd356f7afe9c0c6bf310b6beede88037e49f55131",
+    "validation/probes/audit_contextual_histories.py": "18e6ec709a4b457cd4e4b5bc2b4d54d54e9a730e9aa00471715a70d91dd297e9",
+    "validation/probes/audit_headless_histories.py": "967acf23641ee0f164f3410ab759ac52e5aee89d4741273af8fda410d348dff6",
+    "validation/probes/audit_neural_rollout.py": "eac6ee95e226e97b621cd020193430446163173d84ec3be2d28ffe0e447317e1",
+    "validation/probes/audit_ordinary_behavior.py": "6c5abcd45d56ca60afc1fc3a661d97383e3eff4942694ae65156886f0e9ea690",
+    "validation/probes/create_boundary_fixture.py": "3551e85626d781b90881e6e24b549fb944e9a76669e6c955e84e7743d0280a6c",
+    "validation/probes/create_casualty_fixture.py": "e9c9ad9d31245d82f5271496c4a55955f464dbbade961148b12124924ba876c3",
+    "validation/probes/create_contextual_fixtures.py": "6ec20a024177d762c5e06374d50274d8cd631cb88ecd7ae6c870764f970b8390",
+    "validation/probes/create_neutral_terminal_fixture.py": "6f6f71117c0bb0c76a1bc6e158968c88acc6c23286d564959ff269388b3431b6",
+    "validation/probes/create_town_fixtures.py": "97577fa25114b309ad418e3fe22989bfb3acc09a01088d1384d5db8c41d2f3a4",
+    "validation/probes/recheck_headless_boundaries.py": "f3675f5cb68c8e3abd7616010ddcfbdf6d16b202066ad9f62afdf38467e8db19",
+    "validation/probes/recheck_headless_history.py": "c8de1774cd2d0ee097aaacc82edd75578c2e998e27eec149d0f1d0aa0475711d",
+    "validation/probes/recheck_headless_render_binding.py": "7ee156b53b732667445cff2a334d47741c2ec8679af35d2bdbbde02a03039ed1",
+    "validation/probes/validate_contextual_boundaries.py": "12d20aaec7614591824f2b7de0fa15d67bc6b0704e5f83c91a802055eb6f00f6",
+    "validation/probes/validate_contextual_encounters.py": "7132a0fd728939c0c6b129f3c139291206df24d2f3ae92283d8a27541b07dc9b",
+    "validation/probes/validate_contextual_native.py": "12f78b1771971ca05110d71a5283bb7f2269527f4fc2c358b3d63c053621adfb",
+    "validation/probes/validate_contextual_random.py": "6843b5add4e5be4c5c95c909abe774a362b1b69593ac9ed5c5841de71d1de729",
+    "validation/probes/validate_headless_action_boundaries.py": "5c315b15071ddf95c35cea869a0cf34486d95e574ad72c28831ddcc417ff6651",
+    "validation/probes/validate_headless_history.py": "7c7f45d673fe554d75a47d3d5d8d70cc63b3392bfa511bb3f316161d1eba6f0a",
+    "validation/probes/validate_headless_native_boundaries.py": "a6bcb920c39c701ae7d83d8b7380b5ecf467bfa6dbe0088aae23a62cc7d74c8e",
+    "validation/probes/validate_headless_render_binding.py": "f2220856e52431ca4e6be0a86249a5e097e2b723130e563674abf1a3a85794dd",
+    "validation/probes/validate_neural_failure.py": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802",
+    "validation/probes/validate_neutral_terminal.py": "466296afd2a33b06a2e2880ed99619edb82a9ab5eff7a9ff55a7bc1653de869c",
+    "validation/probes/validate_preexisting_failures.py": "1f856138ec3c6daf1ba81e503ed61b65b82a6928356c26db0ef8307b71429948",
+    "validation/probes/validate_town_capture.py": "9baf5d87fa99c2d5edcbf0165e4e12af1eaf382327d98635d92b16a1eed4b897",
+    "validation/probes/validate_town_native.py": "e3e7f670521ef35f56c27e384bd7fbe0112568054fc6a589bd51f60ad6099b1f",
+    "validation/probes/validate_town_transfer.py": "ad78ed396df50e5127329062b7d909425a795ab7dc676089de83b188a665becf"
+  },
+  "initial_checkpoint": {
+    "bytes": 629366,
+    "checkpoint": "random-v4-ddd80ce951094b27",
+    "model_config": {
+      "feature_size": 32,
+      "hidden_size": 64,
+      "max_map_side": 256,
+      "schema": "heroes-context-model-v2"
+    },
+    "opponents": [
+      [
+        "random-v4-b1f6bc72889164ab",
+        "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+      ]
+    ],
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/first-training-prepared-2026-10-25/initial-policy.pt",
+    "provenance": "random_initialization",
+    "sha256": "65e8829865f9d7c5434cea6c6feb5c7d4bd123a62f4e6b0e351c4efc69dc8ffa",
+    "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+  },
+  "interpretation": "No verified natural outcome or nonzero terminal feedback was observed. Zero-reward cutoff updates use bootstrap targets; changed weights or behavior do not demonstrate improved strategy.",
+  "launch_git_commit": "e35cb345cab9a07fc4787671f667e3fb2808697b",
+  "limitations": [
+    "Four held-out paired seed/seat combinations are a pipeline comparison, not a statistical strength evaluation.",
+    "Technical stops and ordinary cutoffs are unscored, never losses or draws; absent phases remain absent.",
+    "Only fresh designated learner training trajectories may enter PPO; evaluation, frozen opponents and archived diagnostics are excluded.",
+    "Native replay verifies recorded prefixes; cutoff replay does not turn a cutoff into a natural ending.",
+    "Prior live-validation scope exclusions still apply: garrisoned-hero edge cases, initial/timer-origin endings, broader dialogs, other maps and platforms."
+  ],
+  "map_identity": {
+    "authored_seed": 0,
+    "canonical_path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+    "fixture": false,
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+    "semantics_verified": true,
+    "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+    "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
+  },
+  "native_identity": {
+    "binary": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/vcmi/build/bin/vcmiclient",
+    "binary_sha256": "0e65e1a8fe8bdf1f0b363d09e02a215a713c4b2dcc880634d3220206264b935d",
+    "explorer_rl_sha256": "b023e831792e535bea4ada0000ff4cc429ec579ca5e32571671b7bc13eef1e0a",
+    "log_level": "info",
+    "map": {
+      "name": "random-baseline-v1.vmap",
+      "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+    }
+  },
+  "native_runtime": {
+    "AI/libBattleAI.dylib": "c970befe23e88a4c1599c9c7a2dd5eada7ddddded48cb5d81a6ff06c3cf6b2bb",
+    "AI/libEmptyAI.dylib": "fc857816db89a54b7e9d10307d4dc8244812fd4e7b1752e336c74b701b181799",
+    "AI/libExplorerRL.dylib": "b023e831792e535bea4ada0000ff4cc429ec579ca5e32571671b7bc13eef1e0a",
+    "AI/libMMAI.dylib": "8fd2203a1e988a7c7011cd4534a6cc63353980aae49128d02671a2aae4485a08",
+    "AI/libNullkiller.dylib": "b64dd73ec74270805b9b87f6f4e0ebfd70de4bfb26964f46ce6226b1261cee3d",
+    "AI/libNullkiller2.dylib": "75cdbded24b51aa663771a4a81a68de268533f87c90bedd83e7688b633a9cead",
+    "AI/libStupidAI.dylib": "f77c4f978ef708d548d57b78eb154948d079c3d7cf472b2b0d9e4b99ebe3eca2",
+    "libvcmi.dylib": "afa7c5df50a8459767c398ae44f0e5e7ee57b4683c99f55281f611e4176a7a4e",
+    "vcmireplay": "be55759e9921ae79136fd7fb7c14b0b4b0b629515ed71c0fb1075f5a73285842"
+  },
+  "observed_training_terminal_feedback": false,
+  "optimizer_update_attempted": true,
+  "paired_evaluation": [
+    {
+      "after": {
+        "attempted": false
+      },
+      "before": {
+        "attempted": true,
+        "episode": 1,
+        "error": null,
+        "learner_action_kinds": {
+          "back": 16,
+          "close": 35,
+          "construct": 1,
+          "end_turn": 16,
+          "move_to": 11,
+          "open_building": 4,
+          "open_hero": 14,
+          "open_panel": 18,
+          "open_town": 21,
+          "recruit": 4,
+          "select_recruit": 8
+        },
+        "learner_last_sampled_day": 16,
+        "learner_outcome": null,
+        "learner_reward": null,
+        "learner_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+        "sampled_choices_total": 256,
+        "status": "truncated",
+        "termination_reason": "collection_window"
+      },
+      "both_attempted": false,
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "paired_policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "after": {
+        "attempted": false
+      },
+      "before": {
+        "attempted": true,
+        "episode": 2,
+        "error": null,
+        "learner_action_kinds": {
+          "back": 18,
+          "close": 33,
+          "construct": 1,
+          "end_turn": 17,
+          "move_to": 16,
+          "open_building": 6,
+          "open_hero": 16,
+          "open_panel": 20,
+          "open_town": 17,
+          "recruit": 6,
+          "select_recruit": 4,
+          "transfer_stack": 8
+        },
+        "learner_last_sampled_day": 17,
+        "learner_outcome": null,
+        "learner_reward": null,
+        "learner_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+        "sampled_choices_total": 256,
+        "status": "truncated",
+        "termination_reason": "collection_window"
+      },
+      "both_attempted": false,
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "paired_policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "after": {
+        "attempted": false
+      },
+      "before": {
+        "attempted": true,
+        "episode": 3,
+        "error": null,
+        "learner_action_kinds": {
+          "back": 10,
+          "close": 23,
+          "construct": 1,
+          "end_turn": 20,
+          "move_to": 9,
+          "open_building": 3,
+          "open_hero": 10,
+          "open_panel": 15,
+          "open_town": 14,
+          "recruit": 5,
+          "select_recruit": 2
+        },
+        "learner_last_sampled_day": 21,
+        "learner_outcome": null,
+        "learner_reward": null,
+        "learner_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+        "sampled_choices_total": 256,
+        "status": "truncated",
+        "termination_reason": "collection_window"
+      },
+      "both_attempted": false,
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "paired_policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "after": {
+        "attempted": false
+      },
+      "before": {
+        "attempted": true,
+        "episode": 4,
+        "error": null,
+        "learner_action_kinds": {
+          "back": 9,
+          "close": 27,
+          "construct": 1,
+          "end_turn": 16,
+          "move_to": 11,
+          "open_building": 4,
+          "open_hero": 16,
+          "open_panel": 11,
+          "open_town": 11,
+          "recruit": 4,
+          "select_recruit": 3,
+          "transfer_stack": 6
+        },
+        "learner_last_sampled_day": 16,
+        "learner_outcome": null,
+        "learner_reward": null,
+        "learner_weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940",
+        "sampled_choices_total": 256,
+        "status": "truncated",
+        "termination_reason": "collection_window"
+      },
+      "both_attempted": false,
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "paired_policy_seeds": [
+        101009,
+        101010
+      ]
+    }
+  ],
+  "phases": {
+    "after": {
+      "attempts": 0,
+      "learner_natural_outcomes": {},
+      "learner_nonzero_reward_samples": 0,
+      "learner_samples": 0,
+      "passed_collection_replays": 0,
+      "sampled_choices": 0,
+      "status_counts": {},
+      "termination_reasons": {},
+      "verified_natural_outcomes": 0
+    },
+    "before": {
+      "attempts": 4,
+      "learner_natural_outcomes": {},
+      "learner_nonzero_reward_samples": 0,
+      "learner_samples": 541,
+      "passed_collection_replays": 4,
+      "sampled_choices": 1024,
+      "status_counts": {
+        "truncated": 4
+      },
+      "termination_reasons": {
+        "collection_window": 4
+      },
+      "verified_natural_outcomes": 0
+    },
+    "training": {
+      "attempts": 2,
+      "learner_natural_outcomes": {},
+      "learner_nonzero_reward_samples": 0,
+      "learner_samples": 294,
+      "passed_collection_replays": 2,
+      "sampled_choices": 512,
+      "status_counts": {
+        "truncated": 2
+      },
+      "termination_reasons": {
+        "collection_window": 2
+      },
+      "verified_natural_outcomes": 0
+    }
+  },
+  "plan": "runs/first-training-prepared-2026-10-25/plan.json",
+  "plan_sha256": "ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6",
+  "ppo": {
+    "approximate_kl": 0.00012858080017828062,
+    "clip_fraction": 0.0,
+    "entropy": null,
+    "optimizer_steps": 10,
+    "policy_loss": 0.0004181391527863587,
+    "purpose": "approved_gameplay",
+    "samples": 294,
+    "value_loss": 0.00020133324463805818
+  },
+  "prepared_implementation_git_commit": "d5ef9b0c8e710c4350022aa47766cd7682c63105",
+  "retained_optimizer_steps": 10,
+  "rolled_back_optimizer_steps": 0,
+  "schema": "heroes-first-gameplay-evidence-v1",
+  "scope": "Read-only aggregation of the single authorized prepared local first gameplay experiment. No additional game, replay, optimizer or checkpoint load is run by this assembler.",
+  "source": {
+    "git_commit": "d5ef9b0c8e710c4350022aa47766cd7682c63105",
+    "interface": "adventure-armies-v1",
+    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+    "source_sha256": {
+      "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+      "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+      "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+      "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+      "experiments/learner/contextual.py": "c725b0852a76f980f566e29cc6387a6f6fd957751dbcb75731695ba7119cd9d7",
+      "experiments/learner/contextual_model.py": "9701da8146ba2e6c580d75ad97fd8d0605d460f89f0b362b1db05691f3b05499",
+      "experiments/learner/contextual_rollout.py": "4a392b943f381c6cafd480ef4a3144a5eb3e21b4859eda1e8af3570a2f623ee9",
+      "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+      "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+      "experiments/learner/gameplay.py": "bdad4dfb4ae61c7696606c59c88e587bca5082c29acc5309ddb3647b05325530",
+      "experiments/learner/inference.py": "cb61e87f038a765a0d289443ecadaa8710af9c428dd7c2d374ba0c80d93767d1",
+      "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+      "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+      "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+    },
+    "torch": "2.9.1",
+    "tracked_worktree_dirty": false
+  },
+  "source_commit_scope": "The plan retains the frozen implementation commit. The actual launch HEAD additionally contains documentation, compact evidence and the one-run authorization; the 173 bound implementation file hashes are checked separately.",
+  "status": "stopped",
+  "supporting_artifacts": [
+    "runs/first-training-prepared-2026-10-25/approved-execution.log",
+    "runs/first-training-prepared-2026-10-25/approved-execution/independent-review.json",
+    "validation/audit_first_gameplay_2026_10_25.py"
+  ],
+  "training_performed": true,
+  "unattempted_schedule": [
+    {
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    }
+  ],
+  "update_rolled_back": false,
+  "verified_natural_outcomes": 0,
+  "wall_seconds": 164.8517872090015,
+  "wall_time_scope": "Executor monotonic timer includes collection, native replay, PPO, checkpoint/reload and cleanup; prelaunch identity checking and this aggregation are outside it."
+}
