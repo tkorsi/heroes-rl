@@ -112,3 +112,60 @@ the single source of purpose and decisions; do not maintain competing charters.
 - An older, unvalidated ExplorerRL bridge and tiny duel-map generator exist.
 - Stage 1 recording implementation and validation are in progress.
 - No Heroes learner training or 1,000-episode run has been performed here.
+
+## Recorder commands
+
+Requirements: the existing local VCMI build, original game data, Python 3.11+,
+and `ffmpeg`/`ffprobe` on PATH. No Python package install is needed.
+
+From this repository, build the client with the recorder changes:
+
+```sh
+cmake --build vcmi/build --target vcmiclient vcmiserver --parallel 8
+```
+
+Record a bounded game on the installed **Key to Victory** map. Both players use
+the built-in Nullkiller on Easy. The runner opens a game window and follows the
+active heroes; battles resolve automatically. Every run requires a new directory:
+
+```sh
+python3 experiments/recording/record.py \
+  --output runs/example-001 --episode 1 --seed 12345 --seconds 90
+```
+
+The runner defaults to 6 captured frames/second and a maximum of 3,600 frames.
+`--map`, `--fps`, `--max-frames`, `--binary`, and `--data` are configurable.
+Settings, saves, logs, frames and a copied map use a fresh run-specific profile.
+The original game assets are read through links. A wall/frame limit is reported
+as an unscored truncation with unknown outcome; it is not a natural defeat.
+
+The result is `runs/example-001/episode.mp4`, plus its `manifest.json`, native
+`frames/frames.jsonl`, and logs. PNG timestamps preserve actual elapsed capture
+time. Individual MP4 playback uses nominal capture FPS; skipped render intervals
+therefore shorten idle/slow periods. This is a visual recording, not exact replay.
+
+Create a 60-second overview from evenly spaced recorded episodes:
+
+```sh
+python3 experiments/recording/video.py montage runs \
+  --output videos/overview.mp4 --seconds 60 --samples 12
+```
+
+Use `--samples 0` to show every available episode. At 30 output frames/second,
+1,000 episodes fit in 60 seconds as 1–2 frames each, so the sampled overview is
+usually more useful for understanding decisions. The montage's adjacent
+`.manifest.json` records selected and omitted episodes, source hashes, speed
+changes, labels, and coverage. Selection never favours winning episodes.
+
+To encode an existing capture separately (for example, after `--no-encode`):
+
+```sh
+python3 experiments/recording/video.py encode \
+  --frames runs/example-001/frames --fps 6 --output videos/episode-001.mp4
+python3 -m unittest discover -s tests -v
+```
+
+Outputs are never overwritten. Keep full recordings locally; share or archive
+them explicitly when needed. The recorder is currently a built-in-AI smoke-run
+launcher. Connecting it to the learner and scheduled checkpoint evaluations is
+the next integration, after the adventure environment is validated.
