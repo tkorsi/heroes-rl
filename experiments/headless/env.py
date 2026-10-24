@@ -144,6 +144,8 @@ class VcmiLauncher:
             raise ValueError("Client lacks the headless simulation patch; rebuild vcmi/build")
         if not self.ai_library.is_file() or b"visible_update-v2" not in self.ai_library.read_bytes():
             raise ValueError(f"Rebuild the protocol-3 ExplorerRL module with visible_update-v2: {self.ai_library}")
+        if b"VCMI_EXPERIMENT_REPLAY" not in content or b"observations-p" not in self.ai_library.read_bytes():
+            raise ValueError("Client or ExplorerRL lacks replay recording (engine patch 0013); rebuild vcmi/build")
         if not (self.data / "Data").is_dir():
             raise ValueError(f"Missing original game assets: {self.data / 'Data'}")
         if not self.game_map.is_file() or self.game_map.suffix.lower() not in {".vmap", ".h3m"}:
@@ -216,13 +218,19 @@ class HeadlessSelfPlayEnv:
     """Agent-environment cycle over one isolated engine process per episode."""
 
     def __init__(self, launcher, output: Path, limits: Limits = Limits(), *, ledger: bool = True,
-                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1):
+                 profile: bool = False, agents: dict | None = None, snapshot_every: int = 1, replay: bool = True):
         if type(snapshot_every) is not int or not 0 <= snapshot_every <= 1000000:
             raise ValueError("snapshot_every must be an integer from 0 to 1000000")
         self.launcher, self.limits, self.ledger_enabled, self.profile = launcher, limits, ledger, profile
         # Decision observations repeat the visible tiles every N decisions (never
         # when 0) so the adapter can verify its event fold; events are never thinned.
         self.snapshot_every = snapshot_every
+        # The server's input log, state digests and the players' capture digests
+        # (engine/replay.jsonl, engine/observations-p<N>.jsonl) that replay.py
+        # verifies. They are internal evidence and never a policy input.
+        if replay and not ledger:
+            raise ValueError("Replay recording needs the bridge ledger to verify the players' observations")
+        self.replay = replay
         self._identity_cache = None
         self.output = output.expanduser().resolve()
         self.agent_descriptions = agents or {}
@@ -255,6 +263,8 @@ class HeadlessSelfPlayEnv:
                        "EXPLORER_RL_TIMEOUT": str(self.limits.bridge_timeout),
                        "EXPLORER_RL_PROFILE": "1" if self.profile else "0",
                        "EXPLORER_RL_SNAPSHOT_EVERY": str(self.snapshot_every)}
+        if self.replay:
+            environment["VCMI_EXPERIMENT_REPLAY"] = "1"
         for player, color in enumerate(COLORS):
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
@@ -606,7 +616,7 @@ class HeadlessSelfPlayEnv:
                        "engine_wait_seconds": round(self.engine_wait, 6), "agent_seconds": round(self.agent_wait, 6)},
             "players": {side.color: {**executions[side.color], **self._counters(side)} for side in self.sides.values()},
             "engine_evidence": evidence, "engine_evidence_error": evidence_error,
-            "agents": self.agent_descriptions, "ledger": self.ledger_enabled,
+            "agents": self.agent_descriptions, "ledger": self.ledger_enabled, "replay": self._replay_evidence(),
             "identity": self._identity(),
             "launch": self.launch_info,
             "deterministic_replay_verified": False,
@@ -622,6 +632,16 @@ class HeadlessSelfPlayEnv:
                                  bootstrap_v1_seq=bootstrap_seq)
         self.process = None
         return self.result
+
+    def _replay_evidence(self) -> dict | None:
+        """Hashes of the replay evidence as the engine left it; replay.py verifies it later."""
+        if not self.replay:
+            return None
+        files = [self.episode_dir / "engine" / "replay.jsonl",
+                 *sorted((self.episode_dir / "engine").glob("observations-p*.jsonl"))]
+        return {"recorded": True, "files": {str(path.relative_to(self.episode_dir)): {
+                    "sha256": scoring.digest(path), "bytes": path.stat().st_size} for path in files if path.is_file()},
+                "missing": [str(path.relative_to(self.episode_dir)) for path in files if not path.is_file()]}
 
     def _execution(self, side: _Side) -> dict:
         terminal = {"outcome": side.validator.terminal} if side.validator.terminal else None

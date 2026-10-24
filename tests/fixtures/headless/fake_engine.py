@@ -20,6 +20,52 @@ MODE = SCENARIO.get("mode", "natural")
 EPISODE = os.environ["EXPLORER_RL_EPISODE"]
 SNAPSHOT_EVERY = int(os.environ.get("EXPLORER_RL_SNAPSHOT_EVERY", "1"))
 SEED = int(os.environ.get("FAKE_ENGINE_SEED", "1"))
+REPLAY = os.environ.get("VCMI_EXPERIMENT_REPLAY") == "1"
+POLICY_MESSAGES = {"observation", "action_result", "decision", "terminal"}
+
+
+def view_digest(world, player):
+    """FNV-1a of one player's current view, computed from the world directly
+    (not from the emitted events), as VisibleState.h snapshotDigest orders it."""
+    state = 1469598103934665603
+
+    def add(value):
+        nonlocal state
+        bits = int(value) & (2 ** 64 - 1)
+        for _ in range(8):
+            state = ((state ^ (bits & 0xFF)) * 1099511628211) & (2 ** 64 - 1)
+            bits >>= 8
+
+    for value in (WIDTH, HEIGHT, 1):
+        add(value)
+    for x, y, _ in sorted(world.fog[player], key=lambda t: t[0] + WIDTH * t[1]):
+        tile = world.tile(x, y)
+        for value in (x + WIDTH * y, tile["terrain"], tile["blocked"], tile["visitable"]):
+            add(value)
+    objects = world.visible_objects(player)
+    add(len(objects))
+    for oid in sorted(objects):
+        for key in ("id", "x", "y", "z", "type", "subtype", "owner"):
+            add(objects[oid][key])
+    own = world.own(player)
+    add(own["hero"] is not None)
+    for value in own["hero"] or []:
+        add(value)
+    add(own["movement"])
+    add(own["movement_max"])
+    add(len(own["resources"]))
+    for value in own["resources"]:
+        add(value)
+    add(len(own["army"]))
+    for stack in own["army"]:
+        for key in ("slot", "creature", "count"):
+            add(stack[key])
+    add(len(own["towns"]))
+    for town in own["towns"]:
+        for value in town:
+            add(value)
+    add(own["mines"])
+    return f"{state:016x}"
 
 
 class World:
@@ -83,6 +129,9 @@ class Tracker:
     def __init__(self):
         self.previous = None
         self.sequence = 0
+        self.ledger = None  # engine-side capture digests when replay evidence is recorded
+        self.digest = None
+        self.messages = 0
 
     def update(self, world, player):
         tiles = {t: world.tile(t[0], t[1]) for t in world.fog[player]}
@@ -100,10 +149,22 @@ class Tracker:
                   "hidden": [list(t) for t in sorted(before_tiles.keys() - tiles.keys(), key=order)],
                   "own": own if own != before_own else None}
         self.previous = (tiles, objects, own)
+        if self.ledger is not None:
+            self.digest = view_digest(world, player)
         if any(change[k] for k in ("appeared", "changed", "disappeared", "revealed", "tiles_changed", "hidden", "own")):
+            if self.ledger is not None:
+                self.ledger.write(json.dumps({"kind": "capture", "sequence": self.sequence, "pack": 0, "pack_type": 0,
+                                              "digest": self.digest}) + "\n")
             self.sequence += 1
             return [change]
         return []
+
+    def note_message(self, message_type):
+        if self.ledger is not None and self.digest is not None and message_type in POLICY_MESSAGES:
+            self.ledger.write(json.dumps({"kind": "message", "type": message_type, "index": self.messages, "pack": 0,
+                                          "pack_type": 0, "digest": self.digest}) + "\n")
+            self.messages += 1
+            self.ledger.flush()
 
 
 class Bridge:
@@ -114,6 +175,8 @@ class Bridge:
         self.buffer = b""
         self.events = []
         self.tracker = Tracker()
+        if REPLAY:
+            self.tracker.ledger = (Path(os.environ["VCMI_EXPERIMENT_DIR"]) / f"observations-p{player}.jsonl").open("w")
         self.action_id = 0
         self.decision_id = 0
         self.observations = 0
@@ -123,6 +186,7 @@ class Bridge:
                 "episode": EPISODE, **fields}
 
     def send(self, message):
+        self.tracker.note_message(message["type"])
         self.sock.sendall((json.dumps(message) + "\n").encode())
 
     def receive(self):

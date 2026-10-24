@@ -119,7 +119,7 @@ def run_configuration(args, workers: int, repetition: int, directory: Path) -> l
                    "--warmup-episodes", str(args.warmup_episodes), "--start-at", f"{start_at:.3f}",
                    "--duration", str(args.duration), "--max-days", str(args.max_days),
                    "--max-actions", str(args.max_actions), "--log-level", args.log_level,
-                   "--ledger", args.ledger, "--snapshot-every", str(args.snapshot_every),
+                   "--ledger", args.ledger, "--replay", args.replay, "--snapshot-every", str(args.snapshot_every),
                    "--raw-latencies", "--skip-check"] + (["--profile"] if args.profile else [])
         log = (directory / f"worker-{worker}.log").open("w")
         processes.append((subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT), log, output))
@@ -149,6 +149,8 @@ def main() -> None:
     parser.add_argument("--max-actions", type=int, default=2000)
     parser.add_argument("--log-level", default="info", choices=["trace", "debug", "info"])
     parser.add_argument("--ledger", default="none", choices=["full", "none"])
+    parser.add_argument("--replay", default="none", choices=["record", "none"],
+                        help="record: also write replay evidence (requires --ledger full)")
     parser.add_argument("--snapshot-every", type=int, default=1,
                         help="Full visible-tile verification period in decisions (0: never)")
     parser.add_argument("--profile", action="store_true", help="Collect ExplorerRL per-message timing fields")
@@ -157,6 +159,8 @@ def main() -> None:
     worker_counts = [int(value) for value in args.workers.split(",")]
     if args.repetitions < 1 or args.duration <= 0 or min(worker_counts) < 1:
         parser.error("Use positive repetitions, duration and worker counts")
+    if args.replay == "record" and args.ledger != "full":
+        parser.error("--replay record needs --ledger full")
 
     launcher = run_headless.env_module.VcmiLauncher(args.binary, args.data, args.map, args.log_level)
     try:
@@ -176,7 +180,7 @@ def main() -> None:
               "workload": {"map": str(args.map), "agents": "independent seeded uniform-random agents, both colors",
                            "seed": args.seed, "repetition_region": REGION, "max_days": args.max_days,
                            "max_actions_per_player": args.max_actions, "log_level": args.log_level,
-                           "ledger": args.ledger},
+                           "ledger": args.ledger, "replay": args.replay, "snapshot_every": args.snapshot_every},
               "method": {"duration_seconds": args.duration, "repetitions": args.repetitions,
                          "warmup_episodes_per_worker": args.warmup_episodes,
                          "warmup_allowance_seconds": args.warmup_allowance,

@@ -189,6 +189,8 @@ def main() -> None:
                         help="Verify the event fold against a full visible-tile snapshot every N decisions (0: never)")
     parser.add_argument("--ledger", default="full", choices=["full", "none"],
                         help="full: write each side's bridge stream (internal evidence with engine IDs)")
+    parser.add_argument("--replay", default="record", choices=["record", "none"],
+                        help="record: write the engine's replay evidence for experiments/headless/replay.py")
     parser.add_argument("--skip-check", action="store_true", help="Skip tools/prepare_vcmi.py --check")
     args = parser.parse_args()
     if (args.episodes < 1 or args.first_episode < 1 or args.seed < 1 or args.seed_stride < 1
@@ -220,7 +222,7 @@ def main() -> None:
                      "limits": {"max_days": args.max_days, "max_actions_per_player": args.max_actions,
                                 "watchdog_seconds": args.watchdog, "collection_window_seconds": args.duration},
                      "log_level": args.log_level, "ledger": args.ledger, "profile": args.profile,
-                     "snapshot_every": args.snapshot_every},
+                     "snapshot_every": args.snapshot_every, "replay": args.replay},
         "schedule_definition": {"seed": args.seed, "seed_stride": args.seed_stride, "first_episode": args.first_episode,
                                 "red_policy_seed": args.red_policy_seed, "blue_policy_seed": args.blue_policy_seed,
                                 "start": args.schedule_start, "step": args.schedule_step},
@@ -229,11 +231,14 @@ def main() -> None:
     }
     summary_path = output / "summary.json"
     scoring.write_json(summary_path, summary)
+    if args.replay == "record" and args.ledger != "full":
+        parser.error("--replay record verifies observations against the bridge ledger; use --ledger full")
     env = env_module.HeadlessSelfPlayEnv(launcher, output / "episodes", limits, ledger=args.ledger == "full",
-                                         profile=args.profile, snapshot_every=args.snapshot_every)
+                                         profile=args.profile, snapshot_every=args.snapshot_every,
+                                         replay=args.replay == "record")
     warmup_env = env_module.HeadlessSelfPlayEnv(
         launcher, output / "warmup", env_module.Limits(max_days=args.warmup_max_days, max_actions=args.max_actions,
-                                                       watchdog_seconds=args.watchdog), ledger=False)
+                                                       watchdog_seconds=args.watchdog), ledger=False, replay=False)
     started = None
     usage_before = None
     try:

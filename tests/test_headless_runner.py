@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 FAKE_ENGINE = ROOT / "tests/fixtures/headless/fake_engine.py"
 
 CLIENT = f'''#!{sys.executable}
-# Test stand-in for the patched client; preflight looks for VCMI_EXPERIMENT_DIR and EXPLORER_RL_PLAYERS.
+# Test stand-in for the patched client; preflight looks for VCMI_EXPERIMENT_DIR, EXPLORER_RL_PLAYERS and VCMI_EXPERIMENT_REPLAY.
 import json, os, sys
 config = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.environ["VCMI_USER_DATA_DIR"], "..")
 settings = os.path.join(config, "vcmi", "settings.json") if "XDG_CONFIG_HOME" in os.environ \\
@@ -38,7 +38,7 @@ class RunnerTests(unittest.TestCase):
         self.binary.write_text(CLIENT)
         self.binary.chmod(self.binary.stat().st_mode | stat.S_IEXEC)
         suffix = ".dylib" if sys.platform == "darwin" else ".so"
-        (self.binary.parent / "AI" / f"libExplorerRL{suffix}").write_bytes(b"stand-in visible_update-v2")
+        (self.binary.parent / "AI" / f"libExplorerRL{suffix}").write_bytes(b"stand-in visible_update-v2 observations-p")
         (base / "data/Data").mkdir(parents=True)
         self.map = base / "scenario.vmap"
         self.map.write_bytes(b"stand-in map")
