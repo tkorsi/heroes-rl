@@ -7,8 +7,10 @@ omniscient and player-fog videos.
 
 **Current milestone:** two independent uniform-random agents play against each
 other with separate fog, automatic battles, and four synchronized recordings.
-The earlier fixed Easy-opponent baseline is retained. No policy training has
-been performed yet. Native gameplay has been tested on macOS;
+The earlier fixed Easy-opponent baseline is retained. A separate, randomly
+initialized recurrent actor-critic prototype and strict learner contracts now
+exist; they are not connected to VCMI and have not been trained. Native gameplay
+has been tested on macOS;
 other platforms are not yet validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
@@ -216,10 +218,11 @@ not a measured result or an acceptance promise. Use isolated processes first;
 the engine has global state. Episode validity must be independent of whether
 an optional video was successfully rendered.
 
-### Initial learner specification (proposed, not implemented)
+### Initial learner specification and isolated prototype
 
-The current policy is uniform random over permitted attempts, and no learned
-policy, value function or training loop exists. The first candidate is a small
+The live policy is uniform random over permitted attempts. An untrained policy
+and value component is implemented under `experiments/learner/`; no rollout
+collector, PPO update, opponent pool or training loop exists. The first candidate is a small
 recurrent actor-critic trained with [PPO](https://arxiv.org/abs/1707.06347).
 This is a starting hypothesis to test, not an established best algorithm for
 Heroes III.
@@ -228,7 +231,7 @@ Heroes III.
 | --- | --- |
 | Reward | 0 on ordinary transitions; +1 for a verified natural win and -1 for a verified natural loss, from that player's perspective. No exploration, mine, gold, survival or invalid-move rewards/penalties. |
 | Observation | Only the player's structured visible map, own heroes/army/towns/resources, attempt mask, and history of its observations, actions and results. No spectator state or opponent memory. |
-| Policy `pi(a \| h)` | A map/state encoder and GRU memory feed nine masked action logits: eight adjacent attempts and end-turn. Sample during collection; record the mask and behavior log-probability. The server still validates attempts into unknown terrain. |
+| Policy `pi(a \| h)` | A shared candidate scorer handles a variable set of typed, parameterized choices. Its current movement adapter exposes nine masked outputs for compatibility; movement is the first subset, not a permanent neural-output restriction. Record the exact choice support and behavior probability. The server validates attempted actions. |
 | Value `V(h)` | A scalar prediction of expected future terminal return under the current policy and frozen opponent distribution, using the same permitted information and memory. No separate Q-network is required initially. |
 | Self-play | Share model weights across colors, with separate recurrent state and trajectories. Start each episode with a learner seat and a frozen opponent sampled from random play or saved policy checkpoints; alternate learner colors. |
 
@@ -268,6 +271,63 @@ and measure their frequency under the headless baseline. Evaluate frozen
 checkpoints on held-out seeds, both colors and a fixed opponent set; do not use
 win rate against the current copy of itself as the sole measure of progress.
 
+### Learning from scratch, discovering actions and retaining experience
+
+**User requirement, 24 October:** start with zero prior game or strategy
+knowledge. Initialize the learned model randomly. Do not supply demonstrations,
+pretrained game/language embeddings, walkthroughs, utility tables, tactical
+rules, object-effect explanations or preloaded spawn locations. Learn mechanics,
+consequences, strategic preferences, policy and value through interaction and
+terminal outcomes. No discovery, exploration or intermediate-event reward is added.
+
+Zero prior knowledge does not mean zero input or no action interface. We must
+provide observations, control primitives, observable feedback and the terminal
+reward. The engine enforces game rules. Information or choices genuinely shown
+by the player's game interface may be observed, but the adapter must not add
+expert explanations or disclose unavailable information. Preserve the scoped
+automatic BattleAI subsystem: this is initially adventure-strategy learning,
+not learning every combat tactic from scratch.
+
+The action space must be extensible and context-dependent. As the player
+explores and interacts with towns, shops and other objects, it can discover
+additional choices such as construction, recruitment, purchases and upgrades.
+Choices may disappear again when resources, access or prerequisites change.
+Expose them through legitimate player observations/interactions, not a global
+catalog of undiscovered mechanics, hidden objects or all future options. The
+agent learns which choices are useful; the adapter must not choose or rank
+them by strategic value.
+
+Represent available choices with a versioned typed/parameterized contract.
+Use variable candidate scoring and/or conditional choices for action type,
+target, item and quantity, rather than one permanent neural output for every
+concrete purchase. Preserve the exact candidate set, parameter constraints and
+behavior probabilities used during collection so PPO can reproduce its action
+distribution. The current nine-action mask is a bounded movement prototype,
+not the final game interface. Construction, economy and shop actions are not
+implemented by declaring this requirement.
+
+Plan for continued training on HotA with versioned observation/action extensions
+and explicit checkpoint compatibility or migration. More objects with familiar
+mechanics can reuse the representation; genuinely new mechanics may require
+new interface support and learning. Do not claim current HotA support or automatic
+understanding of unseen rules. Proprietary assets remain local dependencies.
+
+Experience must persist across training games through updated policy/value
+weights and resumable checkpoints. When a training loop exists, preserve its
+optimizer state, training progress, RNG state and environment/schema versions
+needed to resume it. Experience of object types, observable effects and spawn
+patterns may change decisions in later games; their utility must be learned
+from outcomes, not encoded as priorities. Merely running inference does not
+update weights, and frozen evaluation episodes must not train the model.
+
+Keep this persistent learning separate from episode-local observation history
+and recurrent state, which reset at each new game and remain isolated per player.
+An old map's observed locations are not current facts on a new map. Learned
+expectations about likely spawns are uncertain predictions, not permission to
+reveal hidden contents. An external persistent memory database is not required
+for the initial learner. These are architecture requirements, not a claim that
+cross-game training or checkpoint resumption has already been implemented.
+
 ### Player information and memory
 
 An observation is information available to that player now. Memory is the
@@ -298,9 +358,176 @@ available to that player at that time. Keep engine IDs internal; if identity is
 needed, assign opaque per-player episode-local handles only on legitimate first
 observation. Do not enumerate hidden objects to populate memory or handles.
 
-These are requirements for the future observation/history adapter. The current
+These remain requirements for the future engine-to-learner adapter. The current
 random agents use only the attempt mask for movement; their diagnostic logs are
-not learned memory. No learned policy, value or memory has been implemented.
+not learned memory. The new isolated component can process an ordered synthetic
+history through trainable recurrent memory; its weights have not learned from
+game experience. It explicitly rejects raw bridge-v2 messages.
+
+### Player-history v1 contract
+
+`experiments/learner/contract.py` defines the strict typed boundary and
+`decode_frame` accepts its JSON representation. It is a proposed adapter target,
+not a claim that issue #4 already delivers this stream. All records have
+`schema="heroes-player-history-v1"`, `episode`, `player` (0 or 1), a contiguous
+per-player `seq` starting at zero, public game `day`, and a discriminated `kind`.
+The sequence counts only that player's records, never hidden/global events.
+Unknown fields, unsupported vocabularies, missing sequence entries and mixed
+episode/player identities fail closed. Routing metadata never becomes a neural
+feature.
+
+| Kind | Payload and meaning |
+| --- | --- |
+| `view` | A complete current player-filtered `View` at a relevant observable change, including between the player's decisions. |
+| `decision` | A complete current `View` and nine-boolean attempt `mask`; end-turn is always enabled. Its sequence is the decision identifier. |
+| `action` | Own sampled action and `decision_seq`, after consuming the matching decision. |
+| `result` | Own action, matching `decision_seq`, and boolean `accepted`. Acceptance means request acknowledgement, not displacement or strategic success. |
+
+A `View` contains currently permitted tiles (position, categorical terrain,
+blocked and visitable flags), currently observed objects (position, categorical
+type/subtype, owner relative to the player, opaque local handle), and own state
+(hero position or absence, movement, seven resource amounts, army slots/types/
+counts, town positions and mine count). Unknown terrain has no tile entry;
+an absent object has no current object entry. There is no hidden destination,
+hidden removal/death field, omniscient replay input or handcrafted value.
+The initial component supports only the authored 20x20x1 scenario and bounded
+unmodded categories: 16 terrain types and 256 object types, subtypes and creature
+types each. Unsupported data is rejected, never clipped or silently discarded.
+Known own state remains available under normal player rules even when a map tile
+is not currently visible. Exact enemy armies and attributes not explicitly in
+this schema are not requested or inferred by the adapter.
+
+Complete views are a correctness-first reference encoding, not a throughput
+target. A later version may use lossless deltas. The environment must capture a
+view whenever information in these fields becomes available or changes, including
+a transient enemy sighting and subsequent disappearance before the next decision.
+It must not emit a record solely because of a hidden change. View capture and
+the decision's preceding history must be atomic and complete: no dropped,
+coalesced or truncated visible transitions. A visible-to-hidden move contains
+the last legitimate sighting followed by absence, never the hidden endpoint or
+a claim of death. Merely receiving an engine callback does not authorize its
+fields. VCMI's existing fog semantics remain unchanged.
+
+Handles are assigned only on legitimate first observation, scoped to one player
+and episode. They are used for validation/bookkeeping, but their spelling or
+ordinal is deliberately omitted from this first neural encoder. This makes it
+invariant to handle renaming; persistent entity-specific memory is not yet
+implemented. The full chronological views retain the evidence of where and when
+an enemy was seen. Only the GRU carries earlier information forward; a previous
+object is never copied into a new current-view grid as if still visible.
+
+The first encoder covers the structured fields above. Uniform dialog selection
+and automatic BattleAI remain fixed external subsystems; their commands,
+versions and seeds must be retained in episode provenance. Rich dialog text,
+battle details and additional player-visible attributes require a versioned
+schema extension before being admitted as learner features. The adapter must
+report its observation coverage; this prototype is not an audit of VCMI callbacks.
+
+### Typed action candidates and extension boundary
+
+`experiments/learner/actions.py` defines `heroes-action-candidates-v1` as an
+ordered nonempty set of available candidates. Each has an opaque routing key,
+a categorical action type, and typed parameters with categorical slots and
+category, scalar or position values. No catalog of shops, items or undiscovered
+mechanics is supplied. Categorical embedding capacity is not an enumeration of
+available choices. Only the environment may offer candidates, through the
+player's legitimate interface; their order must not encode strategic priority.
+Parameter values must be observed facts or the player's proposed control inputs,
+never hidden state, handcrafted utility or expert explanations.
+Raw engine IDs and arbitrary local entity-handle ordinals must not be placed
+inside category/scalar arguments. Future entity targets need routing-only
+identity plus permitted observed features, not numeric identifiers as features.
+
+The implemented scorer combines randomly initialized type/parameter embeddings
+with the recurrent context and returns one score per supplied candidate, using
+the same weights for every choice. There is no permanent output neuron per item.
+Opaque keys do not enter features. Reordering candidates only reorders scores;
+renaming keys does not change scores. Typed parameters retain their binding to
+their action and slot. Unsupported schema/category ranges fail explicitly.
+
+The only game action adapter implemented here is `movement_candidates(mask)`:
+available moves use type 0 with a direction parameter; end-turn uses type 1.
+It exposes exactly the original attempt support and maps scores back to the
+nine-action bridge interface. Each decision record stores this exact versioned
+candidate set and selected behavior log-probability. The low-level scorer is
+tested on variable synthetic typed choices, but history/trajectory v1 still
+accepts movement only. Construction, shops, recruitment, upgrades and quantity
+selection need a player-filtered engine adapter and history/trajectory v2 that
+records candidate keys/parameters instead of nine-action indices. Freeze that
+version and support during a PPO rollout; never reconstruct old support from
+the current game state. Conditional quantity choices must retain each sampled
+conditional probability and support to reconstruct their joint log-probability.
+
+Before another scenario or HotA is enabled, version the observation/action
+contracts and checkpoint configuration together. Retain compatible weights only
+through an explicit tested migration, initialize new embeddings randomly, and
+restart collection after migration. State-dictionary roundtrip tests cover
+weight persistence now; a resumable trainer must later also save optimizer,
+RNG, update counters, opponent-pool identity and sampler state. This prototype
+does not implement that trainer or claim compatibility with HotA.
+
+### Per-player trajectories and recurrent computation
+
+`experiments/learner/trajectory.py` separates a player's history from its
+decision samples and episode finalization. A sample records the selected action,
+its exact mask and behavior log-probability/value, behavior and frozen opponent
+checkpoint identities, and the provenance of the recurrent prefix. Opponent
+actions are not learner samples. Neither an accepted end-turn nor an action
+acknowledgement closes the transition: the next boundary is that player's next
+decision, after all intervening visible history, or its verified natural result.
+A terminal may close an outstanding action without an `action_result` record.
+It may also supersede a final unacted decision: retain the observation, invent
+no action/sample, and attach the terminal reward to the last actual action.
+
+Natural finalization needs matching complementary engine/socket results for
+both players, complete player histories and clean process shutdown. The Python
+contract checks the supplied attestation's consistency; the external validator
+must establish its truth and retain an evidence reference. Video success is not
+a condition of learner episode validity. Only this natural finalization yields
++1/-1, with no value bootstrap. Ordinary transitions have reward zero.
+A deliberate rollout/day/action horizon is eligible only at a verified next
+decision of that same player, with the same behavior checkpoint and recurrent
+prefix. It supplies a value bootstrap, never a draw label. A timeout, crash,
+protocol failure or incomplete history supplies no terminal reward, bootstrap
+or training targets. A history hash binds records; it does not prove visibility
+or that a recurrent tensor was correctly computed.
+The included reference targets use undiscounted (`gamma=1`, `lambda=1`) returns;
+they specify reward/boundary semantics and are not a PPO or GAE implementation.
+
+The model uses learned categorical embeddings, a small spatial encoder and own
+state encoder, then a GRU shared by policy and value. Scalar counts use `log1p`
+for numerical scale, not strategic weighting. The spatial grid represents
+coordinates as observations; it adds no directions, destinations, exploration
+bonuses or distance-based strategy. Every history frame updates memory. Only
+`decision` frames produce a masked categorical policy and scalar value prediction.
+Both heads and their shared encoder/recurrent weights remain trainable from
+experience; synthetic gradient checks do not train a game policy.
+
+Each inference session owns one player's recurrent state. Sessions can share
+weights but cannot share history or hidden state. Chunks and end-turns preserve
+memory; an explicit episode boundary finishes a session before reset. The core
+forward operation is differentiable for eventual sequence training. The safe
+inference wrapper disables gradients. Future PPO must preserve/recompute the
+per-player prefix under the relevant weights, use sequence minibatches with
+explicit padding/loss masks, and keep collection weights/opponent distribution
+frozen. Stored behavior-state tensors must not silently become current-weight
+states during repeated PPO updates. Batching, burn-in/truncated BPTT and PPO
+losses are intentionally not implemented in this component.
+
+Run the optional CPU component tests with Python 3.13 on macOS arm64 (the tested
+lock target); the existing stdlib recording tooling needs no PyTorch install:
+
+```sh
+uv venv --python 3.13 .venv
+uv pip sync --python .venv/bin/python --require-hashes dependencies/learner.lock
+.venv/bin/python -m unittest discover -s tests -p 'test_learner_*.py' -v
+```
+
+The hash-pinned lock is generated from `dependencies/learner.in`. It is a
+platform-specific prototype environment, not a verified Linux/GPU dependency
+matrix. Tests without PyTorch explicitly skip the neural component. These are
+synthetic contract/gradient checks, not real headless episodes, a training run,
+replay validation, a natural-outcome estimate or a performance benchmark.
 
 ### Continue in a new chat
 
@@ -310,9 +537,10 @@ validation fixes. At the 24 October handoff, Claude's **Build headless VCMI
 simulation and replay** task was working on issue #4; no headless PR had been
 published. Check its current status rather than treating this snapshot as live.
 
-Codex's next bounded task is to specify the learner's observation/history
-encoding and per-player trajectory interface, then implement the smallest
-recurrent policy/value component against that contract. Keep engine, replay and
+Codex has now specified the learner's observation/history and per-player
+trajectory interfaces and implemented an isolated recurrent policy/value
+component against them. Next, reconcile this contract with Claude's staged
+headless delivery and validate the producer on real games. Keep engine, replay and
 throughput work with Claude. Review staged engine PRs and run real-game checks
 locally when available; the cloud checkout has no proprietary game assets.
 Do not start a training campaign until headless validation establishes correct
@@ -400,6 +628,14 @@ the single source of purpose and decisions; do not maintain competing charters.
   `validation/recording-2026-10-24.json` used Nullkiller's automatic open-map
   cheat (runs 003/004). They validate recording only, **not** play under fog.
 - No Heroes learner training or 1,000-episode run has been performed here.
+- An isolated, randomly initialized shared recurrent policy/value component,
+  strict player-history input and per-player trajectory validation now exist.
+  It has no live bridge adapter, collector, PPO update or checkpoint league.
+  Existing bridge-v2 recordings are not eligible learner histories.
+  All 129 tests pass, including 45 synthetic learner checks; exact prepared-engine
+  source verification also passes. Compact evidence:
+  `validation/learner-prototype-2026-10-24.json`. These checks do not establish
+  live event coverage, headless boundaries or reachable self-play endings.
 - Claude's offline baseline analyzer is integrated with additional evidence
   validation. All eight local baseline attempts classify as five natural
   endings, two technical failures and one truncation across six provenance
