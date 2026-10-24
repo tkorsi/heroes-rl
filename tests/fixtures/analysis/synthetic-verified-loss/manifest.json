@@ -1,0 +1,157 @@
+{
+  "agent_player_index": 0,
+  "combat": "BattleAI; automatic; spectator battle display skipped",
+  "created_at": "2026-10-24T00:00:00+00:00",
+  "deterministic_replay_verified": false,
+  "effective_engine_rng": {
+    "deterministic_replay_verified": false,
+    "initial_sample": 1,
+    "initial_seed": 12345
+  },
+  "engine": {
+    "ai_libraries": {
+      "libBattleAI.dylib": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "libExplorerRL.dylib": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "libNullkiller.dylib": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "binary": "vcmi/build/bin/vcmiclient",
+    "binary_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "commit": "0000000000000000000000000000000000000000",
+    "dirty": false
+  },
+  "engine_recipe": {
+    "dependencies/vcmi.json": "1111111111111111111111111111111111111111111111111111111111111111",
+    "engine/patches/0001-experiment-environment.patch": "2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "episode": 1,
+  "fixture_note": "SYNTHETIC TEST FIXTURE for tests/test_analysis.py. Hand-written; not produced by VCMI and not game evidence. All hashes except policy_ledger are placeholders.",
+  "kind": "random-baseline",
+  "limits": {
+    "max_actions": 2000,
+    "max_days": 40,
+    "max_frames_per_view": 3600,
+    "wall_seconds": 240
+  },
+  "map": {
+    "name": "random-baseline-v1.vmap",
+    "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "observer": {
+    "player": "red",
+    "player_index": 0
+  },
+  "opponent": {
+    "difficulty": "Easy",
+    "difficulty_index": 0,
+    "module": "Nullkiller"
+  },
+  "outcome": "loss",
+  "outcome_player": "red",
+  "outcome_player_index": 0,
+  "policy": {
+    "action_space": "8 adjacent move attempts + end turn; uniform over permitted attempts",
+    "algorithm": "uniform_random",
+    "checkpoint": null,
+    "dialog_policy": "uniform over choices supplied by the player interface",
+    "label": "Uniform random agent (no learning)",
+    "learning": false,
+    "rewards": "natural win +1 / loss -1 only; truncation and errors unscored",
+    "seed": 1,
+    "step_delay_seconds": 0.15
+  },
+  "policy_execution": {
+    "actions_accepted": 2,
+    "actions_chosen": 2,
+    "actions_rejected": 0,
+    "actions_sent": 2,
+    "completed_turns": 1,
+    "decisions_chosen": 0,
+    "decisions_sent": 0,
+    "error": null,
+    "initial_observation": {
+      "completed_battles": 0,
+      "day": 1,
+      "own_heroes": 1,
+      "own_mines": 0,
+      "own_towns": 1,
+      "visible_tiles": 10
+    },
+    "last_day": 1,
+    "last_observation": {
+      "completed_battles": 0,
+      "day": 1,
+      "own_heroes": 1,
+      "own_mines": 0,
+      "own_towns": 1,
+      "visible_tiles": 12
+    },
+    "limit": null,
+    "observations": 2,
+    "ready": true,
+    "successful_displacements": 1,
+    "terminal": {
+      "events": [
+        {
+          "kind": "battle_complete"
+        }
+      ],
+      "outcome": "loss",
+      "state": {
+        "completed_battles": 1,
+        "day": 2,
+        "own_heroes": 0,
+        "own_mines": 0,
+        "own_towns": 0,
+        "visible_tiles": 15
+      }
+    },
+    "unique_hero_positions": 2
+  },
+  "policy_ledger": {
+    "file": "policy.jsonl",
+    "sha256": "892de42fdd707055385c7ecb1f4af0820b4d14c579d62df6e73b34c1527a58f3"
+  },
+  "policy_source": {
+    "file": "experiments/explorer/random_policy.py",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "recording_valid": true,
+  "recordings": {
+    "omniscient": {
+      "capture": {
+        "directory": "frames/omniscient",
+        "fps": 6,
+        "frames": 9
+      },
+      "perspective": {
+        "mode": "omniscient",
+        "player": null,
+        "player_index": null
+      },
+      "recording_valid": true,
+      "video": "omniscient.mp4"
+    },
+    "player": {
+      "capture": {
+        "directory": "frames/player",
+        "fps": 6,
+        "frames": 9
+      },
+      "perspective": {
+        "mode": "player",
+        "player": "red",
+        "player_index": 0
+      },
+      "recording_valid": true,
+      "video": "player-red.mp4"
+    }
+  },
+  "returncode": 0,
+  "reward": -1,
+  "schema_version": 2,
+  "seed": 12345,
+  "status": "completed",
+  "synthetic_fixture": true,
+  "termination_reason": "natural_terminal",
+  "wall_seconds": 2.0
+}
