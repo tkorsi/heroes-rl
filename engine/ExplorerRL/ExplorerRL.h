@@ -45,23 +45,12 @@ public:
 	void heroExchangeStarted(ObjectInstanceID, ObjectInstanceID, QueryID) override;
 	std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &) override;
 
-	// Triggers for player-visible and own-state change capture. Their raw
-	// arguments are never forwarded: a move can name a hidden endpoint and some
-	// removals are hidden.
-	void heroMoved(const TryMoveHero &, bool) override;
-	void objectRemovedAfter() override;
-	void newObject(const CGObjectInstance *) override;
-	void objectPropertyChanged(const SetObjectProperty *) override;
-	void tileRevealed(const FowTilesType &) override;
-	void tileHidden(const FowTilesType &) override;
-	void heroCreated(const CGHeroInstance *) override;
-	void heroInGarrisonChange(const CGTownInstance *) override;
-	void battleResultsApplied() override;
-	void playerStartsTurn(PlayerColor) override;
-	void invalidatePaths() override;
-	void receivedResource() override;
-	void heroMovePointsChanged(const CGHeroInstance *) override;
-	void garrisonsChanged(ObjectInstanceID, ObjectInstanceID) override;
+	/// Captures the player-visible and own state after every applied pack, so
+	/// a transient sighting between two decisions is never skipped. Raw
+	/// notifications such as heroMoved and objectRemoved stay unhandled and are
+	/// never forwarded: a move can name a hidden endpoint and some removals
+	/// are hidden.
+	void packApplied() override;
 
 private:
 	std::shared_ptr<CCallback> callback;
@@ -88,6 +77,8 @@ private:
 	std::string episode;
 	std::string receiveBuffer;
 	int timeoutSeconds = 30;
+	int snapshotEvery = 1; ///< observations carry the visible tile list every N decisions, never when 0
+	int64_t observations = 0;
 	int64_t actionID = 0;
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
@@ -105,17 +96,33 @@ private:
 	void run() noexcept;
 	void runTurn(QueryID queryID);
 	void connectPolicy();
-	void sendMessage(const JsonNode & message);
+	/// Builds and writes one message under sendMutex unless the episode has
+	/// ended, and returns whether it did. See the definition for the ordering.
+	bool buildAndSend(const std::function<JsonNode()> & build);
 	void writeMessage(const JsonNode & message); ///< requires sendMutex
 	JsonNode receiveMessage();
 	JsonNode message(const std::string & type) const;
+	/// A shared lock on the game state that refuses to nest on one thread:
+	/// std::shared_mutex is not recursive, and a nested read queued behind a
+	/// waiting writer would deadlock.
+	class GameStateRead
+	{
+		std::shared_lock<std::shared_mutex> lock;
+
+	public:
+		GameStateRead();
+		~GameStateRead();
+		GameStateRead(const GameStateRead &) = delete;
+		GameStateRead & operator=(const GameStateRead &) = delete;
+	};
+
 	/// A stable view for worker-thread reads. Network callbacks run on the only
 	/// thread that applies packets and read without it.
-	std::shared_lock<std::shared_mutex> readGameState() const;
+	GameStateRead readGameState() const;
 	JsonNode observation(std::array<bool, 9> & mask, ObjectInstanceID & heroID, int3 & position);
 	JsonNode playerState();
 	JsonNode takeEvents();
-	JsonNode takeProfile();
+	JsonNode takeProfile(); ///< requires sendMutex
 	void noteVisibleChanges();
 	void visibleChangeTrigger() noexcept;
 	void enqueueDecision(QueryID query, JsonNode payload);

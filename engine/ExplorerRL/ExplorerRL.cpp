@@ -47,6 +47,14 @@ int64_t microsecondsSince(std::chrono::steady_clock::time_point start)
 	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count();
 }
 
+/// An object the player can see, or null. Event objects are hidden from
+/// players even on visible tiles, as in CGameInfoCallback::getVisitableObjs.
+const CGObjectInstance * playerVisibleObject(const CCallback & callback, ObjectInstanceID objectID)
+{
+	const auto * object = callback.getObj(objectID, false);
+	return object && object->ID != Obj::EVENT && callback.isVisible(object) ? object : nullptr;
+}
+
 /// Terrain and flags of a tile the player sees, from the objects it can see there.
 explorer_rl::VisibleTile visibleTileFacts(const CCallback & callback, const TerrainTile & tile)
 {
@@ -54,8 +62,7 @@ explorer_rl::VisibleTile visibleTileFacts(const CCallback & callback, const Terr
 	{
 		return std::any_of(objects.begin(), objects.end(), [&callback](const auto objectID)
 		{
-			const auto * object = callback.getObj(objectID, false);
-			return object && callback.isVisible(object);
+			return playerVisibleObject(callback, objectID) != nullptr;
 		});
 	};
 	return {tile.getTerrainID().getNum(), anyVisible(tile.blockingObjects), anyVisible(tile.visitableObjects)};
@@ -88,12 +95,8 @@ struct CallbackWorld
 		if(!tile)
 			return;
 		for(const auto objectID : tile->visitableObjects)
-		{
-			const auto * object = callback.getObj(objectID, false);
-			if(!object || !callback.isVisible(object))
-				continue;
-			out.push_back({object->id.getNum(), x, y, z, object->ID.getNum(), object->subID.getNum(), object->getOwner().getNum()});
-		}
+			if(const auto * object = playerVisibleObject(callback, objectID))
+				out.push_back({object->id.getNum(), x, y, z, object->ID.getNum(), object->subID.getNum(), object->getOwner().getNum()});
 	}
 
 	explorer_rl::OwnState ownState() const
@@ -228,6 +231,21 @@ void waitSocket(int fd, short events, int timeoutSeconds)
 	if(result <= 0 || !(descriptor.revents & events))
 		throw std::runtime_error(result == 0 ? "Policy socket timeout" : "Policy socket disconnected");
 }
+
+thread_local bool gameStateReadHeld = false;
+}
+
+ExplorerRL::GameStateRead::GameStateRead()
+{
+	if(gameStateReadHeld)
+		throw std::logic_error("Nested game-state read lock");
+	lock = std::shared_lock(CGameState::mutex);
+	gameStateReadHeld = true;
+}
+
+ExplorerRL::GameStateRead::~GameStateRead()
+{
+	gameStateReadHeld = false;
 }
 
 ExplorerRL::~ExplorerRL()
@@ -246,6 +264,8 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
+	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
+	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
 	worker = std::thread([this] { run(); });
 }
 
@@ -275,11 +295,16 @@ void ExplorerRL::connectPolicy()
 	const int port = environmentInteger(portKey.c_str(), 0, 1, 65535);
 	if(port == 0)
 		throw std::runtime_error(portKey + " is required");
-	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
 	if(fd < 0)
 		throw std::runtime_error("Cannot create policy socket");
-	socketFD.store(fd);
+	// Publish the descriptor only once connected, so that a terminal before
+	// the connection fails explicitly instead of writing to a bare socket.
+	struct CloseUnpublished
+	{
+		int fd;
+		~CloseUnpublished() { if(fd >= 0) ::close(fd); }
+	} closeUnpublished{fd};
 #ifdef SO_NOSIGPIPE
 	const int yes = 1;
 	::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes));
@@ -296,6 +321,16 @@ void ExplorerRL::connectPolicy()
 	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	if(::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0)
 		throw std::runtime_error("Cannot connect to local policy server");
+	closeUnpublished.fd = -1;
+	{
+		std::lock_guard lock(stateMutex);
+		if(stopping)
+		{
+			::close(fd);
+			throw std::runtime_error("Stopped while connecting to the policy server");
+		}
+		socketFD.store(fd);
+	}
 }
 
 JsonNode ExplorerRL::message(const std::string & type) const
@@ -308,24 +343,20 @@ JsonNode ExplorerRL::message(const std::string & type) const
 	return result;
 }
 
-void ExplorerRL::sendMessage(const JsonNode & message)
+bool ExplorerRL::buildAndSend(const std::function<JsonNode()> & build)
 {
+	// gameOver writes the terminal under sendMutex on the network thread. A
+	// message's events are taken and written under the same lock, so the
+	// terminal either follows this message or this message is never built and
+	// the terminal takes its events: the stream stays gap-free, terminal last.
 	std::lock_guard lock(sendMutex);
 	{
 		std::lock_guard stateLock(stateMutex);
-		// gameOver runs on the network thread. Either this write completes
-		// before its terminal write, or it is suppressed: terminal stays last.
-		if(terminal)
-		{
-			// The terminal record is assembled under sendMutex after this
-			// returns, so returning these events keeps the history gap-free.
-			const auto & undelivered = message["events"];
-			if(undelivered.getType() == JsonNode::JsonType::DATA_VECTOR)
-				events.insert(events.begin(), undelivered.Vector().begin(), undelivered.Vector().end());
-			return;
-		}
+		if(terminal || stopping)
+			return false;
 	}
-	writeMessage(message);
+	writeMessage(build());
+	return true;
 }
 
 void ExplorerRL::writeMessage(const JsonNode & message)
@@ -408,12 +439,14 @@ void ExplorerRL::run() noexcept
 		// Ordered player-visible changes between decisions; see VisibleState.h.
 		ready["observation_events"].String() = "visible_update-v2";
 		ready["profiling"].Bool() = profile;
+		ready["snapshot_every"].Integer() = snapshotEvery;
 		{
-			auto gameState = readGameState();
+			const auto gameLock = readGameState();
 			const auto size = callback->getMapSize();
 			ready["map_size"] = positionJson({size.x, size.y, size.z}); // public map dimensions
 		}
-		sendMessage(ready);
+		if(!buildAndSend([&ready] { return ready; }))
+			return;
 		while(true)
 		{
 			QueryID query;
@@ -449,17 +482,20 @@ void ExplorerRL::run() noexcept
 		}
 		if(!report)
 			return; // A simultaneous natural terminal must finish its socket write.
-		if(report)
+		logAi->error("ExplorerRL: %s", error.what());
+		try
 		{
-			logAi->error("ExplorerRL: %s", error.what());
-			try
+			buildAndSend([this, &error]
 			{
 				auto result = message("error");
 				result["message"].String() = error.what();
-				sendMessage(result);
-			}
-			catch(...) {}
+				return result;
+			});
 		}
+		catch(...) {}
+		// The error record is diagnostic; the client's failure exit is what
+		// makes an unattended run end as a technical failure.
+		reportExperimentFailure(std::string("ExplorerRL: ") + error.what());
 		const int fd = socketFD.load();
 		if(fd >= 0)
 			::shutdown(fd, SHUT_RDWR);
@@ -587,9 +623,9 @@ JsonNode ExplorerRL::takeEvents()
 	return result;
 }
 
-std::shared_lock<std::shared_mutex> ExplorerRL::readGameState() const
+ExplorerRL::GameStateRead ExplorerRL::readGameState() const
 {
-	return std::shared_lock(CGameState::mutex);
+	return GameStateRead();
 }
 
 void ExplorerRL::noteVisibleChanges()
@@ -638,12 +674,9 @@ JsonNode ExplorerRL::takeProfile()
 	JsonNode result;
 	if(!profile)
 		return result;
-	{
-		std::lock_guard lock(sendMutex);
-		result["previous_message_encode_us"].Integer() = lastEncodeMicros;
-		result["previous_message_send_us"].Integer() = lastSendMicros;
-		result["previous_message_bytes"].Integer() = lastMessageBytes;
-	}
+	result["previous_message_encode_us"].Integer() = lastEncodeMicros;
+	result["previous_message_send_us"].Integer() = lastSendMicros;
+	result["previous_message_bytes"].Integer() = lastMessageBytes;
 	std::lock_guard lock(stateMutex);
 	result["visible_captures"].Integer() = visibleCaptures;
 	result["visible_capture_us"].Integer() = visibleCaptureMicros;
@@ -661,7 +694,7 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 			acknowledgements.clear();
 	}
 	{
-		std::shared_lock gameLock(CGameState::mutex);
+		const auto gameLock = readGameState();
 		request();
 	}
 	std::unique_lock lock(stateMutex);
@@ -751,15 +784,11 @@ JsonNode ExplorerRL::playerState()
 		}
 		break;
 	}
-	const auto size = callback->getMapSize();
-	int visibleTiles = 0;
-	for(int z = 0; z < size.z; ++z)
-		for(int y = 0; y < size.y; ++y)
-			for(int x = 0; x < size.x; ++x)
-				visibleTiles += callback->isVisible(int3(x, y, z)) ? 1 : 0;
-	result["visible_tiles"].Integer() = visibleTiles;
 	{
+		// Every pack is captured as it is applied, so the latest capture
+		// describes this state.
 		std::lock_guard lock(stateMutex);
+		result["visible_tiles"].Integer() = visibleTracker.visibleTiles();
 		result["completed_battles"].Integer() = completedBattles;
 	}
 	return result;
@@ -797,8 +826,11 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 	result["levels"].Integer() = size.z;
 	result["movement"].Integer() = hero ? hero->movementPointsRemaining() : 0;
 	result["movement_max"].Integer() = hero ? hero->movementPointsLimit() : 0;
+	// The tile list repeats what the events already established, so the
+	// adapter can verify its fold. It may be sent periodically: events never are.
+	const bool snapshot = snapshotEvery > 0 && observations++ % snapshotEvery == 0;
 	auto & tiles = result["tiles"].Vector();
-	for(int z = 0; z < size.z; ++z)
+	for(int z = 0; snapshot && z < size.z; ++z)
 		for(int y = 0; y < size.y; ++y)
 			for(int x = 0; x < size.x; ++x)
 			{
@@ -819,8 +851,8 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 				auto & objects = item["objects"].Vector();
 				for(const auto objectID : tile->visitableObjects)
 				{
-					const auto * object = callback->getObj(objectID, false);
-					if(!object || !callback->isVisible(object))
+					const auto * object = playerVisibleObject(*callback, objectID);
+					if(!object)
 						continue;
 					JsonNode entry;
 					entry["id"].Integer() = object->id.getNum();
@@ -831,6 +863,8 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 				}
 				tiles.push_back(std::move(item));
 			}
+	if(!snapshot)
+		result.Struct().erase("tiles");
 	mask.fill(false);
 	mask[8] = true;
 	const auto * source = hero ? callback->getTile(position, false) : nullptr;
@@ -847,7 +881,10 @@ JsonNode ExplorerRL::observation(std::array<bool, 9> & mask, ObjectInstanceID & 
 			continue;
 		}
 		const auto * target = callback->getTile(destination, false);
-		mask[i] = target && source && target->entrableTerrain(source) && (!target->blocked() || target->visitable());
+		if(!target || !source)
+			continue;
+		const auto facts = visibleTileFacts(*callback, *target);
+		mask[i] = target->entrableTerrain(source) && (!facts.blocked || facts.visitable);
 	}
 	for(bool allowed : mask)
 		result["action_mask"].Vector().emplace_back(allowed);
@@ -869,23 +906,30 @@ void ExplorerRL::runTurn(QueryID queryID)
 		std::array<bool, 9> mask;
 		ObjectInstanceID heroID;
 		int3 position;
-		JsonNode state;
-		const auto buildStart = std::chrono::steady_clock::now();
+		const bool sent = buildAndSend([&]
 		{
-			// No packet can be applied while this lock is held, so the events end
-			// exactly at the state described by this decision snapshot.
-			const auto gameLock = readGameState();
-			noteVisibleChanges();
-			state = observation(mask, heroID, position);
-			state["state"] = playerState();
-			state["events"] = takeEvents();
-		}
-		if(profile)
-		{
-			state["perf"] = takeProfile();
-			state["perf"]["build_us"].Integer() = microsecondsSince(buildStart);
-		}
-		sendMessage(state);
+			const auto buildStart = std::chrono::steady_clock::now();
+			JsonNode state;
+			{
+				// No packet can be applied while this lock is held, so the events
+				// end exactly at the state described by this decision snapshot.
+				// A pack applied just before it may not have reached packApplied
+				// yet, so this capture is required, not redundant.
+				const auto gameLock = readGameState();
+				noteVisibleChanges();
+				state = observation(mask, heroID, position);
+				state["state"] = playerState();
+				state["events"] = takeEvents();
+			}
+			if(profile)
+			{
+				state["perf"] = takeProfile();
+				state["perf"]["build_us"].Integer() = microsecondsSince(buildStart);
+			}
+			return state;
+		});
+		if(!sent)
+			return;
 		const auto response = receiveMessage();
 		if(ended())
 			return;
@@ -915,26 +959,32 @@ void ExplorerRL::runTurn(QueryID queryID)
 		if(ended())
 			return;
 		const auto requestMicros = microsecondsSince(requestStart);
-		auto result = message("action_result");
-		result["action_id"].Integer() = actionID++;
-		result["action"].Integer() = action;
-		result["accepted"].Bool() = accepted;
-		result["before"] = before;
+		const bool resultSent = buildAndSend([&]
 		{
-			const auto gameLock = readGameState();
-			noteVisibleChanges();
-			result["after"] = playerState();
-			result["events"] = takeEvents();
-		}
-		if(profile)
-		{
-			result["perf"] = takeProfile();
-			result["perf"]["request_us"].Integer() = requestMicros;
-		}
-		sendMessage(result);
+			auto result = message("action_result");
+			result["action_id"].Integer() = actionID;
+			result["action"].Integer() = action;
+			result["accepted"].Bool() = accepted;
+			result["before"] = before;
+			{
+				const auto gameLock = readGameState();
+				noteVisibleChanges();
+				result["after"] = playerState();
+				result["events"] = takeEvents();
+			}
+			if(profile)
+			{
+				result["perf"] = takeProfile();
+				result["perf"]["request_us"].Integer() = requestMicros;
+			}
+			return result;
+		});
+		if(!resultSent)
+			return;
+		++actionID;
 		if(action == 8 && accepted)
 		{
-			sendMessage(message("turn_end"));
+			buildAndSend([this] { return message("turn_end"); });
 			return;
 		}
 	}
@@ -944,13 +994,22 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 {
 	if(player != playerID || (!result.victory() && !result.loss()))
 		return;
+	std::string earlierFailure;
 	{
 		std::lock_guard lock(stateMutex);
 		if(terminal)
 			return;
 		terminal = true;
+		earlierFailure = failure;
 	}
 	changed.notify_all();
+	if(!earlierFailure.empty())
+	{
+		// A failed episode never becomes a natural ending, even when the game
+		// reaches one before the worker has reported the failure.
+		reportExperimentFailure("ExplorerRL failed before the game ended: " + earlierFailure);
+		return;
+	}
 	try
 	{
 		// Holding sendMutex first lets an in-flight worker message finish, or
@@ -967,6 +1026,7 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 	catch(const std::exception & error)
 	{
 		logAi->error("ExplorerRL terminal delivery failed: %s", error.what());
+		reportExperimentFailure(std::string("ExplorerRL terminal delivery failed: ") + error.what());
 	}
 }
 
@@ -1000,12 +1060,16 @@ void ExplorerRL::handleDecision(Decision decision)
 		request[key] = value;
 	const auto id = decisionID++;
 	request["decision_id"].Integer() = id;
+	const bool sent = buildAndSend([&]
 	{
+		auto built = request;
 		const auto gameLock = readGameState();
 		noteVisibleChanges();
-		request["events"] = takeEvents();
-	}
-	sendMessage(request);
+		built["events"] = takeEvents();
+		return built;
+	});
+	if(!sent)
+		return;
 	const auto response = receiveMessage();
 	if(ended())
 		return;
@@ -1033,9 +1097,29 @@ void ExplorerRL::handleDecision(Decision decision)
 
 void ExplorerRL::heroGotLevel(const CGHeroInstance * hero, PrimarySkill primary, std::vector<SecondarySkill> & skills, QueryID query)
 {
-	if(!hero || hero->getOwner() != playerID || skills.empty())
+	if(!hero || hero->getOwner() != playerID)
 	{
-		unsupported("level-up without owned hero or choices");
+		unsupported("level-up of a hero the player does not own");
+		return;
+	}
+	if(query == QueryID(-1))
+	{
+		// With at most one secondary skill offered the server applies the
+		// level-up itself and opens no query: there is nothing to choose.
+		JsonNode event;
+		event["kind"].String() = "level_up";
+		event["primary_skill"].Integer() = primary.getNum();
+		auto & offered = event["secondary_skills"].Vector();
+		offered.clear();
+		for(const auto & skill : skills)
+			offered.emplace_back(skill.getNum());
+		std::lock_guard lock(stateMutex);
+		events.push_back(std::move(event));
+		return;
+	}
+	if(skills.empty())
+	{
+		unsupported("level-up query without choices");
 		return;
 	}
 	JsonNode payload;
@@ -1105,20 +1189,7 @@ void ExplorerRL::showUniversityWindow(const IMarket *, const CGHeroInstance *, Q
 void ExplorerRL::showTavernWindow(const CGObjectInstance *, const CGHeroInstance *, QueryID) { unsupported("tavern"); }
 void ExplorerRL::heroExchangeStarted(ObjectInstanceID, ObjectInstanceID, QueryID) { unsupported("hero exchange"); }
 
-void ExplorerRL::heroMoved(const TryMoveHero &, bool) { visibleChangeTrigger(); }
-void ExplorerRL::objectRemovedAfter() { visibleChangeTrigger(); }
-void ExplorerRL::newObject(const CGObjectInstance *) { visibleChangeTrigger(); }
-void ExplorerRL::objectPropertyChanged(const SetObjectProperty *) { visibleChangeTrigger(); }
-void ExplorerRL::tileRevealed(const FowTilesType &) { visibleChangeTrigger(); }
-void ExplorerRL::tileHidden(const FowTilesType &) { visibleChangeTrigger(); }
-void ExplorerRL::heroCreated(const CGHeroInstance *) { visibleChangeTrigger(); }
-void ExplorerRL::heroInGarrisonChange(const CGTownInstance *) { visibleChangeTrigger(); }
-void ExplorerRL::battleResultsApplied() { visibleChangeTrigger(); }
-void ExplorerRL::playerStartsTurn(PlayerColor) { visibleChangeTrigger(); }
-void ExplorerRL::invalidatePaths() { visibleChangeTrigger(); }
-void ExplorerRL::receivedResource() { visibleChangeTrigger(); }
-void ExplorerRL::heroMovePointsChanged(const CGHeroInstance *) { visibleChangeTrigger(); }
-void ExplorerRL::garrisonsChanged(ObjectInstanceID, ObjectInstanceID) { visibleChangeTrigger(); }
+void ExplorerRL::packApplied() { visibleChangeTrigger(); }
 
 std::optional<BattleAction> ExplorerRL::makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &)
 {

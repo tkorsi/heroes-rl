@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <map>
@@ -146,6 +147,12 @@ class VisibleTracker
 	std::optional<VisibleSnapshot> previous;
 
 public:
+	/// Visible tiles in the latest capture.
+	int visibleTiles() const
+	{
+		return previous ? static_cast<int>(std::count(previous->tiles.begin(), previous->tiles.end(), 1)) : 0;
+	}
+
 	VisibleChange update(VisibleSnapshot current)
 	{
 		VisibleChange change;
