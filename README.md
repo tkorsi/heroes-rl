@@ -9,9 +9,11 @@ omniscient and player-fog videos.
 other with separate fog, automatic battles, and four synchronized recordings.
 The earlier fixed Easy-opponent baseline is retained. A separate, randomly
 initialized recurrent actor-critic prototype and strict learner contracts now
-exist; they are not connected to VCMI and have not been trained. Native gameplay
-has been tested on macOS;
-other platforms are not yet validated.
+exist; they are not connected to VCMI and have not been trained. Draft headless
+PR #6 has separately passed bounded native-game, boundary and replay validation
+on macOS at `4fe0d7c`; it remains unmerged. The next interface design is structured
+map, hero-window and town-window interaction, specified below but not implemented.
+Other platforms are not yet validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
@@ -66,6 +68,15 @@ improving play. Terminal-only rewards may produce no learning for a long time.
   natural result and 0 on ordinary transitions; the reward convention is unchanged.
 - Only player-visible information may enter the learner. A spectator recording
   can show more for human inspection, but must never feed hidden state to it.
+- Use structured game observations and typed contextual interactions, not
+  screenshots, screen coordinates or externally selected random clicks. For the
+  expanded interface, only the adventure map, hero window and town window are
+  in scope. Window-only information and operations require an explicit open
+  action; closing a window stops refreshes of its private panel contents.
+  Additional interfaces, including obelisks and special dialogs, are deferred.
+- Learned recurrent state is separate for each player and resets each episode.
+  Discuss any engineered last-seen input/cache before adding it to the learner;
+  existing diagnostic caches are not authorization to make them model inputs.
 - Freeze opponent settings during comparisons. The earlier built-in baseline
   uses active Nullkiller on Easy (difficulty index 0). Random self-play uses
   ExplorerRL on both sides with independent Python RNGs and the same action
@@ -98,8 +109,9 @@ For future training, save episode records and checkpoints for the whole run;
 record scheduled evaluation episodes from frozen checkpoints. This avoids
 making every training step wait for rendering. A video of a later evaluation
 is labelled as such, not presented as the original training episode. Exact
-action replay is a separate capability and is not implemented yet; it is now
-part of the delegated headless workstream below.
+action replay is a separate capability. It is absent from this original rendered
+recorder but implemented and locally verified in the separate headless PR #6
+workstream described below; do not relabel old recordings as verified replays.
 
 The player view means the map information available to a **side/team**, shared
 by its heroes and towns; it is not a single hero's line of sight or a literal
@@ -242,8 +254,10 @@ win or loss, the ideal value is `P(win | h) - P(loss | h)`; it is a prediction
 under the training opponent distribution, not an objective score for the map.
 Both policy and value learn from experience. Mines and exploration are logged
 as metrics; their strategic usefulness must be learned through eventual returns.
-The existing uniform dialog-choice policy and automatic BattleAI remain fixed
-subsystems for this first movement learner, with their versions recorded.
+The existing movement baseline has a uniform dialog-choice policy and automatic
+BattleAI, with their versions recorded. The proposed expanded interface retains
+automatic battles but does not inherit automatic or random answers to unsupported
+dialogs; its bounded handling rule is specified below.
 
 Freeze the behavior checkpoint and opponent mixture during rollout collection,
 and the chosen opponent for each episode. PPO updates use learner actions with
@@ -264,10 +278,12 @@ training. The current rendered, wall-limited recordings do not yet provide this
 learner boundary contract. An entropy term, if used for exploration in PPO, is
 an optimization term logged separately from game reward.
 
-The three existing self-play runs contain no verified terminal outcomes.
+The three original rendered self-play runs contain no verified terminal outcomes.
 Bootstrapping zero-reward trajectories alone does not supply missing win/loss
 information. Before a learning campaign, establish reachable natural endings
-and measure their frequency under the headless baseline. Evaluate frozen
+and measure their frequency under the headless baseline. PR #6's bounded native
+checks now establish reachable natural endings; they are not a learned-policy
+evaluation or complete learner integration. Evaluate frozen
 checkpoints on held-out seeds, both colors and a fixed opponent set; do not use
 win rate against the current copy of itself as the sole measure of progress.
 
@@ -288,8 +304,8 @@ expert explanations or disclose unavailable information. Preserve the scoped
 automatic BattleAI subsystem: this is initially adventure-strategy learning,
 not learning every combat tactic from scratch.
 
-The action space must be extensible and context-dependent. As the player
-explores and interacts with towns, shops and other objects, it can discover
+The action space must be extensible and context-dependent. In later stages, as
+the player explores and interacts with towns, shops and other objects, it can discover
 additional choices such as construction, recruitment, purchases and upgrades.
 Choices may disappear again when resources, access or prerequisites change.
 Expose them through legitimate player observations/interactions, not a global
@@ -305,6 +321,11 @@ behavior probabilities used during collection so PPO can reproduce its action
 distribution. The current nine-action mask is a bounded movement prototype,
 not the final game interface. Construction, economy and shop actions are not
 implemented by declaring this requirement.
+
+The current expanded-interface agreement narrows the next implementation to
+the map, hero window and town window. Shops, taverns, obelisks, spell books and
+other special interfaces are not part of that implementation stage. Future
+extensibility does not authorize implementing their choices now.
 
 Plan for continued training on HotA with versioned observation/action extensions
 and explicit checkpoint compatibility or migration. More objects with familiar
@@ -344,12 +365,13 @@ Any belief about later movement is an inference learned from experience.
 
 Preserve VCMI's normal team-fog rules. Its revealed territory is generally
 persistent; visibility is not a moving line-of-sight circle around one hero.
-The current bridge sends player-filtered snapshots at the agent's decision
-points. It does not yet provide a complete history of visible opponent movement
-between decisions. An enemy could appear and disappear during the opposing turn
-without entering a snapshot; a recurrent network cannot recover an event it
-never received. Issue #4 therefore includes sanitized player-visible events
-between decisions as part of the environment contract.
+The original bridge-v2 recorder sends player-filtered decision snapshots, which
+can miss an enemy appearing and disappearing between decisions. PR #6's bridge-v3
+captures sanitized visible changes between decisions and projects supported
+fields into history-v1. The local review at `4fe0d7c` observed transient sightings
+absent from adjacent decision snapshots. This is bounded coverage evidence, not
+proof of every callback or complete support for all dialogs and window contents.
+A recurrent network cannot recover an event the adapter never supplied.
 
 Do not pass raw engine callbacks or numeric global object IDs into the learned
 representation. Movement callbacks can include a hidden endpoint, and some
@@ -358,17 +380,240 @@ available to that player at that time. Keep engine IDs internal; if identity is
 needed, assign opaque per-player episode-local handles only on legitimate first
 observation. Do not enumerate hidden objects to populate memory or handles.
 
-These remain requirements for the future engine-to-learner adapter. The current
+These remain requirements for the complete engine-to-learner adapter. The current
 random agents use only the attempt mask for movement; their diagnostic logs are
 not learned memory. The new isolated component can process an ordered synthetic
 history through trainable recurrent memory; its weights have not learned from
 game experience. It explicitly rejects raw bridge-v2 messages.
 
+PR #6's `PlayerHistory.memory()` is a deterministic last-seen diagnostic helper:
+permitted observations refresh its facts/time, and hidden entries freeze. It is
+not a learned memory module and is not automatically an input to the GRU. The
+default learner proposal remains chronological observations plus learned recurrent
+state. An explicit last-seen feature table could make entity tracking easier,
+but would change preprocessing and the memory experiment; discuss its fields,
+freshness rules and comparison cohort before adding it. No such learner-input
+change is agreed or implemented by this document.
+
+### Contextual map, hero and town interface — agreement and proposal
+
+**Status:** the constraints in this section are agreed requirements. The concrete
+v2 schemas, initial operations and implementation stages are proposals, not
+implemented behavior. This revision changes documentation only and does not
+authorize training. Keep `movement-v1` as a separately identified comparison.
+
+The intended loop, in plain English:
+
+1. **Observe:** receive structured facts available to this player in the current
+   context, plus every intervening permitted event in order. Current facts are
+   distinct from earlier sightings; absence never means a hidden enemy died.
+2. **Remember:** pass those observations, the player's actions and their results
+   through that player's GRU. Opening/closing windows and ending turns preserve
+   its state; a new episode resets it. The opponent has a separate history/state.
+3. **Choose:** the environment offers supported interactions and typed parameter
+   domains for this context. These describe what can be attempted, not what is
+   useful. The policy supplies the distribution and chooses all parameters.
+   Initial choices can be random; learning changes their probabilities.
+4. **Transition:** resolve the selected operation through the adapter/engine,
+   report consumption and observable results, and append intervening events.
+   The next boundary is this player's next decision, or its verified terminal.
+   Window navigation is an explicit transition even when game time does not move.
+5. **Learn later:** use eligible experience to update both policy and value
+   weights. Recurrent state is memory within a game; weight updates carry learning
+   across games. Inference alone does not change weights. Ordinary rewards stay
+   zero; only verified natural win/loss yields +1/-1. No strategic priority,
+   intermediate reward or scripted target chooser is inserted into this loop.
+
+#### What exists and what needs implementation
+
+| Capability | Implemented behavior | Expanded-interface change still needed |
+| --- | --- | --- |
+| Live action interface | One selected owned hero, eight adjacent movement attempts and end-turn; automatic battles. | Explicit hero targeting and map/hero/town context navigation. |
+| History and fog | PR #6 records per-player visible events and current map/own-state views; local replay and transient-sighting checks pass. | Context/field visibility audit, window observations and complete terminal/supersession history. |
+| Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
+| Candidate scoring | Generic typed scorer; movement adapter only. Opaque candidate keys are not features. | Typed entity/control references and parameter domains; history/trajectory v1 still accepts only indices 0–8. |
+| Hero/town operations | No structured open/close, construction, recruitment, army editing or quantity-choice transport. | Implement and validate each declared operation against VCMI. Calling a generic scorer with a new type does not implement it. |
+| Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
+
+The action-consumption and stream-finalization findings are **resolved in the
+reviewed draft head `4fe0d7c`**, not still-open design blockers. Integration must
+use that fix or an equivalent revalidated descendant, not an older build. The
+remaining history-v1 limitation is separate: final visible changes after a
+superseded decision invalidate the projection. A natural game result does not
+make that incomplete player trajectory eligible for learning.
+
+#### Proposed observation and history boundary
+
+Introduce a new environment identifier, for example `adventure-windows-v1`, with
+`heroes-player-history-v2` and `heroes-context-actions-v2`. These are proposed
+names. Store versions, supported operations, map/engine hashes and checkpoint
+compatibility in manifests. Never pool these results with `movement-v1` without
+identifying the interface and observation differences.
+
+Each decision carries `{context, revision, observation, controls, offers}`. Context is
+`map`, `hero(subject)` or `town(subject)`; subjects use player-local routing
+handles. A revision identifies this player's observed context, not a global
+engine event counter. Offers and responses bind to the decision and context
+revision. Revalidate stale commands without exposing hidden reasons or executing
+them in a different window. Routing handles/keys are not numeric model features;
+the scorer sees only the corresponding permitted observations and parameters.
+`controls` may include disabled controls and their displayed status when the
+native panel actually shows them; `offers` is the currently supported attempt
+set. Neither is populated from an unseen global interaction catalog.
+
+Separate **map/global fields** from **active-window fields**:
+
+| Context | Proposed current observation | Freshness/access rule |
+| --- | --- | --- |
+| Map | Public day, the player's own resources, permitted terrain/objects and owned hero/town map information established by the interface audit. | Preserve normal player/team fog and legitimate map-visible changes. No blanket inclusion of all owned-object attributes. |
+| Hero | The explicitly opened, accessible hero's supported statistics, army slots and other audited hero-panel fields; supported controls. | Only after successful `open_hero`; do not expose another hero's panel. Unsupported fields are declared as coverage limits, not invented zeros. |
+| Town | The explicitly opened, accessible town's supported overview, buildings and armies; controls visible in that panel. | Recruitment stock, construction options and other deeper-panel details require the appropriate explicit internal-panel navigation if the normal interface does. |
+
+The first access scope is owned heroes/towns reachable through the player's
+normal map interface. Opening an enemy object must not grant its private window.
+Ownership is necessary, not sufficient: engine getters are not automatically
+safe discovery APIs. Audit every field/offer against the corresponding native
+interface before calling getters that can return broader information.
+
+Freshness is per field. On close, window-only details cease to be current and
+receive no refresh while closed. Their prior observations remain in chronology
+and may be retained by the GRU. Reopening produces a fresh structured observation.
+Map-visible facts such as the player's own resource totals must still update through their
+legitimate map/global channel; closing a window must not hide those facts or
+silently refresh its entire old snapshot. The present bridge exposes army and
+other own-state fields without any window context, so v2 needs a field-by-field
+audit rather than copying that payload wholesale or deleting all own-state data.
+
+History-v2 must record window open/close/panel changes and their outcomes in the
+same player-local order as map observations, including transient sightings.
+Add explicit consumption, decision-supersession and terminal events so final
+views remain representable without inventing an action or mutating a delivered
+prefix. Distinguish an adapter-consumed navigation action from a server-issued
+game command. Both require an observable result; neither acknowledgement alone
+proves a strategic effect. Keep raw engine IDs and omniscient replay data outside
+this contract. Context changes never reset recurrent memory.
+
+#### Proposed minimum interactions and parameters
+
+Start with map controls and open/read/close windows, then add the smallest audited
+internal operations below. Names describe mechanics only; no choice is ranked
+or labelled as beneficial. The agent selects the operation, target and quantity.
+
+| Context | Proposed interaction | Typed parameters and mechanics |
+| --- | --- | --- |
+| Map | `move_step` | Owned `hero_ref`, `direction` in the eight adjacent directions. One adjacent destination attempt; no route planning or repeated movement. |
+| Map | `end_turn` | No parameters; remains possible without a hero while the player is still in the game. |
+| Map | `open_hero`, `open_town` | An accessible owned `subject_ref` from permitted map/list observations; returns a structured window observation. |
+| Hero | `close` | Return to map; no world command or automatic end-turn. |
+| Hero | `transfer_stack` | `source_slot`, `destination_slot`, integer `count`; split/move/merge within this hero's visible army, with an empty or same-creature destination. Swapping unlike stacks is a separate deferred operation. |
+| Town | `close` | Return to map; no automatic purchases or turn completion. |
+| Town | `open_panel`, `back` | A currently displayed construction/recruitment control reference, or return to its enclosing supported town panel. Proposed explicit town-internal subcontexts, not access to unrelated dialogs. |
+| Town, construction panel | `construct` | An offered `building_ref`; attempt one construction with the displayed cost/prerequisites. |
+| Town, recruitment panel | `recruit` | An offered `creature_offer_ref`, a currently supported visible `destination_army_ref`, and integer `count`; attempt exactly that purchase/placement. No automatic quantity or destination selection. |
+
+Construction/recruitment panels are a **proposed** refinement of the allowed town
+window, not an already agreed blanket permission for extra windows. Audit their
+native navigation and information scope before implementation. If the operation
+requires an additional unsupported modal interface, leave it unsupported under
+the rule below. In the native construction interface, town → hall → building
+details reveals information progressively; do not collapse that into revealing
+every building's detailed cost/prerequisites when the town first opens. Owned
+towns/heroes may be opened through their normal lists without physically moving
+a hero to the town. Tavern hiring, shops, spell books, artifact operations, inter-hero
+exchange, obelisks and other special dialogs stay deferred. The authored baseline
+also forbids tavern construction; do not quietly change the map to enable hiring.
+
+Current native movement already matches the one-step proposal: ExplorerRL sends
+one adjacent destination to `moveHero`; the callback wraps that single destination
+as a one-element path. The engine can reject it or resolve a visit/battle, and
+acknowledgement does not guarantee displacement. No engine-selected multi-tile
+route is requested. Any future destination/path command is a separate versioned
+capability with explicit route semantics, not a silent strategic macro.
+
+The smallest quantity implementation can enumerate the finite legal counts in
+the bounded scenario. A later conditional distribution may select an offer and
+then quantity; record every support and conditional probability so PPO recovers
+the exact joint behavior probability. Do not let the environment fill parameters
+with an external RNG. Extend the current candidate representation with typed
+target/control references and permitted target features; integer handle
+embeddings would violate the existing information contract.
+
+**Availability is not utility or a guarantee of success.** Filter offers using
+only current context, declared adapter capabilities and player-visible facts:
+ownership/access, displayed costs/stock/prerequisites, visible army slots and
+known movement restrictions. Unknown neighboring tiles remain attemptable under
+the same public rules; do not consult hidden obstacles, enemies or undiscovered
+objects to prune the mask. The server still checks actual reachability, movement,
+collisions, access, costs, prerequisites, stock and army invariants atomically.
+A rejection reports only information the player is entitled to receive. For two
+worlds with identical permitted history/context but different hidden state, the
+observations, offered support and parameter domains must be identical until a
+legitimate observation distinguishes them.
+
+#### Unsupported interactions and bounded execution
+
+Proposed rule: an unsupported dialog or malformed/unrepresentable transition
+stops collection with a distinct `unsupported_interaction`/technical status,
+preserves diagnostic evidence and performs bounded engine shutdown. It is not
+a defeat, draw or eligible horizon: no terminal reward, value bootstrap or
+training targets. Do not answer it randomly, select a default, or wait forever.
+Keep this reason separate from crashes in reporting even though both are
+ineligible. A later natural result cannot repair missing interface history.
+
+For a visible object/control, a publicly defined support restriction may prevent
+offering an operation that is known to require an unsupported interface. Never
+use a hidden object's type or hidden dialog availability to remove a movement
+attempt. If an unknown encounter triggers the dialog, stop only when it actually
+occurs. Automatic battle resolution remains the agreed external subsystem; any
+unsupported surrounding choice still follows the stop rule. The old baseline's
+uniform supported-dialog policy remains available only in its labelled cohort.
+
+Count every policy choice, including open/close/back and rejected attempts, toward
+a separate total-decision budget. The current headless action cap counts only
+adventure commands and is insufficient for window loops. Navigation can consume
+zero game time but receives no reward/penalty. A deliberate budget cutoff is
+bootstrap-eligible only at that player's verified next decision, with matching
+context, offers and recurrent state. Never invent a boundary for the opponent;
+exclude unresolved data if both required player boundaries cannot be obtained
+within the declared continuation bound. A wall-clock watchdog is a technical
+failure, not a substitute for such a cutoff.
+
+#### Proposed implementation and real-game validation stages
+
+1. **Freeze versions and audit visibility.** Keep the movement baseline intact.
+   Agree the field/context matrix, minimal operations and town-panel scope;
+   document observations, costs and mechanical effects without advice on their
+   usefulness. Use the reviewed boundary fixes. Codex owns learner contracts;
+   coordinate engine transport and capture changes with Claude's workstream.
+2. **Implement history/trajectory v2 and navigation.** Add explicit context,
+   consumed-action and terminal/supersession semantics, then map → hero → map →
+   town → map using structured observations. Update the encoder and candidate
+   target bindings, keeping separate player recurrent states. No PPO yet.
+3. **Validate navigation on real VCMI.** Check access denial, stale-context
+   commands, closing/reopening, closed-panel non-refresh and map-visible
+   exceptions. Verify intervening sightings and final views, isolated players,
+   zero-time loops, cutoff/crash handling and replay of recorded context actions
+   alongside native game commands. Synthetic tests alone do not pass this gate.
+4. **Add internal operations incrementally.** One hero army edit, then audited
+   town construction/recruitment and quantity selection. Verify exact costs,
+   stock, slot/count changes, rejections and no hidden-mask leakage. Each step
+   needs real game evidence, an explicit coverage list and replay verification.
+   Exercise unsupported-dialog termination without answering it. Retain failed
+   attempts rather than selecting only successful recordings.
+5. **Collect bounded random-interface validation, then review integration.**
+   Use predetermined seeds, both colors and matching interface versions. Recheck
+   reachable natural outcomes, action consumption, complete histories, rewards
+   and player-local bootstrap boundaries. Report natural endings, deliberate
+   cutoffs, technical failures and unsupported interactions separately. Only
+   after review design the collector/frozen-opponent PPO experiment; this task
+   starts no training campaign and purchases no compute.
+
 ### Player-history v1 contract
 
 `experiments/learner/contract.py` defines the strict typed boundary and
-`decode_frame` accepts its JSON representation. It is a proposed adapter target,
-not a claim that issue #4 already delivers this stream. All records have
+`decode_frame` accepts its JSON representation. PR #6 now emits a projection of
+this stream and local checks decode real games; that is not a complete window or
+dialog adapter. Incomplete projections remain ineligible. All records have
 `schema="heroes-player-history-v1"`, `episode`, `player` (0 or 1), a contiguous
 per-player `seq` starting at zero, public game `day`, and a discriminated `kind`.
 The sequence counts only that player's records, never hidden/global events.
@@ -416,9 +661,11 @@ implemented. The full chronological views retain the evidence of where and when
 an enemy was seen. Only the GRU carries earlier information forward; a previous
 object is never copied into a new current-view grid as if still visible.
 
-The first encoder covers the structured fields above. Uniform dialog selection
-and automatic BattleAI remain fixed external subsystems; their commands,
-versions and seeds must be retained in episode provenance. Rich dialog text,
+The first encoder covers the structured fields above. In the original movement
+baseline, uniform dialog selection and automatic BattleAI remain fixed external
+subsystems; their commands, versions and seeds must be retained in episode
+provenance. The expanded interface retains automatic battles but follows its
+explicit unsupported-dialog stop rule instead of inheriting that chooser. Rich dialog text,
 battle details and additional player-visible attributes require a versioned
 schema extension before being admitted as learner features. The adapter must
 report its observation coverage; this prototype is not an audit of VCMI callbacks.
@@ -557,11 +804,15 @@ Current review evidence is in
 `validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
 `validation/headless-review-2026-10-24.json` and
 `validation/headless-neutral-fix-2026-10-24.json`.
-Do not start a training campaign until headless validation establishes correct
-episode boundaries and reachable natural outcomes. The original three rendered
-self-play runs remain truncated; the new headless smoke is separate evidence.
-Schema 3 offline analysis, acceptance of video evidence and the full throughput
-benchmark remain pending.
+The next proposed work is the versioned map/hero/town interface above: first
+agree the field/context audit and town-panel scope, then implement navigation
+and complete histories before adding internal operations. No live contextual
+adapter, collector or PPO loop exists. The bounded headless checks establish
+reachable natural outcomes and validate the reviewed boundary fixes; they do
+not pass the expanded interface's integration gates or authorize training.
+The original three rendered self-play runs remain truncated and separate.
+Verified video binding now passes at `4fe0d7c`; a clean throughput benchmark
+has not been accepted. Do not start a training campaign.
 
 ## Git and local artifacts
 
@@ -681,13 +932,13 @@ the single source of purpose and decisions; do not maintain competing charters.
   replays and 20/20 selected natural replays, with all 24 tamper cases detected
   across those sets. His 1,000-attempt series reports 133 natural endings, 867
   day-limit truncations and zero failures. Three offline videos were generated;
-  their trace/manifest binding issue remains unresolved. The benchmark was still
+  their trace/manifest binding issue was unresolved at that head. The benchmark was still
   incomplete at inspection. The current source-only review checkout ran 164 tests
   with two dependency-related skips; the original build-backed check passed all
   163 tests. `validation/headless-neutral-fix-2026-10-24.json` records this later
-  evidence separately. **Training remains blocked** by action consumption and
-  stream finalization. Last-seen memory and video evidence binding also need
-  fixes; video success is not a condition of learner episode validity.
+  evidence separately. At that head, training was blocked by action consumption
+  and stream finalization. Last-seen memory and video evidence binding also
+  required fixes; video success is not a condition of learner episode validity.
 - Follow-up review at `bbfc955` confirms that none of those four fixes has
   landed. Its only change since `3a25545` correctly labels map-monster battles
   as neutral; the relevant Python implementations are unchanged. Fresh probes
@@ -748,7 +999,8 @@ valid recordings each; outcomes and rewards remain null. They reached days
 hero-versus-hero battle: Blue held both towns after losing its hero, while Red
 kept its hero but no town. Episode 2 included a neutral battle for each side.
 Episode 3's Red agent captured a mine. No natural self-play ending was observed
-in this series, so the full two-terminal shutdown path remains unverified live.
+in this original rendered series, which did not validate the full two-terminal
+shutdown path. The later bounded headless validation is separate evidence.
 
 | Episode | Engine seed | Red / Blue policy seeds | Red / Blue actions sent | Red / Blue explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- |
