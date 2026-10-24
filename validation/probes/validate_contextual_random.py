@@ -8,6 +8,7 @@ This is correctness/outcome validation, not a simulation throughput benchmark.
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 from dataclasses import asdict
 import json
 from pathlib import Path
@@ -103,6 +104,32 @@ def run(args, index):
     return row
 
 
+def cohort_report(rows):
+    """Keep native outcomes separate from probe exceptions; the counts can overlap."""
+    statuses = Counter({status: 0 for status in ('completed', 'truncated', 'failed', 'unfinalized')})
+    reasons = Counter()
+    natural = cutoffs = failed = 0
+    for row in rows:
+        statuses[row['status'] or 'unfinalized'] += 1
+        reasons[row['termination_reason'] or 'unfinalized'] += 1
+        verified = row['audit_passed'] is True and row['error'] is None
+        natural += verified and row['status'] == 'completed'
+        cutoffs += verified and row['status'] == 'truncated'
+        failed += not verified or row['status'] not in ('completed', 'truncated')
+    return {'schema': 'heroes-contextual-random-native-validation-v1', 'episodes': rows,
+        'native_status_counts': dict(sorted(statuses.items())),
+        'termination_reason_counts': dict(sorted(reasons.items())),
+        'natural_completions': natural, 'supported_cutoffs': cutoffs,
+        'native_failures': statuses['failed'],
+        'probe_exceptions': sum(row['error'] is not None for row in rows),
+        'failed_cases': failed,
+        'training_performed': False, 'throughput_benchmark': False}
+
+
+def cohort_exit_status(report):
+    return int(report['failed_cases'] > 0)
+
+
 def main():
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument('--binary', type=Path, required=True)
@@ -125,11 +152,9 @@ def main():
         'policy':'uniform available action type and uniform independent legal parameter domains; windows close only',
         'training_performed':False})
     rows = [run(args,index) for index in range(args.episodes)]
-    report = {'schema':'heroes-contextual-random-native-validation-v1','episodes':rows,
-        'natural_completions':sum(row['status']=='completed' and row['audit_passed'] and row['error'] is None for row in rows),
-        'training_performed':False,'throughput_benchmark':False}
+    report = cohort_report(rows)
     write(args.output / 'validation.json',report)
-    return 1 if any(row['error'] for row in rows) else 0
+    return cohort_exit_status(report)
 
 
 if __name__ == '__main__':
