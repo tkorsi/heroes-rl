@@ -10,10 +10,14 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 FAKE_ENGINE = ROOT / "tests/fixtures/headless/fake_engine.py"
@@ -324,6 +328,88 @@ class FakeLauncher:
         return {"fake_engine": True}
 
 
+class ServerLogLauncher(FakeLauncher):
+    """The fake engine, which logs no server inputs, plus a server replay log the test completes."""
+
+    def launch(self, directory, seed, environment, log):
+        launched = super().launch(directory, seed, environment, log)
+        (directory / "engine" / "replay.jsonl").write_text(json.dumps({"kind": "init"}) + "\n")
+        return launched
+
+
+def write_jsonl(path, records, tail=""):
+    path.write_text("".join(json.dumps(record) + "\n" for record in records) + tail)
+
+
+class ReplayTailTests(unittest.TestCase):
+    """A stop waits until the server's replay log covers every pack the players' ledgers name."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="heroes-replay-tail-")
+        self.engine = Path(self.directory.name)
+
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def server_log(self, start, *applied, tail=""):
+        records = [{"kind": "init", "start_info": "00"}, {"kind": "start", "client_out": start}]
+        for client_out in applied:
+            records += [{"kind": "input", "seq": len(records), "pack": "ab"}, {"kind": "applied", "client_out": client_out}]
+        write_jsonl(self.engine / "replay.jsonl", records, tail)
+
+    def test_coverage_counts_only_complete_lines(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "capture", "pack": 3}, {"kind": "message", "pack": 7}])
+        write_jsonl(self.engine / "observations-p1.jsonl", [{"kind": "capture", "pack": 5}], '{"kind":"capture","pack":99')
+        self.server_log(2, 6, tail='{"kind":"input","seq":6,"pack":"cd"}\n{"kind":"applied","client_out":50')
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 7, "replay_client_out": 6, "covered": False})
+        with (self.engine / "replay.jsonl").open("a") as log:
+            log.write(',"seq":6}\n')
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 7, "replay_client_out": 50, "covered": True})
+        (self.engine / "replay.jsonl").unlink()
+        self.assertFalse(env_module.replay_tail(self.engine)["covered"])
+        for path in self.engine.glob("observations-p*.jsonl"):
+            path.unlink()
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": None, "replay_client_out": None, "covered": True})
+
+    def test_lines_longer_than_the_tail_window(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "capture", "pack": n} for n in range(5000)])
+        write_jsonl(self.engine / "replay.jsonl", [
+            {"kind": "init", "start_info": "00" * 100000}, {"kind": "start", "client_out": 1},
+            {"kind": "input", "pack": "ab"}, {"kind": "applied", "client_out": 4999, "sent": ["x" * 200000]},
+            {"kind": "input", "pack": "ab" * 60000}])
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 4999, "replay_client_out": 4999, "covered": True})
+
+    def test_wait_ends_when_the_server_logs_the_observed_packs(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "message", "pack": 9}])
+        self.server_log(2, 6)
+
+        def log_late():
+            time.sleep(0.1)
+            with (self.engine / "replay.jsonl").open("a") as log:
+                log.write(json.dumps({"kind": "input"}) + "\n" + json.dumps({"kind": "applied", "client_out": 9}) + "\n")
+        writer = threading.Thread(target=log_late)
+        writer.start()
+        waited = env_module.await_replay_tail(self.engine, lambda: True, 5.0)
+        writer.join()
+        self.assertGreater(waited, 0.05)
+        self.assertLess(waited, 5.0)
+        self.assertTrue(env_module.replay_tail(self.engine)["covered"])
+
+    def test_wait_is_bounded_and_skipped_without_a_server_log_or_a_running_engine(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "message", "pack": 9}])
+        self.assertEqual(env_module.await_replay_tail(self.engine, lambda: True, 5.0), 0.0)
+        self.server_log(2, 6)
+        self.assertLess(env_module.await_replay_tail(self.engine, lambda: False, 5.0), 0.1)
+        waited = env_module.await_replay_tail(self.engine, lambda: True, 0.1)
+        self.assertGreaterEqual(waited, 0.1)
+        self.assertLess(waited, 1.0)
+        self.assertFalse(env_module.replay_tail(self.engine)["covered"])
+
+
 class ScriptedAgent:
     def __init__(self, actions=()):
         self.actions = list(actions)
@@ -532,6 +618,87 @@ class HeadlessEnvTests(unittest.TestCase):
         self.assertEqual(red[-1]["type"], "terminal")
         self.assertTrue(any(e["kind"] == "visible_update" for e in red[-1]["events"]))
 
+    def test_replay_manifest_names_every_absent_ledger(self):
+        env = self.make(env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
+                        mode="natural", end_day=5)
+        end, _ = play(env, self.random_players())
+        self.assertEqual(end.termination_reason, "agent_action_limit")
+        evidence = end.manifest["replay"]
+        # The fake writes both capture ledgers but no server log, so its stop never waits.
+        self.assertEqual((evidence["recorded"], evidence["missing"]), (False, ["engine/replay.jsonl"]))
+        self.assertEqual(evidence["tail"]["waited_seconds"], 0.0)
+        engine = env.episode_dir / "engine"
+        (engine / "replay.jsonl").write_text(json.dumps({"kind": "start", "client_out": 0}) + "\n")
+        blue = (engine / "observations-p1.jsonl").read_bytes()
+        (engine / "observations-p1.jsonl").unlink()
+        evidence = env._replay_evidence()
+        self.assertEqual((evidence["recorded"], evidence["missing"]), (False, ["engine/observations-p1.jsonl"]))
+        self.assertEqual(sorted(evidence["files"]), ["engine/observations-p0.jsonl", "engine/replay.jsonl"])
+        (engine / "observations-p1.jsonl").write_bytes(blue)
+        evidence = env._replay_evidence()
+        self.assertEqual((evidence["recorded"], evidence["missing"], len(evidence["files"])), (True, [], 3))
+        self.assertTrue(evidence["tail"]["covered"])
+
+    def test_an_environment_stop_waits_for_the_server_replay_log(self):
+        limits = env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        env = self.make(limits, mode="natural", end_day=5)
+        env.launcher = ServerLogLauncher(mode="natural", end_day=5)
+        covered_at_stop, stop = [], env_module.stop_process_group
+
+        def recording_stop(process):
+            covered_at_stop.append(env_module.replay_tail(env.episode_dir / "engine")["covered"])
+            stop(process)
+
+        def log_late():
+            # The server logs the input behind the players' captures (client pack 0) just after the horizon.
+            deadline = time.monotonic() + 30
+            while getattr(env, "reason", None) is None and time.monotonic() < deadline:
+                time.sleep(0.001)
+            time.sleep(0.05)
+            with (env.episode_dir / "engine" / "replay.jsonl").open("a") as log:
+                log.write(json.dumps({"kind": "start", "client_out": 0}) + "\n")
+        server = threading.Thread(target=log_late, daemon=True)
+        server.start()
+        with mock.patch.object(env_module, "stop_process_group", recording_stop):
+            end, _ = play(env, self.random_players())
+        server.join(timeout=5)
+        self.assertEqual(end.termination_reason, "agent_action_limit")
+        self.assertEqual(covered_at_stop, [True])
+        tail = end.manifest["replay"]["tail"]
+        self.assertEqual((tail["observation_pack"], tail["replay_client_out"], tail["covered"]), (0, 0, True))
+        self.assertGreater(tail["waited_seconds"], 0.02)
+        # A server log that never catches up delays the stop only by the bounded wait.
+        never = self.make(limits, mode="natural", end_day=5)
+        never.launcher = ServerLogLauncher(mode="natural", end_day=5)
+        with mock.patch.object(env_module, "REPLAY_TAIL_SECONDS", 0.2):
+            end, _ = play(never, self.random_players())
+        tail = end.manifest["replay"]["tail"]
+        self.assertEqual((tail["observation_pack"], tail["replay_client_out"], tail["covered"]), (0, None, False))
+        self.assertGreaterEqual(tail["waited_seconds"], 0.2)
+        self.assertLess(tail["waited_seconds"], 2.0)
+
+    def test_response_cost_excludes_the_ledger_write_and_the_action_fold(self):
+        env = self.make(mode="natural", end_day=2)
+        write_ledger, act = env._write_ledger, player_history.PlayerHistory.act
+
+        def slow_ledger(side, direction, message):
+            if direction == "policy":
+                time.sleep(0.01)
+            write_ledger(side, direction, message)
+
+        def slow_act(history, action):
+            time.sleep(0.01)
+            act(history, action)
+        env._write_ledger = slow_ledger
+        with mock.patch.object(player_history.PlayerHistory, "act", slow_act):
+            end, _ = play(env, self.random_players())
+        steps = end.manifest["env_steps"]
+        actions = sum(player["actions_sent"] for player in end.manifest["players"].values())
+        costs = end.manifest["timing"]["adapter_seconds"]
+        self.assertGreater(actions, 2)
+        self.assertGreaterEqual(costs["act"], 0.01 * actions)
+        self.assertLess(costs["respond"], 0.005 * steps)  # the sends alone; ledger and fold have their own keys
+
     def test_invalid_agent_choice_is_rejected_before_sending(self):
         env = self.make(mode="natural", end_day=2)
         request = env.reset(1, 7)
@@ -553,6 +720,30 @@ class HeadlessScoringTests(unittest.TestCase):
         for reason, status in (("game_day_limit", "truncated"), ("agent_action_limit", "truncated"),
                                ("watchdog_timeout", "failed"), ("protocol_error", "failed")):
             self.assertEqual(scoring.classify_headless_self_play(0, reason, "", executions)[0], status)
+
+    def test_engine_recipe_hashes_only_source_files(self):
+        scoring = env_module.scoring
+        with tempfile.TemporaryDirectory(prefix="heroes-recipe-") as directory:
+            root = Path(directory)
+            sources = ["dependencies/vcmi.json", "engine/ExperimentReplay/b.cpp", "engine/ExplorerRL/a.cpp",
+                       "engine/patches/0001-a.patch"]
+            for name in sources:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(name)
+            clean = scoring.engine_recipe_digests(root)  # not a git checkout: hidden files are skipped
+            self.assertEqual(sorted(clean), sources)
+            for folder in ("engine/ExplorerRL", "engine/ExperimentReplay"):
+                (root / folder / ".DS_Store").write_bytes(b"\0Finder")
+            self.assertEqual(scoring.engine_recipe_digests(root), clean)
+            if shutil.which("git") is None:
+                return
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / ".gitignore").write_text(".DS_Store\n*.so\n")
+            (root / "engine/ExplorerRL/libExplorerRL.so").write_bytes(b"build output")
+            subprocess.run(["git", "-C", str(root), "add", "dependencies", "engine/patches"], check=True)
+            self.assertEqual(scoring.engine_recipe_digests(root), clean)  # tracked or not, never ignored
+            (root / "engine/ExplorerRL/new.h").write_text("an untracked new source")
+            self.assertEqual(sorted(scoring.engine_recipe_digests(root)), sorted(sources + ["engine/ExplorerRL/new.h"]))
 
 
 if __name__ == "__main__":

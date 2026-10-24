@@ -19,6 +19,8 @@ RECORDING_LIMITS = {"wall_time_limit", "frame_limit", "agent_action_limit", "gam
 # collection or benchmark window. Everything else that stops an unfinished
 # game (watchdog, crash, protocol error) is a technical failure.
 HEADLESS_TRUNCATIONS = {"game_day_limit", "agent_action_limit", "collection_window"}
+# Root-owned sources that define the prepared engine.
+ENGINE_RECIPE = ("dependencies/vcmi.json", "engine/patches", "engine/ExplorerRL", "engine/ExperimentReplay")
 
 
 def digest(path: Path) -> str:
@@ -39,10 +41,20 @@ def write_json(path: Path, value: dict) -> None:
 
 
 def engine_recipe_digests(root: Path) -> dict:
-    """Hashes of every root-owned input that defines the prepared engine source."""
-    return {str(path.relative_to(root)): digest(path) for path in sorted([
-        root / "dependencies/vcmi.json", *root.glob("engine/patches/*.patch"),
-        *root.glob("engine/ExplorerRL/*"), *root.glob("engine/ExperimentReplay/*")]) if path.is_file()}
+    """Hashes of every root-owned input that defines the prepared engine source.
+
+    Only files git counts as source (tracked, or untracked and not ignored) are
+    hashed, as they are in the working tree, so an ignored .DS_Store never
+    changes the recipe. Without git, hidden files are skipped instead.
+    """
+    try:
+        listed = subprocess.run(["git", "-C", str(root), "ls-files", "-z", "-co", "--exclude-standard", "--",
+                                 *ENGINE_RECIPE], capture_output=True, check=True).stdout
+        paths = [root / name for name in listed.decode().split("\0") if name]
+    except (OSError, subprocess.CalledProcessError):
+        paths = [path for name in ENGINE_RECIPE for path in [root / name, *(root / name).rglob("*")]
+                 if not any(part.startswith(".") for part in path.relative_to(root).parts)]
+    return {str(path.relative_to(root)): digest(path) for path in sorted(paths) if path.is_file()}
 
 
 def classify_run(returncode: int, reason: str | None, log: str, outcome_player: int = 0) -> tuple[str, str | None, str]:

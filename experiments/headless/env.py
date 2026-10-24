@@ -43,6 +43,8 @@ _SCORING_SPEC.loader.exec_module(scoring)
 
 COLORS = scoring.SELF_PLAY_COLORS
 MAX_MESSAGE_BYTES = 16 * 1024 * 1024
+TAIL_BYTES = 64 * 1024  # first window when reading the end of an evidence file
+REPLAY_TAIL_SECONDS = 5.0  # longest wait for the server's replay log before a stop
 
 
 @dataclass(frozen=True)
@@ -215,6 +217,61 @@ def stop_process_group(process: subprocess.Popen) -> None:
     process.wait(timeout=5)
 
 
+def _last_record(path: Path, wanted) -> dict | None:
+    """The last complete JSON line of a file that ``wanted`` accepts, read from its tail only."""
+    size = TAIL_BYTES
+    while True:
+        try:
+            with path.open("rb") as source:
+                end = source.seek(0, os.SEEK_END)
+                start = max(0, end - size)
+                source.seek(max(0, start - 1))
+                data = source.read()
+        except OSError:
+            return None
+        if start:  # drop the line the window starts inside
+            data = data[data.find(b"\n") + 1:] if b"\n" in data else b""
+        for line in reversed(data[:data.rfind(b"\n") + 1].splitlines()):  # never an unterminated last line
+            try:
+                record = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(record, dict) and wanted(record):
+                return record
+        if not start:
+            return None
+        size *= 4
+
+
+def replay_tail(engine: Path) -> dict:
+    """Whether the server's replay log covers every client pack the players' observation ledgers name.
+
+    Both counters only grow within their file, so the last record of each is enough.
+    """
+    packs = [record["pack"] for path in sorted(engine.glob("observations-p*.jsonl"))
+             for record in [_last_record(path, lambda r: type(r.get("pack")) is int)] if record]
+    logged = _last_record(engine / "replay.jsonl",
+                          lambda r: r.get("kind") in {"start", "applied"} and type(r.get("client_out")) is int)
+    target, client_out = max(packs, default=None), logged["client_out"] if logged else None
+    return {"observation_pack": target, "replay_client_out": client_out,
+            "covered": target is None or (client_out is not None and client_out >= target)}
+
+
+def await_replay_tail(engine: Path, running, timeout: float) -> float:
+    """Poll until the replay log covers the observations already on disk; return the seconds waited.
+
+    The server confirms an input to the client before it logs the input as
+    applied, so a player can capture and send an observation whose input is
+    not yet in engine/replay.jsonl. Stopping the engine then would lose that input.
+    """
+    if not (engine / "replay.jsonl").is_file():
+        return 0.0
+    started = time.monotonic()
+    while running() and not replay_tail(engine)["covered"] and time.monotonic() - started < timeout:
+        time.sleep(0.002)
+    return time.monotonic() - started
+
+
 class HeadlessSelfPlayEnv:
     """Agent-environment cycle over one isolated engine process per episode."""
 
@@ -257,9 +314,11 @@ class HeadlessSelfPlayEnv:
         self.reason = self.detail = None
         self.engine_wait = self.agent_wait = 0.0
         self.step_latencies = []  # seconds from each response until the next request or the end
-        # Adapter costs on the environment thread: validation and history fold,
-        # evidence ledger writes, and encoding and sending responses.
-        self.costs = {"ingest": 0.0, "ledger": 0.0, "respond": 0.0}
+        # Adapter costs on the environment thread, each interval in one key only:
+        # validation and history fold of engine messages, history fold of the
+        # agents' actions, evidence ledger writes, and encoding and sending responses.
+        self.costs = {"ingest": 0.0, "act": 0.0, "ledger": 0.0, "respond": 0.0}
+        self.replay_tail_wait = 0.0  # before an environment stop; part of the reset cost
         self.last_engine_message = None
         self.shutdown_deadline = None
         self.sides = {}
@@ -310,13 +369,15 @@ class HeadlessSelfPlayEnv:
             # queued messages and exit status say which: a missing terminal still
             # fails the episode through the end-of-stream and exit paths.
             side.write_error = f"{type(error).__name__}: {error}"
+        self.costs["respond"] += time.perf_counter() - responding
         self._write_ledger(side, "policy", response)
         if "action" in response:
+            folding = time.perf_counter()
             side.history.act(response["action"])
+            self.costs["act"] += time.perf_counter() - folding
             side.actions_sent += 1
         else:
             side.decisions_sent += 1
-        self.costs["respond"] += time.perf_counter() - responding
         self.env_step += 1
         self.request = None
         sent = time.monotonic()
@@ -573,6 +634,9 @@ class HeadlessSelfPlayEnv:
     def _finish(self, exited) -> EpisodeEnd:
         stopped_by_environment = self.reason is not None
         if stopped_by_environment:
+            if self.replay:  # a stop must not cut the server's log short of what the players saw
+                self.replay_tail_wait = await_replay_tail(self.episode_dir / "engine", lambda: self.process.poll() is None,
+                                                          REPLAY_TAIL_SECONDS)
             stop_process_group(self.process)
         returncode = self.process.wait()
         finished = time.monotonic()
@@ -653,11 +717,14 @@ class HeadlessSelfPlayEnv:
         """Hashes of the replay evidence as the engine left it; replay.py verifies it later."""
         if not self.replay:
             return None
-        files = [self.episode_dir / "engine" / "replay.jsonl",
-                 *sorted((self.episode_dir / "engine").glob("observations-p*.jsonl"))]
-        return {"recorded": True, "files": {str(path.relative_to(self.episode_dir)): {
+        engine = self.episode_dir / "engine"
+        files = [engine / "replay.jsonl", *(engine / f"observations-p{side.player}.jsonl" for side in self.sides.values())]
+        missing = [str(path.relative_to(self.episode_dir)) for path in files if not path.is_file()]
+        return {"recorded": not missing, "files": {str(path.relative_to(self.episode_dir)): {
                     "sha256": scoring.digest(path), "bytes": path.stat().st_size} for path in files if path.is_file()},
-                "missing": [str(path.relative_to(self.episode_dir)) for path in files if not path.is_file()]}
+                "missing": missing,
+                # Coverage as the engine left the files; waited for only before the environment stops it.
+                "tail": {**replay_tail(engine), "waited_seconds": round(self.replay_tail_wait, 6)}}
 
     def _execution(self, side: _Side) -> dict:
         terminal = {"outcome": side.validator.terminal} if side.validator.terminal else None
