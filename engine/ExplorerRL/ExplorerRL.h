@@ -176,5 +176,6 @@ private:
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex
 	bool executeContextualAction(const JsonNode & action, int64_t decision);
 	bool executeTownAction(const JsonNode & action, int64_t decision);
+	bool executeRecruitmentAction(const JsonNode & action, int64_t decision);
 	void contextualResult(JsonNode result, int64_t decision);
 };

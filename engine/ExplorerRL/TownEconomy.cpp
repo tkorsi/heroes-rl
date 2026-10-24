@@ -1,12 +1,14 @@
 #include "StdInc.h"
 #include "TownEconomy.h"
 
+#include "../../lib/CCreatureHandler.h"
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/entities/building/CBuilding.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 
 #include <regex>
+#include <limits>
 #include <type_traits>
 
 namespace explorer_rl
@@ -15,7 +17,7 @@ namespace
 {
 [[noreturn]] void unsupported()
 {
-	throw std::runtime_error("Unsupported scenario interaction: unsupported_interaction: town construction data");
+	throw std::runtime_error("Unsupported scenario interaction: unsupported_interaction: town economy data");
 }
 
 std::string buildingText(const CBuilding & building, bool description = false)
@@ -97,6 +99,65 @@ BuildingID TownEconomyState::resolveBuilding(const CGTownInstance & town, const 
 	return BuildingID(found->second.second);
 }
 
+std::string TownEconomyState::dwellingHandle(const CGTownInstance & town, int level)
+{
+	const auto key = std::make_pair(town.id.getNum(), level);
+	if(const auto found = dwellingHandles.find(key); found != dwellingHandles.end()) return found->second;
+	const auto ref = "dwelling-" + std::to_string(dwellingHandles.size());
+	dwellingHandles.emplace(key, ref);
+	dwellings.emplace(ref, key);
+	return ref;
+}
+
+int TownEconomyState::resolveDwelling(const CGTownInstance & town, const std::string & ref) const
+{
+	const auto found = dwellings.find(ref);
+	if(found == dwellings.end() || found->second.first != town.id.getNum())
+		throw std::runtime_error("Dwelling reference does not belong to the active town");
+	const int level = found->second.second;
+	if(level < 0 || static_cast<size_t>(level) >= town.creatures.size() || town.creatures[level].second.empty())
+		throw std::runtime_error("Dwelling control is no longer present");
+	return level;
+}
+
+std::string TownEconomyState::recruitHandle(const CGTownInstance & town, int level, CreatureID creature)
+{
+	const auto key = std::make_tuple(town.id.getNum(), level, creature.getNum());
+	if(const auto found = recruitHandles.find(key); found != recruitHandles.end()) return found->second;
+	const auto ref = "recruit-" + std::to_string(recruitHandles.size());
+	recruitHandles.emplace(key, ref);
+	return ref;
+}
+
+std::string TownEconomyState::destinationHandle(const CGTownInstance & town)
+{
+	const auto * destination = town.getUpperArmy();
+	if(!destination || destination->getOwner() != town.getOwner()) unsupported();
+	const auto key = std::make_pair(town.id.getNum(), destination->id.getNum());
+	if(const auto found = destinationHandles.find(key); found != destinationHandles.end()) return found->second;
+	const auto ref = "army-" + std::to_string(destinationHandles.size());
+	destinationHandles.emplace(key, ref);
+	return ref;
+}
+
+JsonNode recruitmentCapacityNotice()
+{
+	// GUIClasses.cpp CRecruitmentWindow::buy uses allTexts[17] and the
+	// ordinary modal CInfoWindow, with no components or server query.
+	JsonNode event;
+	event["kind"].String() = "notice";
+	auto & notice = event["notice"];
+	notice["display_mode"].String() = "modal";
+	notice["components"].Vector();
+	JsonNode token;
+	token["op"].String() = "append_text";
+	token["text_id"].String() = "core.genrltxt.17";
+	token["number"] = JsonNode();
+	token["owner"] = JsonNode();
+	notice["text"].Vector().push_back(std::move(token));
+	return event;
+}
+
 std::vector<const CBuilding *> displayedHallBuildings(const CGTownInstance & town)
 {
 	std::vector<const CBuilding *> result;
@@ -147,6 +208,16 @@ JsonNode townPanel(const CCallback & player, const CGTownInstance & town,
 		control["panel"].String() = "hall";
 		control["ref"].String() = "panel-0";
 		result["controls"].Vector().push_back(std::move(control));
+		// CCastleBuildings/CCreaInfo offer the popup for every nonempty
+		// dwelling list, including an exhausted stock. No stock or cost is read.
+		for(size_t level = 0; level < town.creatures.size(); ++level)
+			if(!town.creatures[level].second.empty())
+			{
+				JsonNode dwelling;
+				dwelling["panel"].String() = "recruitment";
+				dwelling["ref"].String() = state.dwellingHandle(town, static_cast<int>(level));
+				result["controls"].Vector().push_back(std::move(dwelling));
+			}
 	}
 	else if(panel == "hall")
 	{
@@ -183,6 +254,42 @@ JsonNode townPanel(const CCallback & player, const CGTownInstance & town,
 			detail["requirements"] = requirement(town, town.genBuildingRequirements(id).get(), remaining);
 		else if(status == EBuildingState::MISSING_BASE)
 			detail["requirements"] = requirement(town, CBuilding::TRequired::Variant(building.upgrade), remaining);
+	}
+	else if(panel == "recruitment")
+	{
+		const int level = state.resolveDwelling(town, selection);
+		const auto & pool = town.creatures[level];
+		if(pool.first > std::numeric_limits<int32_t>::max()
+			|| pool.second.size() > 32 || state.selectedRecruitIndex >= pool.second.size()) unsupported();
+		auto & recruit = result["recruitment"];
+		recruit["control_ref"].String() = selection;
+		recruit["stock"].Integer() = pool.first;
+		// Native availableCreaturesChanged reverses the variants and initially
+		// selects card zero; refresh preserves its card index, not a hidden ID.
+		for(auto creature = pool.second.rbegin(); creature != pool.second.rend(); ++creature)
+		{
+			const auto * type = creature->toCreature();
+			if(!type || creature->getNum() < 0 || type->warMachine.hasValue()) unsupported();
+			JsonNode card;
+			card["ref"].String() = state.recruitHandle(town, level, *creature);
+			card["creature"].Integer() = creature->getNum();
+			recruit["offers"].Vector().push_back(std::move(card));
+		}
+		const auto creature = pool.second[pool.second.size() - 1 - state.selectedRecruitIndex];
+		recruit["selected_offer_ref"].String() = state.recruitHandle(town, level, creature);
+		const auto & cost = creature.toCreature()->getFullRecruitCost();
+		for(int resource = 0; resource < 7; ++resource)
+		{
+			if(cost[resource] < 0) unsupported();
+			recruit["unit_cost"].Vector().emplace_back(cost[resource]);
+		}
+		for(size_t resource = 7; resource < cost.size(); ++resource)
+			if(cost[resource] != 0) unsupported();
+		const auto maximum = std::min<int64_t>(pool.first, creature.toCreature()->maxAmount(player.getResourceAmount()));
+		if(maximum < 0) unsupported();
+		recruit["slider_max"].Integer() = maximum;
+		recruit["destination"]["ref"].String() = state.destinationHandle(town);
+		recruit["destination"]["role"].String() = town.getGarrisonHero() ? "garrison_hero" : "town_garrison";
 	}
 	else unsupported();
 	return result;

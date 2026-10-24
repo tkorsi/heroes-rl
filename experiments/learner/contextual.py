@@ -94,12 +94,12 @@ class Context:
             _text(self.subject)
         if self.kind != "town" and (self.panel is not None or self.selection is not None):
             raise ValueError("Only town contexts have panels")
-        if self.panel not in (None, "overview", "hall", "building"):
+        if self.panel not in (None, "overview", "hall", "building", "recruitment"):
             raise ValueError("Unsupported town panel")
-        if self.panel == "building":
+        if self.panel in ("building", "recruitment"):
             _text(self.selection)
         elif self.selection is not None:
-            raise ValueError("Only building detail selects a building")
+            raise ValueError("Only building or recruitment panels have a selection")
 
 
 @dataclass(frozen=True)
@@ -118,7 +118,7 @@ class Action:
         profile = profile_for(self.schema)
         if self.schema != profile.action_schema:
             raise ValueError("Expected an action schema")
-        town_actions = ("open_panel", "open_building", "construct", "back")
+        town_actions = ("open_panel", "open_building", "construct", "back", "select_recruit", "recruit")
         if self.kind not in ("move_to", "open_hero", "open_town", "close", "end_turn", *(
                 town_actions if profile == TOWN_PROFILE else ())):
             raise ValueError("Unsupported contextual action")
@@ -132,16 +132,21 @@ class Action:
         elif self.x is not None or self.y is not None:
             raise ValueError("Only destination movement takes coordinates")
         if self.kind == "open_panel":
-            if self.panel != "hall" or self.selection is not None:
-                raise ValueError("Only the explicit hall panel is supported")
-        elif self.kind in ("open_building", "construct"):
+            if self.panel == "recruitment":
+                _text(self.selection)
+            elif self.panel != "hall" or self.selection is not None:
+                raise ValueError("Unsupported explicit town panel selection")
+        elif self.kind in ("open_building", "construct", "select_recruit", "recruit"):
             _text(self.selection)
             if self.panel is not None:
-                raise ValueError("Building actions select a displayed building only")
+                raise ValueError("This action selects a displayed entry, not a panel")
         elif self.panel is not None or self.selection is not None:
             raise ValueError("This action has no panel selection")
-        if self.count is not None or self.destination is not None:
-            raise ValueError("Recruitment is not enabled in this construction stage")
+        if self.kind == "recruit":
+            _integer(self.count, low=1, high=2**31 - 1, name="recruitment count")
+            _text(self.destination)
+        elif self.count is not None or self.destination is not None:
+            raise ValueError("Only recruitment supplies a count and destination")
 
 
 BUILDING_STATUSES = ("have_capital", "no_water", "forbidden", "add_mages_guild", "already_present",
@@ -188,8 +193,8 @@ class PanelControl:
     ref: str
 
     def __post_init__(self):
-        if self.panel != "hall":
-            raise ValueError("Only hall navigation is enabled")
+        if self.panel not in ("hall", "recruitment"):
+            raise ValueError("Unsupported town navigation control")
         _text(self.ref)
 
 
@@ -235,11 +240,64 @@ class BuildingDetails:
 
 
 @dataclass(frozen=True)
+class RecruitChoice:
+    ref: str
+    creature: int
+
+    def __post_init__(self):
+        _text(self.ref)
+        # This is a static creature definition ID, as in a visible ArmyStack.
+        _integer(self.creature, high=2**31 - 1)
+
+
+@dataclass(frozen=True)
+class RecruitDestination:
+    ref: str
+    role: str
+
+    def __post_init__(self):
+        _text(self.ref)
+        if self.role not in ("town_garrison", "garrison_hero"):
+            raise ValueError("Recruitment targets only the visible town upper army")
+
+
+@dataclass(frozen=True)
+class RecruitmentPanel:
+    control_ref: str
+    offers: tuple[RecruitChoice, ...]
+    selected_offer_ref: str
+    stock: int
+    unit_cost: tuple[int, ...]
+    slider_max: int
+    destination: RecruitDestination
+
+    def __post_init__(self):
+        _text(self.control_ref)
+        _tuple(self.offers, RecruitChoice, "recruitment cards")
+        if not 1 <= len(self.offers) <= 32:
+            raise ValueError("Recruitment requires bounded displayed creature cards")
+        _unique([offer.ref for offer in self.offers], "creature offer")
+        _unique([offer.creature for offer in self.offers], "displayed creature")
+        if self.selected_offer_ref not in {offer.ref for offer in self.offers}:
+            raise ValueError("Selected creature must be a displayed card")
+        _integer(self.stock, high=2**31 - 1, name="available creatures")
+        _integer(self.slider_max, high=self.stock, name="recruitment slider maximum")
+        _tuple(self.unit_cost, int, "selected creature unit cost")
+        if len(self.unit_cost) != 7:
+            raise ValueError("Unit cost requires seven resource amounts")
+        for amount in self.unit_cost:
+            _integer(amount, high=2**31 - 1)
+        if type(self.destination) is not RecruitDestination:
+            raise ValueError("Recruitment requires the typed upper-army destination")
+
+
+@dataclass(frozen=True)
 class TownPanel:
     kind: str
     controls: tuple[PanelControl, ...] = ()
     buildings: tuple[BuildingChoice, ...] = ()
     building: BuildingDetails | None = None
+    recruitment: RecruitmentPanel | None = None
 
     def __post_init__(self):
         _tuple(self.controls, PanelControl, "town controls")
@@ -257,8 +315,13 @@ class TownPanel:
         elif self.kind == "building":
             if self.controls or self.buildings or type(self.building) is not BuildingDetails:
                 raise ValueError("Building panel exposes only its selected detail")
+        elif self.kind == "recruitment":
+            if self.controls or self.buildings or self.building is not None or type(self.recruitment) is not RecruitmentPanel:
+                raise ValueError("Recruitment exposes only its selected dwelling panel")
         else:
             raise ValueError("Unsupported town panel payload")
+        if self.kind != "recruitment" and self.recruitment is not None:
+            raise ValueError("Recruitment details require an open recruitment panel")
 
 
 @dataclass(frozen=True)
@@ -345,7 +408,7 @@ class Window:
     def __post_init__(self):
         if type(self.context) is not Context or self.context.kind == "map":
             raise ValueError("Window requires a hero or town context")
-        overlay = self.context.kind == "town" and self.context.panel in ("hall", "building")
+        overlay = self.context.kind == "town" and self.context.panel in ("hall", "building", "recruitment")
         if overlay:
             if self.army is not None or self.faction is not None:
                 raise ValueError("Town overlays cannot refresh overview army or faction")
@@ -373,6 +436,8 @@ class Window:
                     raise ValueError("Town context requires its matching explicit panel")
                 if self.context.panel == "building" and self.context.selection != self.town_panel.building.ref:
                     raise ValueError("Selected building does not match detail payload")
+                if self.context.panel == "recruitment" and self.context.selection != self.town_panel.recruitment.control_ref:
+                    raise ValueError("Selected dwelling does not match recruitment payload")
             elif self.town_panel is not None:
                 raise ValueError("Legacy town context cannot expose deeper panels")
 
@@ -469,13 +534,20 @@ class Offers:
             if self.context.panel == "overview":
                 return action.kind == "close" or (action.kind == "open_panel"
                     and action.subject == self.context.subject
-                    and any(control.panel == action.panel for control in self.panel.controls))
+                    and any(control.panel == action.panel and (action.panel == "hall" or control.ref == action.selection)
+                            for control in self.panel.controls))
             if action.subject != self.context.subject:
                 return False
             if action.kind == "back":
                 return True
             if self.context.panel == "hall":
                 return action.kind == "open_building" and action.selection in {item.ref for item in self.panel.buildings}
+            if self.context.panel == "recruitment":
+                recruitment = self.panel.recruitment
+                if action.kind == "select_recruit":
+                    return action.selection in {item.ref for item in recruitment.offers}
+                return (action.kind == "recruit" and action.selection == recruitment.selected_offer_ref
+                        and action.count <= recruitment.slider_max and action.destination == recruitment.destination.ref)
             return (action.kind == "construct" and action.selection == self.panel.building.ref
                     and self.panel.building.status == "allowed")
         if self.context.kind != "map":
@@ -497,13 +569,14 @@ class Result:
 
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
-                               "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built"):
+                               "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built",
+                               "selected", "recruited", "no_capacity"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
-        if self.status == "rejected" and self.accepted:
+        if self.status in ("rejected", "no_capacity") and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -522,6 +595,7 @@ NOTICE_TEXT_IDS = frozenset({
     *(f"core.genrltxt.{index}" for index in (1, 5, 7, 8, 30, 659)),
     *(f"core.arraytxt.{index}" for index in (*range(32, 42), *range(43, 58), *range(130, 136))),
 })
+TOWN_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.17"})
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
 # sequence and that the referenced creature is legitimate player information.
@@ -543,7 +617,7 @@ class NoticeToken:
             if self.number is not None or (self.text_id is None) == (self.owner is None):
                 raise ValueError("Notice text operation requires exactly one text ID or relative owner")
             if self.text_id is not None:
-                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS
+                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS
                         and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None):
                     raise ValueError("Unsupported notice text ID")
             elif self.owner not in ("self", "opponent"):
@@ -607,6 +681,17 @@ class Notice:
         _tuple(self.components, NoticeComponent, "notice components")
         if len(self.text) > 64 or len(self.components) > 32:
             raise ValueError("Notice exceeds bounded token/component limits")
+
+
+def _no_capacity_notice(notice):
+    return (type(notice) is Notice and notice.display_mode == "modal" and not notice.components
+            and notice.text == (NoticeToken("append_text", text_id="core.genrltxt.17"),))
+
+
+def _validate_notice(notice, profile):
+    if any(token.text_id in TOWN_NOTICE_TEXT_IDS for token in notice.text):
+        if profile != TOWN_PROFILE or not _no_capacity_notice(notice):
+            raise ValueError("Town capacity notice requires its exact v3-only displayed template")
 
 
 @dataclass(frozen=True)
@@ -796,8 +881,10 @@ class Frame:
             _validate_observation(self.observation, profile)
         if self.action is not None and self.action.schema != profile.action_schema:
             raise ValueError("Action/history schema mismatch")
-        if self.result is not None and profile == WINDOWS_PROFILE and self.result.status == "built":
-            raise ValueError("History v2 cannot contain construction results")
+        if self.result is not None and profile == WINDOWS_PROFILE and self.result.status in ("built", "selected", "recruited", "no_capacity"):
+            raise ValueError("History v2 cannot contain town economy results")
+        if self.event is not None and self.event.notice is not None:
+            _validate_notice(self.event.notice, profile)
         if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
             raise ValueError("Offers must preserve complete context and all coordinate support")
 
@@ -834,6 +921,9 @@ class PlayerHistory:
         self.decision = None
         self.action = None
         self.consumed = False
+        self.consumer = None
+        self.capacity_notice = False
+        self.context_changes = 0
         self.commands = 0
         self.accepted_commands = 0
         self.native_rejected = False
@@ -892,12 +982,15 @@ class PlayerHistory:
             if self.action.kind == "construct" and frame.consumer != "engine":
                 raise ValueError("Construction must be consumed by the native engine interface")
             self.consumed = True
+            self.consumer = frame.consumer
         elif kind == "issued":
             self._match_consumed(frame)
-            if self.action.kind not in ("move_to", "end_turn", "construct"):
+            if self.action.kind not in ("move_to", "end_turn", "construct", "recruit"):
                 raise ValueError("Navigation cannot issue native game commands")
+            if self.action.kind == "recruit" and (self.consumer != "engine" or self.capacity_notice):
+                raise ValueError("Recruitment issuance requires native consumption without capacity rejection")
             if (self.pending_command is not None or frame.command_index != self.commands or self.native_rejected
-                    or self.action.kind in ("end_turn", "construct") and self.commands != 0):
+                    or self.action.kind in ("end_turn", "construct", "recruit") and self.commands != 0):
                 raise ValueError("Native commands require ordered acknowledgement; rejected steps stop execution")
             self.pending_command = frame.command_index
             self.commands += 1
@@ -913,9 +1006,18 @@ class PlayerHistory:
             expected = self._context_target()
             if expected != frame.context or frame.revision <= self.revision:
                 raise ValueError("Context change must match consumed navigation and advance revision")
-            if self.action.kind == "construct" and self.commands != 1:
-                raise ValueError("Construction closes its detail only after genuine native issuance")
+            if self.action.kind in ("construct", "recruit") and self.commands != 1:
+                raise ValueError("Purchase closes its panel only after genuine native issuance")
+            if self.action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit") and self.context_changes:
+                raise ValueError("Town action has already emitted its context transition")
             self.context, self.revision = frame.context, frame.revision
+            self.context_changes += 1
+        elif kind == "event" and frame.event.notice is not None and _no_capacity_notice(frame.event.notice):
+            if (self.action is None or self.action.kind != "recruit" or not self.consumed
+                    or self.consumer != "adapter" or self.commands != 0 or self.capacity_notice
+                    or self.context != self.decision.observation.context):
+                raise ValueError("Capacity notice requires one consumed, unissued recruitment attempt")
+            self.capacity_notice = True
         elif kind == "context_invalidated":
             if (self.context.kind == "map" or frame.context != Context() or frame.revision <= self.revision
                     or self.decision is not None or self.action is not None
@@ -975,6 +1077,8 @@ class PlayerHistory:
     def _clear_action(self):
         self.decision, self.action = None, None
         self.consumed, self.commands, self.accepted_commands, self.pending_command = False, 0, 0, None
+        self.consumer, self.capacity_notice = None, False
+        self.context_changes = 0
         self.native_rejected = False
 
     def _context_target(self):
@@ -987,13 +1091,15 @@ class PlayerHistory:
         if action.kind == "close":
             return Context()
         if action.kind == "open_panel":
-            return Context("town", action.subject, action.panel)
+            return Context("town", action.subject, action.panel, action.selection)
         if action.kind == "open_building":
             return Context("town", action.subject, "building", action.selection)
         if action.kind == "back":
             return Context("town", action.subject, "hall" if before.panel == "building" else "overview")
-        if action.kind == "construct":
+        if action.kind in ("construct", "recruit"):
             return Context("town", action.subject, "overview")
+        if action.kind == "select_recruit":
+            return before
         return None
 
     def _check_result(self, result):
@@ -1029,21 +1135,39 @@ class PlayerHistory:
             if any(x is not None for x in (result.position, result.movement, result.destination_reached)):
                 raise ValueError("Only movement has movement-result fields")
             expected = {"open_hero": "opened", "open_town": "opened", "close": "closed", "end_turn": "turn_ended",
-                        "open_panel": "opened", "open_building": "opened", "back": "closed", "construct": "built"}
-            if result.status not in (expected[action.kind], "rejected"):
+                        "open_panel": "opened", "open_building": "opened", "back": "closed", "construct": "built",
+                        "select_recruit": "selected", "recruit": "recruited"}
+            if result.status not in (expected[action.kind], "rejected", *( ("no_capacity",) if action.kind == "recruit" else () )):
                 raise ValueError("Incorrect contextual result")
             target = self._context_target()
             if action.kind == "end_turn" and result.accepted and (self.commands != 1 or self.accepted_commands != 1):
                 raise ValueError("Successful turn ending requires exactly one accepted native command")
             if action.kind == "end_turn" and not result.accepted and self.accepted_commands != 0:
                 raise ValueError("Accepted native turn ending cannot be reported as rejected")
-            if action.kind == "construct":
+            if action.kind == "recruit" and result.status == "no_capacity":
+                observed = next((frame.observation for frame in reversed(self._frames)
+                                 if frame.observation is not None), self.decision.observation)
+                if (self.consumer != "adapter" or self.commands != 0 or self.accepted_commands != 0
+                        or not self.capacity_notice or self.context_changes != 0
+                        or self.context != self.decision.observation.context
+                        or observed.resources != self.decision.observation.resources
+                        or observed.window != self.decision.observation.window):
+                    raise ValueError("No-capacity result requires its visible UI rejection without native issuance")
+            elif action.kind in ("construct", "recruit"):
                 if (self.commands != 1 or self.accepted_commands != int(result.accepted)
-                        or self.context != target):
-                    raise ValueError("Construction requires one native acknowledgement and explicit overview return")
+                        or self.context != target or self.capacity_notice):
+                    raise ValueError("Purchase requires one native acknowledgement and explicit overview return")
+            if action.kind == "select_recruit" and result.accepted:
+                observed = next((frame.observation for frame in reversed(self._frames)
+                                 if frame.observation is not None), self.decision.observation)
+                if (self.consumer != "adapter" or observed.context != self.context
+                        or observed.window.town_panel.recruitment.selected_offer_ref != action.selection):
+                    raise ValueError("Selection result must match the visible selected creature")
             if result.accepted and action.kind != "end_turn" and self.context != target:
                 raise ValueError("Navigation result requires matching explicit context change")
-            if not result.accepted and action.kind != "construct" and self.context != self.decision.observation.context:
+            if result.accepted and action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit") and self.context_changes != 1:
+                raise ValueError("Successful town operation requires its explicit context revision")
+            if not result.accepted and action.kind not in ("construct", "recruit") and self.context != self.decision.observation.context:
                 raise ValueError("Rejected navigation cannot have changed context")
 
     def transitions(self):
@@ -1154,7 +1278,12 @@ def _exact_record(raw, cls):
 
 
 def decode_town_panel(raw):
-    data = _exact_record(raw, TownPanel)
+    data = _record(raw, TownPanel)
+    expected = {"kind", "controls", "buildings", "building"}
+    if data.get("kind") == "recruitment":
+        expected.add("recruitment")
+    if set(data) != expected:
+        raise ValueError("Town panel payload must match its exact displayed panel")
     data["controls"] = tuple(_decode_simple(item, PanelControl) for item in _array(data["controls"]))
     data["buildings"] = tuple(_decode_simple(item, BuildingChoice) for item in _array(data["buildings"]))
     if data["building"] is not None:
@@ -1174,6 +1303,12 @@ def decode_town_panel(raw):
         if building["requirements"] is not None:
             building["requirements"] = requirement(building["requirements"])
         data["building"] = BuildingDetails(**building)
+    if "recruitment" in data:
+        recruitment = _exact_record(data["recruitment"], RecruitmentPanel)
+        recruitment["offers"] = tuple(_decode_simple(offer, RecruitChoice) for offer in _array(recruitment["offers"]))
+        recruitment["unit_cost"] = _array(recruitment["unit_cost"])
+        recruitment["destination"] = _decode_simple(recruitment["destination"], RecruitDestination)
+        data["recruitment"] = RecruitmentPanel(**recruitment)
     return TownPanel(**data)
 
 
@@ -1213,14 +1348,19 @@ def decode_observation(raw, *, schema=SCHEMA):
         raise ValueError("Incomplete observation") from exc
 
 
-def decode_notice(raw):
+def decode_notice(raw, *, schema=SCHEMA):
     """Allowlisted JSON notice; unused pools/raw text/engine IDs are rejected."""
     data = _record(raw, Notice)
     data["text"] = tuple(_decode_simple(token, NoticeToken) for token in _array(data.get("text")))
     data["components"] = tuple(_decode_simple(component, NoticeComponent)
                                for component in _array(data.get("components")))
     try:
-        return Notice(**data)
+        notice = Notice(**data)
+        profile = profile_for(schema)
+        if schema != profile.history_schema:
+            raise ValueError("Notice decoding requires its enclosing history schema")
+        _validate_notice(notice, profile)
+        return notice
     except TypeError as exc:
         raise ValueError("Incomplete informational notice") from exc
 
@@ -1242,6 +1382,8 @@ def _wire(value):
             del data["schema"]  # bound by the enclosing frame's explicit schema
             if value.panel is None:
                 del data["panel"]
+        elif type(value) is TownPanel and value.recruitment is None:
+            del data["recruitment"]
         elif type(value) is NoticeComponent and value.content_id is None:
             del data["content_id"]
         return data
@@ -1296,7 +1438,7 @@ def decode_frame(raw):
     if data.get("event") is not None:
         event = _record(data["event"], VisibleEvent)
         if event.get("notice") is not None:
-            event["notice"] = decode_notice(event["notice"])
+            event["notice"] = decode_notice(event["notice"], schema=profile.history_schema)
         data["event"] = _decode_simple(event, VisibleEvent)
     if data.get("offers") is not None:
         offer = _record(data["offers"], Offers)

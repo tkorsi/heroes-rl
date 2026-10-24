@@ -574,6 +574,18 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 	if(action["schema"].String() != (townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(townEconomy)
+	{
+		bool recruitmentBack = false;
+		if(kind == "back")
+		{
+			std::lock_guard lock(stateMutex);
+			recruitmentBack = contextState.context == "town" && contextState.panel == "recruitment";
+		}
+		if(kind == "select_recruit" || kind == "recruit" || recruitmentBack
+			|| (kind == "open_panel" && action["panel"].isString() && action["panel"].String() == "recruitment"))
+			return executeRecruitmentAction(action, decision);
+	}
 	if(townEconomy && (kind == "open_panel" || kind == "open_building" || kind == "back" || kind == "construct"))
 		return executeTownAction(action, decision);
 	if(townEconomy)
