@@ -1089,14 +1089,20 @@ tests.test_headless` while the learner contract is not on `main`.
   that the other player can reach its boundary, but belong to no training
   trajectory. A natural ending during that continuation is reported in the
   manifest (`natural_terminal_after_horizon`) and stays an unscored
-  truncation. The action horizon is a runaway guard and stops at once.
+  truncation. A boundary decision that the terminal superseded before the
+  engine took any answer to it is no boundary: no action followed the
+  horizon, so that player has no cutoff and, if no other player acted past
+  its own, the natural ending is scored. The action horizon is a runaway
+  guard and stops at once.
 - Only a stop the environment declares can be a truncation. Watchdog, crash,
   protocol violation, engine error, unclean shutdown and invalid engine
   evidence are `failed`, also during a horizon continuation. Events that
   arrived before a declared stop takes effect are folded first: a failure
   among them fails the episode, an engine that had already exited is judged by
   its exit status and terminals, and a game that had already ended finishes
-  naturally. Only what follows the stop is attributed to it. After an exit of
+  naturally, also when the engine is still shutting down and when the stop
+  was a horizon reached at that very decision. Only what follows the stop is
+  attributed to it. After an exit of
   the engine's own, every bridge stream is read to its end first: a stream that
   ends inside a message, fails to decode or is not finished within 5 s is a
   protocol violation even after both terminals. Neither

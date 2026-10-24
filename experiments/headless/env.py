@@ -123,6 +123,7 @@ class _Side:
     cutoff_reason: str | None = None  # the horizon that decision passed
     write_error: str | None = None  # a response the engine could no longer receive
     cutoff_seq: int | None = None  # that decision's history-v1 sequence while the projection is valid
+    cutoff_actions: int | None = None  # actions the engine had taken from this player when that decision arrived
     bytes_received: int = 0
     decode_seconds: float = 0.0  # JSON decoding on this side's reader thread
     perf: dict = field(default_factory=dict)
@@ -418,6 +419,7 @@ class HeadlessSelfPlayEnv:
         side = self.sides[request.player]
         if request.kind == "action" and side.cutoff is None:
             side.cutoff, side.cutoff_seq, side.cutoff_reason = request.record, side.history.v1.decision, reason
+            side.cutoff_actions = side.actions_sent
         side.limit = side.cutoff_reason or reason
         self._note_problem(reason, f"{side.color} stopped at a declared horizon")
         return self._finish(None)
@@ -651,7 +653,7 @@ class HeadlessSelfPlayEnv:
             past_day = record["day"] > self.limits.max_days
             if side.cutoff is None and (past_day or side.actions_sent >= self.limits.max_actions):
                 side.cutoff_reason = "game_day_limit" if past_day else "agent_action_limit"
-                side.cutoff, side.cutoff_seq = record, side.history.v1.decision
+                side.cutoff, side.cutoff_seq, side.cutoff_actions = record, side.history.v1.decision, side.actions_sent
             # Both players pass a day horizon within one round, so play continues
             # until each has its own next-decision boundary. The action horizon is
             # a runaway guard and stops at once, also during that continuation.
@@ -695,9 +697,15 @@ class HeadlessSelfPlayEnv:
     def _finish(self, exited) -> EpisodeEnd:
         if self.reason is not None and exited is None:
             exited = self._settle()  # a declared stop takes effect only now
+            if (exited is None and self.reason in scoring.HEADLESS_TRUNCATIONS
+                    and any(side.validator.terminal for side in self.sides.values())):
+                # The game ended before the declared stop took effect: the terminals and the exit decide.
+                self._cancel_stop()
+                self.closing = True
+                return self._advance()
         if exited is not None and self.reason in scoring.HEADLESS_TRUNCATIONS:
             # The engine ended on its own before the declared stop took effect: its exit and terminals decide.
-            self.reason = self.detail = None
+            self._cancel_stop()
         stopped_by_environment = self.reason is not None
         if stopped_by_environment:
             if self.replay:  # a stop must not cut the server's log short of what the players saw
@@ -743,6 +751,13 @@ class HeadlessSelfPlayEnv:
         log_text = (self.episode_dir / "logs" / "process.log").read_text(errors="replace")
         executions = {side.color: self._execution(side) for side in self.sides.values()}
         status, outcomes, termination, rewards = scoring.classify_headless_self_play(returncode, self.reason, log_text, executions)
+        if status == "completed":
+            for side in self.sides.values():
+                if side.cutoff is not None and not self._acted_past_cutoff(side):
+                    # The terminal superseded the cutoff decision before the engine took any answer: no action
+                    # followed the horizon, so it is no boundary and the natural ending stays this player's.
+                    side.cutoff = side.cutoff_seq = side.cutoff_reason = side.cutoff_actions = None
+                    executions[side.color]["cutoff"] = None
         natural_after_horizon = None
         horizon = next((side.cutoff_reason for side in self.sides.values() if side.cutoff is not None), None)
         if status == "completed" and horizon:
@@ -791,6 +806,16 @@ class HeadlessSelfPlayEnv:
                                  bootstrap_v1_seq=bootstrap_seq)
         self.process = None
         return self.result
+
+    def _cancel_stop(self) -> None:
+        self.reason = self.detail = None
+        for side in self.sides.values():
+            side.limit = None  # only a declared stop sets it
+
+    @staticmethod
+    def _acted_past_cutoff(side: _Side) -> bool:
+        """Whether the engine took an action this player chose at or after its cutoff decision."""
+        return side.actions_sent - side.history.actions_unconsumed > side.cutoff_actions
 
     def _replay_evidence(self) -> dict | None:
         """Hashes of the replay evidence as the engine left it; replay.py verifies it later."""
