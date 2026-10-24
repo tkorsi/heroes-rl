@@ -174,6 +174,16 @@ class BridgeValidator:
         elif kind == "terminal":
             _require(message.get("outcome") in {"win", "loss"}, "Terminal must contain a natural win or loss")
             _require(isinstance(message.get("state"), dict), "Terminal must contain the player's final state")
+            # The engine's consumption watermark: a submitted action without a result was consumed only if the
+            # watermark names it; every other observed action was resolved.
+            consumed = message.get("last_action_id")
+            if self.submitted is not None:
+                allowed = {self.submitted[0], self.submitted[0] - 1}
+            elif self.pending is not None and self.pending[0] == "action":
+                allowed = {self.pending[1] - 1}
+            else:
+                allowed = {self.last_action_id}
+            _require(_integer(consumed) and consumed in allowed, "Terminal consumption watermark is missing or inconsistent")
             self.terminal = message["outcome"]
             self.pending = None  # an unanswered request is void after the game ended
         else:

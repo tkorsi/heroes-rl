@@ -111,6 +111,7 @@ class _Side:
     limit: str | None = None
     actions_sent: int = 0
     decisions_sent: int = 0
+    responses_undelivered: int = 0  # policy responses the engine's closed socket refused
     accepted: int = 0
     rejected: int = 0
     unread_from: int = 0  # first history record not yet shown to the agent
@@ -366,16 +367,20 @@ class HeadlessSelfPlayEnv:
         responding = time.perf_counter()
         try:
             side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
+            delivered = True
         except OSError as error:
             # The engine closes the socket after its own terminal or failure. Its
             # queued messages and exit status say which: a missing terminal still
             # fails the episode through the end-of-stream and exit paths.
-            side.write_error = f"{type(error).__name__}: {error}"
+            side.write_error, delivered = f"{type(error).__name__}: {error}", False
         self.costs["respond"] += time.perf_counter() - responding
-        self._write_ledger(side, "policy", response)
-        if "action" in response:
+        self._write_ledger(side, "policy", {**response, "delivered": delivered} if not delivered else response)
+        if not delivered:
+            # Never taken: no action frame, and the decision stays unacted for the terminal to supersede.
+            side.responses_undelivered += 1
+        elif "action" in response:
             folding = time.perf_counter()
-            side.history.act(response["action"])
+            side.history.act(response["action"], response["action_id"])
             self.costs["act"] += time.perf_counter() - folding
             side.actions_sent += 1
         else:
@@ -643,8 +648,16 @@ class HeadlessSelfPlayEnv:
             stop_process_group(self.process)
         returncode = self.process.wait()
         finished = time.monotonic()
+        if stopped_by_environment:
+            self.stopping.set()  # read errors after a declared stop change nothing
+        # Drain messages already written before the exit; they belong to the evidence. After an exit of its own
+        # the engine's sockets are closed, so each connected reader ends at its end of stream or reports why it
+        # could not; only then may stopping silence a reader, such as one still waiting for a connection.
+        connected = [side for side in self.sides.values() if side.reader is not None and side.connection is not None]
+        for side in connected:
+            side.reader.join(timeout=2)
+        unfinished = [side.color for side in connected if side.reader.is_alive()]
         self.stopping.set()
-        # Drain messages already written before the exit; they belong to the evidence.
         for side in self.sides.values():
             if side.reader is not None:
                 side.reader.join(timeout=2)
@@ -653,12 +666,16 @@ class HeadlessSelfPlayEnv:
                 kind, player, payload, received = self.events.get_nowait()
             except queue.Empty:
                 break
-            if kind != "message":
-                continue
             if stopped_by_environment:
-                self._write_ledger(self.sides[player], "engine", payload)  # evidence only
-            else:
+                if kind == "message":
+                    self._write_ledger(self.sides[player], "engine", payload)  # evidence only
+            elif kind == "message":
                 self._ingest(self.sides[player], payload, received, draining=True)
+            elif kind == "bridge_error":
+                # A stream that ended inside a message, or failed to decode, has no complete history to score.
+                self._note_problem("protocol_error", f"{self.sides[player].color}: {payload}")
+        if unfinished and not stopped_by_environment:
+            self._note_problem("protocol_error", f"bridge reader for {', '.join(unfinished)} did not finish its stream")
         self.request = None
         for side in self.sides.values():
             if side.ledger is not None:
@@ -738,7 +755,9 @@ class HeadlessSelfPlayEnv:
     def _counters(self, side: _Side) -> dict:
         history = side.history
         return {"decisions_sent": side.decisions_sent, "actions_accepted": side.accepted,
-                "actions_rejected": side.rejected, "turns_completed": history.turns_completed,
+                "actions_rejected": side.rejected, "responses_undelivered": side.responses_undelivered,
+                "actions_without_result": history.actions_without_result,
+                "actions_unconsumed": history.actions_unconsumed, "turns_completed": history.turns_completed,
                 "last_day": history.day, "battles_started": history.battles_started,
                 "battles_completed": history.battles_completed, "handles_assigned": history.handle_count(),
                 "records": len(history.records), "visible_updates": side.validator.next_visible_sequence,

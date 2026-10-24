@@ -9,11 +9,13 @@ state; the same engine object normally has different handles for each.
 
 Visible updates are folded into the player's current view (tiles with their
 terrain and flags, objects, and the player's own state) and a last-seen
-record. A disappearance only marks a remembered fact as no longer visible: its
-position and attributes stay those of the last observation and never refresh
-from hidden state. At every decision snapshot the folded view must equal the
-snapshot's visible tiles, objects and own state, which proves that the event
-stream alone reconstructs what this player saw between decisions.
+record. A visible object is seen again at every capture and decision, so its
+last-seen time follows them. A disappearance only marks a remembered fact as no
+longer visible: its position, attributes and time stay those of the last
+observation and never refresh from hidden state. At every decision snapshot
+the folded view must equal the snapshot's visible tiles, objects and own state,
+which proves that the event stream alone reconstructs what this player saw
+between decisions.
 
 The folded view is also projected onto the learner's player-history v1 frames
 (see ``history_v1.py``). Frame substructures are shared between frames and are
@@ -44,6 +46,7 @@ class PlayerHistory:
         self.tiles: dict[tuple[int, int, int], dict] = {}  # visible tile -> v1 tile record
         self.own: dict | None = None  # the player's own state as last reported
         self.last_seen: dict[int, dict] = {}  # handle -> last observed fact and when
+        self._observed_at = {"day": None, "sequence": None}  # the latest capture or decision this player saw
         self.records: list[dict] = []
         self.turns_completed = 0
         self.battles_started = 0
@@ -52,6 +55,9 @@ class PlayerHistory:
         self.map_size: list[int] | None = None
         self.v1 = HistoryV1(episode, player)
         self._v1_objects: dict[int, dict] = {}  # handle -> v1 object record
+        self._pending_action_id: int | None = None  # the submitted action awaiting its result
+        self.actions_without_result = 0  # consumed by the engine, then superseded by the terminal
+        self.actions_unconsumed = 0  # submitted, but the game ended before the engine took them
 
     # -- handles -----------------------------------------------------------
     def _observe(self, engine_id: int) -> int:
@@ -80,6 +86,17 @@ class PlayerHistory:
         """Fold one validated engine message and return its stored learner record (do not mutate)."""
         kind = message["type"]
         record = {"type": kind, "player": self.player, "color": self.color, "index": len(self.records)}
+        if kind == "terminal":
+            # Reconcile before the terminal's own events: they follow the last action the engine consumed.
+            consumed = None
+            if self._pending_action_id is not None:
+                consumed = message["last_action_id"] == self._pending_action_id
+                if consumed:
+                    self.actions_without_result += 1
+                else:
+                    self.actions_unconsumed += 1
+                self._pending_action_id = None
+            self.v1.end(consumed)
         if kind in {"observation", "action_result", "decision", "terminal"}:
             record["events"] = [self._event(event) for event in message["events"]]
         if kind == "observation":
@@ -88,20 +105,23 @@ class PlayerHistory:
             record.update(action_id=message["action_id"], action=message["action"], accepted=message["accepted"],
                           before=self._state(message["before"]), after=self._state(message["after"]))
             self.v1.result(message["action"], message["accepted"], self.day)
+            self._pending_action_id = None
         elif kind == "decision":
             record.update(self._decision(message))
             self.v1.note_unrepresented("dialog")
         elif kind == "turn_end":
             self.turns_completed += 1
         elif kind == "terminal":
-            record.update(outcome=message["outcome"], state=self._state(message["state"]))
+            record.update(outcome=message["outcome"], last_action_id=message["last_action_id"],
+                          state=self._state(message["state"]))
         record.update(day=self.day, turn=self.turns_completed + 1,
                       battles_started=self.battles_started, battles_completed=self.battles_completed)
         self.records.append(record)
         return record
 
-    def act(self, action: int) -> None:
-        """The player's own adventure action, as submitted to the engine."""
+    def act(self, action: int, action_id: int) -> None:
+        """The player's own adventure action, as delivered to the engine; the terminal may still void it."""
+        self._pending_action_id = action_id
         self.v1.action(action, self.day)
 
     def _fact(self, entry: dict) -> dict:
@@ -162,8 +182,9 @@ class PlayerHistory:
                 raise ProtocolError("Disappearing object was not visible")
             del self.visible[handle]
             del self._v1_objects[handle]
-            # Keep the last observed position and attributes; only visibility changes.
-            self.last_seen[handle]["visible"] = False
+            # Keep the last observed position and attributes. It was last seen at the
+            # previous capture or decision, which never precedes its own appearance.
+            self.last_seen[handle].update(self._observed_at, visible=False)
             result["disappeared"].append(handle)
         # Handles follow visible facts, never the engine's object-ID order.
         appeared = sorted(event["appeared"], key=lambda e: (e["z"], e["y"], e["x"], e["type"], e["subtype"], e["owner"], e["id"]))
@@ -194,6 +215,7 @@ class PlayerHistory:
             result["own"] = copy.deepcopy(event["own"])
         if self.own is None:
             raise ProtocolError("The first visible update must carry the player's own state")
+        self._observed_at = {"day": day, "sequence": event["sequence"]}
         self.v1.view(self.view(), self.day)
         return result
 
@@ -247,6 +269,8 @@ class PlayerHistory:
         if [message.get("width"), message.get("height"), message.get("levels")] != self.map_size:
             raise ProtocolError("Decision snapshot map size differs from the handshake")
         self.v1.decision_frame(self.view(), message["action_mask"], self.day)
+        # A decision shows the whole current view: everything visible is seen again now.
+        self._observed_at = {**self._observed_at, "day": message["day"]}
         hero = message.get("hero_id", -1)
         return {"action_id": message["action_id"], "action_mask": list(message["action_mask"]),
                 "hero": None if hero in (-1, None) else self._observe(hero),
@@ -271,5 +295,10 @@ class PlayerHistory:
         return result
 
     def memory(self) -> list[dict]:
-        """Last-seen facts in handle order; ``visible`` separates history from the present."""
-        return [{"handle": handle, **copy.deepcopy(entry)} for handle, entry in sorted(self.last_seen.items())]
+        """Last-seen facts in handle order; ``visible`` separates history from the present.
+
+        A visible object was last seen at the latest capture or decision; a
+        hidden one keeps the time of its last observation.
+        """
+        return [{"handle": handle, **copy.deepcopy(entry), **(self._observed_at if entry["visible"] else {})}
+                for handle, entry in sorted(self.last_seen.items())]

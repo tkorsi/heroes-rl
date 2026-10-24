@@ -180,6 +180,7 @@ class Bridge:
         if REPLAY:
             self.tracker.ledger = (Path(os.environ["VCMI_EXPERIMENT_DIR"]) / f"observations-p{player}.jsonl").open("w")
         self.action_id = 0
+        self.consumed = -1  # the last action the engine took, as the terminal's watermark reports it
         self.decision_id = 0
         self.observations = 0
 
@@ -280,8 +281,10 @@ def end_game(world, bridges, winner):
         bridges[player].note(world)
         if not (MODE == "missing_terminal" and player == 1):
             bridges[player].send(bridges[player].message("terminal", outcome=outcome, events=bridges[player].take(),
-                                                         state=world.state(player)))
+                                                         state=world.state(player), last_action_id=bridges[player].consumed))
         print(f"Experiment player {player} {'won' if outcome == 'win' else 'lost'}. Terminal received.", flush=True)
+    if MODE == "trailing_partial":
+        bridges[1].sock.sendall(b'{"type": "observation"')  # a stream that ends inside a message
     print("Experiment self-play complete. Ending game.", flush=True)
     if MODE == "no_shutdown":
         time.sleep(3600)
@@ -293,10 +296,16 @@ def play_turn(world, bridges, player):
     actions = 0
     while True:
         bridge.send(observation(world, bridge))
+        ending = world.day == SCENARIO.get("end_day", 2) and player == 0
+        if MODE == "terminal_before_reply" and ending:
+            end_game(world, bridges, 1)  # the game ends while the policy is still choosing
         response = bridge.receive()
         if response.get("action_id") != bridge.action_id:
             raise SystemExit("mismatched response")
+        if MODE == "reply_unconsumed" and ending:
+            end_game(world, bridges, 1)  # the reply arrived, but the game ended before the engine took it
         action = response["action"]
+        bridge.consumed = bridge.action_id
         actions += 1
         before = world.state(player)
         if MODE == "crash" and world.day == SCENARIO.get("crash_day", 2):
@@ -320,7 +329,7 @@ def play_turn(world, bridges, player):
             # A later level-up offering one skill is applied without a query.
             other.events.append({"kind": "level_up", "primary_skill": 1, "secondary_skills": [7]})
             other.decision_id += 1
-        if MODE == "terminal_race" and world.day == SCENARIO.get("end_day", 2) and player == 0:
+        if MODE == "terminal_race" and ending:
             if action < 8:
                 move(world, bridges, player, action)
             end_game(world, bridges, 0)  # the action result is suppressed; its events ride on the terminal
@@ -357,7 +366,7 @@ def main():
         raise SystemExit(0)
     while True:
         for player in (0, 1):
-            if MODE in {"natural", "unclean_exit", "no_shutdown", "missing_terminal", "missing_metadata"} \
+            if MODE in {"natural", "unclean_exit", "no_shutdown", "missing_terminal", "missing_metadata", "trailing_partial"} \
                     and world.day == SCENARIO.get("end_day", 2) and player == 1:
                 end_game(world, bridges, 0)
             play_turn(world, bridges, player)

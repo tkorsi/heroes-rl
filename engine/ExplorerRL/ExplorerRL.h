@@ -82,6 +82,7 @@ private:
 	int snapshotEvery = 1; ///< observations carry the visible tile list every N decisions, never when 0
 	int64_t observations = 0;
 	int64_t actionID = 0;
+	int64_t submittedActionID = -1; ///< the last policy action handed to the engine, protected by stateMutex
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex

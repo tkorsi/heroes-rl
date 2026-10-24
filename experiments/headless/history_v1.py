@@ -10,9 +10,13 @@ game day and object identities are the player's opaque handles.
 
 Visible information that v1 cannot represent (battle start/result details,
 visits, dialogs and their uniform answers) stays in the player's full record
-stream and is counted here, never silently dropped. A frame order that v1
-forbids, such as a visible change after an unacted decision, makes this
-projection invalid for the episode; the projection then stops and says why,
+stream and is counted here, never silently dropped. At a natural terminal an
+action the engine never consumed is withdrawn (it was never taken), and an
+unacted decision is superseded: it stays the last frame, and the terminal's
+own visible changes, which v1 cannot place after it, are counted instead. A
+frame order that v1 forbids, such as a visible change after an unacted
+decision, makes this projection invalid for the episode; the projection then
+stops and says why,
 and the simulation result itself is unaffected.
 """
 from __future__ import annotations
@@ -36,8 +40,13 @@ class HistoryV1:
         self.day = 1
         self.error: str | None = None
         self.unrepresented: dict[str, int] = {}
+        self.superseded: int | None = None  # sequence of an unacted decision the terminal superseded
+        self.retracted = 0  # submitted actions the engine never consumed, withdrawn at the terminal
 
     def view(self, view: dict, day: int) -> None:
+        if self.superseded is not None:
+            self.note_unrepresented("view_after_superseded_decision")
+            return
         if self.decision is not None:
             self._fail("A visible change arrived after an unacted decision")
         self._emit("view", day, view=view)
@@ -62,6 +71,26 @@ class HistoryV1:
         if self._emit("result", day, action=action, accepted=accepted, decision_seq=decision):
             self.pending = None
 
+    def end(self, action_consumed: bool | None) -> None:
+        """Close the stream at the natural terminal, before the terminal's own visible changes.
+
+        ``action_consumed`` says whether the engine consumed the pending action (None: none is pending). An
+        unconsumed action's frame is still the latest one, because a consumed action is the only way to further
+        frames; it is withdrawn, and the terminal then belongs to the last action actually taken.
+        """
+        if self.error is not None:
+            return
+        if self.pending is not None and action_consumed is False:
+            if not self.frames or self.frames[-1]["kind"] != "action":
+                self._fail("An unconsumed action is not the latest frame")
+                return
+            frame = self.frames.pop()
+            self.decision, self.pending = frame["decision_seq"], None
+            self.day = self.frames[-1]["day"] if self.frames else 1
+            self.retracted += 1
+        if self.decision is not None:
+            self.superseded, self.decision = self.decision, None
+
     def note_unrepresented(self, kind: str) -> None:
         self.unrepresented[kind] = self.unrepresented.get(kind, 0) + 1
 
@@ -69,6 +98,7 @@ class HistoryV1:
         return {"schema": SCHEMA, "frames": len(self.frames), "last_seq": len(self.frames) - 1 if self.frames else None,
                 "valid": self.error is None, "error": self.error, "unacted_decision": self.decision,
                 "pending_action": list(self.pending) if self.pending else None,
+                "superseded_decision": self.superseded, "retracted_actions": self.retracted,
                 "unrepresented_events": dict(sorted(self.unrepresented.items()))}
 
     def _fail(self, reason: str) -> None:

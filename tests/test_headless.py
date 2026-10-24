@@ -152,6 +152,18 @@ class PlayerHistoryTests(unittest.TestCase):
         self.assertEqual((entry["fact"]["x"], entry["fact"]["y"], entry["visible"]), (1, 2, True))
         self.assertEqual(entry["handle"], 2)  # the same handle: identity is kept, not re-issued
 
+    def test_last_seen_time_follows_observations_while_visible_and_freezes_when_hidden(self):
+        enemy = obj(2, 2, 1)
+        self.history.ingest(observation(1, columns(0, 2), [self.own, enemy], [], day=3))  # still visible on day 3
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["sequence"], entry["visible"]), (3, 0, True))
+        self.history.ingest(observation(2, columns(0, 2), [self.own], [update(1, disappeared=[2], day=4)], day=4))
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["sequence"], entry["visible"]), (3, 0, False))
+        self.history.ingest(observation(3, columns(0, 2), [self.own], [], day=6))  # hidden: the time stays frozen
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["fact"]), (3, {key: enemy[key] for key in player_history.FACT_FIELDS}))
+
     def test_snapshot_that_disagrees_with_the_event_stream_is_rejected(self):
         with self.assertRaisesRegex(ProtocolError, "diverged"):
             self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 1, 1)], []))
@@ -211,7 +223,7 @@ class HistoryV1Tests(unittest.TestCase):
                 "action": action, "accepted": accepted, "before": state, "after": state, "events": events}
 
     def test_frames_follow_the_contract_order_with_relative_owners_and_handles(self):
-        self.history.act(2)
+        self.history.act(2, 0)
         self.history.ingest(self.result(2, True, [update(1, disappeared=[2])]))
         frames = self.history.v1.frames
         self.assertEqual([f["kind"] for f in frames], ["view", "decision", "action", "view", "result"])
@@ -230,17 +242,48 @@ class HistoryV1Tests(unittest.TestCase):
         self.assertEqual(agents.engine_id_paths(frames), [])
         self.assertTrue(self.history.v1.summary()["valid"])
 
+    def terminal(self, last_action_id, events=()):
+        return {"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "loss",
+                "last_action_id": last_action_id, "state": {"day": 1, "hero_id": -1}, "events": list(events)}
+
     def test_forbidden_order_invalidates_only_the_projection(self):
-        self.history.ingest({"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "loss",
-                             "state": {"day": 1, "hero_id": -1}, "events": [update(1, disappeared=[2])]})
+        objects = [self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)]
+        self.history.ingest(observation(1, columns(0, 2), objects, []))  # a second decision before any action
         summary = self.history.v1.summary()
         self.assertFalse(summary["valid"])
-        self.assertIn("after an unacted decision", summary["error"])
+        self.assertIn("before the previous action", summary["error"])
         self.assertEqual(summary["frames"], 2)  # the projection stops; the full record stream continues
+        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
         self.assertEqual(self.history.records[-1]["type"], "terminal")
 
+    def test_a_terminal_supersedes_an_unacted_decision(self):
+        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])  # kept, never acted on
+        self.assertEqual((summary["valid"], summary["unacted_decision"], summary["superseded_decision"]), (True, None, 1))
+        # The terminal's own changes follow the decision, which v1 cannot express: counted, not dropped.
+        self.assertEqual(summary["unrepresented_events"], {"view_after_superseded_decision": 1})
+        self.assertEqual(self.history.records[-1]["last_action_id"], -1)
+
+    def test_a_terminal_withdraws_an_action_the_engine_never_consumed(self):
+        self.history.act(2, 0)
+        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])
+        self.assertEqual((summary["valid"], summary["pending_action"], summary["retracted_actions"],
+                          summary["superseded_decision"]), (True, None, 1, 1))
+        self.assertEqual((self.history.actions_unconsumed, self.history.actions_without_result), (1, 0))
+
+    def test_a_terminal_keeps_a_consumed_action_whose_result_never_came(self):
+        self.history.act(2, 0)
+        self.history.ingest(self.terminal(0, [update(1, disappeared=[2])]))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision", "action", "view"])
+        self.assertEqual((summary["valid"], summary["retracted_actions"], summary["superseded_decision"]), (True, 0, None))
+        self.assertEqual((self.history.actions_unconsumed, self.history.actions_without_result), (0, 1))
+
     def test_unrepresented_visible_events_are_counted(self):
-        self.history.act(8)
+        self.history.act(8, 0)
         self.history.ingest(self.result(8, True, [{"kind": "battle_start", "side": 0, "opponent": "neutral"},
                                                   {"kind": "battle_complete", "won": True},
                                                   {"kind": "visit", "object_id": 3, "object_type": 53,
@@ -251,7 +294,7 @@ class HistoryV1Tests(unittest.TestCase):
     @unittest.skipIf(learner_contract() is None, "learner contract not present; set HEROES_LEARNER_PATH")
     def test_frames_decode_with_the_learner_contract(self):
         contract = learner_contract()
-        self.history.act(2)
+        self.history.act(2, 0)
         self.history.ingest(self.result(2, False, [update(1, disappeared=[2])]))
         with self.assertRaises(ValueError):  # the 6x3 fixture map is outside the authored 20x20x1 scenario
             contract.decode_frame(self.history.v1.frames[0])
@@ -284,6 +327,31 @@ class BridgeValidatorTests(unittest.TestCase):
         early.check(self.ready())
         with self.assertRaisesRegex(ProtocolError, "out of order"):
             early.check(observation(1, columns(0, 0), [], []))
+
+    def test_terminal_watermark_must_name_the_last_action_the_engine_consumed(self):
+        def at(stage):
+            validator = bridge_protocol.BridgeValidator(0, "1")
+            validator.check(self.ready())
+            validator.check(observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)]))
+            if stage != "requested":
+                validator.respond(2)
+            if stage == "resolved":
+                validator.check({"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1",
+                                 "action_id": 0, "action": 2, "accepted": True, "before": {}, "after": {}, "events": []})
+            return validator
+        terminal = {"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "win",
+                    "state": {}, "events": []}
+        # An unanswered request was never consumed; a submitted action may or may not have been; a resolved one was.
+        for stage, allowed in (("requested", {-1}), ("submitted", {-1, 0}), ("resolved", {0})):
+            for consumed in (-2, -1, 0, 1, None, True):
+                with self.subTest(stage=stage, consumed=consumed):
+                    message = dict(terminal) if consumed is None else {**terminal, "last_action_id": consumed}
+                    validator = at(stage)
+                    if consumed in allowed and type(consumed) is int:
+                        self.assertEqual(validator.check(message), "terminal")
+                    else:
+                        with self.assertRaisesRegex(ProtocolError, "consumption watermark"):
+                            validator.check(message)
 
     def test_snapshot_period_is_declared_and_enforced(self):
         def result(action_id):
@@ -631,11 +699,96 @@ class HeadlessEnvTests(unittest.TestCase):
             self.assertTrue(periodic.manifest["players"][color]["history_v1"]["valid"])
 
     def test_terminal_racing_an_action_result_keeps_the_history_gap_free(self):
-        end, _ = play(self.make(mode="terminal_race", end_day=2), {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        env = self.make(mode="terminal_race", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
         self.assertEqual(end.status, "completed")
         red = end.final_records["red"]
         self.assertEqual(red[-1]["type"], "terminal")
         self.assertTrue(any(e["kind"] == "visible_update" for e in red[-1]["events"]))
+        # The engine consumed the move: its action stays the last transition, with no invented result.
+        counters, frames = end.manifest["players"]["red"], env.history_v1("red")
+        self.assertEqual((counters["actions_without_result"], counters["actions_unconsumed"]), (1, 0))
+        self.assertEqual([f["kind"] for f in frames[-2:]], ["action", "view"])
+        self.assertEqual(counters["history_v1"]["superseded_decision"], None)
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def assert_delivered_and_decodable(self, env, end, requests, color):
+        frames = env.history_v1(color)
+        delivered = [f for r in requests if r.color == color for f in r.frames] + end.final_frames[color]
+        self.assertEqual(json.loads(json.dumps(delivered)), frames)
+        self.assertTrue(end.manifest["players"][color]["history_v1"]["valid"])
+        contract = learner_contract()
+        if contract is not None:
+            cursor = contract.HistoryCursor("1", COLORS.index(color))
+            for frame in frames:
+                cursor.consume(contract.decode_frame(frame))
+
+    def assert_superseded(self, env, end, color):
+        frames, summary = env.history_v1(color), end.manifest["players"][color]["history_v1"]
+        self.assertEqual(frames[-1]["kind"], "decision")  # observed, kept, and never a sample
+        self.assertEqual((summary["superseded_decision"], summary["unacted_decision"], summary["pending_action"]),
+                         (frames[-1]["seq"], None, None))
+        self.assertEqual(sum(f["kind"] == "action" for f in frames), sum(f["kind"] == "result" for f in frames))
+
+    def test_a_reply_the_engine_never_consumed_is_withdrawn_at_the_terminal(self):
+        env = self.make(mode="reply_unconsumed", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+        counters = end.manifest["players"]["red"]
+        self.assertEqual((counters["actions_unconsumed"], counters["actions_without_result"],
+                          counters["responses_undelivered"], counters["history_v1"]["retracted_actions"]), (1, 0, 0, 1))
+        self.assertEqual(end.final_records["red"][-1]["last_action_id"], 0)  # the day-one end turn, not the move
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_terminal_while_the_policy_chooses_supersedes_its_decision(self):
+        env = self.make(mode="terminal_before_reply", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("completed", "natural_terminal"))
+        counters = end.manifest["players"]["red"]
+        # The late reply either reached the closing socket, unread, or was refused; it is never taken.
+        self.assertEqual(counters["actions_unconsumed"] + counters["responses_undelivered"], 1)
+        self.assertEqual(counters["history_v1"]["retracted_actions"], counters["actions_unconsumed"])
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_response_the_socket_refuses_is_never_folded_as_an_action(self):
+        class RefusingConnection:
+            def __init__(self, connection):
+                self.connection = connection
+
+            def sendall(self, data):
+                raise BrokenPipeError(32, "Broken pipe")
+
+            def __getattr__(self, name):
+                return getattr(self.connection, name)
+        env = self.make(mode="terminal_before_reply", end_day=2)
+        players, requests = {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()}, []
+        step = env.reset(1, 7)
+        while not (step.color == "red" and step.record["day"] == 2):
+            requests.append(step)
+            step = env.step(players[step.color].act(step))
+        requests.append(step)
+        side = env.sides[0]
+        side.connection = RefusingConnection(side.connection)
+        end = env.step(2)
+        self.assertEqual((end.status, end.termination_reason), ("completed", "natural_terminal"))
+        counters = end.manifest["players"]["red"]
+        self.assertEqual((counters["responses_undelivered"], counters["actions_unconsumed"],
+                          counters["history_v1"]["retracted_actions"]), (1, 0, 0))
+        self.assertIn("BrokenPipeError", counters["write_error"])
+        ledger = [json.loads(line) for line in (env.episode_dir / "agents/red/bridge.jsonl").read_text().splitlines()]
+        last_policy = [entry["message"] for entry in ledger if entry["direction"] == "policy"][-1]
+        self.assertEqual(last_policy, {"action_id": 1, "action": 2, "delivered": False})
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_stream_that_ends_inside_a_message_after_the_terminals_fails_the_episode(self):
+        end, _ = play(self.make(mode="trailing_partial", end_day=2), self.random_players())
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual(end.rewards, {"red": None, "blue": None})
+        self.assertIn("ended inside a message", end.manifest["failure_detail"])
 
     def test_replay_manifest_names_every_absent_ledger(self):
         env = self.make(env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
@@ -718,9 +871,9 @@ class HeadlessEnvTests(unittest.TestCase):
                 time.sleep(0.01)
             write_ledger(side, direction, message)
 
-        def slow_act(history, action):
+        def slow_act(history, action, action_id):
             time.sleep(0.01)
-            act(history, action)
+            act(history, action, action_id)
         env._write_ledger = slow_ledger
         with mock.patch.object(player_history.PlayerHistory, "act", slow_act):
             end, _ = play(env, self.random_players())

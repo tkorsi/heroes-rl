@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import importlib.util
 import json
 import os
@@ -399,7 +400,8 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
                    trace: bool = False, allow_platform_mismatch: bool = False, timeout: float = 3600.0) -> dict:
     """Replay one episode and cross-check both players' received observations."""
     episode_dir = episode_dir.expanduser().resolve()
-    manifest = json.loads((episode_dir / "manifest.json").read_text())
+    manifest_bytes = (episode_dir / "manifest.json").read_bytes()
+    manifest = json.loads(manifest_bytes)
     cut_short = manifest["status"] != "completed"
     directory = (output or episode_dir / "verification").expanduser().resolve()
     if directory.exists():
@@ -408,7 +410,9 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     report = {"schema_version": 1, "kind": "headless-replay-verification", "episode": manifest["episode"],
               "seed": manifest["seed"], "status": manifest["status"],
               "termination_reason": manifest["termination_reason"], "created_at": datetime.now(timezone.utc).isoformat(),
-              "replay_binary_sha256": scoring.digest(binary), "cut_short": cut_short, "verified": False}
+              "replay_binary_sha256": scoring.digest(binary), "cut_short": cut_short, "verified": False,
+              # What this verification read and wrote; a renderer must find exactly these inputs.
+              "inputs": {"manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "trace_sha256": None}}
     try:
         evidence = prepare_evidence(episode_dir, directory, manifest)
         report["dropped"] = evidence["dropped"]
@@ -419,6 +423,8 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
                             prefix=cut_short, trace=directory / "trace.jsonl" if trace else None,
                             allow_platform_mismatch=allow_platform_mismatch, timeout=timeout)
         report["engine"] = engine
+        if trace and (directory / "trace.jsonl").is_file():
+            report["inputs"]["trace_sha256"] = scoring.digest(directory / "trace.jsonl")
         players = {}
         for index, color in enumerate(("red", "blue")):
             bridge = episode_dir / "agents" / color / "bridge.jsonl"

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import importlib.util
 import json
 import math
@@ -248,8 +249,9 @@ class TraceRenderer:
         return bytes(canvas.pixels)
 
 
-def read_trace(path: Path) -> tuple[dict, list[dict]]:
-    lines = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+def read_trace(path: Path, data: bytes | None = None) -> tuple[dict, list[dict]]:
+    text = (path.read_bytes() if data is None else data).decode()
+    lines = [json.loads(line) for line in text.splitlines() if line.strip()]
     if not lines or lines[0].get("kind") != "map" or any(line.get("kind") != "frame" for line in lines[1:]):
         raise video.VideoError(f"Not a replay trace: {path}")
     return lines[0], lines[1:]
@@ -301,8 +303,17 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
     verification = json.loads((episode_dir / "verification" / "replay-verification.json").read_text())
     if not verification.get("verified"):
         raise video.VideoError("Render only episodes whose replay verified")
-    manifest = json.loads((episode_dir / "manifest.json").read_text())
-    header, frames = read_trace(episode_dir / "verification" / "trace.jsonl")
+    # Render exactly the bytes the verification hashed; a changed manifest or trace fails closed.
+    trace_path = episode_dir / "verification" / "trace.jsonl"
+    manifest_bytes, trace_bytes = (episode_dir / "manifest.json").read_bytes(), trace_path.read_bytes()
+    inputs = verification.get("inputs") or {}
+    hashes = {"manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+              "trace_sha256": hashlib.sha256(trace_bytes).hexdigest()}
+    changed = [key for key, value in hashes.items() if inputs.get(key) != value]
+    if changed:
+        raise video.VideoError(f"Inputs differ from what the replay verified ({', '.join(changed)}); verify again")
+    manifest = json.loads(manifest_bytes)
+    header, frames = read_trace(trace_path, trace_bytes)
     renderer = TraceRenderer(header, manifest)
     budget = max(1, int(fps * max_seconds))
     selected = select_frames(frames, budget)
@@ -361,7 +372,7 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
               "fps": fps, "frames_written": written, "trace_frames": len(frames), "frames_drawn": len(selected),
               "hold_frames": hold, "battle_frames_drawn": renderer.battle_frames,
               "views": ["omniscient (verification only)", "red fog", "blue fog"],
-              "replay_verified": True, "trace_sha256": video.sha256(episode_dir / "verification" / "trace.jsonl"),
+              "replay_verified": True, **hashes,
               **{key: info[key] for key in ("width", "height", "codec", "pixel_format", "duration_seconds")}}
     output.with_suffix(".json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     return result

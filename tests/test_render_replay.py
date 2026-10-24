@@ -1,6 +1,7 @@
 """Offline replay renderer against an explicitly synthetic trace, not game evidence."""
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -84,10 +85,14 @@ class RenderReplayTests(unittest.TestCase):
         header, frames = synthetic_trace()
         (episode / "verification" / "trace.jsonl").write_text(
             "".join(json.dumps(line) + "\n" for line in [header, *frames]))
-        (episode / "verification" / "replay-verification.json").write_text(json.dumps({"verified": verified}))
         (episode / "manifest.json").write_text(json.dumps({"episode": 1, "seed": 7, "status": "completed",
                                                            "termination_reason": "natural_terminal",
                                                            "outcomes_by_player": {"red": "win", "blue": "loss"}}))
+        inputs = {f"{name}_sha256": hashlib.sha256(path.read_bytes()).hexdigest()
+                  for name, path in (("manifest", episode / "manifest.json"),
+                                     ("trace", episode / "verification" / "trace.jsonl"))}
+        (episode / "verification" / "replay-verification.json").write_text(
+            json.dumps({"verified": verified, "inputs": inputs}))
         return episode
 
     def test_memory_changes_only_through_the_players_own_sightings(self):
@@ -195,6 +200,28 @@ class RenderReplayTests(unittest.TestCase):
         episode = self.episode(verified=False)
         with self.assertRaises(render_replay.video.VideoError):
             render_replay.render(episode, self.base / "x.mp4")
+
+    def test_refuses_inputs_that_differ_from_the_verified_ones(self):
+        # A verified label covers only the exact trace and manifest the verification hashed.
+        for name in ("trace", "manifest", "unbound"):
+            with self.subTest(name):
+                shutil.rmtree(self.base / "episode-000001", ignore_errors=True)
+                episode = self.episode()
+                if name == "trace":
+                    path = episode / "verification" / "trace.jsonl"
+                    lines = path.read_text().splitlines()
+                    last = json.loads(lines[-1])
+                    last["day"] += 1
+                    path.write_text("\n".join([*lines[:-1], json.dumps(last)]) + "\n")
+                elif name == "manifest":
+                    path = episode / "manifest.json"
+                    path.write_text(path.read_text().replace('"red": "win", "blue": "loss"', '"red": "loss", "blue": "win"'))
+                else:
+                    (episode / "verification" / "replay-verification.json").write_text(json.dumps({"verified": True}))
+                output = self.base / f"{name}.mp4"
+                with self.assertRaisesRegex(render_replay.video.VideoError, "differ from what the replay verified"):
+                    render_replay.render(episode, output)
+                self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

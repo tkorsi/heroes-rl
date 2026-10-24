@@ -380,7 +380,17 @@ count only that player's frames, owners are relative to the player and object
 identities are the player's opaque handles. Visible events that v1 cannot
 represent (battle details, visits, dialogs and their answers) stay in the full
 record stream and are counted per player in the manifest; a frame order that
-v1 forbids marks only the projection invalid for that episode. The frames
+v1 forbids marks only the projection invalid for that episode. Each terminal
+carries the engine's consumption watermark, `last_action_id`: the last action
+the engine took, set under the same lock that marks the game ended, so a reply
+is either taken or never executed. A delivered action without a result that
+the watermark names stays the final transition, with no invented result
+(`actions_without_result`). One it does not name is withdrawn from the frames
+(`actions_unconsumed`, `retracted_actions`), and a response the closing socket
+refused is never folded (`responses_undelivered`). The decision left unacted
+stays in history as the last frame, `superseded_decision`, but is never a
+sample: the terminal reward belongs to the last action actually taken. The
+frames
 decode with the learner's `decode_frame` and `HistoryCursor`; run the check
 with `HEROES_LEARNER_PATH=<folder containing learner/> python3 -m unittest
 tests.test_headless` while the learner contract is not on `main`.
@@ -397,6 +407,9 @@ tests.test_headless` while the learner contract is not on `main`.
   records use opaque per-player handles, assigned on the player's own first
   legitimate observation.
 - `memory(color)` keeps last-seen facts that never refresh from hidden state.
+  A visible object is seen again at every capture and decision, so its
+  last-seen day and capture sequence follow them; a hidden one keeps those of
+  its last observation.
 - Rewards are 0 on ordinary transitions. +1/-1 exists only after both
   terminals, a clean exit and validated engine evidence.
 - Day, action and collection horizons are `truncated`. Both players pass a
@@ -410,7 +423,10 @@ tests.test_headless` while the learner contract is not on `main`.
   truncation. The action horizon is a runaway guard and stops at once.
 - Only a stop the environment declares can be a truncation. Watchdog, crash,
   protocol violation, engine error, unclean shutdown and invalid engine
-  evidence are `failed`, also during a horizon continuation. Neither
+  evidence are `failed`, also during a horizon continuation. After an exit of
+  the engine's own, every bridge stream is read to its end first: a stream that
+  ends inside a message, fails to decode or never finishes is a protocol
+  violation even after both terminals. Neither
   truncations nor failures are scored, and a dead hero with a surviving town
   is never a loss.
 
@@ -525,7 +541,10 @@ and never-seen tiles are black. Memory changes only through the player's own
 sightings. Battles and boundaries are labelled; a fog view marks only battles
 that player fought. Long episodes are thinned to the frame budget, but every
 frame with a new sighting or a battle, the game end and the final frame are
-kept. It uses only the standard library and ffmpeg (H.264).
+kept. It uses only the standard library and ffmpeg (H.264). The verification
+report records the SHA-256 of the manifest and trace it verified, and the
+renderer refuses inputs whose bytes differ, so a video never shows an
+unverified or edited episode.
 
 ```bash
 python3 experiments/headless/render_replay.py runs/headless-smoke/episodes/episode-000001 --output videos/episode-000001.mp4

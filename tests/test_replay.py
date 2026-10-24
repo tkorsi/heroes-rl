@@ -66,6 +66,8 @@ report = {{"schema": "heroes-replay-verification-v1", "verified": divergence is 
                       "observations_checked": checked, "observations_unchecked": unchecked,
                       "observations_after_prefix": sum(unchecked.values())}}}}
 Path(value("--report")).write_text(json.dumps(report))
+if "--trace" in args:
+    Path(value("--trace")).write_text(json.dumps({{"kind": "map"}}) + "\\n")
 sys.exit(1 if divergence else 0)
 '''
 
@@ -310,6 +312,10 @@ class ReplayToolTests(unittest.TestCase):
         self.assertTrue(result["observation_coverage"]["ok"])
         self.assertEqual(set(result["observation_coverage"]["players"]), {"0", "1"})
         self.assertTrue((episode / "verification" / "replay-verification.json").is_file())
+        self.assertEqual(result["inputs"], {"manifest_sha256": replay.scoring.digest(episode / "manifest.json"), "trace_sha256": None})
+        traced = replay.verify_episode(episode, binary=self.stub_binary(), data=data, trace=True)
+        # The verification names the exact manifest and trace it covered, for the renderer to check.
+        self.assertEqual(traced["inputs"]["trace_sha256"], replay.scoring.digest(episode / "verification" / "trace.jsonl"))
         self.assertFalse((episode / "verification" / "profile").exists())
 
     def test_a_natural_episode_without_replayed_terminals_is_not_verified(self):

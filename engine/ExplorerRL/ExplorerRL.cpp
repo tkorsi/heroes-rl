@@ -898,6 +898,16 @@ void ExplorerRL::runTurn(QueryID queryID)
 			const auto gameLock = readGameState();
 			before = playerState();
 		}
+		{
+			// The terminal reads this watermark under the same lock after it marks the game ended, so the
+			// action is either consumed here, even if no result follows, or never executed at all.
+			std::lock_guard lock(stateMutex);
+			if(!failure.empty())
+				throw std::runtime_error(failure);
+			if(stopping || terminal)
+				return;
+			submittedActionID = actionID;
+		}
 		const auto requestStart = std::chrono::steady_clock::now();
 		const bool accepted = executeRequest([this, action, heroID, position] {
 			if(action == 8)
@@ -973,6 +983,11 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		std::lock_guard sendLock(sendMutex);
 		auto record = message("terminal");
 		record["outcome"].String() = result.victory() ? "win" : "loss";
+		{
+			// The last action the engine consumed: a reply that arrives after the game ended is never executed.
+			std::lock_guard lock(stateMutex);
+			record["last_action_id"].Integer() = submittedActionID;
+		}
 		// Packet callbacks run on the applying thread, so the state is stable here.
 		noteVisibleChanges();
 		record["events"] = takeEvents();
