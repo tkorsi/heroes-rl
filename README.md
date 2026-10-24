@@ -536,8 +536,10 @@ contains merged self-play PR #3 and offline analysis PR #2, including evidence
 validation fixes. Claude's headless implementation is now in draft
 [PR #6](https://github.com/tkorsi/heroes-rl/pull/6), initially reviewed locally at
 `40e34a3`, then at `3a25545` after its neutral-player fix, and rechecked at
-`bbfc955`. The four remaining findings still reproduce at that head. It is not
-merged or accepted for learner integration.
+`bbfc955`. Claude addressed the four findings across `c6fb53d` and `4fe0d7c`.
+The latter passed independent local review and bounded native validation,
+including the additional action/finalization cases found in the first candidate.
+PR #6 remains draft and unmerged; this is not complete learner integration.
 Check its current status rather than treating this snapshot as live.
 
 Codex has now specified the learner's observation/history and per-player
@@ -545,11 +547,16 @@ trajectory interfaces and implemented an isolated recurrent policy/value
 component against them. Local review of PR #6 reached three natural endings in
 four random self-play attempts. Their original replay failure was fixed in
 `5b7c9e9`; Claude's subsequent local validation verifies 20 selected natural
-replays. Action-consumption and stream-finalization races, stale last-seen
-timestamps, and missing binding of render inputs to replay verification remain
-unresolved. Keep these fixes with Claude, then repeat local validation. Compact
-evidence, including the later fix, is in `validation/headless-review-2026-10-24.json`
-and `validation/headless-neutral-fix-2026-10-24.json`.
+replays. At `4fe0d7c`, consumption is committed at the game-state-locked issuance
+boundary, pre-existing failures cannot become eligible cutoffs, last-seen times
+follow permitted observations, and rendering requires the verified input bytes.
+An incomplete terminal history-v1 projection is explicitly invalid and must be
+excluded; retaining those final views for learning still needs a versioned
+terminal/supersession contract. The full raw player history is preserved.
+Current review evidence is in
+`validation/headless-fix-candidates-2026-10-24.json`; earlier reviews remain in
+`validation/headless-review-2026-10-24.json` and
+`validation/headless-neutral-fix-2026-10-24.json`.
 Do not start a training campaign until headless validation establishes correct
 episode boundaries and reachable natural outcomes. The original three rendered
 self-play runs remain truncated; the new headless smoke is separate evidence.
@@ -693,6 +700,34 @@ the single source of purpose and decisions; do not maintain competing charters.
   Portable reproducers are tracked under `validation/probes/`; their reports
   distinguish a reproduced bug from correct behavior. Exit zero alone is not an
   acceptance verdict.
+- Claude's first correction, `c6fb53d`, passes last-seen and render-binding
+  checks but exposed three remaining cases within the action/finalization work:
+  the consumption watermark preceded native issuance; terminal views after a
+  superseded decision were omitted while marked valid; and a pre-existing crash
+  or reader error could become an eligible collection cutoff. The last case was
+  reproduced with real VCMI after an acknowledged random action, as well as with
+  controlled events. These were sent directly to Claude and recorded on PR #6.
+- The corrected `4fe0d7c` passes all 183 tests, the native build and exact recipe
+  check. A fresh four-game random-agent smoke produced three natural endings,
+  one day cutoff and zero failures. All four replays verify, including 11 battle
+  boundaries, and all eight tamper cases are detected. The eight player streams
+  decode 6,793 frames; 11 intermediate enemy-position samples across seven
+  decision intervals are absent from both adjacent decision snapshots. Three
+  additional native cases pass: a day cutoff with both players' own bootstrap
+  decisions, a post-action process crash, and a crash already completed before
+  requesting a collection cutoff. Both crash cases are failed, unscored and have
+  no bootstrap. Extracted production-code tests cover terminal-first,
+  issuance-first and already-ended player status; reader-error ordering and
+  last-seen/terminal-history probes also pass. A verified offline video renders
+  from the new trace. The four original findings are addressed within this
+  reviewed scope; incomplete terminal projections are excluded, not repaired
+  into complete learner histories. No training or merge occurred. The existing
+  old-head benchmark overlapped local review work, so this review accepts no
+  throughput claim. Evidence: `validation/headless-fix-candidates-2026-10-24.json`.
+  Desired-behavior probes are `validation/probes/validate_*.py`; the real-ledger
+  auditor is `validation/probes/audit_headless_histories.py`. Their `--help`
+  documents the reviewed checkout, learner source and output arguments. Raw
+  runs, game data and videos remain ignored and local.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |
