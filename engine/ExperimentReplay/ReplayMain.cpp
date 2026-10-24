@@ -296,6 +296,8 @@ public:
 			expectEqual("header", "platform", init["platform"].String(), platform());
 		if(init["turn_timers"].Bool())
 			throw std::runtime_error("Replays require games without turn timers");
+		if(init["human_players"].isNull() || init["human_players"].Integer() >= 2)
+			throw std::runtime_error("Replays require games with fewer than two human players");
 
 		for(const auto & connection : init["connections"].Vector())
 			for(const auto & player : connection["players"].Vector())

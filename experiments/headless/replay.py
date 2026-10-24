@@ -245,8 +245,8 @@ def cross_check_player(bridge_path: Path, observation_path: Path, *, cut_short: 
 
 
 # -- engine replay -----------------------------------------------------------
-def replay_profile(directory: Path, episode_dir: Path, data: Path) -> tuple[dict, Path]:
-    """A private VCMI profile with the episode's map copy at the recorded path."""
+def replay_profile(directory: Path, episode_dir: Path, data: Path, settings: dict | None = None) -> tuple[dict, Path]:
+    """A private VCMI profile with the episode's map copy at the recorded path and its settings."""
     profile = directory / "profile"
     if sys.platform == "darwin":
         data_root, config_root = profile, profile / "config"
@@ -264,8 +264,8 @@ def replay_profile(directory: Path, episode_dir: Path, data: Path) -> tuple[dict
         folder.mkdir(parents=True, exist_ok=True)
     (data_root / "Data").symlink_to(data / "Data", target_is_directory=True)
     shutil.copyfile(maps[0], data_root / "Maps" / maps[0].name)
-    scoring.write_json(config_root / "settings.json", {"general": {"music": 0, "sound": 0},
-                                                       "logging": {"loggers": [{"domain": "global", "level": "info"}]}})
+    scoring.write_json(config_root / "settings.json", settings or {
+        "general": {"music": 0, "sound": 0}, "logging": {"loggers": [{"domain": "global", "level": "info"}]}})
     return environment, maps[0]
 
 
@@ -344,7 +344,7 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
         evidence = prepare_evidence(episode_dir, directory, cut_short)
         report["dropped"] = evidence["dropped"]
         report["replay_log_sha256"] = scoring.digest(episode_dir / "engine" / "replay.jsonl")
-        environment, _ = replay_profile(directory, episode_dir, data)
+        environment, _ = replay_profile(directory, episode_dir, data, manifest.get("launch", {}).get("requested_settings"))
         engine = run_replay(binary, environment, evidence["log"], evidence["observations"], directory / "engine-report.json",
                             prefix=cut_short, trace=directory / "trace.jsonl" if trace else None,
                             allow_platform_mismatch=allow_platform_mismatch, timeout=timeout)
@@ -448,7 +448,7 @@ def tamper_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     evidence = prepare_evidence(episode_dir, directory / "original", cut_short)
     observations = {path.name: read_jsonl(path, allow_partial_tail=False)[0]
                     for path in sorted(evidence["observations"].glob("observations-p*.jsonl"))}
-    environment, _ = replay_profile(directory, episode_dir, data)
+    environment, _ = replay_profile(directory, episode_dir, data, manifest.get("launch", {}).get("requested_settings"))
     results = []
     for name, expectation, records, files in tamper_cases(evidence["records"], observations):
         case = directory / name

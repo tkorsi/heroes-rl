@@ -258,7 +258,7 @@ diff --git a/server/ExperimentReplay.cpp b/server/ExperimentReplay.cpp
 new file mode 100644
 --- /dev/null
 +++ b/server/ExperimentReplay.cpp
-@@ -0,0 +1,431 @@
+@@ -0,0 +1,436 @@
 +/*
 + * ExperimentReplay.cpp, part of VCMI engine
 + *
@@ -639,11 +639,16 @@ new file mode 100644
 +		if(gameHandler.gameServer().isPlayerHost(PlayerColor(player)))
 +			hosts += (hosts.empty() ? "" : ",") + std::to_string(player);
 +	const auto * start = gameHandler.gameState().getStartInfo();
++	// CVCMIServer greets two or more human players with packs sent outside the
++	// game handler; the replay refuses such games instead of missing them.
++	int humans = 0;
++	for(const auto & player : start->playerInfos)
++		humans += player.second.isControlledByHuman();
 +	line(std::string("{\"kind\":\"init\",\"schema\":\"") + SCHEMA + "\",\"vcmi_version\":" + quoted(GameConstants::VCMI_VERSION)
 +		+ ",\"serialization_version\":" + std::to_string(static_cast<int>(ESerializationVersion::CURRENT))
 +		+ ",\"platform\":" + quoted(platform()) + ",\"seed\":" + std::to_string(seed)
 +		+ ",\"no_cheats\":" + (noCheats ? quoted(noCheats) : std::string("null"))
-+		+ ",\"turn_timers\":" + (start->turnTimerInfo.isEnabled() ? "true" : "false")
++		+ ",\"turn_timers\":" + (start->turnTimerInfo.isEnabled() ? "true" : "false") + ",\"human_players\":" + std::to_string(humans)
 +		+ ",\"map\":" + quoted(start->fileURI) + ",\"connections\":" + connections
 +		+ ",\"client_connection\":" + std::to_string(clientConnection) + ",\"hosts\":[" + hosts + "]"
 +		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\"}");
