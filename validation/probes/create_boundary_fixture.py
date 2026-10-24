@@ -21,9 +21,12 @@ from experiments.explorer.create_scenario import scenario_payloads
 
 BASELINE = ROOT / "experiments/explorer/maps/random-baseline-v1.vmap"
 UPSTREAM = "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
-KINDS = ("natural-townless", "unsupported-den")
+KINDS = ("natural-townless", "natural-townless-blue", "unsupported-den")
 SCHEMAS = {"natural-townless": "heroes-contextual-natural-townless-fixture-v1",
+           "natural-townless-blue": "heroes-contextual-natural-townless-blue-fixture-v1",
            "unsupported-den": "heroes-contextual-unsupported-interface-fixture-v1"}
+TOWNLESS_PLAYERS = {"natural-townless": ("red", "town_0"),
+                    "natural-townless-blue": ("blue", "town_1")}
 DEN_TEMPLATE = {"allowedTerrains": ["grass", "swamp", "dirt"], "animation": "avxdent.def",
                 "mask": ["VV", "BA"], "visitableFrom": ["---", "+++", "+++"]}
 
@@ -89,17 +92,18 @@ def variant_payloads(original, kind):
     payloads = deepcopy(original)
     objects = payloads["objects.json"]
     changes = []
-    if kind == "natural-townless":
-        town_index = next(i for i, obj in enumerate(objects) if obj["instanceName"] == "town_0")
+    if kind in TOWNLESS_PLAYERS:
+        color, town_name = TOWNLESS_PLAYERS[kind]
+        town_index = next(i for i, obj in enumerate(objects) if obj["instanceName"] == town_name)
         old_town = objects.pop(town_index)
-        old_main = payloads["header.json"]["players"]["red"].pop("mainTown")
-        changes = [{"entry": "header.json", "json_pointer": "/players/red/mainTown", "operation": "remove",
+        old_main = payloads["header.json"]["players"][color].pop("mainTown")
+        changes = [{"entry": "header.json", "json_pointer": f"/players/{color}/mainTown", "operation": "remove",
                     "before": old_main, "after": None},
-                   {"entry": "objects.json", "json_pointer": f"/{town_index}", "instance_name": "town_0",
+                   {"entry": "objects.json", "json_pointer": f"/{town_index}", "instance_name": town_name,
                     "operation": "remove", "before": old_town, "after": None}]
         # Verify exact field isolation independently of the construction above.
         restored = deepcopy(payloads)
-        restored["header.json"]["players"]["red"]["mainTown"] = old_main
+        restored["header.json"]["players"][color]["mainTown"] = old_main
         restored["objects.json"].insert(town_index, old_town)
     else:
         index = next(i for i, obj in enumerate(objects) if obj["instanceName"] == "gold_0")
@@ -175,16 +179,21 @@ def create_fixture(output, *, kind, baseline=BASELINE):
                       "terrain_roads": True, "source_archive_bytes": True},
         "upstream_commit": UPSTREAM,
     }
-    if kind == "natural-townless":
+    if kind in TOWNLESS_PLAYERS:
+        color, _ = TOWNLESS_PLAYERS[kind]
         manifest.update(natural_outcome_verified=False,
             evaluator_plan={"actions": "Explicit end_turn at each real player decision; no injected outcome or counter",
-                            "expected_outcomes": {"red": "loss", "blue": "win"}, "day_budget": 10,
+                            "expected_outcomes": {player: "loss" if player == color else "win"
+                                                  for player in ("red", "blue")}, "day_budget": 10,
                             "trigger": "Unchanged native seven-days-without-a-town rule",
                             "postterminal_views": "Coverage only; absence for one player is not a failed natural boundary"},
             native_basis={"missing_main_town": "lib/mapping/MapFormatJson.cpp:490-501",
                           "townless_counter": "server/processors/NewTurnProcessor.cpp:163-187",
                           "unchanged_seven_day_threshold": "lib/gameState/CGameState.cpp:1364-1369",
                           "terminal_and_final_removals": "server/CGameHandler.cpp:3746-3804"})
+        # Keep the original Red manifest schema and map bytes unchanged.
+        if kind == "natural-townless-blue":
+            manifest["townless_player"] = color
     else:
         den = next(obj for obj in expected["objects.json"] if obj["instanceName"] == "validation_den_0")
         manifest.update(evaluator_target={"native_kind": 97, "native_subtype": 0,

@@ -18,6 +18,8 @@ ENVIRONMENT = "adventure-windows-v1"
 TOWN_SCHEMA = "heroes-player-history-v3"
 TOWN_ACTION_SCHEMA = "heroes-context-actions-v3"
 TOWN_ENVIRONMENT = "adventure-town-v1"
+TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
+TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
 
 
@@ -898,17 +900,38 @@ class Frame:
 
 
 @dataclass(frozen=True)
+class TerminalClosure:
+    """References to a verified episode ending, never a native action result.
+
+    Consumption establishes whose last action was being handled. A terminal
+    closure does not assert issuance, acknowledgement or command success.
+    Full paired-prefix/manifest verification remains the collector's duty.
+    """
+    consumed_seq: int
+    superseded_seq: int
+    terminal_seq: int
+    finalized_seq: int
+
+    def __post_init__(self):
+        previous = -1
+        for value in (self.consumed_seq, self.superseded_seq, self.terminal_seq, self.finalized_seq):
+            _integer(value, low=previous + 1)
+            previous = value
+
+
+@dataclass(frozen=True)
 class Transition:
     episode: str
     player: int
     decision_seq: int
     action: Action
-    result_seq: int
+    result_seq: int | None
     successor_seq: int | None
     reward: int | None
     eligible: bool
     bootstrap_allowed: bool
     boundary: str
+    terminal_closure: TerminalClosure | None = None
 
 
 class PlayerHistory:
@@ -1182,13 +1205,37 @@ class PlayerHistory:
             if not result.accepted and action.kind not in ("construct", "recruit") and self.context != self.decision.observation.context:
                 raise ValueError("Rejected navigation cannot have changed context")
 
-    def transitions(self):
-        """No targets until boundary finalization; incomplete actions are excluded.
+    def _terminal_closure(self):
+        """Derive closure only for the final consumed action, without new frames."""
+        if self.boundary != "natural" or not self._frames or self._frames[-1].kind != "finalized":
+            return None
+        decisions = [f for f in self._frames if f.kind == "decision"]
+        consumed = [f for f in self._frames if f.kind == "consumed"]
+        if not decisions or not consumed or consumed[-1].decision_seq != decisions[-1].seq:
+            return None
+        decision, consumption = decisions[-1], consumed[-1]
+        related = [f for f in self._frames if f.decision_seq == decision.seq]
+        submissions = [f for f in related if f.kind == "submitted"]
+        supersessions = [f for f in related if f.kind == "superseded"]
+        terminals = [f for f in self._frames if f.kind == "terminal"]
+        if (len(submissions) != 1 or len(supersessions) != 1 or len(terminals) != 1
+                or supersessions[0].reason != "terminal" or any(f.kind == "result" for f in related)):
+            return None
+        closure = TerminalClosure(consumption.seq, supersessions[0].seq, terminals[0].seq, self._frames[-1].seq)
+        return decision.seq, submissions[0].action, closure
+
+    def transitions(self, *, schema=TRAJECTORY_SCHEMA):
+        """No targets until boundary finalization; v1 excludes incomplete actions.
 
         Successors are subsequent decisions in THIS history, never opponent
         turns. This is environment provenance, not behavior probabilities, value
-        estimates or a PPO rollout. A failed record has no usable targets.
+        estimates or a PPO rollout. V2 can close the last consumed action at a
+        verified natural terminal without inventing an ordinary result. A failed
+        record has no usable targets. History encodings are unchanged by either
+        trajectory interpretation.
         """
+        if schema not in (TRAJECTORY_SCHEMA, TERMINAL_TRAJECTORY_SCHEMA):
+            raise ValueError("Unsupported contextual trajectory schema")
         completed = []
         actions = {}
         consumed = {f.decision_seq for f in self._frames if f.kind == "consumed"}
@@ -1198,11 +1245,15 @@ class PlayerHistory:
             if frame.kind == "submitted":
                 actions[frame.decision_seq] = frame.action
             elif frame.kind == "result":
-                completed.append((frame.decision_seq, actions[frame.decision_seq], frame.seq))
+                completed.append((frame.decision_seq, actions[frame.decision_seq], frame.seq, None))
+        closure = self._terminal_closure() if schema == TERMINAL_TRAJECTORY_SCHEMA else None
+        if closure is not None:
+            decision, action, evidence = closure
+            completed.append((decision, action, None, evidence))
         eligible = self.boundary in ("natural", "cutoff")
         transitions = []
-        for index, (decision, action, result) in enumerate(completed):
-            successor = next((seq for seq in decisions if seq > result), None)
+        for index, (decision, action, result, closure) in enumerate(completed):
+            successor = next((seq for seq in decisions if seq > result), None) if result is not None else None
             terminal_owner = (self.boundary == "natural" and index == len(completed) - 1
                               and not any(seq > decision for seq in consumed))
             if terminal_owner:
@@ -1211,7 +1262,7 @@ class PlayerHistory:
             reward = (1 if self.terminal == "win" else -1) if valid and terminal_owner else 0 if valid else None
             transitions.append(Transition(self.episode, self.player, decision, action, result, successor,
                                           reward, valid, valid and successor is not None,
-                                          self.boundary or "pending"))
+                                          self.boundary or "pending", closure))
         return tuple(transitions)
 
 

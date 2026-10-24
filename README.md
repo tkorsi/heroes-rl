@@ -1209,12 +1209,13 @@ them. The opened popup exposes the actual creature choices.
 
 `contextual_rollout.py` maintains separate player sessions and freezes behavior
 weight identities. A sampled intention becomes a transition only when the same
-history records submission, consumption and a resolved result. Superseded
-unacted decisions are retained as history, not samples. Intervening opponent
-turns remain inside the acting player's transition. Both complete histories and
-matching final proofs/manifest hashes are required. A consumed but unresolved
-final action makes that player's entire rollout optimization-ineligible; the
-collector never attaches its reward to an earlier action. Failures provide no
+history records submission, consumption and a resolved result, or the explicit
+trajectory-v2 natural terminal closure described below. Superseded unacted
+decisions are retained as history, not samples. Intervening opponent turns remain
+inside the acting player's transition. Both complete recorded histories and
+matching final proofs/manifest hashes are required. Other unresolved consumed
+actions make that player's whole trajectory ineligible; the collector never
+attaches their terminal reward to an earlier action. Failures provide no
 reward or bootstrap. A cutoff uses only the actual unacted next decision and
 value from that player's matching recurrent prefix. Frozen-opponent and
 diagnostic records are never on-policy training samples.
@@ -1241,15 +1242,17 @@ Resume validates named parameter ordering and finite moment shapes before
 changing live state. Fixed policy checkpoints need no optimizer. A frozen opponent pool copies and
 freezes weights, samples from an explicit fixed set, and checks for mutation.
 
-`python -m experiments.learner.inference` is a bounded diagnostic runner, with
+`python -m experiments.learner.inference` is a bounded fixed-weight runner, with
 no optimizer entry point. It uses one frozen opponent for each pair of engine
 seed/color trials, records policy initialization/sampling seeds and source/hash
 identity, saves untrained checkpoints and both complete rollout histories, and
 runs the independent history auditor. It retains every attempt, verifies
 unchanged weights, and reports natural endings, valid cutoffs, technical
-failures and collection errors separately. Its records are diagnostics,
-excluded from optimization and outcome-rate claims. Contextual replay remains
-explicitly unsupported.
+failures and collection errors separately. Its collector records remain
+diagnostics, excluded from optimization. The default diagnostic purpose makes
+no outcome-rate claim; the explicit ordinary-evaluation purpose requires the
+unchanged authored baseline map and reports the observed frequency within its
+declared finite cohort. Contextual replay remains explicitly unsupported.
 
 Validation at `c3edda8` (core/runner), `0b90703` (natural fixture) and `8a24a4a`
 (corrected crash probe) passed on local macOS arm64, Python 3.13.5 and locked
@@ -1308,12 +1311,57 @@ python3 validation/probes/create_boundary_fixture.py \
   --checkpoint runs/neural-fixed-check/untrained-policy.pt --engine-seed 95201
 ```
 
-Before gameplay optimization, resolve the consumed terminal-action gap and
-establish contextual natural outcomes under a declared random-policy cohort.
-Broader event/action coverage, the prior town edge cases and contextual replay
-also remain gates. The synthetic-only optimizer admission must be changed only
-with explicit training authorization and review. No learning campaign is
-authorized by this implementation.
+#### Terminal closure and pre-training validation follow-up
+
+The user authorized a follow-up on `codex/terminal-validation`, based on PR #9
+at `daa1e98`, to repair losing-player terminal credit and check the remaining
+gates with fixed weights. No gameplay optimizer update or training is authorized.
+
+Trajectory-v2 and rollout-v2 derive a separate `TerminalClosure` from the final
+action's recorded consumption, explicit `superseded(reason="terminal")`, natural
+terminal and matching paired finalization. Its `result_seq` is null: it claims
+neither command acceptance nor an ordinary result. Only that final consumed
+decision receives the terminal +1/-1, with no successor or bootstrap. Earlier
+transitions retain zero reward. Full recorded post-terminal views/events remain
+in the history and recurrent pass. Submitted-only intentions, ambiguous earlier
+gaps, failures and cutoffs never acquire this closure. `trajectory_eligible`
+reports structural target continuity separately from optimizer admission;
+native diagnostics and frozen opponents still cannot enter PPO. Existing
+history-v2/v3 bytes and explicit trajectory-v1/rollout-v1 interpretation remain
+unchanged. The native command-result protocol is unchanged.
+
+The mirrored `natural-townless-blue` fixture removes only Blue's town and
+main-town header, using the same native seven-day rule as the original Red
+fixture. These isolated fixtures test terminal mechanics and are never included
+in ordinary-game outcome frequency. The ordinary cohort uses the unchanged
+authored map and predeclares every seed, seat, fixed checkpoint, sampler seed and
+budget before launching. Every attempt is retained, including collection errors.
+Cutoffs, unsupported interactions and technical failures remain unscored.
+`validation/probes/audit_neural_rollout.py` independently replays the checkpoint
+over every saved player frame and checks all decision values, joint/conditional
+probabilities, terminal targets, actual cutoff bootstraps and rejected optimizer
+admission. This is inference reconstruction, not native engine replay.
+
+Native replay/drain audit found concrete remaining blockers. Contextual capture
+bypasses the legacy observation ledger, leaving it empty. Contextual records
+lack authoritative packet/receipt anchors and persisted native-request-to-action
+associations; the legacy verifier omits roads, windows, town panels and ordered
+notices. Historical contextual records therefore cannot be upgraded to verified
+replay by removing the guard. Fresh evidence and a contextual verifier are
+required. Separately, the second `PlayerEndsGame` immediately requests headless
+shutdown; `NetworkHandler::stop()` stops the I/O context without an authoritative
+final-packet barrier. Clean exit and bridge EOF prove the recorded stream closed,
+but do not prove every late native event arrived. Observed final hero-removal
+views are useful fixture evidence, not a general drainage guarantee. These
+native changes remain separately scoped from Claude's legacy replay/performance
+work; the ownership update is on issue #4.
+
+Before gameplay optimization, establish contextual natural outcomes on ordinary
+games and verify complete native terminal drainage and contextual replay.
+Broader event/action coverage and the prior town edge cases also remain gates.
+The synthetic-only optimizer admission must be changed only with explicit
+training authorization and review. No learning campaign is authorized by this
+implementation.
 
 ### Continue in a new chat
 

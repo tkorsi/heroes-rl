@@ -1,8 +1,9 @@
 """Fixed-weight contextual collection; no optimizer or engine outcome inference.
 
-Behavior choices are evidence, not samples until native consumption and a
-resolved result are present. Both complete histories and finalization proofs
-are checked before eligibility. Diagnostic native runs never become PPO data.
+Behavior choices become samples only after consumption and an ordinary result
+or an explicitly versioned verified natural terminal closure. Both complete
+histories and finalization proofs are checked before eligibility. Diagnostic
+native runs never become PPO data.
 """
 from __future__ import annotations
 
@@ -18,6 +19,8 @@ from . import contextual as c
 from .contextual_model import ContextualEncoder, DecisionSupport, weights_sha256
 
 ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
+TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
+_TRAJECTORIES = {ROLLOUT_SCHEMA: c.TRAJECTORY_SCHEMA, TERMINAL_ROLLOUT_SCHEMA: c.TERMINAL_TRAJECTORY_SCHEMA}
 COLORS = ("red", "blue")
 
 
@@ -168,27 +171,39 @@ class BehaviorDecision:
 @dataclass(frozen=True)
 class RolloutSample:
     decision: BehaviorDecision
-    result_seq: int
+    result_seq: int | None
     successor_seq: int | None
     reward: float | None
     bootstrap_value: float | None
     eligible: bool
+    terminal_closure: c.TerminalClosure | None = None
 
     def __post_init__(self):
         if type(self.decision) is not BehaviorDecision or type(self.eligible) is not bool:
             raise ValueError("Sample requires immutable behavior and explicit eligibility")
-        c._integer(self.result_seq, low=self.decision.decision_seq + 1)
-        if self.successor_seq is not None: c._integer(self.successor_seq, low=self.result_seq + 1)
+        if self.terminal_closure is None:
+            c._integer(self.result_seq, low=self.decision.decision_seq + 1)
+            if self.successor_seq is not None: c._integer(self.successor_seq, low=self.result_seq + 1)
+        elif (type(self.terminal_closure) is not c.TerminalClosure or self.result_seq is not None
+                or self.terminal_closure.consumed_seq <= self.decision.decision_seq
+                or self.successor_seq is not None or self.bootstrap_value is not None
+                or self.reward not in (-1, 1) or not self.eligible):
+            raise ValueError("Terminal closure has only verified terminal reward, never an ordinary result/bootstrap")
         if self.reward is not None and (type(self.reward) not in (int, float) or self.reward not in (-1, 0, 1)):
             raise ValueError("Only terminal win/loss and ordinary zero rewards are permitted")
         if self.bootstrap_value is not None: _finite(self.bootstrap_value, "bootstrap value")
         if self.eligible and (self.reward is None or (self.successor_seq is not None) != (self.bootstrap_value is not None)):
             raise ValueError("Eligible samples require their actual same-player successor value")
 
-    def to_dict(self):
-        return {"decision_seq": self.decision.decision_seq, "result_seq": self.result_seq,
+    def to_dict(self, *, schema=c.TRAJECTORY_SCHEMA):
+        if schema not in _TRAJECTORIES.values() or schema == c.TRAJECTORY_SCHEMA and self.terminal_closure is not None:
+            raise ValueError("Terminal closure requires trajectory v2")
+        result = {"decision_seq": self.decision.decision_seq, "result_seq": self.result_seq,
                 "successor_seq": self.successor_seq, "reward": self.reward,
                 "bootstrap_value": self.bootstrap_value, "eligible": self.eligible}
+        if schema == c.TERMINAL_TRAJECTORY_SCHEMA:
+            result["terminal_closure"] = None if self.terminal_closure is None else dict(vars(self.terminal_closure))
+        return result
 
 
 @dataclass(frozen=True)
@@ -210,10 +225,13 @@ class ContextualRollout:
     purpose: str
     origin: str
     estimates: tuple[DecisionEstimate, ...] = ()
+    trajectory_schema: str = c.TRAJECTORY_SCHEMA
     _optimization_eligible: bool = field(init=False, repr=False, compare=False)
+    _trajectory_eligible: bool = field(init=False, repr=False, compare=False)
 
     def __post_init__(self):
         _text(self.episode, "episode"); c._integer(self.player, high=1)
+        if self.trajectory_schema not in _TRAJECTORIES.values(): raise ValueError("Unsupported trajectory schema")
         for value in (self.behavior_checkpoint, self.opponent_checkpoint, self.opponent_pool, self.evidence_ref): _text(value, "provenance")
         for value in (self.history_sha256, self.weights_sha256, self.opponent_weights_sha256): _hash(value)
         if (self.role not in ("learner", "frozen_opponent") or self.purpose not in ("diagnostic", "synthetic", "training")
@@ -252,18 +270,19 @@ class ContextualRollout:
         for frame in self.history:
             if frame.kind == "submitted" and (frame.decision_seq not in records or records[frame.decision_seq].action != frame.action):
                 raise ValueError("Every submitted action requires matching fixed behavior evidence")
-        transitions = history.transitions()
+        transitions = history.transitions(schema=self.trajectory_schema)
         if len(self.samples) != len(transitions): raise ValueError("Samples must exactly match resolved contextual transitions")
         for sample, transition in zip(self.samples, transitions):
             if (sample.decision != records.get(transition.decision_seq) or sample.result_seq != transition.result_seq
                     or sample.successor_seq != transition.successor_seq or sample.reward != transition.reward
-                    or sample.eligible != transition.eligible):
+                    or sample.eligible != transition.eligible or sample.terminal_closure != transition.terminal_closure):
                 raise ValueError("Sample disagrees with the strict contextual trajectory")
             expected_bootstrap = estimates[transition.successor_seq].value if transition.bootstrap_allowed else None
             if sample.bootstrap_value != expected_bootstrap:
                 raise ValueError("Sample successor value is not its actual same-player fixed-weight estimate")
         consumed = {f.decision_seq for f in self.history if f.kind == "consumed"}
         completed = {f.decision_seq for f in self.history if f.kind == "result"}
+        completed.update(s.decision.decision_seq for s in self.samples if s.terminal_closure is not None)
         contiguous = bool(self.samples) and consumed == completed and all(sample.eligible for sample in self.samples)
         for first, second in zip(self.samples, self.samples[1:]):
             contiguous = contiguous and first.successor_seq == second.decision.decision_seq
@@ -275,27 +294,39 @@ class ContextualRollout:
                 cutoff = next((frame for frame in self.history if frame.kind == "cutoff"), None)
                 contiguous = contiguous and cutoff is not None and last.successor_seq == cutoff.decision_seq and last.bootstrap_value is not None
             else: contiguous = False
-        object.__setattr__(self, "_optimization_eligible", bool(contiguous and self.role == "learner"
+        object.__setattr__(self, "_trajectory_eligible", bool(contiguous and self.boundary in ("natural", "cutoff")))
+        object.__setattr__(self, "_optimization_eligible", bool(self._trajectory_eligible and self.role == "learner"
             and self.purpose in ("synthetic", "training") and self.boundary in ("natural", "cutoff")))
+
+    @property
+    def trajectory_eligible(self):
+        """Contiguous targets from this history, independent of optimizer admission."""
+        return self._trajectory_eligible
 
     @property
     def optimization_eligible(self):
         return self._optimization_eligible
 
     def to_dict(self):
-        return {"episode": self.episode, "player": self.player, "role": self.role,
+        result = {"episode": self.episode, "player": self.player, "role": self.role,
             "history": [c.encode_frame(frame) for frame in self.history], "decisions": [item.to_dict() for item in self.decisions],
-            "samples": [item.to_dict() for item in self.samples], "boundary": self.boundary,
+            "samples": [item.to_dict(schema=self.trajectory_schema) for item in self.samples], "boundary": self.boundary,
             "history_sha256": self.history_sha256, "evidence_ref": self.evidence_ref,
             "behavior_checkpoint": self.behavior_checkpoint, "opponent_checkpoint": self.opponent_checkpoint,
             "weights_sha256": self.weights_sha256, "opponent_weights_sha256": self.opponent_weights_sha256,
             "opponent_pool": self.opponent_pool, "purpose": self.purpose, "origin": self.origin,
             "estimates": [item.to_dict() for item in self.estimates]}
+        if self.trajectory_schema != c.TRAJECTORY_SCHEMA: result["trajectory_schema"] = self.trajectory_schema
+        return result
 
     @classmethod
-    def from_dict(cls, raw):
+    def from_dict(cls, raw, *, trajectory_schema=c.TRAJECTORY_SCHEMA):
+        if trajectory_schema not in _TRAJECTORIES.values(): raise ValueError("Unsupported trajectory schema")
         names = {item.name for item in cls.__dataclass_fields__.values() if item.init}
+        if trajectory_schema == c.TRAJECTORY_SCHEMA: names.remove("trajectory_schema")
         data = _record(raw, names)
+        if data.get("trajectory_schema", c.TRAJECTORY_SCHEMA) != trajectory_schema:
+            raise ValueError("Rollout trajectory disagrees with its artifact schema")
         if any(type(data[name]) is not list for name in ("history", "decisions", "samples", "estimates")):
             raise ValueError("Rollout sequences must be JSON arrays")
         history = tuple(c.decode_frame(frame) for frame in data["history"])
@@ -303,7 +334,12 @@ class ContextualRollout:
         by_seq = {record.decision_seq: record for record in decisions}
         samples = []
         for raw_sample in data["samples"]:
-            sample = _record(raw_sample, ("decision_seq", "result_seq", "successor_seq", "reward", "bootstrap_value", "eligible"))
+            keys = ("decision_seq", "result_seq", "successor_seq", "reward", "bootstrap_value", "eligible")
+            if trajectory_schema == c.TERMINAL_TRAJECTORY_SCHEMA: keys += ("terminal_closure",)
+            sample = _record(raw_sample, keys)
+            if sample.get("terminal_closure") is not None:
+                closure = _record(sample["terminal_closure"], ("consumed_seq", "superseded_seq", "terminal_seq", "finalized_seq"))
+                sample["terminal_closure"] = c.TerminalClosure(**closure)
             sample["decision"] = by_seq[sample.pop("decision_seq")]
             samples.append(RolloutSample(**sample))
         estimates = []
@@ -436,10 +472,14 @@ class CollectedEpisode:
     manifest_json: str
     audit_json: str
     model_configs_json: tuple[str, str]
+    artifact_schema: str = ROLLOUT_SCHEMA
 
     def __post_init__(self):
         _tuple(self.rollouts, ContextualRollout)
         if len(self.rollouts) != 2: raise ValueError("Collected episode requires both seats")
+        if self.artifact_schema not in _TRAJECTORIES or any(
+                r.trajectory_schema != _TRAJECTORIES[self.artifact_schema] for r in self.rollouts):
+            raise ValueError("Collected artifact/trajectory versions disagree")
         red, blue = self.rollouts
         if ({red.role, blue.role} != {"learner", "frozen_opponent"}
                 or (red.opponent_pool, red.purpose, red.origin) != (blue.opponent_pool, blue.purpose, blue.origin)
@@ -457,24 +497,25 @@ class CollectedEpisode:
         for value in (*self.model_configs_json, self.audit_json): json.loads(value)
 
     def to_dict(self):
-        return {"schema": ROLLOUT_SCHEMA, "rollouts": [rollout.to_dict() for rollout in self.rollouts],
+        return {"schema": self.artifact_schema, "rollouts": [rollout.to_dict() for rollout in self.rollouts],
             "manifest": json.loads(self.manifest_json), "audit": json.loads(self.audit_json),
             "model_configs": [json.loads(value) for value in self.model_configs_json]}
 
     @classmethod
     def from_dict(cls, raw):
         data = _record(raw, ("schema", "rollouts", "manifest", "audit", "model_configs"))
-        if data["schema"] != ROLLOUT_SCHEMA or type(data["rollouts"]) is not list or type(data["model_configs"]) is not list:
+        if data["schema"] not in _TRAJECTORIES or type(data["rollouts"]) is not list or type(data["model_configs"]) is not list:
             raise ValueError("Unsupported collection artifact schema")
-        return cls(tuple(ContextualRollout.from_dict(item) for item in data["rollouts"]), _canonical(data["manifest"]),
-                   _canonical(data["audit"]), tuple(_canonical(config) for config in data["model_configs"]))
+        return cls(tuple(ContextualRollout.from_dict(item, trajectory_schema=_TRAJECTORIES[data["schema"]]) for item in data["rollouts"]),
+                   _canonical(data["manifest"]), _canonical(data["audit"]),
+                   tuple(_canonical(config) for config in data["model_configs"]), data["schema"])
 
 
 class ContextualCollector:
     """Fixed two-policy collection; run_episode never invokes an optimizer."""
 
     def __init__(self, models, checkpoints, *, learner_player, opponent_pool, interface=c.TOWN_ENVIRONMENT,
-                 purpose="diagnostic", origin="native", policy_seeds=(0, 1)):
+                 purpose="diagnostic", origin="native", policy_seeds=(0, 1), trajectory_schema=c.TERMINAL_TRAJECTORY_SCHEMA):
         if type(models) is not tuple or len(models) != 2 or type(checkpoints) is not tuple or len(checkpoints) != 2:
             raise ValueError("Collection requires fixed models/checkpoints for both seats")
         c._integer(learner_player, high=1); _text(opponent_pool, "opponent pool")
@@ -485,6 +526,8 @@ class ContextualCollector:
         self.profile = c.profile_for(interface)
         if interface != self.profile.environment: raise ValueError("Collector requires an environment interface")
         self.models, self.checkpoints = models, checkpoints
+        if trajectory_schema not in _TRAJECTORIES.values(): raise ValueError("Unsupported collector trajectory schema")
+        self.trajectory_schema = trajectory_schema
         self.learner_player, self.opponent_pool, self.purpose, self.origin = learner_player, opponent_pool, purpose, origin
         self.policy_seeds = policy_seeds
         self.sessions = None
@@ -539,19 +582,22 @@ class ContextualCollector:
         rollouts = []
         for player, session in enumerate(self.sessions):
             samples = []
-            for transition in session.history.transitions():
+            for transition in session.history.transitions(schema=self.trajectory_schema):
                 record = session._choices.get(transition.decision_seq)
                 if record is None: raise ValueError("Resolved action has no sampled behavior record")
                 value = session._values.get(transition.successor_seq) if transition.bootstrap_allowed else None
-                samples.append(RolloutSample(record, transition.result_seq, transition.successor_seq, transition.reward, value, transition.eligible))
+                samples.append(RolloutSample(record, transition.result_seq, transition.successor_seq, transition.reward, value,
+                                             transition.eligible, transition.terminal_closure))
             rollouts.append(ContextualRollout(session.history.episode, player,
                 "learner" if player == self.learner_player else "frozen_opponent", session.history.frames,
                 tuple(session._choices.values()), tuple(samples), session.history.boundary, session.history.digest(),
                 end.manifest["evidence_ref"], session.checkpoint, session.opponent_checkpoint, session.weights_sha256,
                 self.sessions[1 - player].weights_sha256, self.opponent_pool, self.purpose, self.origin,
-                tuple(DecisionEstimate(seq, value, session._prefixes[seq]) for seq, value in session._values.items())))
+                tuple(DecisionEstimate(seq, value, session._prefixes[seq]) for seq, value in session._values.items()),
+                self.trajectory_schema))
         result = CollectedEpisode(tuple(rollouts), _canonical(end.manifest), _canonical(audit_report),
-            tuple(_canonical(model.config.to_dict()) for model in self.models))
+            tuple(_canonical(model.config.to_dict()) for model in self.models),
+            next(schema for schema, trajectory in _TRAJECTORIES.items() if trajectory == self.trajectory_schema))
         for session in self.sessions: session._check_weights(); session.finished = True
         return result
 

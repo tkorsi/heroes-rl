@@ -95,9 +95,10 @@ class ContextualRolloutTests(unittest.TestCase):
         torch.manual_seed(71)
         self.model = ContextualActorCritic(ModelConfig(hidden_size=8, feature_size=4))
 
-    def collector(self, *, purpose="synthetic", interface=c.TOWN_ENVIRONMENT):
+    def collector(self, *, purpose="synthetic", interface=c.TOWN_ENVIRONMENT, trajectory_schema=c.TERMINAL_TRAJECTORY_SCHEMA):
         return ContextualCollector((self.model, self.model), ("learner-initial", "frozen-initial"), learner_player=0,
-            opponent_pool="synthetic-fixed-pool", purpose=purpose, origin="synthetic", interface=interface)
+            opponent_pool="synthetic-fixed-pool", purpose=purpose, origin="synthetic", interface=interface,
+            trajectory_schema=trajectory_schema)
 
     def collect(self, boundary="natural", purpose="synthetic", schema=c.TOWN_SCHEMA):
         collector = self.collector(purpose=purpose, interface=c.profile_for(schema).environment)
@@ -185,7 +186,7 @@ class ContextualRolloutTests(unittest.TestCase):
         self.assertTrue(red.optimization_eligible)
 
     def test_consumed_unresolved_terminal_action_does_not_transfer_reward(self):
-        collector = self.collector(); collector.start("synthetic-collector")
+        collector = self.collector(trajectory_schema=c.TRAJECTORY_SCHEMA); collector.start("synthetic-collector")
         pair = initial(0), initial(1)
         for h in pair:
             resolve(h, collector.act(request(h))); next_decision(h)

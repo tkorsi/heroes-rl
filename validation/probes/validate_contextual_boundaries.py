@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from experiments.learner import contextual as contract
 from validation.probes import validate_contextual_native as probe
-from validation.probes.create_boundary_fixture import SCHEMAS, decode, sha, verify_fixture
+from validation.probes.create_boundary_fixture import SCHEMAS, TOWNLESS_PLAYERS, decode, sha, verify_fixture
 
 
 def fixture_input(path):
@@ -39,18 +39,21 @@ def fixture_input(path):
     return kind, game_map, manifest
 
 
-def natural_case(run):
+def natural_case(run, townless_player="red"):
     while run.live():
         frame = run.inspect_request()
         probe.ensure(frame.observation.context.kind == "map", "Townless fixture left map context")
         run.call(contract.Action("end_turn"), "explicit_native_turn_for_seven_day_rule")
     probe.ensure(run.end is not None and run.end.status == "completed", "Native townless ending was not verified")
     probe.ensure(set(run.initial) == {"red", "blue"}, "Both real initial player views are required")
-    red, blue = run.initial["red"].observation, run.initial["blue"].observation
-    probe.ensure(len(red.heroes) == 1 and not red.towns and len(blue.heroes) == 1 and len(blue.towns) == 1,
+    probe.ensure(all(len(run.initial[color].observation.heroes) == 1
+                     and len(run.initial[color].observation.towns) == (0 if color == townless_player else 1)
+                     for color in ("red", "blue")),
                  "Real initial views do not match the townless fixture")
-    probe.ensure(run.end.outcomes == {"red": "loss", "blue": "win"}
-                 and run.end.rewards == {"red": -1, "blue": 1}, "Unexpected native complementary outcomes/rewards")
+    expected_outcomes = {color: "loss" if color == townless_player else "win" for color in ("red", "blue")}
+    expected_rewards = {color: -1 if color == townless_player else 1 for color in ("red", "blue")}
+    probe.ensure(run.end.outcomes == expected_outcomes and run.end.rewards == expected_rewards,
+                 "Unexpected native complementary outcomes/rewards")
     run.check("native_townless_natural_boundary", "passed", outcomes=run.end.outcomes, rewards=run.end.rewards)
 
 
@@ -117,7 +120,7 @@ def main(argv=None):
     if args.output.exists():
         parser.error("Output exists; never overwrite preserved native evidence")
     kind, args.map, fixture = fixture_input(args.fixture)
-    args.source, args.max_days = ROOT, 10 if kind == "natural-townless" else 3
+    args.source, args.max_days = ROOT, 10 if kind in TOWNLESS_PLAYERS else 3
     env = probe.load("heroes_boundary_probe_env", ROOT / "experiments/headless/env.py")
     auditor = probe.load("heroes_boundary_probe_auditor", ROOT / "validation/probes/audit_contextual_histories.py")
     env.VcmiLauncher(args.binary, args.data, args.map).preflight()
@@ -137,7 +140,10 @@ def main(argv=None):
     coverage = None
     try:
         run.start()
-        (natural_case if kind == "natural-townless" else unsupported_case)(run)
+        if kind in TOWNLESS_PLAYERS:
+            natural_case(run, townless_player=TOWNLESS_PLAYERS[kind][0])
+        else:
+            unsupported_case(run)
         run.persist_and_audit()
         coverage = terminal_view_coverage(run)
     except Exception as exc:

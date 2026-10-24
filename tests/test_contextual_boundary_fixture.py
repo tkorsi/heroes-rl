@@ -6,7 +6,7 @@ import tempfile
 import unittest
 import zipfile
 
-from validation.probes.create_boundary_fixture import BASELINE, ROOT, create_fixture, verify_fixture
+from validation.probes.create_boundary_fixture import BASELINE, KINDS, ROOT, create_fixture, verify_fixture
 from validation.probes.validate_contextual_boundaries import fixture_input
 
 
@@ -41,7 +41,67 @@ class BoundaryFixtureTests(unittest.TestCase):
             self.assertEqual(sum(obj["type"] == "hero" for obj in new_objects), 2)
             self.assertFalse(manifest["native_validated"])
             self.assertFalse(manifest["natural_outcome_verified"])
+            self.assertEqual(manifest["schema"], "heroes-contextual-natural-townless-fixture-v1")
+            self.assertNotIn("townless_player", manifest)
+            # Compatibility with the already recorded native Red fixture, not an engine outcome assertion.
+            self.assertEqual(manifest["fixture"]["sha256"],
+                             "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836")
             self.assertEqual(fixture_input(output / "fixture.json")[0], "natural-townless")
+
+    def test_blue_townless_preserves_all_but_blue_town_and_main_town(self):
+        original_bytes = BASELINE.read_bytes()
+        before = contents(BASELINE)
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "blue-townless"
+            manifest = create_fixture(output, kind="natural-townless-blue")
+            path = output / "natural-townless-blue.vmap"
+            after = contents(path)
+            self.assertEqual(BASELINE.read_bytes(), original_bytes)
+            self.assertEqual((output / "base.vmap").read_bytes(), original_bytes)
+            self.assertEqual(set(before), set(after))
+            self.assertEqual(before["surface_terrain.json"], after["surface_terrain.json"])
+            old_header, new_header = json.loads(before["header.json"]), json.loads(after["header.json"])
+            old_header["players"]["blue"].pop("mainTown")
+            self.assertEqual(new_header, old_header)  # Includes Red setup and every victory/fog rule.
+            old_objects, new_objects = json.loads(before["objects.json"]), json.loads(after["objects.json"])
+            self.assertEqual(new_objects, [obj for obj in old_objects if obj["instanceName"] != "town_1"])
+            self.assertEqual([obj for obj in new_objects if obj["type"] == "hero"],
+                             [obj for obj in old_objects if obj["type"] == "hero"])
+            self.assertEqual(manifest["schema"], "heroes-contextual-natural-townless-blue-fixture-v1")
+            self.assertEqual(manifest["townless_player"], "blue")
+            self.assertEqual(manifest["evaluator_plan"]["expected_outcomes"], {"red": "win", "blue": "loss"})
+            self.assertEqual(manifest["changed_archive_entries"], ["header.json", "objects.json"])
+            self.assertEqual([(change["entry"], change["json_pointer"], change["operation"])
+                              for change in manifest["changes"]],
+                             [("header.json", "/players/blue/mainTown", "remove"),
+                              ("objects.json", "/2", "remove")])
+            for flag in ("native_validated", "natural_outcome_verified", "engine_launched", "training_performed"):
+                self.assertFalse(manifest[flag])
+            self.assertEqual(fixture_input(output / "fixture.json")[:2], ("natural-townless-blue", path.resolve()))
+            with self.assertRaises(ValueError):
+                verify_fixture(path, kind="natural-townless")
+
+    def test_blue_townless_rejects_changed_hero_or_victory_rule(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            create_fixture(root / "fixture", kind="natural-townless-blue")
+            pristine = contents(root / "fixture/natural-townless-blue.vmap")
+            mutations = []
+            changed = deepcopy(pristine)
+            header = json.loads(changed["header.json"])
+            header["triggeredEvents"]["standardDefeat"]["condition"][1]["value"] = 1
+            changed["header.json"] = json.dumps(header).encode()
+            mutations.append(changed)
+            changed = deepcopy(pristine)
+            objects = json.loads(changed["objects.json"])
+            next(obj for obj in objects if obj["instanceName"] == "hero_1")["options"]["army"][0]["amount"] = 1
+            changed["objects.json"] = json.dumps(objects).encode()
+            mutations.append(changed)
+            for index, entries in enumerate(mutations):
+                altered = root / f"unsafe-{index}.vmap"
+                write_archive(altered, entries)
+                with self.assertRaises(ValueError):
+                    verify_fixture(altered, kind="natural-townless-blue")
 
     def test_den_replaces_only_five_selected_object_fields(self):
         before = contents(BASELINE)
@@ -73,7 +133,7 @@ class BoundaryFixtureTests(unittest.TestCase):
             entries["header.json"] = json.dumps(header).encode()
             source = root / "changed.vmap"
             write_archive(source, entries)
-            for kind in ("natural-townless", "unsupported-den"):
+            for kind in KINDS:
                 output = root / kind
                 with self.assertRaises(ValueError): create_fixture(output, kind=kind, baseline=source)
                 self.assertFalse(output.exists())
