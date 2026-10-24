@@ -591,7 +591,7 @@ verified natural win/loss uses +1/-1, while technical failures remain unscored.
 Routing is an approved mechanical operation; choosing or replacing the
 policy's strategic destination remains outside the adapter's authority.
 
-**Proposed first execution contract — not yet agreed or implemented:**
+**First execution choices for the authorized implementation — native validation pending:**
 
 - Use the hero's visitable map tile as `(x, y)`, on the authored single level.
   The adapter handles native coordinate conversion. Initially support ordinary
@@ -610,7 +610,7 @@ policy's strategic destination remains outside the adapter's authority.
   planner is forbidden even if its route is never returned: the hero's chosen
   detour or a failure could disclose hidden state. Do not expose planner timings,
   internal search counters, future nodes or rejected hidden-object details.
-- The first proposal does not speculate through unexplored terrain. The native
+- This first interface does not speculate through unexplored terrain. The native
   pathfinder blocks unexplored tiles; such destinations remain selectable but
   return `no_route_known` if no route exists in the permitted knowledge and
   supported travel modes. This does not assert that the physical destination is
@@ -639,9 +639,9 @@ The adapter returns a structured result tied to the original decision/hero/targe
 with a stop status, actual position and remaining points when observable, and
 `destination_reached` determined from the actual visitable position. It does not
 return a remaining distance, predicted cost or route feasibility for other
-targets. Proposed stopping semantics are:
+targets. The selected stopping semantics are:
 
-| Situation | Proposed execution and next boundary |
+| Situation | Intended execution and next boundary |
 | --- | --- |
 | Target equals the current tile | Return `reached` without movement; consume one policy decision and no movement points. |
 | No movement points remain | For any different target, return `movement_limit` immediately without planning. Do not end the turn. |
