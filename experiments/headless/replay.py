@@ -540,7 +540,8 @@ def verify_series(run: Path, *, binary: Path, data: Path, count: int | None, tam
                              "natural_verified": sum(row["verified"] and row["status"] == "completed" for row in rows),
                              "boundaries": boundaries,
                              "tamper_runs": sum("tamper" in row for row in rows),
-                             "tamper_all_detected": all(row["tamper"]["all_detected"] for row in rows if "tamper" in row)}}
+                             "tamper_all_detected": all(row["tamper"]["all_detected"] for row in rows if "tamper" in row)
+                             if any("tamper" in row for row in rows) else None}}
     scoring.write_json(run / "replay-series.json", summary)
     return summary
 

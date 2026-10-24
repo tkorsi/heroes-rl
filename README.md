@@ -515,6 +515,11 @@ python3 experiments/headless/run_series.py --output runs/profiled --attempts 16 
 python3 experiments/headless/cost_breakdown.py runs/profiled/worker-0
 ```
 
+`tools/validate_headless.sh` runs every real-game check in order (build, tests,
+smoke, profile, 1,000-attempt series, replay verification with tamper tests,
+videos, benchmark, compact evidence) and resumes after an interruption:
+`DATA="$HOME/Library/Application Support/vcmi" tools/validate_headless.sh`.
+
 `series.json` reports natural endings, truncations and failures separately,
 wins by color, episode lengths and any missing attempt. The benchmark defaults
 to the evidence the scoring needs (engine info log and metadata); add
