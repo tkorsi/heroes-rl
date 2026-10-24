@@ -12,9 +12,10 @@ initialized recurrent actor-critic prototype and strict learner contracts now
 exist; they are not connected to VCMI and have not been trained. Draft headless
 PR #6 has separately passed bounded native-game, boundary and replay validation
 on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
-map, hero-window and town-window interaction. Its strict history/trajectory v2
-contract and independent auditor are implemented; native integration and real-game
-validation of this interface remain in progress.
+map, hero-window and town-window interaction. Its native adapter, strict
+history/trajectory v2 contract and independent auditor are implemented and have
+bounded local real-game evidence. Contextual replay, wider interaction coverage
+and a live neural adapter remain unfinished; training remains disabled.
 Its agreed movement action selects a destination coordinate for engine routing;
 the existing adjacent-step baseline stays separate. Other platforms are not yet
 validated.
@@ -413,9 +414,12 @@ change is agreed or implemented by this document.
 **Status:** destination selection, engine routing and the minimal structured
 map/hero/town loop are authorized for implementation and bounded local validation.
 `experiments/learner/contextual.py` implements the v2 record and trajectory contract.
-The opt-in native producer and Python adapter now implement the minimal loop;
-bounded real-game acceptance is in progress. The details below define the
-execution contract; a declared capability alone is not a validation result.
+The opt-in native producer and Python adapter implement the minimal loop.
+Local VCMI checks cover navigation, movement, fog isolation, changed armies after
+closed-window battles, failure boundaries and a native terminal fixture. Compact
+evidence and remaining coverage limits are in
+`validation/contextual-native-2026-10-24.json`. The details below define the
+execution contract; bounded checks do not establish complete interface coverage.
 The first knowledge-planner stage (`b4cc7b2`) builds locally on macOS and its
 generated dependency matches the root recipe. Its grid/prefix regression covers
 five groups and 200 hidden-world variants; it does not run the full pathfinder
@@ -453,10 +457,10 @@ The intended loop, in plain English:
 
 | Capability | Implemented behavior | Expanded-interface change still needed |
 | --- | --- | --- |
-| Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles. | Complete bounded acceptance of the contextual interface; additional operations remain deferred. |
-| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. PR #6's legacy history/replay evidence remains separate. | Complete native acceptance and contextual replay; legacy replay cannot verify v2. |
+| Live action interface | Adjacent-step baseline plus opt-in explicit owned hero targeting, destination routing and map/hero/town navigation; automatic battles, exercised locally. | Wider native interruption/dialog coverage; additional operations remain deferred. |
+| History and fog | Separate v2 producer records permitted roads, active windows, notices, command issuance/acknowledgement, supersession and paired finalization. Real hidden-world comparisons and boundary audits pass within their recorded scope. | Contextual replay and wider event coverage; legacy replay cannot verify v2. |
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
-| Candidate scoring | Generic typed scorer; movement adapter only. The v2 contract uses opaque subject handles and full rectangular coordinate domains. | Native typed transport and contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
+| Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
 | Hero/town operations | Explicit owned hero/town open/read/close; hero army/skills/mana/level and town army/faction only while open. | Construction, recruitment, army editing and deeper panels remain deferred. |
 | Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
 
@@ -531,11 +535,14 @@ nested record boundary, including raw engine IDs and path-cost/reachability data
 
 Informational notices are separate ordered events. VCMI's `InfoWindow` carries
 no query or server reply, including in its `MODAL` display mode. The audited
-baseline can emit resource/mine, experience-cap, new-week and result notices;
+baseline can emit resource/mine, experience-cap, new-week, battle-trophy and result notices;
 stopping on every modal notice would prevent supported battles and natural
 endings. The v2 notice contract carries its display mode, ordered text operations
-over audited static identifiers and displayed numbers, and supported resource
-or relative-player flag components. The authored map's four literal result
+over audited static identifiers and displayed numbers, and supported resource,
+relative-player flag or displayed trophy components. The exact winner-only
+battle-trophy template carries artifact or scroll-spell static `core:` content
+identifiers from its displayed components, without instance IDs, descriptions,
+inventory queries or new artifact operations. The authored map's four literal result
 messages have exact stable identifiers. Arbitrary text, object IDs, unrelated
 pack fields and unused substitutions are not learner inputs. The native
 producer must validate each supported template and operation sequence before
@@ -603,6 +610,39 @@ do not prove that VCMI loads a variant or that its initial player view is equal:
 both must be checked in the real engine before interpreting a paired comparison.
 Terrain/road variants provide bounded coverage, not an exhaustive isolation proof.
 
+`validation/probes/create_casualty_fixture.py` strengthens one neutral stack to
+check changed army contents after a closed-window battle.
+`validation/probes/create_boundary_fixture.py` prepares isolated townless and
+Den-of-Thieves maps; `validate_contextual_boundaries.py` verifies their native
+natural-terminal or unsupported-interface behavior. The generators preserve
+all undeclared map fields and leave the authored baseline unchanged. These
+mechanical evaluators are excluded from training and random-policy outcome
+estimates. `validate_contextual_random.py` runs a separately seeded uniform cohort,
+counts every failure/cutoff and exits unsuccessfully on native failures or probe
+errors. None of these commands performs learning updates.
+
+At `d0786d2`, all 379 discovered tests complete without failures: 365 pass and
+14 optional PyTorch tests skip. The native build and exact root/dependency recipe
+check pass. Real VCMI runs validate both players' map/window navigation, full
+coordinate support, current-turn movement, separate fog, hidden-opponent route
+invariance, paired cutoffs and unscored process failures. A strengthened neutral
+stack produces five actual casualties: the old window snapshot stays immutable,
+closed observations omit the army, and reopening shows the changed count.
+A townless fixture reaches the engine's unchanged seven-day rule with Red −1
+and Blue +1; Red's permitted postterminal hero-removal view is retained. A real
+Den visit stops as unsupported with no outcome, reward or bootstrap.
+
+Keep the random cohort separate: eight predetermined contextual attempts at
+`c75d015` produced seven day cutoffs and one unsupported failure, with no natural
+ending. That failure exposed an overly broad artifact-assembly check and then a
+missing battle-trophy notice template. Both are fixed. The selected case's final
+rerun at `d0786d2` delivers the trophy only to the winner and reaches its day
+cutoff without failure after 1,047 choices. All attempts remain in the compact
+evidence; none is a draw or a training example. The fixture does not establish
+the contextual random-policy natural-outcome rate. Rejected native-command
+coverage and contextual replay remain unverified, so the broader training gate
+is still closed. No training, paid compute or merge occurred.
+
 #### Proposed minimum interactions and parameters
 
 Start with map controls and open/read/close windows, then add the smallest audited
@@ -651,7 +691,7 @@ verified natural win/loss uses +1/-1, while technical failures remain unscored.
 Routing is an approved mechanical operation; choosing or replacing the
 policy's strategic destination remains outside the adapter's authority.
 
-**First execution choices for the authorized implementation — native validation pending:**
+**Implemented execution choices — bounded native evidence, with remaining cases listed in the validation report:**
 
 - Use the hero's visitable map tile as `(x, y)`, on the authored single level.
   The adapter handles native coordinate conversion. Initially support ordinary
@@ -1033,22 +1073,26 @@ Current review evidence is in
 The active work is the versioned map/hero/town interface above. Its strict v2
 history/trajectory contract and independent auditor are implemented on
 `codex/contextual-environment`, based on reviewed `4fe0d7c` and the learner branch.
-Claude owns native capture/routing and the opt-in headless transport/producer;
-Codex owns contract review, independent probes and bounded Mac acceptance. The
-native extension has not yet been locally validated. No live contextual neural
-adapter, collector or PPO loop exists. The earlier bounded headless checks establish
-reachable natural outcomes and validate the reviewed boundary fixes; they do
-not pass the expanded interface's integration gates or authorize training.
+The user authorized Codex to finish Claude's paused contextual work. Codex has
+implemented native capture/routing, the opt-in transport/producer and bounded
+Mac validation; Claude retains the separately scoped simulation/performance/replay
+workstream. Read `validation/contextual-native-2026-10-24.json` for source-pinned
+checks, all random attempts and remaining limits. No live contextual neural
+adapter, collector or PPO loop exists. Contextual replay remains explicitly
+unsupported. Earlier legacy outcomes and the contextual terminal fixture do not
+establish a contextual random-policy outcome rate or authorize training.
 The original three rendered self-play runs remain truncated and separate.
 Verified video binding now passes at `4fe0d7c`; a clean throughput benchmark
 has not been accepted. Do not start a training campaign.
 
 ## Headless self-play environment (issue #4, in progress)
 
-Status: implemented in source and unit-tested in the cloud with synthetic
-fixtures; **not yet validated against the real game**. No real headless
-episode, natural ending, throughput or replay has been measured. Those checks
-need the Mac's local game data and are tracked in the draft PR for issue #4.
+Status: the legacy `movement-v1` environment has passed bounded real-game,
+natural-ending, boundary and replay checks on the local Mac at `4fe0d7c`, with
+later regression evidence in `validation/contextual-native-2026-10-24.json`.
+The opt-in contextual interface has its own evidence and explicitly unsupported
+replay status above. Neither interface has an accepted clean throughput benchmark.
+PR #6 remains draft and unmerged; this is environment validation, not training.
 
 `vcmiclient --headless` plays the real VCMI rules with no window, renderer,
 audio, frame capture, animation waits or policy delays. Patch

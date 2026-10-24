@@ -1,0 +1,741 @@
+{
+  "artifact_regression": {
+    "final_rerun": {
+      "audit_passed": true,
+      "choices": 1047,
+      "claim": "Selected original case-6 seeds, not a fresh unbiased cohort; null rewards/outcomes at day cutoff. No seed-complete replay claim.",
+      "displayed_content": [
+        {
+          "amount": null,
+          "content_id": "core:helmOfTheAlabasterUnicorn",
+          "kind": "artifact",
+          "owner": null,
+          "resource": null
+        }
+      ],
+      "elapsed_seconds": 44.468,
+      "error": null,
+      "native_failures": 0,
+      "natural_completions": 0,
+      "report": {
+        "path": "runs/contextual-trophy-regression-d0786d2/validation.json",
+        "sha256": "1bc38f0f20dc58bb4433cf0b59fcf3696878d5e534743897ce161d2e18749ba0"
+      },
+      "seeds": {
+        "blue": 93006,
+        "engine": 86006,
+        "red": 92006
+      },
+      "source_commit": "d0786d2",
+      "status": "truncated",
+      "termination_reason": "game_day_limit",
+      "trophy_notice_counts": {
+        "blue": 1,
+        "red": 0
+      },
+      "wall_seconds_limit": 120
+    },
+    "first_rerun": {
+      "choices": 313,
+      "reason": "unsupported_interface: informational trophy notice",
+      "report": {
+        "path": "runs/contextual-artifact-regression-af560e3/validation.json",
+        "sha256": "43dd41cfaae73495c3c7da9470198a6db90065285e89dc3843f73494f712631c"
+      },
+      "source_commit": "af560e3",
+      "status": "failed"
+    }
+  },
+  "baseline_map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "branch": "codex/contextual-environment",
+  "build": {
+    "check_command": "python3 tools/prepare_vcmi.py --check",
+    "compiler": "AppleClang 17.0.0.17000319",
+    "final_ExplorerRL_rebuild_at": "d0786d2",
+    "final_build_log": {
+      "path": "runs/contextual-native-build-07.log",
+      "sha256": "18306a31c6fe77be777d0465b93b7ad251f94501d3f376c27b594f7c2cacc1e5"
+    },
+    "mac_release_all_targets_at": "c75d015",
+    "root_recipe_exact_check": true,
+    "targets": [
+      "vcmiclient",
+      "vcmiserver",
+      "ExplorerRL",
+      "BattleAI",
+      "vcmireplay"
+    ]
+  },
+  "claude_last_published_contextual_commit": "b4cc7b242fb82439199c3783736495f0b70ade46",
+  "contextual_replay_verified": false,
+  "date": "2026-10-24",
+  "hidden_map_comparisons": {
+    "claim": "All modifications remained hidden; actual adjacent movement and full observed prefixes agree. One short prefix, not exhaustive isolation proof.",
+    "equal_red_frames": {
+      "after_identical_actions": 26,
+      "initial": 3,
+      "through_cutoff": 27
+    },
+    "native_games": 4,
+    "paired_audits_passed": 4,
+    "report": {
+      "path": "runs/contextual-hidden-map-79b0dd2/validation.json",
+      "sha256": "7fb4d04b01f2979bc339478443f0b1c39ef1fff5c6c1d7bb05482a4f9feab791"
+    },
+    "source_commit": "79b0dd2",
+    "variants": [
+      "base",
+      "hidden terrain",
+      "hidden roads",
+      "fully hidden neutral guard"
+    ]
+  },
+  "identity": {
+    "binary_sha256": "d6081f52ff4cc26268cd7d0fa5f18efd2eec85f1161ead86a807ef07896fc633",
+    "bridge_source_sha256": "1f06c45604435cad24b04e9807e94daa46ab479e8c35f5f9b5924812cd5b4db0",
+    "contextual_python_sha256": {
+      "experiments/headless/contextual_env.py": "693cdafc60075c45cee2fed892d7d025bbecaa0a229a09be065a6a202a861bce",
+      "experiments/headless/contextual_protocol.py": "987e260d5a78dff7d1868c8f7af4cac4b41b5712f2c47b27d4d624742d7ead7f",
+      "experiments/headless/env.py": "8a1f45d5d93ef01244ef6bec353086c3e6d79c0573b58265832e94eb55a5ce4e",
+      "experiments/learner/contextual.py": "00551c888e0a2366571f18576e74e638bd7332c8e477707b8bacd39b66d16208"
+    },
+    "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+    "explorer_rl_sha256": "c693fc170f857355416302f9e0d61d4434b6ce754776948f58dadb97167f09c3",
+    "project": {
+      "commit": "d0786d2cd6bbd70406d50e5161dd3ccbf450c1c6",
+      "dirty": false
+    }
+  },
+  "interfaces": {
+    "actions": "heroes-context-actions-v2",
+    "environment": "adventure-windows-v1",
+    "history": "heroes-player-history-v2",
+    "transport_protocol": 4
+  },
+  "legacy_regression": {
+    "claim": "Separate default-interface regression; does not verify contextual replay.",
+    "interface": "movement-v1",
+    "manifest": {
+      "path": "runs/contextual-legacy-regression-c75d015/episodes/episode-000001/manifest.json",
+      "sha256": "289f40e4f85e09f0364df555411cfcde675f1e399a58d5838f732838796acbab"
+    },
+    "outcomes": {
+      "blue": "loss",
+      "red": "win"
+    },
+    "replay": {
+      "path": "runs/contextual-legacy-regression-c75d015/episodes/episode-000001/verification/replay-verification.json",
+      "sha256": "9271c80d201af32f383a6958c76ad2caff789f680ff7ffce6f1d38097b65730c"
+    },
+    "replay_verified": true,
+    "rewards": {
+      "blue": -1,
+      "red": 1
+    },
+    "source_commit": "c75d015",
+    "status": "completed",
+    "termination_reason": "natural_terminal"
+  },
+  "merged": false,
+  "native_suite": {
+    "cases": [
+      {
+        "attempts": 19,
+        "case": "navigation",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/navigation/episode-000001/manifest.json",
+          "sha256": "e2c9456b1eedf3b5ec6cafef6bf3b195ab29fe8c7ad9fa57862774e41131bb7f"
+        },
+        "passed_checks": [
+          "full_coordinate_support",
+          "out_of_bounds_rejected_unchanged",
+          "stale_map_action_rejected_in_hero",
+          "red_map_hero_map_town_map",
+          "stale_close_rejected_on_map",
+          "full_coordinate_support",
+          "out_of_bounds_rejected_unchanged",
+          "stale_map_action_rejected_in_hero",
+          "blue_map_hero_map_town_map",
+          "stale_close_rejected_on_map",
+          "red_closed_window_current_fields_absent",
+          "red_map_resources_refresh_when_closed",
+          "red_map_movement_refresh_when_closed",
+          "blue_closed_window_current_fields_absent",
+          "blue_map_resources_refresh_when_closed",
+          "blue_map_movement_refresh_when_closed",
+          "separate_native_initial_fog",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "unverified",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/navigation/probe-report.json",
+          "sha256": "c9397bff66bec2e8efe2c52f3bdfce79716b54d09529c331ee0441bcdb62b607"
+        },
+        "termination_reason": "collection_window",
+        "unverified_checks": [
+          "red_underlying_window_change_while_closed",
+          "blue_underlying_window_change_while_closed",
+          "paired_hidden_world_invariance"
+        ]
+      },
+      {
+        "attempts": 11,
+        "case": "mechanics",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/mechanics/episode-000001/manifest.json",
+          "sha256": "9ec8ac4bde4f4c7e6c6b32119a0e544ad450820e24f82c7e163a0c5657be811c"
+        },
+        "passed_checks": [
+          "full_coordinate_support",
+          "same_position_noop",
+          "full_coordinate_support",
+          "unknown_target_no_route",
+          "full_coordinate_support",
+          "known_frontier_reveals_new_terrain",
+          "full_coordinate_support",
+          "newly_known_target_continued_exploration",
+          "full_coordinate_support",
+          "full_coordinate_support",
+          "full_coordinate_support",
+          "full_coordinate_support",
+          "no_automatic_next_turn_route_continuation",
+          "full_coordinate_support",
+          "full_coordinate_support",
+          "full_coordinate_support",
+          "known_frontier_exploration",
+          "continued_exploration",
+          "partial_current_turn_route",
+          "zero_point_all_coordinate_support",
+          "zero_movement_points_observed",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "unverified",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/mechanics/probe-report.json",
+          "sha256": "2d985f65b278aa550ee84e98f560f49c857de944986388d3a32d4442ff7538b2"
+        },
+        "termination_reason": "collection_window",
+        "unverified_checks": [
+          "encounter_stops_route",
+          "native_interruption_stops_route"
+        ]
+      },
+      {
+        "attempts": 2,
+        "case": "day-cutoff",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/day-cutoff/episode-000001/manifest.json",
+          "sha256": "bce2edcc85358e0567334c7d9f0176cba9c016d4fc392519798cbdf1b6bc3cab"
+        },
+        "passed_checks": [
+          "both_player_verified_day_cutoffs",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "passed",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/day-cutoff/probe-report.json",
+          "sha256": "1c67d6a6f5c107c828fc4b006e41148f077d20fc6e77e1deb096bf603162b586"
+        },
+        "termination_reason": "game_day_limit",
+        "unverified_checks": []
+      },
+      {
+        "attempts": 3,
+        "case": "kill-after-action",
+        "episode_status": "failed",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/kill-after-action/episode-000001/manifest.json",
+          "sha256": "24cb7be5811da03d3b7521e1b8e9934e93aa27beab4c75ec5d7eeb5cd120b134"
+        },
+        "passed_checks": [
+          "owned_process_killed",
+          "post_consumed_action_crash",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "passed",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/kill-after-action/probe-report.json",
+          "sha256": "8e5af2e09bd18fa32f830fbbaf8ae81576b5560eb7952c26f4b31304f7135d47"
+        },
+        "termination_reason": "process_exit_without_verified_terminal",
+        "unverified_checks": []
+      },
+      {
+        "attempts": 2,
+        "case": "kill-before-truncate",
+        "episode_status": "failed",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/kill-before-truncate/episode-000001/manifest.json",
+          "sha256": "0f69146f75ebaf77fcacfbbc4d3cab64ebc689bfa7e3b5662d21a48f0fa24b54"
+        },
+        "passed_checks": [
+          "owned_process_killed",
+          "preexisting_crash_before_truncate",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "passed",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/kill-before-truncate/probe-report.json",
+          "sha256": "f2d7f5f2feff401cb48438802f4ee402aa585693ff4adf1d37b01a9260df6141"
+        },
+        "termination_reason": "process_exit_without_verified_terminal",
+        "unverified_checks": []
+      },
+      {
+        "attempts": 5,
+        "case": "closed-window-battle",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/closed-window-battle/episode-000001/manifest.json",
+          "sha256": "74e7087d5069f29f34bd486fbc4674e05a5bb05a7bf912dbee8bccf1e52ca25f"
+        },
+        "passed_checks": [
+          "closed_window_snapshot_immutable_through_battle_attempts",
+          "closed_window_native_battle_completed",
+          "closed_window_encounter_stop_observed",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "unverified",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/closed-window-battle/probe-report.json",
+          "sha256": "7d53ac625f8562c936ebd4c863157ceac134b59a58aef3e184900a3180c42654"
+        },
+        "termination_reason": "collection_window",
+        "unverified_checks": [
+          "closed_window_changed_army_then_reopen"
+        ]
+      },
+      {
+        "attempts": 4,
+        "case": "hidden-route-a",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/hidden-route-a/episode-000001/manifest.json",
+          "sha256": "33027ea2397fb83083c8e5d7f7ac7df87a47004a57ffca1fdc90ce150fbce8c9"
+        },
+        "passed_checks": [
+          "paired_hidden_single_native_move",
+          "full_coordinate_support",
+          "paired_red_route_completed",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "passed",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/hidden-route-a/probe-report.json",
+          "sha256": "80b3d5f45f49255ef3cabe51417cb846d959031da8cf30031a7f4bcef99a450e"
+        },
+        "termination_reason": "collection_window",
+        "unverified_checks": []
+      },
+      {
+        "attempts": 4,
+        "case": "hidden-route-b",
+        "episode_status": "truncated",
+        "error": null,
+        "history_audit_passed": true,
+        "manifest": {
+          "path": "runs/contextual-acceptance-d0786d2/hidden-route-b/episode-000001/manifest.json",
+          "sha256": "8aaa14f85c575d01ce78d3062b205deace68ebfa6f3f21c5809e00d49adcffa0"
+        },
+        "passed_checks": [
+          "paired_hidden_single_native_move",
+          "full_coordinate_support",
+          "paired_red_route_completed",
+          "independent_history_manifest_audit"
+        ],
+        "probe_status": "passed",
+        "report": {
+          "path": "runs/contextual-acceptance-d0786d2/hidden-route-b/probe-report.json",
+          "sha256": "43e559b19831ed0c3f5136d7c66dca32ee1c2c16490ea27014f3173dbbbf2a60"
+        },
+        "termination_reason": "collection_window",
+        "unverified_checks": []
+      }
+    ],
+    "driver_exit": 2,
+    "exit_explanation": "Explicitly unverified overall gate: omitted random-natural cohort and conditions not encountered. No failed probe/audit in these eight cases.",
+    "overall_status": "unverified",
+    "paired_hidden_opponent": {
+      "after_identical_red_action": {
+        "comparison": "complete permitted prefixes equal",
+        "equal_frames": 25,
+        "normalized_sha256": "5e1a3ca1ffaf87d422134213944db13ae091a50e1fc25cdf8944bfe0de357556",
+        "status": "passed"
+      },
+      "before_identical_red_action": {
+        "comparison": "complete permitted prefixes equal",
+        "equal_frames": 12,
+        "normalized_sha256": "56cd55d26967b3388018b349d4b642c54670f69a3137f8ffe05aa2f1d8adb0a3",
+        "status": "passed"
+      },
+      "binary_sha256": "d6081f52ff4cc26268cd7d0fa5f18efd2eec85f1161ead86a807ef07896fc633",
+      "blue_hidden_positions": [
+        [
+          15,
+          8,
+          0
+        ],
+        [
+          16,
+          8,
+          0
+        ]
+      ],
+      "engine_seed": 87201,
+      "fixture": "same-map-same-seed-hidden-opponent-adjacent-move",
+      "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+      "red_target": [
+        1,
+        10,
+        0
+      ],
+      "scope": "Hidden opponent movement variant, including its position, movement points and revealed fog; no hidden-terrain or guard invariance claim.",
+      "status": "passed",
+      "training_input": false
+    },
+    "report": {
+      "path": "runs/contextual-acceptance-d0786d2/validation.json",
+      "sha256": "90208561d5aac031e84be4edaf6e2a3d8825941034aa93019b68a9ac6bc73901"
+    }
+  },
+  "paid_compute": false,
+  "platform": {
+    "compute": "local Mac",
+    "machine": "arm64",
+    "release": "25.5.0",
+    "system": "Darwin"
+  },
+  "preserved_diagnostics": [
+    {
+      "path": "runs/contextual-live-debug-01.log",
+      "status": "Preflight missing API; no native game."
+    },
+    {
+      "path": "runs/contextual-live-debug-02",
+      "status": "Initial real navigation diagnostic."
+    },
+    {
+      "path": "runs/contextual-live-validation-01/development-run-status.json",
+      "status": "Mutable-development cohort; two random wall-watchdog failures, then cancellation. Not frozen-source acceptance."
+    },
+    {
+      "path": "runs/contextual-acceptance-79b0dd2/run-status.json",
+      "status": "Six mechanics/boundary cases retained; slow full-history random diagnostic cancelled."
+    },
+    {
+      "path": "runs/contextual-den-acceptance-79b0dd2",
+      "status": "Initial Den failure had generic label/incomplete queued prefix; corrected in c75d015 and revalidated."
+    },
+    {
+      "path": "runs/contextual-acceptance-c75d015",
+      "status": "Earlier frozen-source core suite retained; repeated at final source."
+    }
+  ],
+  "random_cohort": {
+    "all_history_manifest_audits_passed": true,
+    "attempts": [
+      {
+        "audit_passed": true,
+        "case": 1,
+        "choices": 1102,
+        "error": null,
+        "seeds": {
+          "blue": 93001,
+          "engine": 86001,
+          "red": 92001
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 2,
+        "choices": 1470,
+        "error": null,
+        "seeds": {
+          "blue": 93002,
+          "engine": 86002,
+          "red": 92002
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 3,
+        "choices": 1454,
+        "error": null,
+        "seeds": {
+          "blue": 93003,
+          "engine": 86003,
+          "red": 92003
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 4,
+        "choices": 1737,
+        "error": null,
+        "seeds": {
+          "blue": 93004,
+          "engine": 86004,
+          "red": 92004
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 5,
+        "choices": 1420,
+        "error": null,
+        "seeds": {
+          "blue": 93005,
+          "engine": 86005,
+          "red": 92005
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 6,
+        "choices": 313,
+        "error": null,
+        "seeds": {
+          "blue": 93006,
+          "engine": 86006,
+          "red": 92006
+        },
+        "status": "failed",
+        "termination_reason": "unsupported_interface"
+      },
+      {
+        "audit_passed": true,
+        "case": 7,
+        "choices": 1428,
+        "error": null,
+        "seeds": {
+          "blue": 93007,
+          "engine": 86007,
+          "red": 92007
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      },
+      {
+        "audit_passed": true,
+        "case": 8,
+        "choices": 1127,
+        "error": null,
+        "seeds": {
+          "blue": 93008,
+          "engine": 86008,
+          "red": 92008
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      }
+    ],
+    "bounds": {
+      "max_adventure_actions": 1500,
+      "max_days": 120,
+      "wall_seconds": 90
+    },
+    "day_cutoffs": 7,
+    "failure": "Case 6 incorrectly treated an artifact-assembly notification as a prompt. After fixing that, a distinct unaudited trophy notice stopped the first rerun. Both attempts remain preserved and unscored.",
+    "natural_completions": 0,
+    "predetermined_attempts": 8,
+    "report": {
+      "path": "runs/contextual-random-c75d015/validation.json",
+      "sha256": "a81a0c3bf831f6cac027cfc88bc4192494d6e61c259a7222a30805ac51728cb3"
+    },
+    "source_commit": "c75d015",
+    "unsupported_failures": 1
+  },
+  "remaining_limits": [
+    "No contextual random-policy natural completion observed: eight original attempts and two selected-seed reruns (first unsupported, final cutoff). Native townless fixture is separate terminal evidence.",
+    "Contextual replay remains explicitly unsupported and unverified. Legacy replay/tamper/render entrypoints reject protocol4/history-v2 inputs.",
+    "No actual rejected native acknowledgement encountered; source and synthetic coverage do not establish that real-game case.",
+    "Terminal fixture observed a postterminal own-hero removal view for Red; no postterminal Blue view occurred, and no active-window terminal invalidation was exercised.",
+    "Visible-road and hidden-world tests cover bounded fixtures; broader terrain/travel, true artifact assembly prompts and unsupported interactions remain outside verified coverage.",
+    "Special query dialogs, construction, recruitment, army editing, artifact operations, and deeper town panels remain unsupported.",
+    "No live contextual neural encoder, collector, PPO update, opponent pool, training loop or throughput benchmark."
+  ],
+  "schema": "heroes-contextual-native-review-v1",
+  "scope": "Minimal structured map/hero/town adapter and bounded real VCMI validation; no complete-game-interface or training claim.",
+  "source_changes": {
+    "79b0dd2": "Native contextual loop, notices, Python producer/finalizer and strict protocol.",
+    "af560e3": "Check actual native artifact assembly prompt instead of rejecting every hint.",
+    "b508743": "Normalize exact winner-only trophy notices; preserve preexisting history-v2 canonical hashes.",
+    "c75d015": "Preserve queued failure history and unsupported labels; incremental random validator.",
+    "d0786d2": "Reproducible isolated terminal/dialog probes and explicit native-failure cohort accounting."
+  },
+  "source_commit": "d0786d2cd6bbd70406d50e5161dd3ccbf450c1c6",
+  "takeover_coordination": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6385281375",
+  "targeted_fixtures": {
+    "closed_window_casualties": {
+      "attempts": 5,
+      "case": "closed-window-battle",
+      "claim": "Prior open snapshot immutable, closed observations omit army, reopening shows five real casualties.",
+      "episode_status": "truncated",
+      "error": null,
+      "fixture_sha256": "c4518ad0e9ff87ed014a1be0085f2b0f821340566b9bfe891af52493f381262c",
+      "history_audit_passed": true,
+      "manifest": {
+        "path": "runs/contextual-casualty-acceptance-d0786d2/closed-window-battle/episode-000001/manifest.json",
+        "sha256": "8c15a48fa3be817f2c73e0209643505ea6bab3a52408d1d022e2987fe1c2797c"
+      },
+      "observed_army_after": 20,
+      "observed_army_before": 25,
+      "only_change": "guard_0 count 6 -> 20",
+      "passed_checks": [
+        "closed_window_snapshot_immutable_through_battle_attempts",
+        "closed_window_native_battle_completed",
+        "closed_window_encounter_stop_observed",
+        "closed_window_changed_army_then_reopen",
+        "independent_history_manifest_audit"
+      ],
+      "probe_status": "passed",
+      "report": {
+        "path": "runs/contextual-casualty-acceptance-d0786d2/closed-window-battle/probe-report.json",
+        "sha256": "70309f3883e649ff12a01a3b998a2b55d3e9b701d840a0d820a14ade07cb3940"
+      },
+      "termination_reason": "collection_window",
+      "unverified_checks": []
+    },
+    "natural_terminal": {
+      "attempts": 13,
+      "case": "natural-townless",
+      "claim": "Unchanged native seven-day townless defeat, complete paired finalization, clean exit; not random-baseline outcome coverage.",
+      "episode_status": "completed",
+      "error": null,
+      "fixture_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+      "history_audit_passed": true,
+      "manifest": {
+        "path": "runs/contextual-natural-acceptance-d0786d2/natural-townless/episode-000001/manifest.json",
+        "sha256": "14ce3610cb4413f77a35e395409ac0e19ed05cb5d35a2abeeb75ae1908d2d4cf"
+      },
+      "only_changes": [
+        "Remove Red town_0",
+        "Remove Red mainTown header entry"
+      ],
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "passed_checks": [
+        "native_townless_natural_boundary",
+        "independent_history_manifest_audit"
+      ],
+      "postterminal_view_coverage": {
+        "blue": {
+          "final_observed_owned_hero_count": null,
+          "postterminal_view_sequences": [],
+          "required_for_boundary_success": false,
+          "status": "not_observed",
+          "terminal_seq": 56
+        },
+        "red": {
+          "final_observed_owned_hero_count": 0,
+          "postterminal_view_sequences": [
+            57
+          ],
+          "required_for_boundary_success": false,
+          "status": "observed",
+          "terminal_seq": 55
+        }
+      },
+      "probe_status": "passed",
+      "report": {
+        "path": "runs/contextual-natural-acceptance-d0786d2/report.json",
+        "sha256": "dea82c7c9e2c1dc0dcdc0bf958e3a8fb40a4b936e087e059af4c911a11d64aed"
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "termination_reason": "natural_terminal",
+      "unverified_checks": []
+    },
+    "unsupported_den": {
+      "attempts": 1,
+      "case": "unsupported-den",
+      "claim": "Actual showThievesGuildWindow callback fails unsupported, preserves unfinished command evidence, null outcomes/rewards/bootstrap.",
+      "episode_status": "failed",
+      "error": null,
+      "fixture_sha256": "b102044f2fd5e244feb0cce7ebbeb9d2bd0ac891d6a21b67670847456541dc63",
+      "history_audit_passed": true,
+      "manifest": {
+        "path": "runs/contextual-den-acceptance-d0786d2/unsupported-den/episode-000001/manifest.json",
+        "sha256": "ad35e3081399bd15d8331c6e65a2866b633f0b1f815c18b78eb8275fd48cc785"
+      },
+      "only_change": "Replace gold_0 with the audited Den-of-Thieves template at the same position",
+      "passed_checks": [
+        "real_unsupported_den_boundary",
+        "independent_history_manifest_audit"
+      ],
+      "postterminal_view_coverage": {
+        "blue": {
+          "final_observed_owned_hero_count": null,
+          "postterminal_view_sequences": [],
+          "required_for_boundary_success": false,
+          "status": "not_observed",
+          "terminal_seq": null
+        },
+        "red": {
+          "final_observed_owned_hero_count": null,
+          "postterminal_view_sequences": [],
+          "required_for_boundary_success": false,
+          "status": "not_observed",
+          "terminal_seq": null
+        }
+      },
+      "probe_status": "passed",
+      "report": {
+        "path": "runs/contextual-den-acceptance-d0786d2/report.json",
+        "sha256": "8c02c1aa0d43c548c8d9a97e1043e3d3ccb6e39bab0d4489b1f929d5f68ed534"
+      },
+      "termination_reason": "unsupported_interface",
+      "unverified_checks": []
+    }
+  },
+  "tests": {
+    "command": "python3 -m unittest discover -s tests -v",
+    "discovered": 379,
+    "failures": 0,
+    "log": {
+      "path": "runs/contextual-complete-tests-d0786d2.log",
+      "sha256": "965fc8ce5ab01c678a8f349e0f96b2be6114d33f3cf26480694168673ff1a80b"
+    },
+    "native_notice_checks": {
+      "existing": 98,
+      "fake_game_or_callback": false,
+      "real_static_content_trophies": 42
+    },
+    "passed": 365,
+    "skip_reason": "Optional PyTorch neural-component dependency is absent in this stdlib validation environment; model unchanged.",
+    "skipped": 14
+  },
+  "training_gate_passed": false,
+  "training_performed": false
+}
