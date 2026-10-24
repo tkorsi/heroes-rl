@@ -439,6 +439,10 @@ class ContextualMixin:
                                    "error": side.error, "terminal": {"outcome": side.validator.terminal}
                                    if side.validator.terminal else None} for side in self.sides.values()}
         status, outcomes, termination, rewards = scoring.classify_headless_self_play(returncode, self.reason, log, executions)
+        if status == "failed" and self.reason == "unsupported_interface":
+            # Legacy scoring groups socket errors as policy_error. Preserve the
+            # explicit contextual unsupported boundary for diagnosis/cohort counts.
+            termination = self.reason
         histories = tuple(self.sides[player].validator.history for player in (0, 1))
         complete = tuple(self.sides[player].eof and self.sides[player].validator.ready for player in (0, 1))
         evidence, evidence_error = self._engine_evidence(log)

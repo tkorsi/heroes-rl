@@ -57,7 +57,9 @@ def create_fixture(output, *, baseline=BASELINE, guard="guard_0", count=20):
             raise ValueError("Duplicate source archive entry")
         contents = {info.filename: archive.read(info) for info in infos}
     original = scenario_payloads(0)
-    if set(contents) != set(original) or any(_json(contents[name]) != data for name, data in original.items()):
+    canonical = lambda data: json.dumps(data, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    if set(contents) != set(original) or any(canonical(_json(contents[name])) != canonical(data)
+                                           for name, data in original.items()):
         raise ValueError("Fixture requires the unchanged authored baseline seed-0 map")
     objects = deepcopy(original["objects.json"])
     index = next(i for i, obj in enumerate(objects) if obj["instanceName"] == guard)

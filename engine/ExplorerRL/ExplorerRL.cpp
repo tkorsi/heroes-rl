@@ -446,6 +446,15 @@ void ExplorerRL::run() noexcept
 		{
 			buildAndSend([this, &error]
 			{
+				if(contextual)
+				{
+					// Preserve the known failure prefix, including an actually sent
+					// command without a result. Never invent completion or recapture
+					// state after an unsupported interaction.
+					auto pending = takeContextualRecords();
+					if(!pending["records"].Vector().empty())
+						writeMessage(pending);
+				}
 				auto result = message("error");
 				result["message"].String() = error.what();
 				return result;

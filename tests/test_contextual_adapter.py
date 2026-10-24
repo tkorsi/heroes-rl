@@ -285,7 +285,18 @@ class AdapterTests(unittest.TestCase):
                                       message="unsupported final notice"), time.monotonic()))
         result = e._finish(0)
         self.assertEqual(result.status, "failed")
-        self.assertEqual(result.termination_reason, "policy_error")
+        self.assertEqual(result.termination_reason, "unsupported_interface")
+        self.assertFalse(self.audit(result)["record_contract_eligible"])
+
+    def test_explicit_unsupported_before_terminal_keeps_specific_reason(self):
+        e = self.env
+        e._ingest(e.sides[0], dict(protocol_version=4, type="error", episode="1", player=0,
+                                message="Unsupported scenario interaction: special dialog"), time.monotonic())
+        result = e._finish(1)
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.termination_reason, "unsupported_interface")
+        self.assertEqual(result.rewards, {"red": None, "blue": None})
+        self.assertEqual(result.bootstrap, {"red": None, "blue": None})
         self.assertFalse(self.audit(result)["record_contract_eligible"])
 
     def test_authoritative_late_failure_log_overrides_cutoff(self):

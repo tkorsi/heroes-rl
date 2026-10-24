@@ -48,7 +48,9 @@ class CasualtyFixtureTests(unittest.TestCase):
             source, output = Path(temporary) / "changed.vmap", Path(temporary) / "output"
             entries = read(BASELINE)
             header = json.loads(entries["header.json"])
-            header["heroLevelLimit"] = 2
+            # Python equality treats True == 1, but this changes native JSON
+            # type and must not pass the unchanged-authored-source gate.
+            header["heroLevelLimit"] = True
             entries["header.json"] = json.dumps(header).encode()
             with zipfile.ZipFile(source, "w") as archive:
                 for name, payload in entries.items():
