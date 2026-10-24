@@ -319,7 +319,7 @@ class ContextualMixin:
                     self.request = None
                 else:
                     context = side.validator.live.context
-                    kind = "end_turn" if context.kind == "map" else "back" if context.panel in ("hall", "building", "recruitment") else "close"
+                    kind = "end_turn" if context.kind == "map" else "back" if context.panel in ("hall", "building", "recruitment", "tavern") else "close"
                     action = contract.Action(kind, subject=context.subject if kind == "back" else None,
                                              schema=self.context_profile.action_schema)
                     self._send_current(action, continuation=True)

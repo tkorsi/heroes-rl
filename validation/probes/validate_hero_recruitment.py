@@ -168,7 +168,7 @@ def diagnostic(run):
     other = next(item.ref for item in tavern.offers if item.ref != tavern.selected_offer_ref)
     selected = run.select_hero(other)
     run.check("native_displayed_selected_hero_detail", "passed", offer=other, details=asdict(selected.selected_detail),
-              price=selected.gold_cost, status=selected.recruit_status)
+              price=selected.gold_cost, native_status=selected.recruit_status)
     remembered_ref = selected.selected_offer_ref
     run.call(run.town_action("back"), "explicit_back_from_tavern")
     base.ensure(run.panel("overview").tavern is None, "Closed Tavern refreshed private offers")
@@ -212,7 +212,8 @@ def diagnostic(run):
                 "The hired hero remained an offered Tavern card")
     run.reject(run.town_action("hire_hero", selection=selected.selected_offer_ref),
                "hired_old_offer_rejected_before_send")
-    run.unwind()
+    # Deliberately finish with the Tavern open: paired cutoff continuation must
+    # return to overview before closing, without refreshing the frozen prefix.
 
 
 def main(argv=None):
