@@ -5,10 +5,13 @@
 #include "VisibleWorld.h"
 
 #include "../../lib/callback/CCallback.h"
+#include "../../lib/entities/artifact/ArtifactUtils.h"
+#include "../../lib/entities/artifact/CArtifactInstance.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/mapObjects/army/CStackInstance.h"
 #include "../../lib/mapping/TerrainTile.h"
+#include "../../lib/networkPacks/ArtifactLocation.h"
 
 #include <set>
 
@@ -619,4 +622,20 @@ void ExplorerRL::showWorldViewEx(const std::vector<ObjectPosInfo> &, bool) { if(
 void ExplorerRL::showHillFortWindow(const CGObjectInstance *, const CGHeroInstance *) { if(contextual) unsupported("unsupported_interaction: hill fort"); }
 void ExplorerRL::showThievesGuildWindow(const CGObjectInstance *) { if(contextual) unsupported("unsupported_interaction: thieves guild"); }
 void ExplorerRL::showQuestLog() { if(contextual) unsupported("unsupported_interaction: quest log"); }
-void ExplorerRL::askToAssembleArtifact(const ArtifactLocation &) { if(contextual) unsupported("unsupported_interaction: artifact assembly"); }
+void ExplorerRL::askToAssembleArtifact(const ArtifactLocation & location)
+{
+	if(!contextual)
+		return;
+	// PutArtifact/BulkMoveArtifacts also deliver this hint for ordinary trophies
+	// that cannot be assembled. Match ArtifactsUIController::askToAssemble:
+	// only a present artifact on an owned hero with an equipped combination
+	// opens a prompt. No artifact details enter observations and no reply is sent.
+	const auto * hero = callback->getHero(location.artHolder);
+	if(!hero || hero->getOwner() != playerID)
+		return;
+	const auto * artifact = hero->getArt(location.slot);
+	if(!artifact)
+		return;
+	if(!ArtifactUtils::assemblyPossibilities(hero, artifact->getTypeId(), true).empty())
+		unsupported("unsupported_interaction: artifact assembly");
+}
