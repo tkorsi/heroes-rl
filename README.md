@@ -1314,9 +1314,11 @@ python3 validation/probes/create_boundary_fixture.py \
 
 #### Terminal closure and pre-training validation follow-up
 
-The user authorized a follow-up on `codex/terminal-validation`, based on PR #9
-at `daa1e98`, to repair losing-player terminal credit and check the remaining
-gates with fixed weights. No gameplay optimizer update or training is authorized.
+The user authorized a follow-up in draft
+[PR #10](https://github.com/tkorsi/heroes-rl/pull/10) on
+`codex/terminal-validation`, based on PR #9 at `daa1e98`, to repair losing-player
+terminal credit and check the remaining gates with fixed weights. No gameplay
+optimizer update or training is authorized.
 
 Trajectory-v2 and rollout-v2 derive a separate `TerminalClosure` from the final
 action's recorded consumption, explicit `superseded(reason="terminal")`, natural
