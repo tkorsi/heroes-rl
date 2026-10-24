@@ -9,7 +9,8 @@ omniscient and player-fog videos.
 other with separate fog, automatic battles, and four synchronized recordings.
 The earlier fixed Easy-opponent baseline is retained. A separate, randomly
 initialized recurrent actor-critic prototype and strict learner contracts now
-exist; they are not connected to VCMI and have not been trained. Draft headless
+exist. A new contextual PyTorch adapter, collector, recurrent PPO and checkpoint
+implementation is under validation; no game-trained policy exists. Draft headless
 PR #6 has separately passed bounded native-game, boundary and replay validation
 on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
 map, hero-window and town-window interaction. Its native adapter, strict
@@ -17,8 +18,9 @@ history/trajectory v2 contract and independent auditor are implemented and have
 bounded local real-game evidence. A separate v3 town extension now adds explicit
 construction and exact-count recruitment, with bounded native validation of
 prices, daily limits, stock, armies, rejection and episode boundaries.
-Contextual replay, wider interaction coverage
-and a live neural adapter remain unfinished; training remains disabled.
+Contextual replay and wider interaction coverage remain unfinished; training
+remains disabled. The neural implementation and its separate validation scope
+are described under **Contextual neural integration and PPO** below.
 Its agreed movement action selects a destination coordinate for engine routing;
 the existing adjacent-step baseline stays separate. Other platforms are not yet
 validated.
@@ -249,9 +251,10 @@ an optional video was successfully rendered.
 
 ### Initial learner specification and isolated prototype
 
-The live policy is uniform random over permitted attempts. An untrained policy
-and value component is implemented under `experiments/learner/`; no rollout
-collector, PPO update, opponent pool or training loop exists. The first candidate is a small
+The established baseline policy is uniform random over permitted attempts. The
+legacy isolated component remains unchanged. A separate contextual neural
+adapter, collector and synthetic-only PPO implementation now extend
+`experiments/learner/`; see the integration section below. The first candidate is a small
 recurrent actor-critic trained with [PPO](https://arxiv.org/abs/1707.06347).
 This is a starting hypothesis to test, not an established best algorithm for
 Heroes III.
@@ -478,7 +481,7 @@ The intended loop, in plain English:
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
 | Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
-| Learning | No collector, PPO update, frozen-opponent pool or training loop. | Integrate only after the versioned environment passes its own gates. |
+| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing are being validated separately. | No optimization on gameplay; natural contextual outcomes, replay and further coverage remain gates. |
 
 The action-consumption and stream-finalization findings are **resolved in the
 reviewed draft head `4fe0d7c`**, not still-open design blockers. Integration must
@@ -631,8 +634,8 @@ in a real game: the pinned JSON format cannot initialize that state and this
 interface has no garrison-swap action. An actual server-rejected purchase,
 Grail/conditional auto-merge boundaries and exhaustive event coverage also remain
 unverified. The ordinary no-room branch is a validated UI rejection without a
-server request. No town-interface random-policy natural-outcome rate, contextual
-replay, live neural adapter, collector, PPO or training is claimed. Raw records
+server request. This town-mechanics evidence does not establish a random-policy
+natural-outcome rate or contextual replay, and involved no neural training. Raw records
 remain local; compact provenance and coverage are committed in
 `validation/town-native-2026-10-24.json`.
 
@@ -893,10 +896,11 @@ movement controller wholesale is unsuitable: it includes presentation work and
 automatic replies. Implement a structured headless adapter with the declared
 stop rules, shared with replay and coordinated with Claude's engine workstream.
 
-The smallest quantity implementation can enumerate the finite legal counts in
-the bounded scenario. A later conditional distribution may select an offer and
-then quantity; record every support and conditional probability so PPO recovers
-the exact joint behavior probability. Do not let the environment fill parameters
+The contextual policy selects quantity through a learned binary interval tree
+over every integer from 1 to the displayed slider maximum. This handles the
+full native int32 domain without enumerating billions of output entries. Record
+the exact support and every conditional probability so PPO recovers the joint
+behavior probability. Do not let the environment fill parameters
 with an external RNG. Extend the current candidate representation with typed
 target/control references and permitted target features; integer handle
 embeddings would violate the existing information contract.
@@ -992,8 +996,10 @@ failure, not a substitute for such a cutoff.
    reachable natural outcomes, action consumption, complete histories, rewards
    and player-local bootstrap boundaries. Report natural endings, deliberate
    cutoffs, technical failures and unsupported interactions separately. Only
-   after review design the collector/frozen-opponent PPO experiment; this task
-   starts no training campaign and purchases no compute.
+   after review authorize a learning experiment. The subsequent explicit user
+   authorization permits implementing the collector/PPO now, with synthetic
+   optimizer tests and bounded fixed-weight native inference only. It does not
+   authorize gameplay optimization, a training campaign or paid compute.
 
 ### Player-history v1 contract
 
@@ -1163,6 +1169,93 @@ matrix. Tests without PyTorch explicitly skip the neural component. These are
 synthetic contract/gradient checks, not real headless episodes, a training run,
 replay validation, a natural-outcome estimate or a performance benchmark.
 
+### Contextual neural integration and PPO
+
+**Authorized implementation stage, 24 October:** connect PyTorch to the actual
+map/hero/town interface, including construction and exact-count recruitment;
+implement recurrent PPO, collection, frozen opponents and checkpoint resumption.
+Only synthetic optimizer tests and bounded real games with fixed, untrained
+weights are authorized. No optimizer update on gameplay is permitted. This work
+starts from validated town PR #8 at `8f6c715`, on `codex/contextual-ppo`, keeping
+history/action v1 and contextual v2/v3 compatibility separate. No native source
+change is required for the neural adapter.
+
+`contextual_model.py` uses a current-view spatial encoder, learned typed field
+encoder and one shared GRU actor–critic. It processes permitted views and events
+in chronological order, plus the player's own actions/results. Each player has
+its own zero-initialized recurrent state at each episode. Only the GRU retains
+learned history; the diagnostic last-seen cache is not an input. Temporary
+routing bindings refer to their explicitly current or prior observed snapshot;
+they do not query the engine or accumulate a hidden-world state. Opaque handles,
+sequence/revision/command counters and verification metadata are not features.
+Static content/text identifiers are learned from random byte embeddings, without
+pretrained language/game knowledge. Resource and skill slots preserve their
+positions; collections of objects and controls have no strategic ordering.
+
+The policy chooses action kind, then any required visible subject/control/card,
+then a full-map coordinate or exact positive count. Every coordinate in the
+public rectangle is supported, including unknown and unreachable destinations.
+The count tree has at most 31 learned binary choices; its interval-size base
+measure gives uniform integer probability when learned logits are zero. Every
+conditional and their sum are recorded with the immutable offered support.
+The destination of recruitment is explicitly selected from the currently
+supported native singleton destination. No adapter RNG supplies parameters.
+Overview dwelling controls currently expose only opaque references and panel
+kind. Semantically indistinguishable controls receive identical logits: no
+hidden dwelling attributes or reference suffixes are invented to distinguish
+them. The opened popup exposes the actual creature choices.
+
+`contextual_rollout.py` maintains separate player sessions and freezes behavior
+weight identities. A sampled intention becomes a transition only when the same
+history records submission, consumption and a resolved result. Superseded
+unacted decisions are retained as history, not samples. Intervening opponent
+turns remain inside the acting player's transition. Both complete histories and
+matching final proofs/manifest hashes are required. A consumed but unresolved
+final action makes that player's entire rollout optimization-ineligible; the
+collector never attaches its reward to an earlier action. Failures provide no
+reward or bootstrap. A cutoff uses only the actual unacted next decision and
+value from that player's matching recurrent prefix. Frozen-opponent and
+diagnostic records are never on-policy training samples.
+
+`ppo.py` implements clipped joint action-ratio loss and value regression with
+`gamma=1`, default `lambda=1`, optional advantage normalization and gradient
+clipping. Batches contain contiguous decision windows with all intervening
+history frames. Before each minibatch it reconstructs the prefix from episode
+start under the **current** parameters without gradients, detaches at the window
+start, then differentiates through the full window. This is explicit truncated
+BPTT, not reuse of stored behavior hidden states. Stored behavior probabilities,
+values and verified bootstrap values remain fixed across updates. Initial
+entropy coefficient is zero: exact entropy over the large conditional count
+space is not approximated by a misleading sampled-path entropy. The optimizer
+entry point currently accepts synthetic test rollouts only; enabling gameplay
+optimization requires a separately reviewed authorization change.
+
+`checkpoints.py` preserves model/config/schema identity, weight hashes,
+CPU Adam optimizer/progress state when applicable, Torch/Python and named sampler RNGs,
+source metadata and frozen opponent snapshots. Loading validates fields/tensors
+and uses `weights_only=True`. Resume is at a boundary between rollouts; engine
+processes, live sockets and episode-local GRU states are not checkpointed.
+Resume validates named parameter ordering and finite moment shapes before
+changing live state. Fixed policy checkpoints need no optimizer. A frozen opponent pool copies and
+freezes weights, samples from an explicit fixed set, and checks for mutation.
+
+`python -m experiments.learner.inference` is a bounded diagnostic runner, with
+no optimizer entry point. It uses one frozen opponent for each pair of engine
+seed/color trials, records policy initialization/sampling seeds and source/hash
+identity, saves untrained checkpoints and both complete rollout histories, and
+runs the independent history auditor. It retains every attempt, verifies
+unchanged weights, and reports natural endings, valid cutoffs, technical
+failures and collection errors separately. Its records are diagnostics,
+excluded from optimization and outcome-rate claims. Contextual replay remains
+explicitly unsupported.
+
+Validation results and exact commands will be recorded here once this candidate
+passes the unit suite and bounded real-game checks. Existing town mechanics
+fixtures are not demonstrations or training experience. Remaining training
+gates include contextual natural outcomes under a declared random-policy
+cohort, broader event/action coverage, the documented town edge cases and
+contextual replay. No learning campaign is authorized by this implementation.
+
 ### Continue in a new chat
 
 Use English and read `AGENTS.md` plus this README first. The public `main`
@@ -1198,9 +1291,9 @@ The user authorized Codex to finish Claude's paused contextual work. Codex has
 implemented native capture/routing, the opt-in transport/producer and bounded
 Mac validation; Claude retains the separately scoped simulation/performance/replay
 workstream. Read `validation/contextual-native-2026-10-24.json` for source-pinned
-checks, all random attempts and remaining limits. No live contextual neural
-adapter, collector or PPO loop exists. Contextual replay remains explicitly
-unsupported. Earlier legacy outcomes and the contextual terminal fixture do not
+checks, all random attempts and remaining limits. The later contextual neural
+integration section describes the live adapter/collector and synthetic-only PPO
+implementation. Contextual replay remains explicitly unsupported. Earlier legacy outcomes and the contextual terminal fixture do not
 establish a contextual random-policy outcome rate or authorize training.
 The original three rendered self-play runs remain truncated and separate.
 Verified video binding now passes at `4fe0d7c`; a clean throughput benchmark
