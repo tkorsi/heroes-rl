@@ -186,9 +186,10 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
-		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1")
+		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1" && name != "adventure-armies-v1")
 			throw std::runtime_error("Unsupported ExplorerRL interface");
-		townEconomy = name == "adventure-town-v1";
+		armyTransfer = name == "adventure-armies-v1";
+		townEconomy = armyTransfer || name == "adventure-town-v1";
 		contextual = townEconomy || name == "adventure-windows-v1";
 	}
 	if(contextual && playerID != PlayerColor(0) && playerID != PlayerColor(1))
@@ -198,7 +199,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
 	if(contextual && contextualEvidenceEnabled())
-		explorer_rl::ContextualEvidence::live(episode, townEconomy);
+		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
@@ -291,7 +292,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = townEconomy ? 5 : contextual ? 4 : 3;
+	result["protocol_version"].Integer() = armyTransfer ? 6 : townEconomy ? 5 : contextual ? 4 : 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -404,9 +405,9 @@ void ExplorerRL::run() noexcept
 		auto ready = message("ready");
 		if(contextual)
 		{
-			ready["interface"].String() = townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
-			ready["history_schema"].String() = townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
-			ready["action_schema"].String() = townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+			ready["interface"].String() = armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
+			ready["history_schema"].String() = armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
+			ready["action_schema"].String() = armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 		}
 		else
 		{

@@ -1,0 +1,24 @@
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -487,7 +487,7 @@
+ 	const auto expected = std::set<PlayerColor>{PlayerColor(0), PlayerColor(1)};
+ 	if(experimentHasFailed() || !episode || !interface || barrier.version != 1 || barrier.barrierId != 1
+ 		|| barrier.episode != episode || barrier.interface != interface
+-		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1")
++		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1" && barrier.interface != "adventure-armies-v1")
+ 		|| configuredExplorerPlayers() != expected || explorerTerminalsReceived != expected
+ 		|| explorerTerminalOutcomes.at(PlayerColor(0)) != barrier.redWon
+ 		|| explorerTerminalOutcomes.at(PlayerColor(1)) == barrier.redWon
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -602,7 +602,7 @@
+ 	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
+ 	const auto connection = gameServer().experimentClientConnection();
+ 	if(!episode || !*episode || !interface
+-		|| (std::string(interface) != "adventure-windows-v1" && std::string(interface) != "adventure-town-v1")
++		|| (std::string(interface) != "adventure-windows-v1" && std::string(interface) != "adventure-town-v1" && std::string(interface) != "adventure-armies-v1")
+ 		|| !gameServer().hasPlayerAt(PlayerColor(0), connection) || !gameServer().hasPlayerAt(PlayerColor(1), connection)
+ 		|| requestConnection != connection
+ 		|| !supportedExperimentTerminalRequest(input, lastPackResult && !lastPackBlocked

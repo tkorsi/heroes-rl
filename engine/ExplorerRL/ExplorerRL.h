@@ -100,6 +100,7 @@ private:
 	bool contextual = false;
 	std::string evidenceActor;
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
+	bool armyTransfer = false; ///< opt-in protocol-6 overview armies and exact transfers
 	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
 	explorer_rl::ContextualState contextState; ///< protected by stateMutex
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex
@@ -180,5 +181,7 @@ private:
 	bool executeContextualAction(const JsonNode & action, int64_t decision);
 	bool executeTownAction(const JsonNode & action, int64_t decision);
 	bool executeRecruitmentAction(const JsonNode & action, int64_t decision);
+	JsonNode townArmyExchange(const CGTownInstance & town); ///< only the explicit v4 overview
+	bool executeTransferAction(const JsonNode & action, int64_t decision);
 	void contextualResult(JsonNode result, int64_t decision);
 };

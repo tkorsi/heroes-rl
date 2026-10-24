@@ -24,6 +24,8 @@ struct ContextualState
 	std::string panel; ///< empty outside the opt-in v3 town context
 	std::string selection;
 	TownEconomyState economy;
+	std::map<std::pair<int, int>, std::string> armyHandles;
+	std::map<std::tuple<int, int, int>, std::string> armySlotHandles;
 	int64_t revision = -1;
 	int64_t nextDecision = 0;
 	std::optional<int64_t> decision;
