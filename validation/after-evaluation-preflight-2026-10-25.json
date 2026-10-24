@@ -1,0 +1,54 @@
+{
+  "additional_gameplay_attempts": 0,
+  "additional_gameplay_optimizer_steps": 0,
+  "authorization": {
+    "bytes": 3050,
+    "path": "validation/after-evaluation-authorization-2026-10-25.json",
+    "sha256": "a61794f0967699a0548ecd49229e810a2556a9ca8bdb729c529b5b83db07855f"
+  },
+  "checks": {
+    "actual_loader_with_optimizer_construction_forbidden": "passed",
+    "actual_saved_checkpoint_strict_load": "passed",
+    "evaluation_optimizer_exclusion": "passed",
+    "four_slot_scope_and_stop_on_failure": "passed",
+    "global_rng_unchanged_by_decode": "passed",
+    "independent_runner_review": "passed",
+    "native_prepared_sources_exact": "passed",
+    "ordered_state_comparator_and_altered_tensor_rejection": "passed",
+    "saved_checkpoint_bytes_unchanged": "passed"
+  },
+  "date": "2026-10-25",
+  "earlier_test_invocation": {
+    "log": {
+      "bytes": 1667,
+      "path": "runs/after-evaluation-preflight-2026-10-25/checkpoint-regressions.log",
+      "sha256": "9987fc58caf030d8a10d476189f58145cefb928ef15dfe38499182499b195010"
+    },
+    "reason": "Incorrect unittest module name and missing tests import path; corrected before validation. No engine launched.",
+    "result": "import_errors"
+  },
+  "focused_tests": {
+    "command": "PYTHONPATH=tests:. /Users/orsi/Projects/Heroes/.venv/bin/python -m unittest test_evaluation_continuation test_gameplay_checkpoint test_gameplay_receipts",
+    "log": {
+      "bytes": 458,
+      "path": "runs/after-evaluation-preflight-2026-10-25/focused-tests.log",
+      "sha256": "052822b6fd1122d98dfc5fb4b8563e829b3d30b8bfdcc388980a75ac993be2eb"
+    },
+    "result": "passed",
+    "skipped": 0,
+    "tests": 16
+  },
+  "runner": {
+    "bytes": 21005,
+    "path": "experiments/learner/evaluate_continuation.py",
+    "sha256": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d"
+  },
+  "schema": "heroes-after-evaluation-preflight-v1",
+  "scope": "Read-only checkpoint checks and synthetic tests before exactly four authorized evaluation games. No new gameplay or gameplay optimizer steps.",
+  "status": "passed",
+  "test_source": {
+    "bytes": 13035,
+    "path": "tests/test_evaluation_continuation.py",
+    "sha256": "ae4adad6bd3c9bfd9c42db8ee7550e345039ceb9245caa40536f9aed6e5658de"
+  }
+}

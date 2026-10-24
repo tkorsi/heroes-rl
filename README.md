@@ -16,10 +16,11 @@ reward. Changed policy/value weights do not demonstrate improved strategy.
 The contextual v4 interface supports navigation, construction, recruitment and
 explicit troop transfer. Policy and value use only their player's ordered
 visible history with separate recurrent memory. Rules, fog and terminal-only
-rewards are unchanged. This single-run authorization has ended; no retry,
-continuation or broader campaign is authorized. Raw artifacts and the saved
-checkpoint remain local. Draft PRs remain unmerged; other platforms are not
-validated.
+rewards are unchanged. The original run remains stopped. The user has separately
+authorized exactly the four missing after-evaluation games from its saved
+checkpoint, with no new optimizer steps and only the original remaining time
+budget. Raw artifacts and the saved checkpoint remain local. Draft PRs remain
+unmerged; other platforms are not validated.
 
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
@@ -1843,6 +1844,24 @@ with an approval hash to bypass the repair's changed source. Future execution
 requires a newly reviewed plan and explicit authorization. The original
 experiment remains stopped with the four after-evaluation games absent.
 
+#### Authorized evaluation-only continuation
+
+The user has separately authorized the four missing after-evaluation attempts
+from the saved post-update checkpoint, without any additional PPO update or
+optimizer step. The direct human instruction and exact scope are retained in
+`validation/after-evaluation-authorization-2026-10-25.json`. This permission
+covers only original episodes 7–10: engine seeds 99201 and 99202 in both learner
+colors, with the original paired policy-sampling seeds. Each attempt retains
+the 256-choice/30-day limits and one Torch CPU thread. The remaining execution
+budget is 3,435.148213 seconds after subtracting the original run's elapsed time.
+
+A separate evaluation-only plan will bind the current implementation and the
+original stopped report, saved checkpoint, frozen opponent, map and native
+runtime. The original plan remains invalid against changed source and will not
+be bypassed or rewritten. All new experience is diagnostic and excluded from
+optimizer admission. Correctness failures stop the continuation without
+replacement attempts. The original stopped result remains immutable.
+
 ### Continue in a new chat
 
 Use English and read `AGENTS.md` plus this README first. The public `main`
@@ -1883,7 +1902,8 @@ stopped execution. The user authorized Codex to finish the paused
 contextual work; Claude's separately scoped simulation/performance work remains
 coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
 training. The saved plan received one-execution approval and stopped as
-recorded above. Any further run, continuation or update requires new approval.
+recorded above. A separate authorization now covers only its four missing
+after-evaluation games; no additional optimization or broader run is authorized.
 
 Earlier v2/v3 validation and the original three truncated rendered self-play
 runs remain separate historical evidence. Historical contextual recordings
