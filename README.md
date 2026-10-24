@@ -96,10 +96,26 @@ Those drafts must not be represented as the requested full scenario.
 
 ## Git and local artifacts
 
-Open this folder in SourceTree. The experiment code and this document belong to
-the parent repository. `vcmi/` is a submodule with its own local commits, also
-viewable in SourceTree. Work is on `codex/experiment-recording`. No remote push
-is implied. The pre-existing ExplorerRL draft was preserved in its own commit.
+Open **Heroes** in SourceTree. This is one Git project: all our Python code,
+ExplorerRL C++ source, engine patches, dependency locks and documentation appear
+in its normal diffs. Work is on `codex/experiment-recording`; no remote push is
+implied. The root repository has no submodules.
+
+VCMI is an external dependency pinned in `dependencies/vcmi.json` to upstream
+1.7.5 / `6901839ae9760dfcd1d5ff2c4aa4ef6968fee752`. Its generated local checkout is
+`vcmi/`, ignored by the root Git repository. Our bridge lives in
+`engine/ExplorerRL/`; modifications to upstream files live in
+`engine/patches/`. Those patches are the complete reviewable source changes,
+not opaque references to commits in a second project. Never keep work only in
+the generated checkout. The preparation script verifies it agrees with the
+tracked source and patches.
+
+VCMI and its own dependencies retain their upstream licenses (VCMI:
+GPL-2.0-or-later). Their source trees are obtained as dependencies, not copied
+into our Git history. Original Heroes III data and HotA installations are
+user-provided local assets; installers, game data and applications are excluded.
+The generated `.vmap` duel maps in this repository contain only our map JSON,
+with references to external game assets.
 
 Raw recordings live under `runs/`; exported videos under `videos/`. Both are
 ignored by Git, along with build products and proprietary Heroes III game data.
@@ -110,17 +126,47 @@ the single source of purpose and decisions; do not maintain competing charters.
 
 - VCMI 1.7.5 is installed locally and its source/build are available.
 - An older, unvalidated ExplorerRL bridge and tiny duel-map generator exist.
-- Stage 1 recording implementation and validation are in progress.
+- Stage 1 works: two real bounded games were captured (360 frames each), encoded
+  to 60-second H.264 videos, and combined into a labelled 60-second overview.
+  Both were stopped at the recording frame limit, with no scored outcome.
+- The native build, nine Python tests, and exact dependency-source verification
+  pass. Spectator startup, camera, palettes, resource display, and unattended
+  shutdown were repaired as part of the real-game validation.
+- Local preview: `videos/recorder-demo-60s.mp4`. Compact evidence:
+  `validation/recording-2026-10-24.json`. This is built-in-AI recorder validation.
 - No Heroes learner training or 1,000-episode run has been performed here.
 
 ## Recorder commands
 
-Requirements: the existing local VCMI build, original game data, Python 3.11+,
-and `ffmpeg`/`ffprobe` on PATH. No Python package install is needed.
+Requirements: original game data, the VCMI native build dependencies, Python
+3.11+, and `ffmpeg`/`ffprobe` on PATH. No Python package install is needed.
+
+Prepare or verify the pinned VCMI dependency and our tracked modifications:
+
+```sh
+python3 tools/prepare_vcmi.py
+python3 tools/prepare_vcmi.py --check
+```
+
+`--check` reconstructs the expected source from the upstream pin, patches, and
+owned bridge and compares every file; the recorder runs this check before
+launching. It accepts the existing local prepared checkout, including its
+historical local commits, only when the content matches exactly.
+
+When changing engine code, update the canonical patch/source in the root and
+the corresponding generated source together, then run `--check`. To regenerate
+instead, preserve the existing `vcmi/` directory outside this project and run
+preparation again; reconfigure the build afterward. Preparation deliberately
+refuses to reset or overwrite a checkout whose content does not match either
+the current recipe or pristine upstream.
 
 From this repository, build the client with the recorder changes:
 
 ```sh
+# Only needed when creating the build directory for the first time:
+cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/opt/homebrew -DENABLE_GOLDMASTER=ON \
+  -DENABLE_STRICT_COMPILATION=OFF
 cmake --build vcmi/build --target vcmiclient vcmiserver --parallel 8
 ```
 

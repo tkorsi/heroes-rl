@@ -11,3 +11,9 @@ __pycache__/
 /INSTALLATION-REPORT.txt
 /runs/
 /videos/
+/vcmi/
+# Original game assets and installers are local dependencies, never source.
+*.h3m
+*.lod
+*.exe
+*.app/

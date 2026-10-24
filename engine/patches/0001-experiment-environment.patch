@@ -1,0 +1,44 @@
+diff --git a/AI/CMakeLists.txt b/AI/CMakeLists.txt
+index 65642db..ba36916 100644
+--- a/AI/CMakeLists.txt
++++ b/AI/CMakeLists.txt
+@@ -51,6 +51,14 @@ endif()
+ # Adventure AI's
+ add_subdirectory(EmptyAI)
+ 
++option(ENABLE_EXPLORER_RL "Build the local exploration reinforcement-learning bridge" OFF)
++if(ENABLE_EXPLORER_RL)
++	if(NOT UNIX OR ENABLE_STATIC_LIBS OR NOT ENABLE_BATTLE_AI)
++		message(FATAL_ERROR "ExplorerRL requires a Unix shared-library build with BattleAI enabled")
++	endif()
++	add_subdirectory(ExplorerRL)
++endif()
++
+ if(ENABLE_NULLKILLER_AI)
+ 	add_subdirectory(Nullkiller)
+ endif()
+diff --git a/lib/VCMIDirs.cpp b/lib/VCMIDirs.cpp
+index d80e3b9..bffe4a7 100644
+--- a/lib/VCMIDirs.cpp
++++ b/lib/VCMIDirs.cpp
+@@ -348,6 +348,10 @@ void VCMIDirsOSX::init()
+ 
+ bfs::path VCMIDirsOSX::userDataPath() const
+ {
++	// Isolate automated games from the player's settings, saves and cache.
++	if(const auto experimentDir = std::getenv("VCMI_USER_DATA_DIR"); experimentDir && *experimentDir)
++		return bfs::absolute(experimentDir);
++
+ 	// This is Cocoa code that should be normally used to get path to Application Support folder but can't use it here for now...
+ 	// NSArray* urls = [[NSFileManager defaultManager] URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask];
+ 	// UserPath = path([urls[0] path] + "/vcmi").string();
+@@ -363,6 +367,9 @@ bfs::path VCMIDirsOSX::userCachePath() const { return userDataPath(); }
+ 
+ bfs::path VCMIDirsOSX::userLogsPath() const
+ {
++	if(const auto experimentDir = std::getenv("VCMI_USER_DATA_DIR"); experimentDir && *experimentDir)
++		return bfs::absolute(experimentDir) / "logs";
++
+ 	// TODO: use proper objc code from Foundation framework
+ 	if(const auto homeDir = std::getenv("HOME"))
+ 		return bfs::path{homeDir} / "Library" / "Logs" / "vcmi";

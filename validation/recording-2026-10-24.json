@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-24",
+  "scope": "Native built-in-AI recording validation; no RL training and no 1000-episode run",
+  "runs": [
+    {
+      "run": "runs/recorder-smoke-003",
+      "kind": "recorder-smoke",
+      "episode": 3,
+      "map": {
+        "name": "Key to Victory.h3m",
+        "sha256": "2086c92b1494bba66f80164d654afcad6d3065fcc458d1e5a7f43ad02421c7e1"
+      },
+      "seed": 12345,
+      "opponent": {
+        "difficulty": "Easy",
+        "difficulty_index": 0,
+        "module": "Nullkiller"
+      },
+      "policy": {
+        "checkpoint": null,
+        "label": "Built-in Nullkiller (no learning)"
+      },
+      "capture": {
+        "elapsed_seconds": 60.718908,
+        "fps": 6,
+        "frames": 360,
+        "ledger_sha256": "7ba05e921aef449b212c404ddfabad44d218db9335b176f011e3e0ae149e971e",
+        "source": "native SDL game surface"
+      },
+      "status": "timeout",
+      "outcome": null,
+      "termination_reason": "frame_limit",
+      "returncode": 0,
+      "engine": {
+        "binary": "/Users/orsi/Documents/ChatGPT/Heroes/vcmi/build/bin/vcmiclient",
+        "binary_sha256": "72e14eff2a3b5cda25583511986c270b23da716a040942dfe2a94b629c1e3111",
+        "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+        "dirty": false
+      },
+      "video": "runs/recorder-smoke-003/episode.mp4",
+      "video_sha256": "7cd98f58ceae6ecd4a7eab5aa8b89644f2736e8a0614d0c4b0f484d90696cba5",
+      "manifest_sha256": "0b5a2626552008055ed94e15f6c4995b434be18047e9349de6c057172c2d8b9f"
+    },
+    {
+      "run": "runs/recorder-smoke-004",
+      "kind": "recorder-smoke",
+      "episode": 4,
+      "map": {
+        "name": "Key to Victory.h3m",
+        "sha256": "2086c92b1494bba66f80164d654afcad6d3065fcc458d1e5a7f43ad02421c7e1"
+      },
+      "seed": 54321,
+      "opponent": {
+        "difficulty": "Easy",
+        "difficulty_index": 0,
+        "module": "Nullkiller"
+      },
+      "policy": {
+        "checkpoint": null,
+        "label": "Built-in Nullkiller (no learning)"
+      },
+      "capture": {
+        "elapsed_seconds": 60.736693,
+        "fps": 6,
+        "frames": 360,
+        "ledger_sha256": "5705ccf0fd6add0fbb31b2f9534045088a4b12302062ae2f4dc6c9bc0b0e8b4f",
+        "source": "native SDL game surface"
+      },
+      "status": "timeout",
+      "outcome": null,
+      "termination_reason": "frame_limit",
+      "returncode": 0,
+      "engine": {
+        "binary": "/Users/orsi/Documents/ChatGPT/Heroes/vcmi/build/bin/vcmiclient",
+        "binary_sha256": "a59df561a95806895d7eee00f28c937531b59d8782021ae7d60a9eb3c0b14ac9",
+        "commit": "bccaadf9a147fe3f21c1efe450e55e8fd5b9aa9a",
+        "dirty": true
+      },
+      "video": "runs/recorder-smoke-004/episode.mp4",
+      "video_sha256": "fb613c7043a28482be31a482f25200343a978e36ff60dc6455af24f3778c461d",
+      "manifest_sha256": "c04b566590e7e504a2c65ad6bb9c30f71df79ff4abf0d94d2b1c00e8ce14183a"
+    }
+  ],
+  "overview": {
+    "path": "videos/recorder-demo-60s.mp4",
+    "sha256": "f47b31b24725614e58a943a2b5d5174ea28e31b57a3ad64b1832d261a1604478",
+    "video": {
+      "width": 1280,
+      "height": 720,
+      "frames": 1800,
+      "duration_seconds": 60.0,
+      "codec": "h264",
+      "pixel_format": "yuv420p"
+    },
+    "selected_episodes": [
+      3,
+      4
+    ],
+    "skipped_runs": [
+      {
+        "episode": 1,
+        "reason": "No source video"
+      },
+      {
+        "episode": 2,
+        "reason": "No source video"
+      }
+    ],
+    "selection": "Evenly spaced episode order; outcomes are not used for selection",
+    "full_source_frame_coverage": false
+  },
+  "checks": {
+    "native_client_build": "passed",
+    "python_unittest_count": 9,
+    "python_unittest_result": "passed",
+    "dependency_recipe_exact_match": "passed",
+    "visual_review": "Native frames and montage at 10s/45s inspected",
+    "root_git_asset_audit": "No original game data, applications, installers or video binaries tracked; generated duel maps contain authored JSON only"
+  },
+  "limitations": [
+    "Recordings end at frame limit and are unscored, not natural defeats.",
+    "No learner policy is connected to this launcher.",
+    "Exact deterministic replay and full-scenario ExplorerRL interactions remain unvalidated."
+  ],
+  "recipe": {
+    "dependencies/vcmi.json": "80b8cc51ac9f9d1e8a483e760ccca71e622975d0475dd950a9bafac4bda37cf9",
+    "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+    "engine/ExplorerRL/ExplorerRL.cpp": "97152e4d36b3b9963c2a76dbef298471fc6fdd326665d5a104d6a9e835843f13",
+    "engine/ExplorerRL/ExplorerRL.h": "6afbd62a997b598cec003b94a0c7cb9c1a01901efc964d86a108011597d70db0",
+    "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+    "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+    "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+    "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+    "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6"
+  }
+}

@@ -89,6 +89,7 @@ def record(args: argparse.Namespace) -> dict:
         raise ValueError("Use seconds 1..86400, nonzero signed-32-bit seed, positive episode")
     if not args.no_encode and not all(shutil.which(tool) for tool in ("ffmpeg", "ffprobe")):
         raise ValueError("ffmpeg and ffprobe must be on PATH")
+    subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], check=True)
 
     output.mkdir(parents=True, exist_ok=False)
     frames, profile, logs = (output / name for name in ("frames", "profile", "logs"))
@@ -123,6 +124,9 @@ def record(args: argparse.Namespace) -> dict:
         "seed": args.seed, "deterministic_replay_verified": False,
         "map": {"name": game_map.name, "sha256": digest(game_map)},
         "engine": {**git_state(ROOT / "vcmi"), "binary": str(binary), "binary_sha256": digest(binary)},
+        "engine_recipe": {str(path.relative_to(ROOT)): digest(path) for path in sorted([
+            ROOT / "dependencies/vcmi.json", *ROOT.glob("engine/patches/*.patch"),
+            *ROOT.glob("engine/ExplorerRL/*")]) if path.is_file()},
         "project": git_state(ROOT), "command": command, "environment": capture_env,
         "requested_settings": settings, "settings_sha256_before": digest(profile / "config" / "settings.json"),
         "limits": {"wall_seconds": args.seconds, "max_frames": args.max_frames},
