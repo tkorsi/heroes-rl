@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, fields
 import hashlib
 import json
+import re
 
 SCHEMA = "heroes-player-history-v2"
 ACTION_SCHEMA = "heroes-context-actions-v2"
@@ -296,6 +297,93 @@ class Result:
             raise ValueError("destination_reached must be boolean")
 
 
+NOTICE_TEXT_IDS = frozenset({
+    "core.advevent.113", "hero.core.orrin.name", "hero.core.edric.name",
+    "heroes.baseline.all_opponents_defeated", "heroes.baseline.opponent_won",
+    "heroes.baseline.seven_days_without_town", "heroes.baseline.opponent_lost_last_town",
+    *(f"core.restypes.{index}" for index in range(7)),
+    *(f"core.mineevnt.{index}" for index in range(7)),
+    *(f"core.genrltxt.{index}" for index in (1, 5, 7, 659)),
+    *(f"core.arraytxt.{index}" for index in (*range(32, 42), *range(43, 58), *range(130, 136))),
+})
+# VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
+# namespace. The producer must still prove the delivered template/operation
+# sequence and that the referenced creature is legitimate player information.
+_CREATURE_NOTICE_TEXT_ID = re.compile(r"creatures\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.name\.(?:singular|plural)")
+NOTICE_RESOURCES = ("wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold")
+
+
+@dataclass(frozen=True)
+class NoticeToken:
+    """One delivered localized operation, never an unused MetaString pool entry."""
+    op: str
+    text_id: str | None = None
+    number: int | None = None
+    owner: str | None = None
+
+    def __post_init__(self):
+        if self.op in ("append_text", "replace_text"):
+            if self.number is not None or (self.text_id is None) == (self.owner is None):
+                raise ValueError("Notice text operation requires exactly one text ID or relative owner")
+            if self.text_id is not None:
+                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS
+                        and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None):
+                    raise ValueError("Unsupported notice text ID")
+            elif self.owner not in ("self", "opponent"):
+                raise ValueError("Notice player reference must be relative")
+        elif self.op in ("append_number", "replace_number", "replace_positive_number"):
+            if self.text_id is not None or self.owner is not None:
+                raise ValueError("Notice number operation cannot carry text or owner")
+            # Native REPLACE_POSITIVE_NUMBER formats signed values, including
+            # zero and negative numbers; its name does not restrict the value.
+            _integer(self.number, low=-(2**63), high=2**63 - 1, name="notice number")
+        elif self.op == "newline":
+            if any(value is not None for value in (self.text_id, self.number, self.owner)):
+                raise ValueError("Notice newline has no payload")
+        else:
+            raise ValueError("Unsupported notice operation")
+
+
+@dataclass(frozen=True)
+class NoticeComponent:
+    kind: str
+    resource: str | None = None
+    amount: int | None = None
+    owner: str | None = None
+
+    def __post_init__(self):
+        if self.kind in ("resource", "resource_per_day"):
+            if self.resource not in NOTICE_RESOURCES or self.owner is not None:
+                raise ValueError("Resource notice component requires only a known resource and amount")
+            _integer(self.amount, low=-(2**31), high=2**31 - 1, name="notice resource amount")
+        elif self.kind == "flag":
+            if self.resource is not None or self.amount is not None or self.owner not in ("self", "opponent"):
+                raise ValueError("Flag notice component requires only a relative player")
+        else:
+            raise ValueError("Unsupported notice component")
+
+
+@dataclass(frozen=True)
+class Notice:
+    """An informational engine notification: no reply, window operation or reward.
+
+    ``modal`` is the native presentation mode, not authorization to fabricate a
+    query acknowledgement. Ordered tokens describe only delivered operations;
+    template semantics and entitlement remain the native producer's obligation.
+    """
+    display_mode: str
+    text: tuple[NoticeToken, ...]
+    components: tuple[NoticeComponent, ...]
+
+    def __post_init__(self):
+        if self.display_mode not in ("auto", "modal", "info"):
+            raise ValueError("Unsupported informational notice display mode")
+        _tuple(self.text, NoticeToken, "notice text")
+        _tuple(self.components, NoticeComponent, "notice components")
+        if len(self.text) > 64 or len(self.components) > 32:
+            raise ValueError("Notice exceeds bounded token/component limits")
+
+
 @dataclass(frozen=True)
 class VisibleEvent:
     kind: str
@@ -305,10 +393,18 @@ class VisibleEvent:
     owner: str | None = None
     side: str | None = None
     won: bool | None = None
+    notice: Notice | None = None
 
     def __post_init__(self):
+        if self.kind == "notice":
+            if type(self.notice) is not Notice or any(value is not None for value in (
+                    self.subject, self.object_kind, self.object_subtype, self.owner, self.side, self.won)):
+                raise ValueError("Notice event requires only a typed notice")
+            return
         if self.kind not in ("visit", "battle_start", "battle_complete", "turn_end", "hero_lost"):
             raise ValueError("Unsupported visible event")
+        if self.notice is not None:
+            raise ValueError("Only a notice event can carry notice content")
         if self.subject is not None:
             _text(self.subject)
         for value in (self.object_kind, self.object_subtype):
@@ -784,6 +880,18 @@ def decode_observation(raw):
         raise ValueError("Incomplete observation") from exc
 
 
+def decode_notice(raw):
+    """Allowlisted JSON notice; unused pools/raw text/engine IDs are rejected."""
+    data = _record(raw, Notice)
+    data["text"] = tuple(_decode_simple(token, NoticeToken) for token in _array(data.get("text")))
+    data["components"] = tuple(_decode_simple(component, NoticeComponent)
+                               for component in _array(data.get("components")))
+    try:
+        return Notice(**data)
+    except TypeError as exc:
+        raise ValueError("Incomplete informational notice") from exc
+
+
 def encode_frame(frame):
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
@@ -797,9 +905,14 @@ def decode_frame(raw):
         raise ValueError("History JSON requires explicit schema and base fields")
     if data.get("observation") is not None:
         data["observation"] = decode_observation(data["observation"])
-    for name, cls in (("context", Context), ("action", Action), ("result", Result), ("event", VisibleEvent)):
+    for name, cls in (("context", Context), ("action", Action), ("result", Result)):
         if data.get(name) is not None:
             data[name] = _decode_simple(data[name], cls, ("position",) if name == "result" else ())
+    if data.get("event") is not None:
+        event = _record(data["event"], VisibleEvent)
+        if event.get("notice") is not None:
+            event["notice"] = decode_notice(event["notice"])
+        data["event"] = _decode_simple(event, VisibleEvent)
     if data.get("offers") is not None:
         offer = _record(data["offers"], Offers)
         offer["context"] = _decode_simple(offer.get("context"), Context)

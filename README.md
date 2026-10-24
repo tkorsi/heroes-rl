@@ -519,6 +519,26 @@ add army slots and faction only; building details and deeper controls are
 deferred. The only window action is `close`. Unknown fields are rejected at every
 nested record boundary, including raw engine IDs and path-cost/reachability data.
 
+Informational notices are separate ordered events. VCMI's `InfoWindow` carries
+no query or server reply, including in its `MODAL` display mode. The audited
+baseline can emit resource/mine, experience-cap, new-week and result notices;
+stopping on every modal notice would prevent supported battles and natural
+endings. The v2 notice contract carries its display mode, ordered text operations
+over audited static identifiers and displayed numbers, and supported resource
+or relative-player flag components. The authored map's four literal result
+messages have exact stable identifiers. Arbitrary text, object IDs, unrelated
+pack fields and unused substitutions are not learner inputs. The native
+producer must validate each supported template and operation sequence before
+normalization; this schema alone does not establish native notice coverage.
+
+Notices enter only the recipient's history (new-week notices follow their
+native broadcast routing), including between that player's decisions. They do
+not create a policy action, acknowledgement, window transition, private-panel
+refresh or reward. A notice stops an active route at the interaction boundary;
+verified terminal finalization still takes precedence. The structured native
+hook must run before text translation and cover the separate new-week path.
+Unrecognized notice shapes remain explicit unsupported stops.
+
 Records are immutable and append-only. Navigation consumption is distinguished
 from native command issuance and acknowledgement. An unacted decision must be
 superseded before a new visible view or event enters its history. A consumed
@@ -714,13 +734,16 @@ legitimate observation distinguishes them.
 
 #### Unsupported interactions and bounded execution
 
-Proposed rule: an unsupported dialog or malformed/unrepresentable transition
+An unsupported query dialog, special window or malformed/unrepresentable transition
 stops collection with a distinct `unsupported_interaction`/technical status,
 preserves diagnostic evidence and performs bounded engine shutdown. It is not
 a defeat, draw or eligible horizon: no terminal reward, value bootstrap or
 training targets. Do not answer it randomly, select a default, or wait forever.
 Keep this reason separate from crashes in reporting even though both are
 ineligible. A later natural result cannot repair missing interface history.
+The supported information-only notices above require no dismissal command or
+invented reply. Query dialogs, including a garrison dialog when revisiting an
+owned mine, remain unsupported in this minimal interface.
 
 For a visible object/control, a publicly defined support restriction may prevent
 offering an operation that is known to require an unsupported interface. Never

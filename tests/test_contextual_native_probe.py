@@ -1,8 +1,11 @@
 """Pure evidence-comparison tests; no engine process or simulated game adapter."""
 from copy import deepcopy
+from dataclasses import replace
 import unittest
 
-from experiments.learner.contextual import Frame, Result, VisibleEvent
+from experiments.learner.contextual import (
+    Frame, Notice, NoticeComponent, NoticeToken, Result, VisibleEvent, encode_frame,
+)
 from validation.probes import validate_contextual_native as probe
 
 
@@ -36,6 +39,12 @@ def observed_prefix():
 def add_fixture_opponent(prefix, position):
     prefix[-1]["observation"]["objects"].append(
         {"handle": "seen-enemy", "position": list(position), "owner": "opponent", "kind": 34, "subtype": 0})
+
+
+def resource_notice():
+    return Notice("info", (NoticeToken("append_text", text_id="core.advevent.113"),
+                           NoticeToken("replace_text", text_id="core.restypes.6")),
+                  (NoticeComponent("resource", resource="gold", amount=500),))
 
 
 class ContextualNativeProbeTests(unittest.TestCase):
@@ -97,6 +106,56 @@ class ContextualNativeProbeTests(unittest.TestCase):
                   native_ack(3, True), native_issue(4, 1),
                   record(5, "acknowledged", decision_seq=0, command_index=1, accepted=True), final]
         self.assertEqual(probe.route_stop_evidence(frames, result)["encounter"]["status"], "failed")
+
+    def test_notice_followed_by_no_further_route_command_passes(self):
+        for mode in ("info", "auto", "modal"):
+            with self.subTest(mode=mode):
+                final, result = route_result(4, "interaction")
+                notice = VisibleEvent("notice", notice=replace(resource_notice(), display_mode=mode))
+                frames = [native_issue(1), record(2, "event", event=notice), native_ack(3, True), final]
+                evidence = probe.route_stop_evidence(frames, result)["encounter"]
+                self.assertEqual(evidence["status"], "passed")
+                self.assertEqual(evidence["cause_seq"], 2)
+                self.assertEqual(evidence["issued_after_cause"], [])
+
+    def test_native_command_after_notice_is_failed_evidence(self):
+        final, result = route_result(6, "interaction")
+        frames = [native_issue(1), record(2, "event", event=VisibleEvent("notice", notice=resource_notice())),
+                  native_ack(3, True), native_issue(4, 1),
+                  record(5, "acknowledged", decision_seq=0, command_index=1, accepted=True), final]
+        evidence = probe.route_stop_evidence(frames, result)["encounter"]
+        self.assertEqual(evidence["status"], "failed")
+        self.assertEqual(evidence["issued_after_cause"], [4])
+
+    def test_typed_notice_content_differences_cannot_be_normalized_away(self):
+        resource = resource_notice()
+        flag = Notice("modal", (NoticeToken("replace_text", owner="self"),),
+                      (NoticeComponent("flag", owner="self"),))
+        growth = Notice("modal", (NoticeToken("replace_positive_number", number=2),), ())
+        cases = {
+            "display_mode": (resource, replace(resource, display_mode="auto")),
+            "text_id": (resource, replace(resource, text=(resource.text[0],
+                         NoticeToken("replace_text", text_id="core.restypes.0")))),
+            "token_order": (resource, replace(resource, text=tuple(reversed(resource.text)))),
+            "component_amount": (resource, replace(resource, components=(replace(resource.components[0], amount=501),))),
+            "component_resource": (resource, replace(resource, components=(replace(resource.components[0], resource="wood"),))),
+            "text_owner": (flag, replace(flag, text=(NoticeToken("replace_text", owner="opponent"),))),
+            "component_owner": (flag, replace(flag, components=(NoticeComponent("flag", owner="opponent"),))),
+            "number": (growth, replace(growth, text=(NoticeToken("replace_positive_number", number=3),))),
+        }
+        for label, (first, second) in cases.items():
+            with self.subTest(payload=label):
+                left, right = observed_prefix(), observed_prefix()
+                left.append(encode_frame(record(1, "event", event=VisibleEvent("notice", notice=first))))
+                right.append(encode_frame(record(1, "event", event=VisibleEvent("notice", notice=second))))
+                # Episode and opaque routing-handle changes are permitted;
+                # player-visible notice fields must survive that normalization.
+                for frame in right:
+                    frame["episode"] = "other-episode"
+                right[0]["observation"]["heroes"][0]["handle"] = "renamed-own-hero"
+                compared = probe.compare_permitted_prefixes(left, right, set())
+                self.assertEqual(compared["status"], "failed")
+                self.assertEqual(compared["first_difference_seq"], 1)
 
     def test_interruption_label_requires_rejected_native_acknowledgement(self):
         final, result = route_result(3, "interrupted")

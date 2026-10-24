@@ -300,7 +300,7 @@ def route_stop_evidence(frames, result):
     causes = {
         "encounter": [index for index in range(start, result_index)
                       if frames[index].event is not None and frames[index].event.kind in
-                      ("visit", "battle_start", "battle_complete")],
+                      ("visit", "battle_start", "battle_complete", "notice")],
         "interruption": [index for index in range(start, result_index)
                          if frames[index].kind == "acknowledged" and frames[index].decision_seq == decision
                          and frames[index].accepted is False],
@@ -772,7 +772,7 @@ def hidden_variant(run, variant):
     issued = sum(record.kind == "issued" for record in additions)
     accepted = sum(record.kind == "acknowledged" and record.accepted is True for record in additions)
     interactions = [record.event.kind for record in additions if record.event is not None and record.event.kind in
-                    ("visit", "battle_start", "battle_complete", "hero_lost")]
+                    ("visit", "battle_start", "battle_complete", "hero_lost", "notice")]
     if (result is None or result.status != "reached" or result.position != target or not result.destination_reached
             or issued != 1 or accepted != 1 or interactions):
         run.check("paired_hidden_single_native_move", "unverified", actual=asdict(result) if result else None,
