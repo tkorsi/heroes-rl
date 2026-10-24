@@ -1,0 +1,1576 @@
+{
+  "base_commit": "8f6c7157b73692f21fb93c993c540a6965064874",
+  "branch": "codex/contextual-ppo",
+  "coverage": {
+    "all_eleven_action_kinds_observed": true,
+    "baseline_actions": {
+      "back": 67,
+      "close": 184,
+      "construct": 5,
+      "end_turn": 117,
+      "move_to": 91,
+      "open_building": 25,
+      "open_hero": 95,
+      "open_panel": 66,
+      "open_town": 92,
+      "recruit": 14,
+      "select_recruit": 12
+    },
+    "baseline_results": {
+      "built": 5,
+      "closed": 251,
+      "movement_limit": 9,
+      "no_route_known": 60,
+      "opened": 278,
+      "reached": 22,
+      "recruited": 14,
+      "selected": 12,
+      "turn_ended": 117
+    }
+  },
+  "crash_attempts": [
+    {
+      "all_targets_excluded": true,
+      "code_commit": "0b907038edd28c40231d5edbf8087ad4bf7d9771",
+      "engine_status": "failed",
+      "manifest": {
+        "path": "runs/contextual-neural-failure-95201/episode-000001/manifest.json",
+        "sha256": "eb724ad011d8197c634e59560b6e6a41205d3b339077d31c73447f3e8a5580e3"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_error": "ValueError: '/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/contextual-neural-failure-95201/episode-000001/manifest.json' is not in the subpath of 'runs/contextual-neural-failure-95201'",
+      "probe_passed": false,
+      "probe_sha256": "fcc872ff21c3992970851c922f155a674e199a72ab944864a30fb8801e87f5f6",
+      "report": {
+        "path": "runs/contextual-neural-failure-95201/report.json",
+        "sha256": "52d2f605cbd03cd70f6e2cf22baad950e6af3f94fc99981033d7cd5194a9b391"
+      },
+      "resolved_samples": 4,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "rollout": {
+        "path": "runs/contextual-neural-failure-95201/episode-000001/neural-rollout.json",
+        "sha256": "17144942a634bd26bf055ed00d069d32030570d9dabddf495ed154f10f235d82"
+      },
+      "termination_reason": "process_exit_without_verified_terminal"
+    },
+    {
+      "all_targets_excluded": true,
+      "code_commit": "8a24a4a243674a8edf2b18ae02bc6a131c2da697",
+      "engine_status": "failed",
+      "manifest": {
+        "path": "runs/contextual-neural-failure-95201-second/episode-000001/manifest.json",
+        "sha256": "dff160aaa13a4d205616965060f1e6b2e47d141e829244e60f8f72ed3b1f9279"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "probe_error": null,
+      "probe_passed": true,
+      "probe_sha256": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802",
+      "report": {
+        "path": "runs/contextual-neural-failure-95201-second/report.json",
+        "sha256": "85d975b35e1a2261e73b2c981cab2b6aa66eb2aae8ca04a8b07b74218c488fd5"
+      },
+      "resolved_samples": 4,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "rollout": {
+        "path": "runs/contextual-neural-failure-95201-second/episode-000001/neural-rollout.json",
+        "sha256": "f7f20515389667f5131955d5e248b053c4ac81649e8b07579616004bd640f29d"
+      },
+      "termination_reason": "process_exit_without_verified_terminal"
+    }
+  ],
+  "date": "2026-10-24",
+  "dependencies": {
+    "lock": {
+      "path": "dependencies/learner.lock",
+      "sha256": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932"
+    },
+    "numpy_installed": false,
+    "platform": "macOS arm64 CPU",
+    "python": "3.13.5",
+    "torch": "2.9.1"
+  },
+  "engine_recipe_check": {
+    "canonical_sources_changed": false,
+    "command": "python3 tools/prepare_vcmi.py --check",
+    "exit_code": 0,
+    "identity": {
+      "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+      "binary_sha256": "d6081f52ff4cc26268cd7d0fa5f18efd2eec85f1161ead86a807ef07896fc633",
+      "bridge_source_sha256": "fbd221aafb43fa39b46e220aae00f01115a9b4cc603e747c2fa46d7a52166bf8",
+      "captured_before_launch": true,
+      "contextual_python_sha256": {
+        "experiments/headless/contextual_env.py": "a2e6117fd209fccb65d8b535d8ab810708d7e017caf271a6341b5603020970a0",
+        "experiments/headless/contextual_protocol.py": "37a80f1ebb4f419d335940e3522350f912ac2668fd5bdc4e2f0350beff5c36ac",
+        "experiments/headless/env.py": "350629ed51201fc0f36dc6b5b0bd3f95fbfa2be73feb95d845f5245f64ea20f2",
+        "experiments/learner/contextual.py": "ab72d727645036c59e3beea5bb5103a937507e4688282f89920ee97433cd6b49"
+      },
+      "engine": {
+        "commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "956afc53b1c546b91b03061d1ba7766c6ab78ef0fc915488e412e6fd03ed74f1",
+        "engine/ExperimentReplay/ReplayMain.cpp": "b0bd3df330fa5c9872d04efe33f91e86e5b52039ccd85d2da10657c6105078b2",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/CMakeLists.txt": "c19cd592a6916666c85a33e3e40a0449b5709609a80504d830fa53677088ecad",
+        "engine/ExplorerRL/Contextual.cpp": "3b14be29ad643bfacadaae42db4841594ecb25e8af9cf18fd5dab615087ec005",
+        "engine/ExplorerRL/Contextual.h": "bf72184a5a69827e44cc2596c1cc0ec74c107889865da0806dfa0733aef210eb",
+        "engine/ExplorerRL/ExplorerRL.cpp": "84b0162d075152b240b545c48ca24a9332f78588fd879672b0b97bc13d926800",
+        "engine/ExplorerRL/ExplorerRL.h": "8c238d6befd13a006dbd8c5489d6ec2a4f86fb007d2a898e8f2d055f55112d08",
+        "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+        "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+        "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+        "engine/ExplorerRL/Notice.cpp": "05c1f04cd0544717f313c074e4d834544bf6b82b277a01615493e25ef60519a3",
+        "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+        "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+        "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+        "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+        "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101"
+      },
+      "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "log_level": "info",
+      "map": {
+        "name": "random-baseline-v1.vmap",
+        "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+      },
+      "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+      "project": {
+        "commit": "c3edda8cd57607844a3c7e0bf03729ef23a71845",
+        "dirty": false
+      }
+    },
+    "log": {
+      "path": "runs/contextual-neural-prepared-engine.log",
+      "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+    }
+  },
+  "gameplay_optimizer_updates": 0,
+  "merged": false,
+  "native_cohorts": [
+    {
+      "attempts": [
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 784,
+              "kinds": {
+                "acknowledged": 55,
+                "consumed": 108,
+                "context": 80,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 109,
+                "event": 22,
+                "issued": 55,
+                "result": 108,
+                "submitted": 108,
+                "view": 137
+              },
+              "last_public_day": 18,
+              "result_statuses": {
+                "built": 1,
+                "closed": 37,
+                "no_route_known": 6,
+                "opened": 41,
+                "reached": 5,
+                "recruited": 1,
+                "turn_ended": 17
+              },
+              "submitted_actions": {
+                "back": 5,
+                "close": 32,
+                "construct": 1,
+                "end_turn": 17,
+                "move_to": 11,
+                "open_building": 2,
+                "open_hero": 19,
+                "open_panel": 6,
+                "open_town": 14,
+                "recruit": 1
+              }
+            },
+            "red": {
+              "frames": 547,
+              "kinds": {
+                "acknowledged": 18,
+                "consumed": 84,
+                "context": 56,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 85,
+                "event": 39,
+                "issued": 18,
+                "result": 84,
+                "submitted": 84,
+                "view": 77
+              },
+              "last_public_day": 19,
+              "result_statuses": {
+                "closed": 28,
+                "no_route_known": 10,
+                "opened": 28,
+                "turn_ended": 18
+              },
+              "submitted_actions": {
+                "back": 12,
+                "close": 16,
+                "end_turn": 18,
+                "move_to": 10,
+                "open_building": 4,
+                "open_hero": 6,
+                "open_panel": 8,
+                "open_town": 10
+              }
+            }
+          },
+          "engine_seed": 95011,
+          "episode": 1,
+          "files": {
+            "episode-000001/agents/blue/history-v3.jsonl": "e717f9073d562e40b4fb5d30096f2c5bf8b7e50ad53b9f2111ffbe61d157afff",
+            "episode-000001/agents/red/history-v3.jsonl": "0500b6d811e3817cf78ce431a3925e792103dd99be520ce8af6c533b75991c8b",
+            "episode-000001/manifest.json": "ee9cacbb6e3c212422232596d97a2fc1cd7ba9136af9a980ce31c8d54abf8a4c",
+            "episode-000001/neural-audit.json": "37e57e6be6d6b3198a603c37c3c1ebebf73335a78a524c3fdb0abf35fbdec01e",
+            "episode-000001/neural-rollout.json": "e0c63aaf6f30dbd880af87671769f90f1acf40a57bb0b1adcfc43b84d52f293f"
+          },
+          "learner_player": 0,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "player_trajectories": [
+            {
+              "boundary": "cutoff",
+              "decision_values": 85,
+              "exclusion": "diagnostic",
+              "frames": 547,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 84,
+              "role": "learner",
+              "sampled_choices": 84,
+              "unresolved_consumed_decisions": []
+            },
+            {
+              "boundary": "cutoff",
+              "decision_values": 109,
+              "exclusion": "diagnostic",
+              "frames": 784,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 108,
+              "role": "frozen_opponent",
+              "sampled_choices": 108,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95005,
+            95006
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "weights_unchanged": true
+        },
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 608,
+              "kinds": {
+                "acknowledged": 17,
+                "consumed": 94,
+                "context": 74,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 95,
+                "event": 28,
+                "issued": 17,
+                "result": 94,
+                "submitted": 94,
+                "view": 93
+              },
+              "last_public_day": 14,
+              "result_statuses": {
+                "built": 1,
+                "closed": 31,
+                "no_route_known": 7,
+                "opened": 36,
+                "recruited": 3,
+                "selected": 3,
+                "turn_ended": 13
+              },
+              "submitted_actions": {
+                "back": 10,
+                "close": 21,
+                "construct": 1,
+                "end_turn": 13,
+                "move_to": 7,
+                "open_building": 3,
+                "open_hero": 8,
+                "open_panel": 12,
+                "open_town": 13,
+                "recruit": 3,
+                "select_recruit": 3
+              }
+            },
+            "red": {
+              "frames": 709,
+              "kinds": {
+                "acknowledged": 49,
+                "consumed": 98,
+                "context": 73,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 99,
+                "event": 17,
+                "issued": 49,
+                "result": 98,
+                "submitted": 98,
+                "view": 126
+              },
+              "last_public_day": 14,
+              "result_statuses": {
+                "built": 1,
+                "closed": 27,
+                "no_route_known": 7,
+                "opened": 35,
+                "reached": 5,
+                "recruited": 6,
+                "selected": 4,
+                "turn_ended": 13
+              },
+              "submitted_actions": {
+                "back": 6,
+                "close": 21,
+                "construct": 1,
+                "end_turn": 13,
+                "move_to": 12,
+                "open_building": 4,
+                "open_hero": 5,
+                "open_panel": 10,
+                "open_town": 16,
+                "recruit": 6,
+                "select_recruit": 4
+              }
+            }
+          },
+          "engine_seed": 95011,
+          "episode": 2,
+          "files": {
+            "episode-000002/agents/blue/history-v3.jsonl": "70ed581ee28432ba4efd12040bd7c7d18d5bd7532d9cb3da756ebe64ef08b9f4",
+            "episode-000002/agents/red/history-v3.jsonl": "5912780565df2385440212dadc5d04553236fbc233f2ca096b168afc7eb87517",
+            "episode-000002/manifest.json": "84e874c3f518814aa038954541db7db5e2c6752e67e6974cf76796640aca1f66",
+            "episode-000002/neural-audit.json": "dea93bd80808568fa522714482bf7689fb19e63366d43169f91937b3cdabfc63",
+            "episode-000002/neural-rollout.json": "4429779dec0af8d3bd9fd83d73247bc3bb71ddcb099dd8dda29ca118a6085c0c"
+          },
+          "learner_player": 1,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "player_trajectories": [
+            {
+              "boundary": "cutoff",
+              "decision_values": 99,
+              "exclusion": "diagnostic",
+              "frames": 709,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 98,
+              "role": "frozen_opponent",
+              "sampled_choices": 98,
+              "unresolved_consumed_decisions": []
+            },
+            {
+              "boundary": "cutoff",
+              "decision_values": 95,
+              "exclusion": "diagnostic",
+              "frames": 608,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 94,
+              "role": "learner",
+              "sampled_choices": 94,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95007,
+            95008
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "weights_unchanged": true
+        },
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 805,
+              "kinds": {
+                "acknowledged": 88,
+                "consumed": 97,
+                "context": 65,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 98,
+                "event": 19,
+                "issued": 88,
+                "result": 97,
+                "submitted": 97,
+                "view": 154
+              },
+              "last_public_day": 16,
+              "result_statuses": {
+                "closed": 29,
+                "movement_limit": 6,
+                "no_route_known": 4,
+                "opened": 32,
+                "reached": 7,
+                "recruited": 2,
+                "selected": 2,
+                "turn_ended": 15
+              },
+              "submitted_actions": {
+                "back": 7,
+                "close": 22,
+                "end_turn": 15,
+                "move_to": 17,
+                "open_building": 2,
+                "open_hero": 13,
+                "open_panel": 7,
+                "open_town": 10,
+                "recruit": 2,
+                "select_recruit": 2
+              }
+            },
+            "red": {
+              "frames": 612,
+              "kinds": {
+                "acknowledged": 16,
+                "consumed": 95,
+                "context": 64,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 96,
+                "event": 35,
+                "issued": 16,
+                "result": 95,
+                "submitted": 95,
+                "view": 98
+              },
+              "last_public_day": 17,
+              "result_statuses": {
+                "closed": 32,
+                "no_route_known": 15,
+                "opened": 32,
+                "turn_ended": 16
+              },
+              "submitted_actions": {
+                "back": 6,
+                "close": 26,
+                "end_turn": 16,
+                "move_to": 15,
+                "open_building": 1,
+                "open_hero": 18,
+                "open_panel": 5,
+                "open_town": 8
+              }
+            }
+          },
+          "engine_seed": 95012,
+          "episode": 3,
+          "files": {
+            "episode-000003/agents/blue/history-v3.jsonl": "49a72e72d6d7e01d2afca48ff7ee930b5773c50846456e62a7500e4097e4dba2",
+            "episode-000003/agents/red/history-v3.jsonl": "7657615b750a8420d0fb15284add24f5a276f36231610d219f33ccbbfd7ac271",
+            "episode-000003/manifest.json": "eb04a704a41e2c1a6f7e2dcdb88d997a1cef59981db080c48d4ed1aec7d48b6d",
+            "episode-000003/neural-audit.json": "ba70876dc32a03293b9028fd5beec02fa49c7b829b5f3cea63137119881005e4",
+            "episode-000003/neural-rollout.json": "fe1daa2f131368c659342bd65f40f47326958f6b3c3ae2aa639573ca95b76f11"
+          },
+          "learner_player": 0,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "player_trajectories": [
+            {
+              "boundary": "cutoff",
+              "decision_values": 96,
+              "exclusion": "diagnostic",
+              "frames": 612,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 95,
+              "role": "learner",
+              "sampled_choices": 95,
+              "unresolved_consumed_decisions": []
+            },
+            {
+              "boundary": "cutoff",
+              "decision_values": 98,
+              "exclusion": "diagnostic",
+              "frames": 805,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 97,
+              "role": "frozen_opponent",
+              "sampled_choices": 97,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95009,
+            95010
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "weights_unchanged": true
+        },
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 739,
+              "kinds": {
+                "acknowledged": 48,
+                "consumed": 105,
+                "context": 78,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 106,
+                "event": 16,
+                "issued": 48,
+                "result": 105,
+                "submitted": 105,
+                "view": 126
+              },
+              "last_public_day": 13,
+              "result_statuses": {
+                "built": 1,
+                "closed": 35,
+                "movement_limit": 3,
+                "no_route_known": 8,
+                "opened": 39,
+                "reached": 4,
+                "recruited": 1,
+                "selected": 2,
+                "turn_ended": 12
+              },
+              "submitted_actions": {
+                "back": 9,
+                "close": 26,
+                "construct": 1,
+                "end_turn": 12,
+                "move_to": 15,
+                "open_building": 6,
+                "open_hero": 19,
+                "open_panel": 6,
+                "open_town": 8,
+                "recruit": 1,
+                "select_recruit": 2
+              }
+            },
+            "red": {
+              "frames": 579,
+              "kinds": {
+                "acknowledged": 19,
+                "consumed": 87,
+                "context": 70,
+                "cutoff": 1,
+                "cutoff_finalized": 1,
+                "decision": 88,
+                "event": 24,
+                "issued": 19,
+                "result": 87,
+                "submitted": 87,
+                "view": 96
+              },
+              "last_public_day": 14,
+              "result_statuses": {
+                "built": 1,
+                "closed": 32,
+                "no_route_known": 3,
+                "opened": 35,
+                "reached": 1,
+                "recruited": 1,
+                "selected": 1,
+                "turn_ended": 13
+              },
+              "submitted_actions": {
+                "back": 12,
+                "close": 20,
+                "construct": 1,
+                "end_turn": 13,
+                "move_to": 4,
+                "open_building": 3,
+                "open_hero": 7,
+                "open_panel": 12,
+                "open_town": 13,
+                "recruit": 1,
+                "select_recruit": 1
+              }
+            }
+          },
+          "engine_seed": 95012,
+          "episode": 4,
+          "files": {
+            "episode-000004/agents/blue/history-v3.jsonl": "427b3313df8c085acb54c77f1609ab0efde8bab7fba9c767c7ce5a571bcb82eb",
+            "episode-000004/agents/red/history-v3.jsonl": "69d56afe320c0eb9891d460d4627c4e39b3d3928d379ae571ed4b215740aa54a",
+            "episode-000004/manifest.json": "fbcee32dcf052c7e67c7382a46ee4c35983d5df7abfaac23b595adeb209eb367",
+            "episode-000004/neural-audit.json": "6d6ad33e913e94f75740c966f3ca0660a868b2c39ced774230bb6632c543a540",
+            "episode-000004/neural-rollout.json": "1abe1331f987aea2e2b1758d3e856b45f1ba328e640986be66a8adb7c6f6164b"
+          },
+          "learner_player": 1,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "player_trajectories": [
+            {
+              "boundary": "cutoff",
+              "decision_values": 88,
+              "exclusion": "diagnostic",
+              "frames": 579,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 87,
+              "role": "frozen_opponent",
+              "sampled_choices": 87,
+              "unresolved_consumed_decisions": []
+            },
+            {
+              "boundary": "cutoff",
+              "decision_values": 106,
+              "exclusion": "diagnostic",
+              "frames": 739,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 105,
+              "role": "learner",
+              "sampled_choices": 105,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95011,
+            95012
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "weights_unchanged": true
+        }
+      ],
+      "code_commit": "c3edda8cd57607844a3c7e0bf03729ef23a71845",
+      "configuration": {
+        "engine_seeds": [
+          95011,
+          95012
+        ],
+        "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+        "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+        "max_days": 40,
+        "max_requests": 192,
+        "opponent_sampling_seed": 95004,
+        "opponent_seeds": [
+          95002
+        ],
+        "policy_seed": 95003
+      },
+      "kind": "unchanged_authored_map_fixed_untrained_policy",
+      "opponents": [
+        [
+          "untrained-65120f056f0c4b8a",
+          "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+        ]
+      ],
+      "policy": {
+        "checkpoint": "untrained-901446eb745d227a",
+        "initialization_seed": 95001,
+        "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+      },
+      "report": {
+        "path": "runs/contextual-neural-fixed-95011-95012/report.json",
+        "sha256": "461374440161814ecb9a7619baba038d923c9b4b86ca3bcbce7d0d96b338c23a"
+      },
+      "summary": {
+        "attempts": 4,
+        "collection_or_audit_error": 0,
+        "optimizer_updates": 0,
+        "outcome_rate": null,
+        "rate_reason": "Fixed-weight diagnostic checks are not an outcome-frequency evaluation cohort",
+        "technical_failure": 0,
+        "training_samples": 0,
+        "verified_cutoff": 4,
+        "verified_natural": 0
+      },
+      "tracked_worktree_dirty": false
+    },
+    {
+      "attempts": [
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 254,
+              "kinds": {
+                "acknowledged": 20,
+                "consumed": 33,
+                "context": 24,
+                "decision": 33,
+                "event": 10,
+                "finalized": 1,
+                "issued": 20,
+                "result": 33,
+                "submitted": 33,
+                "terminal": 1,
+                "view": 46
+              },
+              "last_public_day": 7,
+              "result_statuses": {
+                "closed": 11,
+                "no_route_known": 1,
+                "opened": 12,
+                "reached": 2,
+                "recruited": 1,
+                "turn_ended": 6
+              },
+              "submitted_actions": {
+                "back": 1,
+                "close": 10,
+                "end_turn": 6,
+                "move_to": 3,
+                "open_hero": 3,
+                "open_panel": 2,
+                "open_town": 7,
+                "recruit": 1
+              }
+            },
+            "red": {
+              "frames": 219,
+              "kinds": {
+                "acknowledged": 10,
+                "consumed": 34,
+                "context": 20,
+                "decision": 34,
+                "event": 8,
+                "finalized": 1,
+                "issued": 11,
+                "result": 33,
+                "submitted": 34,
+                "superseded": 1,
+                "terminal": 1,
+                "view": 32
+              },
+              "last_public_day": 7,
+              "result_statuses": {
+                "closed": 10,
+                "no_route_known": 6,
+                "opened": 10,
+                "reached": 1,
+                "turn_ended": 6
+              },
+              "submitted_actions": {
+                "close": 10,
+                "end_turn": 7,
+                "move_to": 7,
+                "open_hero": 10
+              }
+            }
+          },
+          "engine_seed": 95101,
+          "episode": 1,
+          "files": {
+            "episode-000001/agents/blue/history-v3.jsonl": "c749f396b86c30fb653c7e237c219c999698e226038bfc27e4e08cab8adfab8f",
+            "episode-000001/agents/red/history-v3.jsonl": "0067880d641df19d33d7347cce734a6b8a314b4d18234096c76195b93377c1a7",
+            "episode-000001/manifest.json": "5b971f435134f60fbc8ae52d266decf18b85ba6a7f21f8d1259232bf56f033b0",
+            "episode-000001/neural-audit.json": "a210d451cda7ec82b608b75fd91b795fc6e47d06327f9eb69c9fc48040e0727f",
+            "episode-000001/neural-rollout.json": "0d5c45d92fe7f8e6c93e00de29acbb827e2f05e1e875f347a927b2fd48d10b4b"
+          },
+          "learner_player": 0,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "player_trajectories": [
+            {
+              "boundary": "natural",
+              "decision_values": 34,
+              "exclusion": "diagnostic; unresolved consumption additionally invalidates contiguous returns",
+              "frames": 219,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 33,
+              "role": "learner",
+              "sampled_choices": 34,
+              "unresolved_consumed_decisions": [
+                209
+              ]
+            },
+            {
+              "boundary": "natural",
+              "decision_values": 33,
+              "exclusion": "diagnostic",
+              "frames": 254,
+              "last_resolved_reward": 1,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 33,
+              "role": "frozen_opponent",
+              "sampled_choices": 33,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95005,
+            95006
+          ],
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "status": "completed",
+          "termination_reason": "natural_terminal",
+          "training_samples": 0,
+          "weights_unchanged": true
+        },
+        {
+          "audit_consistent": true,
+          "coverage": {
+            "blue": {
+              "frames": 206,
+              "kinds": {
+                "acknowledged": 8,
+                "consumed": 31,
+                "context": 21,
+                "decision": 31,
+                "event": 13,
+                "finalized": 1,
+                "issued": 8,
+                "result": 31,
+                "submitted": 31,
+                "terminal": 1,
+                "view": 30
+              },
+              "last_public_day": 7,
+              "result_statuses": {
+                "built": 1,
+                "closed": 7,
+                "no_route_known": 4,
+                "opened": 10,
+                "recruited": 1,
+                "selected": 2,
+                "turn_ended": 6
+              },
+              "submitted_actions": {
+                "back": 2,
+                "close": 5,
+                "construct": 1,
+                "end_turn": 6,
+                "move_to": 4,
+                "open_building": 1,
+                "open_hero": 2,
+                "open_panel": 4,
+                "open_town": 3,
+                "recruit": 1,
+                "select_recruit": 2
+              }
+            },
+            "red": {
+              "frames": 223,
+              "kinds": {
+                "acknowledged": 23,
+                "consumed": 28,
+                "context": 12,
+                "decision": 28,
+                "event": 12,
+                "finalized": 1,
+                "issued": 24,
+                "result": 27,
+                "submitted": 28,
+                "superseded": 1,
+                "terminal": 1,
+                "view": 38
+              },
+              "last_public_day": 7,
+              "result_statuses": {
+                "closed": 6,
+                "interaction": 1,
+                "no_route_known": 4,
+                "opened": 6,
+                "reached": 4,
+                "turn_ended": 6
+              },
+              "submitted_actions": {
+                "close": 6,
+                "end_turn": 7,
+                "move_to": 9,
+                "open_hero": 6
+              }
+            }
+          },
+          "engine_seed": 95101,
+          "episode": 2,
+          "files": {
+            "episode-000002/agents/blue/history-v3.jsonl": "c21ee4538d8c6311b467f1199e7aa90194fff3fe97d8d648fc277a405cb5dd2b",
+            "episode-000002/agents/red/history-v3.jsonl": "8106f9595c9967099492ae7bc69292185bdbde79d884b23aeee99df52ed84608",
+            "episode-000002/manifest.json": "5dc64befa3c9b4993cf0d4fef6ae04e85035cb361d756e606e4f9d021bfbf19f",
+            "episode-000002/neural-audit.json": "fe97f5cce63e182fae10ba3230ac6002e975c0ddfe44623b8c35ec2a16aa8f47",
+            "episode-000002/neural-rollout.json": "2baac8c6acfa544293ab0c8e36b608c3cce61415a52dc6f7a850d77091fa8a47"
+          },
+          "learner_player": 1,
+          "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "player_trajectories": [
+            {
+              "boundary": "natural",
+              "decision_values": 28,
+              "exclusion": "diagnostic; unresolved consumption additionally invalidates contiguous returns",
+              "frames": 223,
+              "last_resolved_reward": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "resolved_samples": 27,
+              "role": "frozen_opponent",
+              "sampled_choices": 28,
+              "unresolved_consumed_decisions": [
+                213
+              ]
+            },
+            {
+              "boundary": "natural",
+              "decision_values": 31,
+              "exclusion": "diagnostic",
+              "frames": 206,
+              "last_resolved_reward": 1,
+              "optimization_eligible": false,
+              "player": 1,
+              "resolved_samples": 31,
+              "role": "learner",
+              "sampled_choices": 31,
+              "unresolved_consumed_decisions": []
+            }
+          ],
+          "policy_seeds": [
+            95007,
+            95008
+          ],
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "status": "completed",
+          "termination_reason": "natural_terminal",
+          "training_samples": 0,
+          "weights_unchanged": true
+        }
+      ],
+      "code_commit": "0b907038edd28c40231d5edbf8087ad4bf7d9771",
+      "configuration": {
+        "engine_seeds": [
+          95101
+        ],
+        "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/contextual-neural-townless-fixture/natural-townless.vmap",
+        "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+        "max_days": 40,
+        "max_requests": 256,
+        "opponent_sampling_seed": 95004,
+        "opponent_seeds": [
+          95002
+        ],
+        "policy_seed": 95003
+      },
+      "kind": "isolated_townless_natural_boundary_fixture",
+      "opponents": [
+        [
+          "untrained-65120f056f0c4b8a",
+          "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+        ]
+      ],
+      "policy": {
+        "checkpoint": "untrained-901446eb745d227a",
+        "initialization_seed": null,
+        "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+      },
+      "report": {
+        "path": "runs/contextual-neural-townless-95101/report.json",
+        "sha256": "b12cde265063543eb1f2e3fbea4da9d80e7330bdb0fd4535c6809be40bcad4a5"
+      },
+      "summary": {
+        "attempts": 2,
+        "collection_or_audit_error": 0,
+        "optimizer_updates": 0,
+        "outcome_rate": null,
+        "rate_reason": "Fixed-weight diagnostic checks are not an outcome-frequency evaluation cohort",
+        "technical_failure": 0,
+        "training_samples": 0,
+        "verified_cutoff": 0,
+        "verified_natural": 2
+      },
+      "tracked_worktree_dirty": false
+    }
+  ],
+  "natural_fixture": {
+    "path": "runs/contextual-neural-townless-fixture/fixture.json",
+    "sha256": "a91826a17696d3d2e7e7ede341b3111045e5d8cb8539f60e1f3550910b4efa00"
+  },
+  "notes": [
+    "Both natural fixture trials restore the saved untrained policy checkpoint and reach Red loss/Blue win. The fixture is excluded from training and outcome rates.",
+    "The first intentional crash attempt validated unscored history but its probe report failed on relative-path binding; the failed report is retained and corrected attempt passes.",
+    "No scripts, diagnostic fixture choices or generated maps become model training examples."
+  ],
+  "paid_compute": false,
+  "probability_recomputation": {
+    "details": {
+      "all_checks_passed": true,
+      "checkpoint": {
+        "path": "runs/contextual-neural-fixed-95011-95012/untrained-policy.pt",
+        "policy_weights_sha256": {
+          "untrained-65120f056f0c4b8a": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+          "untrained-901446eb745d227a": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+        },
+        "provenance": "random_initialization",
+        "sha256": "32f9377d844f56861d32ac2be2088ed244f14f2cec2e1d172f30983ca119bc71"
+      },
+      "created_at": "2026-10-24T16:39:21.865363+00:00",
+      "elapsed_seconds": 17.009026665997226,
+      "episodes": [
+        {
+          "audit_consistent": true,
+          "episode": 1,
+          "input_sha256": {
+            "episode-000001/agents/blue/history-v3.jsonl": "e717f9073d562e40b4fb5d30096f2c5bf8b7e50ad53b9f2111ffbe61d157afff",
+            "episode-000001/agents/red/history-v3.jsonl": "0500b6d811e3817cf78ce431a3925e792103dd99be520ce8af6c533b75991c8b",
+            "episode-000001/manifest.json": "ee9cacbb6e3c212422232596d97a2fc1cd7ba9136af9a980ce31c8d54abf8a4c",
+            "episode-000001/neural-rollout.json": "e0c63aaf6f30dbd880af87671769f90f1acf40a57bb0b1adcfc43b84d52f293f"
+          },
+          "manifest_bound": true,
+          "paired_complete_prefixes": true,
+          "players": [
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-901446eb745d227a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 84,
+                "conditional_probabilities": 132,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 85,
+                "frames": 547,
+                "ppo_rejections": 1,
+                "samples": 84
+              },
+              "cutoff_decision_seq": 544,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+              "optimization_eligible": false,
+              "player": 0,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "learner",
+              "unsampled_tail_value": 0.11529439687728882,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+            },
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-65120f056f0c4b8a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 108,
+                "conditional_probabilities": 175,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 109,
+                "frames": 784,
+                "ppo_rejections": 1,
+                "samples": 108
+              },
+              "cutoff_decision_seq": 781,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-901446eb745d227a",
+              "optimization_eligible": false,
+              "player": 1,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "frozen_opponent",
+              "unsampled_tail_value": -0.0767391175031662,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+            }
+          ],
+          "reciprocal_policy_identities": true
+        },
+        {
+          "audit_consistent": true,
+          "episode": 2,
+          "input_sha256": {
+            "episode-000002/agents/blue/history-v3.jsonl": "70ed581ee28432ba4efd12040bd7c7d18d5bd7532d9cb3da756ebe64ef08b9f4",
+            "episode-000002/agents/red/history-v3.jsonl": "5912780565df2385440212dadc5d04553236fbc233f2ca096b168afc7eb87517",
+            "episode-000002/manifest.json": "84e874c3f518814aa038954541db7db5e2c6752e67e6974cf76796640aca1f66",
+            "episode-000002/neural-rollout.json": "4429779dec0af8d3bd9fd83d73247bc3bb71ddcb099dd8dda29ca118a6085c0c"
+          },
+          "manifest_bound": true,
+          "paired_complete_prefixes": true,
+          "players": [
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-65120f056f0c4b8a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 98,
+                "conditional_probabilities": 184,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 99,
+                "frames": 709,
+                "ppo_rejections": 1,
+                "samples": 98
+              },
+              "cutoff_decision_seq": 706,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-901446eb745d227a",
+              "optimization_eligible": false,
+              "player": 0,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "frozen_opponent",
+              "unsampled_tail_value": -0.08496236801147461,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+            },
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-901446eb745d227a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 94,
+                "conditional_probabilities": 158,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 95,
+                "frames": 608,
+                "ppo_rejections": 1,
+                "samples": 94
+              },
+              "cutoff_decision_seq": 605,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+              "optimization_eligible": false,
+              "player": 1,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "learner",
+              "unsampled_tail_value": 0.11748801171779633,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+            }
+          ],
+          "reciprocal_policy_identities": true
+        },
+        {
+          "audit_consistent": true,
+          "episode": 3,
+          "input_sha256": {
+            "episode-000003/agents/blue/history-v3.jsonl": "49a72e72d6d7e01d2afca48ff7ee930b5773c50846456e62a7500e4097e4dba2",
+            "episode-000003/agents/red/history-v3.jsonl": "7657615b750a8420d0fb15284add24f5a276f36231610d219f33ccbbfd7ac271",
+            "episode-000003/manifest.json": "eb04a704a41e2c1a6f7e2dcdb88d997a1cef59981db080c48d4ed1aec7d48b6d",
+            "episode-000003/neural-rollout.json": "fe1daa2f131368c659342bd65f40f47326958f6b3c3ae2aa639573ca95b76f11"
+          },
+          "manifest_bound": true,
+          "paired_complete_prefixes": true,
+          "players": [
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-901446eb745d227a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 95,
+                "conditional_probabilities": 157,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 96,
+                "frames": 612,
+                "ppo_rejections": 1,
+                "samples": 95
+              },
+              "cutoff_decision_seq": 609,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+              "optimization_eligible": false,
+              "player": 0,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "learner",
+              "unsampled_tail_value": 0.11591731011867523,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+            },
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-65120f056f0c4b8a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 97,
+                "conditional_probabilities": 174,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 98,
+                "frames": 805,
+                "ppo_rejections": 1,
+                "samples": 97
+              },
+              "cutoff_decision_seq": 802,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-901446eb745d227a",
+              "optimization_eligible": false,
+              "player": 1,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "frozen_opponent",
+              "unsampled_tail_value": -0.07323082536458969,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+            }
+          ],
+          "reciprocal_policy_identities": true
+        },
+        {
+          "audit_consistent": true,
+          "episode": 4,
+          "input_sha256": {
+            "episode-000004/agents/blue/history-v3.jsonl": "427b3313df8c085acb54c77f1609ab0efde8bab7fba9c767c7ce5a571bcb82eb",
+            "episode-000004/agents/red/history-v3.jsonl": "69d56afe320c0eb9891d460d4627c4e39b3d3928d379ae571ed4b215740aa54a",
+            "episode-000004/manifest.json": "fbcee32dcf052c7e67c7382a46ee4c35983d5df7abfaac23b595adeb209eb367",
+            "episode-000004/neural-rollout.json": "1abe1331f987aea2e2b1758d3e856b45f1ba328e640986be66a8adb7c6f6164b"
+          },
+          "manifest_bound": true,
+          "paired_complete_prefixes": true,
+          "players": [
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-65120f056f0c4b8a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 87,
+                "conditional_probabilities": 135,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 88,
+                "frames": 579,
+                "ppo_rejections": 1,
+                "samples": 87
+              },
+              "cutoff_decision_seq": 576,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-901446eb745d227a",
+              "optimization_eligible": false,
+              "player": 0,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "frozen_opponent",
+              "unsampled_tail_value": -0.07160396873950958,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+            },
+            {
+              "assertions": {
+                "all_rewards_zero": true,
+                "complete_player_prefix": true,
+                "exact_conditional_support": true,
+                "exact_support": true,
+                "no_continuation_in_learner_prefix": true,
+                "own_tail_unsampled": true,
+                "tail_bootstrap_bound": true
+              },
+              "behavior_checkpoint": "untrained-901446eb745d227a",
+              "boundary": "cutoff",
+              "conditional_logprob_max_abs_error": 0.0,
+              "counts": {
+                "behavior_decisions": 105,
+                "conditional_probabilities": 180,
+                "cutoff_tail_values": 1,
+                "decision_estimates": 106,
+                "frames": 739,
+                "ppo_rejections": 1,
+                "samples": 105
+              },
+              "cutoff_decision_seq": 736,
+              "joint_logprob_max_abs_error": 0.0,
+              "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+              "optimization_eligible": false,
+              "player": 1,
+              "ppo_admission": {
+                "optimizer_created": false,
+                "optimizer_step_called": false,
+                "reason": "Optimizer updates admit only eligible synthetic learner trajectories",
+                "rejected": true
+              },
+              "role": "learner",
+              "unsampled_tail_value": 0.11586722731590271,
+              "value_max_abs_error": 0.0,
+              "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+            }
+          ],
+          "reciprocal_policy_identities": true
+        }
+      ],
+      "max_errors": {
+        "conditional_logprob_max_abs_error": 0.0,
+        "joint_logprob_max_abs_error": 0.0,
+        "value_max_abs_error": 0.0
+      },
+      "method": "Load original random-initialization checkpoint and frozen pool; strict CollectedEpisode.from_dict; chronological full permitted player-prefix forward pass under torch.no_grad; independent persisted history audit; PPO admission only.",
+      "omniscient_input_used": false,
+      "optimizer_updates": 0,
+      "schema": "heroes-contextual-neural-recomputation-v1",
+      "source": {
+        "checkpoint_source": {
+          "git_commit": "c3edda8cd57607844a3c7e0bf03729ef23a71845",
+          "interface": "adventure-town-v1",
+          "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+          "source_sha256": {
+            "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+            "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+            "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+            "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+            "experiments/learner/contextual.py": "ab72d727645036c59e3beea5bb5103a937507e4688282f89920ee97433cd6b49",
+            "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+            "experiments/learner/contextual_rollout.py": "a797b17b7e77a6149bf4912ffe79879460a26c13243aad59eb855eccad8a61ca",
+            "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+            "experiments/learner/inference.py": "1d81669c6e77bcc0be32199262ca05a266a71567fd0b752e2b395c58662dcecd",
+            "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+            "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+            "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+          },
+          "torch": "2.9.1",
+          "tracked_worktree_dirty": false
+        },
+        "git_commit": "0b907038edd28c40231d5edbf8087ad4bf7d9771",
+        "source_sha256": {
+          "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+          "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+          "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+          "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+          "experiments/learner/contextual.py": "ab72d727645036c59e3beea5bb5103a937507e4688282f89920ee97433cd6b49",
+          "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+          "experiments/learner/contextual_rollout.py": "a797b17b7e77a6149bf4912ffe79879460a26c13243aad59eb855eccad8a61ca",
+          "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+          "experiments/learner/inference.py": "1d81669c6e77bcc0be32199262ca05a266a71567fd0b752e2b395c58662dcecd",
+          "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+          "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+          "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+          "validation/probes/audit_contextual_histories.py": "4a49536450d36c172a852081d3df0dafae45903e7053ba5d6821778abc41ca26"
+        },
+        "torch_num_threads": 1,
+        "torch_version": "2.9.1",
+        "tracked_worktree_dirty": false
+      },
+      "sources_unchanged": true,
+      "totals": {
+        "behavior_decisions": 768,
+        "conditional_probabilities": 1295,
+        "cutoff_tail_values": 8,
+        "decision_estimates": 776,
+        "frames": 5383,
+        "ppo_rejections": 8,
+        "samples": 768
+      },
+      "training_samples": 0,
+      "weights_unchanged": true
+    },
+    "report": {
+      "path": "runs/contextual-neural-fixed-95011-95012/recomputed-policy.json",
+      "sha256": "48a6a1e94c1babb321e441ce19024d35510e12464a5fcdf4c82ea07564029fa3"
+    }
+  },
+  "remaining_gates": [
+    "No contextual natural completion on unchanged baseline in this four-game fixed-neural diagnostic cohort; not an outcome-frequency estimate.",
+    "Natural townless loser has a consumed action without resolved result. Its whole rollout is excluded; terminal-action reconciliation remains a training gate.",
+    "Contextual replay unsupported; probability recomputation verifies neural history consistency, not engine replay.",
+    "Broader event/action coverage and prior town edges: server-negative purchase acknowledgement, garrisoned-hero recruitment, Grail/conditional auto-merge.",
+    "Neural optimizer admits synthetic data only. Enabling gameplay updates needs explicit authorization and separately reviewed gate change."
+  ],
+  "schema": "heroes-contextual-neural-validation-v1",
+  "source_sha256": {
+    "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+    "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+    "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+    "experiments/learner/contextual.py": "ab72d727645036c59e3beea5bb5103a937507e4688282f89920ee97433cd6b49",
+    "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+    "experiments/learner/contextual_rollout.py": "a797b17b7e77a6149bf4912ffe79879460a26c13243aad59eb855eccad8a61ca",
+    "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+    "experiments/learner/inference.py": "1d81669c6e77bcc0be32199262ca05a266a71567fd0b752e2b395c58662dcecd",
+    "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+    "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+    "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+  },
+  "training_on_gameplay": false,
+  "unit_tests": {
+    "command": "/Users/orsi/Projects/Heroes/.venv/bin/python -m unittest discover -s tests -v",
+    "log": {
+      "path": "runs/contextual-neural-tests.log",
+      "sha256": "11d12664670577116a39e23745eed5ddc0dc0367bc802348682a447771afe25b"
+    },
+    "optimizer_scope": "isolated synthetic tests only; includes current-weight prefix replay and exact next-update checkpoint resumption",
+    "passed": 456,
+    "seconds": 68.133,
+    "skipped": 0
+  },
+  "validated_source_commit": "8a24a4a243674a8edf2b18ae02bc6a131c2da697"
+}

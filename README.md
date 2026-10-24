@@ -10,7 +10,8 @@ other with separate fog, automatic battles, and four synchronized recordings.
 The earlier fixed Easy-opponent baseline is retained. A separate, randomly
 initialized recurrent actor-critic prototype and strict learner contracts now
 exist. A new contextual PyTorch adapter, collector, recurrent PPO and checkpoint
-implementation is under validation; no game-trained policy exists. Draft headless
+implementation has passed synthetic and bounded native checks; no game-trained
+policy exists. Draft headless
 PR #6 has separately passed bounded native-game, boundary and replay validation
 on macOS at `4fe0d7c`; it remains unmerged. The next interface is structured
 map, hero-window and town-window interaction. Its native adapter, strict
@@ -481,7 +482,7 @@ The intended loop, in plain English:
 | Memory and model | An isolated random-initialized shared GRU actor–critic, separate `PlayerSession` state, synthetic gradient checks. | Live contextual encoder/adapter; no window state or learned game behavior exists. |
 | Candidate scoring | Generic typed scorer; movement model adapter only. Native v2 transport uses opaque subject handles and full rectangular coordinate domains. | Contextual neural encoding; the original model adapter and history-v1 still use indices 0–8. |
 | Hero/town operations | Explicit owned hero/town open/read/close; v3 adds native hall/building/dwelling panels, construction and exact-count town recruitment with local evidence. | Broader army editing, special panels and garrisoned-hero recruitment validation remain deferred. |
-| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing are being validated separately. | No optimization on gameplay; natural contextual outcomes, replay and further coverage remain gates. |
+| Learning | Contextual neural inference, collection, recurrent PPO and frozen-checkpoint plumbing passed separate bounded validation. | No optimization on gameplay; natural contextual outcomes, replay and further coverage remain gates. |
 
 The action-consumption and stream-finalization findings are **resolved in the
 reviewed draft head `4fe0d7c`**, not still-open design blockers. Integration must
@@ -1188,8 +1189,8 @@ learned history; the diagnostic last-seen cache is not an input. Temporary
 routing bindings refer to their explicitly current or prior observed snapshot;
 they do not query the engine or accumulate a hidden-world state. Opaque handles,
 sequence/revision/command counters and verification metadata are not features.
-Static content/text identifiers are learned from random byte embeddings, without
-pretrained language/game knowledge. Resource and skill slots preserve their
+Categorical content IDs and text IDs enter randomly initialized learned layers,
+without pretrained language/game knowledge or numeric utility scores. Resource and skill slots preserve their
 positions; collections of objects and controls have no strategic ordering.
 
 The policy chooses action kind, then any required visible subject/control/card,
@@ -1249,12 +1250,69 @@ failures and collection errors separately. Its records are diagnostics,
 excluded from optimization and outcome-rate claims. Contextual replay remains
 explicitly unsupported.
 
-Validation results and exact commands will be recorded here once this candidate
-passes the unit suite and bounded real-game checks. Existing town mechanics
-fixtures are not demonstrations or training experience. Remaining training
-gates include contextual natural outcomes under a declared random-policy
-cohort, broader event/action coverage, the documented town edge cases and
-contextual replay. No learning campaign is authorized by this implementation.
+Validation at `c3edda8` (core/runner), `0b90703` (natural fixture) and `8a24a4a`
+(corrected crash probe) passed on local macOS arm64, Python 3.13.5 and locked
+PyTorch 2.9.1:
+
+- **456 tests passed, zero skipped.** The new tests include exact action/count
+  probabilities, field/handle invariance, recurrent gradients, paired boundaries,
+  synthetic PPO updates, and bit-exact next-update checkpoint/RNG resumption.
+  The existing optional neural tests ran with PyTorch installed.
+- Four fixed untrained-policy games on the unchanged authored map, engine seeds
+  `95011`/`95012` in both learner colors, each reached its declared 192-choice
+  collection cutoff. All histories and paired bootstrap boundaries audit
+  correctly. They contain all eleven action kinds, five actual constructions,
+  fourteen exact-count recruitments and twelve creature selections. No technical
+  failure or natural completion occurred in this four-game diagnostic cohort.
+- Independent prefix recomputation of 5,383 frames reproduces all 776 decision
+  values, 768 behavior joint probabilities and 1,295 conditional probabilities
+  with **zero difference**. Eight cutoff decisions were valued without sampling.
+  All eight native diagnostic player rollouts reject PPO admission.
+- Two isolated townless-fixture games load the saved untrained policy checkpoint
+  and reach verified Red loss/Blue win. Both loser histories have a final consumed
+  action without a resolved result. The collector excludes the entire losing
+  rollout, preserving the loss in episode evidence without assigning it to an
+  earlier action. **This unresolved terminal-action case remains a training
+  gate**, not a completed source of negative policy/value targets.
+- An intentional real-process crash after four resolved neural choices produces
+  no rewards, outcomes, bootstrap or usable samples. The first crash attempt's
+  probe report failed on relative-path formatting; its raw failed-game history
+  is retained. The corrected reporting probe passes on a second declared attempt.
+- Weights stayed unchanged in every native run; native optimizer updates were
+  zero. Exact generated-engine/root-source verification passes; no engine source
+  was changed for this stage. Contextual replay is still unsupported.
+
+All eight native attempts, including the reporting failure, source/checkpoint
+identities, raw-file hashes and limits are retained in
+`validation/contextual-neural-2026-10-24.json`. Raw histories, checkpoints and
+reports remain under ignored `runs/`. These are mechanics/collector diagnostics,
+not demonstrations, gameplay optimization or an outcome-rate estimate.
+
+With the documented locked Python environment and prepared VCMI build:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m experiments.learner.inference \
+  --output runs/neural-fixed-check --engine-seed 95011 --engine-seed 95012 \
+  --max-requests 192 --max-days 40
+python3 validation/probes/create_boundary_fixture.py \
+  --kind natural-townless --output runs/neural-terminal-fixture
+.venv/bin/python -m experiments.learner.inference \
+  --output runs/neural-terminal-check \
+  --checkpoint runs/neural-fixed-check/untrained-policy.pt \
+  --map runs/neural-terminal-fixture/natural-townless.vmap \
+  --engine-seed 95101 --max-requests 256 --max-days 40
+.venv/bin/python validation/probes/validate_neural_failure.py \
+  --output runs/neural-crash-check \
+  --checkpoint runs/neural-fixed-check/untrained-policy.pt --engine-seed 95201
+```
+
+Before gameplay optimization, resolve the consumed terminal-action gap and
+establish contextual natural outcomes under a declared random-policy cohort.
+Broader event/action coverage, the prior town edge cases and contextual replay
+also remain gates. The synthetic-only optimizer admission must be changed only
+with explicit training authorization and review. No learning campaign is
+authorized by this implementation.
 
 ### Continue in a new chat
 
