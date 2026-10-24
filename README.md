@@ -533,20 +533,25 @@ replay validation, a natural-outcome estimate or a performance benchmark.
 
 Use English and read `AGENTS.md` plus this README first. The public `main`
 contains merged self-play PR #3 and offline analysis PR #2, including evidence
-validation fixes. At the 24 October handoff, Claude's **Build headless VCMI
-simulation and replay** task was working on issue #4; no headless PR had been
-published. Check its current status rather than treating this snapshot as live.
+validation fixes. Claude's headless implementation is now in draft
+[PR #6](https://github.com/tkorsi/heroes-rl/pull/6), reviewed locally at
+`40e34a3adcb7d80779810203b2c68785b035b61b`. It is not merged or accepted.
+Check its current status rather than treating this snapshot as live.
 
 Codex has now specified the learner's observation/history and per-player
 trajectory interfaces and implemented an isolated recurrent policy/value
-component against them. Next, reconcile this contract with Claude's staged
-headless delivery and validate the producer on real games. Keep engine, replay and
-throughput work with Claude. Review staged engine PRs and run real-game checks
-locally when available; the cloud checkout has no proprietary game assets.
+component against them. Local review of PR #6 reached three natural endings in
+four random self-play attempts, but all four native replays failed at the first
+neutral battle action. The contract review also found action-consumption and
+stream-finalization races, stale last-seen timestamps, and missing binding of
+render inputs to replay verification. Keep these fixes with Claude, then repeat
+local validation; the cloud checkout has no proprietary game assets. Compact
+evidence is in `validation/headless-review-2026-10-24.json`.
 Do not start a training campaign until headless validation establishes correct
-episode boundaries and reachable natural outcomes. Keep unresolved gaps visible:
-the current three self-play runs were truncated, schema 3 offline analysis is
-pending, and no headless throughput or replay fidelity has been measured here.
+episode boundaries and reachable natural outcomes. The original three rendered
+self-play runs remain truncated; the new headless smoke is separate evidence.
+Schema 3 offline analysis, successful native replay, verified videos and the
+full throughput benchmark remain pending.
 
 ## Git and local artifacts
 
@@ -640,8 +645,26 @@ the single source of purpose and decisions; do not maintain competing charters.
   validation. All eight local baseline attempts classify as five natural
   endings, two technical failures and one truncation across six provenance
   cohorts; input files remain unchanged. Schema 3 self-play analysis is not yet
-  supported by this CLI. Headless simulation and exact replay remain pending
-  in issue #4; no headless throughput measurement has been performed.
+  supported by this CLI.
+- Draft headless PR #6 was reviewed at `40e34a3` on the local Mac, using its
+  existing Release build after exact dependency-source verification and a
+  no-op rebuild of all five targets. All 163 PR tests passed with the actual
+  learner contract enabled. Four fresh real self-play attempts produced three
+  complementary natural endings with clean exits and one unscored day cutoff;
+  a separate day-1 cutoff and forced watchdog failure also remained unscored.
+  All 6,793 reconstructed player-history frames pass the learner decoder and
+  ordering checks. Eleven intermediate enemy-position samples across seven
+  decision intervals are absent from both adjacent own decisions. These
+  demonstrate intermediate capture without establishing exhaustive coverage.
+- PR #6 is **not accepted for training**: native replay verified 0/4 episodes,
+  failing on neutral-player identity. Review also reproduced a submitted action
+  being recorded despite failed delivery, a trailing reader error being ignored
+  during finalization, stale last-seen observation times, and altered render
+  inputs retaining a verified label. The terminal races were injected checks,
+  not failures observed in the four-game smoke. No verified video, full series,
+  throughput benchmark or training was run. Evidence and exact commands:
+  `validation/headless-review-2026-10-24.json`. Engine, replay and performance
+  fixes remain Claude's workstream in issue #4.
 
 | Policy seed | Engine seed | Final attempt | Actions sent | Distinct hero positions | Explored tiles, of 400 | Result |
 | --- | --- | --- | --- | --- | --- | --- |

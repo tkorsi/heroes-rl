@@ -1,0 +1,1048 @@
+{
+  "base_commit": "34edd9b2d1fbe817512f4d38dac5f96b2a078d41",
+  "boundary_checks": [
+    {
+      "engine_evidence_error": null,
+      "manifest_sha256": "edd76cecc8a95e21772f75eaf113a11d119ec04824a505880cacb390330c8401",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "players": {
+        "blue": {
+          "actions_in_prefix": 9,
+          "actions_sent": 9,
+          "all_frames_decode_and_order_valid": true,
+          "bootstrap_prefix_is_next_unacted_decision": true,
+          "cutoff": {
+            "day": 2,
+            "history_v1_seq": 39
+          },
+          "cutoff_frame": {
+            "day": 2,
+            "episode": "1",
+            "kind": "decision",
+            "player": 1,
+            "seq": 39
+          },
+          "excluded_post_cutoff_actions": 0,
+          "history_frames": 40,
+          "history_valid": true,
+          "ledger_sha256": "0c18b0ead5b6e4fe8c226e023b213a5078bae456d0b49c74c5cbee2e2fc4cdea",
+          "reconstructed_summary_matches_manifest": true
+        },
+        "red": {
+          "actions_in_prefix": 13,
+          "actions_sent": 27,
+          "all_frames_decode_and_order_valid": true,
+          "bootstrap_prefix_is_next_unacted_decision": true,
+          "cutoff": {
+            "day": 2,
+            "history_v1_seq": 55
+          },
+          "cutoff_frame": {
+            "day": 2,
+            "episode": "1",
+            "kind": "decision",
+            "player": 0,
+            "seq": 55
+          },
+          "excluded_post_cutoff_actions": 14,
+          "history_frames": 110,
+          "history_valid": true,
+          "ledger_sha256": "ce94e2a28855d392478e9253c2a395e41649d822f5ff34a3975361ff8458bb54",
+          "reconstructed_summary_matches_manifest": true
+        }
+      },
+      "returncode": -15,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "run": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-day-horizon-2026-10-24/episodes/episode-000001",
+      "status": "truncated",
+      "termination_reason": "game_day_limit"
+    },
+    {
+      "engine_evidence_error": "FileNotFoundError: [Errno 2] No such file or directory: '/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-watchdog-2026-10-24/episodes/episode-000001/engine/experiment-metadata.json'",
+      "manifest_sha256": "25fbb80a3eca60975f1e43bb31dbcbc42f8c64b6fd9005a234860bffcb992de6",
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "players": {
+        "blue": {
+          "actions_sent": 0,
+          "all_frames_decode_and_order_valid": true,
+          "bootstrap_available": false,
+          "cutoff": null,
+          "exclusion": "watchdog_timeout is TechnicalFailure; no decision frames or actions were emitted",
+          "history_frames": 0,
+          "history_valid": true,
+          "ledger_sha256": "cd5061e48eab26c7c1a5d0c68551bf0e755e1d8904d8153f543e2bb8eb7281fd",
+          "reconstructed_summary_matches_manifest": true,
+          "training_eligible": false
+        },
+        "red": {
+          "actions_sent": 0,
+          "all_frames_decode_and_order_valid": true,
+          "bootstrap_available": false,
+          "cutoff": null,
+          "exclusion": "watchdog_timeout is TechnicalFailure; no decision frames or actions were emitted",
+          "history_frames": 0,
+          "history_valid": true,
+          "ledger_sha256": "e716639b1e30fe6ab4fd6670780280d6b84f083b7c8bfaa889de4aa7f11b03d8",
+          "reconstructed_summary_matches_manifest": true,
+          "training_eligible": false
+        }
+      },
+      "returncode": -15,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "run": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-watchdog-2026-10-24/episodes/episode-000001",
+      "status": "failed",
+      "termination_reason": "watchdog_timeout"
+    }
+  ],
+  "boundary_limitations": [
+    "Runtime EpisodeEnd.bootstrap dictionaries are not persisted; manifest cutoff references were verified by reconstructing exact per-player histories from bridge ledgers.",
+    "The real watchdog probe stopped after both ready messages, before metadata and before any player action; it demonstrates failure exclusion at that boundary, not a mid-trajectory watchdog."
+  ],
+  "build": {
+    "compiler": "Apple LLVM 17.0.0 (clang-1700.3.19.1) libc++ 210106 arm64 apple",
+    "identity": {
+      "binary": "/Users/orsi/Projects/Heroes/runs/issue4-worktree/vcmi/build/bin/vcmiclient",
+      "binary_sha256": "48aa0eb02285e47de6961f6d38b2e76e08ce4758b9409c5b1d4f52773573fc73",
+      "engine": {
+        "commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "956afc53b1c546b91b03061d1ba7766c6ab78ef0fc915488e412e6fd03ed74f1",
+        "engine/ExperimentReplay/ReplayMain.cpp": "b0bd3df330fa5c9872d04efe33f91e86e5b52039ccd85d2da10657c6105078b2",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/CMakeLists.txt": "ac177effc575297ca75a8a0cc38bb4e8f545f7882822717c9be8b9dbb09194dc",
+        "engine/ExplorerRL/ExplorerRL.cpp": "e4c514331f6f5d4de17fc5dca2bdcdea8c3c820d1259d5a8100ff3c75e3022a4",
+        "engine/ExplorerRL/ExplorerRL.h": "65ec5cc2799ac449d456891395df36556855a9a1fa483c5d9fedecdba8279df4",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/VisibleState.h": "51b42637cfeb2d72d95178c7c404fd4dc6278607b5a8c38cc3fbf625e2f49c50",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "c088d51a7a38142d9f6c78628433e7aadf0e7e87ad9cc4a3bda6f0ba0122872c"
+      },
+      "explorer_rl_sha256": "c11afc94603de619668556513c845fb5d08ee4caf33d5e3d6eb6243bfafa6cde",
+      "log_level": "info",
+      "map": {
+        "name": "random-baseline-v1.vmap",
+        "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+      },
+      "project": {
+        "commit": "40e34a3adcb7d80779810203b2c68785b035b61b",
+        "dirty": false
+      }
+    },
+    "provenance": "Reused an existing clean build of the exact reviewed commit. Exact prepared-source check passed, and all five requested build targets were already up to date. No new full build claimed.",
+    "replay_binary_sha256": "faee6f5ba4b911719fd11e6df82a69708961dc6e60d1cfb34401788f92ba1523",
+    "type": "Release"
+  },
+  "build_worktree": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "tools/prepare_vcmi.py",
+        "--check"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "result": "passed"
+    },
+    {
+      "argv": [
+        "cmake",
+        "--build",
+        "vcmi/build",
+        "--target",
+        "vcmiclient",
+        "vcmiserver",
+        "ExplorerRL",
+        "BattleAI",
+        "vcmireplay",
+        "--parallel",
+        "4"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "result": "ninja: no work to do"
+    },
+    {
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "env": {
+        "HEROES_LEARNER_PATH": "/Users/orsi/Documents/ChatGPT/Heroes/experiments"
+      },
+      "result": {
+        "passed": 163,
+        "seconds": 47.536,
+        "skipped": 0,
+        "tests": 163
+      }
+    },
+    {
+      "argv": [
+        "python3",
+        "experiments/headless/run_series.py",
+        "--output",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24",
+        "--attempts",
+        "4",
+        "--workers",
+        "2",
+        "--profile",
+        "--max-days",
+        "40",
+        "--max-actions",
+        "2000",
+        "--watchdog",
+        "30",
+        "--seed",
+        "40001",
+        "--red-policy-seed",
+        "1",
+        "--blue-policy-seed",
+        "100001",
+        "--data",
+        "/Users/orsi/Library/Application Support/vcmi"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "result": "4 attempts: 3 completed, 1 truncated, 0 failed"
+    },
+    {
+      "argv": [
+        "python3",
+        "experiments/headless/replay.py",
+        "series",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24",
+        "--binary",
+        "vcmi/build/bin/vcmireplay",
+        "--data",
+        "/Users/orsi/Library/Application Support/vcmi",
+        "--tamper",
+        "1",
+        "--trace",
+        "1"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "exit_code": 1,
+      "result": "0/4 verified; no tamper run or verified trace/video"
+    },
+    {
+      "argv": [
+        "python3",
+        "experiments/headless/run_headless.py",
+        "--output",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-day-horizon-2026-10-24",
+        "--episodes",
+        "1",
+        "--seed",
+        "42001",
+        "--max-days",
+        "1",
+        "--max-actions",
+        "2000",
+        "--watchdog",
+        "30",
+        "--data",
+        "/Users/orsi/Library/Application Support/vcmi"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "result": "truncated/game_day_limit; both rewards and outcomes null"
+    },
+    {
+      "argv": [
+        "python3",
+        "experiments/headless/run_headless.py",
+        "--output",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-watchdog-2026-10-24",
+        "--episodes",
+        "1",
+        "--seed",
+        "43001",
+        "--max-days",
+        "40",
+        "--max-actions",
+        "2000",
+        "--watchdog",
+        "0.000001",
+        "--data",
+        "/Users/orsi/Library/Application Support/vcmi"
+      ],
+      "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+      "result": "failed/watchdog_timeout before any action; both rewards and outcomes null"
+    }
+  ],
+  "date": "2026-10-24",
+  "engine_sources_modified_by_review": false,
+  "findings": [
+    {
+      "evidence": "All four fresh native replays diverge at their first neutral MakeAction. Recorded connection owns [0,1] only; input uses player -1. Pinned PlayerColor::NEUTRAL is -1; recorder probes 255.",
+      "id": "neutral_replay",
+      "priority": "P1",
+      "recommended_fix": "Record PlayerColor::NEUTRAL.getNum() for connection and host membership; rerun actual neutral-battle replay validation.",
+      "source": [
+        {
+          "detail": "PLAYER_IDS uses 255 for neutral.",
+          "lines": [
+            464,
+            464
+          ],
+          "path": "engine/patches/0013-experiment-replay.patch"
+        },
+        {
+          "detail": "Connection player membership is recorded only for enumerated PLAYER_IDS.",
+          "lines": [
+            690,
+            692
+          ],
+          "path": "engine/patches/0013-experiment-replay.patch"
+        },
+        {
+          "detail": "ReplayServer checks membership against the recorded connection players.",
+          "lines": [
+            169,
+            173
+          ],
+          "path": "engine/ExperimentReplay/ReplayMain.cpp"
+        }
+      ],
+      "title": "Neutral combat inputs fail replay because neutral is absent from connection metadata"
+    },
+    {
+      "assertions": [
+        "step(2) appends action=2 despite failed transport",
+        "actions_sent increments from 0 to 1",
+        "classifier ignores write_error and returns completed with terminal rewards"
+      ],
+      "id": "action_consumption",
+      "observed": {
+        "actions_sent": 1,
+        "classification": [
+          "completed",
+          {
+            "blue": "loss",
+            "red": "win"
+          },
+          "natural_terminal",
+          {
+            "blue": -1,
+            "red": 1
+          }
+        ],
+        "last_frame": {
+          "action": 2,
+          "day": 1,
+          "decision_seq": 1,
+          "episode": "1",
+          "kind": "action",
+          "player": 0,
+          "schema": "heroes-player-history-v1",
+          "seq": 2
+        },
+        "write_error": "BrokenPipeError: engine already closed after terminal"
+      },
+      "priority": "P1",
+      "setup": "In-memory environment with a valid pending player-0 action request. Mock socket sendall raises BrokenPipeError; _advance stubbed only to isolate step(). Then call real classifier with complementary terminals, clean exit and the retained write_error. No engine process or game is launched.",
+      "source": {
+        "engine/ExplorerRL/ExplorerRL.cpp": [
+          890,
+          892
+        ],
+        "experiments/episodes/scoring.py": [
+          92,
+          94
+        ],
+        "experiments/headless/env.py": [
+          367,
+          380
+        ]
+      },
+      "title": "Failed transport creates a taken action eligible for terminal scoring"
+    },
+    {
+      "assertions": [
+        "queued bridge_error is removed without setting failure reason",
+        "result remains completed/natural_terminal with +1/-1 rewards"
+      ],
+      "id": "stream_finalization",
+      "observed": {
+        "failure_detail": null,
+        "rewards": {
+          "blue": -1,
+          "red": 1
+        },
+        "status": "completed",
+        "termination_reason": "natural_terminal"
+      },
+      "priority": "P2",
+      "setup": "In-memory _finish(0) with mock exited process, complementary terminal/log evidence and one queued bridge_error for a truncated JSON message. Metadata and unrelated reporting are stubbed; scoring and queue drain are real. No engine process or game is launched.",
+      "source": {
+        "experiments/headless/env.py": [
+          646,
+          661
+        ]
+      },
+      "title": "Final drain discards queued reader protocol failure"
+    },
+    {
+      "id": "last_seen_time",
+      "observed": "memory() retains day=1, sequence=0 instead of the latest legitimate sighting. Full v1 views remain correct.",
+      "priority": "P2",
+      "recommended_fix": "Refresh observation times from actual permitted captures while visible; freeze stored facts and time once hidden.",
+      "setup": "Enemy appears on day 1, remains unchanged and present in a complete decision snapshot on day 3, then disappears on day 4.",
+      "source": {
+        "experiments/headless/player_history.py": [
+          159,
+          188
+        ]
+      },
+      "title": "Last-seen timestamps record the last change instead of the last observation"
+    },
+    {
+      "id": "render_evidence_binding",
+      "observed_output": {
+        "mutated_trace_and_outcomes_accepted": true,
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        }
+      },
+      "priority": "P2",
+      "recommended_fix": "Hash trace and source manifest when verification succeeds, require exact hashes before rendering, and reject changed or mismatched evidence.",
+      "reproduction_kind": "Synthetic renderer fixture; not real-game evidence and not proof of original native replay success.",
+      "setup": [
+        "Create the existing tests/test_render_replay.py RenderReplayTests fixture with episode(verified=True). It provides a synthetic trace, a verification report containing verified:true, and red-win/blue-loss manifest labels.",
+        "Change the last trace frame first hero x coordinate to 19 and red visible tiles to 400 ones.",
+        "Swap manifest outcomes to red:loss and blue:win without changing the verification report.",
+        "Call render_replay.render(episode, temporary_output, fps=1, max_seconds=1, hold_seconds=0)."
+      ],
+      "source": [
+        {
+          "detail": "Checks only verification.verified before loading current manifest and trace.",
+          "lines": [
+            301,
+            306
+          ],
+          "path": "experiments/headless/render_replay.py"
+        },
+        {
+          "detail": "Verification report stores no trace or source-manifest digest.",
+          "lines": [
+            410,
+            443
+          ],
+          "path": "experiments/headless/replay.py"
+        },
+        {
+          "detail": "Emits replay_verified true and hashes the trace only after rendering.",
+          "lines": [
+            358,
+            364
+          ],
+          "path": "experiments/headless/render_replay.py"
+        }
+      ],
+      "temporary_artifacts": "Fixture directory and rendered video removed by tearDown after reproduction.",
+      "title": "The offline renderer does not bind trace and outcome labels to verified evidence"
+    }
+  ],
+  "history_audit": {
+    "all_manifest_projections_match": true,
+    "contract_sha256": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+    "decoded_frames": 6793,
+    "example": {
+      "day": 23,
+      "decision_after_seq": 712,
+      "decision_before_seq": 706,
+      "episode": 1,
+      "handle": "8",
+      "player": "blue",
+      "position": [
+        2,
+        14,
+        0
+      ],
+      "sighting_seq": 710
+    },
+    "failures": 0,
+    "fully_transient_decision_intervals": 7,
+    "fully_transient_enemy_position_samples": 11,
+    "intermediate_enemy_position_samples": 376,
+    "limitation": "Positive examples of visible events absent from both neighboring own decisions; not an exhaustive visibility audit. Battle/dialog/visit details remain explicitly outside history-v1.",
+    "players": [
+      {
+        "decoded_frames": 864,
+        "episode": "1",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 1,
+        "intermediate_enemy_position_count": 12,
+        "ledger_sha256": "5249188461a6c34f30ae06b8a7066a587b82c1a613c8b424ecd2b745981ace8b",
+        "manifest_projection_matches": true,
+        "player": "blue",
+        "reconstructed_frames": 864
+      },
+      {
+        "decoded_frames": 608,
+        "episode": "1",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 2,
+        "intermediate_enemy_position_count": 30,
+        "ledger_sha256": "ee7762c68d6247156fa82a239b729046dcef4add9008c6885a3830c938fd6091",
+        "manifest_projection_matches": true,
+        "player": "red",
+        "reconstructed_frames": 608
+      },
+      {
+        "decoded_frames": 466,
+        "episode": "3",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 1,
+        "intermediate_enemy_position_count": 9,
+        "ledger_sha256": "429e2a624e9700a9c2a0b3fad72726d031b9504a5323a933c000ded8109d56f8",
+        "manifest_projection_matches": true,
+        "player": "blue",
+        "reconstructed_frames": 466
+      },
+      {
+        "decoded_frames": 518,
+        "episode": "3",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 1,
+        "intermediate_enemy_position_count": 28,
+        "ledger_sha256": "32fc44640bd79e95ddc5116f64f7b2937839e43496c3593c0acd5e1cebbf8e8b",
+        "manifest_projection_matches": true,
+        "player": "red",
+        "reconstructed_frames": 518
+      },
+      {
+        "decoded_frames": 757,
+        "episode": "2",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 0,
+        "intermediate_enemy_position_count": 45,
+        "ledger_sha256": "3155e13ace7851b5877f0aa0d8cde098c57213e3566561a432030bcb7d69aa68",
+        "manifest_projection_matches": true,
+        "player": "blue",
+        "reconstructed_frames": 757
+      },
+      {
+        "decoded_frames": 891,
+        "episode": "2",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 0,
+        "intermediate_enemy_position_count": 40,
+        "ledger_sha256": "9a95aea1ac40bd089aab20e34ac74119405ba60d71763efad1d7e6f8398dfd0c",
+        "manifest_projection_matches": true,
+        "player": "red",
+        "reconstructed_frames": 891
+      },
+      {
+        "decoded_frames": 1274,
+        "episode": "4",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 1,
+        "intermediate_enemy_position_count": 117,
+        "ledger_sha256": "4f1c21640e2a7bda99487b4b32756a31a68d575d5ed354ed5cedf50eb524ae69",
+        "manifest_projection_matches": true,
+        "player": "blue",
+        "reconstructed_frames": 1274
+      },
+      {
+        "decoded_frames": 1415,
+        "episode": "4",
+        "failure": null,
+        "fully_transient_enemy_sighting_count": 5,
+        "intermediate_enemy_position_count": 95,
+        "ledger_sha256": "73af1ab112617b748a48a0981eaca9a394b62585a98151d68c1f9f2a1312c597",
+        "manifest_projection_matches": true,
+        "player": "red",
+        "reconstructed_frames": 1415
+      }
+    ],
+    "sample_counting_rule": "Deduplicated (enemy handle, position) samples within each bounding same-player decision interval. A fully transient sample belongs to an enemy absent from both bounding decisions. Counts are not distinct appearance/disappearance episodes or raw frame counts.",
+    "source": {
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/learner-history-audit-20261024T110149Z/result.json",
+      "sha256": "9cdbefb5f4661c708c229f686a0eb8d700f34362f6525ea75a2373bc636b31e1"
+    },
+    "streams": 8
+  },
+  "host": {
+    "logical_cpus": 16,
+    "memory_bytes": 137438953472,
+    "model": "Mac16,5",
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "tooling_python": "3.14.7"
+  },
+  "issue": 4,
+  "kind": "headless-pr-review",
+  "learner_contract_commit": "dd15f4466610173ec8550d1abfa00088dfeb334a",
+  "paid_compute_used": false,
+  "pull_request": 6,
+  "remaining_gates": [
+    "Fix action-consumption and trailing-stream finalization races before accepting terminal trajectories.",
+    "Fix neutral replay metadata, rerun actual neutral-battle replays and tamper checks, then verify offline videos bound to exact evidence.",
+    "Fix last-seen times using permitted observations only.",
+    "Validate broader real callback/event coverage; history-v1 explicitly omits rich battle and dialog detail.",
+    "Complete declared natural-ending series and throughput benchmark after correctness fixes.",
+    "No training campaign until real headless episode boundaries and natural outcomes are accepted."
+  ],
+  "repository": "https://github.com/tkorsi/heroes-rl",
+  "reviewed_commit": "40e34a3adcb7d80779810203b2c68785b035b61b",
+  "schema_version": 1,
+  "scope": "Bounded real-VCMI uniform-random self-play validation and learner-contract review of an unmerged draft. No learned gameplay, optimizer updates, campaign or benchmark. Synthetic bug injections are identified separately.",
+  "smoke": {
+    "accepted_actions": 1521,
+    "attempts": 4,
+    "day_cutoffs": 1,
+    "episodes": [
+      {
+        "divergence": {
+          "actual": "false",
+          "expected": "true",
+          "field": "result",
+          "stage": "applied 95"
+        },
+        "divergent_input": {
+          "connection": 1,
+          "player": -1,
+          "seq": 95,
+          "type": 198
+        },
+        "episode": 1,
+        "manifest": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-0/episodes/episode-000001/manifest.json",
+          "sha256": "841c783f74054e0f8bb6aba90c95ad0eda1eaea2627ee3ff7e0f226f97879b13"
+        },
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "players": {
+          "blue": {
+            "actions_accepted": 208,
+            "actions_rejected": 0,
+            "actions_sent": 208,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 864,
+              "last_seq": 863,
+              "pending_action": null,
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 2,
+                "battle_start": 2,
+                "visit": 9
+              },
+              "valid": true
+            },
+            "write_error": null
+          },
+          "red": {
+            "actions_accepted": 138,
+            "actions_rejected": 0,
+            "actions_sent": 139,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 608,
+              "last_seq": 607,
+              "pending_action": [
+                603,
+                4
+              ],
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 3,
+                "battle_start": 3,
+                "visit": 6
+              },
+              "valid": true
+            },
+            "write_error": null
+          }
+        },
+        "recorded_connections": [
+          {
+            "id": 1,
+            "players": [
+              0,
+              1
+            ]
+          }
+        ],
+        "recorded_hosts": [
+          0,
+          1
+        ],
+        "replay_report": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-0/episodes/episode-000001/verification/replay-verification.json",
+          "sha256": "eab9326ede3a7a02dd61ccd7baa45dbe549dd38de5ca56edfae9699f18bb751b"
+        },
+        "replay_verified": false,
+        "returncode": 0,
+        "rewards": {
+          "blue": 1,
+          "red": -1
+        },
+        "seed": 40001,
+        "status": "completed",
+        "termination_reason": "natural_terminal"
+      },
+      {
+        "divergence": {
+          "actual": "false",
+          "expected": "true",
+          "field": "result",
+          "stage": "applied 59"
+        },
+        "divergent_input": {
+          "connection": 1,
+          "player": -1,
+          "seq": 59,
+          "type": 198
+        },
+        "episode": 2,
+        "manifest": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-1/episodes/episode-000002/manifest.json",
+          "sha256": "6a4c4c54d7548e9fd8679200896e14e0b934dce39d88c8a664edbb5689c8d256"
+        },
+        "outcomes": {
+          "blue": "loss",
+          "red": "win"
+        },
+        "players": {
+          "blue": {
+            "actions_accepted": 167,
+            "actions_rejected": 0,
+            "actions_sent": 167,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 757,
+              "last_seq": 756,
+              "pending_action": null,
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 2,
+                "battle_start": 2,
+                "visit": 4
+              },
+              "valid": true
+            },
+            "write_error": null
+          },
+          "red": {
+            "actions_accepted": 204,
+            "actions_rejected": 0,
+            "actions_sent": 205,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 891,
+              "last_seq": 890,
+              "pending_action": [
+                887,
+                0
+              ],
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 2,
+                "battle_start": 2,
+                "visit": 6
+              },
+              "valid": true
+            },
+            "write_error": null
+          }
+        },
+        "recorded_connections": [
+          {
+            "id": 1,
+            "players": [
+              0,
+              1
+            ]
+          }
+        ],
+        "recorded_hosts": [
+          0,
+          1
+        ],
+        "replay_report": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-1/episodes/episode-000002/verification/replay-verification.json",
+          "sha256": "427a06f8635b508f134bc5cc27dbdc5bfe585f22d6078753094b3a2f13c3c3b5"
+        },
+        "replay_verified": false,
+        "returncode": 0,
+        "rewards": {
+          "blue": -1,
+          "red": 1
+        },
+        "seed": 40002,
+        "status": "completed",
+        "termination_reason": "natural_terminal"
+      },
+      {
+        "divergence": {
+          "actual": "false",
+          "expected": "true",
+          "field": "result",
+          "stage": "applied 83"
+        },
+        "divergent_input": {
+          "connection": 1,
+          "player": -1,
+          "seq": 83,
+          "type": 198
+        },
+        "episode": 3,
+        "manifest": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-0/episodes/episode-000003/manifest.json",
+          "sha256": "e3d881c17efd7036383e760f7cc89076b224920dfbcdc46c895e9c21ef02d439"
+        },
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "players": {
+          "blue": {
+            "actions_accepted": 109,
+            "actions_rejected": 0,
+            "actions_sent": 109,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 466,
+              "last_seq": 465,
+              "pending_action": null,
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 2,
+                "battle_start": 2,
+                "visit": 9
+              },
+              "valid": true
+            },
+            "write_error": null
+          },
+          "red": {
+            "actions_accepted": 118,
+            "actions_rejected": 0,
+            "actions_sent": 119,
+            "cutoff": null,
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 518,
+              "last_seq": 517,
+              "pending_action": [
+                516,
+                8
+              ],
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "dialog": 2,
+                "dialog_answer": 2,
+                "visit": 4
+              },
+              "valid": true
+            },
+            "write_error": null
+          }
+        },
+        "recorded_connections": [
+          {
+            "id": 1,
+            "players": [
+              0,
+              1
+            ]
+          }
+        ],
+        "recorded_hosts": [
+          0,
+          1
+        ],
+        "replay_report": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-0/episodes/episode-000003/verification/replay-verification.json",
+          "sha256": "f6374228b5fb1a9e7fb2f9da7f4037a861118a52e989d734871ab10b54388372"
+        },
+        "replay_verified": false,
+        "returncode": 0,
+        "rewards": {
+          "blue": 1,
+          "red": -1
+        },
+        "seed": 40003,
+        "status": "completed",
+        "termination_reason": "natural_terminal"
+      },
+      {
+        "divergence": {
+          "actual": "false",
+          "expected": "true",
+          "field": "result",
+          "stage": "applied 36"
+        },
+        "divergent_input": {
+          "connection": 1,
+          "player": -1,
+          "seq": 36,
+          "type": 198
+        },
+        "episode": 4,
+        "manifest": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-1/episodes/episode-000004/manifest.json",
+          "sha256": "1e7c47bf30fd5e8dea3b680cf50d1ac038cb993d2af800e16749494f5cd09077"
+        },
+        "outcomes": {
+          "blue": null,
+          "red": null
+        },
+        "players": {
+          "blue": {
+            "actions_accepted": 266,
+            "actions_rejected": 0,
+            "actions_sent": 266,
+            "cutoff": {
+              "day": 41,
+              "history_v1_seq": 1273
+            },
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 1274,
+              "last_seq": 1273,
+              "pending_action": null,
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": 1273,
+              "unrepresented_events": {
+                "visit": 4
+              },
+              "valid": true
+            },
+            "write_error": null
+          },
+          "red": {
+            "actions_accepted": 311,
+            "actions_rejected": 0,
+            "actions_sent": 311,
+            "cutoff": {
+              "day": 41,
+              "history_v1_seq": 1404
+            },
+            "error": null,
+            "history_v1": {
+              "error": null,
+              "frames": 1415,
+              "last_seq": 1414,
+              "pending_action": null,
+              "schema": "heroes-player-history-v1",
+              "unacted_decision": null,
+              "unrepresented_events": {
+                "battle_complete": 3,
+                "battle_start": 3,
+                "visit": 5
+              },
+              "valid": true
+            },
+            "write_error": null
+          }
+        },
+        "recorded_connections": [
+          {
+            "id": 1,
+            "players": [
+              0,
+              1
+            ]
+          }
+        ],
+        "recorded_hosts": [
+          0,
+          1
+        ],
+        "replay_report": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/worker-1/episodes/episode-000004/verification/replay-verification.json",
+          "sha256": "c91cd04e9a38464b628b8056e4bf007644656043781cd772465bb886f90dc81c"
+        },
+        "replay_verified": false,
+        "returncode": -15,
+        "rewards": {
+          "blue": null,
+          "red": null
+        },
+        "seed": 40004,
+        "status": "truncated",
+        "termination_reason": "game_day_limit"
+      }
+    ],
+    "failures": 0,
+    "natural_endings": 3,
+    "replay": {
+      "attempted": 4,
+      "boundaries": {},
+      "natural_verified": 0,
+      "tamper_all_detected": null,
+      "tamper_crashed_cases": 0,
+      "tamper_runs": 0,
+      "tamper_skipped": 0,
+      "verified": 0
+    },
+    "replay_series": {
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/replay-series.json",
+      "sha256": "e9b9427a188c5f8ec7b5432c2240b40b0dd958a3d445b791d4659a66fa5d4808"
+    },
+    "series": {
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-review-2026-10-24/series.json",
+      "sha256": "f9ed6cb2825c07b6cfa0800b1e602fe2b666e7251f0663d155eec14c20711cd2"
+    },
+    "workers": 2
+  },
+  "source_worktree": "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+  "training_started": false,
+  "verdict": "changes_required"
+}
