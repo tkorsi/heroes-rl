@@ -412,6 +412,13 @@ map/hero/town loop are authorized for implementation and bounded local validatio
 `experiments/learner/contextual.py` implements the v2 record and trajectory contract;
 the native producer and adapter are being implemented separately by Claude. The
 details below describe the intended execution, not yet validated native behavior.
+The first knowledge-planner stage (`b4cc7b2`) builds locally on macOS and its
+generated dependency matches the root recipe. Its grid/prefix regression covers
+five groups and 200 hidden-world variants; it does not run the full pathfinder
+in a game. The 88 contextual contract, auditor and probe tests also pass. The
+planner is not yet called by a live contextual adapter, so no contextual episode
+or route/window acceptance result is established. Compact stage evidence is in
+`validation/contextual-integration-2026-10-24.json`.
 Construction, recruitment and army editing remain later stages. No training is
 authorized. Keep the adjacent-step `movement-v1` baseline
 as a separately identified comparison. All contexts are structured headless
@@ -538,6 +545,14 @@ refresh or reward. A notice stops an active route at the interaction boundary;
 verified terminal finalization still takes precedence. The structured native
 hook must run before text translation and cover the separate new-week path.
 Unrecognized notice shapes remain explicit unsupported stops.
+
+Legacy server replay and visible-state digests do not verify these new fields.
+Contextual replay must fail closed as unsupported until native checks bind
+window operations and payloads, roads, ordered recipient-specific notices, and
+the policy-action/native-command association. Merely checking new file hashes
+does not establish their semantic correctness. Bounded live interface acceptance
+can proceed separately; no contextual record may inherit a verified label from
+the legacy replay path.
 
 Records are immutable and append-only. Navigation consumption is distinguished
 from native command issuance and acknowledgement. An unacted decision must be
