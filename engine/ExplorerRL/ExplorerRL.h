@@ -82,7 +82,7 @@ private:
 	int snapshotEvery = 1; ///< observations carry the visible tile list every N decisions, never when 0
 	int64_t observations = 0;
 	int64_t actionID = 0;
-	int64_t submittedActionID = -1; ///< the last policy action handed to the engine, protected by stateMutex
+	int64_t submittedActionID = -1; ///< the last policy action issued to the server, protected by stateMutex
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex
@@ -145,7 +145,11 @@ private:
 	void visibleChangeTrigger() noexcept;
 	void enqueueDecision(QueryID query, JsonNode payload);
 	void handleDecision(Decision decision);
-	bool executeRequest(const std::function<void()> & request, bool waitForAdventure = true);
+	/// Issues one request and waits for its acknowledgement. A policy action passes its ID: it is issued, and
+	/// becomes the terminal's consumption watermark, only while this player's game is in progress; otherwise
+	/// nothing is issued and `issued` stays false.
+	bool executeRequest(const std::function<void()> & request, bool waitForAdventure = true, int64_t policyActionID = -1,
+		bool * issued = nullptr);
 	bool ended();
 	void unsupported(const std::string & operation);
 };

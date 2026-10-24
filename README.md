@@ -373,24 +373,33 @@ within one update handles follow visible facts, never engine-ID order.
 and `level_up` reports a level-up the server applied without a choice.
 
 Each player's stream is also projected onto the learner's
-`heroes-player-history-v1` frames (`experiments/headless/history_v1.py`):
-a complete `view` at each visible change, a `decision` with its view and
-attempt mask, the player's own `action` and its `result`. Sequence numbers
-count only that player's frames, owners are relative to the player and object
-identities are the player's opaque handles. Visible events that v1 cannot
-represent (battle details, visits, dialogs and their answers) stay in the full
-record stream and are counted per player in the manifest; a frame order that
-v1 forbids marks only the projection invalid for that episode. Each terminal
+`heroes-player-history-v1` frames (`experiments/headless/history_v1.py`): a
+complete `view` at each visible change, a `decision` with its view and attempt
+mask, the player's own `action` and its `result`. Sequence numbers count only
+that player's frames, owners are relative to the player and object identities
+are the player's opaque handles. Visible events that v1 cannot represent
+(battle details, visits, dialogs and their answers) stay in the full record
+stream and are counted per player in the manifest; a frame order that v1
+forbids marks only the projection invalid for that episode. Each terminal
 carries the engine's consumption watermark, `last_action_id`: the last action
-the engine took, set under the same lock that marks the game ended, so a reply
-is either taken or never executed. A delivered action without a result that
-the watermark names stays the final transition, with no invented result
+ExplorerRL issued to the server while that player's game was in progress. It
+is committed at issuance under the game-state lock, where no pack can be
+applied, so an action is issued either before the pack that ends the game or
+not at all. It records the client's issuance, not the server's verdict: an
+action issued while the game-ending pack was still in flight is kept, although
+the server then rejects it, because at the terminal the client cannot tell it
+from an action that itself ended the game (the server sends the end before
+acknowledging that action). A delivered action without a result that the
+watermark names stays the final transition, with no invented result
 (`actions_without_result`). One it does not name is withdrawn from the frames
 (`actions_unconsumed`, `retracted_actions`), and a response the closing socket
-refused is never folded (`responses_undelivered`). The decision left unacted
-stays in history as the last frame, `superseded_decision`, but is never a
-sample: the terminal reward belongs to the last action actually taken. The
-frames
+refused is never folded (`responses_undelivered`); the validator then rejects
+a result or watermark for it. The decision left unacted stays in history as
+the last frame, `superseded_decision`, but is never a sample: the terminal
+reward belongs to the last action actually taken. v1 has no frame after it, so
+if the terminal brings visible changes there, that player's projection is
+marked invalid instead of silently losing them; the natural outcome is
+classified separately. The frames
 decode with the learner's `decode_frame` and `HistoryCursor`; run the check
 with `HEROES_LEARNER_PATH=<folder containing learner/> python3 -m unittest
 tests.test_headless` while the learner contract is not on `main`.
@@ -423,10 +432,14 @@ tests.test_headless` while the learner contract is not on `main`.
   truncation. The action horizon is a runaway guard and stops at once.
 - Only a stop the environment declares can be a truncation. Watchdog, crash,
   protocol violation, engine error, unclean shutdown and invalid engine
-  evidence are `failed`, also during a horizon continuation. After an exit of
+  evidence are `failed`, also during a horizon continuation. Events that
+  arrived before a declared stop takes effect are folded first: a failure
+  among them fails the episode, an engine that had already exited is judged by
+  its exit status and terminals, and a game that had already ended finishes
+  naturally. Only what follows the stop is attributed to it. After an exit of
   the engine's own, every bridge stream is read to its end first: a stream that
-  ends inside a message, fails to decode or never finishes is a protocol
-  violation even after both terminals. Neither
+  ends inside a message, fails to decode or is not finished within 5 s is a
+  protocol violation even after both terminals. Neither
   truncations nor failures are scored, and a dead hero with a surviving town
   is never a loss.
 

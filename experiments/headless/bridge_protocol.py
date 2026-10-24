@@ -107,6 +107,8 @@ class BridgeValidator:
         self.last_decision_id = -1
         self.pending = None  # ("action", action_id, mask) or ("decision", decision_id, choices)
         self.submitted = None  # (action_id, action) awaiting its result
+        self.refused = False  # the submitted action's response never reached the engine
+        self.issued = False  # a dialog during the submitted action proves the engine issued it
         self.awaiting_turn_end = False
         self.last_day = 0
         self.next_visible_sequence = 0
@@ -155,8 +157,8 @@ class BridgeValidator:
             self.last_action_id = action_id
             self.pending = ("action", action_id, validate_mask(message.get("action_mask")))
         elif kind == "action_result":
-            _require(self.submitted is not None and (message.get("action_id"), message.get("action")) == self.submitted,
-                     "Action result does not match the submitted action")
+            _require(self.submitted is not None and (message.get("action_id"), message.get("action")) == self.submitted
+                     and not self.refused, "Action result does not match the submitted action")
             _require(type(message.get("accepted")) is bool, "Action result is missing an acceptance flag")
             _require(isinstance(message.get("after"), dict) and isinstance(message.get("before"), dict),
                      "Action result must contain before/after player state")
@@ -166,6 +168,10 @@ class BridgeValidator:
             decision_id = message.get("decision_id")
             _require(_integer(decision_id) and decision_id == self.last_decision_id + 1, "Decision ID must increase by one")
             _require(self.pending is None, "Decision arrived while another response is outstanding")
+            # The engine answers dialogs during an action only after issuing it, and a response it never
+            # received leaves it waiting for that response.
+            _require(not self.refused, "Decision arrived after a response the engine never received")
+            self.issued = self.issued or self.submitted is not None
             self.last_decision_id = decision_id
             self.pending = ("decision", decision_id, validate_choices(message.get("choices")))
         elif kind == "turn_end":
@@ -175,10 +181,16 @@ class BridgeValidator:
             _require(message.get("outcome") in {"win", "loss"}, "Terminal must contain a natural win or loss")
             _require(isinstance(message.get("state"), dict), "Terminal must contain the player's final state")
             # The engine's consumption watermark: a submitted action without a result was consumed only if the
-            # watermark names it; every other observed action was resolved.
+            # watermark names it, and never when its response did not reach the engine; every other observed
+            # action was resolved.
             consumed = message.get("last_action_id")
             if self.submitted is not None:
-                allowed = {self.submitted[0], self.submitted[0] - 1}
+                if self.refused:
+                    allowed = {self.submitted[0] - 1}
+                elif self.issued:
+                    allowed = {self.submitted[0]}
+                else:
+                    allowed = {self.submitted[0], self.submitted[0] - 1}
             elif self.pending is not None and self.pending[0] == "action":
                 allowed = {self.pending[1] - 1}
             else:
@@ -198,12 +210,17 @@ class BridgeValidator:
         if kind == "action":
             if type(value) is not int or not 0 <= value < ACTIONS or not allowed[value]:
                 raise ValueError("Action is outside the attempt mask")
-            self.pending, self.submitted = None, (identifier, value)
+            self.pending, self.submitted, self.refused, self.issued = None, (identifier, value), False, False
             return {"action_id": identifier, "action": value}
         if type(value) is not int or value not in allowed:
             raise ValueError("Choice is not offered by the decision")
         self.pending = None
         return {"decision_id": identifier, "choice": value}
+
+    def refuse(self, response: dict) -> None:
+        """Record that a response from ``respond`` could not be written: the engine never received it."""
+        if "action_id" in response:
+            self.refused = True
 
     def _check_events(self, events) -> None:
         _require(isinstance(events, list), "Message must carry its ordered event list")

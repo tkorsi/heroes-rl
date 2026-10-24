@@ -80,7 +80,7 @@ class RunnerTests(unittest.TestCase):
         self.binary.write_text(CLIENT)
         self.binary.chmod(self.binary.stat().st_mode | stat.S_IEXEC)
         suffix = ".dylib" if sys.platform == "darwin" else ".so"
-        (self.binary.parent / "AI" / f"libExplorerRL{suffix}").write_bytes(b"stand-in visible_update-v2 observations-p")
+        (self.binary.parent / "AI" / f"libExplorerRL{suffix}").write_bytes(b"stand-in visible_update-v2 observations-p last_action_id")
         (base / "data/Data").mkdir(parents=True)
         self.map = base / "scenario.vmap"
         self.map.write_bytes(b"stand-in map")

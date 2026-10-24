@@ -639,7 +639,8 @@ JsonNode ExplorerRL::takeProfile()
 	return result;
 }
 
-bool ExplorerRL::executeRequest(const std::function<void()> & request, bool waitForAdventure)
+bool ExplorerRL::executeRequest(const std::function<void()> & request, bool waitForAdventure, int64_t policyActionID,
+	bool * issued)
 {
 	{
 		std::lock_guard lock(stateMutex);
@@ -649,8 +650,25 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 	}
 	{
 		const auto gameLock = readGameState();
+		if(policyActionID >= 0)
+		{
+			// The consumption watermark is committed where no pack can be applied. The pack that ends this
+			// player's game was either applied already, and the action is never issued, or is applied after
+			// the request has left. gameOver runs only after that pack is applied and reads the watermark,
+			// so it names exactly the actions issued before the end. The state lock is released before
+			// request(), whose requestSent() takes it again.
+			const bool playing = callback->getPlayerStatus(playerID, false) == EPlayerStatus::INGAME;
+			std::lock_guard lock(stateMutex);
+			if(!failure.empty())
+				throw std::runtime_error(failure);
+			if(!playing || stopping || terminal)
+				return false;
+			submittedActionID = policyActionID;
+		}
 		request();
 	}
+	if(issued)
+		*issued = true;
 	std::unique_lock lock(stateMutex);
 	// Keep this local: a nested dialog answer has its own request identifier.
 	const int requestID = pendingRequest;
@@ -898,17 +916,8 @@ void ExplorerRL::runTurn(QueryID queryID)
 			const auto gameLock = readGameState();
 			before = playerState();
 		}
-		{
-			// The terminal reads this watermark under the same lock after it marks the game ended, so the
-			// action is either consumed here, even if no result follows, or never executed at all.
-			std::lock_guard lock(stateMutex);
-			if(!failure.empty())
-				throw std::runtime_error(failure);
-			if(stopping || terminal)
-				return;
-			submittedActionID = actionID;
-		}
 		const auto requestStart = std::chrono::steady_clock::now();
+		bool issued = false;
 		const bool accepted = executeRequest([this, action, heroID, position] {
 			if(action == 8)
 			{
@@ -920,8 +929,9 @@ void ExplorerRL::runTurn(QueryID queryID)
 				throw std::runtime_error("Hero changed before its primitive action");
 			const int3 destination(position.x + DIRECTIONS[action][0], position.y + DIRECTIONS[action][1], position.z);
 			callback->moveHero(hero, hero->convertFromVisitablePos(destination), false);
-		});
-		if(ended())
+		}, true, actionID, &issued);
+		// An action the game ended before is never issued; the terminal's watermark then excludes it.
+		if(!issued || ended())
 			return;
 		const auto requestMicros = microsecondsSince(requestStart);
 		const bool resultSent = buildAndSend([&]
@@ -984,7 +994,7 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		auto record = message("terminal");
 		record["outcome"].String() = result.victory() ? "win" : "loss";
 		{
-			// The last action the engine consumed: a reply that arrives after the game ended is never executed.
+			// The last action issued before this player's game ended (see executeRequest); a later reply never is.
 			std::lock_guard lock(stateMutex);
 			record["last_action_id"].Integer() = submittedActionID;
 		}

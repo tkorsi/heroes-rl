@@ -257,22 +257,39 @@ class HistoryV1Tests(unittest.TestCase):
         self.assertEqual(self.history.records[-1]["type"], "terminal")
 
     def test_a_terminal_supersedes_an_unacted_decision(self):
-        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
+        self.history.ingest(self.terminal(-1))
         summary = self.history.v1.summary()
         self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])  # kept, never acted on
         self.assertEqual((summary["valid"], summary["unacted_decision"], summary["superseded_decision"]), (True, None, 1))
-        # The terminal's own changes follow the decision, which v1 cannot express: counted, not dropped.
-        self.assertEqual(summary["unrepresented_events"], {"view_after_superseded_decision": 1})
         self.assertEqual(self.history.records[-1]["last_action_id"], -1)
 
     def test_a_terminal_withdraws_an_action_the_engine_never_consumed(self):
         self.history.act(2, 0)
-        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
+        self.history.ingest(self.terminal(-1))
         summary = self.history.v1.summary()
         self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])
         self.assertEqual((summary["valid"], summary["pending_action"], summary["retracted_actions"],
                           summary["superseded_decision"]), (True, None, 1, 1))
         self.assertEqual((self.history.actions_unconsumed, self.history.actions_without_result), (1, 0))
+
+    def test_final_views_after_a_superseded_decision_fail_the_projection_closed(self):
+        enemy = obj(4, 2, 2, owner=1)
+        final = [update(1, appeared=[enemy]), update(2, disappeared=[4])]  # an enemy glimpsed only at the end
+        for consumed in (None, False):
+            with self.subTest(retracted=consumed is False):
+                self.setUp()
+                if consumed is False:
+                    self.history.act(2, 0)
+                self.history.ingest(self.terminal(-1, final))
+                summary = self.history.v1.summary()
+                # v1 cannot place them after the decision, so the stream is incomplete, never silently valid.
+                self.assertFalse(summary["valid"])
+                self.assertIn("after the decision it superseded", summary["error"])
+                self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])
+                # The full record stream still has both sightings.
+                events = self.history.records[-1]["events"]
+                self.assertEqual([len(e["appeared"]) for e in events], [1, 0])
+                self.assertEqual([len(e["disappeared"]) for e in events], [0, 1])
 
     def test_a_terminal_keeps_a_consumed_action_whose_result_never_came(self):
         self.history.act(2, 0)
@@ -334,15 +351,24 @@ class BridgeValidatorTests(unittest.TestCase):
             validator.check(self.ready())
             validator.check(observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)]))
             if stage != "requested":
-                validator.respond(2)
+                response = validator.respond(2)
+                if stage == "refused":
+                    validator.refuse(response)
+            if stage == "issued":  # a dialog during the action: the engine had issued it
+                validator.check(dialog)
+                validator.respond(1)
             if stage == "resolved":
                 validator.check({"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1",
                                  "action_id": 0, "action": 2, "accepted": True, "before": {}, "after": {}, "events": []})
             return validator
         terminal = {"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "win",
                     "state": {}, "events": []}
-        # An unanswered request was never consumed; a submitted action may or may not have been; a resolved one was.
-        for stage, allowed in (("requested", {-1}), ("submitted", {-1, 0}), ("resolved", {0})):
+        dialog = {"type": "decision", "protocol_version": 3, "player": 0, "episode": "1", "decision_id": 0,
+                  "choices": [{"choice": 0}, {"choice": 1}], "events": []}
+        # An unanswered request was never consumed; a submitted action may or may not have been, unless a dialog
+        # during it or a refused write settles it; a resolved one was.
+        for stage, allowed in (("requested", {-1}), ("submitted", {-1, 0}), ("refused", {-1}), ("issued", {0}),
+                               ("resolved", {0})):
             for consumed in (-2, -1, 0, 1, None, True):
                 with self.subTest(stage=stage, consumed=consumed):
                     message = dict(terminal) if consumed is None else {**terminal, "last_action_id": consumed}
@@ -352,6 +378,12 @@ class BridgeValidatorTests(unittest.TestCase):
                     else:
                         with self.assertRaisesRegex(ProtocolError, "consumption watermark"):
                             validator.check(message)
+        # The engine cannot report a result, or raise a dialog, for a response it never received.
+        with self.assertRaisesRegex(ProtocolError, "does not match the submitted action"):
+            at("refused").check({"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1",
+                                 "action_id": 0, "action": 2, "accepted": True, "before": {}, "after": {}, "events": []})
+        with self.assertRaisesRegex(ProtocolError, "never received"):
+            at("refused").check(dialog)
 
     def test_snapshot_period_is_declared_and_enforced(self):
         def result(action_id):
@@ -502,6 +534,25 @@ def play(env, players, episode=1, seed=7):
         requests.append(step)
         step = env.step(players[step.color].act(step))
     return step, requests
+
+
+class PreflightTests(unittest.TestCase):
+    def test_an_explorer_build_without_the_consumption_watermark_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "bin" / "vcmiclient"
+            (binary.parent / "AI").mkdir(parents=True)
+            binary.write_bytes(b"VCMI_EXPERIMENT_DIR EXPLORER_RL_PLAYERS VCMI_EXPERIMENT_REPLAY")
+            binary.chmod(0o755)
+            (root / "data" / "Data").mkdir(parents=True)
+            (root / "map.vmap").write_bytes(b"map")
+            library = binary.parent / "AI" / ("libExplorerRL.dylib" if sys.platform == "darwin" else "libExplorerRL.so")
+            launcher = env_module.VcmiLauncher(binary, root / "data", root / "map.vmap")
+            library.write_bytes(b"visible_update-v2 observations-p")  # built before the watermark existed
+            with self.assertRaisesRegex(ValueError, "consumption watermark"):
+                launcher.preflight()
+            library.write_bytes(b"visible_update-v2 observations-p last_action_id")
+            launcher.preflight()
 
 
 class StopProcessGroupTests(unittest.TestCase):
@@ -789,6 +840,121 @@ class HeadlessEnvTests(unittest.TestCase):
         self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
         self.assertEqual(end.rewards, {"red": None, "blue": None})
         self.assertIn("ended inside a message", end.manifest["failure_detail"])
+
+    def record_event_order(self, env):
+        """Record the kind of every event the environment takes from its queue, in order."""
+        events, order = env.events, []
+
+        class Recording:
+            def get(self, *args, **kwargs):
+                item = events.get(*args, **kwargs)
+                order.append(item[0])
+                return item
+
+            def get_nowait(self):
+                item = events.get_nowait()
+                order.append(item[0])
+                return item
+        env.events = Recording()
+        return order
+
+    def play_from(self, env, step, players):
+        while not step.done:
+            step = env.step(players[step.color].act(step))
+        return step
+
+    def wait_for(self, condition, seconds=10.0):
+        deadline = time.monotonic() + seconds
+        while not condition():
+            self.assertLess(time.monotonic(), deadline, "condition not reached")
+            time.sleep(0.005)
+
+    def queued(self, env, kind):
+        return any(item[0] == kind for item in list(env.events.queue))
+
+    def test_a_reader_error_after_the_engine_exit_still_fails_the_episode(self):
+        # A child keeps the sockets open after the engine exits, so the exit is handled before the
+        # reader reaches the partial line at its end of stream.
+        env = self.make(mode="trailing_partial", end_day=2, linger=0.5)
+        step = env.reset(1, 7)
+        order = self.record_event_order(env)
+        end = self.play_from(env, step, self.random_players())
+        self.assertLess(order.index("exit"), order.index("bridge_error"))
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("failed", "protocol_error", {"red": None, "blue": None}))
+        self.assertIn("ended inside a message", end.manifest["failure_detail"])
+        self.assertEqual(end.bootstrap, {"red": None, "blue": None})
+
+    def test_a_stream_still_open_after_the_engine_exit_fails_the_episode(self):
+        with mock.patch.object(env_module, "READER_DRAIN_SECONDS", 0.3):
+            end, _ = play(self.make(mode="natural", end_day=2, linger=2.0), self.random_players())
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("failed", "protocol_error", {"red": None, "blue": None}))
+        self.assertIn("did not finish its stream", end.manifest["failure_detail"])
+
+    def until_red_decides_on_day_two(self, env, players):
+        step = env.reset(1, 7)
+        while not (step.color == "red" and step.kind == "action" and step.record["day"] == 2):
+            step = env.step(players[step.color].act(step))
+        return step
+
+    def test_a_declared_stop_truncates_with_a_bootstrap_boundary(self):
+        env = self.make(mode="natural", end_day=5)
+        request = self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        end = env.truncate("collection_window")
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("truncated", "collection_window", {"red": None, "blue": None}))
+        self.assertEqual(end.bootstrap["red"], request.record)
+        self.assertEqual(end.bootstrap_v1_seq["red"], env.history_v1("red")[-1]["seq"])
+
+    def test_an_engine_crash_before_a_declared_stop_fails_the_episode(self):
+        env = self.make(mode="crash_after_observation", end_day=2)
+        self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        env.process.wait(timeout=10)  # the engine died while the agent decided
+        end = env.truncate("collection_window")
+        self.assertEqual(end.status, "failed")
+        self.assertEqual(end.termination_reason, "process_exit_without_verified_terminal")
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+        self.assertLess(end.manifest["returncode"], 0)
+
+    def test_a_protocol_error_before_a_declared_stop_fails_the_episode(self):
+        env = self.make(mode="garbage_after_observation", end_day=2)
+        self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.wait_for(lambda: self.queued(env, "bridge_error"))
+        self.assertIsNone(env.process.poll())  # still running: only the stop ends it
+        end = env.truncate("collection_window")
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+        self.assertIsNone(end.manifest["players"]["red"]["cutoff"])
+
+    def test_a_protocol_error_queued_behind_a_horizon_fails_the_episode(self):
+        limits = env_module.Limits(max_actions=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        env = self.make(limits, mode="garbage_after_observation", end_day=2)
+        settle = env._settle
+
+        def settle_after_the_error():  # the error arrived before the stop took effect
+            self.wait_for(lambda: self.queued(env, "bridge_error"))
+            return settle()
+        env._settle = settle_after_the_error
+        end, _ = play(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+
+    def test_a_game_that_ended_before_a_declared_stop_completes_naturally(self):
+        for exited in (False, True):
+            with self.subTest(engine_exited=exited):
+                env = self.make(mode="terminal_before_reply", end_day=2, exit_delay=0 if exited else 1.0)
+                self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+                if exited:
+                    self.wait_for(lambda: self.queued(env, "exit"))
+                else:  # both terminals arrived; the engine is still shutting down
+                    self.wait_for(lambda: sum(item[0] == "message" for item in list(env.events.queue)) >= 2)
+                    self.assertIsNone(env.process.poll())
+                end = env.truncate("collection_window")
+                self.assertEqual((end.status, end.termination_reason, end.rewards),
+                                 ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+                self.assertEqual(end.bootstrap, {"red": None, "blue": None})
+                self.assert_superseded(env, end, "red")
 
     def test_replay_manifest_names_every_absent_ledger(self):
         env = self.make(env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),

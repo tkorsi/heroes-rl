@@ -286,6 +286,10 @@ def end_game(world, bridges, winner):
     if MODE == "trailing_partial":
         bridges[1].sock.sendall(b'{"type": "observation"')  # a stream that ends inside a message
     print("Experiment self-play complete. Ending game.", flush=True)
+    if SCENARIO.get("linger") and os.fork() == 0:
+        time.sleep(SCENARIO["linger"])  # a child keeps the bridge sockets open after the engine exits
+        os._exit(0)
+    time.sleep(SCENARIO.get("exit_delay", 0))  # shutdown work after the terminals
     if MODE == "no_shutdown":
         time.sleep(3600)
     raise SystemExit(1 if MODE == "unclean_exit" else 0)
@@ -299,6 +303,10 @@ def play_turn(world, bridges, player):
         ending = world.day == SCENARIO.get("end_day", 2) and player == 0
         if MODE == "terminal_before_reply" and ending:
             end_game(world, bridges, 1)  # the game ends while the policy is still choosing
+        if MODE == "crash_after_observation" and ending:
+            os.abort()  # the engine dies while the policy is still choosing
+        if MODE == "garbage_after_observation" and ending:
+            bridge.sock.sendall(b"{not json\n")  # a malformed message while the policy is still choosing
         response = bridge.receive()
         if response.get("action_id") != bridge.action_id:
             raise SystemExit("mismatched response")

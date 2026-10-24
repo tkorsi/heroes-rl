@@ -12,12 +12,12 @@ Visible information that v1 cannot represent (battle start/result details,
 visits, dialogs and their uniform answers) stays in the player's full record
 stream and is counted here, never silently dropped. At a natural terminal an
 action the engine never consumed is withdrawn (it was never taken), and an
-unacted decision is superseded: it stays the last frame, and the terminal's
-own visible changes, which v1 cannot place after it, are counted instead. A
+unacted decision is superseded: it stays the last frame and is never a sample.
+v1 has no frame after a superseded decision, so a visible change the terminal
+brings there would be lost; the projection is then incomplete and invalid. Any
 frame order that v1 forbids, such as a visible change after an unacted
 decision, makes this projection invalid for the episode; the projection then
-stops and says why,
-and the simulation result itself is unaffected.
+stops and says why, and the simulation result itself is unaffected.
 """
 from __future__ import annotations
 
@@ -45,7 +45,8 @@ class HistoryV1:
 
     def view(self, view: dict, day: int) -> None:
         if self.superseded is not None:
-            self.note_unrepresented("view_after_superseded_decision")
+            # Dropping it would leave a stream that decodes but misses what the player saw last.
+            self._fail("The terminal brought a visible change after the decision it superseded")
             return
         if self.decision is not None:
             self._fail("A visible change arrived after an unacted decision")

@@ -45,6 +45,7 @@ COLORS = scoring.SELF_PLAY_COLORS
 MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 TAIL_BYTES = 64 * 1024  # first window when reading the end of an evidence file
 REPLAY_TAIL_SECONDS = 5.0  # longest wait for the server's replay log before a stop
+READER_DRAIN_SECONDS = 5.0  # after an engine exit of its own, for every bridge reader to reach its end of stream
 
 
 @dataclass(frozen=True)
@@ -146,9 +147,12 @@ class VcmiLauncher:
         content = self.binary.read_bytes()
         if b"VCMI_EXPERIMENT_DIR" not in content or b"EXPLORER_RL_PLAYERS" not in content:
             raise ValueError("Client lacks the headless simulation patch; rebuild vcmi/build")
-        if not self.ai_library.is_file() or b"visible_update-v2" not in self.ai_library.read_bytes():
+        library = self.ai_library.read_bytes() if self.ai_library.is_file() else b""
+        if b"visible_update-v2" not in library:
             raise ValueError(f"Rebuild the protocol-3 ExplorerRL module with visible_update-v2: {self.ai_library}")
-        if b"VCMI_EXPERIMENT_REPLAY" not in content or b"observations-p" not in self.ai_library.read_bytes():
+        if b"last_action_id" not in library:
+            raise ValueError(f"Rebuild ExplorerRL: its terminal lacks the consumption watermark: {self.ai_library}")
+        if b"VCMI_EXPERIMENT_REPLAY" not in content or b"observations-p" not in library:
             raise ValueError("Client or ExplorerRL lacks replay recording (engine patch 0013); rebuild vcmi/build")
         if not (self.data / "Data").is_dir():
             raise ValueError(f"Missing original game assets: {self.data / 'Data'}")
@@ -298,6 +302,8 @@ class HeadlessSelfPlayEnv:
         self.process = None
         self.sides: dict[int, _Side] = {}
         self.events: queue.Queue = queue.Queue()
+        self.closing = False  # the game ended before a declared stop: no request is issued any more
+        self.settling = False  # folding what arrived before a declared stop takes effect
         self.request: Request | None = None
         self.result: EpisodeEnd | None = None
         self.episode_dir = None
@@ -313,6 +319,7 @@ class HeadlessSelfPlayEnv:
         self.episode_dir.mkdir(parents=True, exist_ok=False)
         self.events = queue.Queue()
         self.request, self.result, self.env_step = None, None, 0
+        self.closing = self.settling = False
         self.stopping = threading.Event()
         self.reason = self.detail = None
         self.engine_wait = self.agent_wait = 0.0
@@ -377,6 +384,7 @@ class HeadlessSelfPlayEnv:
         self._write_ledger(side, "policy", {**response, "delivered": delivered} if not delivered else response)
         if not delivered:
             # Never taken: no action frame, and the decision stays unacted for the terminal to supersede.
+            side.validator.refuse(response)
             side.responses_undelivered += 1
         elif "action" in response:
             folding = time.perf_counter()
@@ -393,15 +401,25 @@ class HeadlessSelfPlayEnv:
         return result
 
     def truncate(self, reason: str = "collection_window") -> EpisodeEnd:
-        """End the episode at the current request as a declared horizon."""
+        """End the episode at the current request as a declared horizon.
+
+        What arrived while the agent decided predates the stop: a failure among it
+        fails the episode, and a game that had already ended finishes naturally.
+        """
         if self.request is None or reason not in scoring.HEADLESS_TRUNCATIONS:
             raise ValueError("Truncate only at a pending request, with a declared horizon")
-        side = self.sides[self.request.player]
-        if self.request.kind == "action" and side.cutoff is None:
-            side.cutoff, side.cutoff_seq, side.cutoff_reason = self.request.record, side.history.v1.decision, reason
+        request, self.request = self.request, None
+        exited = self._settle()
+        if self.reason is not None or exited is not None:
+            return self._finish(exited)
+        if any(side.validator.terminal for side in self.sides.values()):
+            self.closing = True  # the terminals and the exit decide; a decision now is no boundary
+            return self._advance()
+        side = self.sides[request.player]
+        if request.kind == "action" and side.cutoff is None:
+            side.cutoff, side.cutoff_seq, side.cutoff_reason = request.record, side.history.v1.decision, reason
         side.limit = side.cutoff_reason or reason
         self._note_problem(reason, f"{side.color} stopped at a declared horizon")
-        self.request = None
         return self._finish(None)
 
     def history(self, color: str) -> list[dict]:
@@ -494,8 +512,43 @@ class HeadlessSelfPlayEnv:
         events.put(("exit", None, process.wait(), time.monotonic()))
 
     def _note_problem(self, reason: str, detail: str) -> None:
-        if self.reason is None:
+        # The first failure wins. A declared horizon is a stop, not a failure: while _settle folds what had
+        # arrived before the stop took effect, a failure among it replaces the horizon, because it came first.
+        if self.reason is None or (self.settling and self.reason in scoring.HEADLESS_TRUNCATIONS
+                                   and reason not in scoring.HEADLESS_TRUNCATIONS):
             self.reason, self.detail = reason, detail
+
+    def _settle(self):
+        """Fold the events that arrived before a declared stop takes effect.
+
+        Returns the engine's exit status if it already ended on its own. Only
+        what comes after the stop is attributed to it.
+        """
+        exited, self.settling = None, True
+        try:
+            while exited is None:
+                try:
+                    kind, player, payload, received = self.events.get_nowait()
+                except queue.Empty:
+                    break
+                if kind == "exit":
+                    exited = payload
+                    continue
+                side = self.sides[player]
+                if kind == "message":
+                    self._ingest(side, payload, received, draining=True)
+                elif kind == "bridge_error":
+                    self._note_problem("protocol_error", f"{side.color}: {payload}")
+                elif kind == "eof":
+                    side.eof = True
+                    if not side.validator.terminal:
+                        # A crashed engine also closes the socket; prefer its exit status.
+                        exited = self._await_exit(grace=3.0)
+                        if exited is None:
+                            self._note_problem("bridge_disconnected", f"{side.color} closed before its terminal")
+        finally:
+            self.settling = False
+        return exited if exited is not None else self.process.poll()
 
     def _advance(self) -> Request | EpisodeEnd:
         """Consume engine events until a request needs an answer or the episode ends."""
@@ -560,7 +613,7 @@ class HeadlessSelfPlayEnv:
         self._write_ledger(side, "engine", message)
         ingesting = time.perf_counter()
         try:
-            return self._ingest_checked(side, message, received, draining)
+            return self._ingest_checked(side, message, received, draining or self.closing)
         except ProtocolError as error:
             self._note_problem("protocol_error", f"{side.color}: {error}")
         except (KeyError, TypeError, ValueError, AttributeError, IndexError) as error:
@@ -640,6 +693,11 @@ class HeadlessSelfPlayEnv:
 
     # -- episode end -------------------------------------------------------
     def _finish(self, exited) -> EpisodeEnd:
+        if self.reason is not None and exited is None:
+            exited = self._settle()  # a declared stop takes effect only now
+        if exited is not None and self.reason in scoring.HEADLESS_TRUNCATIONS:
+            # The engine ended on its own before the declared stop took effect: its exit and terminals decide.
+            self.reason = self.detail = None
         stopped_by_environment = self.reason is not None
         if stopped_by_environment:
             if self.replay:  # a stop must not cut the server's log short of what the players saw
@@ -654,12 +712,13 @@ class HeadlessSelfPlayEnv:
         # the engine's sockets are closed, so each connected reader ends at its end of stream or reports why it
         # could not; only then may stopping silence a reader, such as one still waiting for a connection.
         connected = [side for side in self.sides.values() if side.reader is not None and side.connection is not None]
+        drained = time.monotonic() + READER_DRAIN_SECONDS
         for side in connected:
-            side.reader.join(timeout=2)
+            side.reader.join(timeout=max(0.0, drained - time.monotonic()))
         unfinished = [side.color for side in connected if side.reader.is_alive()]
         self.stopping.set()
         for side in self.sides.values():
-            if side.reader is not None:
+            if side.reader is not None and side.color not in unfinished:
                 side.reader.join(timeout=2)
         while True:
             try:
