@@ -1,0 +1,451 @@
+diff --git a/client/CMT.h b/client/CMT.h
+--- a/client/CMT.h
++++ b/client/CMT.h
+@@ -16,3 +16,7 @@ extern SDL_Renderer * mainRenderer;
+ /// Defined in clientapp EntryPoint
+ /// TODO: decide on better location for this method
+ [[noreturn]] void handleFatalError(const std::string & message, bool terminate);
++
++/// Ends a --headless run with this exit status; the first request decides it.
++/// Defined in clientapp EntryPoint
++void requestHeadlessShutdown(int exitCode);
+diff --git a/client/CServerHandler.cpp b/client/CServerHandler.cpp
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -12,6 +12,7 @@
+ 
+ #include "CPlayerInterface.h"
+ #include "Client.h"
++#include "CMT.h"
+ #include "GameChatHandler.h"
+ #include "GameEngine.h"
+ #include "GameInstance.h"
+@@ -75,10 +76,19 @@
+ 
+ namespace
+ {
++const char * experimentDirectory()
++{
++	// A headless run has no recording directory; it names its evidence directory.
++	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
++	if(!directory || !*directory)
++		directory = std::getenv("VCMI_RECORD_DIR");
++	return directory && *directory ? directory : nullptr;
++}
++
+ void writeExperimentMetadata(const CGameState & gameState, const CClient & client)
+ {
+-	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+-	if(!recordingDirectory || !*recordingDirectory)
++	const char * recordingDirectory = experimentDirectory();
++	if(!recordingDirectory)
+ 		return;
+ 
+ 	const auto * options = gameState.getStartInfo();
+@@ -153,8 +163,14 @@ CServerHandler::~CServerHandler()
+ 	serverRunner.reset();
+ 	if (threadNetwork.joinable())
+ 	{
+-		auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
+-		threadNetwork.join();
++		// Without a GameEngine the main thread holds no interface lock to release.
++		if (ENGINE)
++		{
++			auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
++			threadNetwork.join();
++		}
++		else
++			threadNetwork.join();
+ 	}
+ }
+ 
+@@ -166,8 +182,14 @@ void CServerHandler::endNetwork()
+ 
+ 	if (threadNetwork.joinable())
+ 	{
+-		auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
+-		threadNetwork.join();
++		// Without a GameEngine the main thread holds no interface lock to release.
++		if (ENGINE)
++		{
++			auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
++			threadNetwork.join();
++		}
++		else
++			threadNetwork.join();
+ 	}
+ }
+ 
+@@ -304,7 +326,7 @@ void CServerHandler::connectToServer(const std::string & addr, const ui16 port)
+ void CServerHandler::onConnectionFailed(const std::string & errorMessage)
+ {
+ 	assert(getState() == EClientState::CONNECTING);
+-	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
++	std::scoped_lock interfaceLock(clientInterfaceMutex());
+ 
+ 	if (isServerLocal())
+ 	{
+@@ -322,7 +344,7 @@ void CServerHandler::onConnectionFailed(const std::string & errorMessage)
+ 
+ void CServerHandler::onTimer()
+ {
+-	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
++	std::scoped_lock interfaceLock(clientInterfaceMutex());
+ 
+ 	if(getState() == EClientState::CONNECTION_CANCELLED)
+ 	{
+@@ -342,7 +364,7 @@ void CServerHandler::onConnectionEstablished(const NetworkConnectionPtr & netCon
+ {
+ 	assert(getState() == EClientState::CONNECTING);
+ 
+-	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
++	std::scoped_lock interfaceLock(clientInterfaceMutex());
+ 
+ 	networkConnection = netConnection;
+ 
+@@ -749,7 +771,8 @@ void CServerHandler::startGameplay(std::shared_ptr<CGameState> gameState)
+ 	// are still queued until GAMEPLAY below. Record both initial fog and actual AI modules.
+ 	writeExperimentMetadata(*gameState, *client);
+ 
+-	ENGINE->discord().setPlayingStatus(si, &gameState->getMap(), howManyPlayerInterfaces());
++	if(ENGINE)
++		ENGINE->discord().setPlayingStatus(si, &gameState->getMap(), howManyPlayerInterfaces());
+ 
+ 	// After everything initialized we can accept CPackToClient netpacks
+ 	setState(EClientState::GAMEPLAY);
+@@ -795,7 +818,8 @@ void CServerHandler::endGameplay()
+ 		GAME->mainmenu()->makeActiveInterface();
+ 	}
+ 
+-	ENGINE->discord().setStatus("", "", {0, 0});
++	if(ENGINE)
++		ENGINE->discord().setStatus("", "", {0, 0});
+ }
+ 
+ std::optional<std::string> CServerHandler::canQuickLoadGame(const std::string & path) const
+@@ -1023,19 +1047,39 @@ public:
+ 
+ void CServerHandler::onPacketReceived(const std::shared_ptr<INetworkConnection> &, const std::vector<std::byte> & message)
+ {
+-	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
++	std::scoped_lock interfaceLock(clientInterfaceMutex());
+ 
+-	if(getState() == EClientState::DISCONNECTING)
++	if(getState() == EClientState::DISCONNECTING || headlessPacketFailure)
+ 		return;
+ 
+ 	auto pack = logicConnection->retrievePack(message);
+ 	ServerHandlerCPackVisitor visitor(*this);
+-	pack->visit(visitor);
++	if(ENGINE)
++	{
++		pack->visit(visitor);
++		return;
++	}
++	// No GUI main loop catches an exception thrown on this thread. Never apply
++	// another packet after a failed one; end the run with a failure status.
++	try
++	{
++		pack->visit(visitor);
++	}
++	catch(const TerminationRequestedException &)
++	{
++		throw;
++	}
++	catch(const std::exception & e)
++	{
++		headlessPacketFailure = true;
++		logGlobal->error("Headless packet handling failed: %s", e.what());
++		requestHeadlessShutdown(EXIT_FAILURE);
++	}
+ }
+ 
+ void CServerHandler::onDisconnected(const std::shared_ptr<INetworkConnection> & connection, const std::string & errorMessage)
+ {
+-	std::scoped_lock interfaceLock(ENGINE->interfaceMutex);
++	std::scoped_lock interfaceLock(clientInterfaceMutex());
+ 
+ 	if (connection != networkConnection)
+ 	{
+@@ -1056,6 +1100,13 @@ void CServerHandler::onDisconnected(const std::shared_ptr<INetworkConnection> &
+ 
+ 	logNetwork->error("Lost connection to server! Connection has been closed");
+ 
++	if(!ENGINE)
++	{
++		requestHeadlessShutdown(EXIT_FAILURE);
++		networkConnection.reset();
++		return;
++	}
++
+ 	if(client)
+ 	{
+ 		endGameplay();
+@@ -1108,6 +1159,12 @@ void CServerHandler::visitForLobby(CPackForLobby & lobbyPack)
+ 	{
+ 		if(!settings["session"]["headless"].Bool())
+ 			applyPackOnLobbyScreen(lobbyPack);
++		else if(const auto * shown = dynamic_cast<const LobbyShowMessage *>(&lobbyPack))
++		{
++			// Nobody can read it: the server announces a failed start this way.
++			logGlobal->error("Server message in headless mode: %s", shown->message.toString());
++			requestHeadlessShutdown(EXIT_FAILURE);
++		}
+ 	}
+ }
+ 
+diff --git a/client/CServerHandler.h b/client/CServerHandler.h
+--- a/client/CServerHandler.h
++++ b/client/CServerHandler.h
+@@ -146,6 +146,9 @@ public:
+ 	bool battleMode;
+ 	////////////////////
+ 
++	/// Set on the network thread after a headless packet failed; later packets are dropped.
++	bool headlessPacketFailure = false;
++
+ 	std::unique_ptr<CStopWatch> th;
+ 	std::unique_ptr<CClient> client;
+ 
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -209,11 +209,11 @@ void CClient::initMapHandler()
+ 	// TODO: CMapHandler initialization can probably go somewhere else
+ 	// It's can't be before initialization of interfaces
+ 	// During loading CPlayerInterface from serialized state it's depend on MH
+-	if(!settings["session"]["headless"].Bool())
+-	{
+-		GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
+-		logNetwork->trace("Creating mapHandler: %d ms", GAME->server().th->getDiff());
+-	}
++	// CMapHandler only relays map changes to registered views. A headless run
++	// registers none, so its notifications and animation waits return at once
++	// and packet visitors keep a single path around authoritative updates.
++	GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
++	logNetwork->trace("Creating mapHandler: %d ms", GAME->server().th->getDiff());
+ }
+ 
+ void CClient::initPlayerEnvironments()
+@@ -554,7 +554,7 @@ void CClient::startPlayerBattleAction(const BattleID & battleID, PlayerColor col
+ 	if (!battleint->human)
+ 	{
+ 		// we want to avoid locking gamestate and causing UI to freeze while AI is making turn
+-		auto unlockInterface = vstd::makeUnlockGuard(ENGINE->interfaceMutex);
++		auto unlockInterface = vstd::makeUnlockGuard(clientInterfaceMutex());
+ 		battleint->activeStack(battleID, gameState().getBattle(battleID)->battleGetStackByID(gameState().getBattle(battleID)->activeStack, false));
+ 	}
+ 	else
+@@ -574,7 +574,8 @@ void CClient::reinitScripting()
+ void CClient::removeGUI() const
+ {
+ 	// CClient::endGame
+-	ENGINE->windows().clear();
++	if(ENGINE)
++		ENGINE->windows().clear();
+ 	adventureInt.reset();
+ 	logGlobal->info("Removed GUI.");
+ 
+diff --git a/client/GameEngine.cpp b/client/GameEngine.cpp
+--- a/client/GameEngine.cpp
++++ b/client/GameEngine.cpp
+@@ -298,3 +298,9 @@ void GameEngine::setEngineUser(IGameEngineUser * user)
+ {
+ 	engineUser = user;
+ }
++
++std::mutex & clientInterfaceMutex()
++{
++	static std::mutex headlessInterfaceMutex;
++	return ENGINE ? ENGINE->interfaceMutex : headlessInterfaceMutex;
++}
+diff --git a/client/GameEngine.h b/client/GameEngine.h
+--- a/client/GameEngine.h
++++ b/client/GameEngine.h
+@@ -139,3 +139,8 @@ public:
+ };
+ 
+ extern std::unique_ptr<GameEngine> ENGINE; //global gui handler
++
++/// The interface mutex, also when no GameEngine exists (--headless). Packet
++/// handling holds it on the network thread, so unlock guards taken inside
++/// packet handling stay paired with that thread's own lock.
++std::mutex & clientInterfaceMutex();
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -445,7 +445,12 @@ void ApplyClientNetPackVisitor::visitPlayerEndsGame(PlayerEndsGame & pack)
+ 		// A bounded experiment recording must finish without a spectator dialog.
+ 		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+ 		const bool recording = recordingDirectory && *recordingDirectory;
+-		if(recording)
++		if(!ENGINE)
++		{
++			// gameOver above delivered each terminal synchronously on this thread.
++			requestHeadlessShutdown(EXIT_SUCCESS);
++		}
++		else if(recording)
+ 		{
+ 			// Pack handling runs on the network thread. Shutdown throws an exception
+ 			// caught by the GUI main loop, so enqueue it after gameOver delivered the terminal.
+diff --git a/clientapp/EntryPoint.cpp b/clientapp/EntryPoint.cpp
+--- a/clientapp/EntryPoint.cpp
++++ b/clientapp/EntryPoint.cpp
+@@ -60,7 +60,12 @@
+ namespace po = boost::program_options;
+ namespace po_style = boost::program_options::command_line_style;
+ 
+-static std::atomic<bool> headlessQuit = false;
++// A --headless run has no main loop: the main thread waits for one shutdown
++// request, whose exit status the process then returns.
++static bool headlessMode = false;
++static std::mutex headlessShutdownMutex;
++static std::condition_variable headlessShutdownSignal;
++static std::optional<int> headlessExitCode;
+ static std::optional<std::string> criticalInitializationError;
+ 
+ static void init()
+@@ -174,6 +179,7 @@ int main(int argc, char * argv[])
+ 	}
+ 
+ 	po::notify(vm);
++	headlessMode = vm.count("headless") != 0;
+ 	if(vm.count("help"))
+ 	{
+ 		prog_help(opts);
+@@ -212,7 +218,9 @@ int main(int argc, char * argv[])
+ 	};
+ 
+ 	CConsoleHandler console(callbackFunction);
+-	console.start();
++	// Console commands need the GUI; a headless run reads no input.
++	if(!headlessMode)
++		console.start();
+ 
+ 	CBasicLogConfigurator logConfigurator(logPath, &console);
+ #else
+@@ -391,10 +399,8 @@ int main(int argc, char * argv[])
+ 				}
+ 				else
+ 				{
+-					while(!headlessQuit)
+-						std::this_thread::sleep_for(std::chrono::milliseconds(200));
+-
+-					std::this_thread::sleep_for(std::chrono::milliseconds(500));
++					std::unique_lock lock(headlessShutdownMutex);
++					headlessShutdownSignal.wait(lock, [] { return headlessExitCode.has_value(); });
+ 				}
+ 			}
+ 			catch (const GameShutdownException & )
+@@ -408,14 +414,12 @@ int main(int argc, char * argv[])
+ 		{
+ 			GAME->server().endNetwork();
+ 
+-			if(!settings["session"]["headless"].Bool())
+-			{
+-				if(GAME->server().client)
+-					GAME->server().endGameplay();
++			// Headless runs also finish every AI interface before destruction.
++			if(GAME->server().client)
++				GAME->server().endGameplay();
+ 
+-				if (ENGINE)
+-					ENGINE->windows().clear();
+-			}
++			if (ENGINE)
++				ENGINE->windows().clear();
+ 
+ 			GAME.reset();
+ 
+@@ -427,7 +431,8 @@ int main(int argc, char * argv[])
+ 			}
+ 
+ 			// must be executed before reset - since unique_ptr resets pointer to null before calling destructor
+-			ENGINE->async().wait();
++			if (ENGINE)
++				ENGINE->async().wait();
+ 
+ 			ENGINE.reset();
+ 
+@@ -445,9 +450,25 @@ int main(int argc, char * argv[])
+ 	{
+ 		logGlobal->info("Shutdown requested during initialization");
+ 	}
++	if(headlessMode)
++	{
++		std::lock_guard lock(headlessShutdownMutex);
++		return headlessExitCode.value_or(EXIT_FAILURE);
++	}
+ 	return 0;
+ }
+ 
++void requestHeadlessShutdown(int exitCode)
++{
++	{
++		std::lock_guard lock(headlessShutdownMutex);
++		if(headlessExitCode)
++			return;
++		headlessExitCode = exitCode;
++	}
++	headlessShutdownSignal.notify_all();
++}
++
+ /// Notify user about encountered fatal error and terminate the game
+ /// TODO: decide on better location for this method
+ void handleFatalError(const std::string & message, bool terminate)
+@@ -457,7 +478,10 @@ void handleFatalError(const std::string & message, bool terminate)
+ 
+ 	std::string messageToShow = "Fatal error! " + message;
+ 
+-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal error!", messageToShow.c_str(), nullptr);
++	if(headlessMode)
++		requestHeadlessShutdown(EXIT_FAILURE); // an unattended run must not wait on a dialog
++	else
++		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Fatal error!", messageToShow.c_str(), nullptr);
+ 
+ 	if (terminate)
+ 		throw std::runtime_error(message);
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -89,6 +89,18 @@
+ 
+ #include <cstdlib>
+ 
++namespace
++{
++const char * experimentDirectory()
++{
++	// A headless run has no recording directory; it names its evidence directory.
++	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
++	if(!directory || !*directory)
++		directory = std::getenv("VCMI_RECORD_DIR");
++	return directory && *directory ? directory : nullptr;
++}
++}
++
+ #define COMPLAIN_RET_IF(cond, txt) do {if (cond){complain(txt); return;}} while(0)
+ #define COMPLAIN_RET_FALSE_IF(cond, txt) do {if (cond){complain(txt); return false;}} while(0)
+ #define COMPLAIN_RET(txt) {complain(txt); return false;}
+@@ -591,9 +603,8 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
+ 	{
+ 		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
+ 			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS must be exactly 0 or 1");
+-		const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+-		if(!recordingDirectory || !*recordingDirectory)
+-			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS requires VCMI_RECORD_DIR");
++		if(!experimentDirectory())
++			throw std::runtime_error("VCMI_EXPERIMENT_NO_CHEATS requires VCMI_EXPERIMENT_DIR or VCMI_RECORD_DIR");
+ 		if(std::string(noCheats) == "1")
+ 			si->extraOptionsInfo.cheatsAllowed = false;
+ 		logGlobal->info("Experiment server options: requested_no_cheats=%s cheats_allowed=%d difficulty=%d map=%s",
+@@ -603,8 +614,7 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
+ 	CMapService mapService;
+ 	gs = std::make_shared<CGameState>();
+ 	int requestedSeed = settings["server"]["seed"].Integer();
+-	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
+-	const bool recording = recordingDirectory && *recordingDirectory;
++	const bool recording = experimentDirectory() != nullptr;
+ 	if(recording && requestedSeed <= 0)
+ 		throw std::runtime_error("Experiment recordings require a positive configured server seed");
+ 	randomizer = std::make_unique<GameRandomizer>(*gs);
