@@ -120,6 +120,7 @@ class _Side:
     write_error: str | None = None  # a response the engine could no longer receive
     cutoff_seq: int | None = None  # that decision's history-v1 sequence while the projection is valid
     bytes_received: int = 0
+    decode_seconds: float = 0.0  # JSON decoding on this side's reader thread
     perf: dict = field(default_factory=dict)
 
 
@@ -256,6 +257,9 @@ class HeadlessSelfPlayEnv:
         self.reason = self.detail = None
         self.engine_wait = self.agent_wait = 0.0
         self.step_latencies = []  # seconds from each response until the next request or the end
+        # Adapter costs on the environment thread: validation and history fold,
+        # evidence ledger writes, and encoding and sending responses.
+        self.costs = {"ingest": 0.0, "ledger": 0.0, "respond": 0.0}
         self.last_engine_message = None
         self.shutdown_deadline = None
         self.sides = {}
@@ -298,6 +302,7 @@ class HeadlessSelfPlayEnv:
         side = self.sides[self.request.player]
         response = side.validator.respond(value)  # raises ValueError without sending on an invalid choice
         self.agent_wait += time.monotonic() - self.request_time
+        responding = time.perf_counter()
         try:
             side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
         except OSError as error:
@@ -311,6 +316,7 @@ class HeadlessSelfPlayEnv:
             side.actions_sent += 1
         else:
             side.decisions_sent += 1
+        self.costs["respond"] += time.perf_counter() - responding
         self.env_step += 1
         self.request = None
         sent = time.monotonic()
@@ -401,7 +407,10 @@ class HeadlessSelfPlayEnv:
                 buffer += chunk
                 start = 0
                 while (newline := buffer.find(b"\n", scanned)) >= 0:
-                    events.put(("message", side.player, json.loads(buffer[start:newline]), time.monotonic()))
+                    decoding = time.perf_counter()
+                    message = json.loads(buffer[start:newline])
+                    side.decode_seconds += time.perf_counter() - decoding
+                    events.put(("message", side.player, message, time.monotonic()))
                     start = scanned = newline + 1
                 if start:
                     del buffer[:start]
@@ -480,12 +489,15 @@ class HeadlessSelfPlayEnv:
         """
         self.last_engine_message = received
         self._write_ledger(side, "engine", message)
+        ingesting = time.perf_counter()
         try:
             return self._ingest_checked(side, message, received, draining)
         except ProtocolError as error:
             self._note_problem("protocol_error", f"{side.color}: {error}")
         except (KeyError, TypeError, ValueError, AttributeError, IndexError) as error:
             self._note_problem("protocol_error", f"{side.color}: malformed message ({type(error).__name__}: {error})")
+        finally:
+            self.costs["ingest"] += time.perf_counter() - ingesting
         return None
 
     def _ingest_checked(self, side: _Side, message: dict, received: float, draining: bool) -> Request | None:
@@ -552,8 +564,10 @@ class HeadlessSelfPlayEnv:
     def _write_ledger(self, side: _Side, direction: str, message: dict) -> None:
         # Internal evidence with engine IDs: never a policy input.
         if side.ledger is not None:
+            writing = time.perf_counter()
             side.ledger.write(json.dumps({"t": round(time.monotonic() - self.started, 6), "direction": direction,
                                           "message": message}, separators=(",", ":")) + "\n")
+            self.costs["ledger"] += time.perf_counter() - writing
 
     # -- episode end -------------------------------------------------------
     def _finish(self, exited) -> EpisodeEnd:
@@ -613,7 +627,9 @@ class HeadlessSelfPlayEnv:
             "timing": {"wall_seconds": round(finished - self.started, 6),
                        "startup_seconds": round(max(readies), 6) if len(readies) == 2 else None,
                        "shutdown_seconds": round(finished - self.started - max(terminals), 6) if len(terminals) == 2 else None,
-                       "engine_wait_seconds": round(self.engine_wait, 6), "agent_seconds": round(self.agent_wait, 6)},
+                       "engine_wait_seconds": round(self.engine_wait, 6), "agent_seconds": round(self.agent_wait, 6),
+                       "adapter_seconds": {**{key: round(value, 6) for key, value in self.costs.items()},
+                                           "decode": round(sum(side.decode_seconds for side in self.sides.values()), 6)}},
             "players": {side.color: {**executions[side.color], **self._counters(side)} for side in self.sides.values()},
             "engine_evidence": evidence, "engine_evidence_error": evidence_error,
             "agents": self.agent_descriptions, "ledger": self.ledger_enabled, "replay": self._replay_evidence(),

@@ -88,6 +88,22 @@ class RunnerTests(unittest.TestCase):
                          for row in [e["index"] for e in json.loads((worker / "summary.json").read_text())["schedule"][:2]])
         self.assertEqual(indices, [0, 1, 2, 3])  # the same schedule, interleaved across workers
 
+    def test_attempt_series_preserves_every_planned_attempt_across_workers(self):
+        output = self.base / "attempts"
+        result = self.run_tool("run_series.py", "--output", str(output), "--attempts", "5", "--workers", "2",
+                               "--max-days", "3", "--profile", timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        series = json.loads((output / "series.json").read_text())
+        self.assertEqual(sorted(row["episode"] for row in series["episodes"]), [1, 2, 3, 4, 5])
+        self.assertEqual((series["attempts_missing"], series["attempts_unplanned"]), ([], []))
+        self.assertEqual(series["natural_completions"] + series["truncations"] + series["failures"], 5)
+        self.assertEqual(sorted(row["engine_seed"] for row in series["episodes"]), list(range(40001, 40006)))
+        costs = subprocess.run([sys.executable, str(ROOT / "experiments/headless/cost_breakdown.py"),
+                                str(output / "worker-0")], capture_output=True, text=True, timeout=60, check=True)
+        breakdown = json.loads(costs.stdout)
+        self.assertEqual(breakdown["episodes"], 3)
+        self.assertGreater(breakdown["adapter_totals"]["ingest"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
