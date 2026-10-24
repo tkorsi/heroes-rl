@@ -15,8 +15,9 @@ history, with separate memory for each player. No game-trained policy exists.
 Independent native replay, episode boundaries and natural-outcome controls pass
 within the recorded scope. A predeclared sixteen-game contextual cohort produced
 sixteen valid cutoffs and no natural endings; behavior audits separate that
-sparse feedback from engine correctness. A concrete first-update plan is
-prepared, **not authorized or executed**. Rules, fog and terminal-only rewards
+sparse feedback from engine correctness. The prepared first-update plan is
+now authorized for one bounded local experiment; additional training remains
+unauthorized. Rules, fog and terminal-only rewards
 are unchanged. The earlier uniform-random/video and fixed Easy-opponent
 baselines remain available. Draft PRs remain unmerged; other platforms are not
 validated.
@@ -1716,7 +1717,8 @@ the unchanged rules and available actions.
 
 The user's separately requested preparation is complete. The tracked
 `configs/first-training-v1.json` declares the following small proposed run;
-**execution is not authorized and has not occurred**:
+**it was unexecuted at preparation; the exact plan was subsequently approved
+for the single run recorded below**:
 
 | Item | Fixed proposal |
 | --- | --- |
@@ -1750,6 +1752,28 @@ Zero natural outcomes alone does not invalidate correct cutoff experience, but
 an update without terminal feedback has no observed victory signal and cannot
 be described as demonstrated strategy improvement. No gameplay training, paid
 compute or GitHub PR merge occurred.
+
+#### First bounded gameplay experiment: launch authorization
+
+On 25 October the user approved the existing saved plan
+`ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6`
+for one execution: ten attempts, at most one PPO update and sixteen optimizer
+steps, and at most one hour locally on the Mac. This supersedes the earlier
+optimization prohibition only for this exact prepared experiment. The direct
+human instruction was verified in its source chat; its English translation,
+provenance, exact configuration and all stop rules are recorded in
+`validation/first-gameplay-authorization-2026-10-25.json`.
+
+Before launch, the plan, 173 implementation files, native binaries, map,
+validation artifacts and initial random checkpoint matched their prepared
+identities. Exact prepared-engine verification also passed. The original plan
+and preparation evidence remain immutable; the separate approval supplies the
+existing executor's required plan hash. Output is reserved at
+`runs/first-training-prepared-2026-10-25/approved-execution`, with all raw data
+and checkpoints ignored. Results will distinguish evaluation from the two
+fresh designated training captures and record every attempted game, failure,
+update and checkpoint check. No replacement attempt, automatic retry, added
+update, paid compute or broader campaign is authorized.
 
 ### Continue in a new chat
 
@@ -1789,8 +1813,8 @@ preparation are implemented and locally validated as described above. Read
 the exact unexecuted proposal. The user authorized Codex to finish the paused
 contextual work; Claude's separately scoped simulation/performance work remains
 coordinated on issue #4. Neither diagnostic outcomes nor preparation authorizes
-training. The next execution decision requires separate approval of the saved
-plan. Do not launch it or start a campaign without that approval.
+training. The saved plan has now received one-execution approval as recorded
+above; after that bounded execution, any further run requires new approval.
 
 Earlier v2/v3 validation and the original three truncated rendered self-play
 runs remain separate historical evidence. Historical contextual recordings
