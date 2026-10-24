@@ -109,6 +109,7 @@ class Bridge:
     def __init__(self, player, port):
         self.player = player
         self.sock = socket.create_connection(("127.0.0.1", port))
+        self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # as ExplorerRL does
         self.buffer = b""
         self.events = []
         self.tracker = Tracker()
