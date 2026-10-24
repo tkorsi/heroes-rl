@@ -258,7 +258,7 @@ diff --git a/server/ExperimentReplay.cpp b/server/ExperimentReplay.cpp
 new file mode 100644
 --- /dev/null
 +++ b/server/ExperimentReplay.cpp
-@@ -0,0 +1,436 @@
+@@ -0,0 +1,483 @@
 +/*
 + * ExperimentReplay.cpp, part of VCMI engine
 + *
@@ -551,12 +551,36 @@ new file mode 100644
 +	return writer.state;
 +}
 +
++std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler)
++{
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	auto part = [&parts](const char * name, const auto & value)
++	{
++		DigestWriter writer;
++		BinarySerializer serializer(&writer);
++		serializer & value;
++		parts.emplace_back(name, writer.state);
++	};
++	part("game_state", gameHandler.gameState());
++	part("queries", gameHandler.QID);
++	part("ui_ready_for_dialogs", gameHandler.uiReadyForDialogs);
++	part("randomizer", *gameHandler.randomizer);
++	part("battles", *gameHandler.battles);
++	part("hero_pool", *gameHandler.heroPool);
++	part("player_messages", *gameHandler.playerMessages);
++	part("turn_order", *gameHandler.turnOrder);
++	part("turn_timers", *gameHandler.turnTimerHandler);
++	return parts;
++}
++
 +void Outgoing::note(const CPackForClient & pack, int target, int clientConnection)
 +{
 +	const auto type = CTypeList::getInstance().getTypeID(&pack);
++	const auto bytes = canonicalPack(pack);
++	sent.emplace_back(type, digestBytes(bytes, digestValue(digestValue(DIGEST_SEED, target), type)));
 +	chain = digestValue(chain, target);
 +	chain = digestValue(chain, type);
-+	chain = digestBytes(canonicalPack(pack), chain);
++	chain = digestBytes(bytes, chain);
 +	++count;
 +	if(target == -1 || target == clientConnection)
 +		++clientCount;
@@ -570,6 +594,26 @@ new file mode 100644
 +{
 +	battleEnded = false;
 +	terminals.clear();
++	sent.clear();
++}
++
++namespace
++{
++std::string sentJson(const Outgoing & outgoing)
++{
++	std::string result = "[";
++	for(const auto & [type, digest] : outgoing.sent)
++		result += (result.size() > 1 ? ",[" : "[") + std::to_string(type) + ",\"" + digestHex(digest) + "\"]";
++	return result + "]";
++}
++
++std::string partsJson(CGameHandler & gameHandler)
++{
++	std::string result = "{";
++	for(const auto & [name, digest] : stateDigestParts(gameHandler))
++		result += (result.size() > 1 ? ",\"" : "\"") + std::string(name) + "\":\"" + digestHex(digest) + "\"";
++	return result + "}";
++}
 +}
 +
 +const char * boundaryAfter(const CPackForServer & input, bool result, const Outgoing & outgoing)
@@ -651,14 +695,16 @@ new file mode 100644
 +		+ ",\"turn_timers\":" + (start->turnTimerInfo.isEnabled() ? "true" : "false") + ",\"human_players\":" + std::to_string(humans)
 +		+ ",\"map\":" + quoted(start->fileURI) + ",\"connections\":" + connections
 +		+ ",\"client_connection\":" + std::to_string(clientConnection) + ",\"hosts\":[" + hosts + "]"
-+		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\"}");
++		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
++		+ ",\"parts\":" + partsJson(gameHandler) + "}");
 +	output.flush();
 +}
 +
 +void Recorder::afterStart(CGameHandler & gameHandler, IGameServer &)
 +{
 +	line("{\"kind\":\"start\",\"out\":" + std::to_string(outgoing.count) + ",\"client_out\":" + std::to_string(outgoing.clientCount)
-+		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\"}");
++		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
++		+ ",\"parts\":" + partsJson(gameHandler) + ",\"sent\":" + sentJson(outgoing) + "}");
 +	outgoing.clearFlags();
 +	output.flush();
 +}
@@ -684,7 +730,8 @@ new file mode 100644
 +		+ ",\"client_out\":" + std::to_string(outgoing.clientCount) + ",\"chain\":\"" + digestHex(outgoing.chain) + "\""
 +		+ ",\"boundary\":" + (boundary ? quoted(boundary) : std::string("null"))
 +		+ ",\"digest\":" + (boundary ? "\"" + digestHex(stateDigest(gameHandler)) + "\"" : std::string("null"))
-+		+ ",\"terminals\":" + terminals + "}");
++		+ ",\"parts\":" + (boundary ? partsJson(gameHandler) : std::string("null"))
++		+ ",\"sent\":" + sentJson(outgoing) + ",\"terminals\":" + terminals + "}");
 +	++sequence;
 +	if(boundary)
 +		output.flush();
@@ -699,7 +746,7 @@ diff --git a/server/ExperimentReplay.h b/server/ExperimentReplay.h
 new file mode 100644
 --- /dev/null
 +++ b/server/ExperimentReplay.h
-@@ -0,0 +1,94 @@
+@@ -0,0 +1,97 @@
 +/*
 + * ExperimentReplay.h, part of VCMI engine
 + *
@@ -751,6 +798,8 @@ new file mode 100644
 +/// The game handler's logical state: the game state plus the handler's own
 +/// serializable state. Statistics are left out because they hold wall-clock time.
 +uint64_t stateDigest(CGameHandler & gameHandler);
++/// Digests of the same parts one by one, to name the part a divergence is in.
++std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler);
 +
 +/// What the server has sent since its game handler was created.
 +struct Outgoing
@@ -759,6 +808,7 @@ new file mode 100644
 +	uint64_t clientCount = 0; ///< packs that reached the client connection hosting the players
 +	uint64_t chain = DIGEST_SEED;
 +	bool battleEnded = false; ///< since the last clearFlags()
++	std::vector<std::pair<uint16_t, uint64_t>> sent; ///< (type, digest) of each pack since the last clearFlags()
 +	std::vector<std::pair<int, bool>> terminals; ///< (player, victory) since the last clearFlags()
 +
 +	/// target is a connection, or -1 for a pack sent to every connection.

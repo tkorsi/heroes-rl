@@ -66,6 +66,34 @@ void expectEqual(const std::string & stage, const std::string & field, const std
 		throw Divergence(stage, field, expected, actual);
 }
 
+/// The sent-pack chain, naming the first pack that differs when it does not match.
+void expectChain(const std::string & stage, const JsonNode & record, const Outgoing & outgoing)
+{
+	if(record["chain"].String() == digestHex(outgoing.chain))
+		return;
+	const auto & recorded = record["sent"].Vector();
+	for(size_t index = 0; index < std::max(recorded.size(), outgoing.sent.size()); ++index)
+	{
+		const std::string expected = index < recorded.size()
+			? std::to_string(recorded[index][0].Integer()) + ":" + recorded[index][1].String() : "none";
+		const std::string actual = index < outgoing.sent.size()
+			? std::to_string(outgoing.sent[index].first) + ":" + digestHex(outgoing.sent[index].second) : "none";
+		expectEqual(stage, "sent pack " + std::to_string(index) + " (type:digest)", expected, actual);
+	}
+	throw Divergence(stage, "chain", record["chain"].String(), digestHex(outgoing.chain));
+}
+
+/// The logical-state digest, naming the first part that differs when it does not match.
+void expectState(const std::string & stage, const JsonNode & record, CGameHandler & gameHandler)
+{
+	const auto actual = digestHex(stateDigest(gameHandler));
+	if(record["digest"].String() == actual)
+		return;
+	for(const auto & [name, digest] : stateDigestParts(gameHandler))
+		expectEqual(stage, std::string("digest part ") + name, record["parts"][name].String(), digestHex(digest));
+	throw Divergence(stage, "digest", record["digest"].String(), actual);
+}
+
 JsonNode parseLine(const std::string & line, const std::string & name)
 {
 	JsonParsingSettings parsing;
@@ -327,7 +355,7 @@ public:
 		server.gameHandler = gameHandler.get();
 		Load::ProgressAccumulator progress;
 		gameHandler->init(&startInfo, progress);
-		expectEqual("init", "digest", init["digest"].String(), digestHex(stateDigest(*gameHandler)));
+		expectState("init", init, *gameHandler);
 
 		for(const auto & [connection, players] : server.connections)
 			if(connection == server.clientConnection)
@@ -342,8 +370,8 @@ public:
 		const auto & start = records[1];
 		expectEqual("start", "out", text(start["out"]), std::to_string(server.outgoing.count));
 		expectEqual("start", "client_out", text(start["client_out"]), std::to_string(server.outgoing.clientCount));
-		expectEqual("start", "chain", start["chain"].String(), digestHex(server.outgoing.chain));
-		expectEqual("start", "digest", start["digest"].String(), digestHex(stateDigest(*gameHandler)));
+		expectChain("start", start, server.outgoing);
+		expectState("start", start, *gameHandler);
 		writeTrace(-1, nullptr);
 
 		for(size_t index = 2; index < records.size(); index += 2)
@@ -381,7 +409,7 @@ public:
 			expectEqual(after, "result", text(applied["result"]), gameHandler->lastPackResult ? "true" : "false");
 			expectEqual(after, "out", text(applied["out"]), std::to_string(server.outgoing.count));
 			expectEqual(after, "client_out", text(applied["client_out"]), std::to_string(server.outgoing.clientCount));
-			expectEqual(after, "chain", applied["chain"].String(), digestHex(server.outgoing.chain));
+			expectChain(after, applied, server.outgoing);
 			expectEqual(after, "boundary", text(applied["boundary"]), boundary ? boundary : "null");
 			JsonNode replayedTerminals;
 			replayedTerminals.Vector().clear();
@@ -395,7 +423,9 @@ public:
 			expectEqual(after, "terminals", applied["terminals"].toCompactString(), replayedTerminals.toCompactString());
 			if(boundary)
 			{
-				expectEqual(after, "digest", text(applied["digest"]), digestHex(stateDigest(*gameHandler)));
+				if(applied["digest"].isNull())
+					throw Divergence(after, "digest", "null", digestHex(stateDigest(*gameHandler)));
+				expectState(after, applied, *gameHandler);
 				++boundaries[boundary];
 				for(const auto & entry : replayedTerminals.Vector())
 					terminals.Vector().push_back(entry);
