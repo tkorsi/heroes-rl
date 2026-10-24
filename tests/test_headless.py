@@ -628,7 +628,9 @@ class HeadlessEnvTests(unittest.TestCase):
         self.assertEqual((evidence["recorded"], evidence["missing"]), (False, ["engine/replay.jsonl"]))
         self.assertEqual(evidence["tail"]["waited_seconds"], 0.0)
         engine = env.episode_dir / "engine"
-        (engine / "replay.jsonl").write_text(json.dumps({"kind": "start", "client_out": 0}) + "\n")
+        target = env_module.replay_tail(engine)["observation_pack"]
+        self.assertGreaterEqual(target, 1)
+        (engine / "replay.jsonl").write_text(json.dumps({"kind": "start", "client_out": target}) + "\n")
         blue = (engine / "observations-p1.jsonl").read_bytes()
         (engine / "observations-p1.jsonl").unlink()
         evidence = env._replay_evidence()
@@ -650,13 +652,14 @@ class HeadlessEnvTests(unittest.TestCase):
             stop(process)
 
         def log_late():
-            # The server logs the input behind the players' captures (client pack 0) just after the horizon.
+            # The server logs the input behind the players' last captures just after the horizon.
             deadline = time.monotonic() + 30
             while getattr(env, "reason", None) is None and time.monotonic() < deadline:
                 time.sleep(0.001)
             time.sleep(0.05)
+            target = env_module.replay_tail(env.episode_dir / "engine")["observation_pack"]
             with (env.episode_dir / "engine" / "replay.jsonl").open("a") as log:
-                log.write(json.dumps({"kind": "start", "client_out": 0}) + "\n")
+                log.write(json.dumps({"kind": "start", "client_out": target}) + "\n")
         server = threading.Thread(target=log_late, daemon=True)
         server.start()
         with mock.patch.object(env_module, "stop_process_group", recording_stop):
@@ -665,7 +668,8 @@ class HeadlessEnvTests(unittest.TestCase):
         self.assertEqual(end.termination_reason, "agent_action_limit")
         self.assertEqual(covered_at_stop, [True])
         tail = end.manifest["replay"]["tail"]
-        self.assertEqual((tail["observation_pack"], tail["replay_client_out"], tail["covered"]), (0, 0, True))
+        self.assertGreaterEqual(tail["observation_pack"], 1)
+        self.assertEqual((tail["replay_client_out"], tail["covered"]), (tail["observation_pack"], True))
         self.assertGreater(tail["waited_seconds"], 0.02)
         # A server log that never catches up delays the stop only by the bounded wait.
         never = self.make(limits, mode="natural", end_day=5)
@@ -673,7 +677,8 @@ class HeadlessEnvTests(unittest.TestCase):
         with mock.patch.object(env_module, "REPLAY_TAIL_SECONDS", 0.2):
             end, _ = play(never, self.random_players())
         tail = end.manifest["replay"]["tail"]
-        self.assertEqual((tail["observation_pack"], tail["replay_client_out"], tail["covered"]), (0, None, False))
+        self.assertGreaterEqual(tail["observation_pack"], 1)
+        self.assertEqual((tail["replay_client_out"], tail["covered"]), (None, False))
         self.assertGreaterEqual(tail["waited_seconds"], 0.2)
         self.assertLess(tail["waited_seconds"], 2.0)
 
