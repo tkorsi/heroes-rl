@@ -13,6 +13,19 @@
 /// backed by the player's own callback, and tests supply synthetic worlds.
 namespace explorer_rl
 {
+/// The kind of opponent a player meets in its own battle. VCMI fights an
+/// unowned army (a neutral or unflaggable owner, or a creature generator's
+/// guards) as the neutral player, and map monsters keep the unflaggable owner,
+/// so ownership, not the neutral color alone, makes an opponent neutral.
+inline const char * opponentKind(bool hero, bool townGarrison, bool unownedArmy)
+{
+	if(hero)
+		return "hero";
+	if(townGarrison)
+		return "town_garrison";
+	return unownedArmy ? "neutral" : "other";
+}
+
 /// Facts about one visitable object as the player can see it at one moment.
 /// The engine object ID is routing metadata for the Python adapter, which
 /// replaces it with an opaque per-player handle before any learner sees it.

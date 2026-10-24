@@ -488,14 +488,12 @@ void ExplorerRL::battleStart(const BattleID & battleID, const CCreatureSet * arm
 	JsonNode event;
 	event["kind"].String() = "battle_start";
 	event["side"].String() = left ? "attacker" : "defender";
-	if(opposingHero)
-		event["opponent"].String() = "hero";
-	else if(dynamic_cast<const CGTownInstance *>(opposingArmy))
-		event["opponent"].String() = "town_garrison";
-	else if(const auto * object = dynamic_cast<const CGObjectInstance *>(opposingArmy); object && object->getOwner() == PlayerColor::NEUTRAL)
-		event["opponent"].String() = "neutral";
-	else
-		event["opponent"].String() = "other";
+	// As SideInBattle::init assigns the neutral color: unowned armies and creature generators' guards.
+	const auto * object = dynamic_cast<const CGObjectInstance *>(opposingArmy);
+	const bool unowned = object && (!object->getOwner().isValidPlayer() || object->ID == Obj::CREATURE_GENERATOR1
+		|| object->ID == Obj::CREATURE_GENERATOR2 || object->ID == Obj::CREATURE_GENERATOR3 || object->ID == Obj::CREATURE_GENERATOR4);
+	event["opponent"].String() = explorer_rl::opponentKind(opposingHero != nullptr,
+		dynamic_cast<const CGTownInstance *>(opposingArmy) != nullptr, unowned);
 	{
 		std::lock_guard lock(stateMutex);
 		battleSide = side;

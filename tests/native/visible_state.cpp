@@ -10,6 +10,7 @@
 #include <iostream>
 #include <random>
 #include <set>
+#include <string>
 
 using explorer_rl::OwnState;
 using explorer_rl::VisibleChange;
@@ -338,8 +339,19 @@ void captureDigest()
 	std::printf("capture digest %016" PRIx64 "\n", base);
 }
 
+void opponentKinds()
+{
+	using explorer_rl::opponentKind;
+	expect(std::string(opponentKind(true, false, true)) == "hero", "a hero opponent must be reported as a hero");
+	expect(std::string(opponentKind(false, true, false)) == "town_garrison", "a garrison must be reported as such");
+	// Map monsters keep VCMI's unflaggable owner (-2), not the neutral color (-1).
+	expect(std::string(opponentKind(false, false, true)) == "neutral", "an unowned army must be neutral");
+	expect(std::string(opponentKind(false, false, false)) == "other", "an owned army without a hero is other");
+}
+
 int main()
 {
+	opponentKinds();
 	baselineAndReconstruction();
 	visibleToHiddenMove();
 	transientSightingBetweenDecisions();
@@ -350,6 +362,6 @@ int main()
 	ownStateChanges();
 	randomizedReconstruction();
 	captureDigest();
-	std::cout << "visible-state tracker: 10 scenarios, 200 randomized folds\n";
+	std::cout << "visible-state tracker: 10 scenarios, 200 randomized folds, opponent kinds\n";
 	return 0;
 }

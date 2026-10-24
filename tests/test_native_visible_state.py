@@ -44,7 +44,7 @@ class NativeVisibleStateTests(unittest.TestCase):
                            check=True, capture_output=True, text=True, timeout=60)
             result = subprocess.run([str(executable)], check=True, capture_output=True,
                                     text=True, timeout=10)
-            self.assertIn("10 scenarios, 200 randomized folds", result.stdout)
+            self.assertIn("10 scenarios, 200 randomized folds, opponent kinds", result.stdout)
             native = re.search(r"capture digest ([0-9a-f]{16})", result.stdout).group(1)
             fold = replay.VisibleFold([6, 5, 1])
             fold.apply(two_sided_world_update())
