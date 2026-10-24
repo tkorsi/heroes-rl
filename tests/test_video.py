@@ -128,9 +128,152 @@ class ValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(video.VideoError, "Recorder reported an error"):
             video.validate_frames(nested)
 
+    def test_four_stream_synchronization_preserves_distinct_fog(self):
+        streams = {}
+        for color, observer in (("red", 0), ("blue", 1)):
+            for view in ("omniscient", "player"):
+                records = copy.deepcopy(self.records)
+                for sample, record in enumerate(records, 1):
+                    record.update(sample_id=sample, game_day=sample, view=view,
+                                  player_index=observer if view == "player" else None,
+                                  observer_player_index=observer, visible_tiles=12 + observer,
+                                  camera_center={"x": sample + 10 * observer, "y": 7, "z": 0})
+                streams[f"{view}-{color}"] = records
+            video.validate_paired_frames(streams[f"omniscient-{color}"], streams[f"player-{color}"])
+        result = video.validate_synchronized_frames(streams)
+        self.assertTrue(result["shared_sample_ids_verified"])
+        self.assertEqual(result["streams"], list(streams))
+        streams["player-blue"][1]["elapsed_seconds"] += 0.01
+        with self.assertRaisesRegex(video.VideoError, "timestamps"):
+            video.validate_synchronized_frames(streams)
+        streams["player-blue"][1]["elapsed_seconds"] -= 0.01
+        streams["player-blue"].pop()
+        with self.assertRaisesRegex(video.VideoError, "same number"):
+            video.validate_synchronized_frames(streams)
+        streams.pop("player-blue")
+        for record in streams["omniscient-blue"]:
+            record.pop("game_day")
+        with self.assertRaisesRegex(video.VideoError, "require sample_id and game_day"):
+            video.validate_synchronized_frames(streams)
+
+    def test_paired_camera_centers_allow_movement_but_reject_mismatch_and_partial_evidence(self):
+        omni = copy.deepcopy(self.records)
+        player = copy.deepcopy(self.records)
+        for records, view, index in ((omni, "omniscient", None), (player, "player", 0)):
+            for sample, record in enumerate(records, 1):
+                record.update(view=view, player_index=index,
+                              camera_center={"x": sample, "y": 7, "z": 0})
+        self.assertIn("camera_center", video.validate_paired_frames(omni, player)["matched_fields"])
+        player[1]["camera_center"]["x"] += 1
+        with self.assertRaisesRegex(video.VideoError, "Paired view camera_center"):
+            video.validate_paired_frames(omni, player)
+        player[1].pop("camera_center")
+        with self.assertRaisesRegex(video.VideoError, "camera_center is missing"):
+            video.validate_frame_identity(player)
+        for record in player:
+            record.pop("camera_center", None)
+        with self.assertRaisesRegex(video.VideoError, "Paired view camera_center"):
+            video.validate_paired_frames(omni, player)
+        for record in omni:
+            record.pop("camera_center")
+        self.assertNotIn("camera_center", video.validate_paired_frames(omni, player)["matched_fields"])
+
+    def test_camera_center_requires_exact_integer_coordinates(self):
+        invalid_centers = (None, [1, 7, 0], {"x": 1, "y": 7},
+                           {"x": 1, "y": 7, "z": 0, "player": 0},
+                           {"x": True, "y": 7, "z": 0}, {"x": 1, "y": 7.0, "z": 0},
+                           {"x": 1, "y": 7, "z": "0"})
+        for center in invalid_centers:
+            with self.subTest(center=center):
+                records = copy.deepcopy(self.records)
+                for record in records:
+                    record["camera_center"] = center
+                with self.assertRaisesRegex(video.VideoError, "Invalid frame camera_center"):
+                    video.validate_frame_identity(records)
+
+    def test_player_frames_require_their_own_fog_and_common_error_marker(self):
+        records = copy.deepcopy(self.records)
+        for sample, record in enumerate(records, 1):
+            record.update(sample_id=sample, game_day=0, view="player", player_index=1,
+                          observer_player_index=0, visible_tiles=12)
+        with self.assertRaisesRegex(video.VideoError, "observer's fog"):
+            video.validate_frame_identity(records)
+        nested = self.directory / "frames" / "player-blue"
+        synthetic_capture(nested)
+        (nested.parent / "recording-error.txt").write_text("common recorder failure")
+        with self.assertRaisesRegex(video.VideoError, "Recorder reported an error"):
+            video.validate_frames(nested)
+
 
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "Requires real ffmpeg and ffprobe")
 class EncodingIntegrationTests(unittest.TestCase):
+    def test_self_play_selects_observer_outcome_and_validates_stream_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            capture = root / "synthetic-frames"
+            synthetic_capture(capture)
+            source = root / "fixture.mp4"
+            video.encode(capture, source)
+            run = root / "self-play"
+            run.mkdir()
+            recordings = {}
+            for color, observer in (("red", 0), ("blue", 1)):
+                for view in ("omniscient", "player"):
+                    key = f"{view}-{color}"
+                    shutil.copy2(source, run / f"{key}.mp4")
+                    recordings[key] = {
+                        "video": f"{key}.mp4",
+                        "capture": {"directory": f"frames/{key}", "fps": 6, "frames": 3, "elapsed_seconds": 1 / 3},
+                        "perspective": {"mode": view, "player": color if view == "player" else None,
+                                        "player_index": observer if view == "player" else None,
+                                        "observer_player": color, "observer_player_index": observer}}
+            data = {"schema_version": 3, "kind": "random-self-play", "episode": 1, "status": "completed",
+                    "policy": {"label": "Two uniform random agents (no learning)", "checkpoint": None},
+                    "policies_by_player": {"red": {"seed": 1}, "blue": {"seed": 2}},
+                    "outcomes_by_player": {"red": "loss", "blue": "win"},
+                    "rewards_by_player": {"red": -1, "blue": 1}, "recordings": recordings}
+            manifest = run / "manifest.json"
+            manifest.write_text(json.dumps(data))
+            red, skipped = video.discover([run])
+            self.assertEqual(skipped, [])
+            self.assertEqual(Path(red[0]["video"]).name, "player-red.mp4")
+            self.assertEqual((red[0]["outcome_player"], red[0]["outcome"]), ("red", "loss"))
+            blue, _ = video.discover([run], view="omniscient", player="blue")
+            self.assertEqual(Path(blue[0]["video"]).name, "omniscient-blue.mp4")
+            self.assertEqual((blue[0]["outcome_player"], blue[0]["outcome"]), ("blue", "win"))
+            self.assertEqual(blue[0]["outcomes_by_player"], data["outcomes_by_player"])
+            self.assertEqual(blue[0]["policies_by_player"], data["policies_by_player"])
+            report = video.montage([run], root / "blue-reel.mp4", seconds=0.1, samples=0,
+                                   view="omniscient", player="blue")
+            self.assertEqual(report["schema_version"], 3)
+            self.assertEqual(report["requested_player"], "blue")
+            lines = report["selected"][0]["overlay_lines"]
+            self.assertIn("RANDOM SELF-PLAY (NO TRAINING)", lines[0])
+            self.assertIn("CAMERA BLUE", lines[1])
+            self.assertIn("OUTCOME BLUE: WIN", lines[3])
+            marker = run / "frames" / "player-blue" / "recording-error.txt"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("synthetic blue capture failure")
+            self.assertEqual(len(video.discover([run], player="red")[0]), 1)
+            self.assertEqual(len(video.discover([run], view="omniscient", player="blue")[0]), 1)
+            available, skipped = video.discover([run], player="blue")
+            self.assertEqual(available, [])
+            self.assertEqual(skipped[0]["reason"], "Native recorder reported an error")
+            marker.unlink()
+            data["recordings"]["player-blue"]["perspective"]["observer_player_index"] = 0
+            manifest.write_text(json.dumps(data))
+            with self.assertRaisesRegex(video.VideoError, "observer does not match"):
+                video.discover([run], player="blue")
+            data["recordings"]["player-blue"]["perspective"].update(observer_player_index=1, player="red", player_index=0)
+            manifest.write_text(json.dumps(data))
+            with self.assertRaisesRegex(video.VideoError, "observer's fog"):
+                video.discover([run], player="blue")
+            data["recordings"].pop("player-blue")
+            manifest.write_text(json.dumps(data))
+            available, skipped = video.discover([run], player="blue")
+            self.assertEqual(available, [])
+            self.assertIn("player blue recording is unavailable", skipped[0]["reason"])
+
     def test_encoding_montage_provenance_duration_and_no_overwrites(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -243,6 +386,8 @@ class EncodingIntegrationTests(unittest.TestCase):
             self.assertEqual(invalid_sources, [])
             self.assertEqual(errors[0]["reason"], "Native recorder reported an error")
             self.assertEqual(len(video.discover([dual], view="omniscient")[0]), 1)
+            self.assertEqual(len(video.discover([blue], player="blue")[0]), 1)
+            self.assertEqual(video.discover([blue], player="red")[0], [])
             marker.unlink()
             base["recordings"]["player"]["perspective"]["mode"] = "omniscient"
             manifest.write_text(json.dumps(base))

@@ -1,0 +1,306 @@
+diff --git a/client/CPlayerInterface.h b/client/CPlayerInterface.h
+--- a/client/CPlayerInterface.h
++++ b/client/CPlayerInterface.h
+@@ -91,8 +91,10 @@
+ 	std::shared_ptr<CCallback> cb; //to communicate with engine
+ 
+ 	// Render-only observer perspective; never changes player identity or AI callbacks.
++	static std::vector<PlayerColor> getRequestedRecordingPlayers();
+ 	bool hasRecordingPerspective() const;
+ 	PlayerColor getRecordingPlayer() const;
++	void setRecordingPlayer(PlayerColor player);
+ 	void setRecordingOmniscient(bool omniscient);
+ 	uint64_t getRecordingPerspectiveRevision() const;
+ 	bool isVisibleForRecording(const int3 & tile) const;
+diff --git a/client/CPlayerInterface.cpp b/client/CPlayerInterface.cpp
+--- a/client/CPlayerInterface.cpp
++++ b/client/CPlayerInterface.cpp
+@@ -140,12 +140,15 @@
+ 	playerID=Player;
+ 	if(Player.isSpectator())
+ 	{
++		const auto requestedPlayers = getRequestedRecordingPlayers();
+ 		if(const char * value = std::getenv("VCMI_RECORD_PLAYER"))
+ 		{
+ 			if(value[0] < '0' || value[0] >= '0' + PlayerColor::PLAYER_LIMIT_I || value[1] != '\0')
+ 				throw std::runtime_error("VCMI_RECORD_PLAYER must be a player index from 0 to 7");
+ 			recordingPlayer = PlayerColor(value[0] - '0');
+ 		}
++		else if(!requestedPlayers.empty())
++			recordingPlayer = requestedPlayers.front();
+ 	}
+ 	human=true;
+ 	battleInt.reset();
+@@ -175,6 +178,9 @@
+ 	env = ENV;
+ 	if(recordingPlayer && !cb->getPlayerState(*recordingPlayer, false))
+ 		throw std::runtime_error("VCMI_RECORD_PLAYER is not present in this game");
++	for(const auto player : getRequestedRecordingPlayers())
++		if(!cb->getPlayerState(player, false))
++			throw std::runtime_error("VCMI_RECORD_PLAYERS contains a player not present in this game");
+ 
+ 	pathfinderCache = std::make_unique<PathfinderCache>(cb.get(), PathfinderOptions(*cb));
+ 	ENGINE->music().loadTerrainMusicThemes();
+@@ -196,6 +202,27 @@
+ 	}
+ }
+ 
++std::vector<PlayerColor> CPlayerInterface::getRequestedRecordingPlayers()
++{
++	std::vector<PlayerColor> players;
++	const char * value = std::getenv("VCMI_RECORD_PLAYERS");
++	if(!value)
++		return players;
++	for(const char * cursor = value;; cursor += 2)
++	{
++		if(*cursor < '0' || *cursor >= '0' + PlayerColor::PLAYER_LIMIT_I)
++			throw std::runtime_error("VCMI_RECORD_PLAYERS must be unique player indices from 0 to 7 separated by commas");
++		const PlayerColor player(*cursor - '0');
++		if(vstd::contains(players, player))
++			throw std::runtime_error("VCMI_RECORD_PLAYERS must not contain duplicate players");
++		players.push_back(player);
++		if(cursor[1] == '\0')
++			return players;
++		if(cursor[1] != ',')
++			throw std::runtime_error("VCMI_RECORD_PLAYERS must be unique player indices from 0 to 7 separated by commas");
++	}
++}
++
+ bool CPlayerInterface::hasRecordingPerspective() const
+ {
+ 	return recordingPlayer.has_value();
+@@ -204,6 +231,17 @@
+ PlayerColor CPlayerInterface::getRecordingPlayer() const
+ {
+ 	return recordingPlayer.value();
++}
++
++void CPlayerInterface::setRecordingPlayer(PlayerColor player)
++{
++	if(!playerID.isSpectator() || !player.isValidPlayer() || !cb->getPlayerState(player, false))
++		throw std::runtime_error("Recording perspective requires an observer and a player present in the game");
++	if(recordingPlayer != player)
++	{
++		recordingPlayer = player;
++		++recordingPerspectiveRevision;
++	}
+ }
+ 
+ void CPlayerInterface::setRecordingOmniscient(bool omniscient)
+diff --git a/client/renderSDL/ScreenHandler.cpp b/client/renderSDL/ScreenHandler.cpp
+--- a/client/renderSDL/ScreenHandler.cpp
++++ b/client/renderSDL/ScreenHandler.cpp
+@@ -27,8 +27,11 @@
+ #include "../renderSDL/SDLImage.h"
+ 
+ #include "../../lib/CConfigHandler.h"
++#include "../../lib/CPlayerState.h"
+ #include "../../lib/callback/CCallback.h"
+ #include "../../lib/constants/StringConstants.h"
++#include "../../lib/mapObjects/CGHeroInstance.h"
++#include "../../lib/mapObjects/CGTownInstance.h"
+ #include "../../lib/VCMIDirs.h"
+ #include "../../lib/texts/MetaString.h"
+ 
+@@ -68,9 +71,13 @@
+ 	struct View
+ 	{
+ 		std::string name;
++		std::string subdirectory;
++		std::optional<PlayerColor> player;
+ 		File manifest{nullptr, &std::fclose};
+ 	};
+ 	std::vector<View> views;
++	std::vector<PlayerColor> players;
++	std::map<PlayerColor, int3> cameraCenters;
+ 	Clock::time_point started;
+ 	Clock::time_point nextFrame;
+ 	std::chrono::duration<double> interval;
+@@ -109,6 +116,23 @@
+ 	{
+ 		if(std::fwrite(text.data(), 1, text.size(), file) != text.size() || std::fflush(file) != 0)
+ 			throw std::runtime_error("Cannot write recording metadata");
++	}
++
++	void focusPlayer(CPlayerInterface & observer, PlayerColor player)
++	{
++		observer.setRecordingPlayer(player);
++		const auto heroes = observer.cb->getHeroes(player);
++		const auto & towns = observer.cb->getPlayerState(player)->getTowns();
++		// Keep each camera tied to its own surviving hero/town. If eliminated, retain
++		// the last known center instead of following the other player's objects.
++		if(!heroes.empty())
++			cameraCenters[player] = heroes.front()->getSightCenter();
++		else if(!towns.empty())
++			cameraCenters[player] = towns.front()->getSightCenter();
++		const auto center = cameraCenters.find(player);
++		if(center == cameraCenters.end())
++			throw std::runtime_error("Recording player has no initial hero or town to follow");
++		adventureInt->centerOnTile(center->second);
+ 	}
+ 
+ 	void reportError(const std::string & message)
+@@ -143,7 +167,9 @@
+ 			for(const auto & entry : boost::filesystem::directory_iterator(directory))
+ 			{
+ 				const auto name = entry.path().filename().string();
+-				if(name == "omniscient" || name == "player" || name == "experiment-metadata.json" || name == "frames.jsonl" || name.rfind("recording-", 0) == 0 || (name.rfind("frame", 0) == 0 && entry.path().extension() == ".png"))
++				if(name == "omniscient" || name == "player" || name.rfind("omniscient-", 0) == 0
++					|| name.rfind("player-", 0) == 0 || name == "experiment-metadata.json" || name == "frames.jsonl"
++					|| name.rfind("recording-", 0) == 0 || (name.rfind("frame", 0) == 0 && entry.path().extension() == ".png"))
+ 					throw std::runtime_error("Recording directory contains previous output: " + entry.path().string());
+ 			}
+ 			interval = std::chrono::duration<double>(1.0 / readSetting("VCMI_RECORD_FPS", 6, 60));
+@@ -152,15 +178,35 @@
+ 			const std::string selection = requestedViews ? requestedViews : "both";
+ 			if(selection != "both" && selection != "omniscient" && selection != "player")
+ 				throw std::runtime_error("VCMI_RECORD_VIEWS must be both, omniscient or player");
++			players = CPlayerInterface::getRequestedRecordingPlayers();
+ 			ownership = createFile(directory / "recording-session.json");
+-			writeText(ownership.get(), "{\"schema_version\":2,\"views\":\"" + selection + "\"}\n");
+-			for(const std::string view : {"omniscient", "player"})
++			std::ostringstream session;
++			session << "{\"schema_version\":" << (players.empty() ? 2 : 3) << ",\"views\":\"" << selection << "\"";
++			if(!players.empty())
+ 			{
+-				if(selection != "both" && selection != view)
+-					continue;
+-				boost::filesystem::create_directory(directory / view);
+-				views.push_back({view, createFile(directory / view / "frames.jsonl")});
++				session << ",\"observer_player_indices\":[";
++				for(size_t index = 0; index < players.size(); ++index)
++					session << (index ? "," : "") << players[index].getNum();
++				session << "]";
+ 			}
++			session << "}\n";
++			writeText(ownership.get(), session.str());
++			auto addViews = [&](std::optional<PlayerColor> player)
++			{
++				for(const std::string view : {"omniscient", "player"})
++				{
++					if(selection != "both" && selection != view)
++						continue;
++					const auto subdirectory = view + (player ? "-" + player->toString() : "");
++					boost::filesystem::create_directory(directory / subdirectory);
++					views.push_back({view, subdirectory, player, createFile(directory / subdirectory / "frames.jsonl")});
++				}
++			};
++			if(players.empty())
++				addViews(std::nullopt);
++			else
++				for(const auto player : players)
++					addViews(player);
+ 			logGlobal->info("Experiment recording enabled: %s (maximum %u frames)", directory.string(), maxFrames);
+ 		}
+ 		catch(const std::exception & error)
+@@ -179,6 +225,8 @@
+ 			return;
+ 
+ 		auto * observer = GAME->interface();
++		const auto defaultPlayer = observer->hasRecordingPerspective()
++			? std::optional<PlayerColor>(observer->getRecordingPlayer()) : std::nullopt;
+ 		auto redraw = [&](bool omniscient)
+ 		{
+ 			observer->setRecordingOmniscient(omniscient);
+@@ -186,29 +234,46 @@
+ 			ENGINE->windows().totalRedraw();
+ 			ENGINE->windows().simpleRedraw(); // showAll does not advance animations
+ 		};
++		auto restore = [&]()
++		{
++			if(!players.empty())
++				focusPlayer(*observer, defaultPlayer.value());
++			redraw(false);
++		};
+ 		try
+ 		{
+ 			if(!observer->hasRecordingPerspective() || !adventureInt)
+-				throw std::runtime_error("Native recording requires VCMI_RECORD_PLAYER and an adventure interface");
++				throw std::runtime_error("Native recording requires a recording player and an adventure interface");
++			// Gameplay becomes active before the loading window has disappeared.
++			if(!frameCount && !ENGINE->windows().isTopWindow(adventureInt))
++				return;
+ 			if(!frameCount)
+ 				started = now;
+-			// Both passes run under interfaceMutex. Network packet application also holds
+-			// this mutex, so neither the game state nor the camera advances between them.
++			// Every view runs under interfaceMutex. Packet application also holds it,
++			// so all players share one game state and each player's two views one camera.
+ 			const auto size = observer->cb->getMapSize();
+ 			unsigned int visibleTiles = 0;
+-			for(int z = 0; z < size.z; ++z)
+-				for(int y = 0; y < size.y; ++y)
+-					for(int x = 0; x < size.x; ++x)
+-						visibleTiles += observer->isVisibleToRecordingPlayer(int3(x, y, z));
+-			const int player = observer->getRecordingPlayer().getNum();
++			std::optional<PlayerColor> sampledPlayer;
+ 			const int day = observer->cb->getDate(Date::DAY);
+ 			std::ostringstream filename;
+ 			filename.imbue(std::locale::classic());
+ 			filename << "frame" << std::setfill('0') << std::setw(6) << frameCount + 1 << ".png";
+ 			for(auto & view : views)
+ 			{
++				const auto player = view.player.value_or(defaultPlayer.value());
++				if(sampledPlayer != player)
++				{
++					if(view.player)
++						focusPlayer(*observer, player);
++					visibleTiles = 0;
++					for(int z = 0; z < size.z; ++z)
++						for(int y = 0; y < size.y; ++y)
++							for(int x = 0; x < size.x; ++x)
++								visibleTiles += observer->isVisibleToRecordingPlayer(int3(x, y, z));
++					sampledPlayer = player;
++				}
+ 				redraw(view.name == "omniscient");
+-				auto file = createFile(directory / view.name / filename.str());
++				auto file = createFile(directory / view.subdirectory / filename.str());
+ 				SDL_RWops * output = SDL_RWFromFP(file.get(), SDL_FALSE);
+ 				if(!output)
+ 					throw std::runtime_error(std::string("Cannot open PNG output: ") + SDL_GetError());
+@@ -225,15 +290,20 @@
+ 					<< std::fixed << std::setprecision(6) << std::chrono::duration<double>(now - started).count()
+ 					<< ",\"width\":" << surface->w << ",\"height\":" << surface->h
+ 					<< ",\"view\":\"" << view.name << "\",\"player_index\":"
+-					<< (view.name == "player" ? std::to_string(player) : "null")
+-					<< ",\"observer_player_index\":" << player << ",\"game_day\":" << day
+-					<< ",\"visible_tiles\":" << visibleTiles << "}\n";
++					<< (view.name == "player" ? std::to_string(player.getNum()) : "null")
++					<< ",\"observer_player_index\":" << player.getNum() << ",\"game_day\":" << day
++					<< ",\"visible_tiles\":" << visibleTiles;
++				if(view.player)
++				{
++					const auto & center = cameraCenters.at(player);
++					metadata << ",\"camera_center\":{\"x\":" << center.x << ",\"y\":" << center.y << ",\"z\":" << center.z << "}";
++				}
++				metadata << "}\n";
+ 				writeText(view.manifest.get(), metadata.str());
+ 			}
+-			// The live window always returns to the selected player's fog view.
+-			// In the usual paired mode the second pass already left it there.
+-			if(views.back().name != "player")
+-				redraw(false);
++			// Restore the default observer after temporarily rendering the other sides.
++			if(!players.empty() || views.back().name != "player")
++				restore();
+ 			++frameCount;
+ 			// Do not synthesize catch-up frames if PNG encoding or gameplay took longer than the interval.
+ 			nextFrame = now + std::chrono::duration_cast<Clock::duration>(interval);
+@@ -242,7 +312,7 @@
+ 				auto limitFile = createFile(directory / "recording-limit-reached.txt");
+ 				writeText(limitFile.get(), std::to_string(frameCount) + "\n");
+ 				stopped = true;
+-				logGlobal->info("Experiment recording reached frame limit: %u paired samples", frameCount);
++				logGlobal->info("Experiment recording reached frame limit: %u synchronized samples", frameCount);
+ 			}
+ 		}
+ 		catch(const std::exception & error)
+@@ -252,7 +322,7 @@
+ 			{
+ 				try
+ 				{
+-					redraw(false);
++					restore();
+ 				}
+ 				catch(const std::exception & restoreError)
+ 				{
