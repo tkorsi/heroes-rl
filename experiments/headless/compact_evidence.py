@@ -108,7 +108,9 @@ def main(argv: list[str] | None = None) -> int:
                       "configurations": [{
                           "workers": c["workers"], "end_to_end_decision_cycles_per_second": c["end_to_end_decision_cycles_per_second"],
                           "scaling_efficiency_mean": c["scaling_efficiency_mean"],
-                          "stretch_target_1000_per_second_met": c["stretch_target_1000_per_second_met"],
+                          # Judged only for a workload that writes the replay log, also in a file from before that rule.
+                          "stretch_target_1000_per_second_met": c.get("stretch_target_1000_per_second_met")
+                          if (benchmark.get("workload") or {}).get("replay") == "record" else None,
                           "repetitions": [{k: r.get(k) for k in (
                               "measured_seconds", "episodes_started", "episodes_finished_inside_window", "status_counts",
                               "natural_completions", "truncations_excluding_window_end", "failures", "decision_cycles",

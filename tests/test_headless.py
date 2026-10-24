@@ -164,6 +164,24 @@ class PlayerHistoryTests(unittest.TestCase):
         entry = self.history.memory()[1]
         self.assertEqual((entry["day"], entry["fact"]), (3, {key: enemy[key] for key in player_history.FACT_FIELDS}))
 
+    def test_last_seen_time_follows_captures_that_change_nothing(self):
+        def state(day):
+            return observation(0, [], [], [], day=day)["state"]
+        self.history.act(8, 0)
+        self.history.ingest({"type": "action_result", "action_id": 0, "action": 8, "accepted": True, "events": [],
+                             "before": state(1), "after": state(3)})
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(3, True), (3, True)])
+        self.history.ingest({"type": "terminal", "outcome": "loss", "last_action_id": 0, "state": state(5),
+                             "events": [update(1, disappeared=[2], day=4)]})
+        # The enemy was seen again by the result's capture on day 3 and was gone by day 4; the own hero was still
+        # seen by the terminal's capture on day 5.
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(5, True), (3, False)])
+
+    def test_last_seen_day_follows_a_terminal_capture_that_changes_nothing(self):
+        state = observation(0, [], [], [], day=5)["state"]
+        self.history.ingest({"type": "terminal", "outcome": "win", "last_action_id": -1, "state": state, "events": []})
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(5, True), (5, True)])
+
     def test_snapshot_that_disagrees_with_the_event_stream_is_rejected(self):
         with self.assertRaisesRegex(ProtocolError, "diverged"):
             self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 1, 1)], []))

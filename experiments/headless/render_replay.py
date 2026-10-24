@@ -36,6 +36,8 @@ _VIDEO_SPEC = importlib.util.spec_from_file_location("recording_video", ROOT / "
 video = importlib.util.module_from_spec(_VIDEO_SPEC)
 _VIDEO_SPEC.loader.exec_module(video)
 
+# The replay verification report version whose manifest label checks the drawn labels rely on.
+VERIFICATION_VERSION = 2
 TILE = 16
 GUTTER = 12
 HEADER = 44
@@ -303,6 +305,8 @@ def render(episode_dir: Path, output: Path, *, fps: float = 15.0, max_seconds: f
     verification = json.loads((episode_dir / "verification" / "replay-verification.json").read_text())
     if not verification.get("verified"):
         raise video.VideoError("Render only episodes whose replay verified")
+    if verification.get("schema_version") != VERIFICATION_VERSION:
+        raise video.VideoError("The verification predates the manifest label checks; verify again")
     # Render exactly the bytes the verification hashed; a changed manifest or trace fails closed.
     trace_path = episode_dir / "verification" / "trace.jsonl"
     manifest_bytes, trace_bytes = (episode_dir / "manifest.json").read_bytes(), trace_path.read_bytes()

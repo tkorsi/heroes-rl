@@ -104,6 +104,7 @@ class PlayerHistory:
         elif kind == "action_result":
             record.update(action_id=message["action_id"], action=message["action"], accepted=message["accepted"],
                           before=self._state(message["before"]), after=self._state(message["after"]))
+            self._seen_at_capture(message["after"])
             self.v1.result(message["action"], message["accepted"], self.day)
             self._pending_action_id = None
         elif kind == "decision":
@@ -114,6 +115,7 @@ class PlayerHistory:
         elif kind == "terminal":
             record.update(outcome=message["outcome"], last_action_id=message["last_action_id"],
                           state=self._state(message["state"]))
+            self._seen_at_capture(message["state"])
         record.update(day=self.day, turn=self.turns_completed + 1,
                       battles_started=self.battles_started, battles_completed=self.battles_completed)
         self.records.append(record)
@@ -225,6 +227,12 @@ class PlayerHistory:
             raise ProtocolError("Visible updates arrived before the bridge handshake")
         return {"size": self.map_size, "tiles": [self.tiles[key] for key in sorted(self.tiles, key=_position_key)],
                 "objects": [self._v1_objects[handle] for handle in sorted(self._v1_objects)], "own": self.own}
+
+    def _seen_at_capture(self, state: dict) -> None:
+        # The engine builds this state in the same capture as the message's visible updates, so
+        # everything still visible was seen again on its day, even when nothing changed.
+        if type(state.get("day")) is int:
+            self._observed_at = {**self._observed_at, "day": state["day"]}
 
     def _state(self, state: dict) -> dict:
         result = {key: copy.deepcopy(value) for key, value in state.items() if key != "hero_id"}

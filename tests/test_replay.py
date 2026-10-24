@@ -324,6 +324,64 @@ class ReplayToolTests(unittest.TestCase):
         self.assertFalse(result["verified"])
         self.assertFalse(result["terminal_evidence"]["matches"])
 
+    def test_manifest_labels_the_replay_cannot_check_are_refused(self):
+        episode, _, data = self.prepared(mode="natural", end_day=3)
+        original = json.loads((episode / "manifest.json").read_text())
+        self.assertEqual(original["outcomes_by_player"], {"red": "win", "blue": "loss"})  # what the replay log shows
+        # Each edit, verified again afterwards, would put a label the replay never checked into a video.
+        unscored = {"outcomes_by_player": {"red": None, "blue": None}, "rewards_by_player": {"red": None, "blue": None}}
+        edits = {"winner swapped under a truncated label": {"status": "truncated", "termination_reason": "game_day_limit",
+                                                            "outcomes_by_player": {"red": "loss", "blue": "win"}},
+                 "two winners": {"outcomes_by_player": {"red": "win", "blue": "win"}},
+                 "completed without outcomes": {"outcomes_by_player": {"red": None, "blue": None}},
+                 "completed at a horizon": {"termination_reason": "game_day_limit"},
+                 "rewards the outcomes do not earn": {"rewards_by_player": {"red": -1, "blue": 1}},
+                 "rewards that are not integers": {"rewards_by_player": {"red": 1.0, "blue": -1}},
+                 "rewards on a truncated episode": {"status": "truncated", "termination_reason": "game_day_limit",
+                                                    "outcomes_by_player": unscored["outcomes_by_player"]},
+                 "a status the environment never writes": {"status": "Completed"},
+                 "a natural terminal that failed": {"status": "failed", **unscored},
+                 "a truncation at a failure": {"status": "truncated", "termination_reason": "watchdog_timeout", **unscored},
+                 "a failure at a horizon": {"status": "failed", "termination_reason": "game_day_limit", **unscored},
+                 "a natural ending after a horizon on a scored episode": {
+                     "natural_terminal_after_horizon": {"red": "win", "blue": "loss"}},
+                 "two winners after a horizon": {"status": "truncated", "termination_reason": "game_day_limit", **unscored,
+                                                 "natural_terminal_after_horizon": {"red": "win", "blue": "win"}},
+                 "another episode number": {"episode": 999},
+                 "a seed of another type": {"seed": float(original["seed"])},
+                 "another seed": {"seed": 424242}}
+        binary = self.stub_binary()
+        for name, edit in edits.items():
+            with self.subTest(name):
+                replay.scoring.write_json(episode / "manifest.json", {**original, **edit})
+                result = replay.verify_episode(episode, binary=binary, data=data)
+                self.assertFalse(result["verified"])
+                self.assertTrue(result["error"].startswith("ReplayError"), result)
+        # A natural ending after a horizon is reported, unscored, and the replay must reproduce it.
+        after_horizon = {"status": "truncated", "termination_reason": "game_day_limit", **unscored}
+        for winner, verifies in (({"red": "win", "blue": "loss"}, True), ({"red": "loss", "blue": "win"}, False)):
+            with self.subTest(after_horizon=winner):
+                replay.scoring.write_json(episode / "manifest.json",
+                                          {**original, **after_horizon, "natural_terminal_after_horizon": winner})
+                result = replay.verify_episode(episode, binary=binary, data=data)
+                self.assertEqual((result["verified"], result["terminal_evidence"]["matches"]), (verifies, verifies), result)
+        replay.scoring.write_json(episode / "manifest.json", original)
+        self.assertTrue(replay.verify_episode(episode, binary=binary, data=data)["verified"])
+
+    def test_a_natural_ending_after_a_horizon_must_be_replayed(self):
+        fast = env_module.Limits(max_days=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        for terminals in (True, False):
+            with self.subTest(replayed_terminals=terminals):
+                episode, end, data = self.prepared(terminals=terminals, mode="natural", end_day=2, limits=fast)
+                self.assertEqual((end.status, end.manifest["natural_terminal_after_horizon"]),
+                                 ("truncated", {"red": "win", "blue": "loss"}))
+                result = replay.verify_episode(episode, binary=self.stub_binary(), data=data)
+                self.assertEqual(result["terminal_evidence"]["expected"], [{"player": 0, "victory": True},
+                                                                           {"player": 1, "victory": False}])
+                # Without the reported ending in the replayed log, only that refuses the episode.
+                self.assertTrue(result["observation_coverage"]["ok"] and result["engine"]["verified"], result)
+                self.assertEqual((result["verified"], result["terminal_evidence"]["matches"]), (terminals, terminals))
+
     def test_truncated_episodes_replay_as_a_prefix(self):
         episode, end, data = self.truncated()
         self.assertEqual(end.status, "truncated")

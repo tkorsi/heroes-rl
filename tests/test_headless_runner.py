@@ -150,13 +150,22 @@ class RunnerTests(unittest.TestCase):
             self.assertLess(entry["measured_start_spread_seconds"], 1.0)
             self.assertIsNotNone(entry["scaling_efficiency"])
             self.assertIn("battle_participations_red_plus_blue", entry["breakdown"])
-            self.assertFalse(configuration["stretch_target_1000_per_second_met"])
+            self.assertIsNone(configuration["stretch_target_1000_per_second_met"])  # no replay-log writes: not judged
         two = report["configurations"][1]["repetitions"][0]
         indices = sorted(row for worker in (output / "workers-2/rep-0").glob("worker-[0-9]")
                          for row in [e["index"] for e in json.loads((worker / "schedule.json").read_text())["schedule"][:2]])
         self.assertEqual(indices, [0, 1, 2, 3])  # the same schedule, interleaved across workers
         # The long benchmark plan stays out of the summary that is rewritten after every measured episode.
         self.assertIsNone(json.loads((output / "workers-2/rep-0/worker-0/summary.json").read_text())["schedule"])
+
+    def test_only_a_benchmark_that_writes_the_replay_log_judges_the_stretch_target(self):
+        output = self.base / "bench-replay"
+        result = self.run_tool("benchmark.py", "--output", str(output), "--workers", "1", "--repetitions", "1",
+                               "--duration", "2", "--warmup-allowance", "3", "--max-days", "3",
+                               "--ledger", "full", "--replay", "record", timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        configuration = json.loads((output / "benchmark.json").read_text())["configurations"][0]
+        self.assertIsInstance(configuration["stretch_target_1000_per_second_met"], bool)
 
     def test_attempt_series_preserves_every_planned_attempt_across_workers(self):
         output = self.base / "attempts"
@@ -193,6 +202,20 @@ class RunnerTests(unittest.TestCase):
         compact = json.loads(evidence.read_text())
         self.assertFalse(compact["benchmark"]["complete"])
         self.assertTrue(any("benchmark is incomplete" in note for note in compact["notes"]))
+
+    def test_evidence_judges_the_stretch_target_only_for_a_workload_that_writes_the_replay_log(self):
+        # A benchmark written before that rule judged runs without replay-log writes too; its flag is not copied.
+        for replay, expected in (("none", None), ("record", True)):
+            with self.subTest(replay=replay):
+                benchmark = self.base / f"benchmark-{replay}.json"
+                benchmark.write_text(json.dumps({"complete": True, "workload": {"replay": replay}, "configurations": [
+                    {"workers": 4, "end_to_end_decision_cycles_per_second": {"mean": 1762.0},
+                     "scaling_efficiency_mean": 0.8, "stretch_target_1000_per_second_met": True, "repetitions": []}]}))
+                evidence = self.base / f"evidence-{replay}.json"
+                subprocess.run([sys.executable, str(ROOT / "experiments/headless/compact_evidence.py"), "--output",
+                                str(evidence), "--benchmark", str(benchmark)], capture_output=True, timeout=60, check=True)
+                configuration = json.loads(evidence.read_text())["benchmark"]["configurations"][0]
+                self.assertEqual(configuration["stretch_target_1000_per_second_met"], expected)
 
     def test_attempt_series_reports_steady_state_per_worker_and_series_wide(self):
         output = self.base / "attempts"

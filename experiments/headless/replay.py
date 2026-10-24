@@ -49,6 +49,8 @@ _SCORING_SPEC.loader.exec_module(scoring)
 
 SCHEMA = "heroes-replay-v1"
 REPORT_SCHEMA = "heroes-replay-verification-v1"
+# The verification report written here; 2 checks the manifest labels a renderer draws.
+REPORT_VERSION = 2
 DIGEST_SEED = 1469598103934665603
 DIGEST_PRIME = 1099511628211
 MASK = (1 << 64) - 1
@@ -388,12 +390,56 @@ def observation_coverage(summary: dict, written: dict[str, int]) -> dict:
             "ok": after_prefix == 0 and loaded == written and checked == written}
 
 
-def expected_terminals(manifest: dict) -> list[dict] | None:
-    outcomes = manifest.get("outcomes_by_player") or {}
-    if manifest.get("status") != "completed" or set(outcomes.values()) != {"win", "loss"}:
-        return None
-    return sorted(({"player": index, "victory": outcomes[color] == "win"} for index, color in enumerate(("red", "blue"))),
-                  key=lambda entry: entry["player"])
+def _terminals(outcomes) -> list[dict]:
+    """The engine terminals a red/blue outcome pair with one winner and one loser names."""
+    if not isinstance(outcomes, dict) or set(outcomes) != {"red", "blue"} or set(outcomes.values()) != {"win", "loss"}:
+        raise ReplayError("A natural ending must name one winner and one loser")
+    return [{"player": index, "victory": outcomes[color] == "win"} for index, color in enumerate(("red", "blue"))]
+
+
+def manifest_labels(manifest: dict, episode_dir: Path) -> dict:
+    """The terminals the manifest claims, which the replay must reproduce.
+
+    A label outside what the environment writes is refused. A completed
+    episode is a natural terminal with one winner and one loser and the
+    rewards they earn; a truncated one stopped at a declared horizon; a failed
+    one for any other reason; only a completed episode names outcomes or
+    rewards. A natural ending after a horizon is reported on an unscored
+    episode, and the replay must reproduce it too. The episode number must be
+    its directory's and the seed an integer, which verify_episode compares
+    with the replay log. Why a cut-short episode stopped, beyond the pair
+    being one the environment writes, is the environment's own label: a
+    replayed prefix cannot confirm it.
+    """
+    status, reason = manifest.get("status"), manifest.get("termination_reason")
+    if (status not in ("completed", "truncated", "failed") or not isinstance(reason, str)
+            or (status == "completed") != (reason == "natural_terminal")
+            or (status == "truncated") != (reason in scoring.HEADLESS_TRUNCATIONS)):
+        raise ReplayError("The manifest's status and termination reason are not a pair the environment writes")
+    outcomes, rewards = manifest.get("outcomes_by_player"), manifest.get("rewards_by_player")
+    for name, labels in (("outcomes", outcomes), ("rewards", rewards)):
+        if not isinstance(labels, dict) or set(labels) != {"red", "blue"}:
+            raise ReplayError(f"The manifest must give red's and blue's {name}")
+    if status == "completed":
+        terminals = _terminals(outcomes)
+        if any(type(rewards[color]) is not int or rewards[color] != (1 if outcomes[color] == "win" else -1)
+               for color in ("red", "blue")):
+            raise ReplayError("A completed episode's rewards must be the ones its outcomes earn")
+    elif any(label is not None for label in (*outcomes.values(), *rewards.values())):
+        raise ReplayError("Only a completed episode may name outcomes or rewards")
+    else:
+        terminals = None
+    after_horizon = manifest.get("natural_terminal_after_horizon")
+    if after_horizon is not None:
+        if status == "completed":
+            raise ReplayError("A natural ending after a horizon is reported only on an unscored episode")
+        after_horizon = _terminals(after_horizon)
+    episode = manifest.get("episode")
+    if type(episode) is not int or episode < 1 or episode_dir.name != f"episode-{episode:06d}":
+        raise ReplayError("The manifest's episode number is not the one its directory names")
+    if type(manifest.get("seed")) is not int:
+        raise ReplayError("The manifest's seed must be an integer")
+    return {"terminals": terminals, "after_horizon": after_horizon}
 
 
 def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path | None = None,
@@ -407,14 +453,19 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
     if directory.exists():
         shutil.rmtree(directory)
     directory.mkdir(parents=True)
-    report = {"schema_version": 1, "kind": "headless-replay-verification", "episode": manifest["episode"],
+    report = {"schema_version": REPORT_VERSION, "kind": "headless-replay-verification", "episode": manifest["episode"],
               "seed": manifest["seed"], "status": manifest["status"],
               "termination_reason": manifest["termination_reason"], "created_at": datetime.now(timezone.utc).isoformat(),
               "replay_binary_sha256": scoring.digest(binary), "cut_short": cut_short, "verified": False,
               # What this verification read and wrote; a renderer must find exactly these inputs.
               "inputs": {"manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "trace_sha256": None}}
     try:
+        labels = manifest_labels(manifest, episode_dir)
+        # A natural ending is reproduced whether it was scored or came after a horizon.
+        terminals = labels["terminals"] or labels["after_horizon"]
         evidence = prepare_evidence(episode_dir, directory, manifest)
+        if evidence["records"][0].get("seed") != manifest["seed"]:
+            raise ReplayError("The manifest's seed is not the one the replay log recorded")
         report["dropped"] = evidence["dropped"]
         report["replay_log_sha256"] = scoring.digest(episode_dir / "engine" / "replay.jsonl")
         report["replay_tail"] = manifest["replay"].get("tail")
@@ -432,7 +483,6 @@ def verify_episode(episode_dir: Path, *, binary: Path, data: Path, output: Path 
             players[color] = (cross_check_player(bridge, observations, cut_short=cut_short)
                               if bridge.is_file() and observations.is_file() else {"verified": False, "missing": True})
         report["players"] = players
-        terminals = expected_terminals(manifest)
         summary = engine.get("summary") or {}
         report["terminal_evidence"] = {
             "expected": terminals, "replayed": summary.get("terminals"),
