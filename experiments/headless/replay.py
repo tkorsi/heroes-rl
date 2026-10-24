@@ -411,6 +411,10 @@ def manifest_labels(manifest: dict, episode_dir: Path) -> dict:
     being one the environment writes, is the environment's own label: a
     replayed prefix cannot confirm it.
     """
+    if manifest.get("kind") == "contextual-headless-self-play":
+        # Windows, routes, notices and command acknowledgements are not yet part of the replayed cross-check,
+        # so a contextual episode is refused explicitly rather than labeled verified.
+        raise ReplayError("Contextual (adventure-windows-v1) replay verification is not supported; the episode stays unverified")
     status, reason = manifest.get("status"), manifest.get("termination_reason")
     if (status not in ("completed", "truncated", "failed") or not isinstance(reason, str)
             or (status == "completed") != (reason == "natural_terminal")
