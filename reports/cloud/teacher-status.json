@@ -1,5 +1,5 @@
 {
-  "activity": "Reproduced SIGSEGV under GDB with the same 72 choices; Nullkiller TBB yourTurn task crashes while main waits in AIGateway::finish. Monitoring Optimizer status for a separately applicable tested repair.",
+  "activity": "Two same-trajectory GDB reproductions complete. Crash return site is Nullkiller ELF offset0x197b9d at TBB task-handle destructor virtual wait-tree release, after makeTurn returned. Monitoring minimal repair publication.",
   "blocker": "VCMI exited -11 (SIGSEGV) during shutdown after terminal callbacks/barrier and Ending network thread; same-runtime replay gate was not reached.",
   "checkpoint_pair_restore_exact": true,
   "deadline": {
@@ -64,13 +64,17 @@
     "cleanup_verified": true,
     "crashing_thread": "Nullkiller TBB AIGateway::yourTurn lambda #2",
     "main_thread": "AIGateway::finish -> CClient::finishGameplay -> CServerHandler::endGameplay",
-    "private_commit": "a8ce321",
-    "private_path": "results/shutdown-gdb-001.tar.gz",
-    "sha256": "fd4683d5d48927c05aeccd60e93016de121d65de4f3f88f4197350bfed1a3d56",
+    "operation": "TBB task_handle_task::~task_handle_task -> m_wait_tree_vertex->release()",
+    "private_commit": "83f01c1",
+    "private_path": "results/shutdown-gdb-002.tar.gz",
+    "reproductions": 2,
+    "return_address_in_Nullkiller_so": "0x197b9d",
+    "sha256": "c7f646b9308764b83dfe98de13c741aace3514ad67e9c17eed3e492ae90b6527",
     "signal": "SIGSEGV",
+    "target_mapping": "anonymous non-executable rw-p heap",
     "training_admission": false
   },
   "state": "waiting_minimal_native_repair",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T15:59:43.442153+00:00"
+  "updated_utc": "2026-10-25T16:04:18.645703+00:00"
 }
