@@ -369,6 +369,10 @@ def run_row(context, row, output):
         attempt["phase"] = phase
         write(attempt_path, attempt)
     mark("setup")
+    if context.get("native_evidence"):
+        # guarded_popen creates its evidence file exclusively: one file per attempt.
+        launcher.evidence_path = Path(context["native_evidence"](row["row"])).resolve()
+        attempt["native_evidence_path"] = str(launcher.evidence_path)
     native_failure = False
     verified = manifest = None
     try:
@@ -602,7 +606,8 @@ def worker(args, ops=None):
         launcher = ops["launcher_factory"](plan, args, output) if "launcher_factory" in ops else default_launcher(plan, args, output)
         context = {"cfg": cfg, "plan": plan, "launcher": launcher, "loaded": loaded, "opponent": opponent, "ops": ops,
                    "fixed": fixed, "episodes": episodes, "deadline": args.deadline, "wrapper_overhead": overhead,
-                   "cprofile": args.cprofile}
+                   "cprofile": args.cprofile,
+                   "native_evidence": lambda index: native_evidence_path(output, args.worker, index)}
         report["init"]["worker_ready_seconds"] = round(time.perf_counter() - process_started, 6)
         write(report_path, report)
         check = ops.get("identity_drift", identity_drift)
@@ -658,7 +663,12 @@ def default_launcher(plan, args, output):
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
     return DeadlineVcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["map"]),
         deadline_monotonic=args.deadline, deadline_wall=args.wall_deadline,
-        evidence_path=output / f"native-deadline-worker-{args.worker:02d}.jsonl")
+        evidence_path=native_evidence_path(output, args.worker, None))
+
+
+def native_evidence_path(output, worker_index, row_index):
+    suffix = "" if row_index is None else f"-row-{row_index:03d}"
+    return Path(output) / f"native-deadline-worker-{worker_index:02d}{suffix}.jsonl"
 
 
 # -- supervisor ----------------------------------------------------------------
@@ -683,7 +693,10 @@ def foreign_processes(supervisor_pid, owned_root, table=None):
     """Heavy processes that are not descendants of this supervisor, or None.
 
     Only the supervisor's own process tree is excluded. Another campaign or a
-    build in the same checkout is foreign and is flagged as same_root.
+    build in the same checkout is foreign and is flagged as same_root. The
+    supervisor's ancestors (the shells that launched it) are waiting on it, so
+    they are not flagged for naming the checkout or the harness; they still
+    are when their command matches a heavy pattern.
     """
     table = process_table() if table is None else table
     if table is None:
@@ -696,12 +709,17 @@ def foreign_processes(supervisor_pid, owned_root, table=None):
             if ppid in owned and pid not in owned:
                 owned.add(pid)
                 changed = True
+    ancestors, pid = set(), table.get(supervisor_pid, (None,))[0]
+    while pid in table and pid not in ancestors:
+        ancestors.add(pid)
+        pid = table[pid][0]
     found = []
     for pid, (ppid, cpu, command) in sorted(table.items()):
         if pid in owned or command.startswith(("ps ", "grep ")):
             continue
-        same_root = str(owned_root) in command
-        if FOREIGN_PATTERN.search(command) or "contextual_benchmark" in command or same_root:
+        same_root = str(owned_root) in command and pid not in ancestors
+        other_campaign = "contextual_benchmark" in command and pid not in ancestors
+        if FOREIGN_PATTERN.search(command) or other_campaign or same_root:
             found.append({"pid": pid, "cpu_percent": cpu, "command": command[:200], "same_root": same_root})
     return found
 
@@ -861,14 +879,17 @@ def supervise(plan, output, ops):
                     supervisor_errors.append(f"worker {worker_index}: {type(error).__name__}: {error}")
             log.close()
         for worker_index in processes:
-            left = remaining()
-            if left <= 0:
-                supervisor_errors.append(f"native cleanup {worker_index}: cleanup bound reached before verification")
-                continue
-            try:
-                ops["cleanup_evidence"](output / f"native-deadline-worker-{worker_index:02d}.jsonl", timeout=left)
-            except Exception as error:
-                supervisor_errors.append(f"native cleanup {worker_index}: {type(error).__name__}: {error}")
+            evidence = sorted(output.glob(f"native-deadline-worker-{worker_index:02d}*.jsonl")) or [
+                native_evidence_path(output, worker_index, None)]
+            for path in evidence:
+                left = remaining()
+                if left <= 0:
+                    supervisor_errors.append(f"native cleanup {path.name}: cleanup bound reached before verification")
+                    continue
+                try:
+                    ops["cleanup_evidence"](path, timeout=left)
+                except Exception as error:
+                    supervisor_errors.append(f"native cleanup {path.name}: {type(error).__name__}: {error}")
         monitor.halt.set()
         left = remaining()
         if left > 0:
@@ -1030,11 +1051,53 @@ def exclusion_reasons(report):
     return reasons
 
 
+def gameplay_sha256(path):
+    """History digest with only per-run finalization evidence references removed.
+
+    evidence_ref binds raw per-run artifacts (timestamped ledgers, logs, replay
+    files), so identical gameplay never has identical raw history hashes.
+    Everything else in every frame is kept.
+    """
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for line in stream:
+            if b'"evidence_ref"' in line:
+                record = json.loads(line)
+                for name in ("verification", "cutoff_verification"):
+                    if isinstance(record.get(name), dict):
+                        record[name]["evidence_ref"] = None
+                line = (json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n").encode()
+            digest.update(line)
+    return digest.hexdigest()
+
+
+def gameplay_identity(campaigns):
+    """Normalized history hashes per scheduled row and color, across all campaigns."""
+    from experiments.learner import contextual as contract
+    seen = defaultdict(lambda: defaultdict(list))
+    for path, report, plan in campaigns:
+        for attempt in report["attempts"]:
+            if attempt.get("status") != "passed" or not attempt.get("episode_directory"):
+                continue
+            key_profile = contract.profile_for(plan["configuration"]["interface"]).history_key
+            folder = Path(attempt["episode_directory"])
+            manifest = json.loads((folder / "manifest.json").read_text())
+            row_key = json.dumps([attempt["engine_seed"], attempt["learner_player"], attempt["policy_seeds"],
+                                  plan["choice_limit"]])
+            for color in COLORS:
+                value = gameplay_sha256(folder / manifest["players"][color][key_profile]["path"])
+                seen[f"{row_key}:{color}"][value].append(f"{plan['declared_source']['implementation']}:{path}")
+    rows = {key: dict(values) for key, values in sorted(seen.items())}
+    return {"rows": rows, "all_identical": all(len(values) == 1 for values in rows.values()) if rows else None}
+
+
 def summarize(args):
     """Median and spread per comparable group, over clean campaigns only."""
     groups = defaultdict(list)
+    loaded = []
     for path in args.campaigns:
         report, plan = load_campaign(path)
+        loaded.append((str(path), report, plan))
         groups[campaign_group(report, plan)].append((str(path), report))
     result = []
     for key, members in sorted(groups.items(), key=lambda item: json.dumps(item[0], default=str)):
@@ -1067,9 +1130,10 @@ def summarize(args):
                     histories[(attempt["row"], color)].add(data["history_sha256"])
         entry["history_hash_sets"] = {f"{row}:{color}": sorted(values) for (row, color), values in sorted(histories.items())}
         result.append(entry)
-    print(json.dumps(result, indent=2, sort_keys=True))
+    identity = gameplay_identity(loaded) if getattr(args, "gameplay", True) else None
+    print(json.dumps({"groups": result, "gameplay_identity": identity}, indent=2, sort_keys=True))
     if args.output:
-        write(args.output, {"schema": SCHEMA + "-summary", "groups": result})
+        write(args.output, {"schema": SCHEMA + "-summary", "groups": result, "gameplay_identity": identity})
     return result
 
 

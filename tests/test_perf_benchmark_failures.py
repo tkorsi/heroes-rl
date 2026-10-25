@@ -33,6 +33,9 @@ class FakeEnv:
 
     def __init__(self, launcher, episodes, **kwargs):
         self.calls = launcher.calls
+        evidence = getattr(launcher, "evidence_path", None)
+        if evidence is not None:
+            Path(evidence).open("x").close()  # guarded_popen creates its evidence file exclusively
         self.episode_dir = Path(episodes) / "episode"
         self.episode_dir.mkdir(parents=True, exist_ok=True)
         (self.episode_dir / "manifest.json").write_text(json.dumps(manifest(self.status)))
@@ -306,6 +309,8 @@ class WorkerTests(unittest.TestCase):
     def test_all_rows_run_when_nothing_fails(self):
         report, _ = self.run_worker()
         self.assertEqual([a["status"] for a in report["attempts"]], ["passed"] * 3)
+        self.assertEqual(sorted(path.name for path in self.folder.glob("native-deadline-*.jsonl")),
+                         [f"native-deadline-worker-00-row-{index:03d}.jsonl" for index in range(3)])
         self.assertEqual(report["status"], "finished")
         attempts = bench.collect_attempts([row(i) for i in range(3)], self.folder, [report], False)
         self.assertEqual([a["status"] for a in attempts], ["passed"] * 3)
@@ -391,6 +396,16 @@ class ProcessInspectionTests(unittest.TestCase):
         self.assertFalse(found[200]["same_root"])
         self.assertTrue(found[300]["same_root"])
         self.assertTrue(found[400]["same_root"])
+
+    def test_launching_shells_are_not_foreign_but_heavy_ancestors_are(self):
+        table = {**self.TABLE, 100: (60, "1.0", "python -m experiments.perf.contextual_benchmark run"),
+                 60: (50, "0.0", "bash -c cd /owned && python -m experiments.perf.contextual_benchmark run"),
+                 50: (1, "0.0", "zsh -c run-campaign /owned")}
+        found = {item["pid"] for item in bench.foreign_processes(100, "/owned", table)}
+        self.assertEqual(found, {200, 300, 400})
+        table[50] = (1, "0.0", "python -m unittest discover /owned")
+        found = {item["pid"] for item in bench.foreign_processes(100, "/owned", table)}
+        self.assertEqual(found, {50, 200, 300, 400})
 
     def test_failed_inspection_is_unknown_not_clean(self):
         with mock.patch.object(bench, "process_table", return_value=None):
@@ -493,14 +508,39 @@ class SupervisorTests(unittest.TestCase):
             process = FakeProcess(next(pids), finished=True)
             index = int(command[command.index("--worker") + 1])
             bench.write(self.output / f"worker-{index:02d}.json", {"worker": index, "status": "finished", "attempts": []})
+            if index == 0:
+                for row_index in (0, 3):
+                    bench.native_evidence_path(self.output, 0, row_index).write_text("")
             return process
         report = bench.supervise(self.plan, self.output, self.operations(clock, spawn))
         self.assertEqual(report["cleanup_bound_overshoot_seconds"], 0.0)
         self.assertTrue(report["monitor_joined"])
         self.assertEqual(report["supervisor_errors"], [])
-        self.assertEqual(len(self.timeouts), 6)
+        evidence = [name for kind, name, _ in self.timeouts if kind == "evidence"]
+        self.assertEqual(evidence, ["native-deadline-worker-00-row-000.jsonl", "native-deadline-worker-00-row-003.jsonl",
+                                    "native-deadline-worker-01.jsonl", "native-deadline-worker-02.jsonl"])
         # Rows were never run, so the campaign is still not a clean sample.
         self.assertEqual(report["exclusion_reasons"], ["incomplete_or_failed_rows"])
+
+
+class GameplayHashTests(unittest.TestCase):
+    def test_only_finalization_evidence_references_are_normalized(self):
+        folder = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(folder)]))
+        frames = [{"seq": 0, "kind": "decision", "day": 1},
+                  {"seq": 1, "kind": "cutoff_finalized", "cutoff_verification": {"evidence_ref": "a" * 64, "history_sha256": ["x", "y"]}}]
+
+        def history(name, evidence, day=1):
+            records = json.loads(json.dumps(frames))
+            records[0]["day"] = day
+            records[1]["cutoff_verification"]["evidence_ref"] = evidence
+            path = folder / name
+            path.write_text("".join(json.dumps(r, sort_keys=True, separators=(",", ":")) + "\n" for r in records))
+            return path
+        first, second = history("a.jsonl", "a" * 64), history("b.jsonl", "b" * 64)
+        self.assertNotEqual(bench.digest(first), bench.digest(second))
+        self.assertEqual(bench.gameplay_sha256(first), bench.gameplay_sha256(second))
+        self.assertNotEqual(bench.gameplay_sha256(first), bench.gameplay_sha256(history("c.jsonl", "a" * 64, day=2)))
 
 
 class SummaryTests(unittest.TestCase):
