@@ -40,6 +40,8 @@ CASES = {
     "marketplace": "town_controls", "purchases": "town_controls", "artifacts": "artifacts",
     "artifact-transfer": "artifacts", "adventure-spells": "adventure_spells", "level-up": "level_up",
     "neutral-overflow": "neutral_overflow", "stables": "stables", "eagle-eye": "eagle_eye",
+    "fly-movement": "fly_movement", "water-walk-movement": "water_walk_movement",
+    "visions": "visions",
 }
 
 
@@ -380,6 +382,89 @@ def level_up_case(run):
     run.check("native_levelup_branch", "unverified", reason="Predeclared chest sequence did not offer experience")
 
 
+def movement_spell_case(run):
+    before = run.inspect_request().observation
+    actor = next(hero for hero in before.heroes if hero.handle == run.own_hero())
+    target = (actor.position[0], actor.position[1] + 4, actor.position[2])
+    tiles = {tile.position: tile for tile in before.tiles}
+    base.ensure(target in tiles and not tiles[target].blocked, "Far-bank land target is not visible and selectable")
+    # Native core terrain ID8 is water. The operator reads only these already
+    # delivered tiles; no fixture file or hidden route knowledge enters actions.
+    water = {position for position, tile in tiles.items() if tile.terrain == 8}
+    base.ensure(tiles[target].terrain != 8 and all((target[0], row, target[2]) in water
+                                                 for row in range(actor.position[1] + 1, target[1])),
+                "Displayed crossing lacks visible water and a land destination")
+    _, initial_frames, result = run.call(run.action("move_to", subject=actor.handle, x=target[0], y=target[1]),
+                                         "explicit_attempt_crossing_without_spell")
+    base.ensure(result is not None and result.status == "no_route_known" and result.position == actor.position
+                and not any(frame.kind == "issued" for frame in initial_frames),
+                "Crossing fixture is reachable without its isolated movement spell")
+    panel = run.open_hero_capability("spellbook")
+    spells = [item for item in panel.items if item.kind == "spell"]
+    base.ensure(len(spells) == 1 and spells[0].id in (6, 7), "Movement fixture must isolate Fly or Water Walk")
+    choice = next(candidate for candidate in panel.choices if candidate.kind == "cast_adventure_spell")
+    run.choose(choice)
+    base.ensure(run.inspect_request().observation.context.kind == "map", "Movement spell did not close its window")
+    _, additions, result = run.call(run.action("move_to", subject=actor.handle, x=target[0], y=target[1]),
+                                    "explicit_native_crossing_after_spell")
+    base.ensure(result is not None and result.destination_reached and result.position == target,
+                "Movement spell was cast but native route failed to reach the visible far bank")
+    positions = {hero.position for frame in additions if frame.observation is not None
+                 for hero in frame.observation.heroes if hero.handle == actor.handle}
+    crossed = sorted(positions & water)
+    issued = [frame for frame in additions if frame.kind == "issued"]
+    acknowledged = [frame for frame in additions if frame.kind == "acknowledged"]
+    base.ensure(crossed and len(issued) == len(acknowledged) >= 4 and all(frame.accepted for frame in acknowledged),
+                "Crossing lacks actual water positions and accepted native movement commands")
+    run.check("native_movement_spell_crossing", "passed", spell=choice.spell, target=list(target),
+              water_positions=[list(position) for position in crossed], native_steps=len(issued),
+              movement_before=actor.movement, movement_after=result.movement)
+
+
+def visions_case(run):
+    run.call(run.action("open_hero", subject=run.own_hero()), "explicit_open_actor_before_visions")
+    run.reject(run.action("open_capability", subject=run.own_hero(), panel="visions"),
+               "visions_inspection_unavailable_before_cast")
+    run.close_to_map()
+    book = run.open_hero_capability("spellbook")
+    spell = next((choice for choice in book.choices if choice.kind == "cast_adventure_spell" and choice.spell == 2), None)
+    base.ensure(spell is not None, "Native Visions spell is not offered by its isolated fixture")
+    run.choose(spell)
+    panel = run.open_hero_capability("visions")
+    base.ensure(panel.inspected_subject is None and not panel.items,
+                "Visions panel leaked object contents before an explicit inspection")
+    run.reject_foreign_choice("inspect_object")
+    for kind, expected_item in ((54, "monster_intent"), (34, "hero_stat"), (98, "town_stat")):
+        observation = run.inspect_request().observation
+        objects = {obj.handle: obj for obj in observation.objects}
+        choice = next((choice for choice in run.capability().choices
+                       if choice.destination in objects and objects[choice.destination].kind == kind
+                       and objects[choice.destination].owner != "self"), None)
+        base.ensure(choice is not None, "Native Visions lacks a displayed enemy/neutral object category " + str(kind))
+        before = run.inspect_request()
+        _, additions, result = run.call(run.action("inspect_object", subject=before.observation.context.subject,
+                                                  selection=choice.ref), "explicit_visions_inspection")
+        panel = run.capability("visions")
+        base.ensure(result is not None and result.status == "inspected" and result.accepted
+                    and not any(frame.kind == "issued" for frame in additions),
+                    "Read-only Visions inspection unexpectedly issued a native mutation")
+        base.ensure(panel.inspected_subject == choice.destination and panel.items
+                    and all(item.subject == choice.destination for item in panel.items)
+                    and any(item.kind == expected_item for item in panel.items),
+                    "Visions did not expose exactly its explicitly selected object's native information")
+        if kind in (54, 34):
+            base.ensure(any(item.kind == "creature_exact" for item in panel.items)
+                        and not any(item.kind == "creature_quantity" for item in panel.items),
+                        "Expert Visions did not expose native exact creature counts")
+        run.check("native_visions_inspection", "passed", object_kind=kind, subject=choice.destination,
+                  item_kinds=sorted({item.kind for item in panel.items}), native_issued=0)
+        run.close_capability()
+        panel = run.open_capability("visions")
+        base.ensure(panel.inspected_subject is None and not panel.items,
+                    "Reopening Visions refreshed a previous target without inspection")
+    run.close_to_map()
+
+
 def neutral_overflow_case(run):
     target = next(iter(run.targets(54)), None)
     base.ensure(target is not None, "Compliant diagnostic neutral is not visible")
@@ -443,7 +528,9 @@ def eagle_eye_case(run):
 RUN_CASE = {"marketplace": marketplace_case, "purchases": purchases_case, "artifacts": artifacts_case,
             "artifact-transfer": artifact_transfer_case, "adventure-spells": adventure_spells_case,
             "level-up": level_up_case, "neutral-overflow": neutral_overflow_case,
-            "stables": stables_case, "eagle-eye": eagle_eye_case}
+            "stables": stables_case, "eagle-eye": eagle_eye_case,
+            "fly-movement": movement_spell_case, "water-walk-movement": movement_spell_case,
+            "visions": visions_case}
 
 
 def fixture_identity(fixture, player, maps):

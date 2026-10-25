@@ -1,0 +1,660 @@
+{
+  "automatic_battles": true,
+  "changed_header_fields": {
+    "description": {
+      "after": "Isolated native capability diagnostic; excluded from training. All authored initial-state differences are recorded in its manifest. Normal fog, VCMI mechanics, automatic battles and native leveling remain enabled.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "heroLevelLimit": {
+      "after": 0,
+      "before": 1
+    },
+    "name": {
+      "after": "capability-fly-movement-blue-v1",
+      "before": "Hero management: two castles"
+    }
+  },
+  "diagnostic_only": true,
+  "engine_verified": false,
+  "fixture": "fly_movement",
+  "fog": "normal native team fog",
+  "layout_seed": 0,
+  "map_sha256": "6787ab392fad0b29a3b3ba36f962734a11d1119b1331cca0961ef484afef3114",
+  "native_hero_level_limit": 0,
+  "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
+  "object_changes": [
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_0",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 4,
+        "y": 10
+      },
+      "instance": "gold_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_1",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 15,
+        "y": 10
+      },
+      "instance": "gold_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 6,
+        "y": 12
+      },
+      "instance": "guard_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_1",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 13,
+        "y": 12
+      },
+      "instance": "guard_1"
+    },
+    {
+      "after": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {
+            "spellbook": "core:spellBook"
+          },
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 20,
+            "spellpower": 1
+          },
+          "secondarySkills": [
+            {
+              "level": "expert",
+              "skill": "core:airMagic"
+            }
+          ],
+          "spellBook": [
+            "core:fly"
+          ],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 10
+      },
+      "before": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 7
+      },
+      "instance": "hero_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_0",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 6,
+        "y": 16
+      },
+      "instance": "mine_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_1",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 15,
+        "y": 16
+      },
+      "instance": "mine_1"
+    }
+  ],
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "player": "blue",
+  "rules_and_rewards_unchanged": true,
+  "runtime_state_grants": false,
+  "scenario_id": "capability-fly-movement-blue-v1",
+  "schema": "heroes-capability-scenario-v1",
+  "terrain_changes": [
+    {
+      "after": "wt0_",
+      "before": "dt40_",
+      "x": 0,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt35_",
+      "x": 1,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt42_",
+      "x": 2,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt26_",
+      "x": 3,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt21_",
+      "x": 4,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt36_",
+      "x": 5,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt42_",
+      "x": 6,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt34_",
+      "x": 7,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt39_",
+      "x": 8,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt37_",
+      "x": 9,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt30_",
+      "x": 10,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt41_",
+      "x": 11,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt32_",
+      "x": 12,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt33_",
+      "x": 13,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt42_",
+      "x": 14,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt29_",
+      "x": 15,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt25_",
+      "x": 16,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt38_",
+      "x": 17,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt43_",
+      "x": 18,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt21_",
+      "x": 19,
+      "y": 11
+    },
+    {
+      "after": "wt0_",
+      "before": "dt35_",
+      "x": 0,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt23_",
+      "x": 1,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt31_",
+      "x": 2,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt22_",
+      "x": 3,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt38_",
+      "x": 4,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt29_",
+      "x": 5,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt25_",
+      "x": 6,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt28_",
+      "x": 7,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt36_",
+      "x": 8,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt32_",
+      "x": 9,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt40_",
+      "x": 10,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt30_",
+      "x": 11,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt42_",
+      "x": 12,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt32_",
+      "x": 13,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt39_",
+      "x": 14,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt41_",
+      "x": 15,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt40_",
+      "x": 16,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt25_",
+      "x": 17,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt43_",
+      "x": 18,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt30_",
+      "x": 19,
+      "y": 12
+    },
+    {
+      "after": "wt0_",
+      "before": "dt33_",
+      "x": 0,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt34_",
+      "x": 1,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt41_",
+      "x": 2,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt23_",
+      "x": 3,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt21_",
+      "x": 4,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt40_",
+      "x": 5,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt27_",
+      "x": 6,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt43_",
+      "x": 7,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt31_",
+      "x": 8,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt26_",
+      "x": 9,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt28_",
+      "x": 10,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt28_",
+      "x": 11,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt41_",
+      "x": 12,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt35_",
+      "x": 13,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt33_",
+      "x": 14,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt43_",
+      "x": 15,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt42_",
+      "x": 16,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt39_",
+      "x": 17,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt34_",
+      "x": 18,
+      "y": 13
+    },
+    {
+      "after": "wt0_",
+      "before": "dt22_",
+      "x": 19,
+      "y": 13
+    }
+  ],
+  "training_performed": false
+}

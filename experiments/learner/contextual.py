@@ -36,10 +36,11 @@ EXPANDED_ENVIRONMENT = "adventure-capabilities-v1"
 TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
 TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
-CAPABILITY_PANELS = ("marketplace", "purchases", "artifacts", "spellbook", "level_up", "spell_target", "world_view")
+CAPABILITY_PANELS = ("marketplace", "purchases", "artifacts", "spellbook", "visions", "level_up", "spell_target", "world_view")
 CAPABILITY_ACTIONS = ("trade_resource", "buy_artifact", "move_artifact", "assemble_artifact",
                       "disassemble_artifact", "cast_adventure_spell", "choose_level_up",
-                      "choose_spell_target", "cancel_spell_target")
+                      "choose_spell_target", "cancel_spell_target", "inspect_object")
+CAPABILITY_MUTATIONS = tuple(kind for kind in CAPABILITY_ACTIONS if kind != "inspect_object")
 
 
 @dataclass(frozen=True)
@@ -214,7 +215,7 @@ class Action:
         elif self.x is not None or self.y is not None:
             raise ValueError("Only destination movement takes coordinates")
         if self.kind == "open_capability":
-            if self.panel not in ("marketplace", "purchases", "artifacts", "spellbook") or self.selection is not None:
+            if self.panel not in ("marketplace", "purchases", "artifacts", "spellbook", "visions") or self.selection is not None:
                 raise ValueError("Capability navigation selects an explicit available window")
         elif self.kind == "open_panel":
             if self.panel == "recruitment":
@@ -782,17 +783,29 @@ class CapabilityItem:
     x: int | None
     y: int | None
     z: int | None
+    spell: int | None = None
+    owner: str | None = None
 
     def __post_init__(self):
         _text(self.ref)
-        if self.kind not in ("artifact", "spell", "world_object", "world_terrain"):
+        if self.kind not in ("artifact", "spell", "world_object", "world_terrain", "creature_exact", "creature_quantity", "primary_skill", "hero_stat", "town_stat", "monster_intent"):
             raise ValueError("Unknown displayed capability item")
         if self.subject is not None:
             _text(self.subject)
         _integer(self.id, high=2**31 - 1, name="static content category")
-        for value in (self.slot, self.amount):
-            if value is not None:
-                _integer(value, high=2**31 - 1)
+        if self.slot is not None:
+            _integer(self.slot, high=2**31 - 1)
+        if self.amount is not None:
+            _integer(self.amount, low=-(2**31) if self.kind == "hero_stat" else 0, high=2**31 - 1)
+        if self.spell is not None:
+            _integer(self.spell, high=2**31 - 1)
+            if self.kind != "artifact":
+                raise ValueError("Only artifact instances carry a contained scroll spell")
+        if self.kind == "world_object":
+            if self.owner not in ("self", "opponent", "neutral"):
+                raise ValueError("World objects preserve their delivered relative owner")
+        elif self.owner is not None:
+            raise ValueError("Only world objects carry delivered map-icon ownership")
         if type(self.locked) is not bool:
             raise ValueError("Inventory lock is an explicit boolean")
         _capability_cost(self.cost)
@@ -804,6 +817,18 @@ class CapabilityItem:
                 raise ValueError("Revealed terrain does not reveal movement or hidden object properties")
         elif any(value is not None for value in (self.x, self.y, self.z)):
             raise ValueError("Only a delivered world-view item exposes coordinates")
+        if self.kind in ("creature_exact", "creature_quantity", "primary_skill", "hero_stat", "town_stat", "monster_intent"):
+            if self.amount is None or self.locked or self.cost is not None:
+                raise ValueError("Inspection statistics require an explicit displayed value without inventory flags")
+            if self.kind in ("creature_exact", "creature_quantity"):
+                _integer(self.slot, high=6)
+                _integer(self.amount, low=1, high=2**31 - 1)
+            elif self.slot is not None:
+                raise ValueError("Only a displayed inspected creature occupies an army slot")
+            if self.kind in ("primary_skill", "town_stat", "monster_intent"):
+                _integer(self.id, high=3)
+            elif self.kind == "hero_stat":
+                _integer(self.id, high=2)
 
 
 @dataclass(frozen=True)
@@ -849,6 +874,7 @@ class CapabilityChoice:
             "choose_level_up": {"skill", "skill_level"},
             "choose_spell_target": {"spell", "destination", "x", "y"},
             "cancel_spell_target": {"spell"},
+            "inspect_object": {"destination", "x", "y"},
         }[self.kind]
         for field in fields(self):
             if field.name not in {"ref", "kind", "subject"} | allowed and getattr(self, field.name) is not None:
@@ -863,6 +889,7 @@ class CapabilityChoice:
             "choose_level_up": allowed,
             "choose_spell_target": {"spell", "destination"},
             "cancel_spell_target": {"spell"},
+            "inspect_object": allowed,
         }[self.kind]
         if any(getattr(self, name) is None for name in required):
             raise ValueError("Capability choice omits a displayed argument")
@@ -889,6 +916,7 @@ class CapabilityPanel:
     primary_skill: int | None
     items: tuple[CapabilityItem, ...]
     choices: tuple[CapabilityChoice, ...]
+    inspected_subject: str | None = None
 
     def __post_init__(self):
         _text(self.ref)
@@ -903,7 +931,8 @@ class CapabilityPanel:
         allowed = {"marketplace": {"trade_resource"}, "purchases": {"buy_artifact"},
                    "artifacts": {"move_artifact", "assemble_artifact", "disassemble_artifact"},
                    "spellbook": {"cast_adventure_spell"}, "level_up": {"choose_level_up"},
-                   "spell_target": {"choose_spell_target", "cancel_spell_target"}, "world_view": set()}[self.kind]
+                   "spell_target": {"choose_spell_target", "cancel_spell_target"}, "world_view": set(),
+                   "visions": {"inspect_object"}}[self.kind]
         if any(choice.kind not in allowed for choice in self.choices):
             raise ValueError("Capability choices must belong to the displayed panel")
         if self.kind == "level_up":
@@ -917,6 +946,17 @@ class CapabilityPanel:
             raise ValueError("This choice panel contains no inventory")
         if self.kind == "world_view" and any(item.kind not in ("world_object", "world_terrain") for item in self.items):
             raise ValueError("World view contains only delivered objects")
+        if self.inspected_subject is not None:
+            _text(self.inspected_subject)
+            if self.kind != "visions" or self.inspected_subject not in {choice.destination for choice in self.choices}:
+                raise ValueError("Inspection requires a currently displayed Visions target")
+        if self.kind == "visions":
+            if self.inspected_subject is None and self.items:
+                raise ValueError("Visions details require explicit target inspection")
+            if any(item.kind not in ("creature_exact", "creature_quantity", "primary_skill", "hero_stat", "town_stat", "monster_intent") or item.subject != self.inspected_subject for item in self.items):
+                raise ValueError("Visions reveals only the inspected target's displayed details")
+        elif any(item.kind in ("creature_exact", "creature_quantity", "primary_skill", "hero_stat", "town_stat", "monster_intent") for item in self.items):
+            raise ValueError("Inspection details require an open Visions panel")
 
 
 @dataclass(frozen=True)
@@ -941,7 +981,7 @@ class Window:
         if self.capability_controls is not None:
             _tuple(self.capability_controls, str, "available capability windows")
             _unique(self.capability_controls, "capability control")
-            allowed = {"hero": ("artifacts", "spellbook"), "town": ("marketplace", "purchases"),
+            allowed = {"hero": ("artifacts", "spellbook", "visions"), "town": ("marketplace", "purchases"),
                        "exchange": ("artifacts",)}.get(self.context.kind, ())
             if any(control not in allowed for control in self.capability_controls):
                 raise ValueError("Capability control does not belong to this open window")
@@ -1109,10 +1149,11 @@ class Observation:
             capability = self.window.capability_panel
             if capability is not None:
                 own_subjects = {entry.handle for entry in (*self.heroes, *self.towns)}
+                visible_subjects = own_subjects | {entry.handle for entry in self.objects}
                 for choice in capability.choices:
                     if choice.subject not in own_subjects:
                         raise ValueError("Capability actor must be a currently owned subject")
-                    if choice.destination is not None and choice.destination not in own_subjects:
+                    if choice.destination is not None and choice.destination not in (visible_subjects if choice.kind == "inspect_object" else own_subjects):
                         raise ValueError("Capability destination must bind a displayed owned recipient")
                     if choice.x is not None and (choice.x >= self.size[0] or choice.y >= self.size[1]):
                         raise ValueError("Displayed spell target is outside map bounds")
@@ -1121,7 +1162,7 @@ class Observation:
                     if choice.kind == "buy_artifact" and any(price > held for price, held in zip(choice.cost, self.resources)):
                         raise ValueError("Available purchase must be affordable from visible resources")
                 for item in capability.items:
-                    if item.subject is not None and item.subject not in own_subjects:
+                    if item.subject is not None and item.subject not in (visible_subjects if capability.kind == "visions" else own_subjects):
                         raise ValueError("Capability inventory owner must be currently owned")
                     if item.kind in ("world_object", "world_terrain") and any(p >= bound for p, bound in zip((item.x, item.y, item.z), self.size)):
                         raise ValueError("Delivered world-view position is outside map bounds")
@@ -1316,13 +1357,13 @@ class Result:
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
                                "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built",
-                               "selected", "recruited", "no_capacity", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied"):
+                               "selected", "recruited", "no_capacity", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied", "inspected"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
         if self.status in ("rejected", "no_capacity") and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied", "inspected") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -1685,10 +1726,13 @@ def _eagle_eye_notice(notice):
 def _capability_notice(notice):
     if _eagle_eye_notice(notice):
         return True
+    if (notice.display_mode == "auto" and not notice.components
+            and notice.text == (NoticeToken("append_text", text_id="core.genrltxt.580"),)):
+        return True
     if notice.display_mode != "modal" or notice.components:
         return False
     if notice.text in tuple((NoticeToken("append_text", text_id=f"core.genrltxt.{index}"),)
-                            for index in (70, 123, 124, 125, 135, 335, 580)):
+                            for index in (70, 123, 124, 125, 135, 335)):
         return True
     return (len(notice.text) == 2 and notice.text[0] in (NoticeToken("append_text", text_id="core.genrltxt.336"), NoticeToken("append_text", text_id="core.genrltxt.337"))
             and notice.text[1].op == "replace_text" and notice.text[1].text_id is not None
@@ -2089,6 +2133,7 @@ class PlayerHistory:
         self.capability_refs = set()
         self.pending_join = False
         self.active_join = False
+        self.inspected_subject = None
         self.stack_origin = None
         self.context_changes = 0
         self.commands = 0
@@ -2137,6 +2182,10 @@ class PlayerHistory:
                 raise ValueError("Dialog snapshots must preserve the exact delivered event payload")
             if self.context.kind == "capability" and self.active_capability is not None and frame.observation.window.capability_panel != self.active_capability:
                 raise ValueError("Native capability query snapshots must preserve the delivered payload")
+            if self.context.kind == "capability" and self.context.panel == "visions":
+                inspected = frame.observation.window.capability_panel.inspected_subject
+                if inspected is not None and inspected != self.inspected_subject:
+                    raise ValueError("Visions details require this history's explicit target inspection")
             if self.context.kind == "exchange" and any(army.role == "joining_neutral" for army in frame.observation.window.armies) != self.active_join:
                 raise ValueError("Neutral army exposure requires its recorded live joining query")
             if (self.context.kind == "stack" and self.context.subject not in
@@ -2162,19 +2211,22 @@ class PlayerHistory:
             self._match_action(frame)
             if self.consumed:
                 raise ValueError("Duplicate action consumption")
-            if (self.action.kind in ("construct", "transfer_stack", "hire_hero", "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "choose_dialog", *CAPABILITY_ACTIONS)
+            if (self.action.kind in ("construct", "transfer_stack", "hire_hero", "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "choose_dialog", *CAPABILITY_MUTATIONS)
                     or self.action.kind == "close" and self.context.kind == "exchange") and frame.consumer != "engine":
                 raise ValueError("Construction, transfer and hero hiring require native engine consumption")
             if self.profile.army_management and self.action.kind in ("open_stack", "select_upgrade", "back") and frame.consumer != "adapter":
                 raise ValueError("Stack navigation requires adapter consumption")
-            if self.action.kind in ("open_capability", "close_capability") and frame.consumer != "adapter":
+            if self.action.kind in ("open_capability", "close_capability", "inspect_object") and frame.consumer != "adapter":
                 raise ValueError("Explicit capability navigation requires adapter consumption")
             self.consumed = True
             self.consumer = frame.consumer
+            if self.action.kind == "inspect_object":
+                self.inspected_subject = next(item.destination for item in self.decision.observation.window.capability_panel.choices
+                                              if item.ref == self.action.selection)
         elif kind == "issued":
             self._match_consumed(frame)
             if self.action.kind not in ("move_to", "end_turn", "construct", "recruit", "transfer_stack", "hire_hero",
-                                        "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "swap_garrison", "choose_dialog", *CAPABILITY_ACTIONS) and not (
+                                        "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "swap_garrison", "choose_dialog", *CAPABILITY_MUTATIONS) and not (
                     self.action.kind == "close" and self.decision.observation.context.kind == "exchange"):
                 raise ValueError("Navigation cannot issue native game commands")
             if self.action.kind == "recruit" and (self.consumer != "engine" or self.capacity_notice):
@@ -2210,6 +2262,7 @@ class PlayerHistory:
                 self.stack_origin = self.decision.observation
             self.context, self.revision = frame.context, frame.revision
             self.context_changes += 1
+            self.inspected_subject = None
             if self.action.kind == "choose_dialog":
                 self.active_dialog = None
             if self.action.kind in ("close_capability", "cast_adventure_spell", "choose_level_up", "choose_spell_target", "cancel_spell_target"):
@@ -2352,6 +2405,8 @@ class PlayerHistory:
             self.boundary = "cutoff"
         elif kind == "failure":
             self.boundary = "failure"
+        if kind in ("view", "decision") and self.context.kind == "capability" and self.context.panel == "visions":
+            self.inspected_subject = frame.observation.window.capability_panel.inspected_subject
         self._frames.append(frame)
         self.day = frame.day
 
@@ -2419,13 +2474,18 @@ class PlayerHistory:
             navigation = action.kind in ("open_capability", "close_capability")
             if any(value is not None for value in (result.position, result.movement, result.destination_reached)):
                 raise ValueError("Capability result cannot manufacture movement metadata")
-            expected = "opened" if action.kind == "open_capability" else "closed" if navigation else "capability_applied"
+            expected = ("opened" if action.kind == "open_capability" else "closed" if navigation
+                        else "inspected" if action.kind == "inspect_object" else "capability_applied")
             if result.status != (expected if result.accepted else "rejected"):
                 raise ValueError("Capability result must match its typed action")
             if navigation:
                 if (not result.accepted or self.consumer != "adapter" or self.commands or self.context_changes != 1
                         or self.context != self._context_target()):
                     raise ValueError("Capability navigation requires one exact adapter context transition")
+            elif action.kind == "inspect_object":
+                if (not result.accepted or self.consumer != "adapter" or self.commands or self.context_changes
+                        or self.context != self.decision.observation.context):
+                    raise ValueError("Inspection stays in its explicit panel without mutating the native game")
             else:
                 target = self._context_target()
                 if (self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted)

@@ -237,7 +237,8 @@ def _window_semantic(observation):
     panel = window.capability_panel
     items = [_node("owned_item", _semantic(item), _subject(observation, item.subject)) for item in panel.items]
     choices = [_capability_choice(choice, observation) for choice in panel.choices]
-    return _node("capability_window", ordinary, _set("bound_items", items), _set("bound_choices", choices))
+    return _node("capability_window", ordinary, _set("bound_items", items), _set("bound_choices", choices),
+                 _node("inspected_object", _subject(observation, panel.inspected_subject)))
 
 
 def _semantic(value):
@@ -295,7 +296,7 @@ def _semantic(value):
                 continue
             if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
-            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema"):
+            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
                 continue
             if type(value) is c.CapabilityChoice and name == "destination":
                 continue  # requires its displayed recipient binding, never handle bytes
@@ -303,6 +304,8 @@ def _semantic(value):
                     or type(value) in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
                     and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill")) and type(item) is int:
                 encoded = _text(f"category:{item}")
+            elif type(value) is c.CapabilityItem and value.kind == "world_object" and name == "amount" and type(item) is int:
+                encoded = _text(f"category:{item}")  # delivered object subtype, not an amount
             elif name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls") and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
             else:

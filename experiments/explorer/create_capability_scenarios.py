@@ -23,7 +23,7 @@ MAPS = ROOT / "experiments/explorer/maps"
 ORDINARY_ID = "hero-management-v2"
 COLORS = ("red", "blue")
 FIXTURES = ("town_controls", "stables", "neutral_overflow", "artifacts",
-            "adventure_spells", "level_up", "eagle_eye")
+            "adventure_spells", "level_up", "eagle_eye", "visions", "fly_movement", "water_walk_movement")
 FULL_ARMY = ("halberdier", "archer", "marksman", "griffin", "royalGriffin", "swordsman", "crusader")
 COMBINATION = {
     "head": "helmOfHeavenlyEnlightenment", "neck": "celestialNecklaceOfBliss",
@@ -112,6 +112,32 @@ def capability_payloads(fixture, player, seed=0):
         columns = (2, 4, 6) if player == "red" else (13, 15, 17)
         for number, tile in enumerate((column, row) for row in (9, 11, 13) for column in columns):
             objects.append(_rewardable(f"diagnostic_chest_{number}", "treasureChest", tile))
+    elif fixture in ("fly_movement", "water_walk_movement"):
+        actor.update(x=x + 1, y=10)
+        spell, school = ("fly", "airMagic") if fixture == "fly_movement" else ("waterWalk", "waterMagic")
+        actor["options"].update(artifacts={"spellbook": "core:spellBook"}, spellBook=["core:" + spell],
+                                secondarySkills=[{"skill": "core:" + school, "level": "expert"}])
+        actor["options"]["primarySkills"]["knowledge"] = 20
+        # A full-width water barrier has no walking detour or boat. The actor
+        # can see land on its far bank; only the one authored native movement
+        # spell can make the bounded crossing possible in this fixture.
+        for row in (11, 12, 13):
+            for column in range(20):
+                result["surface_terrain.json"][row][column] = "wt0_"
+    elif fixture == "visions":
+        # Native scouting reveals both ordinary towns from the central actor;
+        # expert Water Magic permits all three Visions inspection categories.
+        # The fixture never exposes those contents before a real spell cast.
+        actor.update(x=10, y=10)
+        actor["options"].update(artifacts={"spellbook": "core:spellBook"}, spellBook=["core:visions"],
+                                secondarySkills=[{"skill": "core:waterMagic", "level": "expert"},
+                                                 {"skill": "core:scouting", "level": "expert"}])
+        actor["options"]["primarySkills"].update(knowledge=10, spellpower=20)
+        enemy = next(obj for obj in objects if obj["type"] == "hero" and obj["options"]["owner"] != player)
+        enemy.update(x=13, y=10)
+        objects.append(_object("diagnostic_neutral", "monster", "pikeman", (10, 12),
+                               "AvWPike.def", ["VV", "VA"],
+                               {"amount": 6, "character": "compliant", "neverFlees": True, "noGrowing": True}))
     elif fixture == "eagle_eye":
         actor.update(x=x + 1, y=10)
         actor["options"].update(artifacts={"spellbook": "core:spellBook"}, spellBook=[],

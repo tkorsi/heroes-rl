@@ -21,7 +21,7 @@ class HeroCutoffTests(unittest.TestCase):
         env._settle = lambda: None
         env.sides = {
             0: SimpleNamespace(validator=SimpleNamespace(cutoff=object(), terminal=None,
-                                                        live=SimpleNamespace(decision=object(), context=obs.context))),
+                                                        live=SimpleNamespace(decision=object(), context=obs.context, requires_choice=False))),
             1: SimpleNamespace(validator=SimpleNamespace(cutoff=None, terminal=None)),
         }
         def send(action, *, continuation):
