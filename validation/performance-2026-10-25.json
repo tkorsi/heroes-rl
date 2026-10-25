@@ -4,6 +4,7 @@
     "0235507": "proposal 1: exact fixed-weight inference speedups (leaf memo, digest)",
     "030d2ad": "proposal 2: serialize each immutable history frame once",
     "1b1f0c0": "proposal 3: cached field-name sets in the strict decoder",
+    "59048d8": "harness: one native evidence file per attempt, launcher shells not foreign load, normalized gameplay identity",
     "713a854": "harness: five review blockers",
     "87f0d68": "harness: completion receipts, plan binding, one cleanup bound",
     "c45e307": "proposal 2 review fixes: exact-type redelivery, released frame text, original to_dict key order",
@@ -11,10 +12,191 @@
   },
   "date": "2026-10-25",
   "limitations": [
-    "Offline and synthetic numbers cover post-collection and inference work only; end-to-end native campaigns are pending the next Mac window.",
-    "Offline real-episode numbers are one run per commit.",
+    "Native campaigns use the benchmark's 512-choice cutoff rows; no natural game endings were measured, so these rates do not describe full games.",
+    "Scaling points are single campaigns on distinct rows; the 1-worker A/B has 3 repeats.",
+    "Offline real-episode numbers are one run per commit; synthetic numbers are cloud-only and not native.",
     "Never extrapolate games/second from these numbers."
   ],
+  "native_campaigns": {
+    "code_speedup_1_worker": {
+      "campaign_wall": 2.85,
+      "single_row": 2.82
+    },
+    "description": "experiments.perf.contextual_benchmark on the Mac (Apple Silicon), frozen v7 benchmark checkpoint, torch 1 thread, configs/performance-benchmark-v1.json (512-choice limit + 8 reserved dialog choices, max 200 days), bound 600 s per campaign; window 14:52-15:13 UTC after the Teacher batch released the Mac; no foreign heavy process detected; summary from the optimized clone at 59048d8 over all 18 campaign directories (raw artifacts stay on the Mac, not committed)",
+    "excluded": {
+      "ab-base-1 on 87f0d68": "incomplete_or_failed_rows: second row FileExistsError on the shared native evidence file (fixed in 59048d8)",
+      "smoke-opt-1": "concurrent_load false positive from the launching shells (fixed in 59048d8); rerun smoke-opt-2 clean"
+    },
+    "gameplay_identity": {
+      "all_identical": true,
+      "keys": 64,
+      "note": "history digests with only the per-run finalization evidence_ref removed; all 8 A/B row:color keys share one hash across 6 baseline and 6 optimized campaigns"
+    },
+    "groups": [
+      {
+        "actions_accepted": 1026,
+        "campaign_wall_seconds": {
+          "max": 240.1,
+          "median": 236.2,
+          "min": 235.9
+        },
+        "clean": "3/3",
+        "cutoffs_verified": 4,
+        "implementation": "baseline",
+        "label": "ab",
+        "phase_wall_seconds_median": {
+          "behavior": 2.7,
+          "cleanup": 0.2,
+          "collection": 128.7,
+          "native_replay": 26.2,
+          "persist_rollout": 3.0,
+          "reconstruction": 73.9
+        },
+        "rows": 4,
+        "sampled_choices_per_second_end_to_end": {
+          "max": 8.68,
+          "median": 8.67,
+          "min": 8.53
+        },
+        "verified_attempts_per_hour": {
+          "max": 61.0,
+          "median": 61.0,
+          "min": 60.0
+        },
+        "workers": 1
+      },
+      {
+        "actions_accepted": 1026,
+        "campaign_wall_seconds": {
+          "max": 83.4,
+          "median": 83.0,
+          "min": 77.1
+        },
+        "clean": "3/3",
+        "cutoffs_verified": 4,
+        "implementation": "optimized",
+        "label": "ab",
+        "phase_wall_seconds_median": {
+          "behavior": 2.5,
+          "cleanup": 0.2,
+          "collection": 38.4,
+          "native_replay": 14.9,
+          "persist_rollout": 1.9,
+          "reconstruction": 22.8
+        },
+        "rows": 4,
+        "sampled_choices_per_second_end_to_end": {
+          "max": 26.55,
+          "median": 24.68,
+          "min": 24.54
+        },
+        "verified_attempts_per_hour": {
+          "max": 186.7,
+          "median": 173.5,
+          "min": 172.6
+        },
+        "workers": 1
+      },
+      {
+        "actions_accepted": 291,
+        "campaign_wall_seconds": {
+          "max": 69.7,
+          "median": 68.5,
+          "min": 68.4
+        },
+        "clean": "3/3",
+        "cutoffs_verified": 1,
+        "implementation": "baseline",
+        "label": "ab1",
+        "rows": 1,
+        "workers": 1
+      },
+      {
+        "actions_accepted": 291,
+        "campaign_wall_seconds": {
+          "max": 24.4,
+          "median": 24.3,
+          "min": 23.9
+        },
+        "clean": "3/3",
+        "cutoffs_verified": 1,
+        "implementation": "optimized",
+        "label": "ab1",
+        "rows": 1,
+        "workers": 1
+      },
+      {
+        "actions_accepted": 1946,
+        "campaign_wall_seconds": 75.9,
+        "clean": "1/1",
+        "cutoffs_verified": 8,
+        "implementation": "optimized",
+        "label": "scale",
+        "rows": 8,
+        "sampled_choices_per_second_end_to_end": 54.0,
+        "verified_attempts_per_hour": 379.7,
+        "workers": 2
+      },
+      {
+        "actions_accepted": 3625,
+        "campaign_wall_seconds": 81.6,
+        "clean": "1/1",
+        "cutoffs_verified": 16,
+        "implementation": "optimized",
+        "label": "scale",
+        "rows": 16,
+        "sampled_choices_per_second_end_to_end": 100.4,
+        "verified_attempts_per_hour": 705.9,
+        "workers": 4
+      },
+      {
+        "actions_accepted": 7184,
+        "campaign_wall_seconds": 91.6,
+        "clean": "1/1",
+        "cutoffs_verified": 32,
+        "implementation": "optimized",
+        "label": "scale",
+        "rows": 32,
+        "sampled_choices_per_second_end_to_end": 178.81,
+        "verified_attempts_per_hour": 1257.3,
+        "workers": 8
+      }
+    ],
+    "largest_stages": {
+      "baseline_4_rows": {
+        "collector.finish": 47.3,
+        "contract.encode_frame": 44.1,
+        "model.forward_step(collection)": 31.3,
+        "model.forward_step(reconstruction)": 29.9,
+        "policy.act": 57.9,
+        "policy.consume": 51.8,
+        "policy.weights_sha256": 17.2,
+        "reconstruction.behavior": 34.9
+      },
+      "environment": "engine_wait about 3.5 s per 4-row campaign in both; Python dominates",
+      "optimized_4_rows": {
+        "collector.finish": 7.7,
+        "env.step": 8.6,
+        "model.forward_step(collection)": 8.5,
+        "model.forward_step(reconstruction)": 7.8,
+        "policy.act": 18.7,
+        "policy.consume": 15.3,
+        "reconstruction.behavior": 9.2,
+        "replay.verify_histories": 7.6
+      }
+    },
+    "outcomes": "every clean attempt passed as a verified cutoff (truncated at the choice window); 0 natural endings, 0 failures, 0 not started, 0 rejected actions; native replay verified; reconstruction max abs difference 0; weights unchanged",
+    "trees": {
+      "baseline": "9193db3 runtime + harness files from 59048d8 (tree 514d523622219f9adec3646501ee6aa50e0dc34e) for ab/*; + harness from 87f0d68 (tree 712ecfe4216a28fd932d0aade519e80caa92a42e) for ab1/*",
+      "optimized": "59048d8 for ab/scale (runtime identical to 32b1d27); 32b1d27 for ab1/smoke"
+    },
+    "worker_scaling_vs_1_worker_attempts_per_hour": {
+      "2": 2.19,
+      "4": 4.07,
+      "8": 7.25,
+      "note": "one campaign per point; scaling rows are distinct seeds/seats, not the A/B rows"
+    }
+  },
   "offline_real_episode": {
     "baseline_cprofile_note": "diagnostic only; overlapped Codex's 12:06-12:07 correctness window; excluded from every speed claim. _wire via encode_frame was ~73% of reconstruction and ~86% of rollout_from_dict (442k encode_frame calls for 29.5k frames)",
     "concurrent_load": false,
