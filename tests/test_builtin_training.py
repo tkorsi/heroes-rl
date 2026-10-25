@@ -43,12 +43,12 @@ class ContinuationTests(unittest.TestCase):
     def test_failed_capture_stops_without_update_or_replacement(self):
         with tempfile.TemporaryDirectory() as d:
             output=Path(d); rows=runner.schedule(1)
-            plan={'configuration':runner.configuration(),'execution_output':d,'parent':{},'mode':'training','schedule':rows}
+            plan={'configuration':runner.configuration(),'execution_output':d,'parent':{},'mode':'training','schedule':rows,'runtime':{},'native':{},'compute_deadline_unix':runner.COMPUTE_DEADLINE}
             report={'attempts':[runner.pilot.empty_attempt(r) for r in rows], 'update_status':'not_started',
                     'optimizer_updates':0,'optimizer_steps':0,'training_performed':False}
             (output/'report.json').write_text(json.dumps(report))
             args=SimpleNamespace(plan=output/'plan.json',sha256='a'*64,started=time.monotonic(),wall_started=time.time())
-            state=SimpleNamespace(model=object(),checkpoint='fixture')
+            state=SimpleNamespace(model=object(),checkpoint='fixture',progress=SimpleNamespace(updates=21))
             failed={**report['attempts'][0], 'status':'failed'}
             def attempt(*args):
                 args[-1](failed)
@@ -60,3 +60,26 @@ class ContinuationTests(unittest.TestCase):
             self.assertEqual(result['status'],'stopped');self.assertEqual(collect.call_count,1)
             update.assert_not_called();self.assertEqual(result['optimizer_updates'],0)
             self.assertEqual([r['status'] for r in result['attempts']],['failed']+['not_started']*3)
+
+
+class AbsoluteDeadlineTests(unittest.TestCase):
+    def test_prepare_refuses_insufficient_publication_and_execution_reserve(self):
+        args=SimpleNamespace(evaluate=False)
+        with patch.object(runner.time,'time',return_value=runner.COMPUTE_DEADLINE-299):
+            with self.assertRaisesRegex(ValueError,'insufficient execution/preservation reserve'):
+                runner.prepare(args)
+
+    def test_read_plan_refuses_a_past_or_rewritten_session_deadline(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'plan.json'
+            value={'mode':'training','absolute_deadline_unix':runner.HARD_DEADLINE,
+                   'compute_deadline_unix':runner.COMPUTE_DEADLINE}
+            path.write_text(json.dumps(value))
+            with patch.object(runner,'durable_path',side_effect=lambda p:Path(p)), \
+                 patch.object(runner.time,'time',return_value=runner.COMPUTE_DEADLINE+1):
+                with self.assertRaisesRegex(ValueError,'deadline reached or changed'):
+                    runner.read_plan(path,runner.pilot.digest(path))
+            value['absolute_deadline_unix']+=1;path.write_text(json.dumps(value))
+            with patch.object(runner,'durable_path',side_effect=lambda p:Path(p)):
+                with self.assertRaisesRegex(ValueError,'deadline reached or changed'):
+                    runner.read_plan(path,runner.pilot.digest(path))

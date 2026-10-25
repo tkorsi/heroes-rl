@@ -102,7 +102,7 @@ def compatible_runtime(parent_runtime, parent_native, current_runtime, current_n
     return {"unchanged": False, "verified_transition": transition}
 
 
-def compatible_source(parent, current):
+def compatible_source(parent, current, migration=None):
     """Every existing learner file stays exact; committed additive files may appear."""
     _committed_source(parent)
     _committed_source(current)
@@ -110,14 +110,18 @@ def compatible_source(parent, current):
             == current["git_commit"], "Current source revision is not the checkout HEAD")
     require(not subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=no"],
                                        cwd=ROOT, text=True).strip(), "Current tracked checkout is uncommitted")
-    for key in ("torch", "python", "interface"):
-        require(parent.get(key) == current.get(key), "Parent runtime/interface changed: " + key)
+    if migration:
+        migration.source(parent, current)
+    else:
+        for key in ("torch", "python", "interface"):
+            require(parent.get(key) == current.get(key), "Parent runtime/interface changed: " + key)
     require(current.get("interface") == INTERFACE, "Continuation requires the explicit v7 interface")
     approved_changes = {}
     for name, digest in parent["source_sha256"].items():
         actual = current["source_sha256"].get(name)
         if actual != digest:
-            require(transition_manifest()["source_changes"].get(name) == {"from": digest, "to": actual},
+            changes = migration.value["source_changes"] if migration else transition_manifest()["source_changes"]
+            require(changes.get(name) == {"from": digest, "to": actual},
                     "Existing learner source changed without exact review: " + name)
             approved_changes[name] = {"from": digest, "to": actual}
     for name, digest in current["source_sha256"].items():
@@ -215,7 +219,7 @@ class ParentState:
 
 
 def load_parent(plan_path, report_path, current_source, *, current_runtime, current_native,
-                expected_plan_sha256, expected_report_sha256):
+                expected_plan_sha256, expected_report_sha256, migration=None):
     """Restore exact committed parent state; reject drift before returning anything.
 
     Success restores saved global Torch/Python and named CPU minibatch RNGs.
@@ -229,34 +233,40 @@ def load_parent(plan_path, report_path, current_source, *, current_runtime, curr
                 "Parent plan/report hash differs from the new plan's explicit binding")
         plan, report = strict_json(Path(plan_binding["path"]).read_bytes()), strict_json(Path(report_binding["path"]).read_bytes())
         require(report.get("plan_sha256") == expected_plan_sha256
-                and Path(report_binding["path"]) == Path(plan["execution_output"]) / "report.json",
+                and Path(report_binding["path"]) == (migration.resolve(plan["execution_output"]) if migration else Path(plan["execution_output"])) / "report.json",
                 "Parent completion report belongs to another plan/output")
         progress, steps, sampler = _completion(plan, report)
-        source_proof = compatible_source(plan["source"], current_source)
-        runtime_proof = compatible_runtime(plan["runtime"], plan["native"], current_runtime, current_native)
+        source_proof = compatible_source(plan["source"], current_source, migration)
+        runtime_proof = (migration.runtime if migration else compatible_runtime)(
+            plan["runtime"], plan["native"], current_runtime, current_native)
+        resolve = migration.resolve if migration else Path
+        artifact = migration.artifact if migration else lambda value: (_bound(value) or value)
         require(runtime_identity(Path(current_native["binary"]).parent) == current_runtime
                 and binding(current_native["binary"])["sha256"] == current_native["binary_sha256"]
-                and binding(plan["game_map"])["sha256"] == current_native["map"]["sha256"],
+                and binding(resolve(plan["game_map"]))["sha256"] == current_native["map"]["sha256"],
                 "Actual native runtime or map changed")
         metadata = _metadata(plan, expected_plan_sha256)
-        _bound(metadata["initial_checkpoint"])
+        artifact(metadata["initial_checkpoint"])
         saved = report["after_checkpoint"]
         require(saved.get("exact_model_adam_rng_progress_pool") is True,
                 "Parent lacks an exact checkpoint completion receipt")
+        if migration:
+            migration.parent(plan_binding, report_binding, saved, progress, steps)
         for kind in ("policy", "resume"):
-            _bound(saved[kind])
+            artifact(saved[kind])
             require(Path(saved[kind]["path"]).parent == Path(plan["execution_output"]),
                     "Parent checkpoint is outside its completed execution")
-        policy = cp.load_policy_checkpoint(saved["policy"]["path"], expected_source_metadata=metadata,
-            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), interface=INTERFACE)
+        options = migration.checkpoint_options if migration else {}
+        policy = cp.load_policy_checkpoint(resolve(saved["policy"]["path"]), expected_source_metadata=metadata,
+            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), interface=INTERFACE, **options)
         model = policy.model.requires_grad_(True)
         optimizer = torch.optim.Adam(model.parameters(), **plan["configuration"]["adam"])
         generator = torch.Generator(device="cpu")
-        resumed = cp.load_checkpoint(saved["resume"]["path"], model, optimizer,
+        resumed = cp.load_checkpoint(resolve(saved["resume"]["path"]), model, optimizer,
             expected_ppo_config=plan["configuration"]["ppo"], expected_source_metadata=metadata,
             generators={"minibatch": generator}, interface=INTERFACE,
-            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), at_rollout_boundary=True)
-        raw = torch.load(saved["resume"]["path"], map_location="cpu", weights_only=True)
+            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), at_rollout_boundary=True, **options)
+        raw = torch.load(resolve(saved["resume"]["path"]), map_location="cpu", weights_only=True)
         require(resumed.checkpoint == policy.checkpoint and resumed.progress == progress
                 and resumed.sampler_state == sampler and policy.weights_sha256 == saved["weights_sha256"]
                 and cp.model_weight_digest(model) == saved["weights_sha256"], "Parent checkpoint pair/progress differs")
@@ -271,9 +281,9 @@ def load_parent(plan_path, report_path, current_source, *, current_runtime, curr
         require(binding(plan_path) == plan_binding and binding(report_path) == report_binding,
                 "Parent plan/report changed while restoring")
         for kind in ("policy", "resume"):
-            _bound(saved[kind])
+            artifact(saved[kind])
         model.eval().requires_grad_(False)
-        links = {"plan": plan_binding, "report": report_binding, "policy": saved["policy"], "resume": saved["resume"],
+        links = {"plan": plan_binding, "report": report_binding, "policy": artifact(saved["policy"]), "resume": artifact(saved["resume"]),
                  "progress": vars(progress), "optimizer_steps": steps, "source_proof": source_proof, "runtime_proof": runtime_proof}
         return ParentState(model, optimizer, generator, resumed.opponent_pool, progress, sampler,
                            metadata, resumed.checkpoint, saved["weights_sha256"], links, steps)

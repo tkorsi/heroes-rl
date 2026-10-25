@@ -1,0 +1,238 @@
+{
+  "activity": "cloud-heldout-update-030 fixed held-out pair completed; zero training samples.",
+  "behavior_diagnostics": {
+    "cross_army_net_count_redistribution": 1037,
+    "cross_army_operations": 98,
+    "moves_toward_visible_opponent_town": 0,
+    "recruitment_completed": 40,
+    "town_capture_evidence": 0,
+    "visible_battle_starts": 43
+  },
+  "blocker": null,
+  "checkpoint_pair_restore_exact": true,
+  "deadline": {
+    "authorized_window_start_utc": "2026-10-25T15:53:00Z",
+    "compute_stop_utc": "2026-10-25T17:50:00Z",
+    "engineering_job_guard": "tools/run_cloud_teacher_job.py",
+    "hard_stop_utc": "2026-10-25T17:53:00Z",
+    "owned_child_timeout_smoke": "passed; child stopped after 0.5-second bound with exit137",
+    "restart_after_cutoff_authorized": false,
+    "watchdog_pid": 9430,
+    "watchdog_private_receipt": "/workspace/Heroes-artifacts/session/deadline-watchdog.json",
+    "worker_and_native_absolute_guardians": true
+  },
+  "experimental_replay_worker_enabled": false,
+  "heldout_checks": [
+    {
+      "at_update": 25,
+      "rows": [
+        {
+          "choices": 132,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 11,
+            "cross_army_operations": 1,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-025"
+    },
+    {
+      "at_update": 30,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 53,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-030"
+    },
+    {
+      "at_update": 21,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "linux-update21-gate-002"
+    }
+  ],
+  "last_attempt": {
+    "choices": 72,
+    "kind": "evaluation",
+    "native_returncode": -11,
+    "optimizer_steps": 0,
+    "run": "linux-update21-gate-001",
+    "scored": false,
+    "second_seat": "not_started",
+    "training_samples": 0
+  },
+  "last_gate": {
+    "choices": [
+      72,
+      150
+    ],
+    "learning_performed": false,
+    "run": "linux-update21-gate-002",
+    "wall_seconds": 46.31009501900007
+  },
+  "latest_complete": {
+    "adam_steps": 230,
+    "decisions": 6096,
+    "plan": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-030/plan.json",
+    "policy_sha256": "586ae8387fb389d28899d702af316b1c86a1791b3a95f28dbc879ce9df790f79",
+    "resume_sha256": "d4efad88da366720819b69f8a5cdc039d21e69c8a6b6203041370d90790f2085",
+    "rollouts": 120,
+    "updates": 30,
+    "weights_sha256": "fed26470045025555ad2af0db40c7d08a0635f53b08ff7b56e62dfe326d02796"
+  },
+  "latest_private_snapshot": {
+    "manifest": "results/cloud/cloud-continuation-2026-10-25-030.tar.json",
+    "private_commit": "2fce32462180638096bcb30d806825b839c2fdbf",
+    "raw_archive_sha256": "8f1c75bfbe818ebe91f3fe9f3f0f295caf3c46317eef8e9bfa9c4f58acbef5d6",
+    "restore": {
+      "checkpoint": "builtin-pilot-after-fed2647004502555",
+      "exact_model_adam_rng_progress_pool": true,
+      "progress": {
+        "decisions": 6096,
+        "rollouts": 120,
+        "updates": 30
+      },
+      "weights_sha256": "fed26470045025555ad2af0db40c7d08a0635f53b08ff7b56e62dfe326d02796"
+    }
+  },
+  "linux_gates": {
+    "canonical_source": "passed_after_minimal_repair",
+    "cleanup": "passed_both_seats",
+    "focused_tests": "passed",
+    "fresh_capture": "passed_both_seats_clean_exit0",
+    "historical_plan_report": "passed_complete_parent_and_backup_restore",
+    "native_build": "passed_linux_v2",
+    "same_runtime_replay": "passed_both_seats"
+  },
+  "next_step": "Continue fresh complete batches and required fixed held-out pairs only while sufficient absolute deadline reserve remains.",
+  "next_unused_training_sequence": 22,
+  "optimizer_status_observed": {
+    "branch": "codex/portable-engine-session",
+    "commit": "bb98408",
+    "tested_minimal_shutdown_fix": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac"
+  },
+  "private_failure_evidence": {
+    "branch": "codex/cloud-teacher-results",
+    "commit": "0c31105",
+    "path": "results/linux-update21-gate-001.tar.gz",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "sha256": "66deeda69b1e71d822a3a8b8dc802fa70c4b3017d6176adb58ce8f47e817848a"
+  },
+  "private_git_read_access": true,
+  "private_transfer_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
+  "runtime": {
+    "directory": "/workspace/Heroes-artifacts/runtime/linux-v2/bin",
+    "experimental_workers_enabled": false,
+    "self_relative_vcmi_load_verified": true
+  },
+  "schema": "heroes-cloud-teacher-status-v1",
+  "shutdown_diagnostic": {
+    "choices": 72,
+    "cleanup_verified": true,
+    "crashing_thread": "Nullkiller TBB AIGateway::yourTurn lambda #2",
+    "main_thread": "AIGateway::finish -> CClient::finishGameplay -> CServerHandler::endGameplay",
+    "operation": "TBB task_handle_task::~task_handle_task -> m_wait_tree_vertex->release()",
+    "private_commit": "83f01c1",
+    "private_path": "results/shutdown-gdb-002.tar.gz",
+    "reproductions": 2,
+    "return_address_in_Nullkiller_so": "0x197b9d",
+    "sha256": "c7f646b9308764b83dfe98de13c741aace3514ad67e9c17eed3e492ae90b6527",
+    "signal": "SIGSEGV",
+    "target_mapping": "anonymous non-executable rw-p heap",
+    "training_admission": false
+  },
+  "since_update21": {
+    "adam_steps": 81,
+    "admitted_decisions": 2152,
+    "admitted_rollouts": 36,
+    "updates": 9
+  },
+  "state": "continuing_within_deadline",
+  "throughput": {
+    "admitted_decisions_per_reported_batch_second": 0.9920648640774326,
+    "reported_training_batch_wall_seconds": 2169.213,
+    "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
+    "verified_training_games_per_reported_batch_second": 0.01659588062583066
+  },
+  "training_performed_in_cloud": true,
+  "updated_utc": "2026-10-25T17:00:23.292373+00:00",
+  "validated_cloud_outcomes": {
+    "adam_steps": 81,
+    "evaluation_games": 6,
+    "loss": 42,
+    "training_games": 36,
+    "training_samples": 2152,
+    "training_wall_milliseconds": 2169213,
+    "updates": 9,
+    "verified_games": 42
+  }
+}

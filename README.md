@@ -216,6 +216,91 @@ a fresh window and continue from this checkpoint, subject to the existing
 failure/plateau stop conditions. Use sequence 22 or the next unused sequence;
 never reuse failed plan seeds or restart from the original baseline.
 
+### Authorized cloud Teacher continuation — 25 October 2026
+
+The user explicitly authorized continuation on the existing free cloud instance
+from the exact update-21 state: 84 rollouts, 3,944 decisions and 149 Adam steps.
+This supersedes the earlier local-only/cloud-setup restriction for this workstream.
+`codex/cloud-teacher` starts at Teacher `65a4f48` and merges PR25 `875841a`;
+experimental replay-worker execution remains disabled. Policy, features, PPO math,
+terminal rewards, Nullkiller Easy, automatic BattleAI and the exact
+`hero-management-v1` map remain fixed. Source preparation must match the canonical
+recipe before building or launching.
+
+Cloud continuation uses 4,960 ordinary plus 160 reserved dialog choices (5,120
+total), 30 days, four fresh games per batch and one complete PPO epoch. The
+640-step guard covers all 1,280 recurrent windows at maximum collection size;
+no prefix can be optimized when the complete batch exceeds a guard. The
+shared cloud batch budget is bounded at 3,600 seconds: at most 600 per game,
+2,400 for collection, and 3,540 for update/checkpoint or evaluation work,
+leaving cleanup reserve. Use unused sequences from 22
+onward; failed scheduled seeds remain consumed. Run the fixed held-out pair on
+both seats every five updates, with no evaluation samples entering training.
+`configs/builtin-cloud-training-v1.json` freezes the expanded collection scope.
+
+`HEROES_ARTIFACT_ROOT` selects the artifact root (cloud default
+`/workspace/Heroes-artifacts`), outside the source/worktree. Existing Mac evidence
+is immutable. An exactly committed `heroes-portable-resume-v1` migration config
+must pin historical and current source/runtime identities, the parent plan/report
+and checkpoint hashes, progress, and explicit artifact-root relocation. Only
+loader/runner changes may be listed; existing policy/feature/PPO sources remain
+byte-identical. CPU wheel suffix relocation requires the same public Torch
+release and exact saved metadata. Schema, tensor, Adam, RNG, progress and pool
+validation remain strict; historical Mac histories never become Linux training
+inputs.
+
+Migration evaluation restores and independently checks the backup pair, then
+collects fresh Linux captures with same-runtime replay and supervised cleanup.
+The migration config must bind that successful two-seat evaluation before
+preparing training. Every new batch preserves and independently restore-tests a
+second checkpoint pair before another batch. Neither code changes nor synthetic
+tests establish successful restoration of the real update-21 state. Transfer uses
+the user-owned **private** training-state Git repository; proprietary assets,
+checkpoints and full evidence must never enter this public code repository.
+Private transfer revision `c7257a0` supplied all 66 parts. All nine original files
+and the unchanged archive passed their hashes. The complete historical plan/report,
+checkpoint pair and independent backup restore exactly on Linux at update 21,
+84 rollouts, 3,944 decisions and 149 Adam steps.
+
+The first fresh Linux gate, `linux-update21-gate-001`, stopped after 72 Red choices:
+the native client exited with SIGSEGV (-11) during shutdown after terminal callbacks,
+the terminal barrier and `Ending network thread` were logged. The result remains
+failed/unscored; Blue was not started, independent replay was not reached, and
+zero training samples or optimizer steps were admitted. Cleanup passed and no
+native process remains. Update 21 is unchanged. Full failure evidence is preserved
+privately on `codex/cloud-teacher-results`; compact evidence is
+`validation/cloud-linux-gate-001-2026-10-25.json`. Optimizer owns native lifecycle
+repair; a separately labelled fresh Linux gate must pass before PPO continuation.
+The runner also explicitly requires gate/evaluation completion within its shared
+budget. `reports/cloud/teacher-status.json` records the current compact status;
+status commits occur between batches to preserve frozen source identity.
+`tools/publish_teacher_snapshot.py` additionally restore-tests the independently
+copied pair in the private results checkout and publishes each completed raw run
+with exact hashes; no game Data symlink is followed.
+
+### Fixed cloud stop window
+
+The user limited this cloud session to **25 October 2026, 17:53 UTC** (19:53 Kyiv),
+including diagnosis, repairs and validation. No new two-hour allowance begins when
+training becomes available. Continuation plans bind the absolute deadline and
+use **17:50 UTC** as the independent worker/native compute cutoff, reserving three
+minutes for preservation/publication. Preparation refuses insufficient remaining
+reserve; expired or changed deadlines cannot execute. Engineering jobs use
+`tools/run_cloud_teacher_job.py` with the same absolute cutoff. An independent
+cloud watcher records stop boundaries under the private artifact root. No restart
+after the cutoff is authorized without a new user instruction. Interrupted games
+and incomplete/interrupted optimizer work never count as completed updates.
+
+GDB diagnostic `shutdown-gdb-001` reproduced the original 72-choice shutdown
+SIGSEGV: a Nullkiller TBB `AIGateway::yourTurn` task crashes while the main thread
+waits in `AIGateway::finish()` through `CClient::finishGameplay()`. Its full
+backtrace, same-runtime inventory, reproducer and debugger package hashes are
+preserved privately at training-state results commit `a8ce321`. The loaded VCMI
+library digest matches the pinned runtime. This remains diagnostic-only evidence;
+no canonical C++ was edited by Teacher. Follow Optimizer's
+`codex/portable-engine-session` status for a tested minimal separately applicable
+correctness repair before a fresh ordinary-runtime gate.
+
 ## Current authorized local PPO pilot
 
 After the four replay-verified natural defeats against Nullkiller Easy, the user

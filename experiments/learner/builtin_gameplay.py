@@ -102,9 +102,9 @@ class TrainingBinding:
         for value in (self.plan_sha256, self.weights_sha256): _hash(value)
         _text(self.checkpoint, "checkpoint")
         c._integer(self.max_days, low=1)
-        require(type(self.nominal_choices) is int and self.nominal_choices == 248
-                and type(self.max_choices) is int and self.max_choices == 256,
-                "Pilot permits 248 ordinary plus eight reserved choices, at most 256 total")
+        require(type(self.nominal_choices) is int and (self.nominal_choices, self.max_choices) in ((248, 256), (4960, 5120))
+                and type(self.max_choices) is int,
+                "Use the original pilot or explicit 20x continuation limits")
         row = self.row
         require(type(row) is dict and row.get("phase") == "training", "Only a planned training slot can collect training data")
         for name, low, high in (("episode", 1, 2**31-1), ("engine_seed", 1, 2**31-1),
@@ -139,6 +139,11 @@ class TrainingBinding:
         require(canonical(plan.get("checkpoint")) == self.checkpoint_file_json,
                 "Training must start from the planned checkpoint file")
         cfg = plan["configuration"]
+        if self.max_choices == 5120:
+            require(plan["schema"] == "heroes-builtin-training-v1-plan"
+                    and cfg.get("reserved_dialog_choices") == 160
+                    and cfg.get("allow_verified_training_prefix") is False,
+                    "Expanded choices require an explicit complete continuation batch")
         require(type(cfg.get("max_days")) is int and cfg["max_days"] == self.max_days
                 and type(cfg.get("ordinary_choice_limit")) is int and cfg["ordinary_choice_limit"] == self.nominal_choices
                 and type(cfg.get("max_total_choices")) is int and cfg["max_total_choices"] == self.max_choices,
@@ -463,13 +468,23 @@ def native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
     require(type(config) is PPOConfig and config.gamma == config.gae_lambda == 1
             and config.epochs == 1 and config.decisions_per_window == 16 and config.windows_per_minibatch == 2,
             "Pilot PPO must retain the predeclared undiscounted one-epoch windows")
-    require(type(max_optimizer_steps) is int and 1 <= max_optimizer_steps <= 32
+    require(type(max_optimizer_steps) is int and 1 <= max_optimizer_steps <= 640
             and type(optimizer) is torch.optim.Adam
             and all(group["lr"] == 0.0003 for group in optimizer.param_groups), "Pilot requires bounded Adam at 3e-4")
     rollouts = _admit_builtin(receipts, model, plan_sha256=plan_sha256)
     plan = native.strict_json(Path(receipts[0].binding.plan_path).read_bytes())
     require(canonical(config.to_dict()) == canonical(plan["configuration"]["ppo"]),
             "PPO configuration differs from the approved plan")
+    require(max_optimizer_steps == plan["configuration"]["max_optimizer_steps"],
+            "Optimizer cap differs from the immutable plan")
+    if max_optimizer_steps > 32:
+        require(plan["schema"] == "heroes-builtin-training-v1-plan"
+                and plan["configuration"]["allow_verified_training_prefix"] is False
+                and len(rollouts) == len(plan["schedule"]) == 4
+                and plan["configuration"]["ordinary_choice_limit"] == 4960
+                and plan["configuration"]["reserved_dialog_choices"] == 160
+                and plan["configuration"]["max_total_choices"] == 5120,
+                "Expanded cap requires the complete four-game continuation batch")
     windows = sum((len(rollout.samples) + 15) // 16 for rollout in rollouts)
     require((windows + 1) // 2 <= max_optimizer_steps, "Complete update exceeds its optimizer-step cap")
     _USED_RECEIPTS.update(id(receipt) for receipt in receipts)

@@ -1,0 +1,44 @@
+{
+  "canonical_cpp_edited_by_teacher": false,
+  "choices_each": 72,
+  "cleanup_verified": true,
+  "crashing_thread": "TBB function_task<NKAI::AIGateway::yourTurn lambda #2>::execute",
+  "date": "2026-10-25",
+  "debugger": "GNU gdb Debian16.3-1, user-local package extraction; no system install",
+  "diagnostic_only": true,
+  "header_and_runtime_tbb_package": "2022.1.0-1+deb13u1",
+  "instruction": {
+    "makeTurn_returned": true,
+    "operation": "TBB task_handle_task destructor virtual m_wait_tree_vertex->release()",
+    "preceding": "call *0x8(%rax)",
+    "return_address_in_Nullkiller_so": "0x197b9d",
+    "target_mapping": "rw-p anonymous heap, non-executable"
+  },
+  "main_thread": [
+    "NKAI::AIGateway::finish",
+    "CClient::finishGameplay",
+    "CServerHandler::endGameplay"
+  ],
+  "next_step": "Optimizer minimal separately applicable canonical lifetime repair, then ordinary-runtime rebuild and fresh Linux gate.",
+  "optimizer_steps": 0,
+  "private_evidence": {
+    "choices": 72,
+    "cleanup_verified": true,
+    "crashing_thread": "Nullkiller TBB AIGateway::yourTurn lambda #2",
+    "main_thread": "AIGateway::finish -> CClient::finishGameplay -> CServerHandler::endGameplay",
+    "operation": "TBB task_handle_task::~task_handle_task -> m_wait_tree_vertex->release()",
+    "private_commit": "83f01c1",
+    "private_path": "results/shutdown-gdb-002.tar.gz",
+    "reproductions": 2,
+    "return_address_in_Nullkiller_so": "0x197b9d",
+    "sha256": "c7f646b9308764b83dfe98de13c741aace3514ad67e9c17eed3e492ae90b6527",
+    "signal": "SIGSEGV",
+    "target_mapping": "anonymous non-executable rw-p heap",
+    "training_admission": false
+  },
+  "reproductions": 2,
+  "schema": "heroes-cloud-shutdown-backtrace-v1",
+  "signal": "SIGSEGV",
+  "training_samples": 0,
+  "unchanged_update": 21
+}
