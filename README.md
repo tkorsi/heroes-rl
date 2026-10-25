@@ -16,8 +16,9 @@ are consolidated on **`main`**. Start new work from `main`; intermediate
 experiment branches and their PRs describe the history.
 
 The [consolidation check](validation/project-consolidation-2026-10-25.json)
-passed 1182 tests (26 platform/optional-fixture skips), a fresh nine-target macOS
-native build and the Swift viewer build. This check launched no gameplay.
+ran 1182 tests: 1156 passed and 26 required another platform or optional fixture.
+A fresh nine-target macOS native build and the Swift viewer build also passed.
+This check launched no gameplay.
 
 | Area | Implemented | Current limit |
 | --- | --- | --- |
