@@ -1,0 +1,1368 @@
+{
+  "base_commit": "34edd9b2d1fbe817512f4d38dac5f96b2a078d41",
+  "final_reviewed_commit": "4fe0d7c09d92b94d513345115e5a505ebe799b5a",
+  "four_original_findings_addressed": true,
+  "learner_commit": "53a8fda",
+  "pull_request": "https://github.com/tkorsi/heroes-rl/pull/6",
+  "reviews": [
+    {
+      "commit": "c6fb53d565e7332ca67a2d61a4f268a821b8cebd",
+      "controlled_boundary_findings": [
+        {
+          "bug_reproduced": false,
+          "desired_behavior_passed": true,
+          "expected": "A failed or unconsumed response must not become a taken-action sample or receive terminal credit. Preserve the preceding unacted decision, reconcile consumption, or exclude uncertain learner data. A separately verified natural outcome may remain reportable.",
+          "finding": "P1 failed-transport action folding",
+          "observed": {
+            "actions_sent_delta": 0,
+            "added_frames": [],
+            "classification_with_write_error": [
+              "completed",
+              {
+                "blue": "loss",
+                "red": "win"
+              },
+              "natural_terminal",
+              {
+                "blue": -1,
+                "red": 1
+              }
+            ],
+            "responses_undelivered": 1,
+            "write_error": "BrokenPipeError: engine closed after terminal"
+          },
+          "setup": "Valid pending Red action; sendall raises BrokenPipeError. Actual step(), history fold and classifier execute. Only transport, next advance and unrelated ledger I/O are stubbed.",
+          "source": {
+            "engine/ExplorerRL/ExplorerRL.cpp": [
+              888,
+              890
+            ],
+            "experiments/episodes/scoring.py": [
+              92,
+              94
+            ],
+            "experiments/headless/env.py": [
+              367,
+              380
+            ]
+          }
+        },
+        {
+          "bug_reproduced": false,
+          "desired_behavior_passed": true,
+          "expected": "Both orders fail closed with null rewards; a queued reader protocol error must survive final draining.",
+          "finding": "P2 stream finalization",
+          "observed": {
+            "exit_first": {
+              "failure_detail": "red: ProtocolError: Bridge stream ended inside a message",
+              "queued_order": [
+                "exit",
+                "bridge_error"
+              ],
+              "rewards": {
+                "blue": null,
+                "red": null
+              },
+              "status": "failed",
+              "termination_reason": "protocol_error"
+            },
+            "reader_error_first": {
+              "failure_detail": "red: ProtocolError: Bridge stream ended inside a message",
+              "queued_order": [
+                "bridge_error",
+                "exit"
+              ],
+              "rewards": {
+                "blue": null,
+                "red": null
+              },
+              "status": "failed",
+              "termination_reason": "protocol_error"
+            }
+          },
+          "setup": "Actual _advance/_finish/scoring with identical terminal/log evidence and queued exit plus reader error; only event ordering changes. Process, unrelated reporting, and metadata are stubbed. No process is launched.",
+          "source": {
+            "experiments/headless/env.py": [
+              [
+                488,
+                490
+              ],
+              [
+                528,
+                541
+              ],
+              [
+                648,
+                679
+              ]
+            ]
+          }
+        },
+        {
+          "bug_reproduced": true,
+          "desired_behavior_passed": false,
+          "expected": "When a terminal wins before the request is issued, its watermark must stay at the previous action (-1 here) and the late request must not issue. Commit consumption within the same game-state-locked request-issuance boundary as the terminal exclusion check.",
+          "finding": "P1 native consumption watermark precedes request issuance",
+          "observed": {
+            "accepted": false,
+            "request_issued_after_terminal": true,
+            "requests_after_terminal": 1,
+            "requests_at_terminal": 0,
+            "terminal_last_action_id": 0
+          },
+          "production_extract_sha256": "c38ff0b1bc5362456184e076674c554eea99e34511d59eb087a8e5884ae9e329",
+          "scope": "Exact watermark block and executeRequest method extracted from production source; surrounding synchronization state and callback are fixture supplies. No engine game or engine build.",
+          "source": {
+            "engine/ExplorerRL/ExplorerRL.cpp": [
+              [
+                901,
+                912
+              ],
+              [
+                642,
+                665
+              ],
+              [
+                965,
+                989
+              ],
+              [
+                414,
+                419
+              ]
+            ]
+          }
+        }
+      ],
+      "last_seen": {
+        "correct_behavior_passed": true,
+        "hidden_day4": {
+          "day": 3,
+          "fact": {
+            "owner": 1,
+            "subtype": 0,
+            "type": 34,
+            "x": 2,
+            "y": 1,
+            "z": 0
+          },
+          "handle": 2,
+          "sequence": 0,
+          "visible": false
+        },
+        "still_hidden_day6": {
+          "day": 3,
+          "fact": {
+            "owner": 1,
+            "subtype": 0,
+            "type": 34,
+            "x": 2,
+            "y": 1,
+            "z": 0
+          },
+          "handle": 2,
+          "sequence": 0,
+          "visible": false
+        },
+        "strict_cursor": {
+          "frames": 9,
+          "next_seq": 9,
+          "pending_action": null,
+          "unacted_decision": 8
+        },
+        "visible_day3": {
+          "day": 3,
+          "fact": {
+            "owner": 1,
+            "subtype": 0,
+            "type": 34,
+            "x": 2,
+            "y": 1,
+            "z": 0
+          },
+          "handle": 2,
+          "sequence": 0,
+          "visible": true
+        }
+      },
+      "limitations": [
+        "Passing smoke games did not reproduce the native race or suppressed terminal views. Those remain controlled reproductions.",
+        "The pre-existing-crash/cutoff defect reproduced with the real engine after an acknowledged random action.",
+        "No throughput conclusion: local build/validation overlapped Claude's old-head benchmark; that run was not changed or restarted.",
+        "History decoding is not complete learner readiness; schema-excluded dialog/battle records still require a learner adapter."
+      ],
+      "native_boundary_cases": [
+        {
+          "bootstrap_v1_seq": {
+            "blue": 39,
+            "red": 55
+          },
+          "case": "day-horizon",
+          "elapsed_seconds": 0.45,
+          "injection": null,
+          "learner_contract": {
+            "blue": {
+              "cutoff_day": 2,
+              "cutoff_is_own_unacted_decision": true,
+              "cutoff_seq": 39,
+              "frames": 40,
+              "taken_actions": 9
+            },
+            "red": {
+              "cutoff_day": 2,
+              "cutoff_is_own_unacted_decision": true,
+              "cutoff_seq": 55,
+              "frames": 110,
+              "taken_actions": 27
+            }
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-c6fb53d/day-horizon/episode-000001/manifest.json",
+          "manifest_sha256": "c5accf831fd5462cfe987d3938e445a6ea7dfa787714cf5bdbe8dcba8c41e137",
+          "ordinary_requests": 36,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": true,
+          "returncode": -15,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "game_day_limit"
+        },
+        {
+          "bootstrap_v1_seq": {
+            "blue": null,
+            "red": null
+          },
+          "case": "technical-kill",
+          "elapsed_seconds": 0.377,
+          "injection": {
+            "acknowledged_actions_before_kill": 1,
+            "pending_action_id": 1,
+            "pending_request_kind": "action",
+            "pending_request_player": 0,
+            "pid": 55800,
+            "private_pgid": 55800,
+            "signal": "SIGKILL",
+            "target": "Only the Popen process returned by this case's VcmiLauncher"
+          },
+          "learner_contract": {
+            "blue": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 0,
+              "taken_actions": 0,
+              "targets": []
+            },
+            "red": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 6,
+              "taken_actions": 1,
+              "targets": [
+                {
+                  "bootstrap_value": null,
+                  "decision_seq": 1,
+                  "eligible": false,
+                  "next_decision_seq": null,
+                  "return_target": null,
+                  "reward": null
+                }
+              ]
+            }
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-c6fb53d/technical-kill/episode-000002/manifest.json",
+          "manifest_sha256": "21a054e6369a5f55fda0b6fa95e829d43daa5217c98fd516aa4677630b6b4539",
+          "ordinary_requests": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": true,
+          "returncode": -9,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "failed",
+          "termination_reason": "process_exit_without_verified_terminal"
+        }
+      ],
+      "native_build": {
+        "log": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/build.log",
+          "sha256": "c154c6abc3a194b6d2ebe357e5f8222f250fd54e046684cd355f11d44d70c341"
+        },
+        "passed": true,
+        "recipe_check": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/recipe-c6fb53d.log",
+          "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+        },
+        "targets": [
+          "vcmiclient",
+          "vcmiserver",
+          "ExplorerRL",
+          "BattleAI",
+          "vcmireplay"
+        ]
+      },
+      "native_history_audit": {
+        "declared_invalid_projections": 0,
+        "decoded_frames": 6793,
+        "eligible_by_adapter_checks": 8,
+        "episodes": 4,
+        "failed_player_audits": 0,
+        "fully_transient_decision_intervals": 7,
+        "fully_transient_position_samples": 11,
+        "incomplete_projections": 0,
+        "intermediate_position_samples": 376,
+        "other_failures": 0,
+        "player_streams": 8,
+        "terminal_credit_candidates": 6
+      },
+      "native_preexisting_crash_case": [
+        {
+          "bootstrap_v1_seq": {
+            "blue": null,
+            "red": 5
+          },
+          "case": "technical-kill-before-cutoff",
+          "elapsed_seconds": 0.36,
+          "error": "AssertionError: ",
+          "injection": {
+            "acknowledged_actions_before_kill": 1,
+            "exit_before_truncate": -9,
+            "finalization_call": "env.truncate() after process.wait()",
+            "pending_action_id": 1,
+            "pending_request_kind": "action",
+            "pending_request_player": 0,
+            "pid": 56076,
+            "private_pgid": 56076,
+            "signal": "SIGKILL",
+            "target": "Only the Popen process returned by this case's VcmiLauncher"
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-cutoff-c6fb53d/technical-kill-before-cutoff/episode-000003/manifest.json",
+          "manifest_sha256": "2f48589ec9969cd26c15b02f2f1a82745c32fcfef6a65497f94a1480d38e98a0",
+          "ordinary_requests": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": false,
+          "returncode": -9,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "collection_window"
+        }
+      ],
+      "native_replay": {
+        "aggregate": {
+          "attempted": 4,
+          "boundaries": {
+            "battle_end": 11,
+            "end_turn": 249,
+            "game_end": 3
+          },
+          "natural_verified": 3,
+          "tamper_all_detected": true,
+          "tamper_crashed_cases": 0,
+          "tamper_runs": 1,
+          "tamper_skipped": 0,
+          "verified": 4
+        },
+        "created_at": "2026-10-24T11:48:58.300952+00:00",
+        "kind": "headless-replay-series",
+        "run": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/smoke-c6fb53d",
+        "schema_version": 1
+      },
+      "native_smoke": {
+        "attempts_played": 4,
+        "failures": 0,
+        "natural_completions": 3,
+        "status_counts": {
+          "completed:natural_terminal": 3,
+          "truncated:game_day_limit": 1
+        },
+        "truncations": 1
+      },
+      "native_smoke_report": {
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/smoke-c6fb53d/series.json",
+        "sha256": "fbd4869ee2ebe0a3d63430260e4a8458be7a6cff06bb611d15911a48ce6e053d"
+      },
+      "preexisting_failure_probes": [
+        {
+          "bug_reproduced": true,
+          "expected": "Technical failure excludes this trajectory: failed status and no bootstrap. These events predate truncate(), so they were not caused by intentional process shutdown.",
+          "failure_queued_before_truncate": true,
+          "observed": {
+            "bootstrap_v1_seq": {
+              "blue": null,
+              "red": 4
+            },
+            "reason": "collection_window",
+            "returncode": -11,
+            "rewards": {
+              "blue": null,
+              "red": null
+            },
+            "status": "truncated",
+            "valid_red_cutoff_prefix": true
+          },
+          "process_already_exited_before_truncate": true,
+          "scenario": "already_crashed"
+        },
+        {
+          "bug_reproduced": true,
+          "expected": "Technical failure excludes this trajectory: failed status and no bootstrap. These events predate truncate(), so they were not caused by intentional process shutdown.",
+          "failure_queued_before_truncate": true,
+          "observed": {
+            "bootstrap_v1_seq": {
+              "blue": null,
+              "red": 4
+            },
+            "reason": "collection_window",
+            "returncode": -15,
+            "rewards": {
+              "blue": null,
+              "red": null
+            },
+            "status": "truncated",
+            "valid_red_cutoff_prefix": true
+          },
+          "process_already_exited_before_truncate": false,
+          "scenario": "already_queued_reader_error"
+        }
+      ],
+      "real_video": {
+        "battle_frames_drawn": 4,
+        "codec": "h264",
+        "duration_seconds": 18.0,
+        "episode": 1,
+        "fps": 8.0,
+        "frames_drawn": 120,
+        "frames_written": 144,
+        "height": 408,
+        "hold_frames": 24,
+        "kind": "headless-replay-video",
+        "manifest_sha256": "2e4e331a57e86aa98bcd0f1456c46bfdc93d64a177c68a7ed888fde700912be5",
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "output": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/verified-c6fb53d.mp4",
+        "pixel_format": "yuv420p",
+        "replay_verified": true,
+        "schema_version": 1,
+        "sha256": "7ca56f910c1ceb5339e813c91093ce622a689782f64dad8b5c90c4464c2a6286",
+        "status": "completed",
+        "termination_reason": "natural_terminal",
+        "trace_frames": 424,
+        "trace_sha256": "10e05cf50fd01a8ded83ac83bcc27283203069f8f4c2920242500848cb4b15dd",
+        "views": [
+          "omniscient (verification only)",
+          "red fog",
+          "blue fog"
+        ],
+        "width": 1008
+      },
+      "renderer_binding": {
+        "cases": 10,
+        "passed": true,
+        "report": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/render.json",
+          "sha256": "9b8084a600e32a1e2f0519c8f74681c577332ed46bc21927b7a6a4b2a5183e14"
+        }
+      },
+      "review": "https://github.com/tkorsi/heroes-rl/pull/6#pullrequestreview-5638124416",
+      "terminal_views": [
+        {
+          "already_delivered_prefix_unchanged": true,
+          "last_action_id": -1,
+          "projected_history_contains_transient_sighting": false,
+          "projection_loss_reproduced": true,
+          "provisional_public_history_was_retracted": false,
+          "raw_terminal_contains_transient_sighting": true,
+          "strict_cursor": {
+            "frames": 2,
+            "next_seq": 2,
+            "pending_action": null,
+            "unacted_decision": 1
+          },
+          "submitted": false,
+          "summary": {
+            "error": null,
+            "frames": 2,
+            "last_seq": 1,
+            "pending_action": null,
+            "retracted_actions": 0,
+            "schema": "heroes-player-history-v1",
+            "superseded_decision": 1,
+            "unacted_decision": null,
+            "unrepresented_events": {
+              "view_after_superseded_decision": 2
+            },
+            "valid": true
+          }
+        },
+        {
+          "already_delivered_prefix_unchanged": true,
+          "last_action_id": -1,
+          "projected_history_contains_transient_sighting": false,
+          "projection_loss_reproduced": true,
+          "provisional_public_history_was_retracted": true,
+          "raw_terminal_contains_transient_sighting": true,
+          "strict_cursor": {
+            "frames": 2,
+            "next_seq": 2,
+            "pending_action": null,
+            "unacted_decision": 1
+          },
+          "submitted": true,
+          "summary": {
+            "error": null,
+            "frames": 2,
+            "last_seq": 1,
+            "pending_action": null,
+            "retracted_actions": 1,
+            "schema": "heroes-player-history-v1",
+            "superseded_decision": 1,
+            "unacted_decision": null,
+            "unrepresented_events": {
+              "view_after_superseded_decision": 2
+            },
+            "valid": true
+          }
+        },
+        {
+          "already_delivered_prefix_unchanged": true,
+          "last_action_id": 0,
+          "projected_history_contains_transient_sighting": true,
+          "projection_loss_reproduced": false,
+          "provisional_public_history_was_retracted": false,
+          "raw_terminal_contains_transient_sighting": true,
+          "strict_cursor": {
+            "frames": 5,
+            "next_seq": 5,
+            "pending_action": [
+              1,
+              2
+            ],
+            "unacted_decision": null
+          },
+          "submitted": true,
+          "summary": {
+            "error": null,
+            "frames": 5,
+            "last_seq": 4,
+            "pending_action": [
+              1,
+              2
+            ],
+            "retracted_actions": 0,
+            "schema": "heroes-player-history-v1",
+            "superseded_decision": null,
+            "unacted_decision": null,
+            "unrepresented_events": {},
+            "valid": true
+          }
+        }
+      ],
+      "unit_tests": {
+        "log": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/tests-c6fb53d.log",
+          "sha256": "5d4b54b8400f379ef4b447258e7ed13646494d02b6d30fb3db0c7bd5683f696b"
+        },
+        "passed": 174
+      },
+      "verdict": "Changes still required: consumption-before-issuance race; suppressed terminal views marked valid; pre-existing failure masked by cutoff."
+    },
+    {
+      "commit": "4fe0d7c09d92b94d513345115e5a505ebe799b5a",
+      "controlled_boundary_probe": {
+        "command": "/opt/homebrew/opt/python@3.14/bin/python3.14 runs/four-fixes-validation-2026-10-24/boundary_issuance_validation.py --source /Users/orsi/.codex/worktrees/headless-review/Heroes --expected-head 4fe0d7c09d92b94d513345115e5a505ebe799b5a --output runs/four-fixes-validation-2026-10-24/boundary-4fe0d7c.json",
+        "findings": [
+          {
+            "bug_reproduced": false,
+            "desired_behavior_passed": true,
+            "expected": "A failed or unconsumed response must not become a taken-action sample or receive terminal credit. Preserve the preceding unacted decision, reconcile consumption, or exclude uncertain learner data. A separately verified natural outcome may remain reportable.",
+            "finding": "P1 failed-transport action folding",
+            "observed": {
+              "actions_sent_delta": 0,
+              "added_frames": [],
+              "classification_with_write_error": [
+                "completed",
+                {
+                  "blue": "loss",
+                  "red": "win"
+                },
+                "natural_terminal",
+                {
+                  "blue": -1,
+                  "red": 1
+                }
+              ],
+              "responses_undelivered": 1,
+              "write_error": "BrokenPipeError: engine closed after terminal"
+            },
+            "setup": "Valid pending Red action; sendall raises BrokenPipeError. Actual step(), history fold and classifier execute. Only transport, next advance and unrelated ledger I/O are stubbed.",
+            "source": {
+              "experiments/episodes/scoring.py": [
+                137,
+                161
+              ],
+              "experiments/headless/env.py": [
+                368,
+                401
+              ]
+            }
+          },
+          {
+            "bug_reproduced": false,
+            "desired_behavior_passed": true,
+            "expected": "Both orders fail closed with null rewards; a queued reader protocol error must survive final draining.",
+            "finding": "P2 stream finalization",
+            "observed": {
+              "exit_first": {
+                "failure_detail": "red: ProtocolError: Bridge stream ended inside a message",
+                "queued_order": [
+                  "exit",
+                  "bridge_error"
+                ],
+                "rewards": {
+                  "blue": null,
+                  "red": null
+                },
+                "status": "failed",
+                "termination_reason": "protocol_error"
+              },
+              "reader_error_first": {
+                "failure_detail": "red: ProtocolError: Bridge stream ended inside a message",
+                "queued_order": [
+                  "bridge_error",
+                  "exit"
+                ],
+                "rewards": {
+                  "blue": null,
+                  "red": null
+                },
+                "status": "failed",
+                "termination_reason": "protocol_error"
+              }
+            },
+            "setup": "Actual _advance/_finish/scoring with identical terminal/log evidence and queued exit plus reader error; only event ordering changes. Process, unrelated reporting, and metadata are stubbed. No process is launched.",
+            "source": {
+              "experiments/headless/env.py": [
+                [
+                  553,
+                  598
+                ],
+                [
+                  695,
+                  793
+                ]
+              ]
+            }
+          },
+          {
+            "bug_reproduced": false,
+            "desired_behavior_passed": true,
+            "expected": "When a terminal wins before the request is issued, its watermark must stay at the previous action (-1 here) and the late request must not issue. Commit consumption within the same game-state-locked request-issuance boundary as the terminal exclusion check.",
+            "finding": "P1 native issuance and terminal ordering",
+            "observed": {
+              "issuance_first": {
+                "issued": true,
+                "requests": 1,
+                "terminal_blocked_during_request": true,
+                "watermark": 0
+              },
+              "status_ended_before_gameover_callback": {
+                "issued": false,
+                "requests": 0,
+                "watermark": -1
+              },
+              "terminal_first": {
+                "issued": false,
+                "requests": 0,
+                "watermark": -1
+              }
+            },
+            "production_extract_sha256": "8268293b63c169450828babb057cebe77429f3eaba6c55d11aafb9158a78072f",
+            "scope": "Exact production runTurn issuance invocation/lambda and executeRequest method; surrounding state, callback and game mutex are fixture supplies. Deterministic barriers test terminal-first, issuance-first, and ended player status before gameOver callback. No game or engine build.",
+            "source": {
+              "engine/ExplorerRL/ExplorerRL.cpp": {
+                "invocation_start": 921,
+                "method_start": 642
+              }
+            }
+          }
+        ],
+        "reviewed_commit": "4fe0d7c09d92b94d513345115e5a505ebe799b5a",
+        "schema_version": 1,
+        "scope": "Controlled Python injection and extracted native-code compilation only; no project source/test edits, engine build, real games, benchmark interference or training.",
+        "script_sha256": "5c315b15071ddf95c35cea869a0cf34486d95e574ad72c28831ddcc417ff6651",
+        "source": "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+        "source_sha256": {
+          "engine/ExplorerRL/ExplorerRL.cpp": "e00aa78389939ddecb9f378f171a884e0e97b5d4d879fd82336d78c6ddbc65b3",
+          "experiments/episodes/scoring.py": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73",
+          "experiments/headless/env.py": "1370cc5bf509acac6c344bc2dd1369ccc30e28b50f874865bf6c721dc95bbfcb"
+        }
+      },
+      "history_probe": {
+        "desired_behavior_passed": true,
+        "incremental_delivery_cases": [
+          {
+            "delivered_frames_equal_final_history": true,
+            "delivered_frames_immutable": true,
+            "desired_behavior_passed": true,
+            "incremental_decoding_passed": true,
+            "mode": "reply_unconsumed",
+            "player_summaries": {
+              "blue": {
+                "error": null,
+                "frames": 4,
+                "last_seq": 3,
+                "pending_action": null,
+                "retracted_actions": 0,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": null,
+                "unacted_decision": null,
+                "unrepresented_events": {},
+                "valid": true
+              },
+              "red": {
+                "error": null,
+                "frames": 5,
+                "last_seq": 4,
+                "pending_action": null,
+                "retracted_actions": 1,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": 4,
+                "unacted_decision": null,
+                "unrepresented_events": {},
+                "valid": true
+              }
+            },
+            "status": "completed"
+          },
+          {
+            "delivered_frames_equal_final_history": true,
+            "delivered_frames_immutable": true,
+            "desired_behavior_passed": true,
+            "incremental_decoding_passed": true,
+            "mode": "terminal_before_reply",
+            "player_summaries": {
+              "blue": {
+                "error": null,
+                "frames": 4,
+                "last_seq": 3,
+                "pending_action": null,
+                "retracted_actions": 0,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": null,
+                "unacted_decision": null,
+                "unrepresented_events": {},
+                "valid": true
+              },
+              "red": {
+                "error": null,
+                "frames": 5,
+                "last_seq": 4,
+                "pending_action": null,
+                "retracted_actions": 1,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": 4,
+                "unacted_decision": null,
+                "unrepresented_events": {},
+                "valid": true
+              }
+            },
+            "status": "completed"
+          },
+          {
+            "delivered_frames_equal_final_history": true,
+            "delivered_frames_immutable": true,
+            "desired_behavior_passed": true,
+            "incremental_decoding_passed": true,
+            "mode": "terminal_race",
+            "player_summaries": {
+              "blue": {
+                "error": null,
+                "frames": 4,
+                "last_seq": 3,
+                "pending_action": null,
+                "retracted_actions": 0,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": null,
+                "unacted_decision": null,
+                "unrepresented_events": {},
+                "valid": true
+              },
+              "red": {
+                "error": null,
+                "frames": 7,
+                "last_seq": 6,
+                "pending_action": [
+                  4,
+                  2
+                ],
+                "retracted_actions": 0,
+                "schema": "heroes-player-history-v1",
+                "superseded_decision": null,
+                "unacted_decision": null,
+                "unrepresented_events": {
+                  "visit": 1
+                },
+                "valid": true
+              }
+            },
+            "status": "completed"
+          }
+        ],
+        "last_seen_time": {
+          "desired_behavior_passed": true,
+          "hidden_day4": {
+            "day": 3,
+            "fact": {
+              "owner": 1,
+              "subtype": 0,
+              "type": 34,
+              "x": 2,
+              "y": 1,
+              "z": 0
+            },
+            "handle": 2,
+            "sequence": 0,
+            "visible": false
+          },
+          "still_hidden_day6": {
+            "day": 3,
+            "fact": {
+              "owner": 1,
+              "subtype": 0,
+              "type": 34,
+              "x": 2,
+              "y": 1,
+              "z": 0
+            },
+            "handle": 2,
+            "sequence": 0,
+            "visible": false
+          },
+          "strict_cursor": {
+            "frames": 9,
+            "next_seq": 9,
+            "pending_action": null,
+            "unacted_decision": 8
+          },
+          "visible_day3": {
+            "day": 3,
+            "fact": {
+              "owner": 1,
+              "subtype": 0,
+              "type": 34,
+              "x": 2,
+              "y": 1,
+              "z": 0
+            },
+            "handle": 2,
+            "sequence": 0,
+            "visible": true
+          }
+        },
+        "learner_contract_sha256": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+        "probe": {
+          "argv": [
+            "runs/four-fixes-validation-2026-10-24/validate_headless_history.py",
+            "--source",
+            "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+            "--learner-parent",
+            "/Users/orsi/Documents/ChatGPT/Heroes/experiments",
+            "--output",
+            "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/history-4fe0d7c.json"
+          ],
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/validate_headless_history.py",
+          "sha256": "7c7f45d673fe554d75a47d3d5d8d70cc63b3392bfa511bb3f316161d1eba6f0a"
+        },
+        "retraction_assessment": "Existing fake-engine cases preserve already-delivered Request prefixes, including incremental root HistoryCursor consumption. The adapter does retract a provisional action from its internal/public full-history snapshot. No additional ordinary Request-stream mutation was reproduced; any collector must not learn from provisional snapshots before reconciliation.",
+        "reviewed_commit": "4fe0d7c09d92b94d513345115e5a505ebe799b5a",
+        "scope": "Synthetic messages, fake-engine adapter checks, and strict root learner contract. No VCMI build/game, training, source or test edits.",
+        "source_sha256": {
+          "experiments/headless/bridge_protocol.py": "88ea914f146bbc9de651a4859bc32f6ad12f101efe209f95190bf99420116c4f",
+          "experiments/headless/history_v1.py": "3ca7837f3f821d91839acd7322bb2471ad5ca9559c5f373fb5350044d44aa050",
+          "experiments/headless/player_history.py": "7fd92b4dfe172abaaeaa695531548cdddce92bfebd653a76577b400b01a22def"
+        },
+        "targeted_tests": {
+          "requested": false,
+          "run": false
+        },
+        "terminal_history_cases": [
+          {
+            "already_delivered_prefix_unchanged": true,
+            "desired_behavior_passed": true,
+            "last_action_id": -1,
+            "projected_history_contains_transient_sighting": false,
+            "projection_declared_invalid": true,
+            "provisional_public_history_was_retracted": false,
+            "raw_terminal_contains_transient_sighting": true,
+            "represented_terminal_views_lost": true,
+            "strict_cursor": {
+              "frames": 2,
+              "next_seq": 2,
+              "pending_action": null,
+              "unacted_decision": 1
+            },
+            "submitted": false,
+            "summary": {
+              "error": "The terminal brought a visible change after the decision it superseded at player sequence 2",
+              "frames": 2,
+              "last_seq": 1,
+              "pending_action": null,
+              "retracted_actions": 0,
+              "schema": "heroes-player-history-v1",
+              "superseded_decision": 1,
+              "unacted_decision": null,
+              "unrepresented_events": {},
+              "valid": false
+            }
+          },
+          {
+            "already_delivered_prefix_unchanged": true,
+            "desired_behavior_passed": true,
+            "last_action_id": -1,
+            "projected_history_contains_transient_sighting": false,
+            "projection_declared_invalid": true,
+            "provisional_public_history_was_retracted": true,
+            "raw_terminal_contains_transient_sighting": true,
+            "represented_terminal_views_lost": true,
+            "strict_cursor": {
+              "frames": 2,
+              "next_seq": 2,
+              "pending_action": null,
+              "unacted_decision": 1
+            },
+            "submitted": true,
+            "summary": {
+              "error": "The terminal brought a visible change after the decision it superseded at player sequence 2",
+              "frames": 2,
+              "last_seq": 1,
+              "pending_action": null,
+              "retracted_actions": 1,
+              "schema": "heroes-player-history-v1",
+              "superseded_decision": 1,
+              "unacted_decision": null,
+              "unrepresented_events": {},
+              "valid": false
+            }
+          },
+          {
+            "already_delivered_prefix_unchanged": true,
+            "desired_behavior_passed": true,
+            "last_action_id": 0,
+            "projected_history_contains_transient_sighting": true,
+            "projection_declared_invalid": false,
+            "provisional_public_history_was_retracted": false,
+            "raw_terminal_contains_transient_sighting": true,
+            "represented_terminal_views_lost": false,
+            "strict_cursor": {
+              "frames": 5,
+              "next_seq": 5,
+              "pending_action": [
+                1,
+                2
+              ],
+              "unacted_decision": null
+            },
+            "submitted": true,
+            "summary": {
+              "error": null,
+              "frames": 5,
+              "last_seq": 4,
+              "pending_action": [
+                1,
+                2
+              ],
+              "retracted_actions": 0,
+              "schema": "heroes-player-history-v1",
+              "superseded_decision": null,
+              "unacted_decision": null,
+              "unrepresented_events": {},
+              "valid": true
+            }
+          }
+        ],
+        "terminal_history_requirement": {
+          "desired_behavior_passed": true,
+          "implementation_note": "No schema extension is assumed. A fail-closed projection is acceptable while full raw events remain retained.",
+          "integration_gate": "Do not attest histories_complete merely because the emitted prefix passes HistoryCursor.",
+          "requirement": "Retain all represented terminal views or explicitly mark the projection invalid/ineligible."
+        }
+      },
+      "limitations": [
+        "A superseded decision followed by terminal visible changes is excluded as an invalid v1 projection; a future versioned history contract must retain those views for learning.",
+        "Synthetic and bounded real-game checks are not exhaustive concurrency or fog verification.",
+        "No throughput acceptance or training campaign. All raw game assets, logs and video remain local/ignored."
+      ],
+      "native_boundary_cases": [
+        {
+          "bootstrap_v1_seq": {
+            "blue": 39,
+            "red": 55
+          },
+          "case": "day-horizon",
+          "elapsed_seconds": 0.448,
+          "injection": null,
+          "learner_contract": {
+            "blue": {
+              "cutoff_day": 2,
+              "cutoff_is_own_unacted_decision": true,
+              "cutoff_seq": 39,
+              "frames": 40,
+              "taken_actions": 9
+            },
+            "red": {
+              "cutoff_day": 2,
+              "cutoff_is_own_unacted_decision": true,
+              "cutoff_seq": 55,
+              "frames": 110,
+              "taken_actions": 27
+            }
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-4fe0d7c/day-horizon/episode-000001/manifest.json",
+          "manifest_sha256": "f7ba8e39f84af0bdd67c1b820878f5c996c67642b5299034e349aa1515b299ef",
+          "ordinary_requests": 36,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": true,
+          "returncode": -15,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "truncated",
+          "termination_reason": "game_day_limit"
+        },
+        {
+          "bootstrap_v1_seq": {
+            "blue": null,
+            "red": null
+          },
+          "case": "technical-kill",
+          "elapsed_seconds": 0.375,
+          "injection": {
+            "acknowledged_actions_before_kill": 1,
+            "pending_action_id": 1,
+            "pending_request_kind": "action",
+            "pending_request_player": 0,
+            "pid": 65728,
+            "private_pgid": 65728,
+            "signal": "SIGKILL",
+            "target": "Only the Popen process returned by this case's VcmiLauncher"
+          },
+          "learner_contract": {
+            "blue": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 0,
+              "taken_actions": 0,
+              "targets": []
+            },
+            "red": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 6,
+              "taken_actions": 1,
+              "targets": [
+                {
+                  "bootstrap_value": null,
+                  "decision_seq": 1,
+                  "eligible": false,
+                  "next_decision_seq": null,
+                  "return_target": null,
+                  "reward": null
+                }
+              ]
+            }
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-4fe0d7c/technical-kill/episode-000002/manifest.json",
+          "manifest_sha256": "6a413295888701890a5381244fa00837c0b950bb78b796a2cddcbeefe3d7d8e3",
+          "ordinary_requests": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": true,
+          "returncode": -9,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "failed",
+          "termination_reason": "process_exit_without_verified_terminal"
+        },
+        {
+          "bootstrap_v1_seq": {
+            "blue": null,
+            "red": null
+          },
+          "case": "technical-kill-before-cutoff",
+          "elapsed_seconds": 0.375,
+          "injection": {
+            "acknowledged_actions_before_kill": 1,
+            "exit_before_truncate": -9,
+            "finalization_call": "env.truncate() after process.wait()",
+            "pending_action_id": 1,
+            "pending_request_kind": "action",
+            "pending_request_player": 0,
+            "pid": 65739,
+            "private_pgid": 65739,
+            "signal": "SIGKILL",
+            "target": "Only the Popen process returned by this case's VcmiLauncher"
+          },
+          "learner_contract": {
+            "blue": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 0,
+              "taken_actions": 0,
+              "targets": []
+            },
+            "red": {
+              "behavior_value_is_ignored_contract_sentinel": true,
+              "eligible_targets": 0,
+              "frames": 6,
+              "taken_actions": 1,
+              "targets": [
+                {
+                  "bootstrap_value": null,
+                  "decision_seq": 1,
+                  "eligible": false,
+                  "next_decision_seq": null,
+                  "return_target": null,
+                  "reward": null
+                }
+              ]
+            }
+          },
+          "manifest_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/native-4fe0d7c/technical-kill-before-cutoff/episode-000003/manifest.json",
+          "manifest_sha256": "e4e989f320d6710a08ec0c865ef9f4992fc71960ec0174eabf204c13c8a1a7db",
+          "ordinary_requests": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "passed": true,
+          "returncode": -9,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "failed",
+          "termination_reason": "process_exit_without_verified_terminal"
+        }
+      ],
+      "native_build": {
+        "log": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/build-4fe0d7c.log",
+          "sha256": "dae982b8a798db35980a500558f547084790985456e32b1d7b63a5a70bf20e62"
+        },
+        "passed": true,
+        "recipe_check": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/recipe-4fe0d7c.log",
+          "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+        }
+      },
+      "native_history_audit": {
+        "declared_invalid_projections": 0,
+        "decoded_frames": 6793,
+        "eligible_by_adapter_checks": 8,
+        "episodes": 4,
+        "failed_player_audits": 0,
+        "fully_transient_decision_intervals": 7,
+        "fully_transient_position_samples": 11,
+        "incomplete_projections": 0,
+        "intermediate_position_samples": 376,
+        "other_failures": 0,
+        "player_streams": 8,
+        "terminal_credit_candidates": 6
+      },
+      "native_history_audit_report": {
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/history-real-4fe0d7c.json",
+        "sha256": "56b609430fa6637d123f6b348f40a7bdf6d009631b614b19156488f48aad5562"
+      },
+      "native_replay": {
+        "aggregate": {
+          "attempted": 4,
+          "boundaries": {
+            "battle_end": 11,
+            "end_turn": 249,
+            "game_end": 3
+          },
+          "natural_verified": 3,
+          "tamper_all_detected": true,
+          "tamper_crashed_cases": 0,
+          "tamper_runs": 1,
+          "tamper_skipped": 0,
+          "verified": 4
+        },
+        "created_at": "2026-10-24T12:05:36.083695+00:00",
+        "kind": "headless-replay-series",
+        "run": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/smoke-4fe0d7c",
+        "schema_version": 1
+      },
+      "native_smoke": {
+        "attempts_played": 4,
+        "failures": 0,
+        "natural_completions": 3,
+        "status_counts": {
+          "completed:natural_terminal": 3,
+          "truncated:game_day_limit": 1
+        },
+        "truncations": 1
+      },
+      "native_smoke_report": {
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/smoke-4fe0d7c/series.json",
+        "sha256": "29149913cdab21b50a6dd0ce285526b86c0df10d84b5e6bf50c8f216b9af47eb"
+      },
+      "preexisting_failure_probe": {
+        "command": "/opt/homebrew/opt/python@3.14/bin/python3.14 runs/four-fixes-validation-2026-10-24/boundary_horizon_validation.py --source /Users/orsi/.codex/worktrees/headless-review/Heroes --learner-contract /Users/orsi/Documents/ChatGPT/Heroes/experiments/learner/contract.py --expected-head 4fe0d7c09d92b94d513345115e5a505ebe799b5a --output runs/four-fixes-validation-2026-10-24/boundary-horizon-4fe0d7c.json",
+        "learner_contract_sha256": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+        "probes": [
+          {
+            "bug_reproduced": false,
+            "desired_behavior_passed": true,
+            "expected": "Technical failure excludes this trajectory: failed status and no bootstrap. These events predate truncate(), so they were not caused by intentional process shutdown.",
+            "failure_queued_before_truncate": true,
+            "observed": {
+              "bootstrap_v1_seq": {
+                "blue": null,
+                "red": null
+              },
+              "reason": "process_exit_without_verified_terminal",
+              "returncode": -11,
+              "rewards": {
+                "blue": null,
+                "red": null
+              },
+              "status": "failed",
+              "valid_red_cutoff_prefix": false
+            },
+            "process_already_exited_before_truncate": true,
+            "scenario": "already_crashed"
+          },
+          {
+            "bug_reproduced": false,
+            "desired_behavior_passed": true,
+            "expected": "Technical failure excludes this trajectory: failed status and no bootstrap. These events predate truncate(), so they were not caused by intentional process shutdown.",
+            "failure_queued_before_truncate": true,
+            "observed": {
+              "bootstrap_v1_seq": {
+                "blue": null,
+                "red": null
+              },
+              "reason": "protocol_error",
+              "returncode": -15,
+              "rewards": {
+                "blue": null,
+                "red": null
+              },
+              "status": "failed",
+              "valid_red_cutoff_prefix": false
+            },
+            "process_already_exited_before_truncate": false,
+            "scenario": "already_queued_reader_error"
+          }
+        ],
+        "reviewed_commit": "4fe0d7c09d92b94d513345115e5a505ebe799b5a",
+        "scope": "Actual truncate/finalization/classification and actual learner decoding; synthetic valid history, mock process/evidence/transport. No process, game or training launched.",
+        "script_sha256": "1f856138ec3c6daf1ba81e503ed61b65b82a6928356c26db0ef8307b71429948",
+        "source": {
+          "experiments/episodes/scoring.py": [
+            137,
+            163
+          ],
+          "experiments/headless/env.py": [
+            [
+              403,
+              424
+            ],
+            [
+              695,
+              794
+            ]
+          ]
+        },
+        "source_sha256": {
+          "experiments/episodes/scoring.py": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73",
+          "experiments/headless/env.py": "1370cc5bf509acac6c344bc2dd1369ccc30e28b50f874865bf6c721dc95bbfcb",
+          "experiments/headless/player_history.py": "7fd92b4dfe172abaaeaa695531548cdddce92bfebd653a76577b400b01a22def"
+        }
+      },
+      "probe_paths": [
+        "validation/probes/validate_headless_action_boundaries.py",
+        "validation/probes/validate_headless_history.py",
+        "validation/probes/validate_headless_native_boundaries.py",
+        "validation/probes/validate_headless_render_binding.py",
+        "validation/probes/validate_preexisting_failures.py",
+        "validation/probes/audit_headless_histories.py"
+      ],
+      "real_video": {
+        "battle_frames_drawn": 4,
+        "codec": "h264",
+        "duration_seconds": 18.0,
+        "episode": 1,
+        "fps": 8.0,
+        "frames_drawn": 120,
+        "frames_written": 144,
+        "height": 408,
+        "hold_frames": 24,
+        "kind": "headless-replay-video",
+        "manifest_sha256": "4e83fd3003b32518c68fc3a062b5f833d0c056d4046e9a6defbb4b9c8bd5a4e7",
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "output": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/verified-4fe0d7c.mp4",
+        "pixel_format": "yuv420p",
+        "replay_verified": true,
+        "schema_version": 1,
+        "sha256": "7ca56f910c1ceb5339e813c91093ce622a689782f64dad8b5c90c4464c2a6286",
+        "status": "completed",
+        "termination_reason": "natural_terminal",
+        "trace_frames": 424,
+        "trace_sha256": "10e05cf50fd01a8ded83ac83bcc27283203069f8f4c2920242500848cb4b15dd",
+        "views": [
+          "omniscient (verification only)",
+          "red fog",
+          "blue fog"
+        ],
+        "width": 1008
+      },
+      "remaining_learner_gate": "A versioned terminal/supersession history contract and richer event adapter are still required before claiming complete learner integration. Explicitly invalid/incomplete projections must be excluded, even when the game outcome is independently natural.",
+      "renderer_binding_inherited_validation": {
+        "cases_passed": 10,
+        "reason": "Renderer and replay source are unchanged from c6fb53d; adversarial input-binding checks remain applicable. Full final-head suite and a real final-head verified video passed.",
+        "source_unchanged": true
+      },
+      "review": "https://github.com/tkorsi/heroes-rl/pull/6#pullrequestreview-5638188618",
+      "unit_tests": {
+        "log": {
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/four-fixes-validation-2026-10-24/tests-4fe0d7c.log",
+          "sha256": "892068eb2389e95079aeb7c902f80839fb70d2484861444b440bc072c9c43ab6"
+        },
+        "passed": 183
+      },
+      "verdict": "All four original findings addressed; added consumption/finalization regressions pass. No remaining concrete finding in the scoped review. PR remains draft/unmerged; no training."
+    }
+  ],
+  "schema_version": 1,
+  "scope": "Independent review of Claude PR #6 and bounded local random-agent validation; no training, paid compute or merge.",
+  "training_started": false
+}

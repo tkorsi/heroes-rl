@@ -1,0 +1,230 @@
+{
+  "artifacts": {
+    "initial-policy.pt": {
+      "bytes": 629366,
+      "path": "runs/first-training-prepared-2026-10-25/initial-policy.pt",
+      "sha256": "65e8829865f9d7c5434cea6c6feb5c7d4bd123a62f4e6b0e351c4efc69dc8ffa"
+    },
+    "plan.json": {
+      "bytes": 33517,
+      "path": "runs/first-training-prepared-2026-10-25/plan.json",
+      "sha256": "ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6"
+    },
+    "preparation.json": {
+      "bytes": 815,
+      "path": "runs/first-training-prepared-2026-10-25/preparation.json",
+      "sha256": "2a7b5aa0ae44f7c03d652390d45a34e8584fd2b80a67516325e95fd81fee890d"
+    },
+    "prepared-check.log": {
+      "bytes": 127,
+      "path": "runs/first-training-prepared-2026-10-25/prepared-check.log",
+      "sha256": "a7eb4332ed5e9eefa07436d939ecb45b91b1769ed3b25d5a3e752df93c15c98e"
+    }
+  },
+  "attempt_schedule": [
+    {
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    },
+    {
+      "engine_seed": 99101,
+      "learner_player": 0,
+      "optimizer_eligible": true,
+      "phase": "training",
+      "policy_seeds": [
+        100003,
+        100004
+      ]
+    },
+    {
+      "engine_seed": 99101,
+      "learner_player": 1,
+      "optimizer_eligible": true,
+      "phase": "training",
+      "policy_seeds": [
+        100005,
+        100006
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    }
+  ],
+  "authorization": "not_granted",
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "evaluation_engine_seeds": [
+      99201,
+      99202
+    ],
+    "initialization_seed": 99001,
+    "interface": "adventure-armies-v1",
+    "max_days": 30,
+    "max_optimizer_steps": 16,
+    "max_requests": 256,
+    "max_updates": 1,
+    "opponent_seed": 99002,
+    "policy_seed": 99003,
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "schema": "heroes-first-training-config-v1",
+    "torch_threads": 1,
+    "total_wall_seconds": 3600,
+    "training_engine_seeds": [
+      99101
+    ]
+  },
+  "configuration_file": {
+    "bytes": 724,
+    "path": "configs/first-training-v1.json",
+    "sha256": "0c49fc9c20cb6a693152f86f65de6f060df1c20a5a8d43b818226b7a2112adea"
+  },
+  "date": "2026-10-25",
+  "implementation_file_count": 173,
+  "interpretation": "Fresh random actor/value and frozen opponent only. Local preparation checked sources, native recipe, retained validation and checkpoint save/load. No engine episode or gameplay optimizer was run by preparation. Exact source, runtime and artifact hashes remain in the immutable local plan.",
+  "learner_checkpoint": {
+    "bytes": 629366,
+    "checkpoint": "random-v4-ddd80ce951094b27",
+    "model_config": {
+      "feature_size": 32,
+      "hidden_size": 64,
+      "max_map_side": 256,
+      "schema": "heroes-context-model-v2"
+    },
+    "opponents": [
+      [
+        "random-v4-b1f6bc72889164ab",
+        "b1f6bc72889164abb59f5d312bbf450091d587f2eb70d053f01e457deabd6d3f"
+      ]
+    ],
+    "provenance": "random_initialization",
+    "sha256": "65e8829865f9d7c5434cea6c6feb5c7d4bd123a62f4e6b0e351c4efc69dc8ffa",
+    "weights_sha256": "ddd80ce951094b279090ae2bcc4969cfb14a9d68a283a31d2897a380333a4940"
+  },
+  "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "optimizer_updates": 0,
+  "proposed_command_requires_future_human_authorization": "/Users/orsi/Projects/Heroes/.venv/bin/python -m experiments.learner.gameplay --plan /Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/first-training-prepared-2026-10-25/plan.json --approved-plan-sha256 ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6 --output /Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/first-training-prepared-2026-10-25/approved-execution",
+  "readiness_evidence": {
+    "bytes": 195488,
+    "path": "validation/troop-transfer-2026-10-25.json",
+    "sha256": "d0a3ae8261d3b7189fcf5210429babc34edd7b19f394c1764b420b62ffc8cb9e"
+  },
+  "ready_to_request_launch": true,
+  "remaining_scope": [
+    "Invalid transfer choices were rejected before send; no actual negative native acknowledgement is claimed.",
+    "Garrison-hero source and minimum last-creature/int32 overflow branches have source/native-unit coverage, not live current-baseline cases.",
+    "Reverse transfer, swapping unlike creatures, other army editing, hero hiring and special windows remain unsupported.",
+    "Initial/timer-origin natural completion remains excluded; only request-origin completion is supported.",
+    "Random cutoffs provide no observed victory signal; these diagnostics establish neither strategic improvement nor an outcome frequency.",
+    "Execution requires future human authorization of the exact plan; no optimizer has been run on gameplay."
+  ],
+  "resume": {
+    "boundary": "between_rollouts_only",
+    "immutable_initial": true,
+    "note": "Executor must verify a save/load roundtrip; a stopped process is never automatically restarted.",
+    "optimizer_checkpoint": "resume.pt",
+    "resume_execution_implemented": false
+  },
+  "schema": "heroes-first-training-preparation-summary-v1",
+  "source_commit": "d5ef9b0c8e710c4350022aa47766cd7682c63105",
+  "status": "prepared_not_executed",
+  "stop_rules": [
+    "No failed or invalid attempt is replaced or admitted to PPO.",
+    "Any history, replay, behavior-recompute, native or ownership error stops execution.",
+    "The global time budget includes collection, verification, optimization and evaluation.",
+    "Zero natural outcomes alone does not cancel an otherwise valid update; it supplies no observed victory signal."
+  ],
+  "training_performed": false,
+  "validation_assembler": {
+    "bytes": 19661,
+    "path": "validation/assemble_troop_transfer_2026_10_25.py",
+    "relationship": "Byte-identical tracked copy of runs/assemble_troop_transfer_evidence.py, bound by the immutable transfer evidence; no gameplay implementation changes.",
+    "sha256": "a6bf0090e9fa565199fea78ff78cfd272feeb6e648e942080278b75d444b340e"
+  }
+}

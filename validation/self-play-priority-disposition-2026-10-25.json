@@ -1,0 +1,15 @@
+{
+  "schema": "heroes-self-play-priority-disposition-v1",
+  "date": "2026-10-25",
+  "source_thread": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
+  "human_message": "01a172f9-ad90-7521-9916-700ec8d31344",
+  "disposition": "Do not resume or replace remaining untrained-neural self-play schedule rows. Proceed with the separately authorized bounded local PPO pilot against Nullkiller Easy.",
+  "historical_evidence": [
+    "validation/long-dialog-evaluation-2026-10-25.json",
+    "validation/local-neural-revalidation-v2-2026-10-25.json"
+  ],
+  "historical_statuses_rewritten": false,
+  "historical_scores_changed": false,
+  "new_self_play_attempts": 0,
+  "diagnostic_trajectories_admitted_to_training": false
+}

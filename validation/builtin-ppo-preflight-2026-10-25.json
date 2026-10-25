@@ -1,0 +1,109 @@
+{
+  "base_commit": "c29e96e6e6463c584f13585f2720a8711212e44d",
+  "checks": {
+    "final_runner_numerics_peer": {
+      "command": "python -m unittest tests.test_builtin_first_run tests.test_builtin_ppo_numerics",
+      "passed": 27,
+      "scope": "Final frozen-model checkpoint roundtrip, incomplete worker receipt/poll failure, cleanup and v7 PPO numerical regressions",
+      "seconds": 2.317,
+      "tests": 27
+    },
+    "focused_integration": {
+      "log": {
+        "bytes": 9086,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-preflight-2026-10-25/focused-tests.log",
+        "sha256": "bb5bfb07d8f48c88ff78135a68030fdfca960708d20abc40c04adf462418af63"
+      },
+      "passed": 44,
+      "seconds": 4.967,
+      "tests": 44
+    },
+    "full_suite": {
+      "log": {
+        "bytes": 170169,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-preflight-2026-10-25/tests.log",
+        "sha256": "a864bd1060d9a646fbae8d46cc770f518fc3fde2d16eb460886eea15d6d30f61"
+      },
+      "passed": 976,
+      "seconds": 109.416,
+      "skip_reason": "Optional retained historical capture absent from this checkout",
+      "skipped": 1,
+      "tests": 977
+    },
+    "prepared_engine": {
+      "log": {
+        "bytes": 128,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-preflight-2026-10-25/prepare-check.log",
+        "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+      },
+      "passed": true
+    }
+  },
+  "coordination": {
+    "claude_handoff": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6397640425",
+    "window_claim": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6397715689"
+  },
+  "date": "2026-10-25",
+  "gameplay_optimizer_updates": 0,
+  "limitations": [
+    "Synthetic socket/native-effect mocks exercise admission rejection paths but do not establish fresh native gameplay.",
+    "Final additional runner regressions were tested separately after the full suite; the full suite was not needlessly repeated.",
+    "Historical diagnostic games remain optimizer-ineligible."
+  ],
+  "new_gameplay_attempts": 0,
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "purpose": "Engineering and synthetic optimizer preflight; no new gameplay or gameplay update",
+  "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+  "readiness": {
+    "checkpoint_admission_source_change": "Additive v7 provenance in checkpoints.py; original model/encoder/PPO/contract bytes retained",
+    "current_nonverifier_runtime_and_map_match_prior_evidence": true,
+    "current_verifier_matches_repair": true,
+    "four_verified_natural_defeats_both_seats": "validation/local-builtin-revalidation-v2-2026-10-25.json",
+    "separate_verifier_repair": "validation/build-terminal-diagnostic-2026-10-25.json",
+    "starting_checkpoint_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+  },
+  "schema": "heroes-builtin-ppo-preflight-v1",
+  "source_bindings": {
+    "configs/builtin-ppo-pilot-v1.json": {
+      "bytes": 1088,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/configs/builtin-ppo-pilot-v1.json",
+      "sha256": "5f91fab6bb203d161bddf1dcd0e9ab3df7624aadcabcd0c7771af8b101f6e0bf"
+    },
+    "experiments/learner/builtin_first_run.py": {
+      "bytes": 33711,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/builtin_first_run.py",
+      "sha256": "0ab84be473e2035600543d048bc66235e69038cf6c00a2d2d86caf333ccb5838"
+    },
+    "experiments/learner/builtin_gameplay.py": {
+      "bytes": 30388,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/builtin_gameplay.py",
+      "sha256": "9139b52163c3b1378d1c147a8c3540e9df2a4f34a5351a8d776a898ab68c3824"
+    },
+    "experiments/learner/checkpoints.py": {
+      "bytes": 25301,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/checkpoints.py",
+      "sha256": "9abf3b84a180220a77548b4671129b51dccfcd92edb5a10b08375d49e8bd0000"
+    },
+    "tests/test_builtin_first_run.py": {
+      "bytes": 19894,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_first_run.py",
+      "sha256": "8343948d980b1f994acdf84ece0a998fa4477ecce99c4a274605893ea4994ef0"
+    },
+    "tests/test_builtin_gameplay.py": {
+      "bytes": 23433,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_gameplay.py",
+      "sha256": "982ab155e542ad5a4f854f66a90db98dfe1279ee89b8ccdbeccd72e4ede66762"
+    },
+    "tests/test_builtin_gameplay_checkpoint.py": {
+      "bytes": 16215,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_gameplay_checkpoint.py",
+      "sha256": "36c64859dfc671fa7db13778a2c1affded909543636b0d9594063d3fd96171eb"
+    },
+    "tests/test_builtin_ppo_numerics.py": {
+      "bytes": 17523,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_ppo_numerics.py",
+      "sha256": "35b98f2bb692dd1656e933b9be3217fbeb07bbce5de778473fff897308c9d755"
+    }
+  },
+  "training_performed": false
+}

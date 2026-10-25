@@ -1,0 +1,20 @@
+# Opt-in live host; not linked into the ordinary client or Teacher runtime.
+add_library(native_engine_session STATIC EngineSession.cpp EngineSession.h RuntimeEnvironment.cpp RuntimeEnvironment.h SessionHealth.h)
+target_link_libraries(native_engine_session PUBLIC vcmi vcmiclientcommon vcmiservercommon)
+target_include_directories(native_engine_session PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_executable(vcmisession SessionMain.cpp ResourceUsage.cpp ResourceUsage.h)
+target_link_libraries(vcmisession PRIVATE native_engine_session)
+add_dependencies(vcmisession ExplorerRL Nullkiller BattleAI)
+vcmi_set_output_dir(vcmisession "")
+enable_pch(native_engine_session)
+enable_pch(vcmisession)
+# Dedicated asset-free ownership admission fixture, built explicitly by tests.
+add_executable(native_session_contract EXCLUDE_FROM_ALL tests/HostContract.cpp)
+target_link_libraries(native_session_contract PRIVATE native_engine_session)
+vcmi_set_output_dir(native_session_contract "")
+# Dedicated, explicitly labelled real-engine lifecycle workload, never training.
+add_executable(native_session_benchmark SessionBenchmark.cpp ResourceUsage.cpp)
+target_link_libraries(native_session_benchmark PRIVATE native_engine_session)
+add_dependencies(native_session_benchmark ExplorerRL Nullkiller BattleAI)
+vcmi_set_output_dir(native_session_benchmark "")
+enable_pch(native_session_benchmark)

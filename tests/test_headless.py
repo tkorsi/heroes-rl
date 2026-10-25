@@ -1,0 +1,1165 @@
+"""Headless environment contract: visibility, isolation, boundaries and scoring.
+
+These tests use synthetic messages and a miniature fake engine. They establish
+the adapter's behaviour, not real VCMI gameplay, completion or throughput.
+"""
+from __future__ import annotations
+
+import copy
+import importlib.util
+import json
+import os
+from pathlib import Path
+import shutil
+import signal
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import unittest
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parents[1]
+FAKE_ENGINE = ROOT / "tests/fixtures/headless/fake_engine.py"
+
+
+def load_module(name, relative):
+    spec = importlib.util.spec_from_file_location(name, ROOT / relative)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module  # dataclasses resolve annotations through the module registry
+    spec.loader.exec_module(module)
+    return module
+
+
+def learner_contract():
+    """Codex's player-history v1 contract when present (``HEROES_LEARNER_PATH`` names its parent)."""
+    path = Path(os.environ.get("HEROES_LEARNER_PATH", ROOT / "experiments")) / "learner" / "contract.py"
+    if not path.is_file():
+        return None
+    spec = importlib.util.spec_from_file_location("learner_contract", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["learner_contract"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+V1_KEYS = {"view": {"schema", "episode", "player", "seq", "day", "kind", "view"},
+           "decision": {"schema", "episode", "player", "seq", "day", "kind", "view", "mask"},
+           "action": {"schema", "episode", "player", "seq", "day", "kind", "action", "decision_seq"},
+           "result": {"schema", "episode", "player", "seq", "day", "kind", "action", "accepted", "decision_seq"}}
+
+
+env_module = load_module("headless_env", "experiments/headless/env.py")
+agents = load_module("headless_agents", "experiments/headless/agents.py")
+bridge_protocol = sys.modules["bridge_protocol"]
+player_history = sys.modules["player_history"]
+ProtocolError = bridge_protocol.ProtocolError
+COLORS = env_module.COLORS
+
+
+def obj(oid, x, y, owner=1, kind=34):
+    return {"id": oid, "x": x, "y": y, "z": 0, "type": kind, "subtype": 0, "owner": owner}
+
+
+def tile(position, terrain=2, blocked=False, visitable=False):
+    x, y, z = position
+    return {"x": x, "y": y, "z": z, "terrain": terrain, "blocked": blocked, "visitable": visitable}
+
+
+OWN = {"hero": [0, 0, 0], "movement": 1, "movement_max": 1, "resources": [0] * 7,
+       "army": [{"slot": 0, "creature": 1, "count": 10}], "towns": [], "mines": 0}
+
+
+def update(sequence, appeared=(), changed=(), disappeared=(), revealed=(), hidden=(), day=1, tiles_changed=(),
+           own=None):
+    return {"kind": "visible_update", "sequence": sequence, "day": day, "appeared": list(appeared),
+            "changed": list(changed), "disappeared": list(disappeared),
+            "revealed": [t if isinstance(t, dict) else tile(t) for t in revealed],
+            "tiles_changed": list(tiles_changed), "hidden": [list(t) for t in hidden], "own": own}
+
+
+def columns(x0, x1, height=3):
+    return [(x, y, 0) for y in range(height) for x in range(x0, x1 + 1)]
+
+
+def observation(action_id, tiles, objects, events, day=1, hero=1, facts=None, own=OWN):
+    by_tile = {}
+    for entry in objects:
+        by_tile.setdefault((entry["x"], entry["y"]), []).append(
+            {"id": entry["id"], "type": entry["type"], "subtype": entry["subtype"], "owner": entry["owner"]})
+    ordered = sorted(tiles, key=lambda t: (t[2], t[1], t[0]))
+    facts = facts or {}
+    state = {"day": day, "hero_id": hero, "own_heroes": 1, "own_towns": len(own["towns"]), "own_mines": own["mines"],
+             "resources": own["resources"], "army": own["army"], "towns": own["towns"], "movement": own["movement"],
+             "movement_max": own["movement_max"]}
+    if own["hero"] is not None:
+        state.update(x=own["hero"][0], y=own["hero"][1], z=own["hero"][2])
+    return {"type": "observation", "protocol_version": 3, "player": 0, "episode": "1", "action_id": action_id,
+            "day": day, "hero_id": hero, "x": 0, "y": 0, "z": 0, "width": 6, "height": 3, "levels": 1,
+            "movement": 1, "movement_max": 1, "action_mask": [True] * 9, "events": events, "state": state,
+            "tiles": [{**facts.get((x, y, z), tile((x, y, z))), "objects": by_tile.get((x, y), [])} for x, y, z in ordered]}
+
+
+def history(player=0, color="red"):
+    result = player_history.PlayerHistory(player, color, "1")
+    result.start([6, 3, 1])
+    return result
+
+
+class PlayerHistoryTests(unittest.TestCase):
+    """The four handoff scenarios plus last-seen and handle discipline."""
+
+    def setUp(self):
+        self.history = history()
+        self.own = obj(1, 0, 0, owner=0)
+        self.history.ingest(observation(0, columns(0, 2), [self.own, obj(2, 2, 1)],
+                                        [update(0, appeared=[self.own, obj(2, 2, 1)], revealed=columns(0, 2), own=OWN)]))
+
+    def test_visible_to_hidden_move_is_a_bare_disappearance(self):
+        record = self.history.ingest(observation(1, columns(0, 2), [self.own], [update(1, disappeared=[2])]))
+        event = record["events"][0]
+        self.assertEqual(event["disappeared"], [2])
+        self.assertEqual(event["appeared"] + event["changed"], [])
+        memory = {entry["handle"]: entry for entry in self.history.memory()}
+        self.assertEqual(memory[2]["fact"]["x"], 2)  # last seen where it was visible, never the hidden endpoint
+        self.assertFalse(memory[2]["visible"])
+
+    def test_transient_sighting_between_decisions_enters_history(self):
+        records = [self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 2, 1)], [
+            update(1, appeared=[obj(3, 2, 2)]), update(2, disappeared=[3])]))]
+        events = records[0]["events"]
+        self.assertEqual(events[0]["appeared"], [{"handle": 3, "x": 2, "y": 2, "z": 0, "type": 34, "subtype": 0, "owner": 1}])
+        self.assertEqual(events[1]["disappeared"], [3])
+        # The snapshot no longer shows it; only the event stream carries the sighting.
+        self.assertNotIn(3, [o["handle"] for tile in records[0]["tiles"] for o in tile["objects"]])
+        self.assertEqual(self.history.memory()[2]["fact"], {"x": 2, "y": 2, "z": 0, "type": 34, "subtype": 0, "owner": 1})
+
+    def test_hidden_removal_and_unseen_objects_never_reach_the_learner(self):
+        with self.assertRaisesRegex(ProtocolError, "never observed"):
+            self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 2, 1)], [update(1, disappeared=[99])]))
+        fresh = history()
+        with self.assertRaisesRegex(ProtocolError, "does not see"):
+            fresh.ingest(observation(0, columns(0, 2), [], [update(0, appeared=[obj(9, 5, 1)], revealed=columns(0, 2), own=OWN)]))
+        self.assertEqual(fresh.handle_count(), 0)
+
+    def test_last_seen_never_refreshes_from_hidden_state(self):
+        self.history.ingest(observation(1, columns(0, 2), [self.own], [update(1, disappeared=[2])]))
+        self.history.ingest(observation(2, columns(0, 2), [self.own], []))  # the enemy moves while hidden: no event
+        self.assertEqual(self.history.memory()[1]["fact"]["x"], 2)
+        self.history.ingest(observation(3, columns(0, 2), [self.own, obj(2, 1, 2)], [update(2, appeared=[obj(2, 1, 2)])]))
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["fact"]["x"], entry["fact"]["y"], entry["visible"]), (1, 2, True))
+        self.assertEqual(entry["handle"], 2)  # the same handle: identity is kept, not re-issued
+
+    def test_last_seen_time_follows_observations_while_visible_and_freezes_when_hidden(self):
+        enemy = obj(2, 2, 1)
+        self.history.ingest(observation(1, columns(0, 2), [self.own, enemy], [], day=3))  # still visible on day 3
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["sequence"], entry["visible"]), (3, 0, True))
+        self.history.ingest(observation(2, columns(0, 2), [self.own], [update(1, disappeared=[2], day=4)], day=4))
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["sequence"], entry["visible"]), (3, 0, False))
+        self.history.ingest(observation(3, columns(0, 2), [self.own], [], day=6))  # hidden: the time stays frozen
+        entry = self.history.memory()[1]
+        self.assertEqual((entry["day"], entry["fact"]), (3, {key: enemy[key] for key in player_history.FACT_FIELDS}))
+
+    def test_last_seen_time_follows_captures_that_change_nothing(self):
+        def state(day):
+            return observation(0, [], [], [], day=day)["state"]
+        self.history.act(8, 0)
+        self.history.ingest({"type": "action_result", "action_id": 0, "action": 8, "accepted": True, "events": [],
+                             "before": state(1), "after": state(3)})
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(3, True), (3, True)])
+        self.history.ingest({"type": "terminal", "outcome": "loss", "last_action_id": 0, "state": state(5),
+                             "events": [update(1, disappeared=[2], day=4)]})
+        # The enemy was seen again by the result's capture on day 3 and was gone by day 4; the own hero was still
+        # seen by the terminal's capture on day 5.
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(5, True), (3, False)])
+
+    def test_last_seen_day_follows_a_terminal_capture_that_changes_nothing(self):
+        state = observation(0, [], [], [], day=5)["state"]
+        self.history.ingest({"type": "terminal", "outcome": "win", "last_action_id": -1, "state": state, "events": []})
+        self.assertEqual([(entry["day"], entry["visible"]) for entry in self.history.memory()], [(5, True), (5, True)])
+
+    def test_snapshot_that_disagrees_with_the_event_stream_is_rejected(self):
+        with self.assertRaisesRegex(ProtocolError, "diverged"):
+            self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 1, 1)], []))
+
+    def test_independent_player_histories_and_handles(self):
+        red, blue = history(), history(1, "blue")
+        red.ingest(observation(0, columns(0, 2), [obj(7, 0, 0, 0), obj(8, 2, 2)],
+                               [update(0, appeared=[obj(7, 0, 0, 0), obj(8, 2, 2)], revealed=columns(0, 2), own=OWN)], hero=7))
+        blue_message = observation(0, columns(3, 5), [obj(9, 4, 1, 1), obj(8, 3, 2)],
+                                   [update(0, appeared=[obj(8, 3, 2), obj(9, 4, 1, 1)], revealed=columns(3, 5), own=OWN)], hero=9)
+        blue_message["player"] = 1
+        blue.ingest(blue_message)
+        self.assertEqual(red._handles, {7: 1, 8: 2})
+        # Same engine object, unrelated per-player handle; within one update
+        # handles follow the scan order of visible facts, never engine IDs.
+        self.assertEqual(blue._handles, {9: 1, 8: 2})
+        self.assertNotIn(9, red._handles)
+
+    def test_tile_facts_and_own_state_must_match_the_snapshot(self):
+        blocked = tile((1, 1, 0), blocked=True)
+        richer = {**OWN, "resources": [0, 0, 0, 0, 0, 0, 500]}
+        events = [update(1, tiles_changed=[blocked], own=richer)]
+        good = observation(1, columns(0, 2), [self.own, obj(2, 2, 1)], events, facts={(1, 1, 0): blocked}, own=richer)
+        for facts, own, label in (({}, richer, "tile"), ({(1, 1, 0): blocked}, OWN, "own")):
+            with self.subTest(label), self.assertRaisesRegex(ProtocolError, "diverged"):
+                copy.deepcopy(self.history).ingest(observation(1, columns(0, 2), [self.own, obj(2, 2, 1)],
+                                                               copy.deepcopy(events), facts=facts, own=own))
+        record = self.history.ingest(good)
+        self.assertEqual(record["events"][0]["tiles_changed"], [blocked])
+        self.assertEqual(self.history.own["resources"][6], 500)
+
+    def test_tile_facts_only_for_visible_tiles_and_own_state_first(self):
+        with self.assertRaisesRegex(ProtocolError, "does not see"):
+            self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 2, 1)],
+                                            [update(1, tiles_changed=[tile((5, 1, 0), blocked=True)])]))
+        with self.assertRaisesRegex(ProtocolError, "own state"):
+            history().ingest(observation(0, columns(0, 2), [], [update(0, revealed=columns(0, 2))]))
+
+    def test_learner_records_contain_no_engine_ids(self):
+        record = self.history.ingest(observation(1, columns(0, 2), [self.own, obj(2, 2, 1)], []))
+        self.assertEqual(agents.engine_id_paths(record), [])
+        self.assertEqual(record["hero"], 1)
+
+
+class HistoryV1Tests(unittest.TestCase):
+    """The projection onto the learner's heroes-player-history-v1 frames."""
+
+    def setUp(self):
+        self.history = history()
+        self.own = obj(1, 0, 0, owner=0)
+        self.history.ingest(observation(0, columns(0, 2), [self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)], [
+            update(0, appeared=[self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)], revealed=columns(0, 2), own=OWN)]))
+
+    def result(self, action, accepted, events):
+        state = {"day": 1, "hero_id": 1, "resources": [0] * 7}
+        return {"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1", "action_id": 0,
+                "action": action, "accepted": accepted, "before": state, "after": state, "events": events}
+
+    def test_frames_follow_the_contract_order_with_relative_owners_and_handles(self):
+        self.history.act(2, 0)
+        self.history.ingest(self.result(2, True, [update(1, disappeared=[2])]))
+        frames = self.history.v1.frames
+        self.assertEqual([f["kind"] for f in frames], ["view", "decision", "action", "view", "result"])
+        self.assertEqual([f["seq"] for f in frames], list(range(5)))
+        self.assertEqual((frames[2]["decision_seq"], frames[4]["decision_seq"], frames[4]["accepted"]), (1, 1, True))
+        for frame in frames:
+            self.assertEqual(set(frame), V1_KEYS[frame["kind"]])
+            self.assertEqual((frame["schema"], frame["episode"], frame["player"], frame["day"]),
+                             ("heroes-player-history-v1", "1", 0, 1))
+        owners = {o["handle"]: o["owner"] for o in frames[1]["view"]["objects"]}
+        self.assertEqual(owners, {"1": "self", "2": "opponent", "3": "neutral"})
+        self.assertNotIn("2", [o["handle"] for o in frames[3]["view"]["objects"]])  # gone, never refreshed
+        self.assertEqual(frames[1]["view"]["size"], [6, 3, 1])
+        self.assertEqual(len(frames[1]["view"]["tiles"]), 9)
+        self.assertEqual(frames[1]["mask"], [True] * 9)
+        self.assertEqual(agents.engine_id_paths(frames), [])
+        self.assertTrue(self.history.v1.summary()["valid"])
+
+    def terminal(self, last_action_id, events=()):
+        return {"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "loss",
+                "last_action_id": last_action_id, "state": {"day": 1, "hero_id": -1}, "events": list(events)}
+
+    def test_forbidden_order_invalidates_only_the_projection(self):
+        objects = [self.own, obj(2, 2, 1), obj(3, 1, 2, owner=-1, kind=53)]
+        self.history.ingest(observation(1, columns(0, 2), objects, []))  # a second decision before any action
+        summary = self.history.v1.summary()
+        self.assertFalse(summary["valid"])
+        self.assertIn("before the previous action", summary["error"])
+        self.assertEqual(summary["frames"], 2)  # the projection stops; the full record stream continues
+        self.history.ingest(self.terminal(-1, [update(1, disappeared=[2])]))
+        self.assertEqual(self.history.records[-1]["type"], "terminal")
+
+    def test_a_terminal_supersedes_an_unacted_decision(self):
+        self.history.ingest(self.terminal(-1))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])  # kept, never acted on
+        self.assertEqual((summary["valid"], summary["unacted_decision"], summary["superseded_decision"]), (True, None, 1))
+        self.assertEqual(self.history.records[-1]["last_action_id"], -1)
+
+    def test_a_terminal_withdraws_an_action_the_engine_never_consumed(self):
+        self.history.act(2, 0)
+        self.history.ingest(self.terminal(-1))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])
+        self.assertEqual((summary["valid"], summary["pending_action"], summary["retracted_actions"],
+                          summary["superseded_decision"]), (True, None, 1, 1))
+        self.assertEqual((self.history.actions_unconsumed, self.history.actions_without_result), (1, 0))
+
+    def test_final_views_after_a_superseded_decision_fail_the_projection_closed(self):
+        enemy = obj(4, 2, 2, owner=1)
+        final = [update(1, appeared=[enemy]), update(2, disappeared=[4])]  # an enemy glimpsed only at the end
+        for consumed in (None, False):
+            with self.subTest(retracted=consumed is False):
+                self.setUp()
+                if consumed is False:
+                    self.history.act(2, 0)
+                self.history.ingest(self.terminal(-1, final))
+                summary = self.history.v1.summary()
+                # v1 cannot place them after the decision, so the stream is incomplete, never silently valid.
+                self.assertFalse(summary["valid"])
+                self.assertIn("after the decision it superseded", summary["error"])
+                self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision"])
+                # The full record stream still has both sightings.
+                events = self.history.records[-1]["events"]
+                self.assertEqual([len(e["appeared"]) for e in events], [1, 0])
+                self.assertEqual([len(e["disappeared"]) for e in events], [0, 1])
+
+    def test_a_terminal_keeps_a_consumed_action_whose_result_never_came(self):
+        self.history.act(2, 0)
+        self.history.ingest(self.terminal(0, [update(1, disappeared=[2])]))
+        summary = self.history.v1.summary()
+        self.assertEqual([f["kind"] for f in self.history.v1.frames], ["view", "decision", "action", "view"])
+        self.assertEqual((summary["valid"], summary["retracted_actions"], summary["superseded_decision"]), (True, 0, None))
+        self.assertEqual((self.history.actions_unconsumed, self.history.actions_without_result), (0, 1))
+
+    def test_unrepresented_visible_events_are_counted(self):
+        self.history.act(8, 0)
+        self.history.ingest(self.result(8, True, [{"kind": "battle_start", "side": 0, "opponent": "neutral"},
+                                                  {"kind": "battle_complete", "won": True},
+                                                  {"kind": "visit", "object_id": 3, "object_type": 53,
+                                                   "object_subtype": 0, "owner": -1}]))
+        self.assertEqual(self.history.v1.summary()["unrepresented_events"],
+                         {"battle_complete": 1, "battle_start": 1, "visit": 1})
+
+    @unittest.skipIf(learner_contract() is None, "learner contract not present; set HEROES_LEARNER_PATH")
+    def test_frames_decode_with_the_learner_contract(self):
+        contract = learner_contract()
+        self.history.act(2, 0)
+        self.history.ingest(self.result(2, False, [update(1, disappeared=[2])]))
+        with self.assertRaises(ValueError):  # the 6x3 fixture map is outside the authored 20x20x1 scenario
+            contract.decode_frame(self.history.v1.frames[0])
+
+
+class BridgeValidatorTests(unittest.TestCase):
+    def ready(self, **fields):
+        return {"type": "ready", "protocol_version": 3, "player": 0, "episode": "1", "adventure_actions": 9,
+                "observation_events": "visible_update-v2", "map_size": [6, 3, 1], **fields}
+
+    def test_handshake_requires_protocol_three_and_the_event_stream(self):
+        for message in (self.ready(protocol_version=2), self.ready(observation_events=None), self.ready(player=1),
+                        self.ready(observation_events="visible_update-v1"), self.ready(map_size=None)):
+            with self.subTest(message=message), self.assertRaises(ProtocolError):
+                bridge_protocol.BridgeValidator(0, "1").check(message)
+
+    def test_ordering_and_gaps(self):
+        validator = bridge_protocol.BridgeValidator(0, "1")
+        validator.check(self.ready())
+        first = observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)])
+        validator.check(first)
+        with self.assertRaises(ValueError):
+            validator.respond(9)
+        self.assertEqual(validator.respond(8), {"action_id": 0, "action": 8})
+        result = {"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1", "action_id": 0,
+                  "action": 8, "accepted": True, "before": {}, "after": {}, "events": [update(2, hidden=columns(0, 0))]}
+        with self.assertRaisesRegex(ProtocolError, "gap"):
+            validator.check(result)
+        early = bridge_protocol.BridgeValidator(0, "1")
+        early.check(self.ready())
+        with self.assertRaisesRegex(ProtocolError, "out of order"):
+            early.check(observation(1, columns(0, 0), [], []))
+
+    def test_terminal_watermark_must_name_the_last_action_the_engine_consumed(self):
+        def at(stage):
+            validator = bridge_protocol.BridgeValidator(0, "1")
+            validator.check(self.ready())
+            validator.check(observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)]))
+            if stage != "requested":
+                response = validator.respond(2)
+                if stage == "refused":
+                    validator.refuse(response)
+            if stage == "issued":  # a dialog during the action: the engine had issued it
+                validator.check(dialog)
+                validator.respond(1)
+            if stage == "resolved":
+                validator.check({"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1",
+                                 "action_id": 0, "action": 2, "accepted": True, "before": {}, "after": {}, "events": []})
+            return validator
+        terminal = {"type": "terminal", "protocol_version": 3, "player": 0, "episode": "1", "outcome": "win",
+                    "state": {}, "events": []}
+        dialog = {"type": "decision", "protocol_version": 3, "player": 0, "episode": "1", "decision_id": 0,
+                  "choices": [{"choice": 0}, {"choice": 1}], "events": []}
+        # An unanswered request was never consumed; a submitted action may or may not have been, unless a dialog
+        # during it or a refused write settles it; a resolved one was.
+        for stage, allowed in (("requested", {-1}), ("submitted", {-1, 0}), ("refused", {-1}), ("issued", {0}),
+                               ("resolved", {0})):
+            for consumed in (-2, -1, 0, 1, None, True):
+                with self.subTest(stage=stage, consumed=consumed):
+                    message = dict(terminal) if consumed is None else {**terminal, "last_action_id": consumed}
+                    validator = at(stage)
+                    if consumed in allowed and type(consumed) is int:
+                        self.assertEqual(validator.check(message), "terminal")
+                    else:
+                        with self.assertRaisesRegex(ProtocolError, "consumption watermark"):
+                            validator.check(message)
+        # The engine cannot report a result, or raise a dialog, for a response it never received.
+        with self.assertRaisesRegex(ProtocolError, "does not match the submitted action"):
+            at("refused").check({"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1",
+                                 "action_id": 0, "action": 2, "accepted": True, "before": {}, "after": {}, "events": []})
+        with self.assertRaisesRegex(ProtocolError, "never received"):
+            at("refused").check(dialog)
+
+    def test_snapshot_period_is_declared_and_enforced(self):
+        def result(action_id):
+            return {"type": "action_result", "protocol_version": 3, "player": 0, "episode": "1", "action_id": action_id,
+                    "action": 0, "accepted": True, "before": {}, "after": {}, "events": []}
+        first = observation(0, columns(0, 0), [], [update(0, revealed=columns(0, 0), own=OWN)])
+        for declared, second_has_tiles, fails in ((1, False, True), (2, False, False), (2, True, True), (0, True, True)):
+            with self.subTest(declared=declared, second_has_tiles=second_has_tiles):
+                validator = bridge_protocol.BridgeValidator(0, "1")
+                validator.check(self.ready(snapshot_every=declared))
+                opening = dict(first)
+                if declared == 0:
+                    del opening["tiles"]
+                validator.check(opening)
+                validator.respond(0)
+                validator.check(result(0))
+                second = observation(1, columns(0, 0), [], [])
+                if not second_has_tiles:
+                    del second["tiles"]
+                if fails:
+                    with self.assertRaisesRegex(ProtocolError, "tile list"):
+                        validator.check(second)
+                else:
+                    validator.check(second)
+        with self.assertRaises(ProtocolError):
+            bridge_protocol.BridgeValidator(0, "1").check(self.ready(snapshot_every=-1))
+
+
+class FakeLauncher:
+    def __init__(self, **scenario):
+        self.scenario = scenario
+
+    def launch(self, directory, seed, environment, log):
+        (directory / "engine").mkdir(parents=True, exist_ok=True)
+        inherited = {k: v for k, v in os.environ.items() if not k.startswith(("EXPLORER_RL_", "VCMI_"))}
+        launch_env = {**environment, "VCMI_EXPERIMENT_DIR": str(directory / "engine"),
+                      "FAKE_ENGINE_SCENARIO": json.dumps(self.scenario), "FAKE_ENGINE_SEED": str(seed)}
+        process = subprocess.Popen([sys.executable, str(FAKE_ENGINE)], env={**inherited, **launch_env},
+                                   stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        return process, {"command": ["fake_engine.py"], "environment": launch_env}
+
+    def identity(self):
+        return {"fake_engine": True}
+
+
+class ServerLogLauncher(FakeLauncher):
+    """The fake engine, which logs no server inputs, plus a server replay log the test completes."""
+
+    def launch(self, directory, seed, environment, log):
+        launched = super().launch(directory, seed, environment, log)
+        (directory / "engine" / "replay.jsonl").write_text(json.dumps({"kind": "init"}) + "\n")
+        return launched
+
+
+def write_jsonl(path, records, tail=""):
+    path.write_text("".join(json.dumps(record) + "\n" for record in records) + tail)
+
+
+class ReplayTailTests(unittest.TestCase):
+    """A stop waits until the server's replay log covers every pack the players' ledgers name."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="heroes-replay-tail-")
+        self.engine = Path(self.directory.name)
+
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def server_log(self, start, *applied, tail=""):
+        records = [{"kind": "init", "start_info": "00"}, {"kind": "start", "client_out": start}]
+        for client_out in applied:
+            records += [{"kind": "input", "seq": len(records), "pack": "ab"}, {"kind": "applied", "client_out": client_out}]
+        write_jsonl(self.engine / "replay.jsonl", records, tail)
+
+    def test_coverage_counts_only_complete_lines(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "capture", "pack": 3}, {"kind": "message", "pack": 7}])
+        write_jsonl(self.engine / "observations-p1.jsonl", [{"kind": "capture", "pack": 5}], '{"kind":"capture","pack":99')
+        self.server_log(2, 6, tail='{"kind":"input","seq":6,"pack":"cd"}\n{"kind":"applied","client_out":50')
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 7, "replay_client_out": 6, "covered": False})
+        with (self.engine / "replay.jsonl").open("a") as log:
+            log.write(',"seq":6}\n')
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 7, "replay_client_out": 50, "covered": True})
+        (self.engine / "replay.jsonl").unlink()
+        self.assertFalse(env_module.replay_tail(self.engine)["covered"])
+        for path in self.engine.glob("observations-p*.jsonl"):
+            path.unlink()
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": None, "replay_client_out": None, "covered": True})
+
+    def test_lines_longer_than_the_tail_window(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "capture", "pack": n} for n in range(5000)])
+        write_jsonl(self.engine / "replay.jsonl", [
+            {"kind": "init", "start_info": "00" * 100000}, {"kind": "start", "client_out": 1},
+            {"kind": "input", "pack": "ab"}, {"kind": "applied", "client_out": 4999, "sent": ["x" * 200000]},
+            {"kind": "input", "pack": "ab" * 60000}])
+        self.assertEqual(env_module.replay_tail(self.engine),
+                         {"observation_pack": 4999, "replay_client_out": 4999, "covered": True})
+
+    def test_wait_ends_when_the_server_logs_the_observed_packs(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "message", "pack": 9}])
+        self.server_log(2, 6)
+
+        def log_late():
+            time.sleep(0.1)
+            with (self.engine / "replay.jsonl").open("a") as log:
+                log.write(json.dumps({"kind": "input"}) + "\n" + json.dumps({"kind": "applied", "client_out": 9}) + "\n")
+        writer = threading.Thread(target=log_late)
+        writer.start()
+        waited = env_module.await_replay_tail(self.engine, lambda: True, 5.0)
+        writer.join()
+        self.assertGreater(waited, 0.05)
+        self.assertLess(waited, 5.0)
+        self.assertTrue(env_module.replay_tail(self.engine)["covered"])
+
+    def test_wait_is_bounded_and_skipped_without_a_server_log_or_a_running_engine(self):
+        write_jsonl(self.engine / "observations-p0.jsonl", [{"kind": "message", "pack": 9}])
+        self.assertEqual(env_module.await_replay_tail(self.engine, lambda: True, 5.0), 0.0)
+        self.server_log(2, 6)
+        self.assertLess(env_module.await_replay_tail(self.engine, lambda: False, 5.0), 0.1)
+        waited = env_module.await_replay_tail(self.engine, lambda: True, 0.1)
+        self.assertGreaterEqual(waited, 0.1)
+        self.assertLess(waited, 1.0)
+        self.assertFalse(env_module.replay_tail(self.engine)["covered"])
+
+
+class ScriptedAgent:
+    def __init__(self, actions=()):
+        self.actions = list(actions)
+
+    def act(self, request):
+        if request.kind == "decision":
+            return request.choices[0]
+        while self.actions:
+            action = self.actions.pop(0)
+            if request.mask[action]:
+                return action
+        return 8
+
+
+def play(env, players, episode=1, seed=7):
+    requests = []
+    step = env.reset(episode, seed)
+    while not step.done:
+        for record in step.since_last:
+            assert agents.engine_id_paths(record) == [], agents.engine_id_paths(record)
+        requests.append(step)
+        step = env.step(players[step.color].act(step))
+    return step, requests
+
+
+class PreflightTests(unittest.TestCase):
+    def test_an_explorer_build_without_the_consumption_watermark_is_refused(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / "bin" / "vcmiclient"
+            (binary.parent / "AI").mkdir(parents=True)
+            binary.write_bytes(b"VCMI_EXPERIMENT_DIR EXPLORER_RL_PLAYERS VCMI_EXPERIMENT_REPLAY")
+            binary.chmod(0o755)
+            (root / "data" / "Data").mkdir(parents=True)
+            (root / "map.vmap").write_bytes(b"map")
+            library = binary.parent / "AI" / ("libExplorerRL.dylib" if sys.platform == "darwin" else "libExplorerRL.so")
+            launcher = env_module.VcmiLauncher(binary, root / "data", root / "map.vmap")
+            library.write_bytes(b"visible_update-v2 observations-p")  # built before the watermark existed
+            with self.assertRaisesRegex(ValueError, "consumption watermark"):
+                launcher.preflight()
+            library.write_bytes(b"visible_update-v2 observations-p last_action_id")
+            launcher.preflight()
+
+
+class StopProcessGroupTests(unittest.TestCase):
+    def test_a_group_refused_with_eperm_is_still_stopped_and_reaped(self):
+        # macOS killpg() answers EPERM while the group's only member is an unreaped zombie.
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(30)"], start_new_session=True)
+        self.addCleanup(lambda: process.poll() is None and process.kill())
+        calls = []
+
+        def refusing_killpg(group, sig):
+            calls.append(sig)
+            if sig == signal.SIGTERM:
+                process.kill()
+            raise PermissionError(1, "Operation not permitted")
+        with mock.patch.object(env_module.os, "killpg", refusing_killpg):
+            env_module.stop_process_group(process)
+        self.assertEqual(calls, [signal.SIGTERM, signal.SIGKILL])
+        self.assertIsNotNone(process.returncode)
+
+
+class HeadlessEnvTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory(prefix="heroes-headless-test-")
+        self.output = Path(self.directory.name)
+
+    def tearDown(self):
+        self.directory.cleanup()
+
+    def make(self, limits=None, *, snapshot_every=1, **scenario):
+        env = env_module.HeadlessSelfPlayEnv(FakeLauncher(**scenario), self.output / str(len(list(self.output.iterdir()))),
+                                             limits or env_module.Limits(watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
+                                             snapshot_every=snapshot_every)
+        self.addCleanup(env.close)
+        return env
+
+    def random_players(self):
+        return {"red": agents.UniformRandomAgent(1), "blue": agents.UniformRandomAgent(2)}
+
+    def test_natural_episode_is_verified_and_rewarded_and_resets_cleanly(self):
+        env = self.make(mode="natural", end_day=3)
+        first, requests = play(env, self.random_players())
+        self.assertEqual((first.status, first.termination_reason), ("completed", "natural_terminal"))
+        self.assertEqual(first.rewards, {"red": 1, "blue": -1})
+        self.assertTrue(all(request.reward == 0 for request in requests))
+        self.assertEqual(first.manifest["returncode"], 0)
+        self.assertIsNotNone(first.manifest["engine_evidence"])
+        self.assertFalse(any(hasattr(r, "env_step") for r in requests))  # a global step count would reveal opponent activity
+        self.assertEqual(first.final_records["blue"][-1]["type"], "terminal")
+        red_history = env.history("red")
+        second, _ = play(env, self.random_players(), episode=2, seed=8)
+        self.assertEqual(second.status, "completed")
+        # A reset starts a fresh process, fresh handles and an independent history.
+        self.assertEqual(env.history("red")[0]["index"], 0)
+        self.assertEqual(env.sides[0].history.handle_count(), len({h for h in env.sides[0].history._handles.values()}))
+        self.assertTrue((env.output / "episode-000001/manifest.json").is_file())
+        self.assertTrue((env.output / "episode-000002/manifest.json").is_file())
+        self.assertNotEqual(red_history, env.history("red")) if len(red_history) != len(env.history("red")) else None
+
+    def test_history_v1_frames_reach_each_player_and_decode(self):
+        env = self.make(mode="natural", end_day=3, blue_start=[4, 2])
+        end, requests = play(env, {"red": ScriptedAgent([6, 0]), "blue": ScriptedAgent([6, 2])})
+        self.assertEqual(end.status, "completed")
+        contract = learner_contract()
+        for color in ("red", "blue"):
+            frames = env.history_v1(color)
+            delivered = [f for r in requests if r.color == color for f in r.frames] + end.final_frames[color]
+            self.assertEqual(json.loads(json.dumps(delivered)), frames)
+            for request in (r for r in requests if r.color == color and r.kind == "action"):
+                self.assertEqual(request.frames[-1]["kind"], "decision")
+                self.assertEqual(request.frames[-1]["mask"], request.mask)
+            self.assertEqual([f["seq"] for f in frames], list(range(len(frames))))
+            summary = end.manifest["players"][color]["history_v1"]
+            self.assertEqual((summary["valid"], summary["frames"]), (True, len(frames)))
+            self.assertEqual(agents.engine_id_paths(frames), [])
+            if contract is not None:
+                cursor = contract.HistoryCursor("1", COLORS.index(color))
+                for frame in frames:
+                    cursor.consume(contract.decode_frame(frame))
+        red_views = [f["view"] for f in env.history_v1("red") if f["kind"] == "view"]
+        sightings = [o for view in red_views for o in view["objects"] if o["owner"] == "opponent" and o["kind"] == 34]
+        self.assertEqual({tuple(o["position"]) for o in sightings}, {(3, 2, 0)})  # only where Red saw it
+
+    def test_transient_enemy_sighting_reaches_only_the_observer(self):
+        env = self.make(mode="natural", end_day=2, blue_start=[4, 2])
+        end, requests = play(env, {"red": ScriptedAgent(), "blue": ScriptedAgent([6, 2])})
+        self.assertEqual(end.status, "completed")
+        red_day_two = next(r for r in requests if r.color == "red" and r.record["day"] == 2)
+        events = [e for record in red_day_two.since_last for e in record.get("events", []) if e["kind"] == "visible_update"]
+        appeared = [o for e in events for o in e["appeared"] if o["type"] == 34 and o["owner"] == 1]
+        self.assertEqual([(o["x"], o["y"]) for o in appeared], [(3, 2)])
+        handle = appeared[0]["handle"]
+        self.assertIn(handle, [h for e in events for h in e["disappeared"]])
+        snapshot = [o["handle"] for tile in red_day_two.record["tiles"] for o in tile["objects"]]
+        self.assertNotIn(handle, snapshot)
+        memory = {entry["handle"]: entry for entry in env.memory("red")}
+        self.assertEqual((memory[handle]["fact"]["x"], memory[handle]["visible"]), (3, False))
+        # Blue's hero start and return tiles are hidden to Red: never in Red's history.
+        red_positions = {(o["x"], o["y"]) for record in env.history("red") for e in record.get("events", [])
+                         if e["kind"] == "visible_update" for o in e["appeared"] + e["changed"] if o["handle"] == handle}
+        self.assertEqual(red_positions, {(3, 2)})
+
+    def test_horizons_truncate_without_reward_and_keep_a_bootstrap_boundary(self):
+        for limits, reason, players in ((env_module.Limits(max_days=1), "game_day_limit", 2),
+                                        (env_module.Limits(max_actions=2), "agent_action_limit", 1)):
+            with self.subTest(reason=reason):
+                env = self.make(limits, mode="natural", end_day=5)
+                end, _ = play(env, self.random_players())
+                self.assertEqual((end.status, end.termination_reason), ("truncated", reason))
+                self.assertEqual(end.rewards, {"red": None, "blue": None})
+                # A day horizon gives each player its own first decision past it; the action guard only one.
+                boundary = {color: record for color, record in end.bootstrap.items() if record}
+                self.assertEqual(len(boundary), players)
+                for color, record in boundary.items():
+                    self.assertEqual(record["type"], "observation")
+                    seq = end.manifest["players"][color]["cutoff"]["history_v1_seq"]
+                    frame = env.history_v1(color)[seq]
+                    self.assertEqual((frame["kind"], frame["mask"], frame["day"]), ("decision", record["action_mask"], record["day"]))
+                    if reason == "game_day_limit":
+                        self.assertEqual(record["day"], 2)
+
+    def test_requests_past_a_players_horizon_are_marked(self):
+        env = self.make(env_module.Limits(max_days=1), mode="natural", end_day=5)
+        end, requests = play(env, self.random_players())
+        self.assertEqual(end.termination_reason, "game_day_limit")
+        for color in ("red", "blue"):
+            marks = [(r.record["day"], r.past_horizon) for r in requests if r.color == color and r.kind == "action"]
+            self.assertTrue(marks and all(past == (day > 1) for day, past in marks), marks)
+            self.assertEqual(end.bootstrap_v1_seq[color], end.manifest["players"][color]["cutoff"]["history_v1_seq"])
+
+    def test_endings_during_the_horizon_continuation(self):
+        # Red passes the day horizon first and plays on until Blue reaches its own boundary.
+        fast = env_module.Limits(max_days=1, watchdog_seconds=1.5, startup_seconds=20, shutdown_seconds=1.5)
+        crash, _ = play(self.make(fast, mode="crash", crash_day=2), self.random_players())
+        self.assertEqual((crash.status, crash.termination_reason), ("failed", "process_exit_without_verified_terminal"))
+        self.assertEqual(crash.bootstrap, {"red": None, "blue": None})
+        natural, _ = play(self.make(fast, mode="natural", end_day=2), self.random_players())
+        self.assertEqual((natural.status, natural.termination_reason), ("truncated", "game_day_limit"))
+        self.assertEqual(natural.rewards, {"red": None, "blue": None})
+        self.assertEqual(natural.manifest["natural_terminal_after_horizon"], {"red": "win", "blue": "loss"})
+        self.assertIsNotNone(natural.bootstrap["red"])
+        self.assertIsNone(natural.bootstrap["blue"])  # Blue never reached a boundary of its own
+        evidence, _ = play(self.make(fast, mode="missing_metadata", end_day=5), self.random_players())
+        self.assertEqual((evidence.status, evidence.termination_reason), ("failed", "engine_evidence_invalid"))
+        self.assertEqual(evidence.bootstrap, {"red": None, "blue": None})
+
+    def test_technical_failures_are_never_scored(self):
+        fast = env_module.Limits(watchdog_seconds=1.5, startup_seconds=20, shutdown_seconds=1.5)
+        cases = [({"mode": "crash"}, "process_exit_without_verified_terminal"),
+                 ({"mode": "hang"}, "watchdog_timeout"),
+                 ({"mode": "natural", "action_id_offset": 1}, "protocol_error"),
+                 ({"mode": "engine_error"}, "policy_error"),
+                 ({"mode": "unclean_exit"}, "unclean_exit_after_terminals"),
+                 ({"mode": "no_shutdown"}, "shutdown_timeout"),
+                 ({"mode": "missing_terminal"}, "unverified_agent_terminal"),
+                 ({"mode": "missing_metadata"}, "engine_evidence_invalid"),
+                 ({"mode": "leak"}, "protocol_error"),
+                 ({"mode": "exit_early"}, "agent_never_acted"),
+                 ({"mode": "natural", "observation_events": "none"}, "protocol_error")]
+        for scenario, reason in cases:
+            with self.subTest(**scenario):
+                end, _ = play(self.make(fast, **scenario), self.random_players())
+                self.assertEqual((end.status, end.termination_reason), ("failed", reason))
+                self.assertEqual(end.rewards, {"red": None, "blue": None})
+                self.assertEqual(end.outcomes, {"red": None, "blue": None})
+
+    def test_interleaved_decision_for_the_waiting_player(self):
+        env = self.make(mode="decision")
+        end, requests = play(env, {"red": ScriptedAgent([2]), "blue": ScriptedAgent()})
+        self.assertEqual(end.status, "completed")
+        self.assertEqual(end.rewards, {"red": -1, "blue": 1})
+        order = [(r.color, r.kind) for r in requests[:3]]
+        self.assertEqual(order, [("red", "action"), ("blue", "decision"), ("red", "action")])
+        decision = requests[1].record
+        self.assertEqual(decision["hero"], 1)  # Blue's own hero handle, never its engine ID
+        self.assertNotIn("hero_id", decision)
+        # A level-up without a query is reported, never mistaken for a dialog.
+        level_ups = [e for record in env.history("blue") for e in record.get("events", []) if e["kind"] == "level_up"]
+        self.assertEqual(level_ups, [{"kind": "level_up", "primary_skill": 1, "secondary_skills": [7]}])
+        self.assertEqual(end.manifest["players"]["blue"]["history_v1"]["unrepresented_events"]["level_up"], 1)
+
+    def test_periodic_snapshots_still_verify_and_never_thin_the_events(self):
+        full_env = self.make(mode="natural", end_day=3)
+        full, _ = play(full_env, self.random_players())
+        periodic_env = self.make(mode="natural", end_day=3, snapshot_every=3)
+        periodic, _ = play(periodic_env, self.random_players())
+        self.assertEqual((periodic.status, periodic.termination_reason), ("completed", "natural_terminal"))
+        strip = lambda records: [{k: v for k, v in r.items() if k != "tiles"} for r in records]
+        for color in ("red", "blue"):
+            observations = [r for r in periodic_env.history(color) if r["type"] == "observation"]
+            self.assertGreater(len(observations), 3)
+            self.assertEqual([r["tiles"] is not None for r in observations], [i % 3 == 0 for i in range(len(observations))])
+            # Same seeds, same events: only the redundant tile lists are thinned.
+            self.assertEqual(strip(periodic_env.history(color)), strip(full_env.history(color)))
+            self.assertEqual(periodic_env.history_v1(color), full_env.history_v1(color))
+            self.assertTrue(periodic.manifest["players"][color]["history_v1"]["valid"])
+
+    def test_terminal_racing_an_action_result_keeps_the_history_gap_free(self):
+        env = self.make(mode="terminal_race", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual(end.status, "completed")
+        red = end.final_records["red"]
+        self.assertEqual(red[-1]["type"], "terminal")
+        self.assertTrue(any(e["kind"] == "visible_update" for e in red[-1]["events"]))
+        # The engine consumed the move: its action stays the last transition, with no invented result.
+        counters, frames = end.manifest["players"]["red"], env.history_v1("red")
+        self.assertEqual((counters["actions_without_result"], counters["actions_unconsumed"]), (1, 0))
+        self.assertEqual([f["kind"] for f in frames[-2:]], ["action", "view"])
+        self.assertEqual(counters["history_v1"]["superseded_decision"], None)
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def assert_delivered_and_decodable(self, env, end, requests, color):
+        frames = env.history_v1(color)
+        delivered = [f for r in requests if r.color == color for f in r.frames] + end.final_frames[color]
+        self.assertEqual(json.loads(json.dumps(delivered)), frames)
+        self.assertTrue(end.manifest["players"][color]["history_v1"]["valid"])
+        contract = learner_contract()
+        if contract is not None:
+            cursor = contract.HistoryCursor("1", COLORS.index(color))
+            for frame in frames:
+                cursor.consume(contract.decode_frame(frame))
+
+    def assert_superseded(self, env, end, color):
+        frames, summary = env.history_v1(color), end.manifest["players"][color]["history_v1"]
+        self.assertEqual(frames[-1]["kind"], "decision")  # observed, kept, and never a sample
+        self.assertEqual((summary["superseded_decision"], summary["unacted_decision"], summary["pending_action"]),
+                         (frames[-1]["seq"], None, None))
+        self.assertEqual(sum(f["kind"] == "action" for f in frames), sum(f["kind"] == "result" for f in frames))
+
+    def test_a_reply_the_engine_never_consumed_is_withdrawn_at_the_terminal(self):
+        env = self.make(mode="reply_unconsumed", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+        counters = end.manifest["players"]["red"]
+        self.assertEqual((counters["actions_unconsumed"], counters["actions_without_result"],
+                          counters["responses_undelivered"], counters["history_v1"]["retracted_actions"]), (1, 0, 0, 1))
+        self.assertEqual(end.final_records["red"][-1]["last_action_id"], 0)  # the day-one end turn, not the move
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_terminal_while_the_policy_chooses_supersedes_its_decision(self):
+        env = self.make(mode="terminal_before_reply", end_day=2)
+        end, requests = play(env, {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("completed", "natural_terminal"))
+        counters = end.manifest["players"]["red"]
+        # The late reply either reached the closing socket, unread, or was refused; it is never taken.
+        self.assertEqual(counters["actions_unconsumed"] + counters["responses_undelivered"], 1)
+        self.assertEqual(counters["history_v1"]["retracted_actions"], counters["actions_unconsumed"])
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_response_the_socket_refuses_is_never_folded_as_an_action(self):
+        class RefusingConnection:
+            def __init__(self, connection):
+                self.connection = connection
+
+            def sendall(self, data):
+                raise BrokenPipeError(32, "Broken pipe")
+
+            def __getattr__(self, name):
+                return getattr(self.connection, name)
+        env = self.make(mode="terminal_before_reply", end_day=2)
+        players, requests = {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()}, []
+        step = env.reset(1, 7)
+        while not (step.color == "red" and step.record["day"] == 2):
+            requests.append(step)
+            step = env.step(players[step.color].act(step))
+        requests.append(step)
+        side = env.sides[0]
+        side.connection = RefusingConnection(side.connection)
+        end = env.step(2)
+        self.assertEqual((end.status, end.termination_reason), ("completed", "natural_terminal"))
+        counters = end.manifest["players"]["red"]
+        self.assertEqual((counters["responses_undelivered"], counters["actions_unconsumed"],
+                          counters["history_v1"]["retracted_actions"]), (1, 0, 0))
+        self.assertIn("BrokenPipeError", counters["write_error"])
+        ledger = [json.loads(line) for line in (env.episode_dir / "agents/red/bridge.jsonl").read_text().splitlines()]
+        last_policy = [entry["message"] for entry in ledger if entry["direction"] == "policy"][-1]
+        self.assertEqual(last_policy, {"action_id": 1, "action": 2, "delivered": False})
+        self.assert_superseded(env, end, "red")
+        self.assert_delivered_and_decodable(env, end, requests, "red")
+
+    def test_a_stream_that_ends_inside_a_message_after_the_terminals_fails_the_episode(self):
+        end, _ = play(self.make(mode="trailing_partial", end_day=2), self.random_players())
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual(end.rewards, {"red": None, "blue": None})
+        self.assertIn("ended inside a message", end.manifest["failure_detail"])
+
+    def record_event_order(self, env):
+        """Record the kind of every event the environment takes from its queue, in order."""
+        events, order = env.events, []
+
+        class Recording:
+            def get(self, *args, **kwargs):
+                item = events.get(*args, **kwargs)
+                order.append(item[0])
+                return item
+
+            def get_nowait(self):
+                item = events.get_nowait()
+                order.append(item[0])
+                return item
+        env.events = Recording()
+        return order
+
+    def play_from(self, env, step, players):
+        while not step.done:
+            step = env.step(players[step.color].act(step))
+        return step
+
+    def wait_for(self, condition, seconds=10.0):
+        deadline = time.monotonic() + seconds
+        while not condition():
+            self.assertLess(time.monotonic(), deadline, "condition not reached")
+            time.sleep(0.005)
+
+    def queued(self, env, kind):
+        return any(item[0] == kind for item in list(env.events.queue))
+
+    def test_a_reader_error_after_the_engine_exit_still_fails_the_episode(self):
+        # A child keeps the sockets open after the engine exits, so the exit is handled before the
+        # reader reaches the partial line at its end of stream.
+        env = self.make(mode="trailing_partial", end_day=2, linger=0.5)
+        step = env.reset(1, 7)
+        order = self.record_event_order(env)
+        end = self.play_from(env, step, self.random_players())
+        self.assertLess(order.index("exit"), order.index("bridge_error"))
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("failed", "protocol_error", {"red": None, "blue": None}))
+        self.assertIn("ended inside a message", end.manifest["failure_detail"])
+        self.assertEqual(end.bootstrap, {"red": None, "blue": None})
+
+    def test_a_stream_still_open_after_the_engine_exit_fails_the_episode(self):
+        with mock.patch.object(env_module, "READER_DRAIN_SECONDS", 0.3):
+            end, _ = play(self.make(mode="natural", end_day=2, linger=2.0), self.random_players())
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("failed", "protocol_error", {"red": None, "blue": None}))
+        self.assertIn("did not finish its stream", end.manifest["failure_detail"])
+
+    def until_red_decides_on_day_two(self, env, players):
+        step = env.reset(1, 7)
+        while not (step.color == "red" and step.kind == "action" and step.record["day"] == 2):
+            step = env.step(players[step.color].act(step))
+        return step
+
+    def test_a_declared_stop_truncates_with_a_bootstrap_boundary(self):
+        env = self.make(mode="natural", end_day=5)
+        request = self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        end = env.truncate("collection_window")
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("truncated", "collection_window", {"red": None, "blue": None}))
+        self.assertEqual(end.bootstrap["red"], request.record)
+        self.assertEqual(end.bootstrap_v1_seq["red"], env.history_v1("red")[-1]["seq"])
+
+    def test_an_engine_crash_before_a_declared_stop_fails_the_episode(self):
+        env = self.make(mode="crash_after_observation", end_day=2)
+        self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        env.process.wait(timeout=10)  # the engine died while the agent decided
+        end = env.truncate("collection_window")
+        self.assertEqual(end.status, "failed")
+        self.assertEqual(end.termination_reason, "process_exit_without_verified_terminal")
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+        self.assertLess(end.manifest["returncode"], 0)
+
+    def test_a_protocol_error_before_a_declared_stop_fails_the_episode(self):
+        env = self.make(mode="garbage_after_observation", end_day=2)
+        self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.wait_for(lambda: self.queued(env, "bridge_error"))
+        self.assertIsNone(env.process.poll())  # still running: only the stop ends it
+        end = env.truncate("collection_window")
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+        self.assertIsNone(end.manifest["players"]["red"]["cutoff"])
+
+    def test_a_protocol_error_queued_behind_a_horizon_fails_the_episode(self):
+        limits = env_module.Limits(max_actions=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        env = self.make(limits, mode="garbage_after_observation", end_day=2)
+        settle = env._settle
+
+        def settle_after_the_error():  # the error arrived before the stop took effect
+            self.wait_for(lambda: self.queued(env, "bridge_error"))
+            return settle()
+        env._settle = settle_after_the_error
+        end, _ = play(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("failed", "protocol_error"))
+        self.assertEqual((end.rewards, end.bootstrap), ({"red": None, "blue": None}, {"red": None, "blue": None}))
+
+    def test_a_game_that_ended_before_a_declared_stop_completes_naturally(self):
+        for exited in (False, True):
+            with self.subTest(engine_exited=exited):
+                env = self.make(mode="terminal_before_reply", end_day=2, exit_delay=0 if exited else 1.0)
+                self.until_red_decides_on_day_two(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+                if exited:
+                    self.wait_for(lambda: self.queued(env, "exit"))
+                else:  # both terminals arrived; the engine is still shutting down
+                    self.wait_for(lambda: sum(item[0] == "message" for item in list(env.events.queue)) >= 2)
+                    self.assertIsNone(env.process.poll())
+                end = env.truncate("collection_window")
+                self.assertEqual((end.status, end.termination_reason, end.rewards),
+                                 ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+                self.assertEqual(end.bootstrap, {"red": None, "blue": None})
+                self.assert_superseded(env, end, "red")
+
+    def test_a_game_that_ended_before_a_horizon_took_effect_completes_naturally(self):
+        # Red's action horizon is declared at the decision the terminal supersedes, so no action follows it.
+        limits = env_module.Limits(max_actions=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        for exited in (False, True):
+            with self.subTest(engine_exited=exited):
+                env = self.make(limits, mode="terminal_before_reply", end_day=2, exit_delay=0 if exited else 1.0)
+                settle = env._settle
+
+                def settle_after_the_terminals(env=env, settle=settle, exited=exited):
+                    if exited:
+                        self.wait_for(lambda: self.queued(env, "exit"))
+                    else:  # both terminals arrived before the stop took effect; the engine is still shutting down
+                        self.wait_for(lambda: sum(item[0] == "message" and item[2].get("type") == "terminal"
+                                                  for item in list(env.events.queue)) == 2)
+                        self.assertIsNone(env.process.poll())
+                    return settle()
+                env._settle = settle_after_the_terminals
+                end, _ = play(env, {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+                self.assertEqual((end.status, end.termination_reason, end.rewards),
+                                 ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+                self.assertEqual((end.bootstrap, end.bootstrap_v1_seq), ({"red": None, "blue": None},) * 2)
+                self.assertIsNone(end.manifest["natural_terminal_after_horizon"])
+                for color in COLORS:
+                    self.assertEqual((end.manifest["players"][color]["cutoff"], end.manifest["players"][color]["limit"]),
+                                     (None, None))
+                self.assert_superseded(env, end, "red")
+
+    def test_a_horizon_answer_the_engine_never_took_leaves_the_natural_ending_scored(self):
+        fast = env_module.Limits(max_days=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        end, _ = play(self.make(fast, mode="reply_unconsumed", end_day=2),
+                      {"red": ScriptedAgent([8, 2]), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason, end.rewards),
+                         ("completed", "natural_terminal", {"red": -1, "blue": 1}))
+        red = end.manifest["players"]["red"]
+        self.assertEqual((red["actions_unconsumed"], red["cutoff"]), (1, None))
+        self.assertIsNone(end.manifest["natural_terminal_after_horizon"])
+
+    def test_a_natural_ending_after_an_answered_horizon_stays_unscored(self):
+        # Red answers its first decision past the day horizon while Blue plays on to its own boundary.
+        fast = env_module.Limits(max_days=1, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        end, _ = play(self.make(fast, mode="natural", end_day=2), {"red": ScriptedAgent(), "blue": ScriptedAgent()})
+        self.assertEqual((end.status, end.termination_reason), ("truncated", "game_day_limit"))
+        self.assertEqual(end.manifest["natural_terminal_after_horizon"], {"red": "win", "blue": "loss"})
+        self.assertIsNotNone(end.bootstrap["red"])
+        self.assertEqual(end.manifest["players"]["red"]["cutoff"]["day"], 2)
+
+    def test_replay_manifest_names_every_absent_ledger(self):
+        env = self.make(env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10),
+                        mode="natural", end_day=5)
+        end, _ = play(env, self.random_players())
+        self.assertEqual(end.termination_reason, "agent_action_limit")
+        evidence = end.manifest["replay"]
+        # The fake writes both capture ledgers but no server log, so its stop never waits.
+        self.assertEqual((evidence["recorded"], evidence["missing"]), (False, ["engine/replay.jsonl"]))
+        self.assertEqual(evidence["tail"]["waited_seconds"], 0.0)
+        engine = env.episode_dir / "engine"
+        target = env_module.replay_tail(engine)["observation_pack"]
+        self.assertGreaterEqual(target, 1)
+        (engine / "replay.jsonl").write_text(json.dumps({"kind": "start", "client_out": target}) + "\n")
+        blue = (engine / "observations-p1.jsonl").read_bytes()
+        (engine / "observations-p1.jsonl").unlink()
+        evidence = env._replay_evidence()
+        self.assertEqual((evidence["recorded"], evidence["missing"]), (False, ["engine/observations-p1.jsonl"]))
+        self.assertEqual(sorted(evidence["files"]), ["engine/observations-p0.jsonl", "engine/replay.jsonl"])
+        (engine / "observations-p1.jsonl").write_bytes(blue)
+        evidence = env._replay_evidence()
+        self.assertEqual((evidence["recorded"], evidence["missing"], len(evidence["files"])), (True, [], 3))
+        self.assertTrue(evidence["tail"]["covered"])
+
+    def test_an_environment_stop_waits_for_the_server_replay_log(self):
+        limits = env_module.Limits(max_actions=2, watchdog_seconds=10, startup_seconds=20, shutdown_seconds=10)
+        env = self.make(limits, mode="natural", end_day=5)
+        env.launcher = ServerLogLauncher(mode="natural", end_day=5)
+        covered_at_stop, stop = [], env_module.stop_process_group
+
+        def recording_stop(process):
+            covered_at_stop.append(env_module.replay_tail(env.episode_dir / "engine")["covered"])
+            stop(process)
+
+        def log_late():
+            # The server logs the input behind the players' last captures just after the horizon.
+            deadline = time.monotonic() + 30
+            while getattr(env, "reason", None) is None and time.monotonic() < deadline:
+                time.sleep(0.001)
+            time.sleep(0.05)
+            target = env_module.replay_tail(env.episode_dir / "engine")["observation_pack"]
+            with (env.episode_dir / "engine" / "replay.jsonl").open("a") as log:
+                log.write(json.dumps({"kind": "start", "client_out": target}) + "\n")
+        server = threading.Thread(target=log_late, daemon=True)
+        server.start()
+        with mock.patch.object(env_module, "stop_process_group", recording_stop):
+            end, _ = play(env, self.random_players())
+        server.join(timeout=5)
+        self.assertEqual(end.termination_reason, "agent_action_limit")
+        self.assertEqual(covered_at_stop, [True])
+        tail = end.manifest["replay"]["tail"]
+        self.assertGreaterEqual(tail["observation_pack"], 1)
+        self.assertEqual((tail["replay_client_out"], tail["covered"]), (tail["observation_pack"], True))
+        self.assertGreater(tail["waited_seconds"], 0.02)
+        # A server log that never catches up delays the stop only by the bounded wait.
+        never = self.make(limits, mode="natural", end_day=5)
+        never.launcher = ServerLogLauncher(mode="natural", end_day=5)
+        with mock.patch.object(env_module, "REPLAY_TAIL_SECONDS", 0.2):
+            end, _ = play(never, self.random_players())
+        tail = end.manifest["replay"]["tail"]
+        self.assertGreaterEqual(tail["observation_pack"], 1)
+        self.assertEqual((tail["replay_client_out"], tail["covered"]), (None, False))
+        self.assertGreaterEqual(tail["waited_seconds"], 0.2)
+        self.assertLess(tail["waited_seconds"], 2.0)
+
+    def test_engine_wait_excludes_startup_and_shutdown(self):
+        end, _ = play(self.make(mode="natural", end_day=2, startup_delay=1.0), self.random_players())
+        timing = end.manifest["timing"]
+        self.assertEqual(end.status, "completed")
+        self.assertGreaterEqual(timing["startup_seconds"], 1.0)
+        # Steady-state rates divide by engine plus agent time, so the launch wait must stay out of it.
+        self.assertLess(timing["engine_wait_seconds"], 0.5)
+
+    def test_response_cost_excludes_the_ledger_write_and_the_action_fold(self):
+        env = self.make(mode="natural", end_day=2)
+        write_ledger, act = env._write_ledger, player_history.PlayerHistory.act
+
+        def slow_ledger(side, direction, message):
+            if direction == "policy":
+                time.sleep(0.01)
+            write_ledger(side, direction, message)
+
+        def slow_act(history, action, action_id):
+            time.sleep(0.01)
+            act(history, action, action_id)
+        env._write_ledger = slow_ledger
+        with mock.patch.object(player_history.PlayerHistory, "act", slow_act):
+            end, _ = play(env, self.random_players())
+        steps = end.manifest["env_steps"]
+        actions = sum(player["actions_sent"] for player in end.manifest["players"].values())
+        costs = end.manifest["timing"]["adapter_seconds"]
+        self.assertGreater(actions, 2)
+        self.assertGreaterEqual(costs["act"], 0.01 * actions)
+        self.assertLess(costs["respond"], 0.005 * steps)  # the sends alone; ledger and fold have their own keys
+
+    def test_invalid_agent_choice_is_rejected_before_sending(self):
+        env = self.make(mode="natural", end_day=2)
+        request = env.reset(1, 7)
+        blocked = [index for index, allowed in enumerate(request.mask) if not allowed]
+        with self.assertRaises(ValueError):
+            env.step(blocked[0] if blocked else 9)
+        self.assertIs(env.request, request)
+        while not request.done:
+            request = env.step(8 if request.kind == "action" else request.choices[0])
+        self.assertEqual(request.status, "completed")
+
+
+class HeadlessScoringTests(unittest.TestCase):
+    def test_hero_death_is_not_a_loss_and_only_horizons_truncate(self):
+        scoring = env_module.scoring
+        executions = {c: {"ready": True, "actions_sent": 1, "error": None, "limit": None, "terminal": None} for c in ("red", "blue")}
+        self.assertEqual(scoring.classify_headless_self_play(0, None, "hero died", executions)[:3],
+                         ("failed", {"red": None, "blue": None}, "agent_never_acted" if False else "unverified_self_play_terminal"))
+        for reason, status in (("game_day_limit", "truncated"), ("agent_action_limit", "truncated"),
+                               ("watchdog_timeout", "failed"), ("protocol_error", "failed")):
+            self.assertEqual(scoring.classify_headless_self_play(0, reason, "", executions)[0], status)
+
+    def test_engine_recipe_hashes_only_source_files(self):
+        scoring = env_module.scoring
+        with tempfile.TemporaryDirectory(prefix="heroes-recipe-") as directory:
+            root = Path(directory)
+            sources = ["dependencies/vcmi.json", "engine/ExperimentReplay/b.cpp", "engine/ExplorerRL/a.cpp",
+                       "engine/patches/0001-a.patch"]
+            for name in sources:
+                (root / name).parent.mkdir(parents=True, exist_ok=True)
+                (root / name).write_text(name)
+            clean = scoring.engine_recipe_digests(root)  # not a git checkout: hidden files are skipped
+            self.assertEqual(sorted(clean), sources)
+            for folder in ("engine/ExplorerRL", "engine/ExperimentReplay"):
+                (root / folder / ".DS_Store").write_bytes(b"\0Finder")
+            self.assertEqual(scoring.engine_recipe_digests(root), clean)
+            if shutil.which("git") is None:
+                return
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (root / ".gitignore").write_text(".DS_Store\n*.so\n")
+            (root / "engine/ExplorerRL/libExplorerRL.so").write_bytes(b"build output")
+            subprocess.run(["git", "-C", str(root), "add", "dependencies", "engine/patches"], check=True)
+            self.assertEqual(scoring.engine_recipe_digests(root), clean)  # tracked or not, never ignored
+            (root / "engine/ExplorerRL/new.h").write_text("an untracked new source")
+            self.assertEqual(sorted(scoring.engine_recipe_digests(root)), sorted(sources + ["engine/ExplorerRL/new.h"]))
+
+
+if __name__ == "__main__":
+    unittest.main()

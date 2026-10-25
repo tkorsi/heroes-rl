@@ -1,0 +1,431 @@
+{
+  "change_review": {
+    "limitation": "The native test covers the engine-free helper; engine integration was inspected against pinned source, not rebuilt or exercised live. isValidPlayer also rejects special sentinels outside normal army ownership; no such army scenario was established.",
+    "reason": "Pinned SideInBattle::init sets creature-generator1..4 guards to NEUTRAL and maps UNFLAGGABLE to NEUTRAL. CGObjectInstance defaults to UNFLAGGABLE (-2), while NEUTRAL is -1. The new predicate includes both unowned owners and generator guards; hero and town-garrison labels retain precedence.",
+    "sources": [
+      {
+        "matches_pinned_upstream": true,
+        "path": "/Users/orsi/Projects/Heroes/runs/issue4-worktree/vcmi/lib/battle/SideInBattle.cpp",
+        "sha256": "fd67d1f61416385c588a893ef1aaec9c0984471cd2861053099ef0069b34e3fe"
+      },
+      {
+        "matches_pinned_upstream": true,
+        "path": "/Users/orsi/Projects/Heroes/runs/issue4-worktree/vcmi/lib/constants/EntityIdentifiers.cpp",
+        "sha256": "6c00fb729ac27051cca1bcb4a9812ead6fcf9551ebca904ddf581983e2432343"
+      },
+      {
+        "matches_pinned_upstream": true,
+        "path": "/Users/orsi/Projects/Heroes/runs/issue4-worktree/vcmi/lib/mapObjects/CGObjectInstance.cpp",
+        "sha256": "23bfe37d0a9762f36af1bd68046e153a225bc01a630030bafd6dcaf1d4fc404b"
+      }
+    ],
+    "upstream_pin": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+    "verdict": "No actionable issue found in bbfc955 for supported normal owners and creature-generator guards."
+  },
+  "changed_files_since_previous_review": [
+    "engine/ExplorerRL/ExplorerRL.cpp",
+    "engine/ExplorerRL/VisibleState.h",
+    "tests/native/visible_state.cpp",
+    "tests/test_native_visible_state.py"
+  ],
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "validation/probes/recheck_headless_boundaries.py",
+        "--source",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+        "--expected-head",
+        "bbfc9558c084aea482780b2059f9c0bd79ad40d6",
+        "--output",
+        "runs/headless-four-findings-recheck-2026-10-24/boundary.json"
+      ],
+      "cwd": "/Users/orsi/Projects/Heroes",
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "validation/probes/recheck_headless_history.py",
+        "--source",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+        "--vcmi-source",
+        "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/vcmi",
+        "--learner-parent",
+        "/Users/orsi/Documents/ChatGPT/Heroes/experiments",
+        "--output",
+        "runs/headless-four-findings-recheck-2026-10-24/history.json"
+      ],
+      "cwd": "/Users/orsi/Projects/Heroes",
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "python3",
+        "validation/probes/recheck_headless_render_binding.py",
+        "--source",
+        "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+        "--output",
+        "runs/headless-four-findings-recheck-2026-10-24/render.json"
+      ],
+      "cwd": "/Users/orsi/Projects/Heroes",
+      "exit_code": 0
+    }
+  ],
+  "correct_behavior_checks": {
+    "native_visibility": {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_native_visible_state.py",
+        "-v"
+      ],
+      "correct_behavior_regression_passed": true,
+      "coverage": "10 scenarios, 200 randomized folds, opponent kinds",
+      "cwd": "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+      "log": "/Users/orsi/Projects/Heroes/runs/headless-four-findings-recheck-2026-10-24/native-visible-state.log",
+      "log_sha256": "5e97c9751204b5cb001af917483ad02351e5dd5598ff4831e287267fc3befe17",
+      "returncode": 0,
+      "tests_passed": 1
+    },
+    "renderer_tests": {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-p",
+        "test_render_replay.py"
+      ],
+      "output": "........\n----------------------------------------------------------------------\nRan 8 tests in 0.472s\n\nOK\n",
+      "returncode": 0
+    },
+    "strict_history_frames": 8
+  },
+  "created_at": "2026-10-24T11:31:58.150478+00:00",
+  "engine_sources_modified": false,
+  "exit_semantics": "Probe completion/exit zero is not correct-behavior acceptance. All four bug statuses are true. Native regression and renderer unit-test pass statuses are separate.",
+  "ffmpeg": {
+    "binary": "/opt/homebrew/bin/ffmpeg",
+    "version": "ffmpeg version 9.0.2 Copyright (c) 2000-2026 the FFmpeg developers"
+  },
+  "findings": [
+    {
+      "bug_reproduced": true,
+      "desired_behavior_passed": false,
+      "expected": "A failed or unconsumed response must not become a taken-action sample or receive terminal credit. Preserve the preceding unacted decision, reconcile consumption, or exclude uncertain learner data. A separately verified natural outcome may remain reportable.",
+      "finding": "P1 action consumption",
+      "id": "action_consumption",
+      "observed": {
+        "actions_sent_delta": 1,
+        "added_frames": [
+          {
+            "action": 2,
+            "day": 1,
+            "decision_seq": 1,
+            "episode": "1",
+            "kind": "action",
+            "player": 0,
+            "schema": "heroes-player-history-v1",
+            "seq": 2
+          }
+        ],
+        "classification_with_write_error": [
+          "completed",
+          {
+            "blue": "loss",
+            "red": "win"
+          },
+          "natural_terminal",
+          {
+            "blue": -1,
+            "red": 1
+          }
+        ],
+        "write_error": "BrokenPipeError: engine closed after terminal"
+      },
+      "setup": "Valid pending Red action; sendall raises BrokenPipeError. Actual step(), history fold and classifier execute. Only transport, next advance and unrelated ledger I/O are stubbed.",
+      "source": {
+        "engine/ExplorerRL/ExplorerRL.cpp": [
+          888,
+          890
+        ],
+        "experiments/episodes/scoring.py": [
+          92,
+          94
+        ],
+        "experiments/headless/env.py": [
+          367,
+          380
+        ]
+      }
+    },
+    {
+      "bug_reproduced": true,
+      "desired_behavior_passed": false,
+      "expected": "Both orders fail closed with null rewards; a queued reader protocol error must survive final draining.",
+      "finding": "P2 stream finalization",
+      "id": "stream_finalization",
+      "observed": {
+        "exit_first": {
+          "failure_detail": null,
+          "queued_order": [
+            "exit",
+            "bridge_error"
+          ],
+          "rewards": {
+            "blue": -1,
+            "red": 1
+          },
+          "status": "completed",
+          "termination_reason": "natural_terminal"
+        },
+        "reader_error_first": {
+          "failure_detail": "red: ProtocolError: Bridge stream ended inside a message",
+          "queued_order": [
+            "bridge_error",
+            "exit"
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "failed",
+          "termination_reason": "protocol_error"
+        }
+      },
+      "setup": "Actual _advance/_finish/scoring with identical terminal/log evidence and queued exit plus reader error; only event ordering changes. Process, unrelated reporting, and metadata are stubbed. No process is launched.",
+      "source": {
+        "experiments/headless/env.py": [
+          [
+            483,
+            485
+          ],
+          [
+            523,
+            536
+          ],
+          [
+            646,
+            661
+          ]
+        ]
+      }
+    },
+    {
+      "bug_reproduced": true,
+      "hidden_facts_preserved": true,
+      "history_v1_summary": {
+        "error": null,
+        "frames": 8,
+        "last_seq": 7,
+        "pending_action": null,
+        "schema": "heroes-player-history-v1",
+        "unacted_decision": null,
+        "unrepresented_events": {},
+        "valid": true
+      },
+      "id": "last_seen_time",
+      "interpretation": "This confirms the known defect; it is not a passing correct-behavior test.",
+      "latest_confirmed_sighting_day": 3,
+      "memory_after_disappearance_on_day_four": {
+        "day": 1,
+        "fact": {
+          "owner": 1,
+          "subtype": 0,
+          "type": 34,
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "handle": 2,
+        "sequence": 0,
+        "visible": false
+      },
+      "memory_while_visible_on_day_three": {
+        "day": 1,
+        "fact": {
+          "owner": 1,
+          "subtype": 0,
+          "type": 34,
+          "x": 2,
+          "y": 1,
+          "z": 0
+        },
+        "handle": 2,
+        "sequence": 0,
+        "visible": true
+      },
+      "priority": "P2",
+      "source": "experiments/headless/player_history.py:188",
+      "strict_history_frames_validated": 8
+    },
+    {
+      "bug_reproduced": true,
+      "cases": [
+        {
+          "accepted": true,
+          "alter_manifest": false,
+          "alter_trace": false,
+          "case": "baseline",
+          "codec": "h264",
+          "frames_written": 11,
+          "original_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "outcomes": {
+            "blue": "loss",
+            "red": "win"
+          },
+          "rendered_input_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "replay_verified": true,
+          "verification_report_unchanged": true,
+          "video_sha256": "bcf8b9de9d78dc79739ce57a65888ca070bb2cd55f3eb19a6de3c253c9f741f1"
+        },
+        {
+          "accepted": true,
+          "alter_manifest": false,
+          "alter_trace": true,
+          "case": "changed_trace",
+          "codec": "h264",
+          "frames_written": 11,
+          "original_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "outcomes": {
+            "blue": "loss",
+            "red": "win"
+          },
+          "rendered_input_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "9f397ec7d0f5b61580996e0aa1f68a5272fe63cc7f21f74e91426a5e4b863e97",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "replay_verified": true,
+          "verification_report_unchanged": true,
+          "video_sha256": "746e6d52175ee7c0c99249c34959b6990f3b6db1031bd8a439e87b95518f484c"
+        },
+        {
+          "accepted": true,
+          "alter_manifest": true,
+          "alter_trace": false,
+          "case": "changed_manifest",
+          "codec": "h264",
+          "frames_written": 11,
+          "original_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "rendered_input_sha256": {
+            "manifest": "bd80532b336ed8ada2c8a70ad049b0205c3ad64c84ccac7d18cb350f60880668",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "replay_verified": true,
+          "verification_report_unchanged": true,
+          "video_sha256": "4c1c40c75f52318629945846f8b7fb5f7eb843631a1d2fb269c7709dbf277c8f"
+        },
+        {
+          "accepted": true,
+          "alter_manifest": true,
+          "alter_trace": true,
+          "case": "changed_trace_and_manifest",
+          "codec": "h264",
+          "frames_written": 11,
+          "original_sha256": {
+            "manifest": "e56973facfacf308e34362b45713dd301d4cf60063a2445cd8831fd224aeb42c",
+            "trace": "6ce569932c1bd4c85e5843190f04ada2cc7a7ca25c50e0daf34520c5510a3215",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "rendered_input_sha256": {
+            "manifest": "bd80532b336ed8ada2c8a70ad049b0205c3ad64c84ccac7d18cb350f60880668",
+            "trace": "9f397ec7d0f5b61580996e0aa1f68a5272fe63cc7f21f74e91426a5e4b863e97",
+            "verification": "ccc3fae10dd021df9f4db760bba8b17988093742d4ba13491d2243af9a38833a"
+          },
+          "replay_verified": true,
+          "verification_report_unchanged": true,
+          "video_sha256": "65cfe83a81cbf2b5ca071a0fa5b803034305f12e59f2af317c38a33a71ebb4dd"
+        }
+      ],
+      "desired_behavior_passed": false,
+      "id": "render_evidence_binding",
+      "limitations": "The verification report is synthetic. This checks renderer input binding, not native replay fidelity.",
+      "priority": "P2",
+      "setup": "tests/test_render_replay.py RenderReplayTests.episode(verified=True)"
+    }
+  ],
+  "host": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+    "python": "3.14.7"
+  },
+  "issue": 4,
+  "kind": "headless-four-findings-recheck",
+  "learner_commit_before_recheck": "b03e1a3e4653f5be459443a7b06ad5426d5b2ddf",
+  "limitations": [
+    "No fixes to the four affected implementations were published at the checked head.",
+    "Injected terminal failures establish reproducible control-flow defects; they are not reported as failing real games.",
+    "Native classification integration was reviewed against pinned source and the helper regression; no new full engine build or live battle was run.",
+    "No benchmark rate, broader game coverage, new natural-outcome estimate, or training result is claimed."
+  ],
+  "main_commit": "34edd9b2d1fbe817512f4d38dac5f96b2a078d41",
+  "new_real_games_started": 0,
+  "next_required_work": "Claude must fix action-consumption reconciliation, stream completion/error handling, last-seen observation times and render-evidence binding. Rerun affected native boundary paths and real-game checks after those fixes; training remains off.",
+  "paid_compute_used": false,
+  "previous_review_commit": "3a25545c2094b07f0a71476b2deae46a3bb44e24",
+  "probes": {
+    "validation/probes/recheck_headless_boundaries.py": "f3675f5cb68c8e3abd7616010ddcfbdf6d16b202066ad9f62afdf38467e8db19",
+    "validation/probes/recheck_headless_history.py": "c8de1774cd2d0ee097aaacc82edd75578c2e998e27eec149d0f1d0aa0475711d",
+    "validation/probes/recheck_headless_render_binding.py": "7ee156b53b732667445cff2a334d47741c2ec8679af35d2bdbbde02a03039ed1"
+  },
+  "pull_request": 6,
+  "reports": {
+    "boundary": {
+      "path": "/Users/orsi/Projects/Heroes/runs/headless-four-findings-recheck-2026-10-24/boundary.json",
+      "sha256": "fa4f4bd89c56d61728931a8e3ae7bab33410745e0ef9af757c450165db95b4bd"
+    },
+    "history": {
+      "path": "/Users/orsi/Projects/Heroes/runs/headless-four-findings-recheck-2026-10-24/history.json",
+      "sha256": "1bd961d0daf536a7836637b7c287788d0c239de02369ac0ac2128539c2c6cd7f"
+    },
+    "render": {
+      "path": "/Users/orsi/Projects/Heroes/runs/headless-four-findings-recheck-2026-10-24/render.json",
+      "sha256": "ead78ec67a7987a5283c214c0e3dabc87bf8931cf816d27e4d5856187fe53ca7"
+    }
+  },
+  "repository": "https://github.com/tkorsi/heroes-rl",
+  "reviewed_commit": "bbfc9558c084aea482780b2059f9c0bd79ad40d6",
+  "schema_version": 1,
+  "scope": "Current published PR changes reviewed; controlled in-memory boundary failures, synthetic player history and actual FFmpeg encoding rerun locally. No new full engine build or campaign. Claude benchmark at the earlier 5b7c9e9 checkout left undisturbed.",
+  "training_started": false,
+  "unchanged_affected_implementations": {
+    "experiments/headless/env.py": "69c027b51c26d759c1f8bf5a91d587a8e665d1c6c4e7926ea34118e538b53ded",
+    "experiments/headless/player_history.py": "25f0c49bf71a870db5aa81f286d2016cea093e1f9c36b25c36e4815bb7942055",
+    "experiments/headless/render_replay.py": "41feb6cb0e7a0b85a1dda21eba7c1bbdef51c43e8c28c90ef0313bad49506d4c",
+    "experiments/headless/replay.py": "a16e1dea28802292ee3703a66ec9da37897ba4821c38ed6a05216891301d87fa"
+  },
+  "verdict": "all_four_findings_remain_reproducible"
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "heroes-first-training-config-v1",
+  "interface": "adventure-armies-v1",
+  "initialization_seed": 99001,
+  "opponent_seed": 99002,
+  "training_engine_seeds": [99101],
+  "evaluation_engine_seeds": [99201, 99202],
+  "policy_seed": 99003,
+  "max_requests": 256,
+  "max_days": 30,
+  "total_wall_seconds": 3600,
+  "torch_threads": 1,
+  "max_updates": 1,
+  "max_optimizer_steps": 16,
+  "adam": {"lr": 0.0003},
+  "ppo": {
+    "gamma": 1.0,
+    "gae_lambda": 1.0,
+    "clip_ratio": 0.2,
+    "value_clip": 0.2,
+    "value_coefficient": 0.5,
+    "entropy_coefficient": 0.0,
+    "max_grad_norm": 0.5,
+    "epochs": 1,
+    "decisions_per_window": 16,
+    "windows_per_minibatch": 2,
+    "normalize_advantages": true
+  }
+}

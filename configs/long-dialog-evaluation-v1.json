@@ -1,0 +1,21 @@
+{
+  "schema": "heroes-long-dialog-evaluation-config-v1",
+  "interface": "adventure-dialogs-v1",
+  "purpose": "evaluation_only",
+  "engine_seeds": [120501, 120502, 120503, 120504],
+  "model_policy_seeds": [[120601, 120602], [120603, 120604], [120605, 120606], [120607, 120608]],
+  "max_total_choices": 4096,
+  "ordinary_choice_limit": 4088,
+  "reserved_dialog_choices": 8,
+  "max_days": 200,
+  "shared_wall_seconds": 3600,
+  "cleanup_reserve_seconds": 30,
+  "hard_stop_reserve_seconds": 2,
+  "torch_threads": 1,
+  "optimizer_updates": 0,
+  "optimizer_steps": 0,
+  "checkpoint_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+  "learner_weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae",
+  "opponent": ["hero-opponent-7176f1a2e81393cb", "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82"],
+  "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+}

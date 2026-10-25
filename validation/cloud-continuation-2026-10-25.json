@@ -1,0 +1,846 @@
+{
+  "batches": [
+    {
+      "optimizer_steps": 7,
+      "plan_sha256": "6071db8d9e94ca5549443bb2fa153d01ff2ae01f415f9a21c7080710b2832caa",
+      "progress": {
+        "decisions": 4136,
+        "rollouts": 88,
+        "updates": 22
+      },
+      "report_sha256": "b95fdc94270e924e0585cd5f95234a0e598a0cf701b81723ce0ee901d44073af",
+      "rows": [
+        {
+          "choices": 84,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 33,
+            "cross_army_operations": 7,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 2
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 3,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 25,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 20,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 80,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 58,
+            "cross_army_operations": 6,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 2,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-022",
+      "training_samples": 192,
+      "wall_seconds": 144.9652607439998
+    },
+    {
+      "optimizer_steps": 7,
+      "plan_sha256": "930186f075abfbb0bf96026ef5f27c9936a775c571b8336e3a0d18ab18095749",
+      "progress": {
+        "decisions": 4309,
+        "rollouts": 92,
+        "updates": 23
+      },
+      "report_sha256": "018907f47fb66aefb7a08027eaeb5f032640e3bc0702aecc21fea43ea9e5a68d",
+      "rows": [
+        {
+          "choices": 30,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 22,
+            "cross_army_operations": 4,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 140,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 4,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 4,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-023",
+      "training_samples": 173,
+      "wall_seconds": 143.88332292800033
+    },
+    {
+      "optimizer_steps": 13,
+      "plan_sha256": "57b3a565114fa8c26849de2fc62d50f714465fb5e37b1fff66eb814f49205eba",
+      "progress": {
+        "decisions": 4660,
+        "rollouts": 96,
+        "updates": 24
+      },
+      "report_sha256": "daaa3836ecedc0ec4dba2b4039d91409d437024f52ac501f50aa201dba24dcf1",
+      "rows": [
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 129,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 44,
+            "cross_army_operations": 4,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 2,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 219,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 58,
+            "cross_army_operations": 5,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 6,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 2
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-024",
+      "training_samples": 351,
+      "wall_seconds": 334.7801015310006
+    },
+    {
+      "optimizer_steps": 12,
+      "plan_sha256": "2835834ef63ab723bef6e6166e7b75d3c7919bbfbef64015e364000bb895792f",
+      "progress": {
+        "decisions": 5014,
+        "rollouts": 100,
+        "updates": 25
+      },
+      "report_sha256": "6c72cc95fd6f727d96f0611507b0d82c9b5b1a44a0bf449a7a41e2f23bb107c2",
+      "rows": [
+        {
+          "choices": 109,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 2,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 232,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 74,
+            "cross_army_operations": 7,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 2,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 5,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 8,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-025",
+      "training_samples": 354,
+      "wall_seconds": 335.17721687299945
+    },
+    {
+      "optimizer_steps": 4,
+      "plan_sha256": "42f2489e61f14e1e215fd6cf04d21c20c44fcd91b2796b71aca63284b91d3ea9",
+      "progress": {
+        "decisions": 5087,
+        "rollouts": 104,
+        "updates": 26
+      },
+      "report_sha256": "8c77eaeb808a50d297dbdf2d4d4fb6926c34abe0ccb32ad2d525c31e50b8c00d",
+      "rows": [
+        {
+          "choices": 8,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 61,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 30,
+            "cross_army_operations": 4,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-026",
+      "training_samples": 73,
+      "wall_seconds": 57.837434138999924
+    },
+    {
+      "optimizer_steps": 3,
+      "plan_sha256": "3876f302a16dcb96811f5e224457f167d44ef157ac6bc4b05066b6075e6526cb",
+      "progress": {
+        "decisions": 5124,
+        "rollouts": 108,
+        "updates": 27
+      },
+      "report_sha256": "6b8d134e9d72bdc404d188c7bab9964f8d3e336042d0686d9a1d32f7f0bbffda",
+      "rows": [
+        {
+          "choices": 28,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 4,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 4,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-027",
+      "training_samples": 37,
+      "wall_seconds": 29.522731978000593
+    },
+    {
+      "optimizer_steps": 3,
+      "plan_sha256": "1a425960720e02031f65795416bebf47391dda7f05aec6f7622e8c2396fa4bf5",
+      "progress": {
+        "decisions": 5172,
+        "rollouts": 112,
+        "updates": 28
+      },
+      "report_sha256": "e93bea662e561ca8c2ed42e5da535e5168c6a3e857f4e41bf8967ae422be634b",
+      "rows": [
+        {
+          "choices": 8,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 6,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 33,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 2,
+            "cross_army_operations": 1,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-028",
+      "training_samples": 48,
+      "wall_seconds": 38.427265784000156
+    },
+    {
+      "optimizer_steps": 29,
+      "plan_sha256": "a9b3fe71d7afebf3ee9e5d5fdd2664a68f9b8de085a196c321010a7cd78ba018",
+      "progress": {
+        "decisions": 6065,
+        "rollouts": 116,
+        "updates": 29
+      },
+      "report_sha256": "ff03f0727fbd03ecb8777e86964dfc3452b35cb355e7ab91bf86e301f534de5a",
+      "rows": [
+        {
+          "choices": 6,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 223,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 58,
+            "cross_army_operations": 3,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 2,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 0
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 429,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 311,
+            "cross_army_operations": 18,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 7,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 235,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 32,
+            "cross_army_operations": 6,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 5,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-029",
+      "training_samples": 893,
+      "wall_seconds": 1057.2490770649993
+    },
+    {
+      "optimizer_steps": 3,
+      "plan_sha256": "5556c1f91ac5b171b58c4b04d5f75265804877a513debe9ec7efe6c7ec4891c2",
+      "progress": {
+        "decisions": 6096,
+        "rollouts": 120,
+        "updates": 30
+      },
+      "report_sha256": "b13a012944b885e51503f808a201aac36566870366407c0c7a4faf1faf9eade2",
+      "rows": [
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 3,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 19,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 7,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-030",
+      "training_samples": 31,
+      "wall_seconds": 27.37174530899938
+    },
+    {
+      "optimizer_steps": 23,
+      "plan_sha256": "b6e02771ab069cd541f57716d9b9d36974fb9b37c1c360f9b1e3c8bebc76f228",
+      "progress": {
+        "decisions": 6776,
+        "rollouts": 124,
+        "updates": 31
+      },
+      "report_sha256": "b6fcb958deaf4cb4997254dca7f31b4ec67848d85e934e452a06d923e921133b",
+      "rows": [
+        {
+          "choices": 51,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 15,
+            "cross_army_operations": 3,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 596,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 208,
+            "cross_army_operations": 17,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 10,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "cutoff",
+          "seat": 1
+        },
+        {
+          "choices": 26,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 7,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-031",
+      "training_samples": 680,
+      "wall_seconds": 1031.7036091549999
+    }
+  ],
+  "behavior_diagnostics": {
+    "cross_army_net_count_redistribution": 1260,
+    "cross_army_operations": 118,
+    "moves_toward_visible_opponent_town": 0,
+    "recruitment_completed": 50,
+    "town_capture_evidence": 0,
+    "visible_battle_starts": 47
+  },
+  "heldout_checks": [
+    {
+      "at_update": 25,
+      "plan_sha256": "4d6a0498f069386aa0963f05dfdc999c7f2b2aaaed2ed383e3e0dae06e87d382",
+      "report_sha256": "a205438ee55d42abcd222f56f04fa1d4300a6782617afaf1748a03738bb45fa7",
+      "rows": [
+        {
+          "choices": 132,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 11,
+            "cross_army_operations": 1,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-025",
+      "wall_seconds": 57.726374163999935
+    },
+    {
+      "at_update": 30,
+      "plan_sha256": "574548e96bf0e4e9c1824229a1e415b6b919286700c21d01655e80e004f4b066",
+      "report_sha256": "634c8018553e6aed26cc5964173b3adc65876e06c5a97e00025d8d323b1a82d9",
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 53,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-030",
+      "wall_seconds": 27.8486729440001
+    },
+    {
+      "at_update": 21,
+      "plan_sha256": "756b0a826d73a834bb84f0a5365e5a1230245e7bc4bdf8ec048870b23808870d",
+      "report_sha256": "9be7e7441f084ef8bf7896302e63777ae1ac9122a6ab1f4cf7e9db2507340805",
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "linux-update21-gate-002",
+      "wall_seconds": 46.31009501900007
+    }
+  ],
+  "latest_complete": {
+    "adam_steps": 253,
+    "after_checkpoint": {
+      "exact_model_adam_rng_progress_pool": true,
+      "policy": {
+        "bytes": 637363,
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/after-policy.pt",
+        "sha256": "84b0cc3c884023b92c68bc7b98c4499a97d65d39492ceaade4fe1e4c06dd45a3"
+      },
+      "resume": {
+        "bytes": 1265461,
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/after-resume.pt",
+        "sha256": "63ddf8d19fbd3a963a6886f9bfa4df6944e7a8d68b53f8b34ddfe39d6af86bf4"
+      },
+      "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+    },
+    "plan": {
+      "bytes": 50062,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/plan.json",
+      "sha256": "b6e02771ab069cd541f57716d9b9d36974fb9b37c1c360f9b1e3c8bebc76f228"
+    },
+    "progress": {
+      "decisions": 6776,
+      "rollouts": 124,
+      "updates": 31
+    },
+    "report": {
+      "bytes": 10417,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/report.json",
+      "sha256": "b6fcb958deaf4cb4997254dca7f31b4ec67848d85e934e452a06d923e921133b"
+    }
+  },
+  "limitations": [
+    "Repeated held-out seeds are paired regression checks, not independent win-rate samples.",
+    "Army redistribution counts are observed per-operation changes, not distinct units or strategic quality.",
+    "Visible battles do not establish that the learner initiated an attack.",
+    "Failed and diagnostic cohorts never enter this summary or PPO."
+  ],
+  "schema": "heroes-cloud-continuation-summary-v1",
+  "throughput": {
+    "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
+    "reported_training_batch_wall_seconds": 3200.917,
+    "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
+    "verified_training_games_per_reported_batch_second": 0.012496418994931766
+  },
+  "totals": {
+    "adam_steps": 104,
+    "cutoff": 1,
+    "evaluation_games": 6,
+    "loss": 45,
+    "training_games": 40,
+    "training_samples": 2832,
+    "training_wall_milliseconds": 3200917,
+    "updates": 10,
+    "verified_games": 46
+  },
+  "updated_utc": "2026-10-25T17:17:55.091283+00:00"
+}

@@ -1,0 +1,213 @@
+{
+  "artifacts": {
+    "AI/libBattleAI.so": {
+      "bytes": 615752,
+      "sha256": "0f3fe88b6887a512827e11eea90a4877ca3323adea3381986d8b7ca78a6ed719"
+    },
+    "AI/libExplorerRL.so": {
+      "bytes": 1299312,
+      "sha256": "f095b7ebf09c14a59588808cc2fa53bfea30ef9b6f73d9804a70f41daee23fc1"
+    },
+    "AI/libNullkiller.so": {
+      "bytes": 3498832,
+      "sha256": "de687f6893f96fdca851c6bdeb3fb507952405ec0de40bc8242d3332debb93d4"
+    },
+    "libvcmi.so": {
+      "bytes": 14278760,
+      "sha256": "b598c556a84a87f2faec62bbfc570c9b263230c14883f08b1dba517b939efbdf"
+    },
+    "vcmiclient": {
+      "bytes": 13950776,
+      "sha256": "52af7d699a2dcf108c4a9d4e9fab27468fec0d73ea08be47ba286906abd910e3"
+    },
+    "vcmireplay": {
+      "bytes": 15223512,
+      "sha256": "32d33d4f9eb64b4a3250ada3f6a991774b0bbc3021821afceb84e9ff68bbbaaa"
+    },
+    "vcmiserver": {
+      "bytes": 2050440,
+      "sha256": "135439c7f3a7da2fd91dcbf400f4b8a0f04807442cb72e15bd0df921874e6907"
+    }
+  },
+  "base_commit": "1b224860982fa59a1072cb091e106f70ff2aaf21",
+  "branch": "codex/optimizer-native-lifecycle",
+  "captured_native_replays": 0,
+  "checks": {
+    "build": {
+      "command": "source /workspace/cloud-setup/activate.sh; cmake --build vcmi/build --parallel 4 --target vcmiclient vcmiserver ExplorerRL BattleAI Nullkiller vcmireplay",
+      "exit_code": 0,
+      "note": "Initial build used two jobs, then resumed with four within the four-CPU allocation. No performance measurement was taken during build.",
+      "repeat_output": "ninja: no work to do.",
+      "targets": [
+        "vcmiclient",
+        "vcmiserver",
+        "ExplorerRL",
+        "BattleAI",
+        "Nullkiller",
+        "vcmireplay"
+      ]
+    },
+    "final_lifecycle_and_admission": {
+      "command": ".venv/bin/python -m unittest tests.test_optimizer_benchmark tests.test_optimizer_lifecycle -v",
+      "coverage": [
+        "100 fresh memory/RNG/read-only file-offset resets",
+        "nonzero return and exception",
+        "SIGKILL and deadline expiry",
+        "post-failure reuse",
+        "reject additional template thread",
+        "reap direct children",
+        "capture and observation drift",
+        "exclude only timing metadata from native report comparison",
+        "reject output, duplicate and unsupported manifest options"
+      ],
+      "passed": 4,
+      "skipped": 0,
+      "tests_run": 4
+    },
+    "focused_followup": {
+      "command": ".venv/bin/python -m unittest tests.test_optimizer_benchmark tests.test_optimizer_lifecycle tests.test_hero_notice -v",
+      "note": "Includes the native hero notice parser that skipped before libvcmi finished linking, plus three newly added benchmark admission tests.",
+      "passed": 9,
+      "seconds": 15.634,
+      "skipped": 0,
+      "tests_run": 9
+    },
+    "full_suite": {
+      "command": "source /workspace/cloud-setup/activate.sh; .venv/bin/python -m unittest discover -s tests -v",
+      "errors": 0,
+      "failures": 0,
+      "passed": 980,
+      "sandbox_note": "Initial restricted run failed on denied loopback sockets; rerun with local socket access passed.",
+      "scope": "Existing unit/contract/numerical tests and native rule/parser checks. No real game or captured replay.",
+      "seconds": 191.448,
+      "skipped": 4,
+      "tests_run": 984
+    },
+    "native_cli": [
+      {
+        "expected_returncode": 0,
+        "name": "client_version",
+        "passed": true,
+        "returncode": 0
+      },
+      {
+        "expected_returncode": 0,
+        "name": "server_version",
+        "passed": true,
+        "returncode": 0
+      },
+      {
+        "expected_returncode": 2,
+        "name": "replay_usage",
+        "passed": true,
+        "returncode": 2
+      },
+      {
+        "expected_returncode": 3,
+        "name": "worker_zero_deadline",
+        "passed": true,
+        "returncode": 3
+      },
+      {
+        "expected_returncode": 3,
+        "name": "worker_invalid_deadline",
+        "passed": true,
+        "returncode": 3
+      },
+      {
+        "expected_returncode": 3,
+        "name": "missing_evidence",
+        "passed": true,
+        "returncode": 3
+      },
+      {
+        "name": "worker_missing_data",
+        "ready_receipt_present": false,
+        "returncode": 3,
+        "scope": "prerequisite probe only; not a game or replay"
+      }
+    ],
+    "native_library_loads": [
+      "libvcmi.so",
+      "AI/libExplorerRL.so",
+      "AI/libBattleAI.so",
+      "AI/libNullkiller.so"
+    ],
+    "recipe": {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "exact_match": true,
+      "exit_code": 0
+    },
+    "remaining_skips": [
+      "Retained real v7 capture is intentionally not committed",
+      "Original Data needed for displayed scholar/artifact content",
+      "Original Data needed for notice trophies"
+    ]
+  },
+  "coordination": {
+    "branch_push": "succeeded",
+    "claude_pr": "https://github.com/tkorsi/heroes-rl/pull/22",
+    "draft_pr": "blocked: GitHub GraphQL API Forbidden",
+    "issue": "https://github.com/tkorsi/heroes-rl/issues/4",
+    "issue_comment": "blocked: GitHub REST API Forbidden",
+    "read_via_github_pages": true
+  },
+  "cost_breakdown": {
+    "automatic_battles": null,
+    "complete_game_throughput": null,
+    "end_to_end_experiment": null,
+    "episode_reset": null,
+    "game_process_startup": null,
+    "live_opponent_work": null,
+    "live_transport": null,
+    "native_transitions": null,
+    "native_verification": null,
+    "pathfinding": null,
+    "policy_inference": null,
+    "replay_speedup": null,
+    "rules_resources_loading": null
+  },
+  "date": "2026-10-25",
+  "environment": {
+    "checkpoint_present": false,
+    "editor_config": "not changed",
+    "managed_runtime": "running and connected",
+    "private_data_present": false,
+    "retained_native_captures_present": false,
+    "terminal": "working"
+  },
+  "gameplay_optimizer_updates": 0,
+  "implementation_commit": "76bf9759703d1d22db83df434caa6d4144ae10ee",
+  "linux_bootstrap_source": "96d09721b70ebc72a98d6fd7b495e57220c3968e",
+  "log_sha256": {
+    "optimizer-build.log": "ba86f7cf98cf6ce37a3b58fdf6098c6ce9aead4253627057d6ae8e7c2f9bcd94",
+    "optimizer-final-focused.log": "4de3189c2e2a6657bd89f14ad13dc939bf2af3454dbf98f99a3edcc2bc458a69",
+    "optimizer-focused.log": "9aadd0854655cbbda8250fd9a6926b5b44ee68638a26b2180c90fb147640f340",
+    "optimizer-rebuild.log": "8c35b1682f73592d30612d7b0fabdb384fcfff35cb5a076cb48b85b1368aa794",
+    "optimizer-tests-unsandboxed.log": "b01a8b2a919770445f3a5106ca334a31564b3b34b8dcdc80be23124b89948eb5"
+  },
+  "mac_execution": false,
+  "measurement_status": "Real-workload measurements unavailable. Native phase timers and alternating cold/worker replay entry point implemented; no native speedup or reset-equivalence claim.",
+  "minimum_next_inputs": [
+    "Legally available original Data in isolated VCMI runtime",
+    "Existing verified native captures: A/B/A seeds/maps/seats, natural and prefix endings, and changed controller modes where available"
+  ],
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "pr_merges": 0,
+  "prerequisite_probe": {
+    "exact_missing_resource": "Resource with name DATA/VCDESC and type TEXT wasn't found.",
+    "ready_receipt": false,
+    "result": "worker refused readiness; exit 3",
+    "scope": "Dependency loading only; not native replay/game validation."
+  },
+  "python": "3.12.14",
+  "real_games": 0,
+  "schema": "heroes-optimizer-native-lifecycle-validation-v1",
+  "unvalidated": [
+    "Repeated native reset independence and native RNG/state hash agreement",
+    "Player observation/fog/contextual-action equivalence across native resets",
+    "Native natural terminal and prefix-cutoff equivalence",
+    "Loaded asset/config/dlopen identity and fork safety for arbitrary mods",
+    "Any live learner integration, actual step latency, complete-game throughput or end-to-end training improvement"
+  ]
+}

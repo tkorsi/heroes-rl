@@ -43,7 +43,7 @@ class ProtocolFixture:
         self.socket.sendall(b"".join((json.dumps(message) + "\n").encode() for message in messages))
 
     def ready(self):
-        self.send(self.message("ready", protocol_version=2))
+        self.send(self.message("ready", protocol_version=3))
 
     def receive(self):
         line = self.stream.readline()
@@ -143,7 +143,7 @@ class LoopbackProtocolTests(unittest.TestCase):
             self.assertEqual(peer.policy.listener.getsockname()[0], "127.0.0.1")
             self.assertEqual(peer.environment["EXPLORER_RL_PLAYER"], "0")
             self.assertEqual(peer.environment["EXPLORER_RL_EPISODE"], "protocol-fixture")
-            handshake = json.dumps(peer.message("ready", protocol_version=2)).encode()
+            handshake = json.dumps(peer.message("ready", protocol_version=3)).encode()
             peer.socket.sendall(handshake[:13])
             peer.socket.sendall(handshake[13:] + b"\n" +
                                 (json.dumps(peer.observation(mask=[False, False, True] + [False] * 5 + [True])) + "\n").encode())
@@ -222,19 +222,20 @@ class LoopbackProtocolTests(unittest.TestCase):
             self.assertEqual(peer.policy.stop_reason, "policy_error")
 
     def test_rejects_wrong_identity_and_handshake_before_play(self):
-        ready = ProtocolFixture.message("ready", protocol_version=2)
+        ready = ProtocolFixture.message("ready", protocol_version=3)
         cases = [([dict(ready, player=1)], "identity"),
                  ([dict(ready, player=False)], "identity"),
                  ([dict(ready, episode="another-run")], "identity"),
                  ([ProtocolFixture.observation()], "ready"),
                  ([dict(ready, protocol_version=1)], "handshake"),
+                 ([dict(ready, protocol_version=2)], "handshake"),
                  ([ready, ready], "handshake")]
         for messages, expected in cases:
             with self.subTest(messages=messages):
                 self.assert_protocol_error(messages, expected)
 
     def test_rejects_out_of_order_observations_and_results(self):
-        ready = ProtocolFixture.message("ready", protocol_version=2)
+        ready = ProtocolFixture.message("ready", protocol_version=3)
         observation = ProtocolFixture.observation()
         cases = [([ready, ProtocolFixture.observation(action_id=1)], "sequence"),
                  ([ready, observation, observation], "sequence"),
@@ -246,7 +247,7 @@ class LoopbackProtocolTests(unittest.TestCase):
                 self.assert_protocol_error(messages, expected)
 
     def test_rejects_invalid_decisions_and_repeated_decision_ids(self):
-        ready = ProtocolFixture.message("ready", protocol_version=2)
+        ready = ProtocolFixture.message("ready", protocol_version=3)
         decision = ProtocolFixture.message("decision", decision_id=0, choices=[{"choice": 1}, {"choice": 2}])
         for messages, expected in (([ready, dict(decision, choices=[])], "choices"),
                                    ([ready, dict(decision, choices=[{"choice": True}])], "choices"),
@@ -256,7 +257,7 @@ class LoopbackProtocolTests(unittest.TestCase):
                 self.assert_protocol_error(messages, expected)
 
     def test_turn_end_requires_one_completed_end_turn_action(self):
-        ready = ProtocolFixture.message("ready", protocol_version=2)
+        ready = ProtocolFixture.message("ready", protocol_version=3)
         observation = ProtocolFixture.observation()
         result = ProtocolFixture.message("action_result", action_id=0, action=8, accepted=True,
                                           before={}, after={})
@@ -267,7 +268,7 @@ class LoopbackProtocolTests(unittest.TestCase):
                 self.assert_protocol_error(messages, "turn")
 
     def test_bridge_errors_and_unsupported_terminal_results_are_unscored(self):
-        ready = ProtocolFixture.message("ready", protocol_version=2)
+        ready = ProtocolFixture.message("ready", protocol_version=3)
         for message, expected in ((ProtocolFixture.message("error", message="fixture transport error"), "fixture transport error"),
                                   (ProtocolFixture.message("terminal", outcome="timeout"), "natural win or loss"),
                                   (ProtocolFixture.message("unknown"), "Unsupported")):

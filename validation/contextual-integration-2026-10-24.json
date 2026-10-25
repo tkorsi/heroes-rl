@@ -1,0 +1,63 @@
+{
+  "kind": "contextual-integration-validation",
+  "source_commit": "b4cc7b242fb82439199c3783736495f0b70ade46",
+  "platform": {
+    "system": "Darwin",
+    "release": "25.5.0",
+    "machine": "arm64"
+  },
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_contextual_*.py' -q",
+      "passed": true,
+      "tests": 88,
+      "scope": "Contract, auditor and evidence helpers; no native contextual episode."
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p 'test_native_knowledge.py' -v",
+      "passed": true,
+      "tests": 1,
+      "native_groups": 5,
+      "hidden_variant_folds": 200,
+      "scope": "Dependency-free production knowledge grid and current-turn prefix helper; not full native pathfinder execution."
+    },
+    {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "passed": true
+    },
+    {
+      "command": "cmake --build vcmi/build --target vcmiclient vcmiserver ExplorerRL BattleAI vcmireplay --parallel 8",
+      "passed": true,
+      "build_type": "Release",
+      "compiler": "AppleClang 17.0.0.17000319"
+    }
+  ],
+  "planner_library_sha256": "3354ee53f3cb1a8ba203e49f48e2190b5c096e17191a913b7591abf6598737df",
+  "native_contextual_episodes": 0,
+  "contextual_replay_verified": false,
+  "training_started": false,
+  "paid_compute": false,
+  "github_merged": false,
+  "pending": [
+    "Structured native notice hook and contextual producer",
+    "Real-game contextual acceptance",
+    "Contextual replay bindings and semantic tamper tests"
+  ],
+  "source_review": {
+    "commit": "b4cc7b2",
+    "route_mechanics": "No concrete finding in the audited pinned-source scope. Guard scan/direction semantics and current-turn prefix order agree with the native engine.",
+    "fog": "No concrete hidden-world read identified under the owned-player callback, held read-lock and ordinary-land baseline assumptions. This is not an exhaustive noninterference proof.",
+    "required_integration_checks": [
+      "Reject a null/omniscient callback and require callback player identity to equal the selected hero owner before planning.",
+      "Hold the game-state read lock throughout planning because filtered object entries retain live pointers.",
+      "Scope or reject unsupported spell states: an existing Fly bonus still changes native land movement cost despite useFlying=false."
+    ]
+  },
+  "external_dependency": {
+    "owner": "Claude",
+    "branch": "claude/contextual-engine",
+    "last_published_commit": "b4cc7b2",
+    "state": "Native contextual producer not yet delivered; Claude app reports usage limit with auto-resume at 20:10 Europe/Kyiv on 2026-10-24.",
+    "resume_time_is_app_report_not_completion_promise": true
+  }
+}

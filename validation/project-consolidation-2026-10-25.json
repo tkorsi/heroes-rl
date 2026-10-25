@@ -1,0 +1,305 @@
+{
+  "schema": "heroes-project-consolidation-v1",
+  "recorded_utc": "2026-10-25T17:31:08.890835+00:00",
+  "scope": "Integrate all 22 reviewed open PR heads, current dated cloud Teacher source/status and the separately reviewed historical match viewer. No game or gameplay training was launched for this consolidation.",
+  "validated_source_commit": "e2901f5da71de6082867a90abbced2041c3c8e2d",
+  "previous_main": "34edd9b2d1fbe817512f4d38dac5f96b2a078d41",
+  "reviewed_pull_requests": [
+    {
+      "number": 5,
+      "head_sha": "18932f7f69753d62fb919a65df2185a6eef02f31"
+    },
+    {
+      "number": 6,
+      "head_sha": "4fe0d7c09d92b94d513345115e5a505ebe799b5a"
+    },
+    {
+      "number": 7,
+      "head_sha": "48d8e1a55c7bca3161c4ec644a385dd443e7798c"
+    },
+    {
+      "number": 8,
+      "head_sha": "8f6c7157b73692f21fb93c993c540a6965064874"
+    },
+    {
+      "number": 9,
+      "head_sha": "daa1e98980d6401ad80205e8a9057890ca9b00f8"
+    },
+    {
+      "number": 10,
+      "head_sha": "4af1ba34bbf367f365ee14ed081c5b3745b71c3a"
+    },
+    {
+      "number": 11,
+      "head_sha": "9f464a4c96e290b6ca808ac3d5037d6834619c77"
+    },
+    {
+      "number": 12,
+      "head_sha": "aa5abcc607a3edb1bd599ccaa5cad099cc44c9fd"
+    },
+    {
+      "number": 13,
+      "head_sha": "136042447b24d8f3b6d4e92f26c2e75d8e63878b"
+    },
+    {
+      "number": 14,
+      "head_sha": "09304179e97bcb6f9eb2c405c9d5a0ba8ffdf67d"
+    },
+    {
+      "number": 15,
+      "head_sha": "6c02fd3234f1784c6ecfa70ada66749aa17b1d28"
+    },
+    {
+      "number": 16,
+      "head_sha": "62c5b9af3adb0036b89c80bade9fae0b615137e7"
+    },
+    {
+      "number": 17,
+      "head_sha": "3afa3bda2432652009a548e14358c6a7893d3ea3"
+    },
+    {
+      "number": 18,
+      "head_sha": "6399bb25a65597227d62b49fbf94016a3b2b8bbe"
+    },
+    {
+      "number": 19,
+      "head_sha": "9193db35857e07ddbc45e98a1dd7c3f4a8c07da0"
+    },
+    {
+      "number": 20,
+      "head_sha": "cf424714f47fd5ee664bf970b2c818a5b6b3d976"
+    },
+    {
+      "number": 21,
+      "head_sha": "c29e96e6e6463c584f13585f2720a8711212e44d"
+    },
+    {
+      "number": 22,
+      "head_sha": "693b6ed4dd7f1b9ddae5648ed0ace749c8b2f7f0"
+    },
+    {
+      "number": 23,
+      "head_sha": "96d09721b70ebc72a98d6fd7b495e57220c3968e"
+    },
+    {
+      "number": 24,
+      "head_sha": "875841a0aad235b8934ae1ccdef60ea060031d17"
+    },
+    {
+      "number": 26,
+      "head_sha": "4ca27f9ba9995ce4a351089efc9ca1a15f18adf3"
+    },
+    {
+      "number": 27,
+      "head_sha": "9cfe08cb541608181895e02f1426f3997a0a388f"
+    }
+  ],
+  "additional_heads": {
+    "cloud_teacher": "409d380",
+    "match_viewer": "be012a1"
+  },
+  "review_repairs": [
+    {
+      "commit": "b5cf531c3f8205583f2532a024a253f8dfc5aec3",
+      "scope": "Normalize temporary fixture roots and skip case-sensitive-only input when APFS cannot represent it. Runtime admission remains strict."
+    },
+    {
+      "commit": "5648491769f6cd89e54b381b1a1e82229577c8b9",
+      "scope": "Preserve native failures through joined cleanup/reset; distinguish clean channel cancellation; use portable shared_ptr atomic free functions on Apple libc++."
+    },
+    {
+      "commit": "e2901f5",
+      "scope": "Add Homebrew Boost include to direct native test compiles; preserve explicitly bounded historical viewer documentation."
+    }
+  ],
+  "runtime": {
+    "platform": "macOS 26.5.2 arm64",
+    "python": "3.13.5",
+    "torch": "2.9.1",
+    "native_compiler": "Apple Clang 17",
+    "swift": "Apple Swift 6.2"
+  },
+  "full_suite": {
+    "command": ".venv/bin/python -m unittest discover -s tests -v",
+    "run": 1182,
+    "passed": 1156,
+    "skipped": 26,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 134.097,
+    "skip_reasons": "Linux-specific runtime/optimizer fixtures, case-sensitive-filesystem fixture, and an optional retained-capture fixture. Native library/session/shutdown fixtures execute on the fresh Mac build."
+  },
+  "native": {
+    "scope": "Fresh Mac native build and asset-free regressions; no game assets loaded, no game or training run.",
+    "configure": {
+      "command": [
+        "cmake",
+        "-S",
+        "vcmi",
+        "-B",
+        "vcmi/build",
+        "-G",
+        "Ninja",
+        "-DCMAKE_BUILD_TYPE=Release",
+        "-DCMAKE_PREFIX_PATH=/opt/homebrew",
+        "-DENABLE_GOLDMASTER=ON",
+        "-DENABLE_STRICT_COMPILATION=OFF",
+        "-DENABLE_EXPLORER_RL=ON",
+        "-DENABLE_LAUNCHER=OFF",
+        "-DENABLE_EDITOR=OFF",
+        "-DENABLE_TRANSLATIONS=OFF",
+        "-DENABLE_DISCORD=OFF",
+        "-DENABLE_MMAI=OFF",
+        "-DENABLE_NULLKILLER2_AI=OFF"
+      ],
+      "exit_code": 0,
+      "log": "integration-configure.log"
+    },
+    "build": {
+      "command": [
+        "cmake",
+        "--build",
+        "vcmi/build",
+        "--parallel",
+        "4",
+        "--target",
+        "vcmiclient",
+        "vcmiserver",
+        "ExplorerRL",
+        "Nullkiller",
+        "BattleAI",
+        "vcmireplay",
+        "vcmisession",
+        "native_session_contract",
+        "native_headless_shutdown_order"
+      ],
+      "exit_code": 0,
+      "steps": 792,
+      "log": "integration-native-build.log"
+    },
+    "tests": {
+      "command": [
+        ".venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_hero_notice",
+        "tests.test_native_adventure_dialogs",
+        "tests.test_native_contextual_evidence",
+        "tests.test_native_headless_shutdown_order",
+        "tests.test_native_notices",
+        "tests.test_native_session",
+        "tests.test_native_session_failure",
+        "tests.test_native_terminal_accounting",
+        "tests.test_native_terminal_barrier",
+        "tests.test_native_terminal_cancellation",
+        "-v"
+      ],
+      "initial": {
+        "run": 20,
+        "passed": 18,
+        "failed": 2,
+        "skipped": 0,
+        "seconds": 33.972,
+        "log": "integration-native-tests.log"
+      },
+      "fixture_correction": "tests/test_native_session.py adds the existing conditional Homebrew Boost include path to direct compiler invocations; production unchanged",
+      "retest": {
+        "command": [
+          ".venv/bin/python",
+          "-m",
+          "unittest",
+          "tests.test_native_session",
+          "-v"
+        ],
+        "run": 3,
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 2.886,
+        "log": "integration-native-session-retest.log"
+      },
+      "resolved_unique_tests": 20,
+      "remaining_failures": 0
+    },
+    "source_check": {
+      "command": [
+        "python3",
+        "tools/prepare_vcmi.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "integration-native-source-check.log"
+    },
+    "binaries": {
+      "vcmiclient": {
+        "bytes": 11632312,
+        "sha256": "67f00dca397e7ab34c04aec0500e9c4416af8068db4882b0a45272807b048598"
+      },
+      "vcmiserver": {
+        "bytes": 1771880,
+        "sha256": "930fe6690719d7c1dafce573c57dcd3d02ae403dc5701f2f7e55c2aff68ca107"
+      },
+      "AI/libExplorerRL.dylib": {
+        "bytes": 982976,
+        "sha256": "eebfade7a736bb877fe3bf93fb6fe0a25960bfea13277db5bcde6c28728a0b5b"
+      },
+      "AI/libNullkiller.dylib": {
+        "bytes": 2191248,
+        "sha256": "efc04758c41e4f992beaa4459e525e81cda9090cefa134e0850d87e24278d786"
+      },
+      "AI/libBattleAI.dylib": {
+        "bytes": 486416,
+        "sha256": "a7dddbfbeb96ef334ee82dd4bbe9a66e76f07b70c2f768f33f252ded171399f8"
+      },
+      "vcmireplay": {
+        "bytes": 12580392,
+        "sha256": "51c0492559fd4a074073df043923e810e9240be1efa17cb5cdd2d3ba670f5c73"
+      },
+      "vcmisession": {
+        "bytes": 11574392,
+        "sha256": "d834fa1f676d9b2d06b12df2c3d7522eb2c2accfbf7d0172ba14986680cfc229"
+      },
+      "native_session_contract": {
+        "bytes": 11571448,
+        "sha256": "2955d3eac268b6c5bab8e0562c940d2fd74bf10fbd81e01d84a9797cc5b739ba"
+      },
+      "native_headless_shutdown_order": {
+        "bytes": 11555552,
+        "sha256": "29260bbcda62ad2da52ac1a664ea6ce832d05bcdf33c551bf2fe8b30096f5c8c"
+      }
+    }
+  },
+  "swift_viewer": {
+    "source": "be012a1",
+    "command": "swift build -c release --package-path apps/replay-inspector --scratch-path <external-build-directory> --jobs 2",
+    "exit_code": 0,
+    "seconds": 8.07,
+    "gui_launched": false
+  },
+  "cli_help": {
+    "passed": 5,
+    "entries": [
+      "experiments.learner.builtin_first_run",
+      "experiments.learner.builtin_training",
+      "experiments.learner.evaluate_builtin_opponent",
+      "experiments.headless.builtin_replay",
+      "tools/summarize_builtin_training.py"
+    ]
+  },
+  "local_log_sha256": {
+    "integration-configure.log": "734110311df7513e60bbbe16aaf73fa6d73eb47aa48352c1cdae3d37dba17c54",
+    "integration-native-build.log": "b3d290367b842dd2caba6054570cae102a7711f46ebfd0ed70ccf672883f5366",
+    "integration-native-tests.log": "0168028c4a4a25c12470145fca429c8f4efda32f9bd728550b58ebcadd708980",
+    "integration-native-session-retest.log": "2de6ffedbb99cb066623ac565bb7390e1117869bfedf69a995d3177d9cb2dedc",
+    "integration-final-tests.log": "677f02ea11210f81912bc22a303084dbdc9a4d3dd64dd7bbfa146e437f99747a",
+    "integration-viewer-tests.log": "2ae64cf770f415ad626ee72cb6deb513985976ee441365adab5b3dac3091025e",
+    "integration-swift-build.log": "b695e014444c591b420807f152154f94c88261fa7fa6835939db22424b4702fc"
+  },
+  "limits": [
+    "No fresh gameplay or speedup measurement was performed on the consolidated source. Historical evidence remains tied to its own source/runtime.",
+    "Experimental EngineSession is opt-in and not enabled in Teacher.",
+    "Old Teacher checkpoint source identities require a separately reviewed exact transition before resume on main; no guard is bypassed and no active runtime is updated.",
+    "The historical replay viewer is scenario-specific; original-renderer reconstruction of a retained match remains pending.",
+    "No checkpoints, copyrighted game data, captures, build binaries or videos are added to public Git."
+  ]
+}

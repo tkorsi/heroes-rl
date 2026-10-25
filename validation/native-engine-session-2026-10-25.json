@@ -1,0 +1,851 @@
+{
+  "schema": "heroes-native-engine-session-validation-v1",
+  "source_commit": "1345111b32b08c9a75e476ca4659ea5c6123af3f",
+  "platform": "Linux x86_64, GCC 14.2; macOS not run",
+  "source_recipe": "pinned upstream plus root patches and owned overlays verified",
+  "regressions": {
+    "tests": 46,
+    "passed": 46,
+    "skipped": 0,
+    "seconds": 117.101
+  },
+  "campaign": "live-ab-006",
+  "status": "verified_bounded_live_ab",
+  "controller": "Explicit untrained end-turn-only workload; first displayed modal choice when required",
+  "immutable_declared_inputs_unchanged": true,
+  "initial_profile_settings_sha256": "e4192d4dafb2f0bf66a0aba9564162c90679604a763aa78fd51e097431ef9c99",
+  "inventory_scope": "Original Data, authored Maps, config, selected Mods and AI plugins; binary/verifier and linked library identities recorded privately; not proof of complete dynamic loading coverage",
+  "totals": {
+    "cold": {
+      "processes": 9,
+      "games": 9,
+      "process_wall_seconds": 3.8878578190015105,
+      "load_seconds": 1.9230429999999998,
+      "peak_resident_bytes": 82268160,
+      "checked_client_packets": 4662,
+      "advance_inference_excluded_seconds": 1.1061604,
+      "reset_through_first_boundary_seconds": 0.4518005,
+      "cleanup_seconds": 0.04286197
+    },
+    "reused": {
+      "processes": 3,
+      "games": 9,
+      "process_wall_seconds": 2.3563520020006763,
+      "load_seconds": 0.633792,
+      "peak_resident_bytes": 85311488,
+      "checked_client_packets": 4662,
+      "advance_inference_excluded_seconds": 1.1278525,
+      "reset_through_first_boundary_seconds": 0.41496109999999997,
+      "cleanup_seconds": 0.03915134
+    }
+  },
+  "cold_over_reused_process_wall_ratio": 1.6499478073312048,
+  "episodes": [
+    {
+      "run": "r0-cold-0",
+      "mode": "cold",
+      "config": {
+        "episode": "r0-cold-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845021
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.131918,
+        "cleanup": 0.00373953,
+        "load": 0,
+        "reset_through_first_boundary": 0.0349812
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 501,
+          "messages": 6,
+          "native_opponent_requests": 64,
+          "requests": 73,
+          "responses": 2,
+          "transactions": 547
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r0-cold-1",
+      "mode": "cold",
+      "config": {
+        "episode": "r0-cold-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845022
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.101413,
+        "cleanup": 0.00381263,
+        "load": 0,
+        "reset_through_first_boundary": 0.0778516
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 552,
+          "messages": 4,
+          "native_opponent_requests": 70,
+          "requests": 79,
+          "responses": 1,
+          "transactions": 593
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r0-cold-2",
+      "mode": "cold",
+      "config": {
+        "episode": "r0-cold-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845021
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.129662,
+        "cleanup": 0.00471667,
+        "load": 0,
+        "reset_through_first_boundary": 0.0342266
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 501,
+          "messages": 6,
+          "native_opponent_requests": 64,
+          "requests": 73,
+          "responses": 2,
+          "transactions": 547
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-cold-0",
+      "mode": "cold",
+      "config": {
+        "episode": "r1-cold-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845031
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.127609,
+        "cleanup": 0.00478433,
+        "load": 0,
+        "reset_through_first_boundary": 0.0351332
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 485,
+          "messages": 6,
+          "native_opponent_requests": 64,
+          "requests": 72,
+          "responses": 2,
+          "transactions": 528
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-cold-1",
+      "mode": "cold",
+      "config": {
+        "episode": "r1-cold-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845032
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.0940575,
+        "cleanup": 0.00617411,
+        "load": 0,
+        "reset_through_first_boundary": 0.0786369
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 532,
+          "messages": 4,
+          "native_opponent_requests": 67,
+          "requests": 75,
+          "responses": 1,
+          "transactions": 572
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-cold-2",
+      "mode": "cold",
+      "config": {
+        "episode": "r1-cold-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845031
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.133891,
+        "cleanup": 0.00512122,
+        "load": 0,
+        "reset_through_first_boundary": 0.0366055
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 485,
+          "messages": 6,
+          "native_opponent_requests": 64,
+          "requests": 72,
+          "responses": 2,
+          "transactions": 528
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-cold-0",
+      "mode": "cold",
+      "config": {
+        "episode": "r2-cold-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845041
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.146529,
+        "cleanup": 0.00630423,
+        "load": 0,
+        "reset_through_first_boundary": 0.0355161
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 537,
+          "messages": 6,
+          "native_opponent_requests": 71,
+          "requests": 80,
+          "responses": 2,
+          "transactions": 582
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-cold-1",
+      "mode": "cold",
+      "config": {
+        "episode": "r2-cold-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845042
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.0940379,
+        "cleanup": 0.0044001,
+        "load": 0,
+        "reset_through_first_boundary": 0.0829275
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 532,
+          "messages": 4,
+          "native_opponent_requests": 67,
+          "requests": 75,
+          "responses": 1,
+          "transactions": 572
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-cold-2",
+      "mode": "cold",
+      "config": {
+        "episode": "r2-cold-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845041
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.147043,
+        "cleanup": 0.00380915,
+        "load": 0,
+        "reset_through_first_boundary": 0.0359219
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 537,
+          "messages": 6,
+          "native_opponent_requests": 72,
+          "requests": 81,
+          "responses": 2,
+          "transactions": 583
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r0-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r0-reuse-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845021
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.135844,
+        "cleanup": 0.0037494,
+        "load": 0,
+        "reset_through_first_boundary": 0.0338399
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 501,
+          "messages": 6,
+          "native_opponent_requests": 64,
+          "requests": 73,
+          "responses": 2,
+          "transactions": 547
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r0-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r0-reuse-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845022
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.103786,
+        "cleanup": 0.00548927,
+        "load": 0,
+        "reset_through_first_boundary": 0.0736469
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 552,
+          "messages": 4,
+          "native_opponent_requests": 69,
+          "requests": 78,
+          "responses": 1,
+          "transactions": 592
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r0-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r0-reuse-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845021
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.127114,
+        "cleanup": 0.00371924,
+        "load": 0,
+        "reset_through_first_boundary": 0.0311173
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 483,
+          "messages": 6,
+          "native_opponent_requests": 62,
+          "requests": 71,
+          "responses": 2,
+          "transactions": 527
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r1-reuse-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845031
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.133063,
+        "cleanup": 0.00464454,
+        "load": 0,
+        "reset_through_first_boundary": 0.0363056
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 503,
+          "messages": 6,
+          "native_opponent_requests": 67,
+          "requests": 75,
+          "responses": 2,
+          "transactions": 549
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r1-reuse-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845032
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.0942569,
+        "cleanup": 0.00588014,
+        "load": 0,
+        "reset_through_first_boundary": 0.0727466
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 532,
+          "messages": 4,
+          "native_opponent_requests": 68,
+          "requests": 76,
+          "responses": 1,
+          "transactions": 573
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r1-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r1-reuse-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845031
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.139132,
+        "cleanup": 0.00446707,
+        "load": 0,
+        "reset_through_first_boundary": 0.0316253
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 503,
+          "messages": 6,
+          "native_opponent_requests": 66,
+          "requests": 74,
+          "responses": 2,
+          "transactions": 548
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r2-reuse-0",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845041
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.153436,
+        "cleanup": 0.00430243,
+        "load": 0,
+        "reset_through_first_boundary": 0.0342699
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 519,
+          "messages": 6,
+          "native_opponent_requests": 69,
+          "requests": 78,
+          "responses": 2,
+          "transactions": 562
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r2-reuse-1",
+        "learner": 1,
+        "map": "Maps/session-B.vmap",
+        "max_steps": 3,
+        "seconds": 90,
+        "seed": 845042
+      },
+      "submitted_steps": 1,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.0943096,
+        "cleanup": 0.00337093,
+        "load": 0,
+        "reset_through_first_boundary": 0.075061
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 532,
+          "messages": 4,
+          "native_opponent_requests": 67,
+          "requests": 75,
+          "responses": 1,
+          "transactions": 572
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    },
+    {
+      "run": "r2-reused",
+      "mode": "reused",
+      "config": {
+        "episode": "r2-reuse-2",
+        "learner": 0,
+        "map": "Maps/session-A.vmap",
+        "max_steps": 40,
+        "seconds": 90,
+        "seed": 845041
+      },
+      "submitted_steps": 2,
+      "native_shutdown_complete": true,
+      "timing_seconds": {
+        "advance_inference_excluded": 0.146911,
+        "cleanup": 0.00352832,
+        "load": 0,
+        "reset_through_first_boundary": 0.0263486
+      },
+      "verification": {
+        "exit_code": 0,
+        "verified": true,
+        "checked": {
+          "client_packets": 537,
+          "messages": 6,
+          "native_opponent_requests": 72,
+          "requests": 81,
+          "responses": 2,
+          "transactions": 583
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        },
+        "error": null,
+        "divergence": null
+      }
+    }
+  ],
+  "reset_audit": {
+    "real_prefix_episodes": 100,
+    "independently_verified": 100,
+    "post_cleanup_descriptors": [
+      8
+    ],
+    "post_cleanup_threads": [
+      5
+    ],
+    "first_last_rss_bytes": [
+      80433152,
+      88924160
+    ],
+    "last20_rss_range_bytes": [
+      88825856,
+      88924160
+    ],
+    "first_private_decision_identical": true
+  },
+  "navigation": {
+    "real_submissions": 3,
+    "actions": [
+      "open_hero",
+      "close",
+      "move_to"
+    ],
+    "position_before": [
+      4,
+      7,
+      0
+    ],
+    "position_after": [
+      4,
+      8,
+      0
+    ],
+    "movement_before": 1560,
+    "movement_after": 1460,
+    "independent_contextual_prefix_verified": true,
+    "checked_client_packets": 23,
+    "unchecked_items": 0
+  },
+  "limitations": [
+    "Experimental single-owner C++ host only; no Teacher integration or training",
+    "Warm filesystem caches; cold means fresh process; explicit untrained end-turn-only policy, not representative policy throughput",
+    "Inherited AI RNG/thread scheduling remains nondeterministic; no compiler/platform or seed-only future-trajectory equivalence",
+    "Initial full-state digests differ across fresh starts; StartInfo serializes wall-clock startTime. No hash normalization or verifier relaxation was applied. All captured full inputs independently replay unchanged; identical first private decisions do not certify all hidden caches",
+    "100-prefix RSS growth is not proof of leak freedom; unsupported scenarios require separate gates",
+    "Original Teacher failure and failed admission/precision trials remain unscored; no replacement within failed cohorts"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "heroes-capability-config-v1",
+  "scenario_id": "hero-management-v1",
+  "map": "experiments/explorer/maps/hero-management-v1.vmap",
+  "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "baseline_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "interface": "adventure-heroes-v1",
+  "automatic_battle_ai": "BattleAI",
+  "level_cap": 1,
+  "hero_caps": "native effective settings; no override",
+  "reward": {
+    "natural_victory": 1,
+    "natural_defeat": -1,
+    "ordinary_transition": 0,
+    "cutoff": null,
+    "technical_failure": null
+  },
+  "training_authorized": false,
+  "scope": "Versioned capability configuration; no execution plan or ordinary outcome claim"
+}

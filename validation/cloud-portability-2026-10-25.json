@@ -1,0 +1,87 @@
+{
+  "checkpoint_policy_sha256": "de004381422cedf9f1fe0c36eef0a5b99754a9c86bbbcf955cffa7f8043139f8",
+  "checkpoint_resume_sha256": "e70481c8296514999ba21f47819d91882d82d7cbc81cc524a8934cd4940aca7f",
+  "client_sha256": "52af7d699a2dcf108c4a9d4e9fab27468fec0d73ea08be47ba286906abd910e3",
+  "current_python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+  "date": "2026-10-25",
+  "existing_learner_source_changes": {
+    "experiments/learner/builtin_gameplay.py": {
+      "from": "5d36eafaeb3bce3c6a813197524038cd7da8e07ae34c1801e01b5bc96e8436ba",
+      "to": "df01492aef99d555f35251bb4a30738564decdf41308b85220f549e9acf16670"
+    },
+    "experiments/learner/builtin_preservation.py": {
+      "from": "0133eb5a4c0b3e050b70a3fb134a24d65577b7df254eabd4a0f90391328ed204",
+      "to": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e"
+    },
+    "experiments/learner/builtin_training.py": {
+      "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
+      "to": "072230f4ebd258d2586abf96c170137de689ff5ac6de6a0ded069241f7ca616e"
+    },
+    "experiments/learner/builtin_training_resume.py": {
+      "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
+      "to": "8dd7c97802c8002712ce0183832f4ad5d3dacbd5f19ef6c1c707943fee334a30"
+    },
+    "experiments/learner/checkpoints.py": {
+      "from": "9abf3b84a180220a77548b4671129b51dccfcd92edb5a10b08375d49e8bd0000",
+      "to": "bb853a0040366d11030de70cc2a617dc0fd627ded279228c6905d1af05c66abb"
+    }
+  },
+  "fresh_linux_native_validation": false,
+  "historical_full_restore_and_backup": "passed; see cloud-linux-gate-001-2026-10-25.json",
+  "integrated_pilot_commit": "875841a0aad235b8934ae1ccdef60ea060031d17",
+  "native_source_recipe_exact": true,
+  "native_targets_built": [
+    "vcmiclient",
+    "vcmiserver",
+    "ExplorerRL",
+    "Nullkiller",
+    "vcmireplay"
+  ],
+  "policy_feature_ppo_sources_unchanged": true,
+  "private_transfer_commit": "0b03c34",
+  "remaining_gates": [
+    "Native shutdown SIGSEGV repair in Optimizer workstream",
+    "Separately labelled fresh Linux capture, same-runtime replay and cleanup"
+  ],
+  "restoration": {
+    "current_torch": "2.9.1+cpu",
+    "exact_model_adam_rng_progress_pool": true,
+    "historical_source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+    "historical_torch": "2.9.1",
+    "progress": {
+      "decisions": 3944,
+      "rollouts": 84,
+      "updates": 21
+    },
+    "sampler": {
+      "batch_optimizer_steps": 10,
+      "next_schedule_index": 4,
+      "optimizer_steps": 149
+    },
+    "scope": "Checkpoint pair only; historical plan/report and fresh Linux capture gates pending.",
+    "weights_sha256": "0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb"
+  },
+  "runtime": {
+    "AI/libBattleAI.so": "0f3fe88b6887a512827e11eea90a4877ca3323adea3381986d8b7ca78a6ed719",
+    "AI/libEmptyAI.so": "0f635310480191193b6b5f0efe88d736820cbd3dd888c573a66bd76d2e509139",
+    "AI/libExplorerRL.so": "30729e0e66bcd9e3287a81fb74e6943e927cc9b6ae65bc2439da8f5cfcc6aeb2",
+    "AI/libNullkiller.so": "84250e151d3e39fb43f9ee97dd053573e8377a1c842c32fbfa219942ce3a64f0",
+    "libvcmi.so": "b598c556a84a87f2faec62bbfc570c9b263230c14883f08b1dba517b939efbdf",
+    "vcmireplay": "1003e2a71f2312dbbfee280ae13922b7640261efb389ace3a1e0c4601bfd2c44"
+  },
+  "schema": "heroes-cloud-portability-validation-v1",
+  "teacher_commit": "65a4f487d19957ad8346d7a1332a78d4fd0e172d",
+  "tests": {
+    "additional_budget_guard_tests": {
+      "command": "python -m unittest tests.test_builtin_portable tests.test_builtin_training -q",
+      "passed": 12
+    },
+    "additional_client_parent_gate_tests": {
+      "command": "python -m unittest tests.test_builtin_portable tests.test_builtin_training -q",
+      "passed": 12
+    },
+    "command": "python -m unittest discover -s tests -p 'test_builtin*.py' -q",
+    "passed": 184
+  },
+  "training_performed": false
+}

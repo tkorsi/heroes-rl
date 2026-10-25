@@ -3,6 +3,7 @@
 #include <compare>
 #include <cstdlib>
 #include <iostream>
+#include <map>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -26,14 +27,20 @@ struct Logger
 Logger logger;
 Logger * logAi = &logger;
 
+bool contextualMode = false;
+bool contextualEvidenceEnabled() { return contextualMode; }
+
 class CClient
 {
 	std::set<PlayerColor> explorerTerminalsReceived;
+	std::map<PlayerColor, bool> explorerTerminalOutcomes;
+	std::map<PlayerColor, bool> builtinNativeTerminalOutcomes;
 
 public:
 	std::optional<PlayerColor> configuredExplorerPlayer() const;
 	std::set<PlayerColor> configuredExplorerPlayers() const;
 	bool recordExplorerTerminal(PlayerColor player, bool won);
+	bool recordBuiltinNativeTerminal(PlayerColor player, bool won);
 };
 
 #include "self_play_under_test.h"
@@ -67,7 +74,10 @@ void requireRejected(const char * singular, const char * plural)
 
 void runRegression()
 {
+	unsetenv("EXPLORER_RL_BUILTIN_OPPONENT");
+	unsetenv("EXPLORER_RL_INTERFACE");
 	configure(nullptr, nullptr);
+	require(experimentBuiltinLearner() == -1, "legacy mode acquired a mixed controller");
 	require(CClient().configuredExplorerPlayers().empty(), "built-in mode acquired an external player");
 	require(!CClient().configuredExplorerPlayer(), "built-in mode acquired a singular player");
 	for(int player = 0; player < 8; ++player)
@@ -99,12 +109,75 @@ void runRegression()
 		require(!client.recordExplorerTerminal(PlayerColor(first), true), "completed self-play repeated shutdown");
 		require(logger.terminalMessages == 2, "expected exactly two distinct terminals");
 	}
+	contextualMode = true;
+	configure(nullptr, "0,1");
+	CClient contextualClient;
+	require(!contextualClient.recordExplorerTerminal(PlayerColor(0), false), "contextual first terminal completed early");
+	bool duplicateRejected = false;
+	try { contextualClient.recordExplorerTerminal(PlayerColor(0), false); }
+	catch(const std::runtime_error &) { duplicateRejected = true; }
+	require(duplicateRejected, "contextual duplicate terminal was silently accepted");
+	require(contextualClient.recordExplorerTerminal(PlayerColor(1), true), "contextual pair did not complete");
+	contextualMode = false;
 	configure(nullptr, "0,1,2");
 	CClient threePlayers;
 	require(!threePlayers.recordExplorerTerminal(PlayerColor(0), true), "first of three completed early");
 	require(!threePlayers.recordExplorerTerminal(PlayerColor(2), false), "second of three completed early");
 	require(threePlayers.recordExplorerTerminal(PlayerColor(1), false), "third terminal did not complete");
-	std::cout << "Self-play routing regression passed (strict indices and both terminal orders).\n";
+	// Compile and exercise the exact mixed-controller selector too. Neither
+	// native terminal can stand in for the other or create a second Explorer.
+	contextualMode = true;
+	setenv("EXPLORER_RL_BUILTIN_OPPONENT", "Nullkiller", 1);
+	setenv("EXPLORER_RL_INTERFACE", "adventure-dialogs-v1", 1);
+	for(int learner = 0; learner < 2; ++learner)
+	{
+		const auto value = std::to_string(learner);
+		configure(nullptr, value.c_str());
+		require(experimentBuiltinLearner() == learner, "mixed controller selected another learner");
+		require(CClient().configuredExplorerPlayers() == std::set{PlayerColor(learner)}, "native opponent became Explorer");
+		for(int first = 0; first < 2; ++first)
+		{
+			CClient client;
+			logger.terminalMessages = 0;
+			bool rejected = false;
+			try { client.recordBuiltinNativeTerminal(PlayerColor(2), true); }
+			catch(const std::runtime_error &) { rejected = true; }
+			require(rejected, "unrelated native terminal was accepted");
+			require(!client.recordBuiltinNativeTerminal(PlayerColor(first), true), "one native callback completed mixed game early");
+			rejected = false;
+			try { client.recordBuiltinNativeTerminal(PlayerColor(first), true); }
+			catch(const std::runtime_error &) { rejected = true; }
+			require(rejected, "repeated native terminal was accepted");
+			require(client.recordBuiltinNativeTerminal(PlayerColor(1 - first), false), "both native callbacks did not complete mixed game");
+			require(logger.terminalMessages == 3, "expected two native logs and exactly one Explorer terminal");
+		}
+	}
+	for(const auto invalid : {"", "0,1", "2", "00"})
+	{
+		configure(nullptr, invalid);
+		bool rejected = false;
+		try { experimentBuiltinLearner(); }
+		catch(const std::runtime_error &) { rejected = true; }
+		require(rejected, "ambiguous mixed controller configuration was accepted");
+	}
+	configure("0", nullptr);
+	bool singularRejected = false;
+	try { experimentBuiltinLearner(); }
+	catch(const std::runtime_error &) { singularRejected = true; }
+	require(singularRejected, "legacy singular flag silently enabled mixed evaluation");
+	configure(nullptr, "0");
+	for(const auto invalid : {"", "Nullkiller2", "ExplorerRL"})
+	{
+		setenv("EXPLORER_RL_BUILTIN_OPPONENT", invalid, 1);
+		bool rejected = false;
+		try { experimentBuiltinLearner(); }
+		catch(const std::runtime_error &) { rejected = true; }
+		require(rejected, "unapproved native opponent was accepted");
+	}
+	unsetenv("EXPLORER_RL_BUILTIN_OPPONENT");
+	unsetenv("EXPLORER_RL_INTERFACE");
+	configure(nullptr, nullptr);
+	std::cout << "Self-play routing regression passed (strict indices, both terminal orders and mixed controllers).\n";
 }
 
 int main()

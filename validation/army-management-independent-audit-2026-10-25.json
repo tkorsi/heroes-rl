@@ -1,0 +1,2135 @@
+{
+  "artifact_groups": {
+    "behavior_report": [
+      "runs/army-management-2026-10-25/ordinary-behavior-audit.json"
+    ],
+    "cohort_reports": [
+      "runs/army-management-2026-10-25/exchange-3/plan.json",
+      "runs/army-management-2026-10-25/exchange-3/report.json",
+      "runs/army-management-2026-10-25/mechanics-1/plan.json",
+      "runs/army-management-2026-10-25/mechanics-1/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/plan.json",
+      "runs/army-management-2026-10-25/mechanics-2/report.json",
+      "runs/army-management-2026-10-25/policy-1/plan.json",
+      "runs/army-management-2026-10-25/policy-1/report.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/report.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/report.json",
+      "runs/army-management-2026-10-25/terminal-1/plan.json",
+      "runs/army-management-2026-10-25/terminal-1/report.json"
+    ],
+    "completed_tamper_reports": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/tamper-report.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/tamper-report.json"
+    ],
+    "finalization_reports": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/contextual-finalization.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/contextual-finalization.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/contextual-finalization.json"
+    ],
+    "fixed_policy_artifacts": [
+      "runs/army-management-2026-10-25/policy-1/episode-000001/neural-rollout.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/policy-reconstruction.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/neural-rollout.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/policy-reconstruction.json",
+      "runs/army-management-2026-10-25/policy-1/fixed-policy.pt"
+    ],
+    "history_audit_reports": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/history-audit.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/history-audit.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/history-audit.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/policy-reconstruction.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/policy-reconstruction.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/history-audit.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/history-audit.json"
+    ],
+    "live_histories": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/red/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/blue/live-history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/red/live-history-v6.jsonl"
+    ],
+    "manifests": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/manifest.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/manifest.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/manifest.json"
+    ],
+    "native_replay_files": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/terminal-barrier-client.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/terminal-barrier-server.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/contextual-replay.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/replay.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/terminal-barrier-client.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/terminal-barrier-server.jsonl"
+    ],
+    "offline_policy_support_reports": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/policy-support/report.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/policy-support/report.json"
+    ],
+    "player_histories": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/red/history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/blue/history-v6.jsonl",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/red/history-v6.jsonl"
+    ],
+    "positive_native_replay_reports": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/policy-1/episode-000002/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/contextual-verification/contextual-replay-verification.json"
+    ],
+    "tamper_positive_controls": [
+      "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/positive-control/contextual-replay-verification.json"
+    ]
+  },
+  "bindings": {
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 495834,
+      "sha256": "2a2799c5c0e1e72706c93a22bd0cf2d89a365147a88b84957d1041d2622fc285"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 506740,
+      "sha256": "e96460df1a6d28e2982c127c385f889040c652b1a3f3a58a1249c867f3665c57"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36430,
+      "sha256": "ce8b73aee8e91a8d85a65c4ff32524c79a89d5db62d231e589b331f721ef412a"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35297,
+      "sha256": "4e1d2c48a6cdc3418dceff1b69874341cb3b28a87c2e3752f682fe618540d922"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "b999b1fa08f63494c1a020eb3ac02ff18fc3c194ca315787d794b08be857078d"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 924943,
+      "sha256": "8ee18070efc5fb678deb7e502dd019dd98f8ed8b3fdf5e3f2c7e04161e09c553"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 7963,
+      "sha256": "f5ae5e578bb916595a9c0f2aef7bec1d209aa4851bf54933b8fa05f0b40914dc"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/manifest.json": {
+      "bytes": 14261,
+      "sha256": "7632bdab6afa692cfe2c581f0201fca5b884f6fb3715d085d40667233b40a5d9"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/history-audit.json": {
+      "bytes": 6593,
+      "sha256": "f605205e05b1ccb97418b6953f03ca4cb0adc74c8fa24e831df8544111d57f9a"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/policy-support/report.json": {
+      "bytes": 13783,
+      "sha256": "4fef80e34c9159bdb20a176fe1794387999d58b3d968eea5bc9c57d0a08fa13e"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5816,
+      "sha256": "db9e814e3772c946badfb5e13f459e38c28b991248556da1391e0198b1662685"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/tamper-report.json": {
+      "bytes": 847341,
+      "sha256": "39afd44fb3d856d12722e6800650e784e8957865ecda1a0820f610ee6d34c49b"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "c1dd145c14581c163b2020e85c79e2542579f9a7c4012a4f37f7e98c7d10f175"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "6754cb9d46cc9f5fcc03d02c30fce47e13ceb98eb6bbff4ce3a44979d245051a"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 475959,
+      "sha256": "214dfac467ff79eb496d6e7c50c1652e6e51901b0c6737caebf5901cc07f299b"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 477294,
+      "sha256": "6d46be5cb7e953b1d5be2c1f94010198653fece732f907afdb9a1d48917b3f28"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "10929662ab7f45fe623daf12d7abd31dfad7f9d00a84402851f9d243ac78fd04"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 843402,
+      "sha256": "4636bca6dfec5328a57e0710c000eec64b8b1d3df31252d1ce30f9dd3d62ac97"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 7176,
+      "sha256": "1e01d55997f88a43612abb04472220c0d7f92e2fe37d0254cfca2b89aec0de9d"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/manifest.json": {
+      "bytes": 14258,
+      "sha256": "c596ad9d74cc3e3eea268f47f123962ec70e3cafab0507e18b2b118b3985daa4"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/history-audit.json": {
+      "bytes": 6365,
+      "sha256": "fe732053148c339b07f5c092e20513a50fa394edd1c031968cd60b05c981031b"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/policy-support/report.json": {
+      "bytes": 13532,
+      "sha256": "524dd0536e549622155e921579a44c1f46628c958648d96ec77979e402e59240"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5627,
+      "sha256": "9da89c857f1fd5a4d7a446d2bbb96b281a1fd295001080ddf5e52de205f1f43c"
+    },
+    "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/tamper-report.json": {
+      "bytes": 828643,
+      "sha256": "6a9f345314d4b7b48772ee3b190bbd4199ebc50d30cbe880c0b0e79e47dde82e"
+    },
+    "runs/army-management-2026-10-25/exchange-3/plan.json": {
+      "bytes": 25423,
+      "sha256": "bff2f931b86eee2f743aa3059312b0ba0667da1d8ab2efb83a0b3dec3fd34bdb"
+    },
+    "runs/army-management-2026-10-25/exchange-3/report.json": {
+      "bytes": 59759,
+      "sha256": "5fdbff259b863847b04684f806573df78ae77c7d9fac778a1f353e2d8097f6a7"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/plan.json": {
+      "bytes": 26276,
+      "sha256": "80f765ac843f05c01f76561cd8f02a186e7db9d0a4fd6b22e238572c00e89df6"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/report.json": {
+      "bytes": 2066,
+      "sha256": "483f2125026eab471b38fec9858ef999fd7d860950df4908042fb6622b37e1e9"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 362,
+      "sha256": "13453451214fd9b83ca35b75a8f193963078a0d38ec11c2a0857a251983499d9"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 362,
+      "sha256": "13453451214fd9b83ca35b75a8f193963078a0d38ec11c2a0857a251983499d9"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 190416,
+      "sha256": "13af795d51970810531d56d1f696041a19b89f5c857c03ae733cbdf6236b64c6"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 190416,
+      "sha256": "13af795d51970810531d56d1f696041a19b89f5c857c03ae733cbdf6236b64c6"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10977,
+      "sha256": "be97855755a0063c3f989d7fdb04d7c42d1a1a9b5f1071ea78cacadbb0a959b4"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 324165,
+      "sha256": "22459712b7beaa5ab2b37731d479b7e0a058afaf8f9e2c2f715fc70e755fe178"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 3201,
+      "sha256": "ea709bd4f502465de4a7514baae4a55c55b6204f4dd07b792c7ddd95704a14d2"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/manifest.json": {
+      "bytes": 14345,
+      "sha256": "44d557b38f8ec68988737bac1e2d7c4e9df03c40f44c9c66add37e7a8c00f755"
+    },
+    "runs/army-management-2026-10-25/mechanics-1/stacks-red/history-audit.json": {
+      "bytes": 5853,
+      "sha256": "4e842d3ade07bac56347a11333ce41980049c2854f209e9a65e32450fb10c53b"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 399970,
+      "sha256": "39a9373fb77e09c37daa94761a62b60346e51adc51729f0f3f5c57c6466e83ae"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 410875,
+      "sha256": "94888e27fc60cd5ebada6db8d3c20a96eac589345ff795c2a7d68cd9f59f9a27"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36438,
+      "sha256": "892564e60575533953fc86d7518ed525e0ce78cfb757f486c3b0f96c96231e3b"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35305,
+      "sha256": "f86615b3862766f22f5869799d30719abe317c0c41d9a06623fcc33ccb1a6cc3"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "46887b69101e20a750c38047fcfb36edb063ac88d8f6de22c4266774ef0471df"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5822,
+      "sha256": "e7767a5621ed6009505d38155415d0ff99b4c1db450fa554b53c0916066c1163"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 764731,
+      "sha256": "0451ec88c3248e93b462f13af6552303c9fc4091d4217e83f558bc27798f835e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 7225,
+      "sha256": "fb71c7376c14ba1340bf59c1b1c3e268cf9df153ea19f8828f040a9f26007392"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/manifest.json": {
+      "bytes": 14262,
+      "sha256": "e6907f7eae07443e9d626187463873f4ed01346be941ae36de981068d0d83bf0"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/history-audit.json": {
+      "bytes": 6521,
+      "sha256": "bcd06b7d698bc1345d714301b5f783f43faa224db3c3a306c1ecbcc7a249b5ce"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-blue/policy-support/report.json": {
+      "bytes": 13745,
+      "sha256": "e95177d2a2d99536e9afb69299cc3c4bf761224301236356fa88819bca9807d7"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 329056,
+      "sha256": "ae73f24574168f39659944a92690c5dcf1a7f6d02a59523509552efc13160587"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 361627,
+      "sha256": "359aea538e470af1bf1d068fad44112671447b191d9a600d2824e49f2ff8af43"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36438,
+      "sha256": "1000f1e0fada3f05940e3fb18fd67fa8b2532b75cb3623abb9bd7d870fbb9c08"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35305,
+      "sha256": "78d1f05f6ff7f392a741410d2e87e0f2c8ed1aa917f2406cfba5de80afcfa14e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "d58bc4c1030a4952d98e600f7743ac699bf93de2995108c521b0ad38a8a441ad"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5826,
+      "sha256": "46b54b98708b9defa9bb7413cd01bcf234e1e43c45f7ee1ddda7c072809edf90"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 681596,
+      "sha256": "58015c009b69a1702e4f96410e9fc5fad7511a816933ed1caddbc2da23c5260c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 6487,
+      "sha256": "82401d1c13b93ed7c0c49fc1a8300217ba082bae3bfec48de5bb07a26712ee38"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/manifest.json": {
+      "bytes": 14284,
+      "sha256": "06df0411fbf6154cd12936a69c37539dc3e0fb78ae28d62da0ecea251d0d2eb9"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/history-audit.json": {
+      "bytes": 6437,
+      "sha256": "a24720092b865fd22644f8cf12c0cb97a3af554950375b6ccc5dd25509908a65"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/policy-support/report.json": {
+      "bytes": 13773,
+      "sha256": "c84a7ef695c068329c0a1c40b99caa9b56ae0e6a2ef3e7b94e46d9d271ba1a04"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "0d7c891a9b9b51d203593a55e358345004373cfd28fdb9d0adc4fe117a6885c9"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "3971f8889104c418128da3b53a9cdd91e7f4f193de04161c75b23a3539c4cb48"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 317138,
+      "sha256": "f5d2a778949c8b3f18ba1f4bc36d1c60ba825354ee51c668f02967bab5505481"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 338996,
+      "sha256": "528f5fda676083e9f3df09362c685ab3d861e584cd4e34e253fd2013c580b6ff"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10879,
+      "sha256": "fdbf1f3a8330f4921c6e85df165bba59a66df625d27a76f409a102a01f37792e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5634,
+      "sha256": "c21055f4df7bc264cd203999c35d036c7501b9c1787d2740f66dfc958d28fe98"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 611264,
+      "sha256": "032c3b78b91aacc73104e91649058dacec3959c188d77e4e51d15acd2e5472f9"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 5690,
+      "sha256": "d65ece002b7d72ca27d8d8f1f280a4b8c82b796be38a9b9d1951262f6b20e00b"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/manifest.json": {
+      "bytes": 14280,
+      "sha256": "fffdd8a3b12e89ad71d271b017390b2f32a03248ce32083baa87c9b9872e21f1"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/history-audit.json": {
+      "bytes": 6209,
+      "sha256": "f0981d92fcad033b4a9629639b2639b53ccefe480a292408a6eb5f3c15f2695e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/policy-support/report.json": {
+      "bytes": 13522,
+      "sha256": "a95e94d2c1957bf5ee44a193e593ed76db54bbbb0af5d797666357bc2e4b3218"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "ccd7ccdece2a0ec1af6ccd78a0ac36e60c3cdbca915ba3124dd422e8a2b9d300"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "3971f8889104c418128da3b53a9cdd91e7f4f193de04161c75b23a3539c4cb48"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 384656,
+      "sha256": "de0923cde8075fce20885e7f70c2359b0fed0d5c85cffb9e92345225cf9351bf"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 385991,
+      "sha256": "541f8e0109ff33477f5ed3f6df74c8f4a5315de38b8e94f6a5a2b23bce4731ee"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10879,
+      "sha256": "b0002c28cbfa5e81f3c3d29b1c0c6094390688b3a8b85897491962b8a078b03a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5633,
+      "sha256": "54893537fab9abc0343ccabe475327cc29a63b5f8dfd3d4cb5155ccc6643e46d"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 690672,
+      "sha256": "1a8e485e537454d9d26051d035a4e4c2bbae3e4c7423a55f2d0e1cfcfa3bac57"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 6430,
+      "sha256": "a0ef0a2ee815a6f949c81f9786377d150daefc29bd1f1c6b283593aa83d1e5f0"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/manifest.json": {
+      "bytes": 14259,
+      "sha256": "b667092e77668789ec624941ed32ae654e24516414c499cd720e1f08053f8948"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/history-audit.json": {
+      "bytes": 6293,
+      "sha256": "e87db304baca158776d212ab1c7373dba33da30056eb38758ea0d417408f3ada"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/exchange-red/policy-support/report.json": {
+      "bytes": 13494,
+      "sha256": "7fde3a74028ae7deab5b3ad9982e14f3884a69f6b194c736f5db37a6b628ab64"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 500607,
+      "sha256": "57af7a27c4c8a92b11bb3f93e242bfdc59bc2da9dca0a9db5fd3c758468fe584"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 532493,
+      "sha256": "c46650fc03c7191bd2114a06c3b0a98254fc81ae79f0b0bf3366b087998eb530"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36438,
+      "sha256": "b578c5add33854be678af3149bd975f2f7f8212745945111047f2ad30b325b0e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35305,
+      "sha256": "bd1ca3af262115dd519f95a814e8d7bd10214470933fa6400c801d331a513e14"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "5270c5ccf445d6d7d9a0bf92d4d175ec38ea318456ede61a7efc9d0cd256d935"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5794,
+      "sha256": "14df3b689e9c7713db2cf7897290b52bb3c0bcb7d5f1b8e7e2682f00cb1e7404"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 966476,
+      "sha256": "7650546599686c6bc2ef16f62cc7afd905224ada9402451b6258bf414e511ce5"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 7925,
+      "sha256": "e2549017716679987aa3ea2dbb95de01ed80b188e36571e2f7813f1129881386"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/manifest.json": {
+      "bytes": 14264,
+      "sha256": "3d65541cdd90f85e403be7cb6543bf6de3ae91044d4e4382c08ff67a863e74fc"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/history-audit.json": {
+      "bytes": 6487,
+      "sha256": "a3889b075f233423f2bf025fe5e15f4dcaf5dd9c6f1cb57aaaebd2607205817c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/policy-support/report.json": {
+      "bytes": 13785,
+      "sha256": "ac4803c5fccd48710e459c6909bb08a9fd4d22215c1d63f8a0836b07dd9a99bd"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5786,
+      "sha256": "76c390916d5331195ee8e68559d4beb7cfe54494db49b15e4ecce15bb42ffa1c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/tamper-report.json": {
+      "bytes": 684271,
+      "sha256": "9ebed163bfc6f96d798a78e25e9f66475a9a739c0f7d40ec07e05953168e2251"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "5f837f3c757276a2c38de36ba9be27aa3d944d41066fbbedbcff02a81bde35f3"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "6754cb9d46cc9f5fcc03d02c30fce47e13ceb98eb6bbff4ce3a44979d245051a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 489803,
+      "sha256": "8ecf11bc7bd3925c1d2f5e25db9445d6cc94427868497a736a182b870e4563bc"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 510977,
+      "sha256": "eb25d36f8555ffe6b50f6679193e2534ad80a623d926f00e38da75512a305ee0"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10879,
+      "sha256": "a4b02d16d3cea8bb65d4ebf43955d921bd4cf0cdfbf652d688f36b3de7d85a40"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5605,
+      "sha256": "9d28eb0f2b2a5c7eb79bcc83c766a12ac643a26756c4f59d7576ef45d046a984"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 899719,
+      "sha256": "4cca68db1a2d0327856887111007f39267e89152a27b0849e2ec82a421f58e45"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 7126,
+      "sha256": "7585c5a258f6a5a7b177d44e937de502431fdf4b8832de06e77f2a14d109b903"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/manifest.json": {
+      "bytes": 14260,
+      "sha256": "23675d4ebce1d5c2334afe66fa00a3173891fa19ec0165b5124e484158afe009"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/history-audit.json": {
+      "bytes": 6259,
+      "sha256": "aaa102ee5c53487965388e5a375a4ce5f30bd0b4d03374b3e8deaa29d44e8d84"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/policy-support/report.json": {
+      "bytes": 13534,
+      "sha256": "453a54503e184287e0c7163e8211f8b23075e980574e3ab68289a18588d98669"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5597,
+      "sha256": "fbd8683b9bbaf1be77376377cca3d5f276324a182cbb413b030c017f37cfcdf5"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/tamper-report.json": {
+      "bytes": 702397,
+      "sha256": "01ff695036eba6255dfac33da5e9a75f610c3c71c44795b7dfa024fadff064e3"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/plan.json": {
+      "bytes": 26276,
+      "sha256": "52cf8087d856358ff0bbe83305a6446dbf3914052d74fb9f7452403f80c36dc7"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/report.json": {
+      "bytes": 270898,
+      "sha256": "abcafcc982b60c48d65f89482f12aa1def194cb265d15ecb29b33c8af7290f5c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 151628,
+      "sha256": "74ded6a31300ffd8c9301a127a2f42deb688e5c754d7c5b6b1305d76c8835207"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 219543,
+      "sha256": "45eb60748f4b4bcec5a57f64500b3f5f841fd107d9a00c7447c119f6cb04f729"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36438,
+      "sha256": "2c8cfd0bed7ecb943aa778a8122b265e874cf3c3cf30bd82becd77bfc40a52c2"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35305,
+      "sha256": "78d1f05f6ff7f392a741410d2e87e0f2c8ed1aa917f2406cfba5de80afcfa14e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "fb89f21b068a49c8748bf239c4d494fab6af1c0a7eef5f935b43f095627a8a3d"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5784,
+      "sha256": "33a223861ddc397cf8480a8708ab681874dc5dd3a769074d921e4b478dd73fa9"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 430865,
+      "sha256": "d6fc558d673413d6e80049a43c7de58505992d0701f03aef5e0a5c4067528e7e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 4322,
+      "sha256": "aac8a56b911b22972a0370695fa4913672a22a92a8dc0ea22ae7fcc4e961a31d"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/manifest.json": {
+      "bytes": 14275,
+      "sha256": "2715d4aa9025ca4289cc1e272b87a2913463f501ab2af550fb760d76db31a17c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/history-audit.json": {
+      "bytes": 6295,
+      "sha256": "610b62a6fa53b6cb266b3d10a1807b6d1c6fdfa7084dae3f0e4dc1d707d8ad72"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/policy-support/report.json": {
+      "bytes": 13637,
+      "sha256": "63c59f5ab3e3e9e17cd2de7dc6a0bd2679baeec29df4b6e4a4bc09c84e84874f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "162a13c2bbe0cd5a718415c129340765b418432c360e2d9e13b4f59b4b21217f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "6754cb9d46cc9f5fcc03d02c30fce47e13ceb98eb6bbff4ce3a44979d245051a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 150158,
+      "sha256": "bd58361002d1add9a1c1546e7d29e8e2568eed23e76141b3484fdb3fb60bb17e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 209484,
+      "sha256": "1655e0b7b737599d14cb6f7c74b38dcf4d60ec5bbc173b9456704382d1022b46"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10879,
+      "sha256": "5ef6d312f518d76e28c6a1cfe5d552cf0fcc6976d63e3b5cf5e6092a527a4ea5"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5594,
+      "sha256": "5a3ddbbe09d0ca400554da960e77440ee663505390088340db7124f38441cf38"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 382018,
+      "sha256": "6e590f0c51a8d3702d7218f479e615d8e0b27447a6e691307d51962068beb3f0"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 3530,
+      "sha256": "ffd3ecde2ca3d5c95e974a7d680c88df5a39d96572e17c6697508585a14c95bd"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/manifest.json": {
+      "bytes": 14269,
+      "sha256": "9cd16f1203c2170f178bd3c4ad9a6798f1f0b4554431d33e824c7811ab699e4f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/history-audit.json": {
+      "bytes": 6067,
+      "sha256": "8d27aaa215c020b3ba3dfc9a7c5eaaf72bdf7f2fd1f4d468b797a4a7f4a5ada2"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/policy-support/report.json": {
+      "bytes": 13386,
+      "sha256": "34219c36597e0856ca813247fe6519c1caa6eef71213f10ba14b74dda797f128"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 568723,
+      "sha256": "e82a7cf5be3c24cd8c9a2e79b3ae3d270d42d6a83767271d85bc7383a4e2b97c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 595883,
+      "sha256": "aaf16ee26ceb45b6aad683851417e19b23eb526a948de5862c2500336923f9e4"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36430,
+      "sha256": "8ee6dde4f1c0322af9feb7ec22b7acad24e29f3bb82086a0fe986d918c2ad5e9"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35297,
+      "sha256": "ee447b859d43cf4abefaa1aa14159b7c3614a54e8a7564d8fc9354f9f8f97f07"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10881,
+      "sha256": "806a2faccfb26a56b1c5827801711b17fab64e62119f5fe67b20e0005efb26e8"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5792,
+      "sha256": "d5627af0f5f159bc9178f3da43cdd04b549f9ecd354388548aa5a8edbff4bab6"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 1062837,
+      "sha256": "6407878edf1cd0bf379cc9a8f1fcb8db72b440b17f01ca369615dd72b3ba3d50"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 9636,
+      "sha256": "235e2486a56a153dfb344d392dbc9c742944940a037884f7d85d8e0ccb0a7501"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/manifest.json": {
+      "bytes": 14259,
+      "sha256": "fe86794762ec71486ef4cc437af595f63de75038b15937c3c254076195164b90"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/history-audit.json": {
+      "bytes": 6473,
+      "sha256": "42d3cbbf3f862d480e735787941398cb5575192757d17a48d5ac9dfeeae27733"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/policy-support/report.json": {
+      "bytes": 13733,
+      "sha256": "171d5ff63aa20f9bdb6ad67b4a38d3c10a600e92a06c68a251de8cd6bf215f4f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5783,
+      "sha256": "ea3e69db6df6eb37b6a038960f67b840564ad86bee1abd4c449cab10ed9762d1"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/tamper-report.json": {
+      "bytes": 102489,
+      "sha256": "a43ea105f22b434017c9d80123f4dbe27c3f46df27dd25887c997b4453bd9c66"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "2e8e95cf8549130cd40c6b3b5bd6469c43ad7312ad7393f5ce8129f0b5137b94"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "6754cb9d46cc9f5fcc03d02c30fce47e13ceb98eb6bbff4ce3a44979d245051a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 563431,
+      "sha256": "bf104739fbc5fa1fd24539e900a297b57b77130be700f568b09351582eb63786"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 582393,
+      "sha256": "75215797af8758ec6e0f41ae1ac3703da63ef63308c15788725a9c66a0894be0"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "92ba4770cf2c592a83054aa3a3b948f3d600b8d15fde413d3d66a62fcdc600dd"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5602,
+      "sha256": "776064074827f9523ba32ec964154d7aa1a6ba0af94b71d22b6f4fcd526d4653"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 1010567,
+      "sha256": "fa58600c49b21fdef642c3cbec39b6f76c1183e4439ca0626002fe18aea2e2c3"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 8841,
+      "sha256": "5d22fe5a0e948c8f55e8d8cc0dd6bc52dfb49f9ed37b6a3bff545df2049df718"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/manifest.json": {
+      "bytes": 14255,
+      "sha256": "0da1cbcad01563b987eedf71dbcd773e47061914b8c29255f67b5c3e502e16db"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/history-audit.json": {
+      "bytes": 6245,
+      "sha256": "becc762d1ddefa9bb1e5d28498bd12a46169a66fc0226fa6e3e1ec0a25f6db13"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/policy-support/report.json": {
+      "bytes": 13482,
+      "sha256": "cd84cddf29bcabff4255f719ae928aeeaf2747cbdee9b9949e382ba849759769"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5595,
+      "sha256": "69fd02fb084479dcedabb78ab0729ae1f1d9cd8cb68dac798c700514e754a3e6"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/tamper-report.json": {
+      "bytes": 126252,
+      "sha256": "caf5e756f0bf380aadcdc183e91a7c444e4aeedde1229e6f39c0cd937ff87a6c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 271645,
+      "sha256": "0ba8c8b524d57c03ec1e2c977cba8beb24a3c017ea12d8c7f6a649a195df9782"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 298786,
+      "sha256": "a50fe36af73cd96222f3fa230ceb87b2e8e0b99a41bbead164ef6d6276b2f12e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 36430,
+      "sha256": "f8e05564e1f900f58fdfa2d0a0885f3def5e43abf954247bd7e1a4ee0080ed2e"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 35297,
+      "sha256": "ee447b859d43cf4abefaa1aa14159b7c3614a54e8a7564d8fc9354f9f8f97f07"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 10880,
+      "sha256": "1d1eeb1e41d0798746410f27f6d3a981fab74ddf178c79cf1d29a82d63c26a7f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5784,
+      "sha256": "8195da64f852cc389df0eb46a7cf47953eaa1e54889379925e5f6a8dabd6965f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 563867,
+      "sha256": "b61ab7026131257ba6b1eae1f14f94f9c2352b467ef3f5479ce0639056199758"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 4737,
+      "sha256": "c15c55b4647de91dfa42dce7a70335123606b6cffe14606166e8991ee95d8252"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/manifest.json": {
+      "bytes": 14263,
+      "sha256": "adc4923d9bbc7e4990537bd9dd8672659b03e38f4ae8a26ba6a863aed671ca5f"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/history-audit.json": {
+      "bytes": 6395,
+      "sha256": "8b742889c05b5192b644125b96db8cecd5c01873c2dc1c205f84e59d93aca913"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/policy-support/report.json": {
+      "bytes": 13655,
+      "sha256": "32a79ed15178dbbee66cd5fb25ebb510e8361f1103dde399aace350a3869f416"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5776,
+      "sha256": "e92b1577cf20619de397c27edb12138051273b0b3e0d23eb030086056de04f3a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/tamper-report.json": {
+      "bytes": 227896,
+      "sha256": "6c1af2c5e336631417e455f549d6b177193f8781969ea5090c39e1236e60e35d"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 17749,
+      "sha256": "826f83df4fdd065b6339561efa8a2e3a4f06270cae474a0d9f42fe5ee8dfe3de"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 16619,
+      "sha256": "5f60ad1b7bba4541c51d42d6c15e672338639d58387a57899bf9c3a9748e3a56"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 268999,
+      "sha256": "a98b9eaec5f90a41f5d6649b3b0eca4a59ceb94da42c001ef65e779968c0d69d"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 287943,
+      "sha256": "04d4da923a8791dbf5a83edcb055ac9c2d230de2c5af1b3fa019cc756221e667"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/contextual-finalization.json": {
+      "bytes": 10879,
+      "sha256": "daaa727156dce48db6b650f8ec2b6fdaa6045c51cc24a31343f5d9d3053f1632"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5591,
+      "sha256": "a1dbbe0b73a98a5e538e39d9fcc9929d5949cfc0f75f8718de0a1ca1e595a976"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 514244,
+      "sha256": "331c24ea08f4b30c6f5d725a3939d67a5d30ce573054ad64ce327966ffc2e359"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 3945,
+      "sha256": "d6f3b5b9ca05c92f090028a2ac2ae1379b54a5272889003b2f96a7a460952a6a"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/manifest.json": {
+      "bytes": 14260,
+      "sha256": "8562b8e1f7759285005bd6f2416cdd322bc06099f3c46a38a227c9a4b72d571b"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/history-audit.json": {
+      "bytes": 6167,
+      "sha256": "e7b4d5495e7661679a873c3addad2eff927760c96e811fd253feba5c8fe833a7"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/policy-support/report.json": {
+      "bytes": 13404,
+      "sha256": "69b813a436b4aa1ada213e492c55cf4e2d7d602454fde2fd0043a9fc5f52cb09"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/positive-control/contextual-replay-verification.json": {
+      "bytes": 5584,
+      "sha256": "b4dfce3eb315eb42f2025397701d884e83191a4a8995f96fad26771f55c9f05c"
+    },
+    "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/tamper-report.json": {
+      "bytes": 206214,
+      "sha256": "c9abc4db0b32a21ab0944c77f226df5a628d623aebe8c400103abe09758d1e75"
+    },
+    "runs/army-management-2026-10-25/ordinary-behavior-audit.json": {
+      "bytes": 5859,
+      "sha256": "846e6b5188619c23d05e6f25e9a988b6c1e0229c74ff34ba135fbae6748e2144"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 975114,
+      "sha256": "56c75d2e683ef885e3f810421fe6832913166bac7961dd55a8fe57ff4d42222c"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 973978,
+      "sha256": "be801966993b2247346ca43f9bd9832f113127449a2bfb453f6d96e0a6ad1513"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 1612016,
+      "sha256": "6acca479b9d1ec475c055c282d2c73ef081fe4d33d1179bfb57181bd75dac920"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 1630980,
+      "sha256": "39ab975b8f96834008feaf358121cd2c4049f7df76193d4d8128d22f01184936"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/contextual-finalization.json": {
+      "bytes": 10881,
+      "sha256": "66df060a9502903270af99fefca048c7d5ed4c72ec36e08d2791741f5da3a2a8"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5841,
+      "sha256": "dd9eba6e45e3139f80f60aec72625aa9f4ef30decef563be89667235516b46c0"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 4368041,
+      "sha256": "a01eb017d8dda6ef4c28ad53794625e357344efc221f02893f47f2822bc854fc"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/engine/replay.jsonl": {
+      "bytes": 26947,
+      "sha256": "8916763c1afe3fa01187532a0f5bdd4415794bb9d7d290e1508330991d115c33"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/manifest.json": {
+      "bytes": 14216,
+      "sha256": "f112d48eab731faa05e427f9fb08a943b3dc144d10001bda7e2d51c9431d3c6e"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/neural-rollout.json": {
+      "bytes": 8977534,
+      "sha256": "ece9a62059d41b8672615a8bb7a411527e65300f0c278aeba139b0e819975460"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000001/policy-reconstruction.json": {
+      "bytes": 8541,
+      "sha256": "fe11d175484b05ba44c683a6aa7725c4e79d7cbaf7660d77f3e2da8793e1afea"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/agents/blue/history-v6.jsonl": {
+      "bytes": 1315869,
+      "sha256": "ebf583e26c828cc52a0f82b3ff91936386d518752473617bc016464238b17d17"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/agents/blue/live-history-v6.jsonl": {
+      "bytes": 1364761,
+      "sha256": "8d12adbbb8318c2868e93fa880e94c3c38c80bb6bb1abe54602ea8c4aa4f0fa8"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/agents/red/history-v6.jsonl": {
+      "bytes": 1257038,
+      "sha256": "2da7e1e528b74047e590c548df125268d8bbaa658331ef23aa8cd66cec9369e5"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/agents/red/live-history-v6.jsonl": {
+      "bytes": 1255902,
+      "sha256": "a9c56908f94f6f6b0cdbe7010994503a0c7b726c160c13fae839931179bf6993"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/contextual-finalization.json": {
+      "bytes": 10881,
+      "sha256": "085d657cfc933fa3bb0493fb5b32c7d5479a6fd1e12eb4572fa59aa8bf728604"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5846,
+      "sha256": "499167a1d30ab66dc2437e6108be41a3020b82d54c85cf2e60a1feca1b706563"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 4376427,
+      "sha256": "0613a1dee671b59710de5d6c3aaed59bd7af911feb5458d66a9aa8a610ec120d"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/engine/replay.jsonl": {
+      "bytes": 27431,
+      "sha256": "cd8994d441eb28ac1b415594785f956965b5cb5edea330e03e75255c168be72a"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/manifest.json": {
+      "bytes": 14216,
+      "sha256": "4818b2fd70e0fb85150c6e6f1394be77d42d1fcd21c3c8c711996d1622a17456"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/neural-rollout.json": {
+      "bytes": 8952853,
+      "sha256": "343d62dd24b8d58c621e03cd9928df6b59ebe8ebb625cfb3b4ece82be3649178"
+    },
+    "runs/army-management-2026-10-25/policy-1/episode-000002/policy-reconstruction.json": {
+      "bytes": 8390,
+      "sha256": "6ebe3ff3d4117e0b3b987b307a138064143f65f81c25381912da71ed6f220a75"
+    },
+    "runs/army-management-2026-10-25/policy-1/fixed-policy.pt": {
+      "bytes": 629494,
+      "sha256": "c81aad779d54341a7968cf963c288f9f2ebddfefd5abce916a59bac7d087cfc2"
+    },
+    "runs/army-management-2026-10-25/policy-1/plan.json": {
+      "bytes": 28659,
+      "sha256": "0e86b2597f6a237c899ddc386a6b3b103cdc5be33bfb40acf985d260aa95abdd"
+    },
+    "runs/army-management-2026-10-25/policy-1/report.json": {
+      "bytes": 9622,
+      "sha256": "2799bb85b5391692080dd56e1aa78f4a5b6709d13a0e3cb9b75fc8861e50d3c9"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 525881,
+      "sha256": "7f9eac26447e6c8e02055b9f3689dbf3836c086b97b1e77306e0274c3f31fc93"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 525881,
+      "sha256": "7f9eac26447e6c8e02055b9f3689dbf3836c086b97b1e77306e0274c3f31fc93"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 311973,
+      "sha256": "86150b349070307adc83e27c536a799978a7c05cafd503b7922063cdfde6caeb"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 311973,
+      "sha256": "86150b349070307adc83e27c536a799978a7c05cafd503b7922063cdfde6caeb"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/contextual-finalization.json": {
+      "bytes": 12490,
+      "sha256": "ad407057bd0be05108cff6fb9aceca4b7762dca29178a9f1573418a4c6b2ba75"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 6540,
+      "sha256": "61d25470b68a453327f9fba9b9291b115dbfc8f620e250a9f7d11da2a34458af"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 1501962,
+      "sha256": "c8fd6ca6367bbf607752cef93329c5fbe57ec61b3b23482d6a22911962a20c0e"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/replay.jsonl": {
+      "bytes": 21056,
+      "sha256": "806f064529adc7d276759db6cbc87e70574d15ad897929af4b202b21ec1a0c81"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/terminal-barrier-client.jsonl": {
+      "bytes": 343,
+      "sha256": "c1bd32b7d833f1ef53f4eadb26ba35cddacd5b6998f18690b565229703de5f25"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/engine/terminal-barrier-server.jsonl": {
+      "bytes": 290,
+      "sha256": "844629c6c96061e4181416df6a35ea701adaa86d741a3ef73a4036a3f081114b"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/manifest.json": {
+      "bytes": 14609,
+      "sha256": "8c02ae44267ee49f04a1721f53f2da25570234db8c70dcea8435e29daa43f528"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/history-audit.json": {
+      "bytes": 7671,
+      "sha256": "5ef98d4b45211da4d80bee47d3a3d061f5432936aa269d7c6290008433272ff1"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-blue/report.json": {
+      "bytes": 2391,
+      "sha256": "9052e2e20f62f7926acbc42afddf801b9488fc3be4525be08dfdea480ca9f595"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/blue/history-v6.jsonl": {
+      "bytes": 315478,
+      "sha256": "753a19ff10ba36ea65140c72adc6919e5cc738fa46012c18aef9385ee6fde184"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/blue/live-history-v6.jsonl": {
+      "bytes": 315478,
+      "sha256": "753a19ff10ba36ea65140c72adc6919e5cc738fa46012c18aef9385ee6fde184"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/red/history-v6.jsonl": {
+      "bytes": 525547,
+      "sha256": "b28d7ceb6866577fa0dbfc2c04ab692dc3f9886724332f9eaf5c21bcc43421ba"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/agents/red/live-history-v6.jsonl": {
+      "bytes": 525547,
+      "sha256": "b28d7ceb6866577fa0dbfc2c04ab692dc3f9886724332f9eaf5c21bcc43421ba"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/contextual-finalization.json": {
+      "bytes": 12489,
+      "sha256": "59aa22de658beed3d855ca2db9b56ba7c1d0a546829b9729348d71e484b8f78b"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 6540,
+      "sha256": "fc5c391455bd79fed6907b8781df577ffd3869d137a9ce40957cbb8563afacf7"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 1505075,
+      "sha256": "3a4dc2cf91020efff6da800379a0de2ee42059b60d3963ded71d0da0ab8d784a"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/replay.jsonl": {
+      "bytes": 21829,
+      "sha256": "7a54ad3062ee8f1f835a523770d1ce8f13d70d211262b5d375092cb713bbc616"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/terminal-barrier-client.jsonl": {
+      "bytes": 343,
+      "sha256": "55641833eb5dad97ae84e85318ded9da8581cbf9bda83d47b75d303058001ab3"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/engine/terminal-barrier-server.jsonl": {
+      "bytes": 290,
+      "sha256": "0a11317e9c1468ec4c751a4e90561edc62f9075caac0752669f032ff4324c3de"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/manifest.json": {
+      "bytes": 14606,
+      "sha256": "7d8d02421328a204f6f34a75d678531f3c13e25acdb4a66394c90a5436b933d2"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/history-audit.json": {
+      "bytes": 7675,
+      "sha256": "33b86362543b6c8617f48f0d43365e7c689a95804cdf8a856bde0700e00bcb17"
+    },
+    "runs/army-management-2026-10-25/terminal-1/capture-red/report.json": {
+      "bytes": 2387,
+      "sha256": "e7c16cd1dc668be392c7ef6ceea91424f87df65325433c04c43f96accb3eee45"
+    },
+    "runs/army-management-2026-10-25/terminal-1/plan.json": {
+      "bytes": 24752,
+      "sha256": "f678b90b41790aee9e0d9582829311ff0ff1691c266a46fc4c9a1c69199b7863"
+    },
+    "runs/army-management-2026-10-25/terminal-1/report.json": {
+      "bytes": 5789,
+      "sha256": "cae2d4eaf3b64ee21ecef2dd4672289b46145fefd0508b1850f85c25f2fe94a7"
+    }
+  },
+  "counts": {
+    "closed_window_observations": 365,
+    "completed": 2,
+    "exchange_views": 40,
+    "failed": 1,
+    "fully_transient_decision_intervals": 0,
+    "fully_transient_position_samples": 0,
+    "history_frames": 3888,
+    "intermediate_position_samples": 10,
+    "native_ack_accepted": 287,
+    "native_ack_rejected": 0,
+    "observations": 1217,
+    "owned_army_rows": 957,
+    "stack_views_without_parent_rows": 80,
+    "truncated": 16
+  },
+  "created_at": "2026-10-25T00:45:42.873918+00:00",
+  "direct_effect_checks": {
+    "accepted_stack_operations": 118,
+    "affected_hero_movement_max_may_recalculate": true,
+    "all_seven_slots_compared": true,
+    "basis": "Independent arithmetic over recorded before/after decision observations, in addition to the existing probe checks. Counts include the fixed-policy cohort.",
+    "current_movement_and_position_unchanged": true,
+    "garrison_enter": 12,
+    "garrison_exit": 11,
+    "garrison_operations": 25,
+    "garrison_resources_unchanged": true,
+    "merge_stacks": 26,
+    "occupied_hero_swaps": 2,
+    "other_or_empty_slot_swaps": 33,
+    "same_creature_swaps": 6,
+    "split_stack": 53,
+    "stack_operation_resources_unchanged": true,
+    "swap_stacks": 39,
+    "upgrade_each": {
+      "count": 25,
+      "gold_debit": 375,
+      "other_resource_debit": 0,
+      "source_creature": 0,
+      "target_creature": 1
+    },
+    "upgrades": 2
+  },
+  "environment": "adventure-army-management-v1",
+  "episodes": [
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104108,
+      "source_commit": "104ee057d12a470942bbdb926d8443276482b43d",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104107,
+      "source_commit": "104ee057d12a470942bbdb926d8443276482b43d",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": false,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104001,
+      "source_commit": "944af38316aa987d69acaefeb163eadce317cdc9",
+      "status": "failed",
+      "termination_reason": "protocol_error",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104008,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104012,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104011,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104007,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104006,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104005,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104010,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104009,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104002,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104001,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104004,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 104003,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/policy-1/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 105001,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/policy-1/episode-000002/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "seed": 105001,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "truncated",
+      "termination_reason": "collection_window",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "seed": 105202,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "completed",
+      "termination_reason": "natural_terminal",
+      "training_input": false
+    },
+    {
+      "history_audit_consistent": true,
+      "manifest": "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/manifest.json",
+      "manifest_bound": true,
+      "native_positive_replay": true,
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "seed": 105201,
+      "source_commit": "d2d3e702da3c85e09762814ceceafa3257cb559b",
+      "status": "completed",
+      "termination_reason": "natural_terminal",
+      "training_input": false
+    }
+  ],
+  "fixed_policy_reconstruction": {
+    "actions_resampled": 256,
+    "after": {
+      "checkpoint_file_sha256": "c81aad779d54341a7968cf963c288f9f2ebddfefd5abce916a59bac7d087cfc2",
+      "learner_weights_sha256": "7f03c530f5b370083c02c31657ed6284681f483efed9cb2489af28e87c819b10",
+      "opponents": [
+        [
+          "hero-opponent-15d6076f74d8c571",
+          "15d6076f74d8c571971cc7c5fb0eac144deeabf121161ce47ef7424057cf93d9"
+        ]
+      ]
+    },
+    "all_ordinary_transition_rewards_zero": true,
+    "before": {
+      "checkpoint_file_sha256": "c81aad779d54341a7968cf963c288f9f2ebddfefd5abce916a59bac7d087cfc2",
+      "learner_weights_sha256": "7f03c530f5b370083c02c31657ed6284681f483efed9cb2489af28e87c819b10",
+      "opponents": [
+        [
+          "hero-opponent-15d6076f74d8c571",
+          "15d6076f74d8c571971cc7c5fb0eac144deeabf121161ce47ef7424057cf93d9"
+        ]
+      ]
+    },
+    "conditionals_recomputed": 630,
+    "maximum_absolute_difference": 0,
+    "optimizer_eligible": false,
+    "private_player_memory_and_rng_reset": true,
+    "values_recomputed": 260,
+    "weights_unchanged": true
+  },
+  "history_schema": "heroes-player-history-v6",
+  "limitations": [
+    "All mechanics and terminal control choices are labelled diagnostics, never demonstrations or training inputs. Offline policy-support scores do not make their scripted actions policy-sampled.",
+    "The two fixed-random-weight ordinary games reached collection cutoffs, not natural outcomes. Natural victory/defeat was established by the separate controlled town-capture diagnostics in both colors.",
+    "The 287 recorded native acknowledgements are all accepted. Invalid action probes rejected before send do not establish rejected native acknowledgements.",
+    "No fully transient enemy sighting interval is exercised in this cohort; ten intermediate enemy-position samples are present. Fog evidence combines owned-view checks, callback source review and native replay, not a universal leak proof.",
+    "Closed-window and stack-popup observations omit private parent rows, but this cohort does not exercise an independently changing private parent army while that window is closed.",
+    "No live coverage is claimed for unaffordable upgrades, multiple upgrade choices, full-capacity garrison consolidation rejection, hero-cap garrison rejection, or Scholar-triggered hero exchange.",
+    "The ordinary fixed-weight policy did not naturally hire a hero, upgrade a stack, or reach a natural outcome. It did sample native split, merge, swap and garrison operations.",
+    "Semantic tamper report review covers 208 detected mutations in eight completed suites; their positive controls overlap the 18 original-game native replays and do not add games."
+  ],
+  "map": {
+    "scenario": "hero-management-v1",
+    "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+    "unchanged_for_all_captures": true
+  },
+  "optimizer_steps": 0,
+  "ordinary_outcome_claim": false,
+  "paid_compute": false,
+  "positive_native_replays": [
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/exchange-3/exchange-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+      "report_origin": "tamper_positive_control",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/exchange-3/exchange-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/positive-control/contextual-replay-verification.json",
+      "report_origin": "tamper_positive_control",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/exchange-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/exchange-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/exchange-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/garrison-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/garrison-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/stack-cutoff-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/stacks-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/stacks-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/mechanics-2/upgrades-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/policy-1/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/policy-1/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/policy-1/episode-000002",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/policy-1/episode-000002/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/terminal-1/capture-blue/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    },
+    {
+      "checked_equals_loaded": true,
+      "episode": "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001",
+      "open_final_transaction": false,
+      "report": "runs/army-management-2026-10-25/terminal-1/capture-red/episode-000001/contextual-verification/contextual-replay-verification.json",
+      "report_origin": "standalone",
+      "server_verified": true,
+      "unchecked_records": 0,
+      "verified": true
+    }
+  ],
+  "preserved_failure": {
+    "counted_as_positive_native_replay": false,
+    "effective_bootstrap_allowed": 0,
+    "failure_scored_as_loss_or_draw": false,
+    "manifest": "runs/army-management-2026-10-25/mechanics-1/stacks-red/episode-000001/manifest.json",
+    "reason": "The diagnostic buy helper incorrectly sent back after successful native creature recruitment had already returned to town overview. Fixed before mechanics-2; the original failed capture remains retained.",
+    "remaining_mechanics_1_cases_not_started": 11
+  },
+  "schema": "heroes-army-management-independent-audit-v1",
+  "scope": "Independent read-only inspection, source and artifact hashing, fresh history audits, direct recorded-slot arithmetic, and exact fixed-weight replay of saved policy decisions. No game or training launched by this audit.",
+  "semantic_tamper_report_review": {
+    "cases": 208,
+    "detected": 208,
+    "positive_controls": 8,
+    "scope": "Read-only review of completed report results and positive-control native replay checks; tamper executions were performed by the parent. Positive controls overlap original-game replay coverage and are not additional games.",
+    "suites": [
+      {
+        "all_detected": true,
+        "cases": 36,
+        "positive_control": "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/exchange-3/exchange-blue/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 36,
+        "positive_control": "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/exchange-3/exchange-red/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 30,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/garrison-blue/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 30,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/garrison-red/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 20,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/stacks-blue/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 20,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/stacks-red/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 18,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/upgrades-blue/replay-tamper/tamper-report.json"
+      },
+      {
+        "all_detected": true,
+        "cases": 18,
+        "positive_control": "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/positive-control/contextual-replay-verification.json",
+        "positive_control_verified": true,
+        "report": "runs/army-management-2026-10-25/mechanics-2/upgrades-red/replay-tamper/tamper-report.json"
+      }
+    ]
+  },
+  "source_identity": {
+    "captured_root_projects_clean": true,
+    "captured_sources": {
+      "104ee057d12a470942bbdb926d8443276482b43d": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "8e2826b0988143b6a97c680e79a1d6bc4d1f01cc05835a225a09c379b49971bb",
+        "engine/ExperimentReplay/ContextualReplay.cpp": "5475e9cd12db1d9ca7ad468fee5df93e1158766310a25a71fea00466fbb4cfb3",
+        "engine/ExperimentReplay/ContextualReplay.h": "7a077ec439e95554848a12812c231096230a6b1d33ba08767cb6386751c833b5",
+        "engine/ExperimentReplay/ReplayClientHost.cpp": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010",
+        "engine/ExperimentReplay/ReplayMain.cpp": "11be345f4caaa2439a9dfcb987f54d202694fd0a5905967ff372965eb382e745",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/ArmyOperationRules.h": "144d25798adeaab1d9846676da6829e6bf729eb2b83915a78b5272cd1b54b3bb",
+        "engine/ExplorerRL/ArmyOperations.cpp": "3364bb2c8b843ac4510dd8858cb05fbed4bfe6f4d14403b9badca64766aaf091",
+        "engine/ExplorerRL/CMakeLists.txt": "b320a282ca9606354c0ac98b090296cdcb3e36affc39c89273b8b0a7458f65fc",
+        "engine/ExplorerRL/Contextual.cpp": "2b1a3dcddaf65a0337a787d1e530c97ba1c3c953b3882efd40c0f0adce80872e",
+        "engine/ExplorerRL/Contextual.h": "91f2f1efc3cb60e32cc5a0afdd7efcbb16fa7838a510e839b8f858d73c67cd7f",
+        "engine/ExplorerRL/ContextualEvidence.cpp": "fe230d50026562523a3ce59e3c6d047efbce2d5b510685de789adc70c287e3e2",
+        "engine/ExplorerRL/ContextualEvidence.h": "07d27e9d4445c5219bcb1019b411764493c037afbcc170a7eb04bdc4ac94f5f7",
+        "engine/ExplorerRL/Exchange.cpp": "2b429e659e7e5ecbf8f77a914a1776f5ae7a00354ce1a9af06e91938a4823168",
+        "engine/ExplorerRL/ExplorerRL.cpp": "e8f168e95a87a0457f4890e2417dc9a5600ffe0394d55ed3edfd4c0d85411fe2",
+        "engine/ExplorerRL/ExplorerRL.h": "5a861cd9bdb9082f4064d71a2f7a9e15b9238f1a058adfa815ff754cde47781a",
+        "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+        "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+        "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+        "engine/ExplorerRL/Notice.cpp": "1ef76b8f110116b63726f86ec4129e5ca2961d43b37957280c465347c939a5a8",
+        "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/Tavern.cpp": "a463b2cc473a1634f275840245b66df1e647deb5720fb4b2ba603c0e8067a763",
+        "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+        "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+        "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+        "engine/ExplorerRL/TownTransfer.cpp": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d",
+        "engine/ExplorerRL/TransferRules.h": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293",
+        "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+        "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101",
+        "engine/patches/0015-contextual-terminal-barrier.patch": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2",
+        "engine/patches/0016-contextual-client-replay.patch": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d",
+        "engine/patches/0017-town-army-profile.patch": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef",
+        "engine/patches/0018-hero-recruitment-profile.patch": "442d9bba9a4d477f01633df52f663b4fcb096a8652fa10f700ecbf9e271919c3",
+        "engine/patches/0019-army-management-profile.patch": "7354ccec36e3c1f73485eb1f6940517b1ed60cba7d8220e10a3be1285f790e61",
+        "experiments/headless/contextual_env.py": "a42096ea4d7c04b9242359fd2656708f2c01243c33b0ddf70cae874a5a5c0bd4",
+        "experiments/headless/contextual_evidence.py": "00a8d0d41145c342d2705397bf11cacac4a2e4f71bd6cd89292185ee1dd7ae38",
+        "experiments/headless/contextual_protocol.py": "f2d51c74a39075e460020b4d15aab996255eb1fd4b7335ff55fe1efc99b76e0b",
+        "experiments/headless/env.py": "cad0758ebc740c264c5d8caed0478b479886fdd31a0e32073902d3db193f7ba3",
+        "experiments/learner/contextual.py": "2924236b05430565b7bd904599773ad33853c7f8073e63878fc4ca3f58f7b62a"
+      },
+      "944af38316aa987d69acaefeb163eadce317cdc9": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "8e2826b0988143b6a97c680e79a1d6bc4d1f01cc05835a225a09c379b49971bb",
+        "engine/ExperimentReplay/ContextualReplay.cpp": "5475e9cd12db1d9ca7ad468fee5df93e1158766310a25a71fea00466fbb4cfb3",
+        "engine/ExperimentReplay/ContextualReplay.h": "7a077ec439e95554848a12812c231096230a6b1d33ba08767cb6386751c833b5",
+        "engine/ExperimentReplay/ReplayClientHost.cpp": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010",
+        "engine/ExperimentReplay/ReplayMain.cpp": "11be345f4caaa2439a9dfcb987f54d202694fd0a5905967ff372965eb382e745",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/ArmyOperationRules.h": "144d25798adeaab1d9846676da6829e6bf729eb2b83915a78b5272cd1b54b3bb",
+        "engine/ExplorerRL/ArmyOperations.cpp": "3364bb2c8b843ac4510dd8858cb05fbed4bfe6f4d14403b9badca64766aaf091",
+        "engine/ExplorerRL/CMakeLists.txt": "b320a282ca9606354c0ac98b090296cdcb3e36affc39c89273b8b0a7458f65fc",
+        "engine/ExplorerRL/Contextual.cpp": "2b1a3dcddaf65a0337a787d1e530c97ba1c3c953b3882efd40c0f0adce80872e",
+        "engine/ExplorerRL/Contextual.h": "91f2f1efc3cb60e32cc5a0afdd7efcbb16fa7838a510e839b8f858d73c67cd7f",
+        "engine/ExplorerRL/ContextualEvidence.cpp": "fe230d50026562523a3ce59e3c6d047efbce2d5b510685de789adc70c287e3e2",
+        "engine/ExplorerRL/ContextualEvidence.h": "07d27e9d4445c5219bcb1019b411764493c037afbcc170a7eb04bdc4ac94f5f7",
+        "engine/ExplorerRL/Exchange.cpp": "2b429e659e7e5ecbf8f77a914a1776f5ae7a00354ce1a9af06e91938a4823168",
+        "engine/ExplorerRL/ExplorerRL.cpp": "e8f168e95a87a0457f4890e2417dc9a5600ffe0394d55ed3edfd4c0d85411fe2",
+        "engine/ExplorerRL/ExplorerRL.h": "5a861cd9bdb9082f4064d71a2f7a9e15b9238f1a058adfa815ff754cde47781a",
+        "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+        "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+        "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+        "engine/ExplorerRL/Notice.cpp": "1ef76b8f110116b63726f86ec4129e5ca2961d43b37957280c465347c939a5a8",
+        "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/Tavern.cpp": "a463b2cc473a1634f275840245b66df1e647deb5720fb4b2ba603c0e8067a763",
+        "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+        "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+        "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+        "engine/ExplorerRL/TownTransfer.cpp": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d",
+        "engine/ExplorerRL/TransferRules.h": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293",
+        "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+        "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101",
+        "engine/patches/0015-contextual-terminal-barrier.patch": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2",
+        "engine/patches/0016-contextual-client-replay.patch": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d",
+        "engine/patches/0017-town-army-profile.patch": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef",
+        "engine/patches/0018-hero-recruitment-profile.patch": "442d9bba9a4d477f01633df52f663b4fcb096a8652fa10f700ecbf9e271919c3",
+        "engine/patches/0019-army-management-profile.patch": "7354ccec36e3c1f73485eb1f6940517b1ed60cba7d8220e10a3be1285f790e61",
+        "experiments/headless/contextual_env.py": "a42096ea4d7c04b9242359fd2656708f2c01243c33b0ddf70cae874a5a5c0bd4",
+        "experiments/headless/contextual_evidence.py": "00a8d0d41145c342d2705397bf11cacac4a2e4f71bd6cd89292185ee1dd7ae38",
+        "experiments/headless/contextual_protocol.py": "f2d51c74a39075e460020b4d15aab996255eb1fd4b7335ff55fe1efc99b76e0b",
+        "experiments/headless/env.py": "cad0758ebc740c264c5d8caed0478b479886fdd31a0e32073902d3db193f7ba3",
+        "experiments/learner/contextual.py": "2924236b05430565b7bd904599773ad33853c7f8073e63878fc4ca3f58f7b62a"
+      },
+      "d2d3e702da3c85e09762814ceceafa3257cb559b": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "8e2826b0988143b6a97c680e79a1d6bc4d1f01cc05835a225a09c379b49971bb",
+        "engine/ExperimentReplay/ContextualReplay.cpp": "5475e9cd12db1d9ca7ad468fee5df93e1158766310a25a71fea00466fbb4cfb3",
+        "engine/ExperimentReplay/ContextualReplay.h": "7a077ec439e95554848a12812c231096230a6b1d33ba08767cb6386751c833b5",
+        "engine/ExperimentReplay/ReplayClientHost.cpp": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010",
+        "engine/ExperimentReplay/ReplayMain.cpp": "11be345f4caaa2439a9dfcb987f54d202694fd0a5905967ff372965eb382e745",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/ArmyOperationRules.h": "144d25798adeaab1d9846676da6829e6bf729eb2b83915a78b5272cd1b54b3bb",
+        "engine/ExplorerRL/ArmyOperations.cpp": "3364bb2c8b843ac4510dd8858cb05fbed4bfe6f4d14403b9badca64766aaf091",
+        "engine/ExplorerRL/CMakeLists.txt": "b320a282ca9606354c0ac98b090296cdcb3e36affc39c89273b8b0a7458f65fc",
+        "engine/ExplorerRL/Contextual.cpp": "2b1a3dcddaf65a0337a787d1e530c97ba1c3c953b3882efd40c0f0adce80872e",
+        "engine/ExplorerRL/Contextual.h": "91f2f1efc3cb60e32cc5a0afdd7efcbb16fa7838a510e839b8f858d73c67cd7f",
+        "engine/ExplorerRL/ContextualEvidence.cpp": "fe230d50026562523a3ce59e3c6d047efbce2d5b510685de789adc70c287e3e2",
+        "engine/ExplorerRL/ContextualEvidence.h": "07d27e9d4445c5219bcb1019b411764493c037afbcc170a7eb04bdc4ac94f5f7",
+        "engine/ExplorerRL/Exchange.cpp": "2b429e659e7e5ecbf8f77a914a1776f5ae7a00354ce1a9af06e91938a4823168",
+        "engine/ExplorerRL/ExplorerRL.cpp": "e8f168e95a87a0457f4890e2417dc9a5600ffe0394d55ed3edfd4c0d85411fe2",
+        "engine/ExplorerRL/ExplorerRL.h": "5a861cd9bdb9082f4064d71a2f7a9e15b9238f1a058adfa815ff754cde47781a",
+        "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+        "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+        "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+        "engine/ExplorerRL/Notice.cpp": "1ef76b8f110116b63726f86ec4129e5ca2961d43b37957280c465347c939a5a8",
+        "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/Tavern.cpp": "a463b2cc473a1634f275840245b66df1e647deb5720fb4b2ba603c0e8067a763",
+        "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+        "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+        "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+        "engine/ExplorerRL/TownTransfer.cpp": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d",
+        "engine/ExplorerRL/TransferRules.h": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293",
+        "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+        "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101",
+        "engine/patches/0015-contextual-terminal-barrier.patch": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2",
+        "engine/patches/0016-contextual-client-replay.patch": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d",
+        "engine/patches/0017-town-army-profile.patch": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef",
+        "engine/patches/0018-hero-recruitment-profile.patch": "442d9bba9a4d477f01633df52f663b4fcb096a8652fa10f700ecbf9e271919c3",
+        "engine/patches/0019-army-management-profile.patch": "7354ccec36e3c1f73485eb1f6940517b1ed60cba7d8220e10a3be1285f790e61",
+        "experiments/headless/contextual_env.py": "a42096ea4d7c04b9242359fd2656708f2c01243c33b0ddf70cae874a5a5c0bd4",
+        "experiments/headless/contextual_evidence.py": "00a8d0d41145c342d2705397bf11cacac4a2e4f71bd6cd89292185ee1dd7ae38",
+        "experiments/headless/contextual_protocol.py": "f2d51c74a39075e460020b4d15aab996255eb1fd4b7335ff55fe1efc99b76e0b",
+        "experiments/headless/env.py": "cad0758ebc740c264c5d8caed0478b479886fdd31a0e32073902d3db193f7ba3",
+        "experiments/learner/contextual.py": "2924236b05430565b7bd904599773ad33853c7f8073e63878fc4ca3f58f7b62a"
+      }
+    },
+    "client_sha256": "c07a51078900e69c8c905c72872d5f53b3e8a50f72a13f2da8b175c1b0450727",
+    "commit_path_hashes_checked": 174,
+    "generated_vcmi_checkout_dirty_expected": true,
+    "native_runtime_files_checked": {
+      "AI/libBattleAI.dylib": "c970befe23e88a4c1599c9c7a2dd5eada7ddddded48cb5d81a6ff06c3cf6b2bb",
+      "AI/libEmptyAI.dylib": "fc857816db89a54b7e9d10307d4dc8244812fd4e7b1752e336c74b701b181799",
+      "AI/libExplorerRL.dylib": "31f9c634e66f977f93775e92ac25e4a2b4f91b5d039d91c3421880260aff37a8",
+      "AI/libMMAI.dylib": "8fd2203a1e988a7c7011cd4534a6cc63353980aae49128d02671a2aae4485a08",
+      "AI/libNullkiller.dylib": "b64dd73ec74270805b9b87f6f4e0ebfd70de4bfb26964f46ce6226b1261cee3d",
+      "AI/libNullkiller2.dylib": "75cdbded24b51aa663771a4a81a68de268533f87c90bedd83e7688b633a9cead",
+      "AI/libStupidAI.dylib": "f77c4f978ef708d548d57b78eb154948d079c3d7cf472b2b0d9e4b99ebe3eca2",
+      "libvcmi.dylib": "afa7c5df50a8459767c398ae44f0e5e7ee57b4683c99f55281f611e4176a7a4e",
+      "vcmireplay": "3941c261b589d43d351bec991fbf573b869ed6388d933ef3bf64ce45cd51e0a8"
+    }
+  },
+  "status": "passed_with_explicit_coverage_limits",
+  "training_input": false,
+  "training_performed": false
+}

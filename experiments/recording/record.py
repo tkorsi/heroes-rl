@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
-import hashlib
 import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 import shutil
 import signal
 import subprocess
@@ -17,27 +15,18 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[2]
-PLAYER_COLORS = ("red", "blue", "tan", "green", "orange", "purple", "teal", "pink")
 VIDEO_SPEC = importlib.util.spec_from_file_location("heroes_recording_video", Path(__file__).with_name("video.py"))
 video = importlib.util.module_from_spec(VIDEO_SPEC)
 VIDEO_SPEC.loader.exec_module(video)
-
-
-def digest(path: Path) -> str:
-    with path.open("rb") as source:
-        return hashlib.file_digest(source, "sha256").hexdigest()
-
-
-def git_state(path: Path) -> dict:
-    def git(*args: str) -> str:
-        return subprocess.check_output(["git", "-C", str(path), *args], text=True).strip()
-    return {"commit": git("rev-parse", "HEAD"), "dirty": bool(git("status", "--porcelain"))}
-
-
-def write_json(path: Path, value: dict) -> None:
-    temporary = path.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n")
-    temporary.replace(path)
+# Episode identity and scoring are shared with headless runs, which have no recordings.
+SCORING_SPEC = importlib.util.spec_from_file_location("heroes_episode_scoring", ROOT / "experiments/episodes/scoring.py")
+scoring = importlib.util.module_from_spec(SCORING_SPEC)
+SCORING_SPEC.loader.exec_module(scoring)
+PLAYER_COLORS = scoring.PLAYER_COLORS
+digest, git_state, write_json = scoring.digest, scoring.git_state, scoring.write_json
+classify_run, classify_agent_run = scoring.classify_run, scoring.classify_agent_run
+classify_self_play_run = scoring.classify_self_play_run
+validate_experiment_metadata = scoring.validate_experiment_metadata
 
 
 def stop_owned_process(process: subprocess.Popen) -> None:
@@ -57,142 +46,6 @@ def stop_owned_process(process: subprocess.Popen) -> None:
         except ProcessLookupError:
             pass
         process.wait(timeout=5)
-
-
-def classify_run(returncode: int, reason: str | None, log: str, outcome_player: int = 0) -> tuple[str, str | None, str]:
-    player_label = "Red player" if outcome_player == 0 else f"Experiment player {outcome_player}"
-    outcomes = set(re.findall(re.escape(player_label) + r" (won|lost)\. Ending game\.", log))
-    outcome = ({"won": "win", "lost": "loss"}[next(iter(outcomes))]
-               if len(outcomes) == 1 else None)
-    if reason:
-        # Even a delayed terminal log cannot turn an interrupted run into a scored game.
-        return ("timeout" if reason in {"wall_time_limit", "frame_limit", "agent_action_limit", "game_day_limit"} else "failed",
-                None, reason)
-    if returncode == 0 and outcome:
-        return "completed", outcome, "natural_terminal"
-    return "failed", None, "process_exit_without_verified_terminal"
-
-
-def classify_agent_run(returncode: int, reason: str | None, log: str, player_index: int,
-                       execution: dict) -> tuple[str, str | None, str, int | None]:
-    """Score only agreeing natural results after the external agent has acted."""
-    status, outcome, termination = classify_run(returncode, reason, log, player_index)
-    terminal = execution["terminal"]
-    if execution["error"]:
-        status, outcome, termination = "failed", None, "policy_error"
-    elif not execution["ready"] or execution["actions_sent"] == 0:
-        status, outcome, termination = "failed", None, "agent_never_acted"
-    elif status == "completed" and (not terminal or terminal["outcome"] != outcome):
-        status, outcome, termination = "failed", None, "unverified_agent_terminal"
-    reward = (1 if outcome == "win" else -1) if status == "completed" else None
-    return status, outcome, termination, reward
-
-
-def classify_self_play_run(returncode: int, reason: str | None, log: str,
-                           executions: dict[str, dict]) -> tuple[str, dict, str, dict]:
-    """Require two independent, complementary terminal deliveries before scoring."""
-    unknown = {color: None for color in ("red", "blue")}
-    def unscored(status, termination):
-        return status, unknown.copy(), termination, unknown.copy()
-    if set(executions) != set(unknown):
-        return unscored("failed", "missing_agent_evidence")
-    if (any(state.get("error") for state in executions.values())
-            or "ExplorerRL: " in log or "ExplorerRL terminal delivery failed" in log):
-        return unscored("failed", "policy_error")
-    limits = {state.get("limit") for state in executions.values()} - {None}
-    if reason or limits:
-        termination = reason or sorted(limits)[0]
-        status = "timeout" if termination in {"wall_time_limit", "frame_limit", "agent_action_limit", "game_day_limit"} else "failed"
-        return unscored(status, termination)
-    if returncode != 0:
-        return unscored("failed", "process_exit_without_verified_terminal")
-    if any(not state.get("ready") or state.get("actions_sent", 0) < 1 for state in executions.values()):
-        return unscored("failed", "agent_never_acted")
-    if log.count("Experiment self-play complete. Ending game.") != 1:
-        return unscored("failed", "unverified_self_play_terminal")
-    outcomes = {}
-    for index, color in enumerate(("red", "blue")):
-        matches = re.findall(rf"Experiment player {index} (won|lost)\. Terminal received\.", log)
-        terminal = executions[color].get("terminal")
-        if len(matches) != 1 or not terminal:
-            return unscored("failed", "unverified_agent_terminal")
-        outcome = {"won": "win", "lost": "loss"}[matches[0]]
-        if terminal.get("outcome") != outcome:
-            return unscored("failed", "unverified_agent_terminal")
-        outcomes[color] = outcome
-    if set(outcomes.values()) != {"win", "loss"}:
-        return unscored("failed", "noncomplementary_agent_terminals")
-    return "completed", outcomes, "natural_terminal", {color: 1 if outcome == "win" else -1 for color, outcome in outcomes.items()}
-
-
-def validate_experiment_metadata(metadata: dict, player_index: int, log: str, agent_player: int | None = None,
-                                 agent_players: list[int] | None = None) -> dict:
-    """Verify effective engine state and actual AI flags, independently of requested settings."""
-    if not isinstance(metadata, dict) or metadata.get("schema_version") != 1:
-        raise ValueError("Missing or unsupported effective experiment metadata")
-    if metadata.get("cheats_allowed") is not False or metadata.get("requested_no_cheats") is not True:
-        raise ValueError("Actual engine cheats must be disabled with an explicit no-cheats request")
-    if type(metadata.get("difficulty_index")) is not int or metadata["difficulty_index"] != 0:
-        raise ValueError("Actual engine difficulty must be Easy (index 0)")
-    if metadata.get("phase") != "before_first_turn" or type(metadata.get("game_day")) is not int or metadata["game_day"] < 0:
-        raise ValueError("Missing initial game-state phase/day evidence")
-    sizes = [metadata.get(key) for key in ("map_width", "map_height", "map_levels")]
-    if any(type(size) is not int or size < 1 for size in sizes):
-        raise ValueError("Invalid effective map dimensions")
-    total_tiles = sizes[0] * sizes[1] * sizes[2]
-    players = metadata.get("players")
-    if not isinstance(players, list) or not players:
-        raise ValueError("Missing initial player visibility evidence")
-    indexed = {}
-    for player in players:
-        if not isinstance(player, dict):
-            raise ValueError("Invalid initial player evidence")
-        index = player.get("player_index")
-        visible = player.get("visible_tiles")
-        if type(index) is not int or not 0 <= index < len(PLAYER_COLORS) or index in indexed:
-            raise ValueError("Invalid or duplicate initial player index")
-        if type(player.get("human")) is not bool or type(player.get("team_index")) is not int or player["team_index"] < 0:
-            raise ValueError("Missing initial player identity")
-        if type(visible) is not int or not 0 <= visible <= total_tiles or player.get("total_tiles") != total_tiles:
-            raise ValueError("Invalid initial player visibility count")
-        indexed[index] = player
-    if player_index not in indexed or indexed[player_index]["human"]:
-        raise ValueError("Requested observer player is absent or is not controlled by AI")
-    ai_players = {index for index, player in indexed.items() if not player["human"]}
-    if agent_players is not None:
-        if agent_player is not None or agent_players != [0, 1] or metadata.get("requested_agent_players") != agent_players:
-            raise ValueError("Actual engine did not route both requested self-play sides")
-        if set(indexed) != set(agent_players) or ai_players != set(agent_players) or len({p["team_index"] for p in indexed.values()}) != 2:
-            raise ValueError("Self-play requires exactly two opposing AI players")
-        if any(indexed[i].get("adventure_ai") != "ExplorerRL" for i in agent_players):
-            raise ValueError("Both self-play sides must actually use ExplorerRL")
-        ai_players = set()
-    elif agent_player is not None:
-        if metadata.get("requested_agent_player") != agent_player or agent_player not in ai_players:
-            raise ValueError("Actual engine did not route the requested agent side")
-        if indexed[agent_player].get("adventure_ai") != "ExplorerRL":
-            raise ValueError("Agent side is not actually controlled by ExplorerRL")
-        if any(indexed[i].get("adventure_ai") != "Nullkiller" for i in ai_players - {agent_player}):
-            raise ValueError("Opponent is not the fixed Nullkiller AI")
-        if len(indexed) != 2 or len(ai_players) != 2 or len({p["team_index"] for p in indexed.values()}) != 2:
-            raise ValueError("First random-agent experiment requires exactly two opposing AI players")
-        ai_players = ai_players - {agent_player}
-    ai_evidence = {}
-    pattern = r"Experiment AI visibility: player=(\d+) cheats_allowed=(\d+) open_map=(\d+) use_object_graph=(\d+)"
-    for values in re.findall(pattern, log):
-        index, cheats, open_map, graph = map(int, values)
-        if index not in ai_players or cheats or open_map or graph:
-            raise ValueError("Actual AI visibility flags permit cheats/open-map access or name an unexpected player")
-        ai_evidence[index] = {"player_index": index, "cheats_allowed": False,
-                              "open_map": False, "use_object_graph": False}
-    if set(ai_evidence) != ai_players:
-        raise ValueError("Missing actual Nullkiller visibility flags for one or more AI players")
-    return {"validated": True, "cheats_allowed": False, "requested_no_cheats": True,
-            "difficulty_index": 0, "observer_player_index": player_index,
-            "initial_visible_tiles": indexed[player_index]["visible_tiles"], "total_tiles": total_tiles,
-            "ai_players": [ai_evidence[index] for index in sorted(ai_evidence)],
-            "initial_visibility_by_player": {PLAYER_COLORS[i]: indexed[i]["visible_tiles"] for i in sorted(indexed)},
-            "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification"}
 
 
 def validate_capture_view(directory: Path, view: str, player_index: int, total_tiles: int) -> list[dict]:
@@ -220,12 +73,7 @@ def _finalize_recordings(manifest: dict, output: Path, player_index: int, log: s
     evidence = validate_experiment_metadata(metadata, player_index, log, manifest.get("agent_player_index"),
                                             manifest.get("agent_player_indices"))
     if "agent_player_index" in manifest or self_play:
-        seeds = re.findall(r"Experiment engine RNG: initial_seed=(\d+) initial_sample=(\d+)", log)
-        if len(seeds) != 1 or int(seeds[0][0]) != manifest["seed"]:
-            raise ValueError("Missing or mismatched authoritative engine seed evidence")
-        manifest["effective_engine_rng"] = {"initial_seed": int(seeds[0][0]),
-                                            "initial_sample": int(seeds[0][1]),
-                                            "deterministic_replay_verified": False}
+        manifest["effective_engine_rng"] = scoring.engine_seed_evidence(log, manifest["seed"])
     evidence.update(metadata_file="frames/experiment-metadata.json", metadata_sha256=digest(metadata_path))
     manifest["effective_experiment_state"] = metadata
     manifest["visibility_validation"] = evidence
@@ -410,9 +258,7 @@ def _record(args: argparse.Namespace, policy=None, *, policies=None) -> dict:
         "seed": args.seed, "deterministic_replay_verified": False,
         "map": {"name": game_map.name, "sha256": digest(game_map)},
         "engine": {**git_state(ROOT / "vcmi"), "binary": str(binary), "binary_sha256": digest(binary)},
-        "engine_recipe": {str(path.relative_to(ROOT)): digest(path) for path in sorted([
-            ROOT / "dependencies/vcmi.json", *ROOT.glob("engine/patches/*.patch"),
-            *ROOT.glob("engine/ExplorerRL/*")]) if path.is_file()},
+        "engine_recipe": scoring.engine_recipe_digests(ROOT),
         "project": git_state(ROOT), "command": command, "environment": capture_env,
         "requested_settings": settings, "settings_sha256_before": digest(profile / "config" / "settings.json"),
         "limits": {"wall_seconds": args.seconds, "max_frames_per_view": args.max_frames},

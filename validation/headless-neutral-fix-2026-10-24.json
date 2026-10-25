@@ -1,0 +1,400 @@
+{
+  "attribution": "Games, series, replay verification, tamper runs and videos were run by Claude. This reviewer independently inspected existing files and source deltas; it did not start, build, stop or modify that validation.",
+  "benchmark_note": "Not inspected for final throughput; no full-benchmark rate is asserted. Its completion flag was false at this evidence read.",
+  "current_head_delta": {
+    "changed_files": [
+      ".gitignore"
+    ],
+    "diff": "diff --git a/.gitignore b/.gitignore\nindex 46afa89..9e01523 100644\n--- a/.gitignore\n+++ b/.gitignore\n@@ -19,6 +19,8 @@ __pycache__/\n /videos/\n /reports/\n /vcmi/\n+# An older recipe's checkout that tools/validate_headless.sh asks to keep aside.\n+/vcmi.before-*/\n # Original game assets and installers are local dependencies, never source.\n *.h3m\n *.lod\n",
+    "effect": "Ignore-only; no game, replay, learner or renderer implementation changes beyond 5b7c9e9."
+  },
+  "current_head_tests": {
+    "command": "HEROES_LEARNER_PATH=/Users/orsi/Documents/ChatGPT/Heroes/experiments python3 -m unittest discover -s tests",
+    "commit": "3a25545c2094b07f0a71476b2deae46a3bb44e24",
+    "cwd": "/Users/orsi/.codex/worktrees/headless-review/Heroes",
+    "failures": 0,
+    "passed": 162,
+    "seconds": 43.005,
+    "skip_reason": "Native shutdown and native self-play checks require the prepared dependency, absent from this source-only review checkout. They passed in the original build-backed 163-test run.",
+    "skipped": 2,
+    "tests": 164
+  },
+  "current_pr_head": "3a25545c2094b07f0a71476b2deae46a3bb44e24",
+  "date": "2026-10-24",
+  "execution_checkout": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+  "kind": "headless-neutral-replay-fix-followup",
+  "original_review_commit": "40e34a3",
+  "prior_evidence": "Original runs/local-review-2026-10-24/replay-review.json remains unchanged and describes 40e34a3.",
+  "remaining_finding": "Four findings remain: action-consumption P1, trailing reader error P2, last-seen observation time P2, renderer evidence-binding P2. Only the neutral replay P1 is resolved by this follow-up.",
+  "reports": {
+    "attempts/replay-series.json": {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/attempts/replay-series.json",
+        "bytes": 51635,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/attempts/replay-series.json",
+        "sha256": "5fda44001d1312e2c96c6cd0c6d0fc94549c4b66df2191e2128b4cb8d63dd6e6"
+      },
+      "results": {
+        "aggregate": {
+          "attempted": 20,
+          "boundaries": {
+            "battle_end": 43,
+            "end_turn": 1094,
+            "game_end": 20
+          },
+          "natural_verified": 20,
+          "tamper_all_detected": true,
+          "tamper_crashed_cases": 0,
+          "tamper_runs": 2,
+          "tamper_skipped": 0,
+          "verified": 20
+        },
+        "failing_episodes": [],
+        "tamper_cases": 16
+      }
+    },
+    "attempts/series.json": {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/attempts/series.json",
+        "bytes": 3236231,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/attempts/series.json",
+        "sha256": "5ae5a628dd456ca78ecf118b675f550418b520a370ed0873b3ef61a914b03780"
+      },
+      "results": {
+        "attempts": 1000,
+        "attempts_missing": [],
+        "attempts_played": 1000,
+        "failures": 0,
+        "finished_at": "2026-10-24T11:08:13.236145+00:00",
+        "natural_completions": 133,
+        "natural_wins_by_color": {
+          "blue": 54,
+          "red": 79
+        },
+        "project_identity": {
+          "commit": "5b7c9e9463d251b9ddf3993b662609cdca0873ce",
+          "dirty": true
+        },
+        "status_counts": {
+          "completed:natural_terminal": 133,
+          "truncated:game_day_limit": 867
+        },
+        "truncations": 867
+      }
+    },
+    "profile/series.json": {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/profile/series.json",
+        "bytes": 58483,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/profile/series.json",
+        "sha256": "4639f8d040ab81ac159b3156f9b55fe03454b432b1935b66b87503fd9b47468a"
+      },
+      "results": {
+        "attempts": 16,
+        "attempts_missing": [],
+        "attempts_played": 16,
+        "failures": 0,
+        "finished_at": "2026-10-24T11:05:41.366920+00:00",
+        "natural_completions": 4,
+        "natural_wins_by_color": {
+          "blue": 2,
+          "red": 2
+        },
+        "project_identity": {
+          "commit": "5b7c9e9463d251b9ddf3993b662609cdca0873ce",
+          "dirty": true
+        },
+        "status_counts": {
+          "completed:natural_terminal": 4,
+          "truncated:game_day_limit": 12
+        },
+        "truncations": 12
+      }
+    },
+    "smoke/replay-series.json": {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/replay-series.json",
+        "bytes": 12686,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/replay-series.json",
+        "sha256": "13ba725d1617870de7777209bd7fe5e8049706318a6f35c9ba4a9dff306ed781"
+      },
+      "results": {
+        "aggregate": {
+          "attempted": 4,
+          "boundaries": {
+            "battle_end": 11,
+            "end_turn": 249,
+            "game_end": 3
+          },
+          "natural_verified": 3,
+          "tamper_all_detected": true,
+          "tamper_crashed_cases": 0,
+          "tamper_runs": 1,
+          "tamper_skipped": 0,
+          "verified": 4
+        },
+        "failing_episodes": [],
+        "tamper_cases": 8
+      }
+    },
+    "smoke/series.json": {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/series.json",
+        "bytes": 19932,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/series.json",
+        "sha256": "ed48281a0eb89f6ce438c4e5f28bdf516e9ffa960c58b19f6c65e8cb60b6926b"
+      },
+      "results": {
+        "attempts": 4,
+        "attempts_missing": [],
+        "attempts_played": 4,
+        "failures": 0,
+        "finished_at": "2026-10-24T11:05:05.637686+00:00",
+        "natural_completions": 3,
+        "natural_wins_by_color": {
+          "blue": 2,
+          "red": 1
+        },
+        "project_identity": {
+          "commit": "5b7c9e9463d251b9ddf3993b662609cdca0873ce",
+          "dirty": true
+        },
+        "status_counts": {
+          "completed:natural_terminal": 3,
+          "truncated:game_day_limit": 1
+        },
+        "truncations": 1
+      }
+    }
+  },
+  "schema_version": 1,
+  "smoke_per_episode": [
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/worker-0/episodes/episode-000001/verification/replay-verification.json",
+        "bytes": 2989,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/worker-0/episodes/episode-000001/verification/replay-verification.json",
+        "sha256": "c2a0c8424b4006fc64a909488053bda19f4c0fae477b20b4a48b0802f477d2a8"
+      },
+      "boundaries": {
+        "battle_end": 3,
+        "end_turn": 56,
+        "game_end": 1
+      },
+      "connections": [
+        {
+          "id": 1,
+          "players": [
+            0,
+            1,
+            -1
+          ]
+        }
+      ],
+      "episode": 1,
+      "observation_coverage_ok": true,
+      "observations_checked": {
+        "0": 470,
+        "1": 657
+      },
+      "observations_loaded": {
+        "0": 470,
+        "1": 657
+      },
+      "observations_unchecked": {
+        "0": 0,
+        "1": 0
+      },
+      "status": "completed",
+      "verified": true
+    },
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/worker-0/episodes/episode-000003/verification/replay-verification.json",
+        "bytes": 2989,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/worker-0/episodes/episode-000003/verification/replay-verification.json",
+        "sha256": "4d9b7109434c70d1b321a595307eddbdcae196a23845eab48e083cbd47a4eff1"
+      },
+      "boundaries": {
+        "battle_end": 2,
+        "end_turn": 42,
+        "game_end": 1
+      },
+      "connections": [
+        {
+          "id": 1,
+          "players": [
+            0,
+            1,
+            -1
+          ]
+        }
+      ],
+      "episode": 3,
+      "observation_coverage_ok": true,
+      "observations_checked": {
+        "0": 402,
+        "1": 358
+      },
+      "observations_loaded": {
+        "0": 402,
+        "1": 358
+      },
+      "observations_unchecked": {
+        "0": 0,
+        "1": 0
+      },
+      "status": "completed",
+      "verified": true
+    },
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/worker-1/episodes/episode-000002/verification/replay-verification.json",
+        "bytes": 2989,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/worker-1/episodes/episode-000002/verification/replay-verification.json",
+        "sha256": "09f3eb07e29f0c423c50f4738b0618749eaa0cc54eebe3fb6249c38aa0b7cf78"
+      },
+      "boundaries": {
+        "battle_end": 3,
+        "end_turn": 70,
+        "game_end": 1
+      },
+      "connections": [
+        {
+          "id": 1,
+          "players": [
+            0,
+            1,
+            -1
+          ]
+        }
+      ],
+      "episode": 2,
+      "observation_coverage_ok": true,
+      "observations_checked": {
+        "0": 687,
+        "1": 591
+      },
+      "observations_loaded": {
+        "0": 687,
+        "1": 591
+      },
+      "observations_unchecked": {
+        "0": 0,
+        "1": 0
+      },
+      "status": "completed",
+      "verified": true
+    },
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/smoke/worker-1/episodes/episode-000004/verification/replay-verification.json",
+        "bytes": 2674,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/smoke/worker-1/episodes/episode-000004/verification/replay-verification.json",
+        "sha256": "306e360822890d1e03cd68a5940b9ae9c1ed77a8e3d337a2290506ef3e6dc65d"
+      },
+      "boundaries": {
+        "battle_end": 3,
+        "end_turn": 81
+      },
+      "connections": [
+        {
+          "id": 1,
+          "players": [
+            0,
+            1,
+            -1
+          ]
+        }
+      ],
+      "episode": 4,
+      "observation_coverage_ok": true,
+      "observations_checked": {
+        "0": 1104,
+        "1": 1008
+      },
+      "observations_loaded": {
+        "0": 1104,
+        "1": 1008
+      },
+      "observations_unchecked": {
+        "0": 0,
+        "1": 0
+      },
+      "status": "truncated",
+      "verified": true
+    }
+  ],
+  "source_delta": {
+    "fix": "PLAYER_IDS changes neutral from 255 to -1, matching pinned VCMI; preserves live host ownership of neutral battle requests.",
+    "related_changes": [
+      "Fixtures and history-v1 comment use neutral owner -1.",
+      "Adds a contract test that pins recorded player IDs.",
+      "Renames aggregate counter to dialog_choices_sent."
+    ],
+    "summary": " README.md                                   |  4 +++-\n engine/patches/0013-experiment-replay.patch |  5 +++--\n experiments/headless/benchmark.py           |  2 +-\n experiments/headless/history_v1.py          |  2 +-\n experiments/headless/run_headless.py        |  4 ++--\n tests/native/visible_state.cpp              |  2 +-\n tests/test_headless.py                      |  6 +++---\n tests/test_native_visible_state.py          |  2 +-\n tests/test_render_replay.py                 |  6 +++---\n tests/test_replay.py                        | 14 ++++++++++++++\n 10 files changed, 32 insertions(+), 15 deletions(-)\n",
+    "tests_status": "Follow-up test delta inspected; no new tests run by this reviewer. Existing 25 synthetic replay/renderer tests passed against original 40e34a3, which alone did not validate the fix."
+  },
+  "source_preparation_check": {
+    "command": "python3 tools/prepare_vcmi.py --check",
+    "cwd": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree",
+    "git_status": "HEAD at 5b7c9e9 with only untracked generated vcmi.before-20261024T110242Z/; no tracked source modifications",
+    "result": "passed after the neutral fix; exact canonical recipe matches prepared source"
+  },
+  "validated_binary_identity": {
+    "client_sha256": "03895f9aafb68f4bed06c54fe80d661195800dad8de1e5a77b031e2f2903fd54",
+    "replay_sha256": "faee6f5ba4b911719fd11e6df82a69708961dc6e60d1cfb34401788f92ba1523",
+    "source_project": {
+      "commit": "5b7c9e9463d251b9ddf3993b662609cdca0873ce",
+      "dirty": true
+    }
+  },
+  "validated_source_commit": "5b7c9e9463d251b9ddf3993b662609cdca0873ce",
+  "videos": [
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/videos/episode-000001.json",
+        "bytes": 850,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/videos/episode-000001.json",
+        "sha256": "67c05a0ce5ce46f4bddcc223705911ed34e82318cf6d35f8bb57beb6a1c78e28"
+      },
+      "results": {
+        "battle_frames_drawn": 4,
+        "episode": 1,
+        "frames_written": 397,
+        "replay_verified": true,
+        "status": "completed"
+      }
+    },
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/videos/episode-000002.json",
+        "bytes": 850,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/videos/episode-000002.json",
+        "sha256": "faf59e94fcfbaf417d5aa14743d6487d7f2a46b3cf446c5b95c8cc0c40cd5fb3"
+      },
+      "results": {
+        "battle_frames_drawn": 3,
+        "episode": 2,
+        "frames_written": 421,
+        "replay_verified": true,
+        "status": "completed"
+      }
+    },
+    {
+      "artifact": {
+        "absolute_path": "/Users/orsi/Documents/ChatGPT/Heroes/runs/issue4-worktree/runs/validation-2026-10-24/videos/episode-000003.json",
+        "bytes": 845,
+        "relative_to_execution_checkout": "runs/validation-2026-10-24/videos/episode-000003.json",
+        "sha256": "0d14f84e1cb3b80d073cbc4d3d461bb45a18b28393d9add73a650428af6a1297"
+      },
+      "results": {
+        "battle_frames_drawn": 2,
+        "episode": 3,
+        "frames_written": 276,
+        "replay_verified": true,
+        "status": "completed"
+      }
+    }
+  ]
+}

@@ -19,6 +19,8 @@ __pycache__/
 /videos/
 /reports/
 /vcmi/
+# An older recipe's checkout that tools/validate_headless.sh asks to keep aside.
+/vcmi.before-*/
 # Original game assets and installers are local dependencies, never source.
 *.h3m
 *.lod
@@ -32,3 +34,6 @@ __pycache__/
 *.pt
 *.pth
 *.ckpt
+# Native inspector build products.
+/apps/replay-inspector/.build/
+/apps/replay-inspector/.swiftpm/

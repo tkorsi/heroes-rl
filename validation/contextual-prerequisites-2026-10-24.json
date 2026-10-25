@@ -1,0 +1,243 @@
+{
+  "checks": [
+    {
+      "command": "python3 -m unittest discover -s tests -p test_replay.py -q",
+      "passed": true,
+      "tests": 20
+    },
+    {
+      "command": "PYTHONPATH=tests python3 -m unittest test_headless test_headless_runner test_render_replay -q",
+      "note": "Before the separate horizon fix; the headless suite was rerun after that fix.",
+      "passed": true,
+      "source_commit": "f8b3731",
+      "tests": 81
+    },
+    {
+      "command": "PYTHONPATH=tests python3 -m unittest test_headless -q",
+      "includes_horizon_fix": true,
+      "passed": true,
+      "tests": 61
+    },
+    {
+      "command": "python3 -m unittest discover -s tests -p test_contextual_*.py -q",
+      "passed": true,
+      "scope": "Strict contract, auditor, evidence helpers and synthetic fixture archives; no native contextual behavior.",
+      "tests": 73
+    },
+    {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "note": "Native recipe is unchanged from the independently built and reviewed 4fe0d7c.",
+      "passed": true
+    }
+  ],
+  "created_at": "2026-10-24T13:42:32.936997+00:00",
+  "github_merged": false,
+  "kind": "contextual-prerequisite-validation",
+  "native_boundaries": {
+    "binary_sha256": "3e55c8cda8b73b7fe6f9317e007c51009919cabf365a11261027421585418de4",
+    "passed": true,
+    "probe_sha256": "a6bcb920c39c701ae7d83d8b7380b5ecf467bfa6dbe0088aae23a62cc7d74c8e",
+    "scope": "3 native random-agent episodes. Day cutoff and owned-process failure injection only. No value inference, parameter updates or replay verification.",
+    "source_commit": "6502d0633ea2f8bdabe46651f4cccb2394e62625"
+  },
+  "native_boundary_cases": [
+    {
+      "case": "day-horizon",
+      "elapsed_seconds": 0.639,
+      "error": null,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "passed": true,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "status": "truncated",
+      "termination_reason": "game_day_limit"
+    },
+    {
+      "case": "technical-kill",
+      "elapsed_seconds": 0.525,
+      "error": null,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "passed": true,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "status": "failed",
+      "termination_reason": "process_exit_without_verified_terminal"
+    },
+    {
+      "case": "technical-kill-before-cutoff",
+      "elapsed_seconds": 0.59,
+      "error": null,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "passed": true,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "status": "failed",
+      "termination_reason": "process_exit_without_verified_terminal"
+    }
+  ],
+  "paid_compute": false,
+  "pending": [
+    "Native contextual producer, planner and windows",
+    "Fresh real-game contextual acceptance and hidden-world comparisons",
+    "Contextual replay validation",
+    "No permission to start training"
+  ],
+  "preserved_original_recordings": true,
+  "raw_evidence": "runs/contextual-prerequisite-revalidation-2026-10-24",
+  "replay_label_and_render_checks": [
+    {
+      "case": "changed-seed",
+      "error": "ReplayError: The manifest's seed is not the one the replay log recorded",
+      "rejected": true,
+      "terminal_evidence": null
+    },
+    {
+      "case": "truncated-with-winner",
+      "error": "ReplayError: Only a completed episode may name outcomes or rewards",
+      "rejected": true,
+      "terminal_evidence": null
+    },
+    {
+      "case": "swapped-natural-winner",
+      "error": null,
+      "rejected": true,
+      "terminal_evidence": {
+        "expected": [
+          {
+            "player": 0,
+            "victory": true
+          },
+          {
+            "player": 1,
+            "victory": false
+          }
+        ],
+        "game_end_boundaries": 1,
+        "matches": false,
+        "replayed": [
+          {
+            "player": 0,
+            "victory": false
+          },
+          {
+            "player": 1,
+            "victory": true
+          }
+        ]
+      }
+    },
+    {
+      "case": "verified-render",
+      "passed": true
+    },
+    {
+      "case": "altered-render",
+      "error": "Inputs differ from what the replay verified (manifest_sha256); verify again",
+      "rejected": true
+    }
+  ],
+  "retained_real_game_replay_reverification": [
+    {
+      "episode": 1,
+      "error": null,
+      "observation_coverage": {
+        "after_prefix": 0,
+        "ok": true,
+        "players": {
+          "0": {
+            "checked": 470,
+            "loaded": 470,
+            "unchecked": 0,
+            "written": 470
+          },
+          "1": {
+            "checked": 657,
+            "loaded": 657,
+            "unchecked": 0,
+            "written": 657
+          }
+        }
+      },
+      "schema_version": 2,
+      "terminal_evidence": {
+        "expected": [
+          {
+            "player": 0,
+            "victory": false
+          },
+          {
+            "player": 1,
+            "victory": true
+          }
+        ],
+        "game_end_boundaries": 1,
+        "matches": true,
+        "replayed": [
+          {
+            "player": 0,
+            "victory": false
+          },
+          {
+            "player": 1,
+            "victory": true
+          }
+        ]
+      },
+      "verified": true
+    },
+    {
+      "episode": 4,
+      "error": null,
+      "observation_coverage": {
+        "after_prefix": 0,
+        "ok": true,
+        "players": {
+          "0": {
+            "checked": 1104,
+            "loaded": 1104,
+            "unchecked": 0,
+            "written": 1104
+          },
+          "1": {
+            "checked": 1008,
+            "loaded": 1008,
+            "unchecked": 0,
+            "written": 1008
+          }
+        }
+      },
+      "schema_version": 2,
+      "terminal_evidence": {
+        "expected": null,
+        "game_end_boundaries": 0,
+        "matches": true,
+        "replayed": []
+      },
+      "verified": true
+    }
+  ],
+  "reviewed_commits": {
+    "contextual_contract": "392fecc",
+    "horizon_finalization": "57f71ed",
+    "python_integrity": "df713eb"
+  },
+  "schema_version": 1,
+  "scope": "Prerequisite fixes plus preparation of independent contextual probes. Native boundary reruns use the legacy adjacent-step interface; no contextual engine validation is claimed.",
+  "source_commit": "6502d0633ea2f8bdabe46651f4cccb2394e62625",
+  "training_performed": false
+}

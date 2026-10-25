@@ -1,0 +1,27 @@
+{
+  "schema": "heroes-replay-inspector-validation-v1",
+  "passed": true,
+  "bundle_sha256": "67929ab94b115dc0092187383e76c7dba9cd94750a0f6215f27e05f6e3131078",
+  "states": 85,
+  "events": 1894,
+  "decisions": 13,
+  "contextual_records": 1809,
+  "history_frames": 112,
+  "checks": [
+    "exact contextual coverage",
+    "exact learner action coverage",
+    "all native endpoints",
+    "no future map, observation or army",
+    "conditional log-probability sum",
+    "natural terminal",
+    "no future hero window",
+    "object metadata coverage and gold amounts"
+  ],
+  "swift_build": "Apple Swift 6.2 arm64 macOS release build passed",
+  "manual_ui_checks": [
+    "gold icon selects resource card with quantity 500",
+    "offset blue hero icon selects Edric instead of town",
+    "hero card updates movement, level, mana and primary skills after recorded window opens"
+  ],
+  "training_started": false
+}

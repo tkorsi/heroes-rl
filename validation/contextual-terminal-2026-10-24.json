@@ -1,0 +1,2699 @@
+{
+  "artifact_tamper_checks": {
+    "file": {
+      "path": "runs/terminal-rollout-tamper.json",
+      "sha256": "da30de0593737a8c36474af2de5edc66403cd83b5c528da41739e82cf31073a4"
+    },
+    "result": {
+      "cases": [
+        {
+          "case": "swapped_roles",
+          "error": "Behavior role does not match the supplied learner checkpoint and frozen pool",
+          "rejected": true
+        },
+        {
+          "case": "forged_terminal_reference",
+          "error": "Invalid integer",
+          "rejected": true
+        },
+        {
+          "case": "invented_result",
+          "error": "Terminal closure has only verified terminal reward, never an ordinary result/bootstrap",
+          "rejected": true
+        },
+        {
+          "case": "missing_loser_reward",
+          "error": "Terminal closure has only verified terminal reward, never an ordinary result/bootstrap",
+          "rejected": true
+        }
+      ],
+      "optimizer_updates": 0,
+      "scope": "Tampered copies of a real collected artifact; not engine replay or new gameplay",
+      "source_rollout_sha256": "5ba0457e832c6dedbb93007ad62440ad88725ee326b73804c88c3616a76924a9"
+    }
+  },
+  "base_commit": "daa1e98980d6401ad80205e8a9057890ca9b00f8",
+  "branch": "codex/terminal-validation",
+  "code_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+  "contextual_replay": {
+    "blockers": [
+      "Contextual capture bypasses legacy observation ledger; existing contextual recordings have no native capture anchors.",
+      "No persisted native requestID/command-index/serialized-request binding to policy choices.",
+      "Legacy verifier cannot reconstruct roads, window/town state, or complete ordered recipient-specific notices.",
+      "Fresh anchored recordings and a contextual semantic verifier with rehashed tamper rejection are required."
+    ],
+    "command": "python3 -m experiments.headless.replay verify runs/terminal-red-96201/episode-000001 --data '/Users/orsi/Library/Application Support/vcmi'",
+    "expected_cli_rejection_exit_code": 1,
+    "log": {
+      "path": "runs/terminal-contextual-replay-rejection.log",
+      "sha256": "c95553058ef3bc762cf089549adf8649ae84da14a258b44a46059caa1c60973f"
+    },
+    "observation_ledger_bytes": {
+      "observations-p0.jsonl": 0,
+      "observations-p1.jsonl": 0
+    },
+    "ownership_coordination": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6387174172",
+    "status": "unsupported",
+    "verified": false
+  },
+  "date": "2026-10-24",
+  "gate_checklist": [
+    {
+      "evidence": "Both colors and learner seats in four real townless fixtures; four null-result closures, eight structurally eligible trajectories, complete recorded final loser removal events/views.",
+      "gate": "Final consumed action terminal credit",
+      "status": "passed_for_recorded_contract"
+    },
+    {
+      "evidence": "Full checkpoint/prefix recomputation has zero differences; all18 native diagnostic rollouts reject optimizer admission.",
+      "gate": "Fixed neural inference and admission",
+      "status": "passed"
+    },
+    {
+      "evidence": "Four ordinary paired cutoffs value actual unsampled own decisions; real crash has no targets; checkpoint/RNG next-update resumption is synthetic-test evidence.",
+      "gate": "Cutoff/failure/checkpoint semantics",
+      "status": "passed_with_scope"
+    },
+    {
+      "evidence": "0/4 natural,4/4 verified day cutoffs,0 unsupported,0 technical failures,0 collection errors. This small fixed-weight bounded cohort does not establish natural outcome reachability or impossibility.",
+      "gate": "Ordinary contextual natural outcomes",
+      "status": "blocked"
+    },
+    {
+      "evidence": "Second PlayerEndsGame requests headless shutdown before an authoritative final packet barrier. EOF and exit0 do not prove queued native receipt. Observed final views in fixtures are not a general drain proof.",
+      "gate": "Complete native terminal drainage",
+      "next_acceptance": "Match terminal-producing PackageReceived/PackageApplied and wait through every interface callback, persist receipt evidence, reject missing/mismatched barriers and late failures; unsupported or explicitly barriered initial/timer terminals; test both losing colors without timer sleeps.",
+      "source_anchors": [
+        "vcmi/client/NetPacksClient.cpp:458",
+        "vcmi/clientapp/EntryPoint.cpp:442",
+        "vcmi/client/CServerHandler.cpp:177",
+        "vcmi/lib/network/NetworkHandler.cpp:112",
+        "vcmi/client/Client.cpp:410"
+      ],
+      "status": "blocked"
+    },
+    {
+      "evidence": "Existing guard correctly refuses this new real recording. Fresh native ledger/request anchors and semantic reconstruction are required; legacy replay evidence is not contextual validation.",
+      "gate": "Contextual replay",
+      "status": "blocked"
+    },
+    {
+      "evidence": "Native recipe/binaries unchanged; prior paired hidden-world and window/town checks retain their original scope/commits. Full regression suite passes. New ordinary cohort exercises all11 actions,15 constructions,148 recruitments; this is not a renewed exhaustive fog/price/stock proof.",
+      "gate": "Native fog/freshness/construction/recruitment baseline",
+      "prior_evidence": [
+        "validation/contextual-native-2026-10-24.json",
+        "validation/town-native-2026-10-24.json"
+      ],
+      "status": "retained_bounded_evidence"
+    },
+    {
+      "evidence": "Actual negative server acknowledgement, native route interruption, garrisoned-hero destination, Grail/conditional auto-merge, active-window terminal invalidation and wider notice/query/travel coverage remain unverified. No-capacity UI rejection is not a server rejection.",
+      "gate": "Remaining native coverage",
+      "status": "open"
+    },
+    {
+      "evidence": "Synthetic-only PPO admission unchanged; no training authorization or campaign.",
+      "gate": "Gameplay optimization authorization",
+      "status": "disabled"
+    }
+  ],
+  "inference_totals": {
+    "actions_recomputed": 6528,
+    "conditionals_recomputed": 11017,
+    "frames": 49560,
+    "maximum_absolute_difference": 0.0,
+    "optimizer_admission_rejected": 18,
+    "optimizer_updates": 0,
+    "ordinary_unsampled_bootstrap_decisions": 8,
+    "player_rollouts": 18,
+    "samples": 6527,
+    "terminal_closures": 4,
+    "values_recomputed": 6536
+  },
+  "legacy_compatibility": {
+    "file": {
+      "path": "runs/terminal-v1-compatibility.json",
+      "sha256": "c610f42ecff149f03e99526807096dea3bb8cceec02e6e53d187673a11005572"
+    },
+    "result": {
+      "artifacts": [
+        {
+          "canonical_roundtrip_identical": true,
+          "file_sha256": "e0c63aaf6f30dbd880af87671769f90f1acf40a57bb0b1adcfc43b84d52f293f",
+          "path": "runs/contextual-neural-fixed-95011-95012/episode-000001/neural-rollout.json",
+          "schema": "heroes-context-rollout-v1"
+        },
+        {
+          "canonical_roundtrip_identical": true,
+          "file_sha256": "0d5c45d92fe7f8e6c93e00de29acbb827e2f05e1e875f347a927b2fd48d10b4b",
+          "path": "runs/contextual-neural-townless-95101/episode-000001/neural-rollout.json",
+          "schema": "heroes-context-rollout-v1"
+        },
+        {
+          "canonical_roundtrip_identical": true,
+          "file_sha256": "f7f20515389667f5131955d5e248b053c4ac81649e8b07579616004bd640f29d",
+          "path": "runs/contextual-neural-failure-95201-second/episode-000001/neural-rollout.json",
+          "schema": "heroes-context-rollout-v1"
+        }
+      ],
+      "scope": "Read-only interpretation of retained v1 artifacts; no source or artifact migration"
+    }
+  },
+  "merged": false,
+  "native_attempts": 9,
+  "native_optimizer_updates": 0,
+  "ordinary_coverage": {
+    "actions": {
+      "back": 798,
+      "close": 1362,
+      "construct": 15,
+      "end_turn": 800,
+      "move_to": 605,
+      "open_building": 265,
+      "open_hero": 609,
+      "open_panel": 711,
+      "open_town": 753,
+      "recruit": 148,
+      "select_recruit": 208
+    },
+    "results": {
+      "built": 15,
+      "closed": 2160,
+      "hero_unavailable": 4,
+      "interaction": 10,
+      "movement_limit": 185,
+      "no_route_known": 179,
+      "opened": 2338,
+      "reached": 227,
+      "recruited": 148,
+      "selected": 208,
+      "turn_ended": 800
+    }
+  },
+  "ordinary_evaluation": {
+    "attempts": [
+      {
+        "audit_consistent": true,
+        "budgets": {
+          "environment_limits": {
+            "bridge_timeout": 60,
+            "max_actions": 2049,
+            "max_days": 100,
+            "shutdown_seconds": 30.0,
+            "startup_seconds": 180.0,
+            "watchdog_seconds": 60.0
+          },
+          "max_requests": 2048
+        },
+        "category": "verified_cutoff",
+        "coverage": {
+          "blue": {
+            "frames": 4709,
+            "kinds": {
+              "acknowledged": 330,
+              "consumed": 581,
+              "context": 429,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 582,
+              "event": 120,
+              "issued": 330,
+              "result": 581,
+              "submitted": 581,
+              "view": 1173
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 1,
+              "closed": 201,
+              "hero_unavailable": 1,
+              "movement_limit": 15,
+              "no_route_known": 14,
+              "opened": 210,
+              "reached": 22,
+              "recruited": 7,
+              "selected": 10,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 74,
+              "close": 127,
+              "construct": 1,
+              "end_turn": 100,
+              "move_to": 52,
+              "open_building": 28,
+              "open_hero": 42,
+              "open_panel": 55,
+              "open_town": 85,
+              "recruit": 7,
+              "select_recruit": 10
+            }
+          },
+          "red": {
+            "frames": 7689,
+            "kinds": {
+              "acknowledged": 576,
+              "consumed": 1014,
+              "context": 803,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 1015,
+              "event": 135,
+              "issued": 576,
+              "result": 1014,
+              "submitted": 1014,
+              "view": 1540
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 2,
+              "closed": 366,
+              "interaction": 3,
+              "movement_limit": 38,
+              "no_route_known": 25,
+              "opened": 392,
+              "reached": 45,
+              "recruited": 22,
+              "selected": 21,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 142,
+              "close": 224,
+              "construct": 2,
+              "end_turn": 100,
+              "move_to": 111,
+              "open_building": 59,
+              "open_hero": 114,
+              "open_panel": 109,
+              "open_town": 110,
+              "recruit": 22,
+              "select_recruit": 21
+            }
+          }
+        },
+        "engine_seed": 96111,
+        "episode": 1,
+        "files": {
+          "episode-000001/agents/blue/history-v3.jsonl": "f02aefc28a585cb619508d165e7758fce1e3c9b919eff6c0b7072fb46441a05a",
+          "episode-000001/agents/red/history-v3.jsonl": "dce5fcdeb11928aa0bd1e213a953ba4599f53fc38b96d6ef954aaa5d7ea4cab6",
+          "episode-000001/manifest.json": "a5b18fe307c7fe11f4f4a9681f18111d52f34b162f913268802a459f319da423",
+          "episode-000001/neural-audit.json": "55b5bc775dbe9b838fcb55f6e768532d39054c984451f2c529a2adc1e199100a",
+          "episode-000001/neural-rollout.json": "6fa83fdeef69be1b6e4d2479dac61ed955878a421a2605e923cd6bfdf38392ed"
+        },
+        "learner_checkpoint": "untrained-901446eb745d227a",
+        "learner_player": 0,
+        "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+        "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+        "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+        "outcomes": {
+          "blue": null,
+          "red": null
+        },
+        "policy_seeds": [
+          96105,
+          96106
+        ],
+        "rewards": {
+          "blue": null,
+          "red": null
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit",
+        "training_samples": 0,
+        "weights_unchanged": true
+      },
+      {
+        "audit_consistent": true,
+        "budgets": {
+          "environment_limits": {
+            "bridge_timeout": 60,
+            "max_actions": 2049,
+            "max_days": 100,
+            "shutdown_seconds": 30.0,
+            "startup_seconds": 180.0,
+            "watchdog_seconds": 60.0
+          },
+          "max_requests": 2048
+        },
+        "category": "verified_cutoff",
+        "coverage": {
+          "blue": {
+            "frames": 5706,
+            "kinds": {
+              "acknowledged": 337,
+              "consumed": 801,
+              "context": 633,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 802,
+              "event": 131,
+              "issued": 337,
+              "result": 801,
+              "submitted": 801,
+              "view": 1061
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 2,
+              "closed": 285,
+              "hero_unavailable": 1,
+              "interaction": 2,
+              "movement_limit": 22,
+              "no_route_known": 24,
+              "opened": 308,
+              "reached": 19,
+              "recruited": 19,
+              "selected": 19,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 122,
+              "close": 163,
+              "construct": 2,
+              "end_turn": 100,
+              "move_to": 68,
+              "open_building": 49,
+              "open_hero": 68,
+              "open_panel": 96,
+              "open_town": 95,
+              "recruit": 19,
+              "select_recruit": 19
+            }
+          },
+          "red": {
+            "frames": 4514,
+            "kinds": {
+              "acknowledged": 210,
+              "consumed": 653,
+              "context": 510,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 654,
+              "event": 128,
+              "issued": 210,
+              "result": 653,
+              "submitted": 653,
+              "view": 841
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 2,
+              "closed": 218,
+              "hero_unavailable": 1,
+              "interaction": 1,
+              "movement_limit": 4,
+              "no_route_known": 29,
+              "opened": 242,
+              "reached": 8,
+              "recruited": 20,
+              "selected": 28,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 80,
+              "close": 138,
+              "construct": 2,
+              "end_turn": 100,
+              "move_to": 43,
+              "open_building": 27,
+              "open_hero": 40,
+              "open_panel": 77,
+              "open_town": 98,
+              "recruit": 20,
+              "select_recruit": 28
+            }
+          }
+        },
+        "engine_seed": 96111,
+        "episode": 2,
+        "files": {
+          "episode-000002/agents/blue/history-v3.jsonl": "938150663d01a57b0d82897d2f45096290fca82ce68ffe15dac4d386bf6e09e2",
+          "episode-000002/agents/red/history-v3.jsonl": "029b20b54a1dbaa6286ccdc2848c5cbdbf42e024220328c9d00c90b132cebe3c",
+          "episode-000002/manifest.json": "1647cab3ae73de93eb4b6d865d6e4181f011b7126b4aeaba3d475532ed664d11",
+          "episode-000002/neural-audit.json": "c653065d074f343c1fd79b3c10f202f6edc0eb39d251c327eb10b8119f9b8d4f",
+          "episode-000002/neural-rollout.json": "02f59762fa603d65602f4ac913cecd0f6f78e20528018fb58360d23cb42863d7"
+        },
+        "learner_checkpoint": "untrained-901446eb745d227a",
+        "learner_player": 1,
+        "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+        "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+        "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+        "outcomes": {
+          "blue": null,
+          "red": null
+        },
+        "policy_seeds": [
+          96107,
+          96108
+        ],
+        "rewards": {
+          "blue": null,
+          "red": null
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit",
+        "training_samples": 0,
+        "weights_unchanged": true
+      },
+      {
+        "audit_consistent": true,
+        "budgets": {
+          "environment_limits": {
+            "bridge_timeout": 60,
+            "max_actions": 2049,
+            "max_days": 100,
+            "shutdown_seconds": 30.0,
+            "startup_seconds": 180.0,
+            "watchdog_seconds": 60.0
+          },
+          "max_requests": 2048
+        },
+        "category": "verified_cutoff",
+        "coverage": {
+          "blue": {
+            "frames": 7742,
+            "kinds": {
+              "acknowledged": 564,
+              "consumed": 1007,
+              "context": 786,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 1008,
+              "event": 128,
+              "issued": 564,
+              "result": 1007,
+              "submitted": 1007,
+              "view": 1669
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 3,
+              "closed": 359,
+              "interaction": 3,
+              "movement_limit": 47,
+              "no_route_known": 30,
+              "opened": 378,
+              "reached": 41,
+              "recruited": 13,
+              "selected": 33,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 118,
+              "close": 241,
+              "construct": 3,
+              "end_turn": 100,
+              "move_to": 121,
+              "open_building": 30,
+              "open_hero": 131,
+              "open_panel": 107,
+              "open_town": 110,
+              "recruit": 13,
+              "select_recruit": 33
+            }
+          },
+          "red": {
+            "frames": 6357,
+            "kinds": {
+              "acknowledged": 531,
+              "consumed": 771,
+              "context": 593,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 772,
+              "event": 116,
+              "issued": 531,
+              "result": 771,
+              "submitted": 771,
+              "view": 1499
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 1,
+              "closed": 256,
+              "movement_limit": 22,
+              "no_route_known": 18,
+              "opened": 284,
+              "reached": 38,
+              "recruited": 26,
+              "selected": 26,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 82,
+              "close": 174,
+              "construct": 1,
+              "end_turn": 100,
+              "move_to": 78,
+              "open_building": 21,
+              "open_hero": 82,
+              "open_panel": 89,
+              "open_town": 92,
+              "recruit": 26,
+              "select_recruit": 26
+            }
+          }
+        },
+        "engine_seed": 96112,
+        "episode": 3,
+        "files": {
+          "episode-000003/agents/blue/history-v3.jsonl": "4db5e07aa2db23e775f5c9863fe85c6d687ea2cf699212d09898ab23b91bbc63",
+          "episode-000003/agents/red/history-v3.jsonl": "a97f278630b7968adadf9a7e73ab0750c502cbf252638c88e25749090f2fa280",
+          "episode-000003/manifest.json": "b8dfce5cec7afadd28ac1faca3ba99a547a501384c04dd168a159bd8468533e7",
+          "episode-000003/neural-audit.json": "48ffa2bf817f92e5cc2ac9acf66bb74aedc005c482bf5ef8630728bdb79111bc",
+          "episode-000003/neural-rollout.json": "1a90818f190e5977e9d827fa1381eb4917eb80d192336a3b4be7f10e424ddce5"
+        },
+        "learner_checkpoint": "untrained-901446eb745d227a",
+        "learner_player": 0,
+        "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+        "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+        "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+        "outcomes": {
+          "blue": null,
+          "red": null
+        },
+        "policy_seeds": [
+          96109,
+          96110
+        ],
+        "rewards": {
+          "blue": null,
+          "red": null
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit",
+        "training_samples": 0,
+        "weights_unchanged": true
+      },
+      {
+        "audit_consistent": true,
+        "budgets": {
+          "environment_limits": {
+            "bridge_timeout": 60,
+            "max_actions": 2049,
+            "max_days": 100,
+            "shutdown_seconds": 30.0,
+            "startup_seconds": 180.0,
+            "watchdog_seconds": 60.0
+          },
+          "max_requests": 2048
+        },
+        "category": "verified_cutoff",
+        "coverage": {
+          "blue": {
+            "frames": 5792,
+            "kinds": {
+              "acknowledged": 513,
+              "consumed": 739,
+              "context": 546,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 740,
+              "event": 128,
+              "issued": 513,
+              "result": 739,
+              "submitted": 739,
+              "view": 1133
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 1,
+              "closed": 241,
+              "interaction": 1,
+              "movement_limit": 29,
+              "no_route_known": 26,
+              "opened": 258,
+              "reached": 37,
+              "recruited": 15,
+              "selected": 31,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 67,
+              "close": 174,
+              "construct": 1,
+              "end_turn": 100,
+              "move_to": 93,
+              "open_building": 14,
+              "open_hero": 91,
+              "open_panel": 70,
+              "open_town": 83,
+              "recruit": 15,
+              "select_recruit": 31
+            }
+          },
+          "red": {
+            "frames": 5278,
+            "kinds": {
+              "acknowledged": 270,
+              "consumed": 708,
+              "context": 569,
+              "cutoff": 1,
+              "cutoff_finalized": 1,
+              "decision": 709,
+              "event": 119,
+              "issued": 270,
+              "result": 708,
+              "submitted": 708,
+              "view": 1215
+            },
+            "last_public_day": 101,
+            "result_statuses": {
+              "built": 3,
+              "closed": 234,
+              "hero_unavailable": 1,
+              "movement_limit": 8,
+              "no_route_known": 13,
+              "opened": 266,
+              "reached": 17,
+              "recruited": 26,
+              "selected": 40,
+              "turn_ended": 100
+            },
+            "submitted_actions": {
+              "back": 113,
+              "close": 121,
+              "construct": 3,
+              "end_turn": 100,
+              "move_to": 39,
+              "open_building": 37,
+              "open_hero": 41,
+              "open_panel": 108,
+              "open_town": 80,
+              "recruit": 26,
+              "select_recruit": 40
+            }
+          }
+        },
+        "engine_seed": 96112,
+        "episode": 4,
+        "files": {
+          "episode-000004/agents/blue/history-v3.jsonl": "2c9ce2711cd63c9e276765e097c61ef725fcd3f543a97f60b85f1af80452fd1c",
+          "episode-000004/agents/red/history-v3.jsonl": "e9103cfdb0586ade6f468f43ae16648a1f56565c921e9485264513d41eee1288",
+          "episode-000004/manifest.json": "7dafe5c8c421c4aaf24b869fa0348ff3f71dbae6bae6b0e44bc34719260b7550",
+          "episode-000004/neural-audit.json": "594e4cc44ea14746852f92a85c4c15d3b2dcb21ff160c8f6f6cb1c61b18059d3",
+          "episode-000004/neural-rollout.json": "e81bdf85749b294a6c5004f58908af32c5dd0acbbc4b1807d710a3f7b2ce951a"
+        },
+        "learner_checkpoint": "untrained-901446eb745d227a",
+        "learner_player": 1,
+        "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+        "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+        "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+        "outcomes": {
+          "blue": null,
+          "red": null
+        },
+        "policy_seeds": [
+          96111,
+          96112
+        ],
+        "rewards": {
+          "blue": null,
+          "red": null
+        },
+        "status": "truncated",
+        "termination_reason": "game_day_limit",
+        "training_samples": 0,
+        "weights_unchanged": true
+      }
+    ],
+    "checkpoint_file": {
+      "path": "runs/terminal-ordinary-96111-96112/untrained-policy.pt",
+      "sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558"
+    },
+    "configuration": {
+      "engine_seeds": [
+        96111,
+        96112
+      ],
+      "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+      "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+      "max_days": 100,
+      "max_requests": 2048,
+      "opponent_sampling_seed": 95004,
+      "opponent_seeds": [
+        95002
+      ],
+      "policy_seed": 96103
+    },
+    "declared_plan": {
+      "file": {
+        "path": "runs/terminal-ordinary-96111-96112/cohort-plan.json",
+        "sha256": "188f90191005f045e7307bda58e32f72067763ff6a2f7b4e0e5cc3829fa70c54"
+      },
+      "plan": {
+        "attempts": [
+          {
+            "budgets": {
+              "environment_limits": {
+                "bridge_timeout": 60,
+                "max_actions": 2049,
+                "max_days": 100,
+                "shutdown_seconds": 30.0,
+                "startup_seconds": 180.0,
+                "watchdog_seconds": 60.0
+              },
+              "max_requests": 2048
+            },
+            "engine_seed": 96111,
+            "episode": 1,
+            "learner_checkpoint": "untrained-901446eb745d227a",
+            "learner_player": 0,
+            "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+            "policy_seeds": [
+              96105,
+              96106
+            ]
+          },
+          {
+            "budgets": {
+              "environment_limits": {
+                "bridge_timeout": 60,
+                "max_actions": 2049,
+                "max_days": 100,
+                "shutdown_seconds": 30.0,
+                "startup_seconds": 180.0,
+                "watchdog_seconds": 60.0
+              },
+              "max_requests": 2048
+            },
+            "engine_seed": 96111,
+            "episode": 2,
+            "learner_checkpoint": "untrained-901446eb745d227a",
+            "learner_player": 1,
+            "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+            "policy_seeds": [
+              96107,
+              96108
+            ]
+          },
+          {
+            "budgets": {
+              "environment_limits": {
+                "bridge_timeout": 60,
+                "max_actions": 2049,
+                "max_days": 100,
+                "shutdown_seconds": 30.0,
+                "startup_seconds": 180.0,
+                "watchdog_seconds": 60.0
+              },
+              "max_requests": 2048
+            },
+            "engine_seed": 96112,
+            "episode": 3,
+            "learner_checkpoint": "untrained-901446eb745d227a",
+            "learner_player": 0,
+            "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+            "policy_seeds": [
+              96109,
+              96110
+            ]
+          },
+          {
+            "budgets": {
+              "environment_limits": {
+                "bridge_timeout": 60,
+                "max_actions": 2049,
+                "max_days": 100,
+                "shutdown_seconds": 30.0,
+                "startup_seconds": 180.0,
+                "watchdog_seconds": 60.0
+              },
+              "max_requests": 2048
+            },
+            "engine_seed": 96112,
+            "episode": 4,
+            "learner_checkpoint": "untrained-901446eb745d227a",
+            "learner_player": 1,
+            "learner_weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd",
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "opponent_weights_sha256": "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12",
+            "policy_seeds": [
+              96111,
+              96112
+            ]
+          }
+        ],
+        "baseline": {
+          "authored_seed": 0,
+          "canonical_path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+          "fixture": false,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+          "semantics_verified": true,
+          "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+          "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
+        },
+        "collector_purpose": "diagnostic",
+        "native_identity": {
+          "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+          "binary_sha256": "d6081f52ff4cc26268cd7d0fa5f18efd2eec85f1161ead86a807ef07896fc633",
+          "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+          "log_level": "info",
+          "map": {
+            "name": "random-baseline-v1.vmap",
+            "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+          }
+        },
+        "policy_checkpoint_file_sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558",
+        "purpose": "ordinary-evaluation",
+        "schema": "heroes-contextual-ordinary-evaluation-plan-v1",
+        "source": {
+          "git_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+          "interface": "adventure-town-v1",
+          "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+          "source_sha256": {
+            "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+            "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+            "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+            "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+            "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d",
+            "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+            "experiments/learner/contextual_rollout.py": "34a80cb49b41d365cdd3feb01a120d188ca086c0ab19381d1ea2f8a1d49b7688",
+            "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+            "experiments/learner/inference.py": "611016d42ecccc6b112137a8953181aa8c4dac289e245cc8b8cdb1bab21ee5f9",
+            "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+            "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+            "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+          },
+          "torch": "2.9.1",
+          "tracked_worktree_dirty": false
+        },
+        "training_performed": false
+      }
+    },
+    "inference_audits": [
+      {
+        "file": {
+          "path": "runs/terminal-ordinary-96111-96112/inference-audit-1.json",
+          "sha256": "3e0a7e5bb0b221d0838bcc946248074f5998dbacfdc3272e0e3dd635b1de13b8"
+        },
+        "result": {
+          "checkpoint_sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558",
+          "episodes": [
+            {
+              "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-ordinary-96111-96112/episode-000001",
+              "files": {
+                "agents/blue/history-v3.jsonl": "f02aefc28a585cb619508d165e7758fce1e3c9b919eff6c0b7072fb46441a05a",
+                "agents/red/history-v3.jsonl": "dce5fcdeb11928aa0bd1e213a953ba4599f53fc38b96d6ef954aaa5d7ea4cab6",
+                "manifest.json": "a5b18fe307c7fe11f4f4a9681f18111d52f34b162f913268802a459f319da423",
+                "neural-rollout.json": "6fa83fdeef69be1b6e4d2479dac61ed955878a421a2605e923cd6bfdf38392ed"
+              },
+              "passed": true,
+              "players": [
+                {
+                  "actions_recomputed": 1014,
+                  "color": "red",
+                  "conditionals_recomputed": 1719,
+                  "frames": 7689,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 1014,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 1015,
+                  "weights_unchanged": true
+                },
+                {
+                  "actions_recomputed": 581,
+                  "color": "blue",
+                  "conditionals_recomputed": 936,
+                  "frames": 4709,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 581,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 582,
+                  "weights_unchanged": true
+                }
+              ],
+              "status": "truncated",
+              "termination_reason": "game_day_limit"
+            }
+          ],
+          "optimizer_updates": 0,
+          "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+          "schema": "heroes-neural-rollout-audit-v1",
+          "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+        }
+      },
+      {
+        "file": {
+          "path": "runs/terminal-ordinary-96111-96112/inference-audit-2.json",
+          "sha256": "8f5baf71736a9aa833f2dee5b1d6e6c7544126f149683dd89d8b7cd2b2889ef6"
+        },
+        "result": {
+          "checkpoint_sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558",
+          "episodes": [
+            {
+              "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-ordinary-96111-96112/episode-000002",
+              "files": {
+                "agents/blue/history-v3.jsonl": "938150663d01a57b0d82897d2f45096290fca82ce68ffe15dac4d386bf6e09e2",
+                "agents/red/history-v3.jsonl": "029b20b54a1dbaa6286ccdc2848c5cbdbf42e024220328c9d00c90b132cebe3c",
+                "manifest.json": "1647cab3ae73de93eb4b6d865d6e4181f011b7126b4aeaba3d475532ed664d11",
+                "neural-rollout.json": "02f59762fa603d65602f4ac913cecd0f6f78e20528018fb58360d23cb42863d7"
+              },
+              "passed": true,
+              "players": [
+                {
+                  "actions_recomputed": 653,
+                  "color": "red",
+                  "conditionals_recomputed": 1096,
+                  "frames": 4514,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 653,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 654,
+                  "weights_unchanged": true
+                },
+                {
+                  "actions_recomputed": 801,
+                  "color": "blue",
+                  "conditionals_recomputed": 1340,
+                  "frames": 5706,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 801,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 802,
+                  "weights_unchanged": true
+                }
+              ],
+              "status": "truncated",
+              "termination_reason": "game_day_limit"
+            }
+          ],
+          "optimizer_updates": 0,
+          "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+          "schema": "heroes-neural-rollout-audit-v1",
+          "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+        }
+      },
+      {
+        "file": {
+          "path": "runs/terminal-ordinary-96111-96112/inference-audit-3.json",
+          "sha256": "73beeba0d2ef9d7e11729f7d69c641dfed4b9ece849aa8428d54236e4ade87f8"
+        },
+        "result": {
+          "checkpoint_sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558",
+          "episodes": [
+            {
+              "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-ordinary-96111-96112/episode-000003",
+              "files": {
+                "agents/blue/history-v3.jsonl": "4db5e07aa2db23e775f5c9863fe85c6d687ea2cf699212d09898ab23b91bbc63",
+                "agents/red/history-v3.jsonl": "a97f278630b7968adadf9a7e73ab0750c502cbf252638c88e25749090f2fa280",
+                "manifest.json": "b8dfce5cec7afadd28ac1faca3ba99a547a501384c04dd168a159bd8468533e7",
+                "neural-rollout.json": "1a90818f190e5977e9d827fa1381eb4917eb80d192336a3b4be7f10e424ddce5"
+              },
+              "passed": true,
+              "players": [
+                {
+                  "actions_recomputed": 771,
+                  "color": "red",
+                  "conditionals_recomputed": 1326,
+                  "frames": 6357,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 771,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 772,
+                  "weights_unchanged": true
+                },
+                {
+                  "actions_recomputed": 1007,
+                  "color": "blue",
+                  "conditionals_recomputed": 1712,
+                  "frames": 7742,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 1007,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 1008,
+                  "weights_unchanged": true
+                }
+              ],
+              "status": "truncated",
+              "termination_reason": "game_day_limit"
+            }
+          ],
+          "optimizer_updates": 0,
+          "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+          "schema": "heroes-neural-rollout-audit-v1",
+          "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+        }
+      },
+      {
+        "file": {
+          "path": "runs/terminal-ordinary-96111-96112/inference-audit-4.json",
+          "sha256": "7d799c362c0551cc7fedb1e8d909e317d62d815086e7a88e5f38bae0aaec456b"
+        },
+        "result": {
+          "checkpoint_sha256": "9efcf3d4e8d66dda6e9cb6e319787969be5ecad356385115e330c6e171c67558",
+          "episodes": [
+            {
+              "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-ordinary-96111-96112/episode-000004",
+              "files": {
+                "agents/blue/history-v3.jsonl": "2c9ce2711cd63c9e276765e097c61ef725fcd3f543a97f60b85f1af80452fd1c",
+                "agents/red/history-v3.jsonl": "e9103cfdb0586ade6f468f43ae16648a1f56565c921e9485264513d41eee1288",
+                "manifest.json": "7dafe5c8c421c4aaf24b869fa0348ff3f71dbae6bae6b0e44bc34719260b7550",
+                "neural-rollout.json": "e81bdf85749b294a6c5004f58908af32c5dd0acbbc4b1807d710a3f7b2ce951a"
+              },
+              "passed": true,
+              "players": [
+                {
+                  "actions_recomputed": 708,
+                  "color": "red",
+                  "conditionals_recomputed": 1192,
+                  "frames": 5278,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 708,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 709,
+                  "weights_unchanged": true
+                },
+                {
+                  "actions_recomputed": 739,
+                  "color": "blue",
+                  "conditionals_recomputed": 1267,
+                  "frames": 5792,
+                  "last_observed_owned_hero_count": null,
+                  "maximum_absolute_difference": {
+                    "conditional_log_probability": 0.0,
+                    "joint_log_probability": 0.0,
+                    "value": 0.0
+                  },
+                  "optimization_eligible": false,
+                  "optimizer_admission_rejected": true,
+                  "postterminal_view_sequences": [],
+                  "samples": 739,
+                  "terminal_closures": [],
+                  "terminal_rewards": [],
+                  "trajectory_eligible": true,
+                  "values_recomputed": 740,
+                  "weights_unchanged": true
+                }
+              ],
+              "status": "truncated",
+              "termination_reason": "game_day_limit"
+            }
+          ],
+          "optimizer_updates": 0,
+          "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+          "schema": "heroes-neural-rollout-audit-v1",
+          "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+        }
+      }
+    ],
+    "opponents": [
+      [
+        "untrained-65120f056f0c4b8a",
+        "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+      ]
+    ],
+    "policy": {
+      "checkpoint": "untrained-901446eb745d227a",
+      "initialization_seed": null,
+      "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+    },
+    "report": {
+      "path": "runs/terminal-ordinary-96111-96112/report.json",
+      "sha256": "e6a0cf1447e541d313d2beb4e230a52815299e42311a2fea43068c642d402b03"
+    },
+    "source": {
+      "git_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+      "interface": "adventure-town-v1",
+      "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+      "source_sha256": {
+        "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+        "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+        "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+        "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+        "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d",
+        "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+        "experiments/learner/contextual_rollout.py": "34a80cb49b41d365cdd3feb01a120d188ca086c0ab19381d1ea2f8a1d49b7688",
+        "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+        "experiments/learner/inference.py": "611016d42ecccc6b112137a8953181aa8c4dac289e245cc8b8cdb1bab21ee5f9",
+        "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+        "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+        "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+      },
+      "torch": "2.9.1",
+      "tracked_worktree_dirty": false
+    },
+    "summary": {
+      "attempts": 4,
+      "by_learner_seat": {
+        "blue": {
+          "attempts": 2,
+          "collection_or_audit_error": 0,
+          "in_progress": 0,
+          "learner_losses": 0,
+          "learner_wins": 0,
+          "technical_failure": 0,
+          "unsupported_interface": 0,
+          "verified_cutoff": 2,
+          "verified_natural": 0
+        },
+        "red": {
+          "attempts": 2,
+          "collection_or_audit_error": 0,
+          "in_progress": 0,
+          "learner_losses": 0,
+          "learner_wins": 0,
+          "technical_failure": 0,
+          "unsupported_interface": 0,
+          "verified_cutoff": 2,
+          "verified_natural": 0
+        }
+      },
+      "collection_or_audit_error": 0,
+      "finished_attempts": 4,
+      "in_progress": 0,
+      "learner_losses": 0,
+      "learner_wins_among_completed": {
+        "denominator": 0,
+        "numerator": 0,
+        "value": null
+      },
+      "limitations": [
+        "Small bounded fixed-weight cohort; no population win-rate or learning claim.",
+        "Seats share engine seeds and opponents; attempts are paired, not independent seed samples.",
+        "Cutoffs and failures are unscored, never draws; they remain in the all-attempt denominator.",
+        "Completed-only outcome fractions are conditional on reaching a natural end within the budgets.",
+        "Contextual replay remains unsupported; collection remains diagnostic and excluded from PPO."
+      ],
+      "natural_outcome_frequency": {
+        "denominator": 4,
+        "numerator": 0,
+        "value": 0.0
+      },
+      "not_started": 0,
+      "optimizer_updates": 0,
+      "outcomes_by_player": {
+        "blue": {
+          "loss": 0,
+          "win": 0
+        },
+        "red": {
+          "loss": 0,
+          "win": 0
+        }
+      },
+      "planned_attempts": 4,
+      "technical_failure": 0,
+      "termination_reasons": {
+        "game_day_limit": 4
+      },
+      "training_samples": 0,
+      "unsupported_interface": 0,
+      "verified_cutoff": 4,
+      "verified_natural": 0
+    }
+  },
+  "paid_compute": false,
+  "plan": {
+    "file": {
+      "path": "runs/terminal-validation-plan.json",
+      "sha256": "5a1e6356616fd1fcad3f74d52728cb5dc23561ec4ee83409b60acbf08cf2ec7f"
+    },
+    "plan": {
+      "checkpoint": {
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/contextual-neural-fixed-95011-95012/untrained-policy.pt",
+        "sha256": "32f9377d844f56861d32ac2be2088ed244f14f2cec2e1d172f30983ca119bc71"
+      },
+      "optimizer_updates": 0,
+      "ordinary_cohort": {
+        "engine_seeds": [
+          96111,
+          96112
+        ],
+        "learner_seats": [
+          0,
+          1
+        ],
+        "map_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+        "max_days": 100,
+        "max_requests": 2048,
+        "output": "runs/terminal-ordinary-96111-96112",
+        "policy_seed": 96103
+      },
+      "retention": "Every native attempt retained; no tuning or retries to obtain natural outcomes. Fixture diagnostics are excluded from ordinary cohort frequency. Additional attempts require explicit separate purpose and retain previous results.",
+      "schema": "heroes-terminal-validation-plan-v1",
+      "technical_failure": {
+        "engine_seed": 96401,
+        "output": "runs/terminal-failure-96401",
+        "resolved_choices_before_owned_process_kill": 4
+      },
+      "terminal_fixtures": [
+        {
+          "engine_seed": 96201,
+          "learner_seats": [
+            0,
+            1
+          ],
+          "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-red-fixture/natural-townless.vmap",
+          "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+          "max_days": 40,
+          "max_requests": 256,
+          "output": "runs/terminal-red-96201",
+          "policy_seed": 96203,
+          "townless_player": "red"
+        },
+        {
+          "engine_seed": 96301,
+          "learner_seats": [
+            0,
+            1
+          ],
+          "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-blue-fixture/natural-townless-blue.vmap",
+          "map_sha256": "5e1046b65b7aa395b8d6eb748951f2ec824d3f47fb814e335eb7bc14621c5a50",
+          "max_days": 40,
+          "max_requests": 256,
+          "output": "runs/terminal-blue-96301",
+          "policy_seed": 96303,
+          "townless_player": "blue"
+        }
+      ],
+      "training_performed": false
+    }
+  },
+  "prepared_engine": {
+    "command": "python3 tools/prepare_vcmi.py --check",
+    "exit_code": 0,
+    "identity": {
+      "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+      "binary_sha256": "d6081f52ff4cc26268cd7d0fa5f18efd2eec85f1161ead86a807ef07896fc633",
+      "bridge_source_sha256": "fbd221aafb43fa39b46e220aae00f01115a9b4cc603e747c2fa46d7a52166bf8",
+      "captured_before_launch": true,
+      "contextual_python_sha256": {
+        "experiments/headless/contextual_env.py": "a2e6117fd209fccb65d8b535d8ab810708d7e017caf271a6341b5603020970a0",
+        "experiments/headless/contextual_protocol.py": "37a80f1ebb4f419d335940e3522350f912ac2668fd5bdc4e2f0350beff5c36ac",
+        "experiments/headless/env.py": "350629ed51201fc0f36dc6b5b0bd3f95fbfa2be73feb95d845f5245f64ea20f2",
+        "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d"
+      },
+      "engine": {
+        "commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+        "dirty": true
+      },
+      "engine_recipe": {
+        "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+        "engine/ExperimentReplay/CMakeLists.txt": "956afc53b1c546b91b03061d1ba7766c6ab78ef0fc915488e412e6fd03ed74f1",
+        "engine/ExperimentReplay/ReplayMain.cpp": "b0bd3df330fa5c9872d04efe33f91e86e5b52039ccd85d2da10657c6105078b2",
+        "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+        "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+        "engine/ExplorerRL/CMakeLists.txt": "c19cd592a6916666c85a33e3e40a0449b5709609a80504d830fa53677088ecad",
+        "engine/ExplorerRL/Contextual.cpp": "3b14be29ad643bfacadaae42db4841594ecb25e8af9cf18fd5dab615087ec005",
+        "engine/ExplorerRL/Contextual.h": "bf72184a5a69827e44cc2596c1cc0ec74c107889865da0806dfa0733aef210eb",
+        "engine/ExplorerRL/ExplorerRL.cpp": "84b0162d075152b240b545c48ca24a9332f78588fd879672b0b97bc13d926800",
+        "engine/ExplorerRL/ExplorerRL.h": "8c238d6befd13a006dbd8c5489d6ec2a4f86fb007d2a898e8f2d055f55112d08",
+        "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+        "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+        "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+        "engine/ExplorerRL/Notice.cpp": "05c1f04cd0544717f313c074e4d834544bf6b82b277a01615493e25ef60519a3",
+        "engine/ExplorerRL/Notice.h": "0f6204a5953a10215d892e902e92d48c01682d3699f8f19cd91a5324b891c389",
+        "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+        "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+        "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+        "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+        "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+        "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+        "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+        "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+        "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+        "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+        "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+        "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+        "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+        "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+        "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+        "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+        "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+        "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+        "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+        "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+        "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+        "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101"
+      },
+      "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+      "explorer_rl_sha256": "17efbb75976210620f1b525536c6ee5468272b8c0a2416ba2357373e8a8a4283",
+      "log_level": "info",
+      "map": {
+        "name": "natural-townless.vmap",
+        "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+      },
+      "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+      "project": {
+        "commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+        "dirty": false
+      }
+    },
+    "log": {
+      "path": "runs/terminal-validation-prepared-engine.log",
+      "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+    },
+    "native_sources_changed": false
+  },
+  "proposed_first_training_check": {
+    "claim": "First real update/checkpoint-resume check only; not strategy improvement or a campaign.",
+    "collection": "Four valid natural ordinary episodes split across learner colors; cap16 attempts and stop before optimizer if required natural outcomes absent.",
+    "evaluation": "Four fixed held-out seed/color games; same map/fog/actions and terminal-only rewards; retain all attempts.",
+    "initialization": "random, with one frozen initial opponent",
+    "ppo_epochs": 2,
+    "status": "proposal_only_requires_gates_and_explicit_user_approval",
+    "updates": 1
+  },
+  "schema": "heroes-contextual-terminal-validation-v1",
+  "scope": "Fixed-weight local validation and synthetic optimizer tests; no gameplay optimizer updates or training campaign",
+  "technical_failure": {
+    "inference_audit": {
+      "file": {
+        "path": "runs/terminal-failure-96401/inference-audit.json",
+        "sha256": "77a331dafbc9d0043b096c5af60bcb27d6c040eaae3c88f12b72fd2b2cd56df7"
+      },
+      "result": {
+        "checkpoint_sha256": "32f9377d844f56861d32ac2be2088ed244f14f2cec2e1d172f30983ca119bc71",
+        "episodes": [
+          {
+            "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-failure-96401/episode-000001",
+            "files": {
+              "agents/blue/history-v3.jsonl": "d582db8b30e4131f0e5fd8b73f7a405922d45460b513cd360d0bc3c903232576",
+              "agents/red/history-v3.jsonl": "d2301b2a6ad49b35883776636e01b83a9dd56ebe2fd37bf2d19b404acb807936",
+              "manifest.json": "96b5d240364883c45ba380b3fced435564f5dc340a7b86295489611747946981",
+              "neural-rollout.json": "aaf8286bfeb432b8a994724237e0ab70e4ab046ccc1c24d9e753caf4b15c7b96"
+            },
+            "passed": true,
+            "players": [
+              {
+                "actions_recomputed": 5,
+                "color": "red",
+                "conditionals_recomputed": 11,
+                "frames": 24,
+                "last_observed_owned_hero_count": null,
+                "maximum_absolute_difference": {
+                  "conditional_log_probability": 0.0,
+                  "joint_log_probability": 0.0,
+                  "value": 0.0
+                },
+                "optimization_eligible": false,
+                "optimizer_admission_rejected": true,
+                "postterminal_view_sequences": [],
+                "samples": 4,
+                "terminal_closures": [],
+                "terminal_rewards": [],
+                "trajectory_eligible": false,
+                "values_recomputed": 5,
+                "weights_unchanged": true
+              },
+              {
+                "actions_recomputed": 0,
+                "color": "blue",
+                "conditionals_recomputed": 0,
+                "frames": 1,
+                "last_observed_owned_hero_count": null,
+                "maximum_absolute_difference": {
+                  "conditional_log_probability": 0,
+                  "joint_log_probability": 0,
+                  "value": 0
+                },
+                "optimization_eligible": false,
+                "optimizer_admission_rejected": true,
+                "postterminal_view_sequences": [],
+                "samples": 0,
+                "terminal_closures": [],
+                "terminal_rewards": [],
+                "trajectory_eligible": false,
+                "values_recomputed": 0,
+                "weights_unchanged": true
+              }
+            ],
+            "status": "failed",
+            "termination_reason": "process_exit_without_verified_terminal"
+          }
+        ],
+        "optimizer_updates": 0,
+        "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+        "schema": "heroes-neural-rollout-audit-v1",
+        "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+      }
+    },
+    "report": {
+      "path": "runs/terminal-failure-96401/report.json",
+      "sha256": "8417b5836938f8c3d12f083aedad018e16d7d3b3d9606b73906ec5d0a50b2c3e"
+    },
+    "result": {
+      "bootstrap": {
+        "blue": null,
+        "red": null
+      },
+      "checkpoint_sha256": "32f9377d844f56861d32ac2be2088ed244f14f2cec2e1d172f30983ca119bc71",
+      "engine_seed": 96401,
+      "files": {
+        "episode-000001/agents/blue/history-v3.jsonl": "d582db8b30e4131f0e5fd8b73f7a405922d45460b513cd360d0bc3c903232576",
+        "episode-000001/agents/red/history-v3.jsonl": "d2301b2a6ad49b35883776636e01b83a9dd56ebe2fd37bf2d19b404acb807936",
+        "episode-000001/manifest.json": "96b5d240364883c45ba380b3fced435564f5dc340a7b86295489611747946981",
+        "episode-000001/neural-rollout.json": "aaf8286bfeb432b8a994724237e0ab70e4ab046ccc1c24d9e753caf4b15c7b96"
+      },
+      "optimizer_updates": 0,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "passed": true,
+      "prior_resolved_actions": 4,
+      "probe_sha256": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802",
+      "purpose": "diagnostic",
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "schema": "heroes-neural-failure-diagnostic-v1",
+      "source": {
+        "git_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+        "interface": "adventure-town-v1",
+        "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+        "source_sha256": {
+          "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+          "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+          "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+          "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+          "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d",
+          "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+          "experiments/learner/contextual_rollout.py": "34a80cb49b41d365cdd3feb01a120d188ca086c0ab19381d1ea2f8a1d49b7688",
+          "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+          "experiments/learner/inference.py": "611016d42ecccc6b112137a8953181aa8c4dac289e245cc8b8cdb1bab21ee5f9",
+          "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+          "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+          "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+        },
+        "torch": "2.9.1",
+        "tracked_worktree_dirty": false
+      },
+      "status": "failed",
+      "termination_reason": "process_exit_without_verified_terminal",
+      "training_performed": false,
+      "training_samples": 0,
+      "weights_unchanged": true
+    }
+  },
+  "terminal_fixtures": [
+    {
+      "cohort": {
+        "attempts": [
+          {
+            "audit_consistent": true,
+            "coverage": {
+              "blue": {
+                "frames": 318,
+                "kinds": {
+                  "acknowledged": 23,
+                  "consumed": 43,
+                  "context": 30,
+                  "decision": 43,
+                  "event": 8,
+                  "finalized": 1,
+                  "issued": 23,
+                  "result": 43,
+                  "submitted": 43,
+                  "terminal": 1,
+                  "view": 60
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 14,
+                  "no_route_known": 4,
+                  "opened": 15,
+                  "reached": 3,
+                  "recruited": 1,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "close": 14,
+                  "end_turn": 6,
+                  "move_to": 7,
+                  "open_hero": 10,
+                  "open_panel": 1,
+                  "open_town": 4,
+                  "recruit": 1
+                }
+              },
+              "red": {
+                "frames": 136,
+                "kinds": {
+                  "acknowledged": 15,
+                  "consumed": 15,
+                  "context": 2,
+                  "decision": 15,
+                  "event": 12,
+                  "finalized": 1,
+                  "issued": 16,
+                  "result": 14,
+                  "submitted": 15,
+                  "superseded": 1,
+                  "terminal": 1,
+                  "view": 29
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 1,
+                  "interaction": 1,
+                  "no_route_known": 4,
+                  "opened": 1,
+                  "reached": 1,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "close": 1,
+                  "end_turn": 7,
+                  "move_to": 6,
+                  "open_hero": 1
+                }
+              }
+            },
+            "engine_seed": 96201,
+            "episode": 1,
+            "files": {
+              "episode-000001/agents/blue/history-v3.jsonl": "5177eacc193a88fd3dcb144f6fb866a5e7b45f60c97634303e53b1fd673cc14d",
+              "episode-000001/agents/red/history-v3.jsonl": "2a9a1c9cc5c829a7fe06650570db6db511720925b783ede99aa2581fe5168d15",
+              "episode-000001/manifest.json": "00e2adc0525449c10a09b0197de322daf4c0bf82b1ac7ee655ffb47bbe963d7f",
+              "episode-000001/neural-audit.json": "5c1c3c27864f0d582a1c805f1f3d3bf0eabed40fc088ccfbe4eb8ecabb0721ab",
+              "episode-000001/neural-rollout.json": "5ba0457e832c6dedbb93007ad62440ad88725ee326b73804c88c3616a76924a9"
+            },
+            "learner_player": 0,
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "outcomes": {
+              "blue": "win",
+              "red": "loss"
+            },
+            "policy_seeds": [
+              96205,
+              96206
+            ],
+            "rewards": {
+              "blue": 1,
+              "red": -1
+            },
+            "status": "completed",
+            "termination_reason": "natural_terminal",
+            "training_samples": 0,
+            "weights_unchanged": true
+          },
+          {
+            "audit_consistent": true,
+            "coverage": {
+              "blue": {
+                "frames": 220,
+                "kinds": {
+                  "acknowledged": 16,
+                  "consumed": 30,
+                  "context": 21,
+                  "decision": 30,
+                  "event": 8,
+                  "finalized": 1,
+                  "issued": 16,
+                  "result": 30,
+                  "submitted": 30,
+                  "terminal": 1,
+                  "view": 37
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 10,
+                  "no_route_known": 1,
+                  "opened": 10,
+                  "reached": 2,
+                  "selected": 1,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "back": 4,
+                  "close": 6,
+                  "end_turn": 6,
+                  "move_to": 3,
+                  "open_hero": 3,
+                  "open_panel": 4,
+                  "open_town": 3,
+                  "select_recruit": 1
+                }
+              },
+              "red": {
+                "frames": 154,
+                "kinds": {
+                  "acknowledged": 11,
+                  "consumed": 22,
+                  "context": 10,
+                  "decision": 22,
+                  "event": 8,
+                  "finalized": 1,
+                  "issued": 12,
+                  "result": 21,
+                  "submitted": 22,
+                  "superseded": 1,
+                  "terminal": 1,
+                  "view": 23
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 5,
+                  "no_route_known": 4,
+                  "opened": 5,
+                  "reached": 1,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "close": 5,
+                  "end_turn": 7,
+                  "move_to": 5,
+                  "open_hero": 5
+                }
+              }
+            },
+            "engine_seed": 96201,
+            "episode": 2,
+            "files": {
+              "episode-000002/agents/blue/history-v3.jsonl": "cfe9858fea3dd1de135da268fdfed202df755fcb25bd81c47a92516d075399ce",
+              "episode-000002/agents/red/history-v3.jsonl": "1830f7d051ffb662fde3bdd24cc2f431cd870cae5203f5509137ee71f8aa90e5",
+              "episode-000002/manifest.json": "c56412d50deff95054166ebd1479de0e2f4aca3b7e91e844ac4b560bd8d893be",
+              "episode-000002/neural-audit.json": "1ffa73668828c2e995b8afa1601ecaa7bb3c505106abadf88f2ab65e3af47265",
+              "episode-000002/neural-rollout.json": "82f18c3518d48b52cf5eda14db9a540c1e169b6ff594d429ae7d87a301fb49a6"
+            },
+            "learner_player": 1,
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "outcomes": {
+              "blue": "win",
+              "red": "loss"
+            },
+            "policy_seeds": [
+              96207,
+              96208
+            ],
+            "rewards": {
+              "blue": 1,
+              "red": -1
+            },
+            "status": "completed",
+            "termination_reason": "natural_terminal",
+            "training_samples": 0,
+            "weights_unchanged": true
+          }
+        ],
+        "checkpoint_file": {
+          "path": "runs/terminal-red-96201/untrained-policy.pt",
+          "sha256": "cd1a3e9dd5f1f7701b24b659a824c9fcb6f2b6637c9be038b263074f2607aa40"
+        },
+        "configuration": {
+          "engine_seeds": [
+            96201
+          ],
+          "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-red-fixture/natural-townless.vmap",
+          "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+          "max_days": 40,
+          "max_requests": 256,
+          "opponent_sampling_seed": 95004,
+          "opponent_seeds": [
+            95002
+          ],
+          "policy_seed": 96203
+        },
+        "inference_audits": [
+          {
+            "file": {
+              "path": "runs/terminal-red-96201/inference-audit.json",
+              "sha256": "862fc5689f28c8c7cbb1fc2bc176aad210b57db2d2455e0da628fddfe270cfc7"
+            },
+            "result": {
+              "checkpoint_sha256": "cd1a3e9dd5f1f7701b24b659a824c9fcb6f2b6637c9be038b263074f2607aa40",
+              "episodes": [
+                {
+                  "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-red-96201/episode-000001",
+                  "files": {
+                    "agents/blue/history-v3.jsonl": "5177eacc193a88fd3dcb144f6fb866a5e7b45f60c97634303e53b1fd673cc14d",
+                    "agents/red/history-v3.jsonl": "2a9a1c9cc5c829a7fe06650570db6db511720925b783ede99aa2581fe5168d15",
+                    "manifest.json": "00e2adc0525449c10a09b0197de322daf4c0bf82b1ac7ee655ffb47bbe963d7f",
+                    "neural-rollout.json": "5ba0457e832c6dedbb93007ad62440ad88725ee326b73804c88c3616a76924a9"
+                  },
+                  "passed": true,
+                  "players": [
+                    {
+                      "actions_recomputed": 15,
+                      "color": "red",
+                      "conditionals_recomputed": 28,
+                      "frames": 136,
+                      "last_observed_owned_hero_count": 0,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [
+                        134
+                      ],
+                      "samples": 15,
+                      "terminal_closures": [
+                        {
+                          "consumed_seq": 128,
+                          "decision_seq": 126,
+                          "finalized_seq": 135,
+                          "reward": -1,
+                          "superseded_seq": 131,
+                          "terminal_seq": 132
+                        }
+                      ],
+                      "terminal_rewards": [
+                        -1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 15,
+                      "weights_unchanged": true
+                    },
+                    {
+                      "actions_recomputed": 43,
+                      "color": "blue",
+                      "conditionals_recomputed": 76,
+                      "frames": 318,
+                      "last_observed_owned_hero_count": null,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [],
+                      "samples": 43,
+                      "terminal_closures": [],
+                      "terminal_rewards": [
+                        1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 43,
+                      "weights_unchanged": true
+                    }
+                  ],
+                  "status": "completed",
+                  "termination_reason": "natural_terminal"
+                },
+                {
+                  "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-red-96201/episode-000002",
+                  "files": {
+                    "agents/blue/history-v3.jsonl": "cfe9858fea3dd1de135da268fdfed202df755fcb25bd81c47a92516d075399ce",
+                    "agents/red/history-v3.jsonl": "1830f7d051ffb662fde3bdd24cc2f431cd870cae5203f5509137ee71f8aa90e5",
+                    "manifest.json": "c56412d50deff95054166ebd1479de0e2f4aca3b7e91e844ac4b560bd8d893be",
+                    "neural-rollout.json": "82f18c3518d48b52cf5eda14db9a540c1e169b6ff594d429ae7d87a301fb49a6"
+                  },
+                  "passed": true,
+                  "players": [
+                    {
+                      "actions_recomputed": 22,
+                      "color": "red",
+                      "conditionals_recomputed": 37,
+                      "frames": 154,
+                      "last_observed_owned_hero_count": 0,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [
+                        152
+                      ],
+                      "samples": 22,
+                      "terminal_closures": [
+                        {
+                          "consumed_seq": 146,
+                          "decision_seq": 144,
+                          "finalized_seq": 153,
+                          "reward": -1,
+                          "superseded_seq": 149,
+                          "terminal_seq": 150
+                        }
+                      ],
+                      "terminal_rewards": [
+                        -1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 22,
+                      "weights_unchanged": true
+                    },
+                    {
+                      "actions_recomputed": 30,
+                      "color": "blue",
+                      "conditionals_recomputed": 47,
+                      "frames": 220,
+                      "last_observed_owned_hero_count": null,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [],
+                      "samples": 30,
+                      "terminal_closures": [],
+                      "terminal_rewards": [
+                        1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 30,
+                      "weights_unchanged": true
+                    }
+                  ],
+                  "status": "completed",
+                  "termination_reason": "natural_terminal"
+                }
+              ],
+              "optimizer_updates": 0,
+              "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+              "schema": "heroes-neural-rollout-audit-v1",
+              "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+            }
+          }
+        ],
+        "opponents": [
+          [
+            "untrained-65120f056f0c4b8a",
+            "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+          ]
+        ],
+        "policy": {
+          "checkpoint": "untrained-901446eb745d227a",
+          "initialization_seed": null,
+          "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+        },
+        "report": {
+          "path": "runs/terminal-red-96201/report.json",
+          "sha256": "a68386496361c94fefe60996d7d0c781810745969460d8a1d6b56be014f16e90"
+        },
+        "source": {
+          "git_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+          "interface": "adventure-town-v1",
+          "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+          "source_sha256": {
+            "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+            "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+            "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+            "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+            "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d",
+            "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+            "experiments/learner/contextual_rollout.py": "34a80cb49b41d365cdd3feb01a120d188ca086c0ab19381d1ea2f8a1d49b7688",
+            "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+            "experiments/learner/inference.py": "611016d42ecccc6b112137a8953181aa8c4dac289e245cc8b8cdb1bab21ee5f9",
+            "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+            "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+            "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+          },
+          "torch": "2.9.1",
+          "tracked_worktree_dirty": false
+        },
+        "summary": {
+          "attempts": 2,
+          "collection_or_audit_error": 0,
+          "optimizer_updates": 0,
+          "outcome_rate": null,
+          "rate_reason": "Fixed-weight diagnostic checks are not an outcome-frequency evaluation cohort",
+          "technical_failure": 0,
+          "training_samples": 0,
+          "verified_cutoff": 0,
+          "verified_natural": 2
+        }
+      },
+      "fixture_manifest": {
+        "file": {
+          "path": "runs/terminal-validation-red-fixture/fixture.json",
+          "sha256": "59b3a82a1a0b589ca4e03b63de039981b8395f6409b55a0d9c39aa1dfafb3fec"
+        },
+        "manifest": {
+          "base": {
+            "byte_identical_to_source": true,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-red-fixture/base.vmap",
+            "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+          },
+          "changed_archive_entries": [
+            "header.json",
+            "objects.json"
+          ],
+          "changes": [
+            {
+              "after": null,
+              "before": {
+                "generateHero": false,
+                "l": 0,
+                "x": 4,
+                "y": 7
+              },
+              "entry": "header.json",
+              "json_pointer": "/players/red/mainTown",
+              "operation": "remove"
+            },
+            {
+              "after": null,
+              "before": {
+                "instanceName": "town_0",
+                "l": 0,
+                "options": {
+                  "army": [],
+                  "buildings": {
+                    "allOf": [
+                      "core:fort",
+                      "core:dwellingLvl1"
+                    ],
+                    "noneOf": [
+                      "core:tavern"
+                    ]
+                  },
+                  "obligatorySpells": [],
+                  "owner": "red",
+                  "possibleSpells": []
+                },
+                "subtype": "castle",
+                "template": {
+                  "animation": "AVCcasx0.def",
+                  "mask": [
+                    "VVVVVV",
+                    "VVVVVV",
+                    "VVVVVV",
+                    "VVBBBV",
+                    "VBBBBB",
+                    "VBBABB"
+                  ],
+                  "visitableFrom": [
+                    "---",
+                    "+-+",
+                    "+++"
+                  ]
+                },
+                "type": "town",
+                "x": 6,
+                "y": 7
+              },
+              "entry": "objects.json",
+              "instance_name": "town_0",
+              "json_pointer": "/0",
+              "operation": "remove"
+            }
+          ],
+          "engine_launched": false,
+          "entries": {
+            "header.json": {
+              "byte_identical": false,
+              "fixture_sha256": "02ce94f994afd5c22a6bde747288ab55095b0c54fb3423998b801b80dca94457",
+              "source_sha256": "52ac8a479e55348f410e649666f979dcefebc75d1b66304298f535483616325d"
+            },
+            "objects.json": {
+              "byte_identical": false,
+              "fixture_sha256": "3158b41cf551f57a11b2ecc17921172e60ead3e80b3e5401803ea2dc019bae98",
+              "source_sha256": "6e3ea52a739fd1bd668d21ca1a3d4717d40569cd4c86ab82b202fe0c825561ac"
+            },
+            "surface_terrain.json": {
+              "byte_identical": true,
+              "fixture_sha256": "9f22aa59581b421be2e0bdcb99c12c3eb340a757871bbeb81023790174bb5d35",
+              "source_sha256": "9f22aa59581b421be2e0bdcb99c12c3eb340a757871bbeb81023790174bb5d35"
+            }
+          },
+          "evaluator_plan": {
+            "actions": "Explicit end_turn at each real player decision; no injected outcome or counter",
+            "day_budget": 10,
+            "expected_outcomes": {
+              "blue": "win",
+              "red": "loss"
+            },
+            "postterminal_views": "Coverage only; absence for one player is not a failed natural boundary",
+            "trigger": "Unchanged native seven-days-without-a-town rule"
+          },
+          "fixture": {
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-red-fixture/natural-townless.vmap",
+            "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+          },
+          "kind": "natural-townless",
+          "native_basis": {
+            "missing_main_town": "lib/mapping/MapFormatJson.cpp:490-501",
+            "terminal_and_final_removals": "server/CGameHandler.cpp:3746-3804",
+            "townless_counter": "server/processors/NewTurnProcessor.cpp:163-187",
+            "unchanged_seven_day_threshold": "lib/gameState/CGameState.cpp:1364-1369"
+          },
+          "native_validated": false,
+          "natural_outcome_verified": false,
+          "preserved": {
+            "all_undeclared_fields": true,
+            "fog_and_victory_rules": true,
+            "initial_heroes_and_armies": true,
+            "source_archive_bytes": true,
+            "terrain_roads": true,
+            "untouched_archive_entry_bytes": true
+          },
+          "schema": "heroes-contextual-natural-townless-fixture-v1",
+          "scope": "Isolated evaluator input only; never training, demonstrations, production policy or random-baseline outcome evidence",
+          "source": {
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+            "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+          },
+          "training_performed": false,
+          "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
+        }
+      },
+      "townless_player": "red"
+    },
+    {
+      "cohort": {
+        "attempts": [
+          {
+            "audit_consistent": true,
+            "coverage": {
+              "blue": {
+                "frames": 71,
+                "kinds": {
+                  "acknowledged": 6,
+                  "consumed": 10,
+                  "decision": 10,
+                  "event": 8,
+                  "finalized": 1,
+                  "issued": 7,
+                  "result": 9,
+                  "submitted": 10,
+                  "superseded": 1,
+                  "terminal": 1,
+                  "view": 8
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "no_route_known": 3,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "end_turn": 7,
+                  "move_to": 3
+                }
+              },
+              "red": {
+                "frames": 303,
+                "kinds": {
+                  "acknowledged": 14,
+                  "consumed": 45,
+                  "context": 32,
+                  "decision": 45,
+                  "event": 15,
+                  "finalized": 1,
+                  "issued": 14,
+                  "result": 45,
+                  "submitted": 45,
+                  "terminal": 1,
+                  "view": 46
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 16,
+                  "no_route_known": 5,
+                  "opened": 16,
+                  "reached": 1,
+                  "turn_ended": 7
+                },
+                "submitted_actions": {
+                  "back": 5,
+                  "close": 11,
+                  "end_turn": 7,
+                  "move_to": 6,
+                  "open_building": 3,
+                  "open_hero": 7,
+                  "open_panel": 2,
+                  "open_town": 4
+                }
+              }
+            },
+            "engine_seed": 96301,
+            "episode": 1,
+            "files": {
+              "episode-000001/agents/blue/history-v3.jsonl": "8464d49418e8d07d89d1d4ae56d53c310382dbb4bfdd5864b61de665e7d6ce1f",
+              "episode-000001/agents/red/history-v3.jsonl": "52a643459f5b8fd31b4f6e286422cead8c6deac1a2813cc6452c716557fd4909",
+              "episode-000001/manifest.json": "a1a96227e28385ce68c440fbf9f139f1e9563983f15a919dc642183ff63904bc",
+              "episode-000001/neural-audit.json": "491aaeb990d8418c5abd4083b1fc83227b02cb9459d56caf0997c661a5eea317",
+              "episode-000001/neural-rollout.json": "27bf5ac3f4dca1a798e017819b17072acb2ce062251192bf10bc38223aa40671"
+            },
+            "learner_player": 0,
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "outcomes": {
+              "blue": "loss",
+              "red": "win"
+            },
+            "policy_seeds": [
+              96305,
+              96306
+            ],
+            "rewards": {
+              "blue": -1,
+              "red": 1
+            },
+            "status": "completed",
+            "termination_reason": "natural_terminal",
+            "training_samples": 0,
+            "weights_unchanged": true
+          },
+          {
+            "audit_consistent": true,
+            "coverage": {
+              "blue": {
+                "frames": 175,
+                "kinds": {
+                  "acknowledged": 6,
+                  "consumed": 29,
+                  "context": 14,
+                  "decision": 29,
+                  "event": 8,
+                  "finalized": 1,
+                  "issued": 7,
+                  "result": 28,
+                  "submitted": 29,
+                  "superseded": 1,
+                  "terminal": 1,
+                  "view": 22
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "closed": 7,
+                  "no_route_known": 8,
+                  "opened": 7,
+                  "turn_ended": 6
+                },
+                "submitted_actions": {
+                  "close": 7,
+                  "end_turn": 7,
+                  "move_to": 8,
+                  "open_hero": 7
+                }
+              },
+              "red": {
+                "frames": 371,
+                "kinds": {
+                  "acknowledged": 16,
+                  "consumed": 55,
+                  "context": 45,
+                  "decision": 55,
+                  "event": 9,
+                  "finalized": 1,
+                  "issued": 16,
+                  "result": 55,
+                  "submitted": 55,
+                  "terminal": 1,
+                  "view": 63
+                },
+                "last_public_day": 7,
+                "result_statuses": {
+                  "built": 1,
+                  "closed": 19,
+                  "no_route_known": 2,
+                  "opened": 23,
+                  "reached": 1,
+                  "recruited": 2,
+                  "turn_ended": 7
+                },
+                "submitted_actions": {
+                  "back": 3,
+                  "close": 16,
+                  "construct": 1,
+                  "end_turn": 7,
+                  "move_to": 3,
+                  "open_building": 2,
+                  "open_hero": 10,
+                  "open_panel": 5,
+                  "open_town": 6,
+                  "recruit": 2
+                }
+              }
+            },
+            "engine_seed": 96301,
+            "episode": 2,
+            "files": {
+              "episode-000002/agents/blue/history-v3.jsonl": "1cb166e7530bb664021e56860020fe6754ce509b5496fac728e9d3ef47416487",
+              "episode-000002/agents/red/history-v3.jsonl": "77384090c9c1e4ab72a9166ab58e43846372615fa4a88211008f508e9cd539ab",
+              "episode-000002/manifest.json": "00a935a7f49411571dcdcb26ebe5edaf670a513f0c22fe4a0f3b12e215976654",
+              "episode-000002/neural-audit.json": "a7a3d7c82eca2cc72e485d7a303a94ab82dc84740d377b3827e21a6ed498a7c8",
+              "episode-000002/neural-rollout.json": "f20393060840925c20ff20025b649978fd8bd2b3ff5af049dd90f3430efc616a"
+            },
+            "learner_player": 1,
+            "opponent_checkpoint": "untrained-65120f056f0c4b8a",
+            "outcomes": {
+              "blue": "loss",
+              "red": "win"
+            },
+            "policy_seeds": [
+              96307,
+              96308
+            ],
+            "rewards": {
+              "blue": -1,
+              "red": 1
+            },
+            "status": "completed",
+            "termination_reason": "natural_terminal",
+            "training_samples": 0,
+            "weights_unchanged": true
+          }
+        ],
+        "checkpoint_file": {
+          "path": "runs/terminal-blue-96301/untrained-policy.pt",
+          "sha256": "b66bf9a595daa3b15dc7745a9563fae6f1b34135e383c997b4d9ad1ebea514d9"
+        },
+        "configuration": {
+          "engine_seeds": [
+            96301
+          ],
+          "map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-blue-fixture/natural-townless-blue.vmap",
+          "map_sha256": "5e1046b65b7aa395b8d6eb748951f2ec824d3f47fb814e335eb7bc14621c5a50",
+          "max_days": 40,
+          "max_requests": 256,
+          "opponent_sampling_seed": 95004,
+          "opponent_seeds": [
+            95002
+          ],
+          "policy_seed": 96303
+        },
+        "inference_audits": [
+          {
+            "file": {
+              "path": "runs/terminal-blue-96301/inference-audit.json",
+              "sha256": "88ebba0f5e3b7990bb5e72d0045180cf79c4ac3fcdbc67b20dc5e938d4b007ab"
+            },
+            "result": {
+              "checkpoint_sha256": "b66bf9a595daa3b15dc7745a9563fae6f1b34135e383c997b4d9ad1ebea514d9",
+              "episodes": [
+                {
+                  "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-blue-96301/episode-000001",
+                  "files": {
+                    "agents/blue/history-v3.jsonl": "8464d49418e8d07d89d1d4ae56d53c310382dbb4bfdd5864b61de665e7d6ce1f",
+                    "agents/red/history-v3.jsonl": "52a643459f5b8fd31b4f6e286422cead8c6deac1a2813cc6452c716557fd4909",
+                    "manifest.json": "a1a96227e28385ce68c440fbf9f139f1e9563983f15a919dc642183ff63904bc",
+                    "neural-rollout.json": "27bf5ac3f4dca1a798e017819b17072acb2ce062251192bf10bc38223aa40671"
+                  },
+                  "passed": true,
+                  "players": [
+                    {
+                      "actions_recomputed": 45,
+                      "color": "red",
+                      "conditionals_recomputed": 73,
+                      "frames": 303,
+                      "last_observed_owned_hero_count": null,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [],
+                      "samples": 45,
+                      "terminal_closures": [],
+                      "terminal_rewards": [
+                        1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 45,
+                      "weights_unchanged": true
+                    },
+                    {
+                      "actions_recomputed": 10,
+                      "color": "blue",
+                      "conditionals_recomputed": 16,
+                      "frames": 71,
+                      "last_observed_owned_hero_count": 0,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [
+                        69
+                      ],
+                      "samples": 10,
+                      "terminal_closures": [
+                        {
+                          "consumed_seq": 63,
+                          "decision_seq": 61,
+                          "finalized_seq": 70,
+                          "reward": -1,
+                          "superseded_seq": 66,
+                          "terminal_seq": 67
+                        }
+                      ],
+                      "terminal_rewards": [
+                        -1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 10,
+                      "weights_unchanged": true
+                    }
+                  ],
+                  "status": "completed",
+                  "termination_reason": "natural_terminal"
+                },
+                {
+                  "episode": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-blue-96301/episode-000002",
+                  "files": {
+                    "agents/blue/history-v3.jsonl": "1cb166e7530bb664021e56860020fe6754ce509b5496fac728e9d3ef47416487",
+                    "agents/red/history-v3.jsonl": "77384090c9c1e4ab72a9166ab58e43846372615fa4a88211008f508e9cd539ab",
+                    "manifest.json": "00a935a7f49411571dcdcb26ebe5edaf670a513f0c22fe4a0f3b12e215976654",
+                    "neural-rollout.json": "f20393060840925c20ff20025b649978fd8bd2b3ff5af049dd90f3430efc616a"
+                  },
+                  "passed": true,
+                  "players": [
+                    {
+                      "actions_recomputed": 55,
+                      "color": "red",
+                      "conditionals_recomputed": 89,
+                      "frames": 371,
+                      "last_observed_owned_hero_count": null,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [],
+                      "samples": 55,
+                      "terminal_closures": [],
+                      "terminal_rewards": [
+                        1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 55,
+                      "weights_unchanged": true
+                    },
+                    {
+                      "actions_recomputed": 29,
+                      "color": "blue",
+                      "conditionals_recomputed": 52,
+                      "frames": 175,
+                      "last_observed_owned_hero_count": 0,
+                      "maximum_absolute_difference": {
+                        "conditional_log_probability": 0.0,
+                        "joint_log_probability": 0.0,
+                        "value": 0.0
+                      },
+                      "optimization_eligible": false,
+                      "optimizer_admission_rejected": true,
+                      "postterminal_view_sequences": [
+                        173
+                      ],
+                      "samples": 29,
+                      "terminal_closures": [
+                        {
+                          "consumed_seq": 167,
+                          "decision_seq": 165,
+                          "finalized_seq": 174,
+                          "reward": -1,
+                          "superseded_seq": 170,
+                          "terminal_seq": 171
+                        }
+                      ],
+                      "terminal_rewards": [
+                        -1
+                      ],
+                      "trajectory_eligible": true,
+                      "values_recomputed": 29,
+                      "weights_unchanged": true
+                    }
+                  ],
+                  "status": "completed",
+                  "termination_reason": "natural_terminal"
+                }
+              ],
+              "optimizer_updates": 0,
+              "probe_sha256": "5c224b5785c6783e149de19629148ee32ed03e08310dd6aef919af80bb0d8d4e",
+              "schema": "heroes-neural-rollout-audit-v1",
+              "scope": "Fixed-checkpoint inference and recorded trajectory consistency; native event completeness and contextual replay remain unverified"
+            }
+          }
+        ],
+        "opponents": [
+          [
+            "untrained-65120f056f0c4b8a",
+            "65120f056f0c4b8a5e8a02627299df89b08034648e4f89b9726d13675c280d12"
+          ]
+        ],
+        "policy": {
+          "checkpoint": "untrained-901446eb745d227a",
+          "initialization_seed": null,
+          "weights_sha256": "901446eb745d227a4e937093d4a94ae3121f64413d978e185275ffe547dc69cd"
+        },
+        "report": {
+          "path": "runs/terminal-blue-96301/report.json",
+          "sha256": "4bef7ff95bf722713b84cc9f8006584632fdc1f3a96e461175f75f7cc5a18434"
+        },
+        "source": {
+          "git_commit": "f4489396fd83e4bcaebb8fc69146bbe10391b9a8",
+          "interface": "adventure-town-v1",
+          "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+          "source_sha256": {
+            "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+            "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+            "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+            "experiments/learner/checkpoints.py": "10d56f56d2843f50e592d7aa1067432cdd5ebb1e6ad4467863c9afa2ced8a6c9",
+            "experiments/learner/contextual.py": "7ebbf69136920599dd82194f62c377363afbdbf0c28f513644797344d450941d",
+            "experiments/learner/contextual_model.py": "c4da8acf5c838b6d432b507adc6e011f28db3dcd94bb5202edcff43030f6c9ab",
+            "experiments/learner/contextual_rollout.py": "34a80cb49b41d365cdd3feb01a120d188ca086c0ab19381d1ea2f8a1d49b7688",
+            "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+            "experiments/learner/inference.py": "611016d42ecccc6b112137a8953181aa8c4dac289e245cc8b8cdb1bab21ee5f9",
+            "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+            "experiments/learner/ppo.py": "c1a22a8fee270079f54f4da4aa52045cfdeaa2b8ce18f7ff2f1f24ab0309fa3a",
+            "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+          },
+          "torch": "2.9.1",
+          "tracked_worktree_dirty": false
+        },
+        "summary": {
+          "attempts": 2,
+          "collection_or_audit_error": 0,
+          "optimizer_updates": 0,
+          "outcome_rate": null,
+          "rate_reason": "Fixed-weight diagnostic checks are not an outcome-frequency evaluation cohort",
+          "technical_failure": 0,
+          "training_samples": 0,
+          "verified_cutoff": 0,
+          "verified_natural": 2
+        }
+      },
+      "fixture_manifest": {
+        "file": {
+          "path": "runs/terminal-validation-blue-fixture/fixture.json",
+          "sha256": "0d911c7e1cb3c75a851873537d1fc9d31cddd2a19e24fcae437ec7f43d527f99"
+        },
+        "manifest": {
+          "base": {
+            "byte_identical_to_source": true,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-blue-fixture/base.vmap",
+            "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+          },
+          "changed_archive_entries": [
+            "header.json",
+            "objects.json"
+          ],
+          "changes": [
+            {
+              "after": null,
+              "before": {
+                "generateHero": false,
+                "l": 0,
+                "x": 15,
+                "y": 7
+              },
+              "entry": "header.json",
+              "json_pointer": "/players/blue/mainTown",
+              "operation": "remove"
+            },
+            {
+              "after": null,
+              "before": {
+                "instanceName": "town_1",
+                "l": 0,
+                "options": {
+                  "army": [],
+                  "buildings": {
+                    "allOf": [
+                      "core:fort",
+                      "core:dwellingLvl1"
+                    ],
+                    "noneOf": [
+                      "core:tavern"
+                    ]
+                  },
+                  "obligatorySpells": [],
+                  "owner": "blue",
+                  "possibleSpells": []
+                },
+                "subtype": "castle",
+                "template": {
+                  "animation": "AVCcasx0.def",
+                  "mask": [
+                    "VVVVVV",
+                    "VVVVVV",
+                    "VVVVVV",
+                    "VVBBBV",
+                    "VBBBBB",
+                    "VBBABB"
+                  ],
+                  "visitableFrom": [
+                    "---",
+                    "+-+",
+                    "+++"
+                  ]
+                },
+                "type": "town",
+                "x": 17,
+                "y": 7
+              },
+              "entry": "objects.json",
+              "instance_name": "town_1",
+              "json_pointer": "/2",
+              "operation": "remove"
+            }
+          ],
+          "engine_launched": false,
+          "entries": {
+            "header.json": {
+              "byte_identical": false,
+              "fixture_sha256": "5221dc948dbddcfb9d07a194825ee5e5230059f77cf9b090be99de807f61ce41",
+              "source_sha256": "52ac8a479e55348f410e649666f979dcefebc75d1b66304298f535483616325d"
+            },
+            "objects.json": {
+              "byte_identical": false,
+              "fixture_sha256": "4b787f97b6d3be0fd8255635f35e8c1e165e23e965c03210e73ca12bba4e175a",
+              "source_sha256": "6e3ea52a739fd1bd668d21ca1a3d4717d40569cd4c86ab82b202fe0c825561ac"
+            },
+            "surface_terrain.json": {
+              "byte_identical": true,
+              "fixture_sha256": "9f22aa59581b421be2e0bdcb99c12c3eb340a757871bbeb81023790174bb5d35",
+              "source_sha256": "9f22aa59581b421be2e0bdcb99c12c3eb340a757871bbeb81023790174bb5d35"
+            }
+          },
+          "evaluator_plan": {
+            "actions": "Explicit end_turn at each real player decision; no injected outcome or counter",
+            "day_budget": 10,
+            "expected_outcomes": {
+              "blue": "loss",
+              "red": "win"
+            },
+            "postterminal_views": "Coverage only; absence for one player is not a failed natural boundary",
+            "trigger": "Unchanged native seven-days-without-a-town rule"
+          },
+          "fixture": {
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/terminal-validation-blue-fixture/natural-townless-blue.vmap",
+            "sha256": "5e1046b65b7aa395b8d6eb748951f2ec824d3f47fb814e335eb7bc14621c5a50"
+          },
+          "kind": "natural-townless-blue",
+          "native_basis": {
+            "missing_main_town": "lib/mapping/MapFormatJson.cpp:490-501",
+            "terminal_and_final_removals": "server/CGameHandler.cpp:3746-3804",
+            "townless_counter": "server/processors/NewTurnProcessor.cpp:163-187",
+            "unchanged_seven_day_threshold": "lib/gameState/CGameState.cpp:1364-1369"
+          },
+          "native_validated": false,
+          "natural_outcome_verified": false,
+          "preserved": {
+            "all_undeclared_fields": true,
+            "fog_and_victory_rules": true,
+            "initial_heroes_and_armies": true,
+            "source_archive_bytes": true,
+            "terrain_roads": true,
+            "untouched_archive_entry_bytes": true
+          },
+          "schema": "heroes-contextual-natural-townless-blue-fixture-v1",
+          "scope": "Isolated evaluator input only; never training, demonstrations, production policy or random-baseline outcome evidence",
+          "source": {
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/random-baseline-v1.vmap",
+            "sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d"
+          },
+          "townless_player": "blue",
+          "training_performed": false,
+          "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
+        }
+      },
+      "townless_player": "blue"
+    }
+  ],
+  "training_performed": false,
+  "unit_tests": {
+    "command": "/Users/orsi/Projects/Heroes/.venv/bin/python -m unittest discover -s tests -v",
+    "log": {
+      "path": "runs/terminal-validation-tests.log",
+      "sha256": "8dec239b7cd9ccc1fedcdddf59a05bcbc845571d233d2146a883c238f4b94373"
+    },
+    "passed": 480,
+    "seconds": 78.768,
+    "skipped": 0,
+    "synthetic_optimizer_tests_only": true
+  }
+}

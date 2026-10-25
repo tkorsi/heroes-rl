@@ -1,0 +1,170 @@
+{
+  "approved_plan_sha256": "ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6",
+  "attempt_schedule": [
+    {
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "before",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    },
+    {
+      "engine_seed": 99101,
+      "learner_player": 0,
+      "optimizer_eligible": true,
+      "phase": "training",
+      "policy_seeds": [
+        100003,
+        100004
+      ]
+    },
+    {
+      "engine_seed": 99101,
+      "learner_player": 1,
+      "optimizer_eligible": true,
+      "phase": "training",
+      "policy_seeds": [
+        100005,
+        100006
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    }
+  ],
+  "authorization": "granted_once",
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "evaluation_engine_seeds": [
+      99201,
+      99202
+    ],
+    "initialization_seed": 99001,
+    "interface": "adventure-armies-v1",
+    "max_days": 30,
+    "max_optimizer_steps": 16,
+    "max_requests": 256,
+    "max_updates": 1,
+    "opponent_seed": 99002,
+    "policy_seed": 99003,
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "schema": "heroes-first-training-config-v1",
+    "torch_threads": 1,
+    "total_wall_seconds": 3600,
+    "training_engine_seeds": [
+      99101
+    ]
+  },
+  "date": "2026-10-25",
+  "execution_log": "runs/first-training-prepared-2026-10-25/approved-execution.log",
+  "execution_output": "runs/first-training-prepared-2026-10-25/approved-execution",
+  "human_message_english_translation": "OK, keep headless. Tell the English chat to launch the prepared first experiment: 10 games, one PPO update, at most one hour on the Mac. Commit and push the results.",
+  "plan_path": "runs/first-training-prepared-2026-10-25/plan.json",
+  "preflight": {
+    "complete_implementation_inventory": "passed",
+    "exact_prepared_engine_agreement": "passed",
+    "initial_random_checkpoint": "passed",
+    "native_runtime": "passed",
+    "ordinary_map": "passed",
+    "plan_identity": "passed",
+    "retained_readiness_evidence": "passed",
+    "verified_at_local": "2026-10-25T02:09:42.533806+03:00"
+  },
+  "preparation_preserved": "Immutable plan still says not_granted to record its preparation state. This separate human approval authorizes the exact existing hash through the executor CLI.",
+  "schema": "heroes-first-gameplay-authorization-v1",
+  "scope": "One execution of the existing prepared plan. No replacement attempts, automatic retry, extra update, broader campaign, paid compute or GitHub merge. Failed/unsupported experience remains unscored and ineligible.",
+  "source_thread_id": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
+  "source_turn_started_at_utc": "2026-10-24T23:07:46+00:00",
+  "source_user_turn_id": "01a1702b-92c3-7371-a19e-171178019b37",
+  "stop_rules": [
+    "No failed or invalid attempt is replaced or admitted to PPO.",
+    "Any history, replay, behavior-recompute, native or ownership error stops execution.",
+    "The global time budget includes collection, verification, optimization and evaluation.",
+    "Zero natural outcomes alone does not cancel an otherwise valid update; it supplies no observed victory signal."
+  ],
+  "verification": "Direct human message verified read-only from its source chat before launch; relayed instructions match the previously reviewed plan."
+}
