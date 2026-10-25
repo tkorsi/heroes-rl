@@ -84,6 +84,17 @@ struct Fixture
 			end.player = PlayerColor(player); end.requestID = id;
 			return request(end, "native_opponent");
 		}
+		if(tailKind == 3)
+		{
+			TradeOnMarketplace trade;
+			trade.player = PlayerColor(player); trade.requestID = id;
+			trade.marketId = ObjectInstanceID(0); trade.heroId = ObjectInstanceID(3);
+			trade.mode = EMarketMode::RESOURCE_RESOURCE;
+			trade.r1 = {TradeItemSell(GameResID(0))};
+			trade.r2 = {TradeItemBuy(GameResID(6))};
+			trade.val = {1};
+			return request(trade, "native_opponent");
+		}
 		MoveHero move;
 		move.player = PlayerColor(player);
 		move.requestID = id;
@@ -131,7 +142,7 @@ struct Fixture
 void rejected(const std::function<void(Fixture &)> & mutate)
 {
 	for(const int side : {0, 1})
-		for(const int tailKind : {0, 1, 2})
+		for(const int tailKind : {0, 1, 2, 3})
 		{
 			Fixture fixture(side, tailKind);
 			mutate(fixture);
@@ -147,7 +158,7 @@ int main()
 	try
 	{
 		for(const int side : {0, 1})
-		for(const int tailKind : {0, 1, 2})
+		for(const int tailKind : {0, 1, 2, 3})
 		{
 			Fixture f(side, tailKind);
 			const auto actual = f.run();
@@ -156,7 +167,7 @@ int main()
 			check(actual["terminal_unapplied"][0]["pack"] == f.tape[7]["pack"]);
 			check(actual["terminal_unapplied"][0]["receipt"] == f.tape[6]["packet"]);
 			check(actual["final_terminal_input"] == f.terminal);
-			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (tailKind == 2 ? 180 : tailKind == 1 ? 185 : 182));
+			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (tailKind == 3 ? 193 : tailKind == 2 ? 180 : tailKind == 1 ? 185 : 182));
 			for(const int position : {11, 19})
 			{
 				f.tape[6]["packet"]["completed"].Integer() = position;
