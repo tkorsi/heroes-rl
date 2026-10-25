@@ -60,6 +60,10 @@ def publish(plan,repo,deadline):
     target=repo/'checkpoints/local365'/plan.parent.name
     require(not target.exists(),'Snapshot already exists; no overwrite')
     shutil.copytree(backup,target)
+    copied=verify_pair(target/'after-resume.pt',target/'after-policy.pt',raw,report)
+    require(copied == proof, 'Private copy restoration differs')
+    for name in ('after-resume.pt','after-policy.pt','plan.json','report.json'):
+        require(binding(target/name)['sha256'] == binding(backup/name)['sha256'], 'Private copy bytes differ')
     archive=repo/'results/local365'/(plan.parent.name+'.tar.gz');archive.parent.mkdir(parents=True,exist_ok=True)
     with tarfile.open(archive,'x:gz',dereference=False) as tf:tf.add(plan.parent,arcname=plan.parent.name)
     receipt={'plan':binding(plan),'restore':proof,'archive':binding(archive),'game_data_symlinks_followed':False}
@@ -72,10 +76,7 @@ def publish(plan,repo,deadline):
 
 def campaign(args):
     session=DURABLE_ROOT/'local365/campaign-session.json'
-    # The exclusive durable lock is never removed, including after failure.
-    lock=session.with_suffix('.lock');lock.parent.mkdir(parents=True,exist_ok=True)
-    with lock.open('x') as stream:stream.write(str(os.getpid())+'\n')
-    value=create_session(session,'campaign',args.migration)
+    value=session_for(session)
     parent=args.parent;sequence=32;durations=[300.0];records=[]
     result={'schema':'heroes-local365-campaign-v1','session':binding(session),'status':'running','batches':records}
     try:
@@ -113,8 +114,34 @@ def campaign(args):
         (session.parent/'campaign-report.json').write_text(json.dumps(result,indent=2)+'\n')
 
 
+def supervise(args):
+    from experiments.headless.process_deadline import guarded_popen,close_owned_process
+    require(args.private_repo is not None,'Private checkpoint publication required')
+    session=DURABLE_ROOT/'local365/campaign-session.json'
+    lock=session.with_suffix('.lock');lock.parent.mkdir(parents=True,exist_ok=True)
+    # An exclusive durable lock prevents a second authorized two-hour launch.
+    with lock.open('x') as stream:stream.write(str(os.getpid())+'\n')
+    value=create_session(session,'campaign',args.migration)
+    command=[sys.executable,str(Path(__file__).resolve()),'campaign-worker','--parent',str(args.parent),
+             '--migration',str(args.migration),'--private-repo',str(args.private_repo)]
+    deadline=value['absolute_deadline_unix']-10
+    process=None;result={'session':binding(session),'controller_cleanup_verified':False}
+    try:
+        with (session.parent/'controller.log').open('x') as log:
+            process=guarded_popen(command,deadline_monotonic=time.monotonic()+deadline-time.time(),
+                deadline_wall=deadline,evidence_path=session.parent/'controller-deadline.jsonl',
+                cwd=ROOT,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT)
+            result['returncode']=process.wait(timeout=max(1,deadline-time.time()))
+    finally:
+        if process is not None:close_owned_process(process,timeout=2)
+        result.update(controller_cleanup_verified=True,stopped_unix=time.time())
+        result['within_two_hours']=result['stopped_unix']<=value['absolute_deadline_unix']
+        (session.parent/'controller-result.json').write_text(json.dumps(result,indent=2)+'\n')
+    require(result.get('returncode')==0,'Local controller stopped; inspect durable report')
+
+
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('mode',choices=['gate','campaign'])
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('mode',choices=['gate','campaign','campaign-worker'])
     p.add_argument('--parent',type=Path,required=True);p.add_argument('--migration',type=Path,required=True)
     p.add_argument('--private-repo',type=Path);args=p.parse_args()
     require(os.environ.get('HEROES_ARTIFACT_ROOT')==str(DURABLE_ROOT),'Explicit durable local artifact root required')
@@ -122,7 +149,9 @@ def main():
         session=DURABLE_ROOT/'local365/gate-session.json';create_session(session,'gate',args.migration)
         plan,report=batch(args.parent,session,DURABLE_ROOT/'runs/local365-update31-gate',None,args.migration)
         print(json.dumps({'plan':binding(plan),'report':binding(plan.parent/'execution/report.json')}))
-    else:
+    elif args.mode == 'campaign-worker':
         require(args.private_repo is not None,'Private checkpoint publication required');campaign(args)
+    else:
+        supervise(args)
 
 if __name__=='__main__':main()
