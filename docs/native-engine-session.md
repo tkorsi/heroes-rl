@@ -8,6 +8,9 @@ inference/performance and PPO remain in their respective ownership lanes. No
 training was run. The opt-in C++ live slice now has bounded real-game validation;
 it is not a general certification of all VCMI retained state.
 
+The in-process Python backend built on this session is described in
+[embedded engine](embedded-engine.md).
+
 ## Dependency map
 
 | Dependency | Actual responsibility | Session treatment |

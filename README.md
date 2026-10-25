@@ -28,6 +28,7 @@ This check launched no gameplay.
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
 | Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
+| Embedded engine | Opt-in in-process Python module and environment over EngineSession, with an owned Nullkiller Easy opponent and no game process or socket | Experimental; one engine per process, cold backend remains the default ([details](docs/embedded-engine.md)) |
 
 The fixed opponent is **Nullkiller on Easy**, with BattleAI resolving battles.
 The ordinary map is the authored **hero-management-v1** scenario; see its
@@ -125,7 +126,7 @@ session or extend its two-hour authorization.
 | --- | --- |
 | `engine/ExplorerRL/` | Player-visible adapter and native actions |
 | `engine/ExperimentReplay/` | Native replay and request accounting |
-| `engine/NativeSession/` | Experimental reusable native host |
+| `engine/NativeSession/` | Experimental reusable native host and the embedded Python engine module |
 | `engine/patches/` | Canonical changes to pinned upstream VCMI |
 | `experiments/headless/` | Environment, histories, capture/replay and bounded processes |
 | `experiments/learner/` | Models, inference, PPO, admission, checkpoints and evaluation |
@@ -181,7 +182,9 @@ python3 tools/prepare_vcmi.py --check
 ```
 
 Use optional native sessions only through their
-[documented workflow](docs/native-engine-session.md). Ordinary training keeps
+[documented workflow](docs/native-engine-session.md). The opt-in in-process
+backend adds `-DENABLE_EMBEDDED_ENGINE=ON -DPython3_EXECUTABLE=$PWD/.venv/bin/python`
+and the `heroes_embedded_engine` target; see [embedded engine](docs/embedded-engine.md). Ordinary training keeps
 the cold client and independently verified replay.
 
 ## Experiment entry points
@@ -233,6 +236,7 @@ the interface or weaken admission to make a failed cohort pass.
 - [Linux setup and historical frozen diagnostics](docs/cloud-environment.md)
 - [Ordinary native shutdown correctness](docs/native-headless-shutdown.md)
 - [Experimental EngineSession](docs/native-engine-session.md)
+- [Embedded in-process engine](docs/embedded-engine.md)
 - [Replay worker and benchmark interpretation](docs/native-lifecycle-optimizer.md)
 
 VCMI and its dependencies retain their upstream licenses; VCMI is
