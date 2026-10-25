@@ -109,9 +109,12 @@ class RuntimeInventoryTests(unittest.TestCase):
         jobs = self.root / 'jobs.json'
         jobs.write_text(json.dumps([['--log', str(log)]]))
         output = self.root / 'benchmark-output'
-        with patch.object(sys, 'argv', ['benchmark', '--binary', '/bin/true', '--jobs', str(jobs),
+        # These tests exercise inventory admission, not Linux library discovery.
+        # Hash an existing executable and isolate the unrelated ldd boundary.
+        with patch.object(sys, 'argv', ['benchmark', '--binary', sys.executable, '--jobs', str(jobs),
                                        '--output', str(output), '--runtime-spec', str(spec),
                                        '--runtime-manifest', str(manifest)]), \
+                patch.object(benchmark, 'library_identity', return_value={}), \
                 patch.object(benchmark, 'measure') as measure:
             with self.assertRaisesRegex(ValueError, 'settings.json'):
                 benchmark.main()
@@ -135,9 +138,10 @@ class RuntimeInventoryTests(unittest.TestCase):
             # No native report or gameplay is fabricated; exercise admission
             # immediately after returning across the measurement boundary.
             return {}
-        with patch.object(sys, 'argv', ['benchmark', '--binary', '/bin/true', '--jobs', str(jobs),
+        with patch.object(sys, 'argv', ['benchmark', '--binary', sys.executable, '--jobs', str(jobs),
                                        '--output', str(output), '--runtime-spec', str(spec),
                                        '--runtime-manifest', str(manifest)]), \
+                patch.object(benchmark, 'library_identity', return_value={}), \
                 patch.object(benchmark, 'measure', side_effect=boundary_only):
             with self.assertRaisesRegex(ValueError, 'settings.json'):
                 benchmark.main()
