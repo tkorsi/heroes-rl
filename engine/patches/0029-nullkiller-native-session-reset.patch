@@ -1,0 +1,119 @@
+--- a/AI/Nullkiller/Pathfinding/AINodeStorage.cpp
++++ b/AI/Nullkiller/Pathfinding/AINodeStorage.cpp
+@@ -62,6 +62,14 @@
+ 		nodes = shared;
+ }
+ 
++void AISharedStorage::resetNativeSession()
++{
++	shared.reset();
++	version = 0;
++	committedTiles.clear();
++	committedTilesInitial.clear();
++}
++
+ AISharedStorage::~AISharedStorage()
+ {
+ 	nodes.reset();
+--- a/AI/Nullkiller/Pathfinding/AINodeStorage.h
++++ b/AI/Nullkiller/Pathfinding/AINodeStorage.h
+@@ -150,6 +150,8 @@
+ 
+ 	AISharedStorage(int3 sizes, int numChains);
+ 	~AISharedStorage();
++	/// Native-session host only, with no node storage alive: fresh-process state.
++	static void resetNativeSession();
+ 
+ 	STRONG_INLINE
+ 	boost::detail::multi_array::sub_array<AIPathNode, 1> get(int3 tile) const
+--- a/AI/Nullkiller/Pathfinding/AIPathfinder.cpp
++++ b/AI/Nullkiller/Pathfinding/AIPathfinder.cpp
+@@ -23,6 +23,11 @@
+ {
+ }
+ 
++void AIPathfinder::resetNativeSession()
++{
++	heroGraphs.clear();
++}
++
+ void AIPathfinder::init()
+ {
+ 	storage.reset();
+--- a/AI/Nullkiller/Pathfinding/AIPathfinder.h
++++ b/AI/Nullkiller/Pathfinding/AIPathfinder.h
+@@ -45,6 +45,8 @@
+ 
+ public:
+ 	AIPathfinder(CPlayerSpecificInfoCallback * cb, Nullkiller * ai);
++	/// Native-session host only, with no AI alive: drop cached hero graphs.
++	static void resetNativeSession();
+ 	void calculatePathInfo(std::vector<AIPath> & paths, const int3 & tile, bool includeGraph = false) const;
+ 	bool isTileAccessible(const HeroPtr & hero, const int3 & tile) const;
+ 	void updatePaths(const std::map<const CGHeroInstance *, HeroRole> & heroes, PathfinderSettings pathfinderSettings);
+--- a/AI/Nullkiller/main.cpp
++++ b/AI/Nullkiller/main.cpp
+@@ -9,6 +9,9 @@
+  */
+ #include "StdInc.h"
+ #include "AIGateway.h"
++#include "Engine/Nullkiller.h"
++#include "Pathfinding/AINodeStorage.h"
++#include "Pathfinding/AIPathfinder.h"
+ 
+ #ifdef __GNUC__
+ #define strcpy_s(a, b, c) strncpy(a, c, b)
+@@ -30,3 +33,13 @@
+ {
+ 	out = std::make_shared<NKAI::AIGateway>();
+ }
++
++/// Native-session host only, after every AIGateway and worker task of the
++/// previous game is gone: release module-level caches, so the next embedded
++/// game starts from the same module state as a newly launched client.
++extern "C" DLL_EXPORT void ResetNativeSessionState()
++{
++	NKAI::Nullkiller::baseGraph.reset();
++	NKAI::AIPathfinder::resetNativeSession();
++	NKAI::AISharedStorage::resetNativeSession();
++}
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -473,6 +473,25 @@
+ 	experimentOpponentProvider = std::move(provider);
+ }
+ 
++bool CDynLibHandler::resetExperimentModule(const std::string & dllname)
++{
++#if defined(STATIC_AI) || defined(VCMI_WINDOWS)
++	return false;
++#else
++	using TResetFun = void (*)();
++	const boost::filesystem::path filePath = VCMIDirs::get().fullLibraryPath("AI", dllname);
++	// Same handle as the loader's own never-closed reference; this one is closed again.
++	void * dll = dlopen(filePath.string().c_str(), RTLD_LOCAL | RTLD_LAZY);
++	if(!dll)
++		throw std::runtime_error("Cannot open dynamic library for native reset: " + filePath.string());
++	const auto reset = reinterpret_cast<TResetFun>(dlsym(dll, "ResetNativeSessionState"));
++	if(reset)
++		reset();
++	dlclose(dll);
++	return reset != nullptr;
++#endif
++}
++
+ void setExperimentPacketObserver(std::function<void(const CPackForClient &)> observer)
+ {
+ 	std::lock_guard lock(experimentObserverMutex);
+--- a/lib/callback/CDynLibHandler.h
++++ b/lib/callback/CDynLibHandler.h
+@@ -33,6 +33,9 @@
+ 	static std::shared_ptr<CGlobalAI> getExperimentOpponent(const std::string & dllname, int player);
+ 	/// Install/remove only while no game client exists.
+ 	static void setExperimentOpponentProvider(ExperimentOpponentProvider provider);
++	/// Native-session host only, with no instance of the module alive: calls its
++	/// optional ResetNativeSessionState export. False if the module has none.
++	static bool resetExperimentModule(const std::string & dllname);
+ 	static std::shared_ptr<CBattleGameInterface> getNewBattleAI(const std::string & dllname);
+ #if SCRIPTING_ENABLED
+ 	static std::shared_ptr<scripting::Module> getNewScriptingModule(const boost::filesystem::path & dllname);

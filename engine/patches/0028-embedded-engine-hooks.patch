@@ -1,0 +1,180 @@
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -336,7 +336,8 @@
+ 				auto AiToGive = explorerPlayers.contains(color) ? "ExplorerRL"
+ 					: builtinLearner >= 0 ? "Nullkiller" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
+ 				logNetwork->info("Player %s will be lead by %s", color.toString(), AiToGive);
+-				installNewPlayerInterface(CDynLibHandler::getNewAI(AiToGive), color);
++				installNewPlayerInterface(builtinLearner >= 0 && !explorerPlayers.contains(color)
++					? CDynLibHandler::getExperimentOpponent(AiToGive, color.getNum()) : CDynLibHandler::getNewAI(AiToGive), color);
+ 			}
+ 			else
+ 			{
+@@ -510,6 +511,7 @@
+ 			if(const auto * barrier = dynamic_cast<const ExperimentTerminalBarrier *>(&pack))
+ 				completeExperimentTerminalBarrier(*barrier);
+ 		}
++		notifyExperimentPacketObserver(pack);
+ 	}
+ 	if(experimentBarrierReceived && !experimentReplayMode)
+ 		requestHeadlessShutdown(experimentHasFailed() ? EXIT_FAILURE : EXIT_SUCCESS);
+--- a/client/ServerRunner.cpp
++++ b/client/ServerRunner.cpp
+@@ -10,11 +10,14 @@
+ #include "StdInc.h"
+ 
+ #include "ServerRunner.h"
++#include "CMT.h"
++#include "GameEngine.h"
+ 
+ #include "../lib/VCMIDirs.h"
+ #include "../lib/CThreadHelper.h"
+ #include "../lib/network/NetworkInterface.h"
+ #include "../lib/CConfigHandler.h"
++#include "../lib/callback/CGameInterface.h"
+ #include "../server/CVCMIServer.h"
+ 
+ #ifdef ENABLE_SERVER_PROCESS
+@@ -51,9 +54,27 @@
+ 
+ 	threadRunLocalServer = std::thread([this, connectToLobby, listenForConnections, &promise]{
+ 		setThreadName("runServer");
+-		uint16_t port = server->prepare(connectToLobby, listenForConnections);
+-		promise.set_value(port);
+-		server->run();
++		bool prepared = false;
++		try
++		{
++			uint16_t port = server->prepare(connectToLobby, listenForConnections);
++			prepared = true;
++			promise.set_value(port);
++			server->run();
++		}
++		catch(const std::exception & e)
++		{
++			if(ENGINE)
++				throw;
++			// No main loop catches on this thread. A headless or embedded host
++			// must observe a failed episode, not have std::terminate abort it.
++			logNetwork->error("Headless local server thread failed: %s", e.what());
++			reportExperimentFailure(std::string("Headless local server thread failed: ") + e.what());
++			if(!prepared)
++				promise.set_exception(std::current_exception());
++			else
++				requestHeadlessShutdown(EXIT_FAILURE);
++		}
+ 	});
+ 
+ 	logNetwork->trace("Waiting for server port...");
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -444,6 +444,64 @@
+ 	return createAnyAI<CGlobalAI>(dllname, "GetNewAI");
+ }
+ 
++namespace
++{
++std::mutex experimentOpponentMutex;
++ExperimentOpponentProvider experimentOpponentProvider;
++std::mutex experimentObserverMutex;
++std::shared_ptr<const std::function<void(const CPackForClient &)>> experimentPacketObserver;
++}
++
++std::shared_ptr<CGlobalAI> CDynLibHandler::getExperimentOpponent(const std::string & dllname, int player)
++{
++	ExperimentOpponentProvider provider;
++	{
++		std::lock_guard lock(experimentOpponentMutex);
++		provider = experimentOpponentProvider;
++	}
++	if(!provider)
++		return getNewAI(dllname);
++	auto result = provider(dllname, player);
++	if(!result)
++		throw std::runtime_error("Native opponent provider returned no interface");
++	return result;
++}
++
++void CDynLibHandler::setExperimentOpponentProvider(ExperimentOpponentProvider provider)
++{
++	std::lock_guard lock(experimentOpponentMutex);
++	experimentOpponentProvider = std::move(provider);
++}
++
++void setExperimentPacketObserver(std::function<void(const CPackForClient &)> observer)
++{
++	std::lock_guard lock(experimentObserverMutex);
++	experimentPacketObserver = observer ? std::make_shared<const std::function<void(const CPackForClient &)>>(std::move(observer)) : nullptr;
++}
++
++void notifyExperimentPacketObserver(const CPackForClient & pack) noexcept
++{
++	std::shared_ptr<const std::function<void(const CPackForClient &)>> observer;
++	{
++		std::lock_guard lock(experimentObserverMutex);
++		observer = experimentPacketObserver;
++	}
++	if(!observer)
++		return;
++	try
++	{
++		(*observer)(pack);
++	}
++	catch(const std::exception & error)
++	{
++		reportExperimentFailure(std::string("Native packet observer failed: ") + error.what());
++	}
++	catch(...)
++	{
++		reportExperimentFailure("Native packet observer failed");
++	}
++}
++
+ std::shared_ptr<CBattleGameInterface> CDynLibHandler::getNewBattleAI(const std::string & dllname)
+ {
+ 	return createAnyAI<CBattleGameInterface>(dllname, "GetNewBattleAI");
+--- a/lib/callback/CDynLibHandler.h
++++ b/lib/callback/CDynLibHandler.h
+@@ -21,10 +21,18 @@
+ }
+ #endif
+ 
++/// Native-session host only: constructs the built-in adventure opponent for
++/// one player. Without a provider the dynamic library loader is unchanged.
++using ExperimentOpponentProvider = std::function<std::shared_ptr<CGlobalAI>(const std::string & dllname, int player)>;
++
+ class DLL_LINKAGE CDynLibHandler
+ {
+ public:
+ 	static std::shared_ptr<CGlobalAI> getNewAI(const std::string & dllname);
++	/// Built-in opponent seat: the installed host provider, else getNewAI.
++	static std::shared_ptr<CGlobalAI> getExperimentOpponent(const std::string & dllname, int player);
++	/// Install/remove only while no game client exists.
++	static void setExperimentOpponentProvider(ExperimentOpponentProvider provider);
+ 	static std::shared_ptr<CBattleGameInterface> getNewBattleAI(const std::string & dllname);
+ #if SCRIPTING_ENABLED
+ 	static std::shared_ptr<scripting::Module> getNewScriptingModule(const boost::filesystem::path & dllname);
+--- a/lib/callback/ExperimentHooks.h
++++ b/lib/callback/ExperimentHooks.h
+@@ -10,6 +10,7 @@
+ #pragma once
+ 
+ #include <exception>
++#include <functional>
+ #include <memory>
+ #include <mutex>
+ #include <string>
+@@ -63,6 +64,13 @@
+ DLL_LINKAGE void noteExperimentPacketCallbacksComplete();
+ DLL_LINKAGE ExperimentReceiptPosition experimentReceiptPosition();
+ 
++/// Native-session host only: passive per-packet observer used for timing the
++/// built-in opponent and automatic battles. It runs on the packet thread after
++/// all callbacks, must not mutate state or send requests, and never changes
++/// replay evidence. Install/remove only while no game client exists.
++DLL_LINKAGE void setExperimentPacketObserver(std::function<void(const CPackForClient &)> observer);
++DLL_LINKAGE void notifyExperimentPacketObserver(const CPackForClient & pack) noexcept;
++
+ /// Cancellation before a native request enters the sealed terminal stream.
+ /// This is never a successful request or an exemption from replay validation.
+ class DLL_LINKAGE ExperimentTerminalFinished final : public std::exception

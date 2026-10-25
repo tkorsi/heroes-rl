@@ -14,8 +14,10 @@
 #include "../lib/callback/CGameInterface.h"
 #include "../lib/callback/ExperimentHooks.h"
 #include "../lib/logging/CBasicLogConfigurator.h"
+#include "../lib/logging/CLogger.h"
 #include <atomic>
 #include <condition_variable>
+#include <cstdio>
 #include <filesystem>
 #include <mutex>
 #include <optional>
@@ -35,11 +37,50 @@ struct Shutdown : native_session_host::ShutdownStatus
 	std::weak_ptr<native_session::InProcessPolicy> policy;
 };
 std::mutex activeMutex;
-std::shared_ptr<Shutdown> active;
+std::shared_ptr<Shutdown> activeShutdown;
 std::shared_ptr<Shutdown> currentShutdown()
 {
 	std::lock_guard lock(activeMutex);
-	return active;
+	return activeShutdown;
+}
+
+/// One game's engine log, in the console format and threshold the executable
+/// client writes to its redirected stdout (logs/process.log).
+struct EpisodeLogState
+{
+	std::mutex mutex;
+	std::FILE * file = nullptr;
+	bool failed = false;
+	CLogFormatter formatter;
+	ELogLevel::ELogLevel threshold = ELogLevel::INFO;
+};
+class EpisodeLogTarget final : public ILogTarget
+{
+	std::shared_ptr<EpisodeLogState> state;
+public:
+	explicit EpisodeLogTarget(std::shared_ptr<EpisodeLogState> value) : state(std::move(value)) {}
+	void write(const LogRecord & record) override
+	{
+		std::lock_guard lock(state->mutex);
+		if(!state->file || state->threshold > record.level)
+			return;
+		const auto text = state->formatter.format(record) + "\n";
+		if(std::fwrite(text.data(), 1, text.size(), state->file) != text.size())
+			state->failed = true;
+	}
+};
+ELogLevel::ELogLevel logLevel(const std::string & name)
+{
+	static const std::map<std::string, ELogLevel::ELogLevel> levels{{"trace", ELogLevel::TRACE},
+		{"debug", ELogLevel::DEBUG}, {"info", ELogLevel::INFO}, {"warn", ELogLevel::WARN}, {"error", ELogLevel::ERROR}};
+	const auto found = levels.find(name);
+	if(found == levels.end()) throw std::runtime_error("Unknown console log threshold " + name);
+	return found->second;
+}
+void restore(SettingsStorage & storage, const JsonNode & baseline)
+{
+	Settings root = storage.write(std::vector<std::string>{});
+	*root.operator->() = baseline;
 }
 }
 
@@ -77,27 +118,55 @@ class EngineSession::Impl
 {
 public:
 	std::unique_lock<std::mutex> owner{ownerMutex, std::try_to_lock};
+	const SessionOptions options;
 	CConsoleHandler console;
 	std::unique_ptr<CBasicLogConfigurator> logging;
+	std::shared_ptr<EpisodeLogState> episodeLog = std::make_shared<EpisodeLogState>();
 	std::unique_ptr<native_session_host::RuntimeEnvironment> environment;
 	std::shared_ptr<InProcessPolicy> policy;
 	std::shared_ptr<Shutdown> shutdown;
+	native_session_host::NullkillerOpponent opponent;
+	native_session_host::OpponentStats lastOpponent;
 	std::set<std::string> episodes;
+	JsonNode settingsBaseline;
+	JsonNode persistentBaseline;
 	SessionTimings timing;
+	std::optional<Clock::time_point> submitted;
 	int player = -1;
 	bool loaded = false;
 	bool awaitingInitialBoundary = false;
+	bool opponentAttached = false;
 	native_session_host::SessionHealth health;
-	Impl()
+	explicit Impl(SessionOptions value) : options(value)
 	{
 		if(!owner.owns_lock() || LIBRARY || GAME || ENGINE)
 			throw std::runtime_error("Native EngineSession requires exclusive ownership of a fresh process");
 	}
+	void openEpisodeLog(const std::string & path)
+	{
+		if(path.empty()) return;
+		std::lock_guard lock(episodeLog->mutex);
+		if(episodeLog->file) throw std::logic_error("Previous native game log is still open");
+		episodeLog->file = std::fopen(path.c_str(), "wx");
+		episodeLog->failed = false;
+		if(!episodeLog->file) throw std::runtime_error("Cannot create the new native game log " + path);
+	}
+	void closeEpisodeLog()
+	{
+		std::lock_guard lock(episodeLog->mutex);
+		if(!episodeLog->file) return;
+		const bool flushed = std::fflush(episodeLog->file) == 0;
+		const bool closed = std::fclose(episodeLog->file) == 0;
+		episodeLog->file = nullptr;
+		if(!flushed || !closed || episodeLog->failed)
+			throw std::runtime_error("Native game log is incomplete");
+	}
 };
-EngineSession::EngineSession() : impl(std::make_unique<Impl>()) {}
+EngineSession::EngineSession(SessionOptions options) : impl(std::make_unique<Impl>(options)) {}
 EngineSession::~EngineSession()
 {
 	try { closeEpisode(); } catch(...) { std::terminate(); } // never destroy resources beneath live episode threads
+	impl->opponent.shutdown();
 	setExperimentFailureHandler({});
 	setExperimentEvidenceHooks(nullptr);
 	delete LIBRARY;
@@ -112,12 +181,33 @@ void EngineSession::load()
 	const auto start = Clock::now();
 	try
 	{
-		impl->logging = std::make_unique<CBasicLogConfigurator>(VCMIDirs::get().userLogsPath() / "VCMI_Session_log.txt", &impl->console);
+		const auto sessionLog = VCMIDirs::get().userLogsPath() / "VCMI_Session_log.txt";
+		impl->logging = std::make_unique<CBasicLogConfigurator>(sessionLog, &impl->console);
 		impl->logging->configureDefault();
 		LIBRARY = new GameLibrary;
 		LIBRARY->initializeFilesystem(false);
 		impl->logging->configure();
+		const auto & console = settings["logging"]["console"];
+		impl->episodeLog->formatter = CLogFormatter(console["format"].String());
+		impl->episodeLog->threshold = logLevel(console["threshold"].String());
+		if(!impl->options.consoleLog)
+		{
+			// An embedding host owns its stdout. Keep the persistent session file
+			// and the per-game log; never interleave engine lines with the host.
+			auto * global = CLogger::getGlobalLogger();
+			global->clearTargets();
+			auto file = std::make_unique<CLogFileTarget>(sessionLog, true);
+			if(!settings["logging"]["file"]["format"].isNull())
+				file->setFormatter(CLogFormatter(settings["logging"]["file"]["format"].String()));
+			global->addTarget(std::move(file));
+		}
+		CLogger::getGlobalLogger()->addTarget(std::make_unique<EpisodeLogTarget>(impl->episodeLog));
 		LIBRARY->initializeLibrary();
+		impl->opponent.initialize();
+		// Each game starts from the loaded configuration, as each executable
+		// launch starts from its freshly written profile.
+		impl->settingsBaseline = settings.toJsonNode();
+		impl->persistentBaseline = persistentStorage.toJsonNode();
 		impl->loaded = true;
 	}
 	catch(...) { impl->timing.loadSeconds = elapsed(start); impl->health.poison(); throw; }
@@ -133,21 +223,31 @@ void EngineSession::reset(const EpisodeConfig & config)
 	const std::filesystem::path capture(config.captureDirectory);
 	if(!capture.is_absolute() || std::filesystem::exists(capture))
 		throw std::invalid_argument("Native capture directory must be new and absolute");
+	if(!config.logPath.empty())
+	{
+		const std::filesystem::path log(config.logPath);
+		if(!log.is_absolute() || std::filesystem::exists(log) || !std::filesystem::is_directory(log.parent_path()))
+			throw std::invalid_argument("Native game log must be a new absolute file in an existing directory");
+	}
 	impl->health.prepareReset(impl->loaded, [&] { closeEpisode(); });
 	const auto start = Clock::now();
 	try
 	{
 		std::filesystem::create_directories(capture);
 		impl->episodes.insert(config.episode);
+		impl->openEpisodeLog(config.logPath);
+		restore(settings, impl->settingsBaseline);
+		restore(persistentStorage, impl->persistentBaseline);
 		impl->environment = std::make_unique<native_session_host::RuntimeEnvironment>();
 		auto & env = *impl->environment;
 		env.set("EXPLORER_RL_PLAYER", std::nullopt);
 		env.set("EXPLORER_RL_PLAYERS", std::to_string(config.learner));
-		env.set("EXPLORER_RL_BUILTIN_OPPONENT", "Nullkiller");
+		env.set("EXPLORER_RL_BUILTIN_OPPONENT", native_session_host::NullkillerOpponent::MODULE);
 		env.set("EXPLORER_RL_INTERFACE", "adventure-dialogs-v1");
 		env.set("EXPLORER_RL_TRANSPORT", "in-process");
 		env.set("EXPLORER_RL_EPISODE", config.episode);
 		env.set("EXPLORER_RL_TIMEOUT", std::to_string(config.policyTimeoutSeconds));
+		env.set("EXPLORER_RL_PROFILE", "0");
 		env.set("VCMI_EXPERIMENT_DIR", capture.string());
 		env.set("VCMI_RECORD_DIR", std::nullopt);
 		env.set("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1");
@@ -168,27 +268,21 @@ void EngineSession::reset(const EpisodeConfig & config)
 			server["useProcess"].Bool() = false;
 			server["seed"].Integer() = config.seed;
 		}
-		{
-			Settings general = settings.write["general"];
-			general["lastDifficulty"].Integer() = 0;
-		}
-		{
-			Settings ai = settings.write["ai"];
-			ai["combatEnemyAI"].String() = "BattleAI";
-			ai["combatAlliedAI"].String() = "BattleAI";
-			ai["combatNeutralAI"].String() = "BattleAI";
-		}
 		resetNativeSessionEvidence(); // previous native objects and threads are gone
-		impl->policy = std::make_shared<InProcessPolicy>(nextGeneration.fetch_add(1));
+		// Room for a whole opponent turn of visible events; take() wakes at half.
+		impl->policy = std::make_shared<InProcessPolicy>(nextGeneration.fetch_add(1), 1024);
 		impl->player = config.learner;
 		installPolicy(config.learner, config.episode, impl->policy);
 		impl->shutdown = std::make_shared<Shutdown>();
 		impl->shutdown->policy = impl->policy;
 		{
 			std::lock_guard lock(activeMutex);
-			active = impl->shutdown;
+			activeShutdown = impl->shutdown;
 		}
 		setExperimentFailureHandler([](const std::string &) { requestHeadlessShutdown(EXIT_FAILURE); });
+		impl->opponent.attach(1 - config.learner);
+		impl->opponentAttached = true;
+		impl->submitted.reset();
 		GAME = std::make_unique<GameInstance>();
 		GAME->server().debugStartTest(config.map, false);
 		impl->awaitingInitialBoundary = true;
@@ -232,9 +326,71 @@ Boundary EngineSession::step(BoundaryToken token, const JsonNode & response, Dea
 	}
 	catch(...) { impl->timing.advanceSeconds += elapsed(start); throw; }
 }
+Delivery EngineSession::take(Deadline deadline, bool untilBoundary)
+{
+	if(!impl->policy) throw std::logic_error("No active native episode");
+	const auto start = Clock::now();
+	auto result = impl->policy->take(deadline, untilBoundary);
+	const bool boundary = result.needsAction || result.terminalObserved || result.closed || !result.failure.empty();
+	if(impl->awaitingInitialBoundary)
+	{
+		impl->timing.resetSeconds += elapsed(start);
+		if(boundary) impl->awaitingInitialBoundary = false;
+	}
+	else if(boundary && impl->submitted)
+	{
+		impl->timing.advanceSeconds += elapsed(*impl->submitted);
+		impl->submitted.reset();
+	}
+	return result;
+}
+void EngineSession::submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted)
+{
+	if(!impl->policy) throw std::logic_error("No active native episode");
+	impl->policy->submit(token, response, lineAdmitted);
+	++impl->timing.steps;
+	impl->submitted = Clock::now();
+}
+EpisodeReport EngineSession::finish(bool natural, Deadline deadline)
+{
+	if(!impl->policy || !impl->shutdown) throw std::logic_error("No active native episode");
+	EpisodeReport report;
+	report.natural = natural;
+	const auto policy = impl->policy;
+	const auto shutdown = impl->shutdown;
+	const auto start = Clock::now();
+	std::optional<int> before;
+	{
+		std::unique_lock lock(shutdown->mutex);
+		if(natural && !shutdown->changed.wait_until(lock, deadline, [&] { return shutdown->code.has_value(); }))
+			report.shutdownDeadline = true;
+		before = shutdown->code;
+	}
+	report.waitSeconds = elapsed(start);
+	if(natural) impl->timing.finishWaitSeconds += report.waitSeconds;
+	report.hostStopped = !before.has_value();
+	const auto closing = Clock::now();
+	try { closeEpisode(); }
+	catch(const std::exception & error) { report.closeError = error.what(); }
+	catch(...) { report.closeError = "Native episode close failed"; }
+	report.closeSeconds = elapsed(closing);
+	{
+		std::lock_guard lock(shutdown->mutex);
+		report.exitCode = shutdown->code; // a failure reported while stopping survives
+	}
+	report.channelFailure = policy->failure();
+	report.messages = policy->drain(); // every producer has joined
+	report.experimentFailed = experimentHasFailed();
+	report.opponent = impl->lastOpponent;
+	report.poisoned = impl->health.failed();
+	report.closeClean = report.closeError.empty() && !report.poisoned && !report.experimentFailed
+		&& report.channelFailure.empty() && !(report.exitCode && *report.exitCode != 0)
+		&& report.opponent.released && !report.shutdownDeadline;
+	return report;
+}
 void EngineSession::closeEpisode()
 {
-	if(!impl->policy && !GAME && !impl->environment) return;
+	if(!impl->policy && !GAME && !impl->environment && !impl->opponentAttached) return;
 	const auto start = Clock::now();
 	try
 	{
@@ -247,16 +403,32 @@ void EngineSession::closeEpisode()
 		if(impl->policy) impl->policy->close();
 		if(GAME)
 		{
-			std::cerr << "Native session cleanup: stop/join client network\n";
+			logGlobal->info("Native session cleanup: stop/join client network");
 			GAME->server().endNetwork();
-			std::cerr << "Native session cleanup: finish AI and game state\n";
+			logGlobal->info("Native session cleanup: finish AI and game state");
 			if(GAME->server().client) GAME->server().endGameplay();
-			std::cerr << "Native session cleanup: destroy server runner\n";
+			logGlobal->info("Native session cleanup: destroy server runner");
 			// CServerHandler destruction shuts down and joins its server runner.
 			// Keep GAME non-null throughout destruction: endGame uses the global.
 			auto * game = GAME.get();
 			delete game;
 			GAME.release();
+		}
+		if(impl->opponentAttached)
+		{
+			// Every thread and object of the game is gone. An opponent instance
+			// that survived it would carry state into the next game.
+			impl->opponentAttached = false;
+			impl->lastOpponent = impl->opponent.release();
+			impl->timing.opponentTurns += impl->lastOpponent.turns;
+			impl->timing.opponentTurnSeconds += impl->lastOpponent.turnSeconds;
+			impl->timing.battles += impl->lastOpponent.battles;
+			impl->timing.battleSeconds += impl->lastOpponent.battleSeconds;
+			if(!impl->lastOpponent.released)
+			{
+				logGlobal->error("Native session cleanup: built-in opponent instance outlived its game");
+				impl->health.poison();
+			}
 		}
 		// All producers have joined. Preserve errors published before cancellation
 		// or during shutdown before discarding the channel and resetting evidence.
@@ -273,16 +445,22 @@ void EngineSession::closeEpisode()
 		setExperimentFailureHandler({});
 		auto evidence = experimentEvidenceHooks();
 		setExperimentEvidenceHooks(nullptr);
-		std::cerr << "Native session cleanup: release contextual evidence\n";
+		logGlobal->info("Native session cleanup: release contextual evidence");
 		if(evidence) evidence->finishNativeSession();
 		{
 			std::lock_guard lock(activeMutex);
-			active.reset();
+			activeShutdown.reset();
 		}
 		impl->environment.reset();
+		impl->closeEpisodeLog();
 		impl->timing.cleanupSeconds += elapsed(start);
 	}
-	catch(...) { impl->health.poison(); throw; }
+	catch(...)
+	{
+		impl->health.poison();
+		try { impl->closeEpisodeLog(); } catch(...) {}
+		throw;
+	}
 }
 SessionTimings EngineSession::timings() const { return impl->timing; }
 void EngineSession::waitForShutdown(Deadline deadline)
@@ -300,5 +478,7 @@ bool EngineSession::shutdownComplete() const
 	std::lock_guard lock(impl->shutdown->mutex);
 	return impl->shutdown->code == 0;
 }
+bool EngineSession::poisoned() const noexcept { return impl->health.failed(); }
+bool EngineSession::active() const noexcept { return impl->policy != nullptr; }
 }
 VCMI_LIB_NAMESPACE_END

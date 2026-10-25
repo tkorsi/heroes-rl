@@ -6,6 +6,11 @@
 #if defined(__APPLE__) || defined(__linux__)
 #include <sys/resource.h>
 #endif
+#ifdef __APPLE__
+#include <mach/mach.h>
+#include <libproc.h>
+#include <unistd.h>
+#endif
 namespace native_session_host
 {
 std::optional<uint64_t> peakResidentBytes()
@@ -53,6 +58,29 @@ JsonNode resourceSnapshot()
 		result["open_descriptors"].Integer() = descriptors;
 	}
 	catch(const std::filesystem::filesystem_error &) {} // optional telemetry
+#endif
+#ifdef __APPLE__
+	mach_task_basic_info_data_t info{};
+	mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+	if(task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS)
+		result["resident_bytes"].Integer() = static_cast<int64_t>(info.resident_size);
+	thread_act_array_t threads = nullptr;
+	mach_msg_type_number_t threadCount = 0;
+	if(task_threads(mach_task_self(), &threads, &threadCount) == KERN_SUCCESS)
+	{
+		result["threads"].Integer() = threadCount;
+		for(mach_msg_type_number_t index = 0; index < threadCount; ++index)
+			mach_port_deallocate(mach_task_self(), threads[index]);
+		vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(threads), threadCount * sizeof(thread_act_t));
+	}
+	const int bytes = proc_pidinfo(getpid(), PROC_PIDLISTFDS, 0, nullptr, 0);
+	if(bytes > 0)
+	{
+		std::vector<proc_fdinfo> descriptors(static_cast<size_t>(bytes) / sizeof(proc_fdinfo) + 16);
+		const int used = proc_pidinfo(getpid(), PROC_PIDLISTFDS, 0, descriptors.data(), static_cast<int>(descriptors.size() * sizeof(proc_fdinfo)));
+		if(used > 0)
+			result["open_descriptors"].Integer() = used / static_cast<int>(sizeof(proc_fdinfo));
+	}
 #endif
 	return result;
 }

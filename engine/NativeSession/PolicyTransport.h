@@ -18,6 +18,14 @@ class DLL_LINKAGE PolicyTransportCancelled : public std::runtime_error
 {
 public:
 	PolicyTransportCancelled() : std::runtime_error("Native policy channel closed") {}
+	explicit PolicyTransportCancelled(const char * reason) : std::runtime_error(reason) {}
+};
+/// The player's own terminal superseded a pending receive. Like a closed
+/// socket after the natural end, this is never a failure or an action.
+class DLL_LINKAGE PolicyTransportTerminal final : public PolicyTransportCancelled
+{
+public:
+	PolicyTransportTerminal() : PolicyTransportCancelled("Native policy terminal superseded the receive") {}
 };
 struct WriteMetrics
 {
@@ -52,9 +60,22 @@ struct Boundary
 	bool needsAction = false;
 	bool terminalObserved = false; ///< not replay verification or a scored result
 };
+/// Incremental delivery: every message is handed out exactly once, in order,
+/// including a failure prefix and messages after the player's own terminal.
+struct Delivery
+{
+	BoundaryToken token;
+	std::vector<JsonNode> messages;
+	bool needsAction = false; ///< newly offered decision; token may authorize exactly one submit
+	bool terminalObserved = false; ///< state: the player's own terminal was sent
+	bool closed = false;
+	bool timedOut = false; ///< deadline passed with nothing new
+	std::string failure; ///< first failure reason; messages are its delivered prefix
+};
 
 /// Per-episode, per-player channel. Reuse creates a NEW object/generation;
 /// old handles remain closed forever. No OS descriptors or process assumptions.
+/// Use either observe() (idempotent boundary) or take() (incremental) per channel.
 class DLL_LINKAGE InProcessPolicy final : public PolicyTransport
 {
 	class Impl;
@@ -67,8 +88,17 @@ public:
 	void close() noexcept override;
 	bool cancelled() const noexcept override;
 	bool failed() const noexcept;
+	std::string failure() const;
 	Boundary observe(Deadline deadline);
-	void submit(BoundaryToken token, const JsonNode & response);
+	/// Waits until a decision, terminal, failure or close is newly available
+	/// (or, unless untilBoundary, any message; or the queue is half full).
+	/// Never throws on channel failure.
+	Delivery take(Deadline deadline, bool untilBoundary);
+	/// Non-blocking: messages not yet handed out, e.g. after all producers joined.
+	std::vector<JsonNode> drain();
+	/// lineAdmitted: the caller already applied the socket's 64 KiB limit to
+	/// the response's own wire line; otherwise its JsonWriter text is bounded.
+	void submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted = false);
 	void fail(const std::string & reason) noexcept;
 };
 
