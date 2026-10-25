@@ -1,11 +1,11 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T16:04:35.261954+00:00",
+  "timestamp_utc": "2026-10-25T16:09:43.636299+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Ordinary Linux terminal shutdown repair tested and published separately; Teacher can pick the exact source fix and rerun its restored-policy gate.",
-  "source_commit": "3024e8889692ba132e35561d149202404ea2cd02",
-  "latest_pushed_commit": "15534c0",
-  "latest_tested_commit": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "current_activity": "Independent ordinary repair PR27 ready; first real in-process A/B/A (three consecutive natural games, both learner seats) passes native contextual verification. Preparing repeated cold/reused measurements and resource audit.",
+  "source_commit": "0ddf51dba3230ae394a661d4a823bb7bd8719084",
+  "latest_pushed_commit": "bb98408",
+  "latest_tested_commit": "23d87b6",
   "checks": {
     "native_transport_host_socket": {
       "passed": 3,
@@ -47,15 +47,28 @@
       0
     ],
     "ordinary_contextual_replays_verified": 2,
-    "retained_failures": "Teacher gate remains unscored; Optimizer pre-fix terminal crash and diagnostics retained, separate from fresh repaired test games."
+    "retained_failures": "Teacher gate remains unscored; Optimizer pre-fix terminal crash and diagnostics retained, separate from fresh repaired test games.",
+    "first_reused_session": {
+      "consecutive_natural_games": 3,
+      "learner_seats": [
+        0,
+        1,
+        0
+      ],
+      "independent_native_contextual_replays_passed": 3,
+      "a_initial_state_matches_cold": true,
+      "a_first_private_decision_hash_matches_cold": true,
+      "later_native_packet_counts": "Different across fresh games from inherited RNG/thread behavior; not bit-identical trajectories"
+    }
   },
   "asset_transfer": {
     "access": "succeeded",
     "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
   },
   "blocker": null,
-  "next_step": "Publish compact independent repair evidence; then resume real cold/reused EngineSession A/B/A using the same repair.",
+  "next_step": "Run repeated bounded cold/reused live workloads, verify every actual capture and examine post-cleanup memory/descriptors/threads. Keep experimental path opt-in.",
   "training": false,
   "ready_to_pick_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
-  "ready_to_pick_branch": "codex/linux-native-shutdown-fix"
+  "ready_to_pick_branch": "codex/linux-native-shutdown-fix",
+  "minimal_fix_pr": "https://github.com/tkorsi/heroes-rl/pull/27"
 }
