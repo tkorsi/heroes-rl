@@ -5,7 +5,17 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** the authorized local v7 PPO pilot completed eight verified
+**Current milestone:** exact cloud continuation from update 21 completed ten PPO
+updates from 40 fresh training games. The preserved state is **update 31, 124
+cumulative rollouts, 6,776 decisions and 253 Adam steps**. Across 48 valid cloud
+games there were no learner wins, 47 natural losses and one verified unscored
+cutoff. All four paired held-out checks remained 0/2 wins. Model, Adam, all RNGs,
+progress and pool restore exactly from three copies, including private Git.
+Learning stopped with deadline reserve; no restart after the fixed 17:53 UTC
+cutoff is authorized. See the cloud outcome and stop-window sections below,
+`reports/cloud/teacher-status.json`, and `validation/cloud-final-analysis-2026-10-25.json`.
+
+**Historical local pilot milestone:** the authorized local v7 PPO pilot completed eight verified
 natural games against Nullkiller Easy and **one PPO update from 106 fresh learner
 transitions (five Adam steps)** in 62.161 seconds. Both policy and value weights
 changed; exact checkpoint restoration and all native replays passed. The learner
