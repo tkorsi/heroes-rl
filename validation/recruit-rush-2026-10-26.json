@@ -1,0 +1,935 @@
+{
+  "action_schema": "heroes-context-actions-v8",
+  "aggregate": {
+    "cutoffs": 0,
+    "game_failures": 0,
+    "games_attempted": 6,
+    "intended_strategy_blue": {
+      "day_each": 2,
+      "games": 2,
+      "losses": 2,
+      "typed_commands_each": 7,
+      "wins": 0
+    },
+    "intended_strategy_red": {
+      "day_each": 1,
+      "games": 3,
+      "losses": 0,
+      "typed_commands_each": 9,
+      "wins": 3
+    },
+    "native_replays_verified": 6,
+    "natural_terminal_games": 6,
+    "retained_control": {
+      "carried_pikemen": 25,
+      "games": 1,
+      "purchased_pikemen_left_in_garrison": 14,
+      "seat": "red",
+      "typed_commands": 8,
+      "wins": 1
+    },
+    "retained_diagnostic_script_errors": 1
+  },
+  "blue_opponent_evidence": {
+    "case": "blue-01",
+    "contextual_native_opponent_sequences": [
+      55,
+      76,
+      124
+    ],
+    "interpretation": "Nullkiller moves first when the scripted player is Blue. Native accepted requests build a Citadel, recruit 14 pikemen, then merge them into the starting 25-pikeman hero. The field battle is 39 versus 39, not an assumed larger or newly hired army.",
+    "request_types": [
+      "BuildStructure 185 (building id 8)",
+      "RecruitCreatures 187 (core:pikeman, amount 14)",
+      "ArrangeStacks 183 (merge town slot 0 into hero slot 0)"
+    ],
+    "server_input_sequences": [
+      2,
+      3,
+      5
+    ]
+  },
+  "bounds": {
+    "absolute_hard_stop_utc": "2026-10-25T23:40:00Z",
+    "max_days": 365,
+    "max_typed_commands": 64,
+    "maximum_cases": 6,
+    "per_case_seconds": 120,
+    "reserved_replay_and_cleanup_seconds": 35
+  },
+  "cases": [
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            9,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            14,
+            8
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            15,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 8,
+          "kind": "choose_level_up",
+          "purpose": "answer_displayed_mandatory_capability"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 8,
+          "completion_history_seq": 88,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 7,
+          "start_history_seq": 74,
+          "won": true
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "162c991878e8aaa60dbb0fb4b191cb62e85c1d2e8b5868cc6f4a2ec73bdcfb2e",
+        "actions.jsonl": "f1c80ee6da5af466705f165f937a0494a328a953611775c8e7b71767701710b9",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "b127b8449763efd520220ff474876d66f82bcc686642593679409dbad8467cfa",
+        "episode-000001/manifest.json": "07768e88f052e30dde9d994971d343064d599053c8a675c7798aa9123319ccbb",
+        "report.json": "74b0431e25d2f017040e6efed03888b40a021f572bdd1a484e3b701a27791cf8"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 25,
+      "case": "red-01",
+      "classification": "retained_script_error_control",
+      "completed_at": "2026-10-25T23:23:17.584419+00:00",
+      "completed_result_frames": 7,
+      "created_at": "2026-10-25T23:23:16.610066+00:00",
+      "diagnostic_error": "The original script read obsolete town_panel.armies; it bought 14 pikemen but did not transfer them. The natural 25-pikeman attack victory is preserved separately and excluded from the intended strategy cohort.",
+      "engine_seed": 1026001,
+      "garrison_pikemen_left": 14,
+      "gold_spent": 840,
+      "learner_outcome": "win",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 4,
+      "probe_source_sha256": "6d97f4fdada1bbe900c8de8d5f088036e3213bbdc4ea09b41a0f7e5ecfb1b896",
+      "probe_version": "v1",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/red-01",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 296,
+        "messages": 18,
+        "native_opponent_requests": 10,
+        "requests": 32,
+        "responses": 8,
+        "transactions": 360
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "interaction": 1,
+        "opened": 2,
+        "reached": 2,
+        "recruited": 1
+      },
+      "seat": "red",
+      "source_binding_time": "after-run snapshot or reconstruction; not a prelaunch source attestation",
+      "status": "completed",
+      "superseded": [
+        {
+          "action_index": 8,
+          "history_seq": 92,
+          "reason": "terminal"
+        }
+      ],
+      "terminal_day": 1,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 8
+    },
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "merge_stacks",
+          "purpose": "give_bought_troops_to_starting_hero"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            9,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            14,
+            8
+          ]
+        },
+        {
+          "day": 1,
+          "index": 8,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            15,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 9,
+          "kind": "choose_level_up",
+          "purpose": "answer_displayed_mandatory_capability"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 9,
+          "completion_history_seq": 94,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 8,
+          "start_history_seq": 81,
+          "won": true
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "2f9fee7ba51105a7338424c393b4f7ab60b0f3c371211d0496dd039635f12b63",
+        "actions.jsonl": "cd6eb56a979780213f8860993b5c8d5f7bb7149f76b3dfbb49ce9d72287e341d",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "6d69762731ef6f7149bda68a0aa35393623b7dd03f730b49606290c8eb8508ef",
+        "episode-000001/manifest.json": "1e39667359ba8e3c397d7ac3643d2c4728ec42cb8091bdf6790c01f183d59e39",
+        "report.json": "cb51f369c07a9fa9763db788bd9213091344c5ab7e4cde375c1d50dcb9693a89"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 39,
+      "case": "red-02",
+      "classification": "intended_recruit_transfer_rush",
+      "completed_at": "2026-10-25T23:23:40.423104+00:00",
+      "completed_result_frames": 8,
+      "created_at": "2026-10-25T23:23:39.492001+00:00",
+      "engine_seed": 1026002,
+      "garrison_pikemen_left": 0,
+      "gold_spent": 840,
+      "learner_outcome": "win",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 5,
+      "probe_source_sha256": "01651c139d49623c159462a772c3c74dc855aa9edf8c0c946f6dbe7c12706b9c",
+      "probe_version": "v2",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/red-02",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 220,
+        "messages": 20,
+        "native_opponent_requests": 7,
+        "requests": 27,
+        "responses": 9,
+        "transactions": 289
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "interaction": 1,
+        "merged": 1,
+        "opened": 2,
+        "reached": 2,
+        "recruited": 1
+      },
+      "seat": "red",
+      "source_binding_time": "after-run snapshot or reconstruction; not a prelaunch source attestation",
+      "status": "completed",
+      "superseded": [
+        {
+          "action_index": 9,
+          "history_seq": 98,
+          "reason": "terminal"
+        }
+      ],
+      "terminal_day": 1,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 9
+    },
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "merge_stacks",
+          "purpose": "give_bought_troops_to_starting_hero"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            13,
+            9
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "end_turn",
+          "purpose": "wait_for_natural_outcome_after_hero_loss"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 6,
+          "completion_history_seq": 57,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 6,
+          "start_history_seq": 52,
+          "won": false
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "10592f7f0e1e785944100a4089e7b3ba3adfad235eacf6e090292893e31db40a",
+        "actions.jsonl": "681ea7948bad43438cca8281ef7cf91a5ce6e4b04225d0741d68ac0e28373fcd",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "04652b26fb1d6d6cf95eff07d4a46938bc76d7c6ac48d06a087c829ad1f1fefd",
+        "episode-000001/manifest.json": "001258a683b23acf1c8304916fb89b9a1fabafd86a943557975612c60f04aef1",
+        "report.json": "b144013e58532bc900b43c4e4ed61602bf859c54d1467822a61f8c399326dde4"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 39,
+      "case": "blue-01",
+      "classification": "intended_recruit_transfer_rush",
+      "completed_at": "2026-10-25T23:23:50.951307+00:00",
+      "completed_result_frames": 7,
+      "created_at": "2026-10-25T23:23:50.025838+00:00",
+      "engine_seed": 1026003,
+      "garrison_pikemen_left": 0,
+      "gold_spent": 840,
+      "learner_outcome": "loss",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 5,
+      "probe_source_sha256": "01651c139d49623c159462a772c3c74dc855aa9edf8c0c946f6dbe7c12706b9c",
+      "probe_version": "v2",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/blue-01",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 404,
+        "messages": 16,
+        "native_opponent_requests": 39,
+        "requests": 57,
+        "responses": 7,
+        "transactions": 472
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "hero_unavailable": 1,
+        "merged": 1,
+        "opened": 2,
+        "recruited": 1,
+        "turn_ended": 1
+      },
+      "seat": "blue",
+      "source_binding_time": "after-run snapshot or reconstruction; not a prelaunch source attestation",
+      "status": "completed",
+      "superseded": [],
+      "terminal_day": 2,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 7
+    },
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "merge_stacks",
+          "purpose": "give_bought_troops_to_starting_hero"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            9,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            14,
+            8
+          ]
+        },
+        {
+          "day": 1,
+          "index": 8,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            15,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 9,
+          "kind": "choose_level_up",
+          "purpose": "answer_displayed_mandatory_capability"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 9,
+          "completion_history_seq": 95,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 8,
+          "start_history_seq": 81,
+          "won": true
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "cff75eb547d84227748b3adb05b444ade6de75937e59690abc8fba2ad9127b84",
+        "actions.jsonl": "62926d49e9f1d421ea3f254d5d16c78cf996c1196108481d542c4701c3a78c69",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "76eb9f868e94beb9ae2a85b1ec753729d2ae2780a2a8d3a0beaaac859bf2af13",
+        "episode-000001/manifest.json": "ae79bf78125ae02b0b8ce675f751f6b4c86fe069509e8506bd3757d650fab3fa",
+        "report.json": "82b1a52d92f895eede1113d911e4fca9b0929e9390ef0c208908d1d835370ace"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 39,
+      "case": "red-03",
+      "classification": "intended_recruit_transfer_rush",
+      "completed_at": "2026-10-25T23:25:12.408293+00:00",
+      "completed_result_frames": 8,
+      "created_at": "2026-10-25T23:25:11.479216+00:00",
+      "engine_seed": 1026004,
+      "garrison_pikemen_left": 0,
+      "gold_spent": 840,
+      "learner_outcome": "win",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 5,
+      "probe_source_sha256": "69e6ca73f23216a47fe70344201eba2de30cc573d16a2b495d7993ab0bafabca",
+      "probe_version": "v3",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/red-03",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 220,
+        "messages": 20,
+        "native_opponent_requests": 7,
+        "requests": 27,
+        "responses": 9,
+        "transactions": 289
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "interaction": 1,
+        "merged": 1,
+        "opened": 2,
+        "reached": 2,
+        "recruited": 1
+      },
+      "seat": "red",
+      "source_binding_time": "prelaunch report hash, snapshot saved after run",
+      "status": "completed",
+      "superseded": [
+        {
+          "action_index": 9,
+          "history_seq": 99,
+          "reason": "terminal"
+        }
+      ],
+      "terminal_day": 1,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 9
+    },
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "merge_stacks",
+          "purpose": "give_bought_troops_to_starting_hero"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            13,
+            9
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "end_turn",
+          "purpose": "wait_for_natural_outcome_after_hero_loss"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 6,
+          "completion_history_seq": 58,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 6,
+          "start_history_seq": 53,
+          "won": false
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "e82a4b302adf613b3239a95a96fe7ab2645959011b1d0822a2d503297c8156fb",
+        "actions.jsonl": "d54c3ca700f684d6d4631371a31749f6d33a5e5f240b9d4225f06d3a23da7b1a",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "a9814c77c71fe8a2c185b66dff642f06344da7f7665312c49eadd9aef390f002",
+        "episode-000001/manifest.json": "bacfa3f6ab9a5ef7bebac4cbe0ee9b736f98187d059bcd26d2cfb353b854dee8",
+        "report.json": "4e3683268cd8ab7d5f7a612c9d5a28ac245c26094d02f7fd43c0737da6631360"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 39,
+      "case": "blue-02",
+      "classification": "intended_recruit_transfer_rush",
+      "completed_at": "2026-10-25T23:25:13.419068+00:00",
+      "completed_result_frames": 7,
+      "created_at": "2026-10-25T23:25:12.478507+00:00",
+      "engine_seed": 1026005,
+      "garrison_pikemen_left": 0,
+      "gold_spent": 840,
+      "learner_outcome": "loss",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 5,
+      "probe_source_sha256": "69e6ca73f23216a47fe70344201eba2de30cc573d16a2b495d7993ab0bafabca",
+      "probe_version": "v3",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/blue-02",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 347,
+        "messages": 16,
+        "native_opponent_requests": 39,
+        "requests": 52,
+        "responses": 7,
+        "transactions": 419
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "hero_unavailable": 1,
+        "merged": 1,
+        "opened": 2,
+        "recruited": 1,
+        "turn_ended": 1
+      },
+      "seat": "blue",
+      "source_binding_time": "prelaunch report hash, snapshot saved after run",
+      "status": "completed",
+      "superseded": [],
+      "terminal_day": 2,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 7
+    },
+    {
+      "action_sequence": [
+        {
+          "day": 1,
+          "index": 1,
+          "kind": "open_town",
+          "purpose": "open_own_town"
+        },
+        {
+          "day": 1,
+          "index": 2,
+          "kind": "open_panel",
+          "purpose": "open_displayed_dwelling"
+        },
+        {
+          "day": 1,
+          "index": 3,
+          "kind": "recruit",
+          "purpose": "buy_displayed_available_troops"
+        },
+        {
+          "day": 1,
+          "index": 4,
+          "kind": "merge_stacks",
+          "purpose": "give_bought_troops_to_starting_hero"
+        },
+        {
+          "day": 1,
+          "index": 5,
+          "kind": "close",
+          "purpose": "close_town_and_start_rush"
+        },
+        {
+          "day": 1,
+          "index": 6,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            9,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 7,
+          "kind": "move_to",
+          "purpose": "explore_visible_frontier",
+          "target": [
+            14,
+            8
+          ]
+        },
+        {
+          "day": 1,
+          "index": 8,
+          "kind": "move_to",
+          "purpose": "attack_visible_enemy_hero",
+          "target": [
+            15,
+            7
+          ]
+        },
+        {
+          "day": 1,
+          "index": 9,
+          "kind": "choose_level_up",
+          "purpose": "answer_displayed_mandatory_capability"
+        }
+      ],
+      "battles": [
+        {
+          "completion_action_index": 9,
+          "completion_history_seq": 96,
+          "day": 1,
+          "side": "attacker",
+          "start_action_index": 8,
+          "start_history_seq": 81,
+          "won": true
+        }
+      ],
+      "bindings": {
+        "action-evidence.json": "7ffa54287f653b70e4642ec9914150d8e61d1db98cb1a98c966d94342e9a4471",
+        "actions.jsonl": "06335bb7bfc118f08b6fcc1d72c52795b1eaa75e2f75ff93947e978f6c0702fb",
+        "episode-000001/builtin-verification/builtin-replay-verification.json": "6116c48c9f852aad164b57a19df4a7140b04062890f72c0d068b944fbd3592da",
+        "episode-000001/manifest.json": "dbd32b8e31ded581e7ad6feea929c0fb25ff18a56b0fca3fb289437e15717e6d",
+        "report.json": "46ab95c525cd8402b775e75d48e455b0e22e2584aad19fa6eecdb949d57b1fd6"
+      },
+      "bought_pikemen": 14,
+      "carried_pikemen_before_rush": 39,
+      "case": "red-heldout-160101",
+      "classification": "intended_recruit_transfer_rush",
+      "completed_at": "2026-10-25T23:25:14.428990+00:00",
+      "completed_result_frames": 8,
+      "created_at": "2026-10-25T23:25:13.488784+00:00",
+      "engine_seed": 160101,
+      "garrison_pikemen_left": 0,
+      "gold_spent": 840,
+      "learner_outcome": "win",
+      "native_replay_verified": true,
+      "owned_processes_closed": true,
+      "preparation_commands": 5,
+      "probe_source_sha256": "69e6ca73f23216a47fe70344201eba2de30cc573d16a2b495d7993ab0bafabca",
+      "probe_version": "v3",
+      "raw_evidence_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/red-heldout-160101",
+      "rejected_results": 0,
+      "replay_checked": {
+        "client_packets": 220,
+        "messages": 20,
+        "native_opponent_requests": 7,
+        "requests": 27,
+        "responses": 9,
+        "transactions": 289
+      },
+      "replay_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "result_status_counts": {
+        "closed": 1,
+        "interaction": 1,
+        "merged": 1,
+        "opened": 2,
+        "reached": 2,
+        "recruited": 1
+      },
+      "seat": "red",
+      "source_binding_time": "prelaunch report hash, snapshot saved after run",
+      "status": "completed",
+      "superseded": [
+        {
+          "action_index": 9,
+          "history_seq": 100,
+          "reason": "terminal"
+        }
+      ],
+      "terminal_day": 1,
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "typed_commands_submitted_and_consumed": 9
+    }
+  ],
+  "conclusions": [
+    "A legal observed winning sequence exists from Red: five preparation commands, two frontier movements, an attack as command 8, and the displayed level-up response as command 9 before natural terminal. The ninth response was consumed but superseded by terminal; its skill effect is not asserted.",
+    "The successful Red sequence also won on Teacher heldout engine seed 160101. This proves feasibility for that setup, not that the network learned it.",
+    "The same 39-pikeman rush lost both Blue diagnostics. It is not a demonstrated seat-independent winning strategy.",
+    "The retained 25-pikeman Red control also won, so these cases do not establish that recruitment is necessary.",
+    "An observed nine-command path is not a proof of a global minimum or a general success rate. Built-in AI runtime randomness is preserved by capture/replay rather than assumed reproducible from engine seed alone."
+  ],
+  "created_at": "2026-10-25T23:28:34.663159+00:00",
+  "hidden_map_objects_read_by_policy": false,
+  "interface": "adventure-capabilities-v1",
+  "map": {
+    "name": "hero-management-v2.vmap",
+    "ordinary_map_unchanged": true,
+    "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+  },
+  "opponent": {
+    "combat_module": "BattleAI",
+    "difficulty": "Easy",
+    "module": "Nullkiller"
+  },
+  "policy_source": "validation/probes/validate_recruit_rush.py",
+  "post_run_source_changes": "Evidence summary explicitly reports terminal supersession and rejects cleanup/summary failures; empty destination transfer uses swap_stacks. These changes do not alter the observed same-creature merge paths.",
+  "public_observation_only": true,
+  "question": "Can buying available troops and immediately attacking actual Nullkiller Easy win the ordinary current map, and how many typed interface commands does the observed path need?",
+  "runtime": {
+    "name": "local-v8-update92-artifact-fix2",
+    "native_runtime_sha256": {
+      "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+      "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+      "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+      "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+      "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+      "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+      "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+    }
+  },
+  "schema": "heroes-recruit-rush-validation-v1",
+  "source_versions": {
+    "v1": {
+      "local_snapshot": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/source-v1-reconstructed.py",
+      "provenance": "Reconstructed after the run by reversing the single ArmyView lookup fix from v2; no prelaunch probe-source hash was recorded.",
+      "sha256": "6d97f4fdada1bbe900c8de8d5f088036e3213bbdc4ea09b41a0f7e5ecfb1b896"
+    },
+    "v2": {
+      "local_snapshot": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/source-v2.py",
+      "provenance": "Executed source snapshot saved after red-02 and blue-01; no prelaunch probe-source hash was recorded for those two cases.",
+      "sha256": "01651c139d49623c159462a772c3c74dc855aa9edf8c0c946f6dbe7c12706b9c"
+    },
+    "v3": {
+      "local_snapshot": "/Users/orsi/Projects/Heroes-artifacts/validation/recruit-rush-2026-10-26/source-v3.py",
+      "provenance": "Executed source snapshot saved after the runs; its hash matches the probe_source_sha256 recorded in each case report before launch.",
+      "sha256": "69e6ca73f23216a47fe70344201eba2de30cc573d16a2b495d7993ab0bafabca"
+    }
+  },
+  "strategy": "Buy all available displayed pikemen, transfer them to the starting visitor, leave immediately, explore only currently visible free tiles toward the opposite map edge, then attack a currently visible enemy hero or town. Answer displayed mandatory queries. After the attacking hero is lost, end turns until a natural result or declared bound.",
+  "tests": {
+    "command": "python -m unittest tests.test_recruit_rush_probe -v",
+    "passed": 5
+  },
+  "training": {
+    "checkpoint_writes": 0,
+    "performed": false,
+    "policy_kind": "hand-scripted diagnostic, not a learned policy",
+    "ppo_updates": 0,
+    "raw_output_outside_training_runs": true,
+    "samples_admitted": 0
+  }
+}
