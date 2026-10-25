@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
+#include "VisibleWorld.h"
 
 #include "../../lib/GameLibrary.h"
 #include "../../lib/callback/CCallback.h"
@@ -8,6 +9,9 @@
 #include "../../lib/entities/artifact/CArtifact.h"
 #include "../../lib/entities/artifact/CArtifactInstance.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
+#include "../../lib/mapObjects/CGCreature.h"
+#include "../../lib/gameState/InfoAboutArmy.h"
+#include "../../lib/bonuses/BonusParameters.h"
 #include "../../lib/mapObjects/CGTownInstance.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 #include "../../lib/networkPacks/Component.h"
@@ -33,7 +37,7 @@ JsonNode choice(const std::string & kind, const std::string & subject)
 JsonNode item(const std::string & kind, const std::string & subject, int id)
 {
 	JsonNode result;
-	for(const char * key : {"ref", "slot", "amount", "cost", "x", "y", "z"}) result[key] = JsonNode();
+	for(const char * key : {"ref", "slot", "amount", "cost", "x", "y", "z", "spell", "owner"}) result[key] = JsonNode();
 	result["kind"].String() = kind;
 	result["subject"].String() = subject;
 	result["id"].Integer() = id;
@@ -49,6 +53,7 @@ JsonNode panel(const std::string & ref, const std::string & kind, const JsonNode
 	result["mandatory"].Bool() = mandatory;
 	result["hero_level"] = JsonNode();
 	result["primary_skill"] = JsonNode();
+	result["inspected_subject"] = JsonNode();
 	result["items"].Vector(); result["choices"].Vector();
 	return result;
 }
@@ -96,6 +101,28 @@ JsonNode cost(int64_t gold)
 {
 	JsonNode result; for(int i = 0; i < 7; ++i) result.Vector().emplace_back(i == 6 ? gold : 0); return result;
 }
+std::vector<const CGObjectInstance *> visionsTargets(const CCallback & callback, const CGHeroInstance & caster)
+{
+	std::vector<const CGObjectInstance *> result;
+	std::set<int> seen;
+	const auto size = callback.getMapSize();
+	for(int z = 0; z < size.z; ++z) for(int y = 0; y < size.y; ++y) for(int x = 0; x < size.x; ++x)
+	{
+		const auto * tile = callback.getTile(int3(x, y, z), false);
+		if(!tile) continue;
+		for(const auto id : tile->visitableObjects)
+		{
+			const auto * object = explorer_rl::playerVisibleObject(callback, id);
+			if(!object || !seen.insert(id.getNum()).second) continue;
+			const auto subtype = object->ID == Obj::MONSTER ? BonusCustomSubtype::visionsMonsters
+				: object->ID == Obj::HERO ? BonusCustomSubtype::visionsHeroes : BonusCustomSubtype::visionsTowns;
+			if((object->ID == Obj::MONSTER || object->ID == Obj::HERO || object->ID == Obj::TOWN)
+				&& caster.hasVisions(object, subtype)) result.push_back(object);
+		}
+	}
+	return result;
+}
+
 std::vector<ArtifactPosition> slots(const CGHeroInstance & hero)
 {
 	auto result = ArtifactUtils::allWornSlots();
@@ -114,6 +141,7 @@ JsonNode ExplorerRL::capabilityControls()
 		const auto * current = hero(*callback, contextState, contextState.subject);
 		result.Vector().emplace_back("artifacts");
 		if(current->hasSpellbook()) result.Vector().emplace_back("spellbook");
+		if(current->hasBonusOfType(BonusType::VISIONS)) result.Vector().emplace_back("visions");
 	}
 	else if(contextState.context == "town" && contextState.panel == "overview")
 	{
@@ -177,6 +205,72 @@ JsonNode ExplorerRL::capabilityPanel()
 			}
 		}
 	}
+	else if(contextState.panel == "visions")
+	{
+		const auto * caster = hero(*callback, contextState, subject);
+		const CGObjectInstance * inspected = nullptr;
+		for(const auto * target : visionsTargets(*callback, *caster))
+		{
+			auto selected = choice("inspect_object", subject);
+			selected["destination"].String() = contextState.handle(target->id.getNum());
+			selected["x"].Integer() = target->visitablePos().x; selected["y"].Integer() = target->visitablePos().y;
+			append(result, "choices", std::move(selected));
+			if(contextState.capabilityInspected == target->id.getNum()) inspected = target;
+		}
+		if(!inspected) contextState.capabilityInspected.reset();
+		if(inspected)
+		{
+			const auto target = contextState.handle(inspected->id.getNum());
+			result["inspected_subject"].String() = target;
+			const auto statistic = [&](const char * kind, int id, int64_t amount)
+			{
+				auto shown = item(kind, target, id); shown["amount"].Integer() = amount; append(result, "items", std::move(shown));
+			};
+			const auto army = [&](const ArmyDescriptor & visible)
+			{
+				for(const auto & [slot, stack] : visible)
+				{
+					auto shown = item(visible.isDetailed ? "creature_exact" : "creature_quantity", target, stack.getId().getNum());
+					shown["slot"].Integer() = slot.getNum(); shown["amount"].Integer() = stack.getCount();
+					append(result, "items", std::move(shown));
+				}
+			};
+			if(const auto * monster = dynamic_cast<const CGCreature *>(inspected))
+			{
+				const auto response = monster->getVisionsAction(caster);
+				if(!response) throw std::runtime_error("Visions monster popup is no longer available");
+				auto shown = item("creature_exact", target, monster->getCreatureID().getNum());
+				shown["slot"].Integer() = 0; shown["amount"].Integer() = monster->getStackCount(SlotID(0));
+				append(result, "items", std::move(shown));
+				statistic("monster_intent", *response == CGCreature::FIGHT ? 0 : *response == CGCreature::FLEE ? 1 : *response == 0 ? 2 : 3,
+					std::max(0, *response));
+			}
+			else if(inspected->ID == Obj::HERO)
+			{
+				InfoAboutHero info;
+				if(!callback->getHeroInfo(inspected, info, caster)) throw std::runtime_error("Visions hero popup is no longer available");
+				// This native view already applies Disguise. Never read the target
+				// hero's actual army or private inventory to bypass that masking.
+				army(info.army);
+				if(info.details)
+				{
+					for(size_t id = 0; id < info.details->primskills.size(); ++id) statistic("primary_skill", id, info.details->primskills[id]);
+					statistic("hero_stat", 0, info.details->mana); statistic("hero_stat", 1, info.details->morale); statistic("hero_stat", 2, info.details->luck);
+				}
+			}
+			else
+			{
+				InfoAboutTown info;
+				if(!callback->getTownInfo(inspected, info, caster)) throw std::runtime_error("Visions town popup is no longer available");
+				army(info.army); statistic("town_stat", 2, info.fortLevel);
+				if(info.details)
+				{
+					statistic("town_stat", 0, info.details->hallLevel); statistic("town_stat", 1, info.details->goldIncome);
+					statistic("town_stat", 3, info.details->garrisonedHero ? 1 : 0);
+				}
+			}
+		}
+	}
 	else if(contextState.panel == "artifacts")
 	{
 		std::vector<const CGHeroInstance *> owners{hero(*callback, contextState, subject)};
@@ -193,6 +287,7 @@ JsonNode ExplorerRL::capabilityPanel()
 			const auto * slot = source->getSlot(sourceSlot);
 			auto shown = item("artifact", contextState.handle(source->id.getNum()), artifact->getTypeId().getNum());
 			shown["slot"].Integer() = sourceSlot; shown["locked"].Bool() = slot->locked || vstd::contains(ArtifactUtils::unmovableSlots(), sourceSlot);
+			if(artifact->isScroll()) shown["spell"].Integer() = artifact->getScrollSpellID().getNum();
 			append(result, "items", std::move(shown));
 			if(slot->locked || vstd::contains(ArtifactUtils::unmovableSlots(), sourceSlot)) continue;
 			for(const auto * destination : owners)
@@ -254,7 +349,15 @@ JsonNode ExplorerRL::capabilityPanel()
 				for(int y = 0; y < size.y; ++y) for(int x = 0; x < size.x; ++x)
 				{
 					const int3 target(x, y, caster->visitablePos().z);
-					if(!callback->isVisible(target) || !spell->getAdventureMechanics().canBeCastAt(problem, callback.get(), caster, target)) continue;
+					if(!ranged->isTargetInRange(callback.get(), caster, target)) continue;
+					if(callback->isVisible(target))
+					{
+						if(!spell->getAdventureMechanics().canBeCastAt(problem, callback.get(), caster, target)) continue;
+					}
+					else if(spell->getJsonKey() != "core:dimensionDoor") continue;
+					// A fogged Dimension Door point is a public-range attempt.
+					// Do not call native destination validation behind fog: its
+					// occupancy test would reveal hidden objects through the mask.
 					auto selected = choice("cast_adventure_spell", subject); selected["spell"].Integer() = spell->id.getNum();
 					selected["x"].Integer() = x; selected["y"].Integer() = y;
 					append(result, "choices", std::move(selected));
@@ -375,6 +478,7 @@ void ExplorerRL::showWorldViewEx(const std::vector<ObjectPosInfo> & objects, boo
 		{
 			auto shown = item("world_object", subject, static_cast<int>(object.id));
 			shown["amount"].Integer() = object.subId;
+			shown["owner"].String() = object.owner == playerID ? "self" : object.owner.isValidPlayer() ? "opponent" : "neutral";
 			shown["x"].Integer() = object.pos.x; shown["y"].Integer() = object.pos.y; shown["z"].Integer() = object.pos.z;
 			append(pending.panel, "items", std::move(shown));
 		}
@@ -440,6 +544,7 @@ bool ExplorerRL::executeCapabilityAction(const JsonNode & action, int64_t decisi
 				if(std::find(controls.Vector().begin(), controls.Vector().end(), action["panel"]) == controls.Vector().end())
 					throw std::runtime_error("Capability control was not displayed");
 				contextState.capabilityParentContext = contextState.contextJson();
+				contextState.capabilityInspected.reset();
 				contextState.capabilityRef = "capability-" + std::to_string(contextState.nextCapability++);
 				next["kind"].String() = "capability"; next["subject"] = action["subject"]; next["panel"] = action["panel"]; next["selection"] = JsonNode();
 			}
@@ -453,6 +558,22 @@ bool ExplorerRL::executeCapabilityAction(const JsonNode & action, int64_t decisi
 			change(contextState, next, callback->getDate(Date::DAY), "context", decision);
 		}
 		finish(opening ? "opened" : "closed", true); return true;
+	}
+	if(kind == "inspect_object")
+	{
+		{
+			const auto gameLock = readGameState(); captureContextual(); std::lock_guard lock(stateMutex);
+			if(contextState.decision != decision || terminal || stopping) return false;
+			if(contextState.context != "capability" || contextState.panel != "visions" || contextState.subject != action["subject"].String())
+				throw std::runtime_error("Visions inspection context mismatch");
+			const auto current = capabilityPanel();
+			const auto & choices = current["choices"].Vector();
+			const auto found = std::find_if(choices.begin(), choices.end(), [&](const auto & value) { return value["kind"] == action["kind"] && value["ref"] == action["selection"]; });
+			if(found == choices.end()) throw std::runtime_error("Visions target was not displayed");
+			consume("adapter");
+			contextState.capabilityInspected = resolve(contextState, (*found)["destination"].String());
+		}
+		finish("inspected", true); return true;
 	}
 	JsonNode selected;
 	int query = -1, reply = -1;

@@ -779,7 +779,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 		contextualResult(resultNode("turn_ended", true), decision);
 		return true;
 	}
-	std::vector<int3> steps;
+	std::vector<explorer_rl::RouteStep> steps;
 	std::string status;
 	int3 expected;
 	{
@@ -809,8 +809,9 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 		}
 	}
 	const auto routeStart = std::chrono::steady_clock::now();
-	for(const auto & step : steps)
+	for(const auto & routeStep : steps)
 	{
+		const auto & step = routeStep.position;
 		if(ended())
 			return true;
 		if(std::chrono::steady_clock::now() - routeStart > std::chrono::seconds(timeoutSeconds))
@@ -832,7 +833,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 			const auto * hero = callback->getHero(subject);
 			if(!hero || hero->getOwner() != playerID || hero->visitablePos() != expected)
 				throw std::runtime_error("Contextual route changed before native issue");
-			callback->moveHero(hero, hero->convertFromVisitablePos(step), false);
+			callback->moveHero(hero, hero->convertFromVisitablePos(step), routeStep.transit);
 		}, true, decision, &issued);
 		if(!issued || ended())
 		{

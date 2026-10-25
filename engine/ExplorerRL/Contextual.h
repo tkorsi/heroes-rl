@@ -60,6 +60,7 @@ struct ContextualState
 	std::optional<CapabilityDialog> capabilityDialog;
 	JsonNode capabilityParentContext;
 	std::string capabilityRef;
+	std::optional<int> capabilityInspected;
 	uint64_t nextCapability = 0;
 	std::optional<int> executingHero; ///< own subject of current move or dialog answer
 	uint64_t nextDialog = 0;

@@ -1,0 +1,30 @@
+--- a/lib/mapObjects/CGCreature.h
++++ b/lib/mapObjects/CGCreature.h
+@@ -67,6 +67,8 @@
+ 	CreatureID getCreatureID() const;
+ 	const CCreature * getCreature() const;
+ 	TQuantity getJoiningAmount() const;
++	/// The exact native Visions popup response, available only while visible and in spell range.
++	std::optional<int> getVisionsAction(const CGHeroInstance * hero) const;
+ 
+ 	//stack formation depends on position,
+ 	bool containsUpgradedStack() const;
+--- a/lib/mapObjects/CGCreature.cpp
++++ b/lib/mapObjects/CGCreature.cpp
+@@ -223,6 +223,16 @@
+ 	return std::max(static_cast<int64_t>(1), getStackCount(SlotID(0)) * cb->getSettings().getInteger(EGameSettings::CREATURES_JOINING_PERCENTAGE) / 100);
+ }
+ 
++std::optional<int> CGCreature::getVisionsAction(const CGHeroInstance * hero) const
++{
++	if(!hero || !cb->isVisibleFor(this, hero->getOwner())
++		|| !hero->hasVisions(this, BonusCustomSubtype::visionsMonsters))
++		return std::nullopt;
++	// Share the ordinary popup's existing rules, without reproducing a
++	// strategy, sampling randomness, or returning an unseen army value.
++	return takenAction(hero, true);
++}
++
+ void CGCreature::pickRandomObject(IGameRandomizer & gameRandomizer)
+ {
+ 	switch(ID.toEnum())
