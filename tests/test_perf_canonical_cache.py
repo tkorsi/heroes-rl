@@ -92,6 +92,25 @@ class CanonicalFrameCacheTests(unittest.TestCase):
                     self.assertEqual(rebuilt.frames, frames)
 
 
+class DecoderFieldCacheTests(unittest.TestCase):
+    def test_cached_field_sets_equal_dataclass_fields_and_reject_identically(self):
+        from dataclasses import fields, is_dataclass
+        classes = [value for value in vars(c).values() if isinstance(value, type) and is_dataclass(value)]
+        self.assertGreater(len(classes), 20)
+        for cls in classes:
+            names = {field.name for field in fields(cls)}
+            self.assertEqual(c._field_set(cls), names)
+            name = sorted(names)[0] if names else None
+            for raw in ({}, {name: 1} if name else {}, {"unknown": 1}, {1: 1}, {**dict.fromkeys(names), "x": 0}, [], None):
+                original = type(raw) is not dict or bool(set(raw) - names)
+                try:
+                    c._record(raw, cls)
+                    rejected = False
+                except ValueError:
+                    rejected = True
+                self.assertEqual(rejected, original, (cls.__name__, raw))
+
+
 class CacheReleaseTests(unittest.TestCase):
     def setUp(self):
         try:

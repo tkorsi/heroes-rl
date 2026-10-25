@@ -2322,7 +2322,7 @@ def finalize_cutoff(histories, *, evidence_ref, histories_complete, failure_free
 
 
 def _record(raw, cls):
-    if type(raw) is not dict or set(raw) - {f.name for f in fields(cls)}:
+    if type(raw) is not dict or not _field_set(cls).issuperset(raw):
         raise ValueError(f"Unknown fields in {cls.__name__}")
     return dict(raw)
 
@@ -2358,7 +2358,7 @@ def _decode_context(raw, profile):
 
 def _exact_record(raw, cls):
     data = _record(raw, cls)
-    if set(data) != {field.name for field in fields(cls)}:
+    if set(data) != _field_set(cls):
         raise ValueError(f"Incomplete {cls.__name__} wire payload")
     return data
 
@@ -2509,12 +2509,20 @@ def decode_notice(raw, *, schema=SCHEMA):
 
 
 _FIELD_NAMES = {}
+_FIELD_SETS = {}
 
 
 def _field_names(cls):
     names = _FIELD_NAMES.get(cls)
     if names is None:
         names = _FIELD_NAMES[cls] = tuple(field.name for field in fields(cls))
+    return names
+
+
+def _field_set(cls):
+    names = _FIELD_SETS.get(cls)
+    if names is None:
+        names = _FIELD_SETS[cls] = frozenset(_field_names(cls))
     return names
 
 
