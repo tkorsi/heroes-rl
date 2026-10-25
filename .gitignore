@@ -34,3 +34,6 @@ __pycache__/
 *.pt
 *.pth
 *.ckpt
+# Native inspector build products.
+/apps/replay-inspector/.build/
+/apps/replay-inspector/.swiftpm/

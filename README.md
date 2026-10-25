@@ -3029,6 +3029,52 @@ under ignored local `runs/` and `videos/` directories. It does not start games o
 update policy weights. Its optional Pillow dependency is pinned separately in
 `dependencies/video-viewer.lock`; the gameplay learner dependencies are unchanged.
 
+### Native Swift replay inspector
+
+`apps/replay-inspector` is an offline SwiftUI macOS application (macOS 14+).
+It retains the schematic video's two map views and adds previous/next arrows,
+a scrubber, searchable event selection, and three timeline filters: engine
+endpoints plus decisions, learner decisions only, and every contextual record.
+The selected match contains 85 map states, 13 learner decisions, and 1,809
+contextual records (1,894 displayed entries including initial/native states).
+
+The right inspector exposes unabridged event JSON, the last delivered learner
+observation, recorded selected-action log probabilities/value/support, and source
+archives including learner history, bridge, server/contextual tapes, rollout,
+verification and map trace. Resources, movement points, open-window context and
+seven army slots are summarized beside the maps. Click a map tile to inspect its
+coordinates and visible object IDs. No network inference or training runs in the app.
+
+Map snapshots advance only when the client reaches a completed native input's
+packet endpoint. Intermediate events retain the last completed snapshot. Army
+annotations refresh only after the corresponding panel record is delivered in
+the contextual stream; they never look ahead to a later message at the same
+packet position. Decision entries show the decision before execution. A closed
+window supplies no new army data; automatic combat shows the pre-battle army,
+not live casualties. An absent hero has no displayed active army. Recorded policy
+numbers are not explanations of neural reasoning or distributions over every
+alternative. Raw binary commands remain available even when only their command
+type is decoded. The exporter deliberately retains the selected two-Castle,
+blue-random-policy scenario checks rather than claiming universal replay support.
+
+From the repository root, using Python with `dependencies/video-viewer.lock`:
+
+```bash
+python3 -m experiments.recording.export_inspector "$EPISODE" \
+  --trace "$TRACE" --report "$NATIVE_REPORT" \
+  --output runs/replay-inspector/match.json
+python3 tools/validate_replay_inspector.py runs/replay-inspector/match.json "$EPISODE"
+python3 tools/build_replay_inspector.py --match runs/replay-inspector/match.json
+open "runs/replay-inspector/Heroes Replay.app"
+```
+
+The app bundles that exported match for immediate offline opening. Other exported
+bundles can be opened with Command-O. Its verification badge reflects the exporter's
+checks, not an independent cryptographic verification of arbitrary edited bundles
+by the Swift UI. Source and compact validation are tracked; raw bundles and local
+ad-hoc-signed `.app` builds remain ignored. The original VCMI renderer is still
+outside this inspector's scope.
+
 ### Series, benchmark and costs
 
 ```bash

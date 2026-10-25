@@ -1,0 +1,28 @@
+{
+  "schema": "heroes-replay-inspector-validation-v1",
+  "passed": true,
+  "bundle_sha256": "b224123a29cfff929c10e5529380d3f46496381b844ec0103115552f8a672c90",
+  "states": 85,
+  "events": 1894,
+  "decisions": 13,
+  "contextual_records": 1809,
+  "history_frames": 112,
+  "checks": [
+    "exact contextual coverage",
+    "exact learner action coverage",
+    "all native endpoints",
+    "no future map, observation or army",
+    "conditional log-probability sum",
+    "natural terminal"
+  ],
+  "swift_build": "Apple Swift 6.2 arm64 macOS release build passed",
+  "army_regression_tests": 6,
+  "manual_ui_checks": [
+    "native window rendered",
+    "decision filter and keyboard right arrow",
+    "last decision army slots and probabilities",
+    "final day 2 loss and absent hero",
+    "all-event filter and recruitment search"
+  ],
+  "training_started": false
+}
