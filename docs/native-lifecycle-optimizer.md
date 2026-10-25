@@ -15,7 +15,7 @@ no native reset-independence acceptance yet. The local eight-game 62.161-second
 PPO pilot and Claude's offline reconstruction speedups are different workloads.
 Neither supplies a cost breakdown for this runtime.
 
-Cloud validation built all six native targets (`vcmiclient`, `vcmiserver`,
+Initial prototype validation, before the v2 service below, built all six native targets (`vcmiclient`, `vcmiserver`,
 `ExplorerRL`, `BattleAI`, `Nullkiller`, `vcmireplay`) and a repeat build had no
 work. Exact prepared-source agreement passed. The full suite ran 984 tests:
 980 passed and four skipped. A focused nine-test follow-up passed, including
@@ -26,6 +26,13 @@ CLI/error checks pass. The worker's actual load probe exits 3 with
 `Resource with name DATA/VCDESC and type TEXT wasn't found.` and emits no ready
 receipt. This is an explicit unavailable prerequisite, not a native episode test.
 Compact results: [validation evidence](../validation/optimizer-native-lifecycle-2026-10-25.json).
+
+The asset-free v2 batch-service milestone rebuilt `vcmireplay`, passed exact
+recipe agreement and all **14 focused tests** (8.403 seconds, no skips), and
+preserved the ordinary one-shot usage behavior. These are the current service
+checks; the earlier full suite was not rerun. Detailed coverage and cleanup
+limits are in [batch-service evidence](../validation/optimizer-batch-service-2026-10-25.json).
+The real resource probe still exits before readiness for missing `DATA/VCDESC`.
 
 | Cost | Measurement entry point | Current evidence |
 | --- | --- | --- |
@@ -140,7 +147,7 @@ Build the normal `vcmireplay` target after preparation, then check the recipe:
 
 ```sh
 python3 tools/prepare_vcmi.py --check
-python3 -m unittest tests.test_optimizer_lifecycle -v
+python3 -m unittest tests.test_optimizer_lifecycle tests.test_optimizer_benchmark -v
 ```
 
 The lifecycle tests compile the process-reset header and the actual production
