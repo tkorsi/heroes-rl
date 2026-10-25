@@ -233,27 +233,60 @@ def group_live_members(group, *, timeout=1.0):
     return tuple(members)
 
 
-def close_owned_process(process, *, timeout=2.0):
-    """Close exclusive ownership, then await guardian cleanup and reap.
+def _cleanup_deadlines(timeout, deadline_monotonic=None, deadline_wall=None):
+    if type(timeout) not in (int, float) or not math.isfinite(timeout) or timeout < 0:
+        raise ValueError("cleanup timeout must be finite and nonnegative")
+    end, wall = time.monotonic() + timeout, time.time() + timeout
+    if deadline_monotonic is not None:
+        end = min(end, _deadline(deadline_monotonic, "cleanup monotonic deadline"))
+    if deadline_wall is not None:
+        wall = min(wall, _deadline(deadline_wall, "cleanup wall deadline"))
+    return end, wall
 
-    Only the live guardian sends group signals. A historical PID/PGID is never
-    a sufficient ownership proof for this external caller to send a signal.
-    """
+
+def _cleanup_remaining(end, wall):
+    remaining = _remaining(end, wall)
+    if remaining <= 0:
+        raise TimeoutError("Process cleanup deadline exhausted; closure is not verified")
+    return remaining
+
+
+def _release_owned_process(process):
+    """Release ownership even when no blocking cleanup time remains."""
     if getattr(process, "_deadline_guarded", False) is not True:
         raise ValueError("Only processes created by guarded_popen are owned here")
-    end = time.monotonic() + _deadline(timeout, "cleanup timeout")
     fd = getattr(process, "_deadline_owner_fd", None)
     if fd is not None:
         os.close(fd)
         process._deadline_owner_fd = None
-    process.wait(timeout=max(0.01, end - time.monotonic()))
-    while group_live_members(process.pid, timeout=max(0.01, end - time.monotonic())):
-        if time.monotonic() >= end:
-            raise TimeoutError("Owned process group did not stop within cleanup budget")
-        time.sleep(min(POLL_SECONDS, max(0, end - time.monotonic())))
+    process.poll()  # Reap an already-exited child without another wait budget.
 
 
-def cleanup_from_evidence(path, *, timeout=2.0):
+def close_owned_process(process, *, timeout=2.0, deadline_monotonic=None, deadline_wall=None):
+    """Close exclusive ownership, then await guardian cleanup and reap.
+
+    Only the live guardian sends group signals. A historical PID/PGID is never
+    a sufficient ownership proof for this external caller to send a signal.
+    Optional absolute deadlines cap the relative timeout. Exhaustion still
+    releases ownership and reaps without blocking, but cannot certify closure.
+    """
+    if getattr(process, "_deadline_guarded", False) is not True:
+        raise ValueError("Only processes created by guarded_popen are owned here")
+    end, wall = _cleanup_deadlines(timeout, deadline_monotonic, deadline_wall)
+    _release_owned_process(process)
+    try:
+        process.wait(timeout=_cleanup_remaining(end, wall))
+        while True:
+            members = group_live_members(process.pid, timeout=_cleanup_remaining(end, wall))
+            remaining = _cleanup_remaining(end, wall)
+            if not members:
+                return
+            time.sleep(min(POLL_SECONDS, remaining))
+    finally:
+        process.poll()
+
+
+def cleanup_from_evidence(path, *, timeout=2.0, deadline_monotonic=None, deadline_wall=None):
     """Verify recorded groups stopped after a worker failure or normal close.
 
     Launcher pipe EOF stops an orphan even if this receipt was not yet written.
@@ -261,11 +294,13 @@ def cleanup_from_evidence(path, *, timeout=2.0):
     Call only after closing/waiting for the owning worker. An unexpectedly live
     group conservatively fails verification, without harming another process.
     """
+    end, wall = _cleanup_deadlines(timeout, deadline_monotonic, deadline_wall)
     path = Path(path)
     if not path.exists():
         return ()
     groups = set()
     for line in path.read_text().splitlines():
+        _cleanup_remaining(end, wall)
         row = json.loads(line)
         if row.get("schema") != SCHEMA:
             raise ValueError("Unexpected supervision evidence schema")
@@ -274,11 +309,15 @@ def cleanup_from_evidence(path, *, timeout=2.0):
             if row["writer_pid"] != row["leader_pid"] or group != row["leader_pid"]:
                 raise ValueError("Supervision evidence does not bind its own private leader")
             groups.add(group)
-    end = time.monotonic() + _deadline(timeout, "cleanup timeout")
-    while any(group_live_members(group, timeout=max(0.01, end - time.monotonic())) for group in groups):
-        if time.monotonic() >= end:
-            raise TimeoutError("Recorded process groups remain active")
-        time.sleep(min(POLL_SECONDS, max(0, end - time.monotonic())))
+    while groups:
+        live = False
+        for group in sorted(groups):
+            members = group_live_members(group, timeout=_cleanup_remaining(end, wall))
+            _cleanup_remaining(end, wall)
+            live = live or bool(members)
+        if not live:
+            break
+        time.sleep(min(POLL_SECONDS, _cleanup_remaining(end, wall)))
     return tuple(sorted(groups))
 
 
@@ -315,11 +354,14 @@ class DeadlineVcmiLauncher(VcmiLauncher):
             if group_live_members(process.pid):
                 raise RuntimeError(f"Owned native process group is still running: {process.pid}")
 
-    def close_owned_groups(self, timeout=2.0):
-        """Close ownership and verify only this launcher's groups stopped."""
-        timeout = _deadline(timeout, "cleanup timeout")
-        end = time.monotonic() + timeout
+    def close_owned_groups(self, timeout=2.0, *, deadline_monotonic=None, deadline_wall=None):
+        """Release every group first, then verify under one shared deadline."""
+        end, wall = _cleanup_deadlines(timeout, deadline_monotonic, deadline_wall)
+        # A failed or exhausted wait for one group must not leave another live
+        # owner pipe open. Guardians independently stop all released groups.
         for process in self.launched_processes:
-            close_owned_process(process, timeout=max(0.01, end - time.monotonic()))
+            _release_owned_process(process)
+        for process in self.launched_processes:
+            close_owned_process(process, timeout=timeout, deadline_monotonic=end, deadline_wall=wall)
 
     terminate_owned_groups = close_owned_groups
