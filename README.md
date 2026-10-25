@@ -93,6 +93,23 @@ expired and its original 30-day configurations/results remain immutable. The
 new local authorization does not restart cloud work or rewrite historical
 metadata. Weights and full optimizer state remain in private storage.
 
+Local365 preparation is recorded in
+[prelaunch evidence](validation/local365-prelaunch-2026-10-25.json). The exact
+cloud update-31 model, Adam, RNG, progress and pool restore on macOS. The three
+reviewed performance modules are accepted only at their exact historical and
+consolidated hashes, with a trained-policy parity proof; the generic portable
+guard still rejects arbitrary policy changes. A fresh frozen two-seat gate
+passed native replay and cleanup in 8.432 seconds (two losses, zero updates).
+
+The new local configuration explicitly assigns `max_days=365`. A single durable
+`local365/campaign-session.json` and exclusive controller lock cap the campaign
+at two hours from actual launch, with five minutes reserved for cleanup and
+publication. The entire controller has an independent deadline guardian; each
+native game and optimizer batch retains its existing guards. The local config,
+controller, parity checker and new authorization are bound into the session.
+The expired cloud defaults and historical plans remain unchanged. Preparation
+has not launched the PPO campaign; coordinator review/merge is still required.
+
 ## Source layout
 
 | Path | Responsibility |

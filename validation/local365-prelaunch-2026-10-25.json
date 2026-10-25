@@ -1,0 +1,82 @@
+{
+  "focused_tests": {
+    "errors": 0,
+    "failures": 0,
+    "tests": 61
+  },
+  "gate": {
+    "attempts": [
+      {
+        "cleanup_verified": true,
+        "identity_verified": true,
+        "learner_player": 0,
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "replay_verified": true,
+        "sampled_choices": 72,
+        "status": "passed"
+      },
+      {
+        "cleanup_verified": true,
+        "identity_verified": true,
+        "learner_player": 1,
+        "outcomes": {
+          "blue": "loss",
+          "red": "win"
+        },
+        "replay_verified": true,
+        "sampled_choices": 15,
+        "status": "passed"
+      }
+    ],
+    "configuration": {
+      "backend": "cold",
+      "experimental_workers": false,
+      "max_days": 365,
+      "max_total_choices": 5120
+    },
+    "optimizer_updates": 0,
+    "plan": {
+      "bytes": 57336,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-update31-gate/plan.json",
+      "sha256": "93533719fc5b0556cf17d87cc5f3f135bc674727c3dae91c5d6d9adb61a3bcc6"
+    },
+    "report": {
+      "bytes": 11179,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-update31-gate/execution/report.json",
+      "sha256": "97c12530c13d4e2ea3f233be69062874fd42ac5d500f856b5c3ef1f7e85105fe"
+    },
+    "supervisor_cleanup_verified": true,
+    "training_samples": 0,
+    "wall_seconds": 8.431513000003179
+  },
+  "native_recipe_check": "passed",
+  "optimizer_steps": 253,
+  "parent_private_commit": "c5d018ae8dc287273fd2dfb9ae49317d4d140af8",
+  "parity": {
+    "bytes": 1931,
+    "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/validation/local365-parity-2026-10-25.json",
+    "sha256": "1989def9b1543a1af18c7ca09d5fbb85dad15cd098cc6a2e0846064f8c21715e"
+  },
+  "pending": "Coordinator review and merge before one authorized at-most-two-hour campaign; timer starts only on actual campaign launch.",
+  "restore": {
+    "checkpoint": "builtin-pilot-after-23f9ad687ffe3640",
+    "exact_model_adam_rng_progress_pool": true,
+    "progress": {
+      "decisions": 6776,
+      "rollouts": 124,
+      "updates": 31
+    },
+    "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+  },
+  "runtime_preservation": {
+    "bytes": 3101,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local365-v1/preservation.json",
+    "sha256": "99425480a6f80b21818b84ee0add6266d94e5de690302f01b5826c888617484d"
+  },
+  "schema": "heroes-local365-prelaunch-v1",
+  "status": "ready_for_coordinator_review",
+  "training_launched": false
+}
