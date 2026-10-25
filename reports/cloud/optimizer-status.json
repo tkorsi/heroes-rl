@@ -1,11 +1,11 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T15:46:51.776734+00:00",
+  "timestamp_utc": "2026-10-25T16:04:35.261954+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Private assets reconstructed and hash-verified. First successful fresh Linux native-session prefix independently verified in both contextual and observation modes; preparing real cold/reused A/B/A.",
-  "source_commit": "2556dad2193d804415a3fc7a588fd58338eeaacf",
+  "current_activity": "Ordinary Linux terminal shutdown repair tested and published separately; Teacher can pick the exact source fix and rerun its restored-policy gate.",
+  "source_commit": "3024e8889692ba132e35561d149202404ea2cd02",
   "latest_pushed_commit": "15534c0",
-  "latest_tested_commit": "1c6d848",
+  "latest_tested_commit": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
   "checks": {
     "native_transport_host_socket": {
       "passed": 3,
@@ -21,10 +21,18 @@
       "skipped": 2,
       "failed": 0,
       "scope": "Native regressions; two static-content tests were not configured with Data before this run"
+    },
+    "ordinary_shutdown_fix": {
+      "focused_tests": 9,
+      "passed": 9,
+      "skipped": 0,
+      "production_shutdown_iterations": 100,
+      "pre_fix_negative_control_exit": 3,
+      "fixed_control_exit": 0
     }
   },
   "real_benchmarks": {
-    "completed_games": 0,
+    "completed_games": 2,
     "fresh_linux_prefix_captures": 1,
     "independently_verified_prefix_captures": 1,
     "contextual_replay_verified": true,
@@ -32,13 +40,22 @@
     "native_steps_in_verified_prefix": 1,
     "speedup_established": false,
     "full_live_reset_reuse_established": false,
-    "retained_failed_attempts": 1
+    "retained_failed_attempts": 1,
+    "ordinary_fresh_terminal_games": 2,
+    "ordinary_native_exit_codes": [
+      0,
+      0
+    ],
+    "ordinary_contextual_replays_verified": 2,
+    "retained_failures": "Teacher gate remains unscored; Optimizer pre-fix terminal crash and diagnostics retained, separate from fresh repaired test games."
   },
   "asset_transfer": {
     "access": "succeeded",
     "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
   },
   "blocker": null,
-  "next_step": "Run consecutive live A/B/A with matched cold processes; independently replay all captures and compare measured load/reset/advance/cleanup/memory.",
-  "training": false
+  "next_step": "Publish compact independent repair evidence; then resume real cold/reused EngineSession A/B/A using the same repair.",
+  "training": false,
+  "ready_to_pick_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "ready_to_pick_branch": "codex/linux-native-shutdown-fix"
 }

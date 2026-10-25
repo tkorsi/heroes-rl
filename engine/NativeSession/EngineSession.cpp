@@ -247,8 +247,11 @@ void EngineSession::closeEpisode()
 	if(impl->policy) impl->policy->close();
 	if(GAME)
 	{
+		std::cerr << "Native session cleanup: stop/join client network\n";
 		GAME->server().endNetwork();
+		std::cerr << "Native session cleanup: finish AI and game state\n";
 		if(GAME->server().client) GAME->server().endGameplay();
+		std::cerr << "Native session cleanup: destroy server runner\n";
 		// CServerHandler destruction shuts down and joins its server runner.
 		// Keep GAME non-null throughout destruction: endGame uses the global.
 		auto * game = GAME.get();
@@ -261,6 +264,7 @@ void EngineSession::closeEpisode()
 	setExperimentFailureHandler({});
 	auto evidence = experimentEvidenceHooks();
 	setExperimentEvidenceHooks(nullptr);
+	std::cerr << "Native session cleanup: release contextual evidence\n";
 	if(evidence) evidence->finishNativeSession();
 	{
 		std::lock_guard lock(activeMutex);
