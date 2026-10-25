@@ -51,4 +51,23 @@ class LocalTests(unittest.TestCase):
         with patch.object(runner.time,'time',return_value=runner.COMPUTE_DEADLINE+1):
             with self.assertRaisesRegex(ValueError,'insufficient execution'):runner.prepare(SimpleNamespace(evaluate=False))
 
+class ControllerTests(unittest.TestCase):
+    def test_guard_covers_entire_controller_and_lock_cannot_restart(self):
+        from types import SimpleNamespace
+        from tools import local_teacher_campaign as controller
+        from experiments.headless import process_deadline
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder);args=SimpleNamespace(private_repo=root/'private',parent=root/'parent',migration=root/'migration')
+            with patch.object(controller,'DURABLE_ROOT',root),patch.object(controller,'create_session',return_value={'absolute_deadline_unix':8200}), \
+                 patch.object(controller,'binding',return_value={}),patch.object(controller.time,'time',return_value=1000), \
+                 patch.object(process_deadline,'guarded_popen') as popen,patch.object(process_deadline,'close_owned_process') as close:
+                popen.return_value.wait.return_value=0
+                controller.supervise(args)
+                self.assertEqual(popen.call_args.kwargs['deadline_wall'],8190)
+                self.assertIn('campaign-worker',popen.call_args.args[0])
+                close.assert_called_once()
+                with self.assertRaises(FileExistsError):controller.supervise(args)
+                self.assertEqual(popen.call_count,1)
+
+
 if __name__=='__main__':unittest.main()

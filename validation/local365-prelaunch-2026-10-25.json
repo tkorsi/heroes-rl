@@ -1,4 +1,10 @@
 {
+  "controller_regression": {
+    "errors": 0,
+    "failures": 0,
+    "includes_added_test": "whole-controller guardian and exclusive campaign lock",
+    "tests": 6
+  },
   "focused_tests": {
     "errors": 0,
     "failures": 0,
