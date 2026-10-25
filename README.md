@@ -3728,3 +3728,10 @@ The ordinary Linux headless shutdown repair is documented in
 AI work before joining its submitting network thread. Its fresh ordinary-game
 and replay checks are separate from experimental session reuse and do not
 retrospectively score the original failed Teacher gate.
+
+The opt-in [native EngineSession](docs/native-engine-session.md) now has a bounded
+Linux live-game milestone: 18 independently verified natural games, 100 verified
+consecutive reset prefixes and a real contextual movement sequence. Resource-load
+amortization measured about 1.65× process-wall improvement on a tiny end-turn
+fixture with warm files; this is not a training-throughput claim. The ordinary
+cold client remains the fallback.

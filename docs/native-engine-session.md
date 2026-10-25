@@ -2,11 +2,11 @@
 
 This Optimizer work starts from PR #25 merged at `875841a` on
 `codex/builtin-ppo-pilot`. The new branch is `codex/portable-engine-session`.
-It does not contain the Teacher's later continuation source or change its active
-runtime/checkpoint/resume guards. Python inference, serialization, reconstruction
-and performance campaigns remain with Claude. No training runs are part of this
-work. This document describes an opt-in native source/build milestone; real
-session reset isolation and performance remain gated on private inputs.
+It includes the requested Teacher native correctness source at `65a4f48`, but
+changes neither its active Python runtime nor checkpoint/resume guards. Python
+inference/performance and PPO remain in their respective ownership lanes. No
+training was run. The opt-in C++ live slice now has bounded real-game validation;
+it is not a general certification of all VCMI retained state.
 
 ## Dependency map
 
@@ -200,7 +200,7 @@ the existing startup wait can take 60 seconds. Use an outer bounded process
 supervisor and cold fallback if native cleanup does not return.
 
 Independently verify each actual capture with the matching `vcmireplay`, including
-its observation files and contextual ledger; use `--prefix` only for declared
+its contextual ledger and player-visible messages; use `--prefix` only for declared
 cutoffs. Then apply the existing reviewed cold/worker replay comparison to each
 capture's A/B/A replay jobs. That replay comparison verifies replay-mode reports;
 it does **not** establish live-session equality by itself. Inspect player-visible
@@ -208,10 +208,81 @@ history, fog, contextual availability, request/packet hashes and complementary
 natural terminal/barrier accounting across both live modes. Also compare reused
 A against cold A for stale IDs, queries, pending ACKs, fog, caches and memory;
 record nondeterministic differences rather than asserting seed-only equivalence.
-No speedup, safe live reset or training integration is admitted until these real
-gates pass. The ordinary cold headless client remains the portable fallback;
+Acceptance remains scoped to the actual measured workloads below. The ordinary cold headless client remains the portable fallback;
 the Linux replay fork worker is optional and independent.
 
-Remaining private prerequisite: usable original Heroes Data and the actual
-matching map/capture/contextual/observation inputs. This cloud milestone cannot
-replace them with the deterministic admission fixtures.
+## Measured Linux milestone (2026-10-25)
+
+Private original Data was reconstructed with whole-file hashes outside the public
+source tree. No assets or private captures are committed. Compact results are in
+[`validation/native-engine-session-2026-10-25.json`](../validation/native-engine-session-2026-10-25.json).
+
+The final cohort used three alternating-order cold/reused A/B/A repeats: nine
+fresh-process games versus nine games in three persistent sessions. A and B use
+two authored maps, both learner seats and matched requested seeds/limits. The
+explicit controller only ends turns and selects the first displayed modal choice;
+it performs no learned inference. All 18 games reached natural native shutdown
+and independently passed full native/contextual replay, with zero unchecked
+items. Each mode checked 4,662 client packets. Original failed trials remain
+failed and unscored; this is a separately identified new cohort.
+
+| Aggregate, nine games per mode | Fresh process | Reused session |
+| --- | ---: | ---: |
+| Process wall seconds | 3.888 | 2.356 |
+| Resource load seconds | 1.923 | 0.634 |
+| Reset through first boundary seconds | 0.452 | 0.415 |
+| Native advance seconds (inference excluded) | 1.106 | 1.128 |
+| Cleanup seconds | 0.043 | 0.039 |
+| Maximum peak RSS MiB | 78.46 | 81.36 |
+
+The aggregate wall ratio is approximately 1.65, predominantly from amortizing
+resource loading. Filesystem caches were warm: cold means a fresh process, not
+cold storage. This tiny end-turn fixture does not establish training throughput
+or faster game rules. Native advance was approximately unchanged. Timing uses
+blocking process reap and an independent watchdog, avoiding timed-wait polling
+quantization. Declared Data/Maps/config/mod/plugin trees and runtime identities
+were checked before/after; the same base profile settings were restored before
+each process. Declared inventory coverage is not complete dynamic-loader proof.
+
+A separate persistent process completed 100 consecutive real one-step prefixes;
+all independently replayed successfully. Post-cleanup descriptors stayed at 8 and
+threads at 5. Current RSS rose from 76.71 to 84.80 MiB; its last 20 readings ranged
+84.71–84.80 MiB. This bounded audit does not prove absence of leaks or all mutable
+AI caches. Every first private decision matched the cold reference. Raw initial
+full-state digests differ across fresh starts: existing `StartInfo` serializes a
+wall-clock `startTime`. The verifier retains all original full-state hashes and
+checks each capture against its complete recorded inputs; no normalization was
+applied. This does not promise identical future autonomous games from seed alone.
+A diagnostic attempt to decode StartInfo without initialized game resources
+failed and was discarded; it is not supporting evidence for input equivalence.
+
+The direct API also passed a real open-hero/close/move sequence: position
+`[4,7,0]` to `[4,8,0]`, movement 1560 to 1460, three actual contextual submissions,
+23 independently checked client packets and zero unchecked items. The focused
+native regression suite passed 46 tests with no skips.
+
+For reproducible controller-driven runs, `native_session_benchmark --plan
+/private/plan.json --output /private/new-result` consumes an object with an
+`episodes` array. Each entry has `episode`, `map`, `seed`, `learner`, `max_steps`
+and `seconds`. Run each entry in a separate process for cold mode; use one array
+A/B/A for reuse. Use new result directories and record actual profile/runtime
+identities. The benchmark emits `completed_pending_independent_replay` and
+`replay_verified: false`; verify every episode separately:
+
+```sh
+./vcmireplay --log /private/episode/engine/replay.jsonl \
+  --contextual /private/episode/engine/contextual-replay.jsonl \
+  --report /private/new-verification.json
+```
+
+Use `--prefix` only for intentional cutoffs. Contextual verification includes
+the private observation/message stream; do not combine the separate raw
+`--observations` mode with `--contextual`. Raw v7 observation files alone are not
+the contextual acceptance gate. No Teacher failed game is retrospectively scored.
+
+The ordinary shutdown fix is separately applicable in PR #27 (`ca488fd4`), with
+an explicit additional terminal-attempt accounting contract (`16085b1`). See
+[shutdown evidence](native-headless-shutdown.md). The live session remains opt-in;
+the ordinary cold client is the fallback. Broader maps/mods, long games, retained
+AI randomness/caches, macOS execution and Teacher integration require their own
+gates. Portable execution does not promise cross-compiler bit identity.

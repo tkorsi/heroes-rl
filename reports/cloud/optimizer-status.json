@@ -1,113 +1,51 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T16:40:14.367435+00:00",
+  "timestamp_utc": "2026-10-25T17:01:03.787466+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Explicit marketplace terminal-attempt contract passes 460 tamper/codec checks, retained diagnostics and a fresh ordinary game; new 18-game precisely timed cold/reused cohort fully verified. 30-reset audit passes; longer RSS audit running.",
-  "source_commit": "612baeb37624e0246caf0565b78167c5829da317",
-  "latest_pushed_commit": "bb98408",
-  "latest_tested_commit": "612baeb",
-  "checks": {
-    "native_transport_host_socket": {
-      "passed": 3,
-      "failed": 0,
-      "skipped": 0,
-      "scope": "Asset-free contracts only; no real-game throughput"
-    },
-    "merged_source_recipe": "passed",
-    "merged_native_build": "passed",
-    "merged_focused_regressions": {
-      "tests_run": 45,
-      "passed": 43,
-      "skipped": 2,
-      "failed": 0,
-      "scope": "Native regressions; two static-content tests were not configured with Data before this run"
-    },
-    "ordinary_shutdown_fix": {
-      "focused_tests": 9,
-      "passed": 9,
-      "skipped": 0,
-      "production_shutdown_iterations": 100,
-      "pre_fix_negative_control_exit": 3,
-      "fixed_control_exit": 0
-    }
+  "current_activity": "Packaging completed bounded live EngineSession evidence for review; ordinary shutdown repair independently available in PR27",
+  "latest_tested_commit": "1345111b32b08c9a75e476ca4659ea5c6123af3f",
+  "latest_pushed_commit": "1345111",
+  "tests": {
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0
   },
   "real_benchmarks": {
-    "completed_games": 2,
-    "fresh_linux_prefix_captures": 1,
-    "independently_verified_prefix_captures": 1,
-    "contextual_replay_verified": true,
-    "observation_replay_verified": true,
-    "native_steps_in_verified_prefix": 1,
-    "speedup_established": false,
-    "full_live_reset_reuse_established": false,
-    "retained_failed_attempts": 1,
-    "ordinary_fresh_terminal_games": 2,
-    "ordinary_native_exit_codes": [
-      0,
-      0
+    "cold_games": 9,
+    "reused_games": 9,
+    "independently_verified_natural_games": 18,
+    "verified_consecutive_reset_prefixes": 100,
+    "verified_navigation_submissions": 3,
+    "process_wall_seconds": {
+      "cold": 3.8878578190015105,
+      "reused": 2.3563520020006763
+    },
+    "cold_over_reused_ratio_fixture_only": 1.6499478073312048,
+    "scope": "Tiny end-turn workload, warm files, no inference; no training throughput claim",
+    "rss_first_last_bytes": [
+      80433152,
+      88924160
     ],
-    "ordinary_contextual_replays_verified": 2,
-    "retained_failures": "Teacher gate remains unscored; Optimizer pre-fix terminal crash and diagnostics retained, separate from fresh repaired test games.",
-    "first_reused_session": {
-      "consecutive_natural_games": 3,
-      "learner_seats": [
-        0,
-        1,
-        0
-      ],
-      "independent_native_contextual_replays_passed": 3,
-      "a_initial_state_matches_cold": true,
-      "a_first_private_decision_hash_matches_cold": true,
-      "later_native_packet_counts": "Different across fresh games from inherited RNG/thread behavior; not bit-identical trajectories"
-    },
-    "verified_bounded_campaign": {
-      "cold_games": 9,
-      "reused_games": 9,
-      "independent_native_replays": 18,
-      "declared_immutable_inputs_unchanged": true,
-      "outer_wall_measurement": "Timed wait polling has approximately 50ms granularity; native C++ phase timers remain precise."
-    },
-    "later_campaign": {
-      "verified_rows": 1,
-      "failed_verification_rows": 1,
-      "status": "stopped_without_replacement",
-      "error": "Client native request has no verified authoritative application or terminal boundary",
-      "tail_type": "TradeOnMarketplace after actual PlayerEndsGame before final barrier"
-    },
-    "current_contract_cohort": {
-      "cold_games": 9,
-      "reused_games": 9,
-      "independent_native_replays": 18,
-      "process_wall_timer": "Blocking reap with separate watchdog",
-      "declared_immutable_inputs_unchanged": true,
-      "no_unchecked_native_items": true
-    },
-    "reset_audit": {
-      "real_prefix_episodes": 30,
-      "independent_replays": 30,
-      "post_cleanup_descriptors": [
-        8
-      ],
-      "post_cleanup_threads": [
-        5
-      ],
-      "first_last_rss_mib": [
-        76.758,
-        82.867
-      ],
-      "memory_stability": "Longer audit in progress; no leak-free claim"
-    }
+    "cleanup_descriptors": [
+      8
+    ],
+    "cleanup_threads": [
+      5
+    ]
   },
-  "asset_transfer": {
-    "access": "succeeded",
-    "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
-  },
-  "blocker": null,
-  "next_step": "Finish longer resource audit, native contextual navigation fixture, final regressions and compact benchmark evidence; keep experimental live path opt-in.",
-  "training": false,
   "ready_to_pick_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
-  "ready_to_pick_branch": "codex/linux-native-shutdown-fix",
-  "minimal_fix_pr": "https://github.com/tkorsi/heroes-rl/pull/27",
   "additional_contract_pick_sha": "16085b145871bd358a35bcd430ac605d2dc68b90",
-  "additional_contract_scope": "One proven unapplied TradeOnMarketplace at the independently verified final terminal boundary; no game execution changes. Source admission candidate was discarded."
+  "minimal_fix_pr": "https://github.com/tkorsi/heroes-rl/pull/27",
+  "session_pr": "https://github.com/tkorsi/heroes-rl/pull/26",
+  "blocker": null,
+  "next_step": "Review opt-in native API and bounded validation; Teacher independently rebuilds/reruns its own unscored failed gate before training",
+  "limitations": [
+    "Experimental single-owner C++ host only; no Teacher integration or training",
+    "Warm filesystem caches; cold means fresh process; explicit untrained end-turn-only policy, not representative policy throughput",
+    "Inherited AI RNG/thread scheduling remains nondeterministic; no compiler/platform or seed-only future-trajectory equivalence",
+    "Initial full-state digests differ across fresh starts; StartInfo serializes wall-clock startTime. No hash normalization or verifier relaxation was applied. All captured full inputs independently replay unchanged; identical first private decisions do not certify all hidden caches",
+    "100-prefix RSS growth is not proof of leak freedom; unsupported scenarios require separate gates",
+    "Original Teacher failure and failed admission/precision trials remain unscored; no replacement within failed cohorts"
+  ],
+  "training": false
 }
