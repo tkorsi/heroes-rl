@@ -245,14 +245,17 @@ def read_plan(path, sha):
     return plan
 
 
-def worker(args):
+def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
+    plan_reader = plan_reader or read_plan
+    state_reader = state_reader or parent_state
+    heldout_checker = heldout_checker or require_heldout
     import torch
     from .builtin_gameplay import native_update, UpdateRolledBack
     from .checkpoints import TrainingProgress
     from .ppo import PPOConfig
     from validation.probes.validate_hero_policy import wall_limit
     torch.set_num_threads(1)
-    plan = read_plan(args.plan, args.sha256)
+    plan = plan_reader(args.plan, args.sha256)
     cfg, output = plan['configuration'], Path(plan['execution_output'])
     report = json.loads((output/'report.json').read_text())
     report['parent'] = plan['parent']
@@ -264,9 +267,9 @@ def worker(args):
         return pilot.Budget(args.started+offset, min(args.wall_started+offset, plan['compute_deadline_unix']))
     try:
         pilot.check_identity(plan)
-        state = parent_state(plan)
+        state = state_reader(plan)
         if plan['mode'] == 'training':
-            require_heldout(state, plan['runtime'], plan['native'])
+            heldout_checker(state, plan['runtime'], plan['native'])
         model = state.model
         receipts = []
         for index, row in enumerate(plan['schedule']):

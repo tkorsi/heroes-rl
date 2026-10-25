@@ -168,8 +168,12 @@ binds the exact update92 parent, explicit checkpoint/Adam migration requirements
 fresh session and watchdog, both-seat baseline and burned sequence93. The
 [parent audit](validation/update92-v8-resume-audit-2026-10-25.json) verifies all
 three preserved copies. Built-in collection/replay now selects explicit v7/v8
-profiles; ordinary resume still refuses a schema transition. No new campaign,
-probe gameplay, migrated checkpoint or training update has started.
+profiles; ordinary resume still refuses a schema transition. Explicit conversion and a
+new single-use controller now require a privately restored migrated baseline,
+all native feature gates and coordinator release. The target ordinary map is
+hero-management-v2, with native hero leveling enabled. Temporary conversion of
+the actual update92 pair passed and was removed; no permanent migrated
+checkpoint, new session, gameplay probe or training update has been created.
 
 ## Source layout
 

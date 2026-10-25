@@ -130,14 +130,22 @@ def _drain(history, manifest):
             and type(trigger["actions_sent"]) is int and trigger["actions_sent"] >= 0,
             "Invalid single-player drain trigger")
     seq = trigger["decision_seq"]
-    require(frames[seq].kind == "decision" and frames[seq].observation.context.kind == "dialog"
+    prefix = c.PlayerHistory(history.episode, history.player, schema=history.schema)
+    for frame in frames[:seq + 1]:
+        prefix.append(frame)
+    require(frames[seq].kind == "decision" and prefix.requires_choice
             and sum(f.kind == "submitted" for f in frames[:seq]) == trigger["actions_sent"],
-            "Drain trigger does not bind its actual own dialog")
+            "Drain trigger does not bind its actual own mandatory choice")
     expected = [{"player": history.player, "decision_seq": f.decision_seq}
                 for f in frames[seq:] if f.kind == "submitted"]
     require(type(drain["choices"]) is list and same(drain["choices"], expected) and len(expected) <= 8
-            and all(f.action.kind == "choose_dialog" for f in frames[seq:] if f.kind == "submitted"),
+            and all(f.action.kind in ("choose_dialog", "choose_level_up", "choose_spell_target", "cancel_spell_target")
+                    for f in frames[seq:] if f.kind == "submitted"),
             "Deferred cutoff contains missing, excess or fabricated policy answers")
+    for frame in frames[seq + 1:]:
+        if frame.kind == "submitted":
+            require(prefix.requires_choice, "Cutoff drain sampled an optional action")
+        prefix.append(frame)
 
 
 def validate_manifest_history(history, manifest):
@@ -183,7 +191,7 @@ def validate_manifest_history(history, manifest):
         require(outcomes == dict.fromkeys(COLORS) and rewards == dict.fromkeys(COLORS), "Unscored evaluation received a result")
         if status == "truncated":
             require(history.boundary == "cutoff_pending" and history.frames[-1].kind == "cutoff"
-                    and history.context.kind != "dialog" and history.action is None
+                    and not history.requires_choice and history.action is None
                     and manifest.get("termination_reason") in HORIZONS,
                     "Cutoff requires the actual unacted safe own decision")
         else:

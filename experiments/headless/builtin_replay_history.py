@@ -57,7 +57,7 @@ def verify_history(directory, manifest, finalization_document):
     def locate_cutoff():
         if (manifest["status"] != "truncated" or producer.cutoff is not None
                 or producer.live.decision is None or producer.live.action is not None
-                or producer.live.context.kind == "dialog"):
+                or producer.live.requires_choice):
             return
         marker = contract.Frame(producer.episode, player, frames, producer.live.day, "cutoff",
             decision_seq=producer.live.decision.seq, reason=manifest["termination_reason"], schema=profile.history_schema)
