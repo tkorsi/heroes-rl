@@ -1,0 +1,551 @@
+{
+  "automatic_battles": true,
+  "changed_header_fields": {
+    "description": {
+      "after": "Isolated native capability diagnostic; excluded from training. All authored initial-state differences are recorded in its manifest. Normal fog, VCMI mechanics, automatic battles and native leveling remain enabled.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "heroLevelLimit": {
+      "after": 0,
+      "before": 1
+    },
+    "name": {
+      "after": "capability-level-up-blue-v1",
+      "before": "Hero management: two castles"
+    }
+  },
+  "diagnostic_only": true,
+  "engine_verified": false,
+  "fixture": "level_up",
+  "fog": "normal native team fog",
+  "layout_seed": 0,
+  "map_sha256": "ed70a52343f58ff230af3a065fb3d8f13282dc3bca5d92a31cf04e849d7f4027",
+  "native_hero_level_limit": 0,
+  "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
+  "object_changes": [
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_0",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 13,
+        "y": 9
+      },
+      "before": null,
+      "instance": "diagnostic_chest_0"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_1",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 15,
+        "y": 9
+      },
+      "before": null,
+      "instance": "diagnostic_chest_1"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_2",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 17,
+        "y": 9
+      },
+      "before": null,
+      "instance": "diagnostic_chest_2"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_3",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 13,
+        "y": 11
+      },
+      "before": null,
+      "instance": "diagnostic_chest_3"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_4",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 15,
+        "y": 11
+      },
+      "before": null,
+      "instance": "diagnostic_chest_4"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_5",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 17,
+        "y": 11
+      },
+      "before": null,
+      "instance": "diagnostic_chest_5"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_6",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 13,
+        "y": 13
+      },
+      "before": null,
+      "instance": "diagnostic_chest_6"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_7",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 15,
+        "y": 13
+      },
+      "before": null,
+      "instance": "diagnostic_chest_7"
+    },
+    {
+      "after": {
+        "instanceName": "diagnostic_chest_8",
+        "l": 0,
+        "options": {},
+        "subtype": "treasureChest",
+        "template": {
+          "animation": "AVTchst0.def",
+          "mask": [
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVV",
+            "VVVVVVVA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "treasureChest",
+        "x": 17,
+        "y": 13
+      },
+      "before": null,
+      "instance": "diagnostic_chest_8"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_0",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 4,
+        "y": 10
+      },
+      "instance": "gold_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_1",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 15,
+        "y": 10
+      },
+      "instance": "gold_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 6,
+        "y": 12
+      },
+      "instance": "guard_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_1",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 13,
+        "y": 12
+      },
+      "instance": "guard_1"
+    },
+    {
+      "after": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 999,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 7
+      },
+      "before": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 7
+      },
+      "instance": "hero_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_0",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 6,
+        "y": 16
+      },
+      "instance": "mine_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_1",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 15,
+        "y": 16
+      },
+      "instance": "mine_1"
+    }
+  ],
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "player": "blue",
+  "rules_and_rewards_unchanged": true,
+  "runtime_state_grants": false,
+  "scenario_id": "capability-level-up-blue-v1",
+  "schema": "heroes-capability-scenario-v1",
+  "terrain_changes": [],
+  "training_performed": false
+}
