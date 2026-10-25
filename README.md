@@ -15,6 +15,10 @@ The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate
 experiment branches and their PRs describe the history.
 
+The [consolidation check](validation/project-consolidation-2026-10-25.json)
+passed 1182 tests (26 platform/optional-fixture skips), a fresh nine-target macOS
+native build and the Swift viewer build. This check launched no gameplay.
+
 | Area | Implemented | Current limit |
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
