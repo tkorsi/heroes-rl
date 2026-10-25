@@ -5,7 +5,15 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** local v2 revalidation on frozen source `6abbfdb` produced
+**Current milestone:** the authorized local v7 PPO pilot completed eight verified
+natural games against Nullkiller Easy and **one PPO update from 106 fresh learner
+transitions (five Adam steps)** in 62.161 seconds. Both policy and value weights
+changed; exact checkpoint restoration and all native replays passed. The learner
+lost all eight games, including both evaluations before and both after the update.
+This proves the bounded training path works, not improved strategy. The run is
+complete; no further training campaign is authorized by that pilot.
+
+The preceding local v2 revalidation on frozen source `6abbfdb` produced
 **four verified frozen-neural cutoffs and four verified natural learner defeats
 against Nullkiller Easy**, covering both learner colors. The neural cohort hit
 its shared one-hour limit during validation of game five; that attempt remains
@@ -91,7 +99,51 @@ archived neural pool remains unchanged for serialization compatibility and is
 never executed. Before/after checkpoints are independently loaded and checked
 for exact model, Adam, RNG, progress and pool state. The after evaluations use the
 reloaded policy. The legacy v4 launcher and synthetic-only default PPO gate remain
-unchanged. Actual execution results will be recorded after the bounded run.
+unchanged.
+
+The pilot executed from `eecf468` under immutable plan
+`b254d122dfbd01a183f7fc7fd0076bc789d888fd31ba50dd74f2ca7cf091c08b`.
+All eight scheduled attempts passed collection, exact own-policy reconstruction,
+independent native replay, source/runtime checks and cleanup. There were no
+cutoffs, failures, retries, replacement games or unstarted rows.
+
+| Phase | Learner seat | Choices | Terminal day | Learner result | Training samples |
+| --- | --- | ---: | ---: | --- | ---: |
+| Before evaluation | Red | 72 | 2 | Natural loss | 0 |
+| Before evaluation | Blue | 154 | 13 | Natural loss | 0 |
+| Fresh collection | Red | 56 | 2 | Natural loss | 56 |
+| Fresh collection | Blue | 38 | 2 | Natural loss | 38 |
+| Fresh collection | Red | 9 | 2 | Natural loss | 9 |
+| Fresh collection | Blue | 3 | 2 | Natural loss | 3 |
+| After evaluation | Red | 132 | 2 | Natural loss | 0 |
+| After evaluation | Blue | 154 | 13 | Natural loss | 0 |
+
+Only the four freshly bound training captures supplied the 106 consumed-action
+samples. One complete update used five Adam steps. All 39 parameter tensors
+changed, including the recurrent core, policy query and value head; original
+checkpoint bytes and archived neural opponent weights stayed unchanged. The new
+learner weight digest is
+`e9681c51783c0ee679d0c201d7c59e18a0dafcf1f1461fd3f9927b6c3051d8d0`.
+Exact model/Adam/Torch/Python/minibatch RNG/progress/pool restoration passed, and
+after evaluations used the reloaded policy. Resume and policy artifacts remain
+under ignored `runs/builtin-ppo-pilot-2026-10-25/execution/`.
+
+Across all games, independent reconstruction exactly reproduced 618 actions,
+618 values and 1,443 conditional probabilities. Native replay checked 7,787
+client packets, 1,332 request attempts, 618 responses, 1,252 messages and 11,193
+transactions, including 906 native-opponent requests, with zero unchecked items
+or divergence. The 62.161-second execution includes all mandatory verification,
+the update, checkpoint checks and closure of eight native process groups. The
+subsequent read-only evidence assembly took 0.104 seconds and performed no game,
+replay, model forward pass or optimizer operation.
+
+Preflight was separate: 977 tests ran successfully with one optional retained
+capture skipped; focused integration and final runner/numerical suites also
+passed. Evidence is in `validation/builtin-ppo-preflight-2026-10-25.json` and
+`validation/builtin-ppo-pilot-2026-10-25.json`. Before and after both finished
+0 wins / 2 natural losses. Changed action counts, including Red's additional
+town activity, are descriptive only; they do not establish strategic improvement.
+Claude's clean Mac window was released after cleanup. Draft PR #24 is unmerged.
 
 The remaining rows of earlier untrained self-play schedules will not be resumed
 under this changed priority. Their original cutoff/failure/not-started reasons
