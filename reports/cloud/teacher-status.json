@@ -1,5 +1,5 @@
 {
-  "activity": "All10 cloud updates and4 paired held-out checks complete; three final checkpoint copies restore exactly; results and portable runtime privately archived. Awaiting fixed hard stop without launching more learning.",
+  "activity": "Final update31, paired evaluation, three-copy restoration and analysis publication are complete. No learning, capture or replay is running; waiting for the fixed cutoff and independent stop publication.",
   "behavior_diagnostics": {
     "cross_army_net_count_redistribution": 1275,
     "cross_army_operations": 120,
@@ -17,6 +17,10 @@
     "hard_stop_utc": "2026-10-25T17:53:00Z",
     "owned_child_timeout_smoke": "passed; child stopped after 0.5-second bound with exit137",
     "restart_after_cutoff_authorized": false,
+    "stop_publication_guardian": {
+      "absolute_publication_end_utc": "2026-10-25T17:52:50Z",
+      "evidence": "/workspace/Heroes-artifacts/session/final-stop-publisher-guardian.jsonl"
+    },
     "watchdog_pid": 9430,
     "watchdog_private_receipt": "/workspace/Heroes-artifacts/session/deadline-watchdog.json",
     "worker_and_native_absolute_guardians": true
@@ -269,7 +273,7 @@
     "admitted_rollouts": 40,
     "updates": 10
   },
-  "state": "learning_stopped_analysis_ready",
+  "state": "learning_stopped_waiting_fixed_cutoff",
   "throughput": {
     "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
     "reported_training_batch_wall_seconds": 3200.917,
@@ -277,7 +281,7 @@
     "verified_training_games_per_reported_batch_second": 0.012496418994931766
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T17:31:30.815828+00:00",
+  "updated_utc": "2026-10-25T17:42:10.732174+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 104,
     "cutoff": 1,
