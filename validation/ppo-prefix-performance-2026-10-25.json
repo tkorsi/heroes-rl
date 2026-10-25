@@ -1,0 +1,98 @@
+{
+  "disposable_optimizer_steps_per_model": 2,
+  "exact_after_every_step": true,
+  "exact_checks": [
+    "decision_log_probs",
+    "decision_values",
+    "five_loss_metrics",
+    "unclipped_gradients",
+    "all_model_tensors",
+    "all_Adam_state_tensors"
+  ],
+  "final_disposable_weights_sha256": "f9317ee2d390d7f464447f70292b6142159e672c172afe458abe084d9b2a3af7",
+  "history_frames": 10069,
+  "input_sha256": "f68f7e70bbc1aa1f08d09b92ae01c0eb6c1c9deb9b444a6d28c00e829fdb1cdf",
+  "limitations": [
+    "Late windows in one archived long episode, not a whole campaign throughput result",
+    "Fresh random disposable weights; no trained policy is updated or published",
+    "Admission, history decoding, gameplay, replay and checkpoint I/O excluded from timing",
+    "Every GRU transition remains sequential; prefixes still rebuild after every Adam step"
+  ],
+  "model_config": {
+    "feature_size": 32,
+    "hidden_size": 64,
+    "max_map_side": 256,
+    "schema": "heroes-context-model-v5"
+  },
+  "numerical_minibatch_speedup": 6.676104370739154,
+  "platform": "macOS-26.5.2-arm64-arm-64bit-Mach-O",
+  "prefix_speedup": 12.175718514037841,
+  "purpose": "offline_disposable_numerics_only",
+  "random_seed": 8713,
+  "recorded_decisions": 1536,
+  "schema": "heroes-ppo-prefix-benchmark-v1",
+  "selected_windows": [
+    {
+      "decisions": 16,
+      "end_seq": 9946,
+      "start_seq": 9838
+    },
+    {
+      "decisions": 16,
+      "end_seq": 10051,
+      "start_seq": 9947
+    }
+  ],
+  "timing_seconds": {
+    "cached": [
+      {
+        "backward_and_clip": 2.3143733749748208,
+        "loss_forward": 1.1465244599967264,
+        "optimizer_step": 0.0007125410193111748,
+        "prefix_reconstruction": 3.587266540998826,
+        "total": 7.049030291003874
+      },
+      {
+        "backward_and_clip": 2.4297891250171233,
+        "loss_forward": 1.0840268750034738,
+        "optimizer_step": 0.0005902500124648213,
+        "prefix_reconstruction": 3.7067590420192573,
+        "total": 7.221298874996137
+      }
+    ],
+    "reference": [
+      {
+        "backward_and_clip": 2.1223552500014193,
+        "loss_forward": 0.8439198750129435,
+        "optimizer_step": 0.0007199589745141566,
+        "prefix_reconstruction": 44.78026416600915,
+        "total": 47.747267667000415
+      },
+      {
+        "backward_and_clip": 2.3995956250000745,
+        "loss_forward": 1.0928606249799486,
+        "optimizer_step": 0.0006260840164031833,
+        "prefix_reconstruction": 44.02973816700978,
+        "total": 47.52293925001868
+      }
+    ]
+  },
+  "torch_threads": 1,
+  "torch_version": "2.9.1",
+  "total_timing_seconds": {
+    "cached": {
+      "backward_and_clip": 4.744162499991944,
+      "loss_forward": 2.2305513350002,
+      "optimizer_step": 0.001302791031775996,
+      "prefix_reconstruction": 7.294025583018083,
+      "total": 14.27032916600001
+    },
+    "reference": {
+      "backward_and_clip": 4.521950875001494,
+      "loss_forward": 1.9367804999928921,
+      "optimizer_step": 0.00134604299091734,
+      "prefix_reconstruction": 88.81000233301893,
+      "total": 95.2702069170191
+    }
+  }
+}

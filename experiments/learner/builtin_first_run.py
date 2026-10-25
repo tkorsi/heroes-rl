@@ -169,7 +169,11 @@ def check_identity(plan):
     from experiments.headless.contextual_evidence import runtime_identity
     from .inference import source_identity
     from validation.probes.validate_hero_policy import hero_map_identity
-    require(source_identity(INTERFACE) == plan["source"] and implementation() == plan["implementation"],
+    from experiments.headless.builtin_evidence import profile_for
+    interface = profile_for(plan["source"]["interface"]).environment
+    if interface == "adventure-capabilities-v1":
+        from .builtin_v8_migration import map_identity as hero_map_identity
+    require(source_identity(interface) == plan["source"] and implementation() == plan["implementation"],
             "Prepared source or implementation changed")
     require(prerequisites() == plan["prerequisites"] and binding(plan["checkpoint"]["path"]) == plan["checkpoint"]
             and binding(plan["replay_binary"]["path"]) == plan["replay_binary"], "Bound evidence/artifact changed")
@@ -207,6 +211,8 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
     from .builtin_behavior import analyze_episode
     from .contextual_model import weights_sha256
     from validation.probes.validate_hero_policy import wall_limit
+    from experiments.headless.builtin_evidence import profile_for
+    interface = profile_for(plan["source"]["interface"]).environment
     cfg, row = plan["configuration"], plan["schedule"][index]
     output, seat = Path(plan["execution_output"]), row["learner_player"]
     folder = output / f"episode-{row['episode']:06d}"
@@ -229,7 +235,7 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
                     weights_sha256=before, opponent_identity=opponent, source_identity=plan["source"],
                     native_identity=plan["native"], max_days=cfg["max_days"],
                     nominal_choices=cfg["ordinary_choice_limit"], max_choices=cfg["max_total_choices"])
-                collector = TrainingCollector(model, bound)
+                collector = TrainingCollector(model, bound, interface=interface)
             else:
                 class BoundedCollector(BuiltinCollector):
                     sampled = 0
@@ -239,11 +245,11 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
                         self.sampled += 1
                         return result
                 collector = BoundedCollector(model, checkpoint, learner_player=seat,
-                    opponent_identity=opponent, policy_seed=row["policy_seed"])
+                    opponent_identity=opponent, policy_seed=row["policy_seed"], interface=interface)
             limits = Limits(max_days=cfg["max_days"], max_actions=cfg["max_total_choices"],
                 watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30)
             env = BuiltinHeadlessEnv(launcher, output, learner_player=seat, limits=limits, ledger=True,
-                replay=True, interface=INTERFACE, agents={COLORS[seat]: {"checkpoint": checkpoint,
+                replay=True, interface=interface, agents={COLORS[seat]: {"checkpoint": checkpoint,
                     "kind": "recurrent-policy", "evaluation_only": row["phase"] != "training"}})
             progress("collection")
             collected = collector.run_episode(env, episode=row["episode"], seed=row["engine_seed"],
@@ -322,12 +328,14 @@ def checkpoint_roundtrip(output, model, optimizer, pool, generator, metadata, cf
         save_policy_checkpoint, load_policy_checkpoint)
     from .contextual_model import ContextualActorCritic, weights_sha256
     from .gameplay import assert_same_state
+    from experiments.headless.builtin_evidence import profile_for
+    interface = profile_for(cfg["interface"]).environment
     checkpoint = "builtin-pilot-" + name + "-" + weights_sha256(model)[:16]
     before = {"model": deepcopy(model.state_dict()), "optimizer": deepcopy(optimizer.state_dict()),
         "torch": torch.get_rng_state().clone(), "python": random.getstate(), "minibatch": generator.get_state().clone()}
     resume_path, policy_path = output / (name + "-resume.pt"), output / (name + "-policy.pt")
     kwargs = {"checkpoint": checkpoint, "source_metadata": metadata, "opponent_pool": pool,
-        "generators": {"minibatch": generator}, "interface": INTERFACE, "provenance": BUILTIN_GAMEPLAY_PROVENANCE}
+        "generators": {"minibatch": generator}, "interface": interface, "provenance": BUILTIN_GAMEPLAY_PROVENANCE}
     flags = tuple(parameter.requires_grad for parameter in model.parameters())
     try:
         model.requires_grad_(True)
@@ -342,7 +350,7 @@ def checkpoint_roundtrip(output, model, optimizer, pool, generator, metadata, cf
     restored_generator = torch.Generator()
     state = load_checkpoint(resume_path, restored, restored_optimizer, expected_ppo_config=cfg["ppo"],
         expected_source_metadata=metadata, generators={"minibatch": restored_generator},
-        interface=INTERFACE, allowed_provenance=(BUILTIN_GAMEPLAY_PROVENANCE,), at_rollout_boundary=True)
+        interface=interface, allowed_provenance=(BUILTIN_GAMEPLAY_PROVENANCE,), at_rollout_boundary=True)
     assert_same_state(restored.state_dict(), before["model"])
     assert_same_state(restored_optimizer.state_dict(), before["optimizer"])
     require(torch.equal(torch.get_rng_state(), before["torch"]) and random.getstate() == before["python"]
@@ -350,7 +358,7 @@ def checkpoint_roundtrip(output, model, optimizer, pool, generator, metadata, cf
     require(state.progress == progress and state.sampler_state == sampler and state.opponent_pool.identities == pool.identities,
             "Checkpoint progress/sampler/archived pool changed")
     loaded = load_policy_checkpoint(policy_path, expected_source_metadata=metadata,
-        allowed_provenance=(BUILTIN_GAMEPLAY_PROVENANCE,), interface=INTERFACE)
+        allowed_provenance=(BUILTIN_GAMEPLAY_PROVENANCE,), interface=interface)
     assert_same_state(loaded.model.state_dict(), restored.state_dict())
     loaded.model.eval().requires_grad_(False)
     return loaded, {"resume": binding(resume_path), "policy": binding(policy_path),

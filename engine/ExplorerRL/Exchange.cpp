@@ -58,7 +58,13 @@ void ExplorerRL::installOwnHeroExchange()
 	for(const int id : {exchange.first, exchange.second})
 	{
 		const auto * hero = callback->getHero(ObjectInstanceID(id));
-		if(!hero || hero->getOwner() != playerID)
+		if(exchange.joiningNeutral && id == exchange.second)
+		{
+			const auto * source = callback->getObj(ObjectInstanceID(id), false);
+			if(!source || source->ID != Obj::MONSTER || source->getOwner().isValidPlayer())
+				throw std::runtime_error("Joining neutral became unavailable");
+		}
+		else if(!hero || hero->getOwner() != playerID)
 			throw std::runtime_error("Owned hero exchange participant became unavailable");
 	}
 	exchange.installed = true;
@@ -69,7 +75,7 @@ void ExplorerRL::installOwnHeroExchange()
 	auto record = contextState.record("context_opened", callback->getDate(Date::DAY));
 	record["context"] = contextState.contextJson();
 	record["revision"].Integer() = ++contextState.revision;
-	record["reason"].String() = "own_hero_exchange";
+	record["reason"].String() = exchange.joiningNeutral ? "neutral_join" : "own_hero_exchange";
 	contextState.records.push_back(std::move(record));
 }
 

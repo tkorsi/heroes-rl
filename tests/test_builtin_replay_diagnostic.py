@@ -82,7 +82,8 @@ class DiagnosticAdmissionTests(unittest.TestCase):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)
         self.root=Path(temporary.name);self.episode=self.root/"captured";self.episode.mkdir()
         self.output=self.root/"supplemental"
-        self.manifest={"episode":"1", "learner_player":0, "replay":{"schema":replay.SCHEMA,"files":{}},
+        self.manifest={"environment":"adventure-dialogs-v1", "history_schema":"heroes-player-history-v7",
+            "action_schema":"heroes-context-actions-v7", "episode":"1", "learner_player":0, "replay":{"schema":replay.SCHEMA,"files":{}},
             "status":"completed", "seed":120501, "launch":{"requested_settings":{}},"identity":{}}
         for name in ("builtin-finalization.json","logs/process.log","engine/experiment-metadata.json",
                      "agents/red/bridge.jsonl","agents/red/history-v7.jsonl","agents/red/live-history-v7.jsonl"):

@@ -28,6 +28,8 @@ MANAGEMENT_MODEL_SCHEMA = "heroes-context-model-v4"
 MANAGEMENT_DISTRIBUTION_SCHEMA = "heroes-context-policy-v4"
 DIALOGS_MODEL_SCHEMA = "heroes-context-model-v5"
 DIALOGS_DISTRIBUTION_SCHEMA = "heroes-context-policy-v5"
+EXPANDED_MODEL_SCHEMA = "heroes-context-model-v6"
+EXPANDED_DISTRIBUTION_SCHEMA = "heroes-context-policy-v6"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
             "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks", "swap_stacks",
             "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison", "choose_dialog")
@@ -43,7 +45,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA):
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA, EXPANDED_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -63,6 +65,8 @@ class ModelConfig:
 
 def model_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.capabilities:
+        return EXPANDED_MODEL_SCHEMA
     if profile.dialogs:
         return DIALOGS_MODEL_SCHEMA
     if profile.army_management:
@@ -74,6 +78,8 @@ def model_schema_for(profile_or_schema):
 
 def distribution_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.capabilities:
+        return EXPANDED_DISTRIBUTION_SCHEMA
     if profile.dialogs:
         return DIALOGS_DISTRIBUTION_SCHEMA
     if profile.army_management:
@@ -153,6 +159,9 @@ def _subject(observation, ref):
 
 
 def _selection(observation, ref):
+    if observation is not None and observation.window is not None and observation.window.capability_panel is not None:
+        return next((_capability_choice(choice, observation) for choice in observation.window.capability_panel.choices
+                     if choice.ref == ref), _node("unresolved_selection"))
     if observation is not None and observation.window is not None and observation.window.dialog_panel is not None:
         panel = observation.window.dialog_panel
         return next((_dialog_choice(panel, item) for item in panel.choices if item.ref == ref), _node("unresolved_selection"))
@@ -212,6 +221,26 @@ def _dialog_choice(panel, choice):
     return _node("dialog_choice", _text(choice.kind), _semantic(component))
 
 
+def _capability_choice(choice, observation):
+    return _node("capability_choice", _semantic(choice),
+                 _node("actor", _subject(observation, choice.subject)),
+                 _node("recipient", _subject(observation, choice.destination))
+                 if choice.destination is not None else _node("no_recipient"))
+
+
+def _window_semantic(observation):
+    """Bind expanded inventory ownership without learning opaque references."""
+    window = observation.window
+    ordinary = _semantic(window)
+    if window is None or window.capability_panel is None:
+        return ordinary
+    panel = window.capability_panel
+    items = [_node("owned_item", _semantic(item), _subject(observation, item.subject)) for item in panel.items]
+    choices = [_capability_choice(choice, observation) for choice in panel.choices]
+    return _node("capability_window", ordinary, _set("bound_items", items), _set("bound_choices", choices),
+                 _node("inspected_object", _subject(observation, panel.inspected_subject)))
+
+
 def _semantic(value):
     """Lossless field selection before learned compression; no reference IDs.
 
@@ -261,17 +290,23 @@ def _semantic(value):
             # old observations: archived values/probabilities remain exact.
             if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
                                  or type(value) is c.Hero and name == "in_garrison"
-                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel")
-                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog")
+                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
+                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog", "capability")
                                  or type(value) is c.NoticeComponent and name == "skill"):
                 continue
             if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
-            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema"):
+            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema", "inspected_subject"):
                 continue
-            if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class") and type(item) is int:
+            if type(value) is c.CapabilityChoice and name == "destination":
+                continue  # requires its displayed recipient binding, never handle bytes
+            if (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
+                    or type(value) in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
+                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill")) and type(item) is int:
                 encoded = _text(f"category:{item}")
-            elif name in ("children", "controls", "buildings", "army") and type(item) is tuple:
+            elif type(value) is c.CapabilityItem and value.kind == "world_object" and name == "amount" and type(item) is int:
+                encoded = _text(f"category:{item}")  # delivered object subtype, not an amount
+            elif name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls") and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
             else:
                 encoded = _semantic(item)
@@ -299,6 +334,7 @@ class ContextualEncoder:
         candidate = copy(self.history)
         candidate._frames = list(self.history.frames)
         candidate.dialog_refs = set(self.history.dialog_refs)
+        candidate.capability_refs = set(self.history.capability_refs)
         candidate.append(frame)
         basis = self.history.decision.observation if self.history.decision is not None else self.observation
         kind = frame.kind
@@ -543,7 +579,7 @@ class ContextualActorCritic(nn.Module):
                     _node("resources", _semantic(observation.resources)),
                     _set("heroes", [_semantic(hero) for hero in observation.heroes]),
                     _set("towns", [_semantic(town) for town in observation.towns]),
-                    _semantic(observation.window),
+                    _window_semantic(observation),
                     _node("current_window_subject", _subject(observation, observation.context.subject)))
         if observation.window is not None and observation.window.armies is not None:
             window = observation.window
@@ -557,7 +593,7 @@ class ContextualActorCritic(nn.Module):
             own = _node("management_observation", own, _set("army_bindings", bindings))
         return global_map, self._encode_tree(own, cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
 
-    def forward_step(self, frame, state):
+    def _check_step(self, frame, state):
         if type(frame) is not ContextualInput:
             raise ValueError("Use the checked contextual history codec")
         if self.config.schema != model_schema_for(frame.frame.schema):
@@ -565,19 +601,86 @@ class ContextualActorCritic(nn.Module):
         if (not isinstance(state, Tensor) or state.shape != (self.config.hidden_size,)
                 or state.device != self.device or state.dtype != self.byte.weight.dtype):
             raise ValueError("State must match model dimensions, dtype and device")
-        cache = {}
-        memo = self._leaf_memo()
-        if memo is not None:
-            cache[_LEAF_MEMO] = memo
+
+    def _frame_features(self, frame, cache):
+        """State-independent features; callers retain their own per-frame tree cache."""
         zero = self.byte.weight.new_zeros(self.config.feature_size)
-        if frame.semantics is None:
-            return StepOutput(state, None)
         if frame.observation is None:
             map_features = own = zero
             cells = None
         else:
             map_features, own, cells = self._encode_observation(frame.observation, cache)
-        state = self.gru(torch.cat((self._encode_tree(frame.semantics, cache), map_features, own)), state)
+        return torch.cat((self._encode_tree(frame.semantics, cache), map_features, own)), cells
+
+    def _can_cache_prefix(self):
+        # These exact modules have no stochastic or mutable training behavior.
+        # In particular, the text/ordered GRUs have no dropout. Do not elide
+        # custom forwards, hooks or autocast operations by reusing their output.
+        # Accelerator kernels keep the reference path until separately verified.
+        allowed = (ContextualActorCritic, nn.Embedding, nn.GRU, nn.GRUCell, nn.Sequential,
+                   nn.Linear, nn.Tanh, nn.Conv2d, nn.AdaptiveAvgPool2d, nn.Flatten)
+        if (type(self) is not ContextualActorCritic or self.device.type != "cpu"
+                or torch._C._is_any_autocast_enabled()
+                or nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks
+                or any(name in self.__dict__ for name in
+                       ("forward_step", "_frame_features", "_encode_tree", "_encode_observation", "_check_step"))):
+            return False
+        return all(type(module) in allowed and not module._forward_hooks and not module._forward_pre_hooks
+                   and "forward" not in module.__dict__
+                   and (type(module) is not nn.GRU or module.dropout == 0)
+                   for module in self.modules())
+
+    def prefix_states(self, inputs, stops):
+        """Reconstruct detached states at frame boundaries under the current weights.
+
+        The memo exists only for this synchronous call, before an optimizer step.
+        It reuses pure frame/leaf encodings, never recurrent state across weight
+        versions. Every chronological GRU transition still executes in order.
+        Training mode is unchanged; train-mode leaves use only this local memo,
+        not the persistent inference memo. Differentiable windows never see it.
+        """
+        stops = tuple(stops)
+        if not stops or any(type(stop) is not int or not 0 <= stop <= len(inputs) for stop in stops):
+            raise ValueError("Prefix boundaries must lie within the complete history")
+        wanted, result = set(stops), {}
+        state = self.initial_state()
+        use_cache = self._can_cache_prefix()
+        features, leaves = {}, {"text": {}, "number": {}}
+        with torch.no_grad():
+            if 0 in wanted:
+                result[0] = state.detach()
+            for seq in range(max(stops)):
+                frame = inputs[seq]
+                if not use_cache:
+                    state = self.forward_step(frame, state).state
+                else:
+                    self._check_step(frame, state)
+                    if frame.semantics is not None:
+                        # repr preserves number types and signed zeros. A fresh
+                        # tree cache on a miss preserves within-frame evaluation
+                        # order and the original cache's equality semantics.
+                        key = repr((frame.semantics, frame.observation))
+                        vector = features.get(key)
+                        if vector is None:
+                            vector, _ = self._frame_features(frame, {_LEAF_MEMO: leaves})
+                            if len(features) >= 4096:
+                                features.clear()
+                            features[key] = vector
+                        state = self.gru(vector, state)
+                if seq + 1 in wanted:
+                    result[seq + 1] = state.detach()
+        return result
+
+    def forward_step(self, frame, state):
+        self._check_step(frame, state)
+        cache = {}
+        memo = self._leaf_memo()
+        if memo is not None:
+            cache[_LEAF_MEMO] = memo
+        if frame.semantics is None:
+            return StepOutput(state, None)
+        vector, cells = self._frame_features(frame, cache)
+        state = self.gru(vector, state)
         decision = None
         if frame.frame.kind == "decision":
             distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache)
@@ -607,6 +710,14 @@ class ContextualDistribution:
         return candidates.mv(torch.tanh(self.model.policy_query(self.state))) / sqrt(self.model.config.feature_size)
 
     def _kinds(self):
+        if self.offers.capability_panel is not None:
+            panel = self.offers.capability_panel
+            return (("close_capability",) if not panel.mandatory else ()) + tuple(
+                kind for kind in c.CAPABILITY_ACTIONS if any(choice.kind == kind for choice in panel.choices))
+        kinds = self._legacy_kinds()
+        return kinds + (("open_capability",) if self.offers.capability_controls else ())
+
+    def _legacy_kinds(self):
         offers, context = self.offers, self.offers.context
         if context.kind == "dialog":
             return ("choose_dialog",)
@@ -663,7 +774,33 @@ class ContextualDistribution:
         kind = kinds[choose("kind", self._logits([_node("action_kind", _text(kind)) for kind in kinds]),
                             kinds.index(action.kind) if action else None)]
         subject = panel = selection = destination = x = y = count = None
-        if kind == "choose_dialog":
+        if kind == "open_capability":
+            controls = self.offers.capability_controls
+            index = choose("capability_panel", self._logits([_node("capability_panel", _text(item)) for item in controls]),
+                           controls.index(action.panel) if action else None)
+            subject, panel = self.offers.context.subject, controls[index]
+        elif kind == "close_capability":
+            subject = self.offers.context.subject
+        elif kind in c.CAPABILITY_ACTIONS:
+            choices = tuple(item for item in self.offers.capability_panel.choices if item.kind == kind)
+            index = choose("capability_choice", self._logits([_capability_choice(item, self.observation) for item in choices]),
+                           next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
+            choice = choices[index]
+            subject, selection = self.offers.context.subject, choice.ref
+            if kind == "trade_resource":
+                low, high, maximum, depth = 1, choice.max_count, choice.max_count, 0
+                features = self._features(_capability_choice(choice, self.observation))
+                while low < high:
+                    middle = (low + high) // 2
+                    numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
+                    logits = self.model.quantity(torch.cat((self.state, features, numeric)))
+                    logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                    branch = choose(f"count:{low}:{high}", logits, int(action.count > middle) if action else None)
+                    if branch: low = middle + 1
+                    else: high = middle
+                    depth += 1
+                count = low
+        elif kind == "choose_dialog":
             delivered = self.offers.dialog_panel
             choices = delivered.choices
             index = choose("dialog_choice", self._logits([_dialog_choice(delivered, item) for item in choices]),

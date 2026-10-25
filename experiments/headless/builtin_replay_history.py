@@ -29,7 +29,7 @@ def verify_history(directory, manifest, finalization_document):
     require(manifest == evidence.strict_json((directory / "manifest.json").read_bytes()), "Manifest differs from disk")
     final = builtin.read_finalization(directory, manifest)
     require(final == finalization_document, "Finalization differs from supplied document")
-    player, profile = manifest["learner_player"], contract.DIALOGS_PROFILE
+    player, profile = manifest["learner_player"], builtin.manifest_profile(manifest)
     require(type(player) is int and player in (0, 1), "Invalid learner seat")
     color = COLORS[player]
     exact(manifest["players"], {color}, "sole learner declaration")
@@ -57,7 +57,7 @@ def verify_history(directory, manifest, finalization_document):
     def locate_cutoff():
         if (manifest["status"] != "truncated" or producer.cutoff is not None
                 or producer.live.decision is None or producer.live.action is not None
-                or producer.live.context.kind == "dialog"):
+                or producer.live.requires_choice):
             return
         marker = contract.Frame(producer.episode, player, frames, producer.live.day, "cutoff",
             decision_seq=producer.live.decision.seq, reason=manifest["termination_reason"], schema=profile.history_schema)

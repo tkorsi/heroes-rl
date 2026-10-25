@@ -227,9 +227,11 @@ def _sha256(value):
 
 def _check_builtin_gameplay_metadata(metadata, interface):
     """A native opponent is identified explicitly, never by an archived model."""
-    if (interface != "adventure-dialogs-v1" or type(metadata) is not dict
+    from experiments.headless.builtin_evidence import profile_for
+    profile_for(interface)
+    if (type(metadata) is not dict
             or not _sha256(metadata.get("plan_sha256"))):
-        raise ValueError("Built-in gameplay checkpoint requires its exact v7 preparation-plan identity")
+        raise ValueError("Built-in gameplay checkpoint requires its exact preparation-plan identity")
     initial = metadata.get("initial_checkpoint")
     if (type(initial) is not dict or set(initial) != {"path", "sha256", "bytes"}
             or type(initial["path"]) is not str or not Path(initial["path"]).is_absolute()

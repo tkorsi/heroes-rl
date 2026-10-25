@@ -177,14 +177,16 @@ class TrainingCapture:
 
 class TrainingCollector(BuiltinCollector):
     """One fresh scheduled capture; still no eligibility before independent proof."""
-    def __init__(self, model, binding):
+    def __init__(self, model, binding, *, interface=c.DIALOGS_ENVIRONMENT):
         require(type(binding) is TrainingBinding and _BINDINGS.get(id(binding)) is binding,
                 "Training requires this worker's prelaunch binding")
         binding.validate()
         require(weights_sha256(model) == binding.weights_sha256, "Training collector has different behavior weights")
+        require(json.loads(binding.source_json).get("interface", c.DIALOGS_ENVIRONMENT) == interface,
+                "Collector interface differs from planned source")
         self.binding = binding
         super().__init__(model, binding.checkpoint, learner_player=binding.row["learner_player"],
-                         opponent_identity=binding.opponent_identity, policy_seed=binding.row["policy_seed"])
+                         opponent_identity=binding.opponent_identity, policy_seed=binding.row["policy_seed"], interface=interface)
 
     def act(self, request):
         used = len(self.session._choices) if self.session is not None else 0
@@ -263,7 +265,7 @@ def _samples(experience, evidence_ref):
     frames, manifest = experience.history, experience.manifest
     boundary = {"completed": "natural", "truncated": "cutoff"}.get(manifest["status"])
     require(boundary is not None, "Technical failures have no training targets")
-    history = c.PlayerHistory(frames[0].episode, experience.player, schema=c.DIALOGS_SCHEMA)
+    history = c.PlayerHistory(frames[0].episode, experience.player, schema=evidence.manifest_profile(manifest).history_schema)
     for frame in frames: history.append(frame)
     evidence.validate_manifest_history(history, manifest)
     values = {item.decision_seq: item.value for item in experience.estimates}
@@ -365,7 +367,7 @@ def _capture_file_bindings(folder, manifest):
     declaration = manifest["players"][evidence.COLORS[manifest["learner_player"]]]
     names = {"manifest.json", "builtin-finalization.json", "builtin-training-rollout.json", "logs/process.log",
         "engine/experiment-metadata.json", f"agents/{evidence.COLORS[manifest['learner_player']]}/bridge.jsonl",
-        declaration["history_v7"]["path"], declaration["live_evidence"]["path"], *manifest["replay"]["files"]}
+        declaration[evidence.manifest_profile(manifest).history_key]["path"], declaration["live_evidence"]["path"], *manifest["replay"]["files"]}
     return {name: native.file_identity(native.inside(folder, name)) for name in sorted(names)}
 
 
@@ -395,7 +397,7 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
     require(history_report.get("verified") is True and history_report.get("opponent_history") is None,
             "Independent single-player history reconstruction failed")
     policy_report = reconstruct_behavior(rebuilt.history, rebuilt.decisions, rebuilt.estimates, model,
-                                         binding.row["policy_seed"], schema=c.DIALOGS_SCHEMA)
+                                         binding.row["policy_seed"], schema=evidence.manifest_profile(manifest).history_schema)
     require(policy_report.get("maximum_absolute_difference") == 0 and policy_report.get("weights_unchanged") is True
             and policy_report.get("private_memory_reset") is True
             and policy_report.get("actions_resampled") == len(rebuilt.decisions)

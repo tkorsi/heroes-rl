@@ -112,14 +112,14 @@ void ContextualReplay::configureControllers(const JsonNode & header)
 	if(header["schema"].String() == explorer_rl::ContextualEvidence::BUILTIN_SCHEMA)
 	{
 		const auto & players = header["controllers"]["explorer_players"];
-		if(header["interface"].String() != "adventure-dialogs-v1" || !players.isVector()
+		if((header["interface"].String() != "adventure-dialogs-v1" && header["interface"].String() != "adventure-capabilities-v1") || !players.isVector()
 			|| players.Vector().size() != 1 || players[0].getType() != JsonNode::JsonType::DATA_INTEGER
 			|| (players[0].Integer() != 0 && players[0].Integer() != 1))
 			throw std::runtime_error("Invalid recorded built-in controller configuration");
 		setenv("EXPLORER_RL_BUILTIN_OPPONENT", "Nullkiller", 1);
 		setenv("EXPLORER_RL_PLAYERS", players[0].Integer() == 0 ? "0" : "1", 1);
 		setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
-		setenv("EXPLORER_RL_INTERFACE", "adventure-dialogs-v1", 1);
+		setenv("EXPLORER_RL_INTERFACE", header["interface"].String().c_str(), 1);
 		if(header["controllers"] != experimentBuiltinControllers())
 			throw std::runtime_error("Recorded built-in controller fields differ from the supported mapping");
 	}

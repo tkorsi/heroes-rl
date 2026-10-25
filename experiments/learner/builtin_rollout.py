@@ -1,7 +1,7 @@
 """Frozen own-player evaluation records against a typed native opponent.
 
 No optimizer, opponent policy/value, paired trajectory or training targets are
-constructed. The model still sees exactly the existing v7 player-local stream.
+constructed. The model still sees exactly the declared v7/v8 player-local stream.
 """
 from __future__ import annotations
 
@@ -56,9 +56,10 @@ class BuiltinCollectedEpisode:
                          and type(self.estimates) is tuple and all(type(x) is DecisionEstimate for x in self.estimates),
                          "Expected immutable actual own behavior records")
         c._integer(self.policy_seed, high=2**63 - 1)
+        profile = evidence.manifest_profile(self.manifest)
         model = ModelConfig.from_dict(json.loads(self.model_config_json))
-        evidence.require(model.schema == model_schema_for(c.DIALOGS_SCHEMA), "Wrong model schema for unchanged v7 history")
-        history = c.PlayerHistory(self.history[0].episode, self.history[0].player, schema=c.DIALOGS_SCHEMA)
+        evidence.require(model.schema == model_schema_for(profile.history_schema), "Model schema differs from own history")
+        history = c.PlayerHistory(self.history[0].episode, self.history[0].player, schema=profile.history_schema)
         digest, prefixes = hashlib.sha256(), {}
         for frame in self.history:
             history.append(frame)
@@ -154,9 +155,10 @@ def load_builtin_episode(path):
 
 class BuiltinCollector:
     """Exactly one unchanged frozen policy, own RNG and own recurrent history."""
-    def __init__(self, model, checkpoint, *, learner_player, opponent_identity, policy_seed):
+    def __init__(self, model, checkpoint, *, learner_player, opponent_identity, policy_seed, interface=c.DIALOGS_ENVIRONMENT):
+        self.profile = evidence.profile_for(interface)
         token = _opponent_token(opponent_identity, learner_player)
-        evidence.require(model.config.schema == model_schema_for(c.DIALOGS_SCHEMA), "V7 frozen policy required")
+        evidence.require(model.config.schema == model_schema_for(self.profile.history_schema), "Frozen policy must match the explicit interface")
         c._integer(policy_seed, high=2**63 - 1)
         self.model, self.checkpoint, self.learner_player = model, checkpoint, learner_player
         self.opponent_identity, self.opponent_token = dict(opponent_identity), token
@@ -168,14 +170,14 @@ class BuiltinCollector:
                          "Use a fresh episode and finish the prior own session")
         self._episodes.add(episode)
         self.session = ContextualSession(self.model, episode, self.learner_player, self.checkpoint,
-            self.opponent_token, schema=c.DIALOGS_SCHEMA, seed=self.policy_seed)
+            self.opponent_token, schema=self.profile.history_schema, seed=self.policy_seed)
         self.sessions = (self.session,)
 
     def act(self, request):
         evidence.require(self.session is not None and not request.done and request.kind == "contextual"
             and request.player == self.learner_player and request.color == COLORS[self.learner_player]
             and not request.past_horizon and request.reward == 0 and request.frames,
-            "Only the current own v7 decision can be sampled")
+            "Only the current own decision can be sampled")
         self.session.consume(request.frames)
         last = c.decode_frame(request.frames[-1])
         evidence.require(last.kind == "decision" and c.decode_frame(request.record) == last,
@@ -192,7 +194,7 @@ class BuiltinCollector:
                          "Persisted episode or native opponent changed")
         evidence.validate_manifest_history(self.session.history, manifest)
         evidence.read_finalization(Path(manifest_path).parent, manifest)
-        declaration = manifest["players"][color]["history_v7"]
+        declaration = manifest["players"][color][self.profile.history_key]
         path = native.inside(Path(manifest_path).parent, declaration["path"])
         data = path.read_bytes()
         evidence.require(hashlib.sha256(data).hexdigest() == declaration["sha256"]
@@ -207,14 +209,14 @@ class BuiltinCollector:
         return result
 
     def run_episode(self, env, *, episode, seed, max_requests=2040):
-        evidence.require(env.interface == c.DIALOGS_ENVIRONMENT and env.learner_player == self.learner_player,
+        evidence.require(env.interface == self.profile.environment and env.learner_player == self.learner_player,
                          "Collector requires its own single-player environment")
         c._integer(max_requests, low=1)
         self.start(str(episode))
         request, choices = env.reset(episode=episode, seed=seed), 0
         while not request.done:
             if choices >= max_requests:
-                if c.decode_frame(request.frames[-1]).observation.context.kind == "dialog":
+                if env.sides[self.learner_player].validator.live.requires_choice:
                     env.defer_dialog_cutoff("collection_window")
                     request = env.step(self.act(request))
                     choices += 1
@@ -241,18 +243,19 @@ def audit_persisted_builtin_policy(folder, model, checkpoint, policy_seed, oppon
                      and collected.weights_sha256 == weights_sha256(model)
                      and json.loads(collected.model_config_json) == model.config.to_dict(),
                      "Saved own policy or episode differs from the frozen reconstruction inputs")
-    history = c.PlayerHistory(collected.history[0].episode, collected.player, schema=c.DIALOGS_SCHEMA)
+    profile = evidence.manifest_profile(manifest)
+    history = c.PlayerHistory(collected.history[0].episode, collected.player, schema=profile.history_schema)
     for frame in collected.history:
         history.append(frame)
     audit = evidence.validate_manifest_history(history, manifest)
     evidence.read_finalization(folder, manifest)
-    declaration = manifest["players"][COLORS[collected.player]]["history_v7"]
+    declaration = manifest["players"][COLORS[collected.player]][profile.history_key]
     data = native.inside(folder, declaration["path"]).read_bytes()
     evidence.require(hashlib.sha256(data).hexdigest() == declaration["sha256"]
                      and data == b"".join(_frame_bytes(f) for f in collected.history),
                      "Artifact omitted or changed the persisted own experience")
     rebuilt = reconstruct_behavior(collected.history, collected.decisions, collected.estimates,
-                                   model, policy_seed, schema=c.DIALOGS_SCHEMA)
+                                   model, policy_seed, schema=profile.history_schema)
     return {"passed": True, "player": collected.player, "history_audit": audit, **rebuilt}
 
 

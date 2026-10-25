@@ -151,7 +151,7 @@ class ContextualProducer:
 
     def freeze_cutoff(self, reason):
         if (self.cutoff is not None or self.live.decision is None or self.live.action is not None
-                or self.live.context.kind == "dialog"):
+                or self.live.requires_choice):
             raise ValueError("Cutoff requires an actual unacted own decision outside a strategic dialog")
         self.history = clone_history(self.live)
         self.cutoff = self.live.decision

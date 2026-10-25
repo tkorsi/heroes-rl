@@ -20,11 +20,11 @@ else:
     from experiments.learner.ppo import PPOConfig, clipped_losses, evaluate_window, gae, ppo_update
 
 
-def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic-ppo", unresolved=False):
+def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic-ppo", unresolved=False, turns=2):
     """Build typed contract examples directly, never masquerading as native play."""
     pair = tuple(c.PlayerHistory(episode, seat, schema=c.TOWN_SCHEMA) for seat in (0, 1))
     for history in pair:
-        for turn in range(2):
+        for turn in range(turns):
             obs = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),), (),
                                 (0, 0, 0, 0, 0, 0, 100 + turn),
                                 (c.Hero("own", (0, 0, 0), 100),), (), None)

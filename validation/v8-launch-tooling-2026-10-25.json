@@ -1,0 +1,60 @@
+{
+  "checks": [
+    "Mandatory level-up and spell-target choice/cancel drains bind real delivered history and native ack",
+    "Exact real update92 temporary conversion and restore:39 tensors,783 Adam steps",
+    "Fresh session exclusive lock and both wall/monotonic7200-second bound",
+    "Durable attempt intent before subprocess failure, no retry, previous parent retained",
+    "Private failed-prepare archive keeps unstarted rows",
+    "Cleanup only journaled session-owned paths with shared hardstop and explicit incomplete status",
+    "Private baseline independently restored from committed Git blobs; working-tree mutation does not substitute",
+    "V2 exact map verifier rejects V1; historical V1 verifier unchanged"
+  ],
+  "date": "2026-10-25",
+  "durable_migration_created": false,
+  "exact_parent_evidence": "validation/v8-converter-exact-parent-test-2026-10-25.json",
+  "gameplay_started": false,
+  "integration_base": "3c96bbe",
+  "launch_ready": false,
+  "new_session_created": false,
+  "optimizer_run": false,
+  "private_publish_executed": false,
+  "remaining": [
+    "Review/cherry-pick tooling onto agreed final committed v8 source",
+    "Prepare actual conversion against final native runtime and map",
+    "Privately publish and verify derived baseline Git blobs",
+    "Coordinator-authored release; start-time session only at launch"
+  ],
+  "schema": "heroes-v8-launch-tooling-validation-v1",
+  "source_sha256": {
+    "experiments/headless/builtin_env.py": "b313f6fa21815483abe55bd139ad5ba44df8c386bc1426964650693b0edf6949",
+    "experiments/headless/builtin_evidence.py": "5380272da9739003d1e250621ee26dac1952753621ac057719307d53ecf729c9",
+    "experiments/headless/builtin_replay_history.py": "8094abdbe65c3461aa61367502bf6299da6d3d76499db3b677867e3e85c799ef",
+    "experiments/learner/builtin_rollout.py": "c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6",
+    "experiments/learner/builtin_v8_migration.py": "390614b27498aebbfd75e46b0036b0844773fadb3bc226d80600858d009d837f",
+    "experiments/learner/builtin_v8_session.py": "a6e6b67839c6bf233a8f541db3e5e665201ca8a1d0134dfc6192eac05fc48e26",
+    "experiments/learner/builtin_v8_training.py": "182d04d7d87b895f7ed1e251fd2967db0b0e7245e0aff1b31e128a9041d62ff2",
+    "tests/test_builtin_v8_cutoff.py": "be80317d4489e3a05a3de225be8eaa6f995950ac01d8081c788f86019c6ac324",
+    "tests/test_builtin_v8_migration.py": "300ceac479a57bf280e57bab90e3cbd80412a29683deed6cb9cb39c8fe1688f3",
+    "tools/v8_teacher_campaign.py": "8e978e20ab6527393b6cc8ac3a65aa8f7fa4f722fb88ae7fbb3b62f940c0f968"
+  },
+  "status": "preparation_passed_release_pending",
+  "tests": {
+    "builtin_suite": {
+      "failed": 0,
+      "run": 214,
+      "scope": "asset-free builtin suite before final cleanup-error reporting refinement",
+      "skipped": 0
+    },
+    "final_focused": {
+      "failed": 0,
+      "modules": [
+        "test_builtin_v8_migration",
+        "test_builtin_v8_cutoff",
+        "test_builtin_training",
+        "test_builtin_profiles"
+      ],
+      "run": 26,
+      "skipped": 0
+    }
+  }
+}

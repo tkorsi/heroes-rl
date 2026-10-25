@@ -29,7 +29,8 @@ class WireTests(unittest.TestCase):
         color = replay.COLORS[player]
         folder = self.root / "agents" / color
         folder.mkdir(parents=True, exist_ok=True)
-        self.manifest = {"episode": "1", "environment": c.DIALOGS_ENVIRONMENT, "status": "truncated" if cutoff else "completed",
+        self.manifest = {"episode": "1", "environment": c.DIALOGS_ENVIRONMENT, "history_schema": c.DIALOGS_SCHEMA,
+                         "action_schema": c.DIALOGS_ACTION_SCHEMA, "status": "truncated" if cutoff else "completed",
                          "learner_player": player, "controllers": replay.controllers(player)}
         message = {"player": player, "records": [{"kind": "view", "observation": {"own": "synthetic"}}]}
         response = {"player": player, "action": {"kind": "end_turn"}}
@@ -214,7 +215,8 @@ class HistoryFixture:
                 "continuation_steps": 0, "learner_input": False}}
         self.manifest = {"schema_version": 1, "kind": evidence.MANIFEST_KIND, "episode": "1", "learner_player": player,
             "controllers": evidence.controllers(player), "opponent_identity": evidence.opponent_identity(player, "a"*64),
-            "environment": c.DIALOGS_ENVIRONMENT, "history_schema": c.DIALOGS_SCHEMA, "action_schema": c.DIALOGS_ACTION_SCHEMA,
+            "environment": c.DIALOGS_ENVIRONMENT, "history_schema": c.DIALOGS_SCHEMA,
+                         "action_schema": c.DIALOGS_ACTION_SCHEMA,
             "status": "completed" if natural else "truncated", "returncode": 0 if natural else -15,
             "termination_reason": "natural_terminal" if natural else "collection_window", "identity": {"synthetic_only": True},
             "replay": {"synthetic_only": True}, "dialog_cutoff_drain": None, "players": {self.color: declaration},

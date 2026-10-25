@@ -1,0 +1,22 @@
+{
+  "automatic_battle_ai": "BattleAI",
+  "hero_caps": "Native effective settings; no override",
+  "interface": "adventure-capabilities-v1",
+  "level_cap": 0,
+  "level_cap_meaning": "Native unlimited hero leveling; skill choices belong to the player",
+  "map": "experiments/explorer/maps/hero-management-v2.vmap",
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "parent_map": "experiments/explorer/maps/hero-management-v1.vmap",
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "reward": {
+    "cutoff": null,
+    "natural_defeat": -1,
+    "natural_victory": 1,
+    "ordinary_transition": 0,
+    "technical_failure": null
+  },
+  "scenario_id": "hero-management-v2",
+  "schema": "heroes-capability-config-v2",
+  "scope": "Versioned scenario definition only; a separate reviewed training plan and explicit authorization are required.",
+  "training_authorized": false
+}

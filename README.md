@@ -20,10 +20,15 @@ ran 1182 tests: 1156 passed and 26 required another platform or optional fixture
 A fresh nine-target macOS native build and the Swift viewer build also passed.
 This check launched no gameplay.
 
+The later [v8 integration check](validation/v8-integrated-validation-2026-10-25.json)
+ran 1253 tests: 1227 passed and the same 26 platform/optional cases were skipped.
+All 34 targeted checks after the final launch-controller and release-gate fixes
+also passed. Native gameplay acceptance is recorded separately below.
+
 | Area | Implemented | Current limit |
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
-| Actions | Coordinate targets with native routing, construction, recruitment, Tavern/hero hire, army operations and typical adventure dialogs | No tactical battle policy or path-cost oracle |
+| Actions | Native coordinate routing, construction/recruitment, Tavern, armies, dialogs, marketplace, artifacts, adventure spells and level-up choices | Supported object families only; no tactical battle policy or path-cost oracle |
 | Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Winning strategy has not been demonstrated |
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
@@ -31,11 +36,14 @@ This check launched no gameplay.
 | Embedded engine | Opt-in in-process Python module and environment over EngineSession, with an owned Nullkiller Easy opponent and no game process or socket | Experimental; one engine per process, cold backend remains the default ([details](docs/embedded-engine.md)) |
 
 The fixed opponent is **Nullkiller on Easy**, with BattleAI resolving battles.
-The ordinary map is the authored **hero-management-v1** scenario; see its
-[configuration](configs/hero-management-v1.json).
+Completed campaigns used the authored **hero-management-v1** scenario. The
+expanded interface uses **hero-management-v2**, which removes only the native
+level-one cap; see its [configuration](configs/hero-management-v2.json). Historical
+map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Completed local365 Teacher analysis](validation/local365-final-analysis-2026-10-25.json).
 - [Teacher status](reports/cloud/teacher-status.json) and
   [continuation evidence](validation/cloud-continuation-2026-10-25.json).
 - [Optimizer status](reports/cloud/optimizer-status.json) and
@@ -71,54 +79,166 @@ Changed weights or occasional recruitment do not establish improved strategy.
 - Gameplay training needs its explicit experiment scope and budget. Unit tests
   may exercise synthetic PPO; they do not start a gameplay campaign.
 
-### Current local continuation
+### Completed local365 continuation
 
-The user authorized a new **local Mac session lasting at most two hours**, then
-shutdown and analysis. New episodes use **365 game days** and **5120 total
-choices** (4960 ordinary plus 160 reserve), whichever limit is reached first.
-Use complete four-game PPO batches and both-seat fixed evaluation. The training
-clock starts when the prepared campaign launches; allow time within the bound
-for safe shutdown and checkpoint preservation.
+The authorized local session ran from **18:27:13 to 20:07:24 UTC on 25 October
+2026** (20:27:13–22:07:24 Kyiv), stopping after 100.2 minutes on a genuine
+unsupported-interface failure, before its two-hour hard deadline. It used the
+ordinary cold runtime, Nullkiller Easy/BattleAI, complete four-game PPO batches,
+**365 days and 5120 total choices**, and the existing terminal-only rewards.
+The active source stayed pinned at `aebe2fb`; no cloud or experimental worker
+was started. See [launch evidence](validation/local365-launch-2026-10-25.json)
+and the [final analysis](validation/local365-final-analysis-2026-10-25.json).
 
-Continue the preserved **cloud update 31**, including Adam, RNG, progress and
-pool; never resume the stale local update 21. Preparation must first validate an
-explicit, exactly bound Linux-to-Mac and source transition, then fresh native
-capture/replay in both seats. The current ordinary cold-process backend remains
-the training runtime. Claude's in-process engine work is separate and
-experimental. Preparation is not training; dated local evidence must confirm
-that the campaign actually launched.
+The exact cloud update-31 state advanced to **update 92**: **61 new PPO updates,
+244 admitted training games, 14,286 transitions and 530 Adam steps**. Cumulative
+state is 368 rollouts, 21,062 decisions and 783 Adam steps. Every completed batch
+was independently restored and privately published. Final canonical, backup
+and private copies restore the exact model, Adam, RNG, progress and pool.
 
-The earlier cloud session is complete. Its compute cutoff was **2026-10-25
-17:50 UTC** and final stop **17:53 UTC (19:53 Kyiv)**. Its dated tools remain
-expired and its original 30-day configurations/results remain immutable. The
-new local authorization does not restart cloud work or rewrite historical
-metadata. Weights and full optimizer state remain in private storage.
+All **244 training games**, **24 scheduled evaluation games** and the **two
+initial frozen gate games** were verified natural losses: zero wins and zero
+cutoffs or timeouts. A terminal-history audit identified 268 standard losses
+and two defeats under the seven-days-without-a-town rule. No town capture was
+observed. The fixed Red check improved from a
+day-2 loss at update31 to days8–9 at updates70–90, with recruitment; Blue
+remained a day-2 loss except for a transient day-8 result at update50. These
+repeated seeds demonstrate limited behavior changes, not general strategic
+improvement. The last held-out checkpoint is update90, two updates before the
+final preserved checkpoint; no games ran after the correctness stop.
 
-Local365 preparation is recorded in
-[prelaunch evidence](validation/local365-prelaunch-2026-10-25.json). The exact
-cloud update-31 model, Adam, RNG, progress and pool restore on macOS. The three
-reviewed performance modules are accepted only at their exact historical and
-consolidated hashes, with a trained-policy parity proof; the generic portable
-guard still rejects arbitrary policy changes. A fresh frozen two-seat gate
-passed native replay and cleanup in 8.432 seconds (two losses, zero updates).
+Three admitted training games exceeded the old 30-day horizon, ending naturally
+on days65,66 and107. Longer trajectories were expensive: the largest batch took
+1,283 seconds, compared with a 35.7-second median. The new horizon supplied
+additional terminal feedback but did not produce a verified learner victory.
 
-The [local configuration](configs/builtin-local365-v1.json) explicitly assigns
-`max_days=365`; the [training migration](configs/builtin-local365-migration-training-v1.json)
-binds the exact update-31 state and fresh native gate. A single durable
-`local365/campaign-session.json` and exclusive controller lock cap the campaign
-at two hours from actual launch, with five minutes reserved for cleanup and
-publication. The entire controller has an independent deadline guardian; each
-native game and optimizer batch retains its existing guards. The local config,
-controller, parity checker and new authorization are bound into the session.
-The expired cloud defaults and historical plans remain unchanged.
+Batch93 stopped in its first game on day62 after 1,337 choices with
+`unsupported_interaction: informational notice`, raised by the structured
+informational-notice handler. The original failure log omitted the rejected
+template. A subsequent
+[offline diagnostic replay](validation/local365-day62-notice-investigation-2026-10-25.json)
+reproduced all 1,112 recorded server inputs and 5,605 outgoing packets without
+state or packet-hash divergence: Thant won a defensive battle, then raised four
+Skeletons. The resulting necromancy notice (`core.genrltxt.145`, automatic
+display, creature/count component) was rejected by the existing normalizer.
+This adapter coverage defect is now fixed in the v7 native/Python notice path;
+see the [repair and coverage audit](validation/necromancy-support-2026-10-25.json).
+A preceding visible battle-win event is not a verified game win.
+The failed attempt is unscored and supplies **zero samples**; three remaining
+games were not started. Its raw capture is privately preserved. No retry,
+repair campaign or restart was performed. Native and controller cleanup passed,
+and no owned native/training processes remained. The Mac window was released.
 
-The reviewed campaign **launched locally at 20:27:13 Kyiv on 25 October** from
-update 31, pinned to `aebe2fb`. Compute stops by **22:22:13 Kyiv**, with a hard
-stop at **22:27:13 Kyiv** including checkpoint publication and cleanup.
-[Launch evidence](validation/local365-launch-2026-10-25.json) is a dated snapshot;
-read the durable campaign report for later progress. A separate follow-up will
-verify shutdown and analyze results after the deadline. Do not restart this
-session or extend its two-hour authorization.
+The post-campaign repair accepts the exact singular/plural necromancy notice,
+including the displayed creature and count, without adding a policy action or
+reward. Its recorded server prefix still matches all 1,112 inputs and 5,605
+packets; the repaired native payload also passes the Python v7 decoder.
+This diagnostic does not complete or admit the failed game. Legacy interfaces,
+model tensor shapes, checkpoint92 and the frozen campaign runtime are unchanged.
+The repaired ExplorerRL and replay targets build, and 61 focused tests pass.
+No new game or training campaign was started.
+
+The source audit identified these gaps in the completed v7 campaign. Their v8
+implementation and acceptance work is described below; the necromancy repair
+alone did not supply them:
+
+| Priority | Missing interface | Reachability |
+| --- | --- | --- |
+| First | Eagle Eye spell-learning notice; Castle Stables bonus notice | Existing Tavern recruits and town construction can trigger them |
+| Next | Army overflow window when neutrals join a full army | New-month monster spawns can reach this branch in long games |
+| Next | Marketplace exchange; spellbook/war-machine purchases; artifact inventory/equipment | Town and hero controls missing from the current action set |
+| Before lifting the level cap | Hero level-up skill choices | Current scenario explicitly caps heroes at level 1 |
+| Later map expansion | Boats, external dwellings, universities, quests and further object windows | Coverage is limited to explicitly supported object families |
+
+Creature upgrades, split/merge/swap, garrison transfers, own-hero army exchange
+and town Tavern hiring are already implemented. Tactical battles remain
+automatic. This audit is a source inventory, not proof of every live branch.
+
+The final parent is
+`/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/plan.json`,
+with a second copy under `Heroes-artifacts/checkpoints/local365-continuation-092/`.
+Private checkpoint commit `58b7826` and final raw-evidence commit `d610424` are on
+`codex/local365-teacher-results` in the private training-state repository.
+The consumed campaign lock/session remain in place; this authorization is
+complete and does not permit a restart.
+
+### Expanded interface and next local campaign
+
+The user requested the complete listed expansion **before** another training
+campaign: marketplace exchange; spellbook and war-machine purchases; artifact
+inventory, equipment, own-hero transfer and combination assembly/disassembly;
+adventure spells; and native hero level-up choices. Eagle Eye/Stables notices
+and full-army neutral joining are part of the same acceptance work. This is
+`adventure-capabilities-v1`, history/actions v8, protocol 10. The ordinary v7
+interface and historical observations retain their original serialized forms.
+
+The [final native acceptance](validation/capabilities-durable-runtime-2026-10-25.json)
+passed all **28 cases** (14 mechanics in both seats) against one frozen
+implementation/runtime. Every case passed independent history and native replay;
+3,036 transactions were checked with none skipped. The independently frozen
+[macOS runtime](validation/runtime-freeze-v8-2026-10-25.json) removes donor-build
+loader references and copies its resources; the complete suite was repeated
+against those exact signed bytes. Matched Dimension Door cases
+showed identical visible observations and 224 target candidates with/without an
+unseen blocker, followed by genuine success/rejection. The retained draft
+failures are separate and supplied no training samples. These are controlled
+mechanics checks, not evidence of learned strategy or ordinary-game victories.
+
+Available controls appear in the currently open hero/town/exchange window.
+Inventory, prices, spell choices and inspection details appear only after the
+corresponding window or target is explicitly opened. Visions uses the engine's
+actual visible-object popup information, including native Disguise handling.
+View Earth/Air expose only their delivered map payload. Fogged Dimension Door
+coordinates are public-range attempts; hidden destination occupancy must never
+filter the action list. Flight/Water Walk use native movement layers over the
+player's knowledge, without exposing route costs. Battles remain automatic.
+
+New capability actions use the existing typed candidate encoder; model v6 has
+the same named parameter tensors as the v7 history model. Update92 requires an
+explicit migration preserving tensors, Adam slots, RNG and progress. Additional
+actions can change probabilities even when all tensors remain equal. The new
+both-seat baseline therefore belongs to a separate v8 cohort.
+
+The authorized next campaign is **one fresh local session of at most two hours**,
+with 365 days, 5120 total choices, Nullkiller Easy/BattleAI, complete four-game
+PPO batches, terminal-only rewards and both-seat held-out evaluation. Launch
+remains gated on all requested native feature checks, exact capture/replay,
+checkpoint migration and a separate deadline/watchdog. Preparation is not
+training; see [the migration preparation](docs/update92-v8-prelaunch.md). The old
+session is consumed and must never be restarted.
+
+The [PPO prefix benchmark](validation/ppo-prefix-performance-2026-10-25.json)
+reuses deterministic encodings within one current-weight minibatch and keeps
+every recurrent transition. On the archived long-trajectory benchmark it
+reduced prefix reconstruction from 88.81 to 7.29 seconds and the measured
+minibatches from 95.27 to 14.27 seconds, with bit-exact gradients, weights and
+Adam state after two steps. This is a numerical workload measurement, not a
+whole-game throughput claim. Claude's separate embedded-engine work remains
+experimental until its own real-game equivalence and timing checks pass.
+
+The [prelaunch evidence](validation/local365-prelaunch-2026-10-25.json),
+[local configuration](configs/builtin-local365-v1.json) and
+[exact training migration](configs/builtin-local365-migration-training-v1.json)
+retain the reviewed source/runtime transition, trained-policy parity proof and
+fresh two-seat replay gate. The earlier cloud session remains stopped; its
+expired deadlines, original 30-day plans and historical metadata are unchanged.
+
+### Reviewed v8 launch tooling
+
+A new local two-hour authorization is gated on all requested v8 capabilities,
+full native validation and coordinator release. The [prelaunch checklist](docs/update92-v8-prelaunch.md)
+binds the exact update92 parent, explicit checkpoint/Adam migration requirements,
+fresh session and watchdog, both-seat baseline and burned sequence93. The
+[parent audit](validation/update92-v8-resume-audit-2026-10-25.json) verifies all
+three preserved copies. Built-in collection/replay now selects explicit v7/v8
+profiles; ordinary resume still refuses a schema transition. Explicit conversion and a
+new single-use controller now require a privately restored migrated baseline,
+all native feature gates and coordinator release. The target ordinary map is
+hero-management-v2, with native hero leveling enabled. Temporary conversion of
+the actual update92 pair passed and was removed. Permanent migration must preserve
+the original tensors and optimizer state in independent local and private copies
+before a fresh session starts. Preparation evidence alone does not claim gameplay
+or a new training update; the dated launch/campaign report records actual activity.
 
 ## Source layout
 

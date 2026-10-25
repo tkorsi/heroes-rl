@@ -31,9 +31,13 @@ def analyze_episode(folder):
     data = manifest_path.read_bytes()
     manifest = evidence.native.strict_json(data)
     result["bindings"]["manifest.json"] = shared._binding(data)
+    profile = evidence.manifest_profile(manifest)
+    if profile.version == 8:
+        result["interface"] = profile.environment
+        result["limitations"].append("V8 capability actions are counted by kind; their economic, artifact and spell effects are not inferred.")
     player = manifest.get("learner_player")
-    evidence.require(manifest.get("kind") == evidence.MANIFEST_KIND and manifest.get("history_schema") == c.DIALOGS_SCHEMA
-        and type(player) is int and player in (0, 1), "Built-in behavior needs an explicit one-learner v7 manifest")
+    evidence.require(manifest.get("kind") == evidence.MANIFEST_KIND and manifest.get("history_schema") == profile.history_schema
+        and type(player) is int and player in (0, 1), "Built-in behavior needs an explicit one-learner manifest")
     color = evidence.COLORS[player]
     evidence.require(manifest.get("controllers") == evidence.controllers(player)
         and type(manifest.get("players")) is dict and set(manifest["players"]) == {color},
@@ -45,7 +49,7 @@ def analyze_episode(folder):
         result["coverage"]["issues"].append("episode_not_validly_finalized")
     entry = {"coverage": {"complete": False, "hash_verified": False, "issues": []}, "metrics": None}
     result["players"][color] = entry
-    declaration = manifest["players"][color].get("history_v7")
+    declaration = manifest["players"][color].get(profile.history_key)
     if not declaration or not declaration.get("path") or not declaration.get("sha256"):
         entry["coverage"]["issues"].append("manifest_history_binding_missing")
         return result
@@ -60,7 +64,7 @@ def analyze_episode(folder):
         and ("bytes" not in declaration or identity["bytes"] == declaration["bytes"]), "Learner history bytes changed")
     result["bindings"][declaration["path"]] = identity
     entry["coverage"]["hash_verified"] = True
-    history, frames = c.PlayerHistory(str(manifest["episode"]), player, schema=c.DIALOGS_SCHEMA), []
+    history, frames = c.PlayerHistory(str(manifest["episode"]), player, schema=profile.history_schema), []
     lines = data.splitlines()
     for index, line in enumerate(lines):
         try:
@@ -71,7 +75,7 @@ def analyze_episode(folder):
                 break
             raise ValueError("Malformed learner history record") from None
         frame = c.decode_frame(raw)
-        evidence.require(frame.schema == c.DIALOGS_SCHEMA and frame.player == player and frame.episode == history.episode
+        evidence.require(frame.schema == profile.history_schema and frame.player == player and frame.episode == history.episode
             and frame.seq == index, "Wrong history player/episode/schema/sequence")
         history.append(frame)
         frames.append(raw)
@@ -106,6 +110,8 @@ def aggregate_episodes(reports):
     reports = list(reports)
     evidence.require(all(row.get("schema") == SCHEMA for row in reports), "Cannot mix one-seat and paired metric denominators")
     evidence.require(len({row["episode_directory"] for row in reports}) == len(reports), "Duplicate episode would double count")
+    evidence.require(len({row.get("interface", c.DIALOGS_ENVIRONMENT) for row in reports}) <= 1,
+                     "Separate v7 and v8 behavior cohorts; action support differs")
     players = [entry for row in reports for entry in row["players"].values()]
     timed = [row for row in reports if row.get("throughput", {}).get("manifest_wall_seconds") and row["aggregate"] is not None]
     wall = sum(row["throughput"]["manifest_wall_seconds"] for row in timed)

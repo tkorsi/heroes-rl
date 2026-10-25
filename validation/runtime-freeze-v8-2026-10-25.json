@@ -1,0 +1,157 @@
+{
+  "actual_client_libvcmi_load": [
+    "dyld[1768]: <40FC6AFD-9BE8-3722-B6BA-EAA648CA6000> /Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92/bin/libvcmi.dylib"
+  ],
+  "artifacts": [
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 11582848,
+      "donor_sha256": "67f00dca397e7ab34c04aec0500e9c4416af8068db4882b0a45272807b048598",
+      "frozen_sha256": "5bab3e68c852cb8c196f3edcc5485c39217dc552dffe8c569f43605023bfec03",
+      "path": "vcmiclient",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1779728,
+      "donor_sha256": "930fe6690719d7c1dafce573c57dcd3d02ae403dc5701f2f7e55c2aff68ca107",
+      "frozen_sha256": "0e893ce08c85cb8abb5e62d917ec17155fcd0e8e0eca52b791bf3664134451fc",
+      "path": "vcmiserver",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 12617792,
+      "donor_sha256": "64c0b8b50aa2c00311f24230b26dfba3c05cf50088f3ae98b6d3ea1e1619c102",
+      "frozen_sha256": "8325cc455e410ae641cf301f1646bb2fcbbfb75316bc6f81a4c583222c6bb242",
+      "path": "vcmireplay",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 9941776,
+      "donor_sha256": "55213b6f1fdfaa97673d2b8483522d02a2b98ec81c9ea03f9ca5165694177dd2",
+      "frozen_sha256": "797285e6343d4385ac46ba93af8c12b6c8499a274e3288aa5ada5aadef6989a7",
+      "path": "libvcmi.dylib",
+      "rpath_replacement": null
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 501744,
+      "donor_sha256": "a7dddbfbeb96ef334ee82dd4bbe9a66e76f07b70c2f768f33f252ded171399f8",
+      "frozen_sha256": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+      "path": "AI/libBattleAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 81968,
+      "donor_sha256": "64984b44cfbc4078f749fe921ff9749f704b84ab99255c15df534d053a08608d",
+      "frozen_sha256": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+      "path": "AI/libEmptyAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1092432,
+      "donor_sha256": "9ff5b7b00edf1f467fb48fb2637bf4a963d9d71b74baf6542e546abb794be1eb",
+      "frozen_sha256": "cdd46b2e81304a1fa57c8d7a7e8dc0727350a7be3df14eb98f41e544149d3371",
+      "path": "AI/libExplorerRL.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 2196656,
+      "donor_sha256": "efc04758c41e4f992beaa4459e525e81cda9090cefa134e0850d87e24278d786",
+      "frozen_sha256": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+      "path": "AI/libNullkiller.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 152208,
+      "donor_sha256": "5b5f4ddcd8b2f08a1fabcb5eec13770b2b386668f1ef3a635a9113e6337ec227",
+      "frozen_sha256": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+      "path": "AI/libStupidAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    }
+  ],
+  "canonical_engine_recipe_check_passed": true,
+  "client_help_exit_code": 0,
+  "donor_load_references_removed": true,
+  "durable_receipts": {
+    "freeze": {
+      "bytes": 121115,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92/freeze-receipt.json",
+      "sha256": "1aab51a2c790e88cbbe6e87f08b073b261bab16c404288af0dbfdbbe17b142a7"
+    },
+    "preflight": {
+      "bytes": 2224,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92/preflight.json",
+      "sha256": "9f56e6c9b59797ea5882543a20b4937f6196c5fa6ab4e43e2080b5b2df0e7813"
+    }
+  },
+  "external_dependencies_bundled": false,
+  "external_dependency_count": 74,
+  "external_dependency_note": "74 transitive Homebrew dependency paths were present and individually hashed in the durable receipt; system frameworks remain supplied by macOS.",
+  "freeze_procedure": [
+    "Copied the client, server, verifier, rules library and all five AI libraries into a new durable directory.",
+    "Dereferenced config and Mods into 592 regular resource files; copied the exact authored hero-management-v2 map.",
+    "Replaced donor build LC_RPATH with @loader_path, or @loader_path/.. for AI libraries; retained installed Homebrew dependency paths.",
+    "Applied and verified ad-hoc signatures on all nine copied Mach-O files, then checked all load commands for donor/worktree references.",
+    "Verified launcher and map contracts; observed actual dyld resolution to the frozen libvcmi for client and verifier.",
+    "Repeated all 28 real-engine feature/seat cases against the relocated runtime, with independent history audits and native replay."
+  ],
+  "game_data_copied": false,
+  "launcher_preflight_passed": true,
+  "native_acceptance": {
+    "all_history_audits_passed": true,
+    "all_replay_verified": true,
+    "cases_failed": 0,
+    "cases_passed": 28,
+    "plan": {
+      "bytes": 37202,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-capabilities-runtime-2026-10-25/acceptance-01/plan.json",
+      "sha256": "86ac0b908906bab31d5f84fc3f851a38f7c2bc76e9048f5326b9d6f9aebb74eb"
+    },
+    "report": {
+      "bytes": 152468,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-capabilities-runtime-2026-10-25/acceptance-01/report.json",
+      "sha256": "a8019246e5ee20e00a598a161953ab34f94b0977b74e0e20f5d7ad44e13c958e"
+    }
+  },
+  "old_runtime_modified": false,
+  "ordinary_map": {
+    "fixture": false,
+    "layout_seed": 0,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92/maps/hero-management-v2.vmap",
+    "scenario": "hero-management-v2",
+    "semantics_verified": true,
+    "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+  },
+  "resource_file_count": 592,
+  "resource_symlinks_dereferenced": true,
+  "runtime_directory": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92",
+  "runtime_identity": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "cdd46b2e81304a1fa57c8d7a7e8dc0727350a7be3df14eb98f41e544149d3371",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "797285e6343d4385ac46ba93af8c12b6c8499a274e3288aa5ada5aadef6989a7",
+    "vcmireplay": "8325cc455e410ae641cf301f1646bb2fcbbfb75316bc6f81a4c583222c6bb242"
+  },
+  "schema": "heroes-local-v8-runtime-freeze-summary-v1",
+  "source_commit_at_freeze": "3dcb5f5975ae11a9c3d2706996f56423fc10eb91",
+  "source_implementation_changed": false,
+  "status": "frozen_and_native_verified",
+  "training_started": false,
+  "verifier_loader_probe": {
+    "actual_libvcmi_load": [
+      "dyld[1637]: <40FC6AFD-9BE8-3722-B6BA-EAA648CA6000> /Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92/bin/libvcmi.dylib"
+    ],
+    "argument": "--help",
+    "exit_code": 1,
+    "result": "Parser rejected unsupported --help after successful dynamic loading; this was only a loader probe."
+  }
+}

@@ -2,6 +2,8 @@
 #include "Notice.h"
 
 #include "../../lib/GameLibrary.h"
+#include "../../lib/texts/CGeneralTextHandler.h"
+#include "../../lib/CCreatureHandler.h"
 #include "../../lib/CSkillHandler.h"
 #include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/spells/CSpellHandler.h"
@@ -247,10 +249,10 @@ JsonNode tokenJSON(const Token & token, PlayerColor recipient)
 		result["owner"].String() = relative(playerName(token), recipient);
 		return result;
 	}
-	if(token.operation == REPLACE_POSITIVE)
+	if(token.operation == REPLACE_POSITIVE || token.operation == REPLACE_NUMBER)
 	{
 		JsonNode result;
-		result["op"].String() = "replace_positive_number";
+		result["op"].String() = token.operation == REPLACE_POSITIVE ? "replace_positive_number" : "replace_number";
 		result["number"].Integer() = token.number;
 		return result;
 	}
@@ -294,6 +296,14 @@ const Entity * shownContent(const Component & component)
 		trophyContentID(component); // exact type/range/core checks, no instance lookup
 		content = LIBRARY->artifacts()->getById(component.subType.as<ArtifactID>());
 	}
+	else if(component.type == ComponentType::CREATURE)
+	{
+		const auto id = component.subType.as<CreatureID>();
+		if(component.subType != ComponentSubType(id) || !component.value || *component.value <= 0
+			|| id.getNum() < 0 || !LIBRARY->creh || static_cast<size_t>(id.getNum()) >= LIBRARY->creh->size())
+			unsupported("Invalid displayed notice creature");
+		content = LIBRARY->creatures()->getById(id);
+	}
 	else unsupported("Unsupported displayed notice content");
 	static const std::regex key("core:[A-Za-z][A-Za-z0-9_]{0,63}");
 	if(!content || !std::regex_match(content->getJsonKey(), key)) unsupported("Unsupported displayed notice content key");
@@ -318,7 +328,8 @@ JsonNode shownComponent(const Component & component)
 	{
 		result["content_id"].String() = shownContent(component)->getJsonKey();
 		result["kind"].String() = component.type == ComponentType::SPELL ? "spell"
-			: component.type == ComponentType::SEC_SKILL ? "secondary_skill" : "artifact";
+			: component.type == ComponentType::SEC_SKILL ? "secondary_skill"
+			: component.type == ComponentType::CREATURE ? "creature" : "artifact";
 		if(component.value) result["amount"].Integer() = *component.value;
 	}
 	return result;
@@ -334,12 +345,93 @@ bool nameToken(const Token & token, const char * prefix)
 /// the unchanged legacy allowlist. No world query or unused substitution is
 /// exposed: static catalog lookup resolves only a delivered visible component.
 JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens,
-	const std::vector<Component> & components, PlayerColor recipient, const std::set<std::string> & ownNames)
+	const std::vector<Component> & components, PlayerColor recipient, const std::set<std::string> & ownNames, bool expanded)
 {
 	if(tokens.empty()) return {};
 	std::vector<Token> shown;
 	auto displayedComponents = components;
 	bool supported = false;
+	if(expanded && mode == EInfoWindowMode::MODAL && components.empty())
+	{
+		if(tokens.size() == 1)
+			for(const int id : {123, 124, 125, 135, 335})
+				if(exact(tokens[0], APPEND_LOCAL, "core.genrltxt." + std::to_string(id)))
+				{
+					shown = tokens;
+					supported = true;
+				}
+		if(tokens.size() == 1 && exact(tokens[0], APPEND_TEXT, "core.genrltxt.70"))
+		{
+			shown = tokens;
+			supported = true;
+		}
+		if(tokens.size() == 2 && (exact(tokens[0], APPEND_LOCAL, "core.genrltxt.336")
+			|| exact(tokens[0], APPEND_TEXT, "core.genrltxt.337"))
+			&& tokens[1].operation == REPLACE_RAW && LIBRARY && LIBRARY->generaltexth)
+		{
+			std::string name;
+			for(const auto & own : ownNames)
+				if(LIBRARY->generaltexth->translate(own) == tokens[1].text)
+				{
+					if(!name.empty()) unsupported("Ambiguous owned caster name");
+					name = own;
+				}
+			if(name.empty()) unsupported("Summon result caster is not an owned named hero");
+			shown = {tokens[0], Token{REPLACE_TEXT, name}};
+			supported = true;
+		}
+	}
+	if(expanded && mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
+		&& exact(tokens[0], APPEND_TEXT, "core.genrltxt.580"))
+	{
+		shown = tokens;
+		supported = true;
+	}
+	if(expanded && exact(tokens[0], APPEND_LOCAL, "core.genrltxt.221"))
+	{
+		if(mode != EInfoWindowMode::MODAL || components.empty() || tokens.size() != 2 * components.size() + 2
+			|| !nameToken(tokens[1], "hero") || !ownNames.contains(tokens[1].text)
+			|| !exact(tokens.back(), APPEND_RAW, "."))
+			unsupported("Unsupported Eagle Eye notice grammar");
+		int previous = -1;
+		for(size_t i = 0; i < components.size(); ++i)
+		{
+			const auto & component = components[i];
+			if(component.type != ComponentType::SPELL)
+				unsupported("Invalid Eagle Eye spell component");
+			const auto * spell = shownContent(component);
+			const int id = component.subType.as<SpellID>().getNum();
+			if(id <= previous || !exact(tokens[2 + 2 * i], i ? APPEND_TEXT : REPLACE_TEXT, spell->getNameTextID()))
+				unsupported("Eagle Eye spell order differs from components");
+			previous = id;
+			if(i && !(i + 1 == components.size()
+				? exact(tokens[1 + 2 * i], APPEND_LOCAL, "core.genrltxt.141")
+				: exact(tokens[1 + 2 * i], APPEND_RAW, ", ")))
+				unsupported("Unsupported Eagle Eye separator");
+		}
+		shown = tokens;
+		supported = true;
+	}
+	// BattleResultsApplied delivers this automatic, zero-choice notification
+	// only to the victor. Resolve only its displayed creature type in the static
+	// catalog; the template, name form and quantity must agree with the component.
+	if(mode == EInfoWindowMode::AUTO && components.size() == 1
+		&& components[0].type == ComponentType::CREATURE
+		&& (exact(tokens[0], APPEND_LOCAL, "core.genrltxt.145")
+			|| exact(tokens[0], APPEND_LOCAL, "core.genrltxt.146")))
+	{
+		const auto & component = components[0];
+		shownContent(component);
+		const auto * raised = LIBRARY->creatures()->getById(component.subType.as<CreatureID>());
+		const bool plural = *component.value > 1;
+		if(tokens.size() != (plural ? 3 : 2)
+			|| !exact(tokens[0], APPEND_LOCAL, plural ? "core.genrltxt.145" : "core.genrltxt.146")
+			|| (plural && (tokens[1].operation != REPLACE_NUMBER || tokens[1].number != *component.value))
+			|| !exact(tokens.back(), REPLACE_TEXT, plural ? raised->getNamePluralTextID() : raised->getNameSingularTextID()))
+			unsupported("Unsupported necromancy notice grammar");
+		shown = tokens;
+		supported = true;
+	}
 	// An abandoned mine's native victory continuation precedes flagMine.
 	if(mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
 		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.85"))
@@ -463,7 +555,7 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 	result["display_mode"].String() = mode == EInfoWindowMode::AUTO ? "auto" : "modal";
 	for(const auto & token : shown)
 	{
-		JsonNode value = token.operation == APPEND_RAW ? textToken("append_text", "heroes.notice.comma_space") : tokenJSON(token, recipient);
+		JsonNode value = token.operation == APPEND_RAW ? textToken("append_text", token.text == "." ? "heroes.notice.period" : "heroes.notice.comma_space") : tokenJSON(token, recipient);
 		for(const char * key : {"text_id", "number", "owner"}) if(value[key].isNull()) value[key] = JsonNode();
 		result["text"].Vector().push_back(std::move(value));
 	}
@@ -475,7 +567,7 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 
 JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	const std::vector<Component> & components, PlayerColor recipient,
-	const std::set<std::string> & ownHeroNameTextIds, bool adventureDialogs)
+	const std::set<std::string> & ownHeroNameTextIds, bool adventureDialogs, bool expanded)
 {
 	if(components.size() > (adventureDialogs ? 128 : 32))
 		unsupported("Too many informational notice components");
@@ -486,7 +578,7 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 		unsupported("Empty informational notice");
 	if(adventureDialogs)
 	{
-		auto notice = adventureNotice(mode, tokens, components, recipient, ownHeroNameTextIds);
+		auto notice = adventureNotice(mode, tokens, components, recipient, ownHeroNameTextIds, expanded);
 		if(!notice.isNull()) return notice;
 	}
 	const char * displayMode = nullptr;
