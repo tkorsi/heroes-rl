@@ -45,6 +45,7 @@ DEFAULT_MAP = ROOT / "experiments/explorer/maps/hero-management-v1.vmap"
 # belong to this campaign. Matching is on the full command line.
 FOREIGN_PATTERN = re.compile(r"vcmiclient|vcmiserver|vcmireplay|ninja|clang|evaluate_|validate_|unittest")
 CLEANUP_RESERVE_SECONDS = 20
+CLEANUP_GRACE_SECONDS = 5
 
 
 def require(condition, message):
@@ -324,23 +325,50 @@ def history_counts(collected):
     return result
 
 
-def run_row(context, row, output):
-    import torch  # noqa: F401  (already imported; keeps the worker's dependency explicit)
+def real_operations():
+    """The production pipeline; tests substitute fakes for native/model work."""
     from experiments.headless.env import HeadlessSelfPlayEnv, Limits
     from experiments.headless.contextual_replay import verify_episode
     from experiments.learner.contextual_rollout import ContextualCollector
     from experiments.learner.evaluation_behavior import analyze_episode
     from validation.probes.validate_hero_policy import audit_persisted_policy, frozen_fingerprints, retain_failed_evidence
+    return {"env_class": HeadlessSelfPlayEnv, "limits_class": Limits, "collector_class": ContextualCollector,
+            "verify_episode": verify_episode, "analyze_episode": analyze_episode,
+            "audit_persisted_policy": audit_persisted_policy, "frozen_fingerprints": frozen_fingerprints,
+            "retain_failed_evidence": retain_failed_evidence, "load_fixed": load_fixed,
+            "instrument_environment": instrument_environment}
+
+
+# Only these end states let a worker continue to its next row.
+CONTINUABLE = ("passed", "native_failure")
+
+
+def run_row(context, row, output):
+    """One attempt. It is passed only after every check and both cleanups.
+
+    A start marker is persisted before any native work and updated at every
+    phase, so a hard-killed attempt stays visibly incomplete. Any exception or
+    cleanup error makes the attempt failed and unscored, and stops the worker.
+    """
+    ops = context["ops"]
     cfg, plan, launcher = context["cfg"], context["plan"], context["launcher"]
     loaded, opponent = context["loaded"], context["opponent"]
     limit = plan["choice_limit"]
     max_total = limit + cfg["reserved_dialog_choices"]
-    attempt = {**row, "status": "running", "outcomes": dict.fromkeys(COLORS), "training_samples": 0,
-               "optimizer_steps": 0, "concurrent_load_free": None}
+    attempt = {**row, "status": "started", "phase": None, "outcomes": dict.fromkeys(COLORS), "training_samples": 0,
+               "optimizer_steps": 0, "concurrent_load_free": None, "cprofile": bool(context.get("cprofile")),
+               "started_unix": time.time()}
     phases = Phases()
     started = time.perf_counter()
     env = collector = None
     attempt_path = output / "attempts" / f"row-{row['row']:03d}.json"
+
+    def mark(phase):
+        attempt["phase"] = phase
+        write(attempt_path, attempt)
+    mark("setup")
+    native_failure = False
+    verified = manifest = None
     try:
         seat = row["learner_player"]
         opponent_id = cfg["opponent"][0]
@@ -348,7 +376,7 @@ def run_row(context, row, output):
         checkpoints = (loaded.checkpoint, opponent_id) if seat == 0 else (opponent_id, loaded.checkpoint)
         sampled_by_player = [0, 0]
 
-        class BoundedCollector(ContextualCollector):
+        class BoundedCollector(ops["collector_class"]):
             sampled = 0
 
             def act(self, request):
@@ -365,18 +393,20 @@ def run_row(context, row, output):
             origin="native", policy_seeds=tuple(row["policy_seeds"]))
         collector.act = TIMER.timed(collector.act, "policy.act")
         lim = cfg["environment_limits"]
-        limits = Limits(max_days=cfg["max_days"], max_actions=max_total + 1, watchdog_seconds=lim["watchdog_seconds"],
-                        startup_seconds=lim["startup_seconds"], shutdown_seconds=lim["shutdown_seconds"],
-                        bridge_timeout=lim["bridge_timeout"])
-        env = HeadlessSelfPlayEnv(launcher, context["episodes"], limits=limits, ledger=True, replay=True,
+        limits = ops["limits_class"](max_days=cfg["max_days"], max_actions=max_total + 1,
+            watchdog_seconds=lim["watchdog_seconds"], startup_seconds=lim["startup_seconds"],
+            shutdown_seconds=lim["shutdown_seconds"], bridge_timeout=lim["bridge_timeout"])
+        env = ops["env_class"](launcher, context["episodes"], limits=limits, ledger=True, replay=True,
             interface=cfg["interface"], agents={color: {"checkpoint": key, "kind": "fixed-untrained-recurrent",
                 "evaluation_only": True, "performance_benchmark": True} for color, key in zip(COLORS, checkpoints)})
-        instrument_environment(env, launcher)
+        ops["instrument_environment"](env, launcher)
+        mark("collection")
         with phases("collection"):
             collected = collector.run_episode(env, episode=row["episode"], seed=row["engine_seed"], max_requests=limit)
         attempt["environment"] = environment_counters(env)
         folder = env.episode_dir
         attempt["episode_directory"] = str(folder)
+        mark("persist_rollout")
         with phases("persist_rollout"):
             write(folder / "neural-rollout.json", collected.to_dict())
         manifest = json.loads((folder / "manifest.json").read_text())
@@ -391,48 +421,68 @@ def run_row(context, row, output):
         require(attempt["sampled_choices"] <= max_total, "Total policy-choice cap exceeded")
         require(all(not r.optimization_eligible for r in collected.rollouts), "Benchmark became optimizer eligible")
         if manifest["status"] == "failed":
-            attempt.update(status="native_failure", error=manifest.get("failure_detail"))
+            native_failure = True
+            attempt["native_failure_detail"] = manifest.get("failure_detail")
         else:
             require(manifest["status"] in ("completed", "truncated"), "Unknown episode boundary")
+            mark("reconstruction")
             with phases("reconstruction_load"):
-                reloaded, _ = load_fixed(plan["checkpoint"]["path"], cfg, cfg["interface"])
+                reloaded, _ = ops["load_fixed"](plan["checkpoint"]["path"], cfg, cfg["interface"])
             with phases("reconstruction"):
-                reconstruction = audit_persisted_policy(folder, reloaded, row["policy_seeds"], interface=cfg["interface"])
+                reconstruction = ops["audit_persisted_policy"](folder, reloaded, row["policy_seeds"], interface=cfg["interface"])
                 write(folder / "policy-reconstruction.json", reconstruction)
             attempt["reconstruction"] = [{key: player[key] for key in ("player", "actions_resampled",
                 "values_recomputed", "conditionals_recomputed", "maximum_absolute_difference")}
                 for player in reconstruction["players"]]
             remaining = context["deadline"] - time.monotonic() - CLEANUP_RESERVE_SECONDS
             require(remaining > 1, "No campaign time remains for native replay")
+            mark("native_replay")
             with phases("native_replay"):
-                replay = verify_episode(folder, binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
-                                        timeout=min(cfg["replay_timeout_seconds"], remaining))
+                replay = ops["verify_episode"](folder, binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
+                                               timeout=min(cfg["replay_timeout_seconds"], remaining))
             attempt["replay"] = compact_native(replay)
             require(replay.get("verified") is True, "Independent native replay failed")
-            attempt.update(status="passed", outcomes=manifest["outcomes_by_player"])
+        mark("behavior")
         with phases("behavior"):
-            behavior = analyze_episode(folder)
+            behavior = ops["analyze_episode"](folder)
             write(folder / "behavior.json", behavior)
+        mark("weights_check")
         with phases("weights_check"):
-            require(frozen_fingerprints(loaded, plan["checkpoint"]["path"]) == context["fixed"], "Weights changed")
+            require(ops["frozen_fingerprints"](loaded, plan["checkpoint"]["path"]) == context["fixed"], "Weights changed")
         attempt["weights_unchanged"] = True
+        verified = "native_failure" if native_failure else "passed"
     except Exception as error:
-        attempt.update(status="failed" if attempt["status"] == "running" else attempt["status"],
-                       error=f"{type(error).__name__}: {error}", outcomes=dict.fromkeys(COLORS))
+        verified = None
+        attempt.update(error=f"{type(error).__name__}: {error}", failed_phase=attempt["phase"])
         try:
-            retain_failed_evidence(env, collector, attempt, error,
-                                   cleanup_seconds=max(1.0, min(30.0, context["deadline"] - time.monotonic() - 2)))
+            ops["retain_failed_evidence"](env, collector, attempt, error,
+                cleanup_seconds=max(1.0, min(30.0, context["deadline"] - time.monotonic() - 2)))
         except Exception as secondary:
             attempt["failure_retention_error"] = f"{type(secondary).__name__}: {secondary}"
     finally:
+        attempt["phase"] = "cleanup"
+        cleanup_errors = []
         with phases("cleanup"):
-            try:
-                if env is not None:
+            # Independent paths: a failed env.close never skips group cleanup.
+            if env is not None:
+                try:
                     env.close()
+                except Exception as error:
+                    cleanup_errors.append(f"env.close: {type(error).__name__}: {error}")
+            try:
                 launcher.close_owned_groups()
-                attempt["cleanup_verified"] = True
             except Exception as error:
-                attempt.update(cleanup_verified=False, cleanup_error=f"{type(error).__name__}: {error}")
+                cleanup_errors.append(f"close_owned_groups: {type(error).__name__}: {error}")
+        attempt["cleanup_verified"] = not cleanup_errors
+        if cleanup_errors:
+            attempt["cleanup_errors"] = cleanup_errors
+        if verified is None or cleanup_errors:
+            attempt.update(status="failed", outcomes=dict.fromkeys(COLORS))
+        else:
+            attempt["status"] = verified
+            if verified == "passed":
+                attempt["outcomes"] = manifest["outcomes_by_player"]
+        attempt["stop_worker"] = attempt["status"] not in CONTINUABLE
         attempt["phases"] = phases.result
         wrapped_calls = sum(stage["calls"] for data in phases.result.values() for stage in data["stages"].values())
         attempt["timing_wrapper_calls"] = wrapped_calls
@@ -446,12 +496,54 @@ def run_row(context, row, output):
     return attempt
 
 
-def worker(args):
+# -- identities ------------------------------------------------------------------
+
+def source_snapshot(root=ROOT):
+    """Every tracked file's bytes as they are on disk now, plus the commit."""
+    root = Path(root)
+    names = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True, check=True).stdout.split(b"\0")
+    files = {}
+    for name in sorted(item.decode() for item in names if item):
+        path = root / name
+        files[name] = digest(path) if path.is_file() else None
+    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True).stdout.strip()
+    combined = hashlib.sha256(json.dumps(files, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return {"git_commit": commit, "tracked_files": len(files), "tracked_sha256": combined, "files": files}
+
+
+def native_snapshot(plan):
+    from experiments.headless.contextual_evidence import runtime_identity
+    binary = Path(plan["binary"])
+    return {"binary": binding(binary), "replay_binary": binding(plan["replay_binary"]["path"]),
+            "map": binding(plan["map"]), "runtime": runtime_identity(binary.parent)}
+
+
+def identity_drift(plan, plan_sha256, plan_path, root=ROOT):
+    """Names of every bound identity that differs from the prepared plan."""
+    drift = []
+    try:
+        if digest(plan_path) != plan_sha256:
+            drift.append("plan")
+        current = source_snapshot(root)
+        if current["tracked_sha256"] != plan["source"]["tracked_sha256"] or current["git_commit"] != plan["source"]["git_commit"]:
+            changed = sorted(name for name in set(current["files"]) | set(plan["source"]["files"])
+                             if current["files"].get(name) != plan["source"]["files"].get(name))
+            drift.append("source:" + ",".join(changed[:20]) if changed else "source:commit")
+        if native_snapshot(plan) != plan["native_snapshot"]:
+            drift.append("native_runtime")
+    except Exception as error:  # an identity that cannot be read is not the planned one
+        drift.append(f"unreadable:{type(error).__name__}: {error}")
+    return drift
+
+
+def worker(args, ops=None):
     process_started = time.perf_counter()
-    plan = json.loads(Path(args.plan).read_text())
+    plan_path = Path(args.plan)
+    require(digest(plan_path) == args.plan_sha256, "Plan file differs from the supervisor's plan")
+    plan = json.loads(plan_path.read_text())
     output = Path(plan["output"])
     report = {"worker": args.worker, "pid": os.getpid(), "rows": plan["assignment"][str(args.worker)],
-              "started_unix": time.time(), "init": {}}
+              "started_unix": time.time(), "init": {}, "attempts": []}
     report_path = output / f"worker-{args.worker:02d}.json"
     cprofile = None
     stop = threading.Event()
@@ -460,6 +552,13 @@ def worker(args):
         stop.set()
         raise TimeoutError("Campaign deadline is ending")
     signal.signal(signal.SIGUSR1, budget_signal)
+    schedule = rows(plan["configuration"], plan["row_count"])
+    pending = list(report["rows"])
+
+    def skip_rest(reason):
+        while pending:
+            index = pending.pop(0)
+            report["attempts"].append({**schedule[index], "status": "not_started", "reason": reason})
     try:
         before = time.perf_counter()
         import torch
@@ -467,32 +566,36 @@ def worker(args):
         report["init"]["torch_import_seconds"] = round(time.perf_counter() - before, 6)
         report["init"]["torch_threads"] = torch.get_num_threads()
         before = time.perf_counter()
-        instrument_modules()
-        from experiments.headless.process_deadline import DeadlineVcmiLauncher
+        ops = ops or real_operations()
+        if ops.get("instrument_modules", True):
+            instrument_modules()
         report["init"]["module_import_seconds"] = round(time.perf_counter() - before, 6)
         report["init"]["timing_wrapper_overhead_seconds_per_call"] = overhead = wrapper_overhead_seconds()
         cfg = plan["configuration"]
         before = time.perf_counter()
-        loaded, fixed = load_fixed(plan["checkpoint"]["path"], cfg, cfg["interface"])
+        loaded, fixed = ops["load_fixed"](plan["checkpoint"]["path"], cfg, cfg["interface"])
         require(fixed == plan["frozen"], "Frozen weights changed after planning")
         opponent = loaded.opponent_pool.get(cfg["opponent"][0])
         report["init"]["checkpoint_load_seconds"] = round(time.perf_counter() - before, 6)
-        report["source_compatibility"] = source_compatibility(loaded, cfg["interface"])
+        report["source_compatibility"] = ops.get("source_compatibility", source_compatibility)(loaded, cfg["interface"])
         episodes = output / f"worker-{args.worker:02d}"
-        launcher = DeadlineVcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["map"]),
-            deadline_monotonic=args.deadline, deadline_wall=args.wall_deadline,
-            evidence_path=output / f"native-deadline-worker-{args.worker:02d}.jsonl")
-        context = {"cfg": cfg, "plan": plan, "launcher": launcher, "loaded": loaded, "opponent": opponent,
-                   "fixed": fixed, "episodes": episodes, "deadline": args.deadline, "wrapper_overhead": overhead}
+        launcher = ops["launcher_factory"](plan, args, output) if "launcher_factory" in ops else default_launcher(plan, args, output)
+        context = {"cfg": cfg, "plan": plan, "launcher": launcher, "loaded": loaded, "opponent": opponent, "ops": ops,
+                   "fixed": fixed, "episodes": episodes, "deadline": args.deadline, "wrapper_overhead": overhead,
+                   "cprofile": args.cprofile}
         report["init"]["worker_ready_seconds"] = round(time.perf_counter() - process_started, 6)
         write(report_path, report)
-        schedule = rows(cfg, plan["row_count"])
-        report["attempts"] = []
-        for index in report["rows"]:
-            row = schedule[index]
+        check = ops.get("identity_drift", identity_drift)
+        while pending:
             if stop.is_set() or args.deadline - time.monotonic() < CLEANUP_RESERVE_SECONDS + 10:
-                report["attempts"].append({**row, "status": "not_started", "reason": "campaign_deadline"})
-                continue
+                skip_rest("campaign_deadline")
+                break
+            drift = check(plan, args.plan_sha256, plan_path)
+            if drift:
+                report["identity_drift"] = drift
+                skip_rest("identity_drift_before_row")
+                break
+            row = schedule[pending.pop(0)]
             if args.cprofile:
                 import cProfile
                 cprofile = cProfile.Profile()
@@ -504,13 +607,24 @@ def worker(args):
                 folder.mkdir(exist_ok=True)
                 cprofile.dump_stats(folder / f"row-{row['row']:03d}.prof")
                 cprofile = None
+            drift = check(plan, args.plan_sha256, plan_path)
+            if drift:
+                attempt.update(status="failed", outcomes=dict.fromkeys(COLORS), stop_worker=True,
+                               error="Identity drift during the attempt: " + "; ".join(drift))
+                write(output / "attempts" / f"row-{row['row']:03d}.json", attempt)
+                report["identity_drift"] = drift
             report["attempts"].append({key: attempt.get(key) for key in ("row", "status", "attempt_wall_seconds")})
             write(report_path, report)
+            if attempt["stop_worker"]:
+                skip_rest("worker_stopped_after_" + attempt["status"])
+                break
         report["status"] = "finished"
     except TimeoutError as error:
         report.update(status="deadline", error=str(error))
+        skip_rest("campaign_deadline")
     except Exception as error:
         report.update(status="failed", error=f"{type(error).__name__}: {error}")
+        skip_rest("worker_failure")
     finally:
         if cprofile is not None:
             cprofile.disable()
@@ -522,32 +636,63 @@ def worker(args):
     return report
 
 
+def default_launcher(plan, args, output):
+    from experiments.headless.process_deadline import DeadlineVcmiLauncher
+    return DeadlineVcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["map"]),
+        deadline_monotonic=args.deadline, deadline_wall=args.wall_deadline,
+        evidence_path=output / f"native-deadline-worker-{args.worker:02d}.jsonl")
+
+
 # -- supervisor ----------------------------------------------------------------
 
-def foreign_processes(owned_root, own_pids):
+def process_table():
+    """{pid: (ppid, cpu, command)}, or None when inspection itself failed."""
     try:
-        listing = subprocess.run(["ps", "-axo", "pid=,ppid=,pcpu=,command="], capture_output=True, text=True,
-                                 timeout=10).stdout
+        result = subprocess.run(["ps", "-axo", "pid=,ppid=,pcpu=,command="], capture_output=True, text=True, timeout=10)
     except (OSError, subprocess.SubprocessError):
         return None
-    found = []
-    for line in listing.splitlines():
+    if result.returncode != 0 or not result.stdout.strip():
+        return None
+    table = {}
+    for line in result.stdout.splitlines():
         parts = line.split(None, 3)
-        if len(parts) < 4:
+        if len(parts) == 4 and parts[0].isdigit() and parts[1].isdigit():
+            table[int(parts[0])] = (int(parts[1]), parts[2], parts[3])
+    return table or None
+
+
+def foreign_processes(supervisor_pid, owned_root, table=None):
+    """Heavy processes that are not descendants of this supervisor, or None.
+
+    Only the supervisor's own process tree is excluded. Another campaign or a
+    build in the same checkout is foreign and is flagged as same_root.
+    """
+    table = process_table() if table is None else table
+    if table is None:
+        return None
+    owned = {supervisor_pid}
+    changed = True
+    while changed:
+        changed = False
+        for pid, (ppid, _, _) in table.items():
+            if ppid in owned and pid not in owned:
+                owned.add(pid)
+                changed = True
+    found = []
+    for pid, (ppid, cpu, command) in sorted(table.items()):
+        if pid in owned or command.startswith(("ps ", "grep ")):
             continue
-        pid, ppid, cpu, command = int(parts[0]), int(parts[1]), parts[2], parts[3]
-        if pid in own_pids or ppid in own_pids or str(owned_root) in command or "contextual_benchmark" in command:
-            continue
-        if FOREIGN_PATTERN.search(command) and not command.startswith(("ps ", "grep ")):
-            found.append({"pid": pid, "cpu_percent": cpu, "command": command[:200]})
+        same_root = str(owned_root) in command
+        if FOREIGN_PATTERN.search(command) or "contextual_benchmark" in command or same_root:
+            found.append({"pid": pid, "cpu_percent": cpu, "command": command[:200], "same_root": same_root})
     return found
 
 
 class LoadMonitor(threading.Thread):
-    def __init__(self, owned_root, own_pids, interval=5.0):
+    def __init__(self, supervisor_pid, owned_root, interval=5.0, inspect=foreign_processes):
         super().__init__(daemon=True, name="load-monitor")
-        self.owned_root, self.own_pids, self.interval = owned_root, own_pids, interval
-        self.samples, self.foreign = 0, {}
+        self.supervisor_pid, self.owned_root, self.interval, self.inspect = supervisor_pid, owned_root, interval, inspect
+        self.samples, self.failed_samples, self.foreign = 0, 0, {}
         self.max_load = 0.0
         self.halt = threading.Event()
 
@@ -555,8 +700,11 @@ class LoadMonitor(threading.Thread):
         while not self.halt.is_set():
             self.samples += 1
             self.max_load = max(self.max_load, os.getloadavg()[0])
-            for item in foreign_processes(self.owned_root, set(self.own_pids)) or []:
-                self.foreign.setdefault(item["command"], item)
+            found = self.inspect(self.supervisor_pid, self.owned_root)
+            if found is None:
+                self.failed_samples += 1
+            for item in found or []:
+                self.foreign.setdefault((item["pid"], item["command"]), item)
             self.halt.wait(self.interval)
 
 
@@ -576,110 +724,182 @@ def prepare(args, cfg):
     require(checked.returncode == 0, "Prepared VCMI dependency does not match the recipe: " + checked.stderr.strip())
     choice_limit = args.choice_limit if args.choice_limit is not None else cfg["ordinary_choice_limit"]
     require(type(choice_limit) is int and 1 <= choice_limit <= 4088, "Choice limit outside the evaluated range")
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
     dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT,
                            capture_output=True, text=True).stdout.strip()
+    require(not dirty, "Campaigns run only from a clean committed checkout")
+    source = source_snapshot(ROOT)
+    declared = {"implementation": args.implementation, "baseline_commit": args.baseline_commit}
+    changed = subprocess.run(["git", "diff", "--name-only", args.baseline_commit, "HEAD"], cwd=ROOT,
+                             capture_output=True, text=True)
+    require(changed.returncode == 0, "Declared baseline commit is unknown: " + changed.stderr.strip())
+    declared["files_changed_from_baseline"] = sorted(line for line in changed.stdout.splitlines() if line)
+    runtime_changes = [name for name in declared["files_changed_from_baseline"]
+                       if not name.startswith(("experiments/perf/", "tests/test_perf_", "configs/performance-"))]
+    require((args.implementation == "baseline") == (not runtime_changes),
+            "Declare --implementation optimized exactly when runtime sources differ from the baseline commit")
+    declared["runtime_files_changed_from_baseline"] = runtime_changes
     plan = {"schema": SCHEMA + "-plan", "label": args.label, "configuration": cfg, "output": str(output),
             "row_count": args.rows, "rows": rows(cfg, args.rows), "workers": args.workers,
             "assignment": {str(k): v for k, v in assignment(args.rows, args.workers).items()},
             "choice_limit": choice_limit, "choice_limit_is_frozen_default": choice_limit == cfg["ordinary_choice_limit"],
-            "campaign_seconds": args.campaign_seconds, "cprofile": args.cprofile,
+            "campaign_seconds": args.campaign_seconds, "cleanup_grace_seconds": CLEANUP_GRACE_SECONDS,
+            "cprofile": args.cprofile, "declared_source": declared,
             "checkpoint": checkpoint, "map": str(args.map.resolve()), "map_binding": game_map,
             "binary": str(args.binary.resolve()), "data": str(args.data.resolve()),
             "replay_binary": binding(args.replay_binary), "native": launcher.identity(),
             "runtime": runtime_identity(args.binary.resolve().parent), "prepared_check": checked.stdout.strip(),
-            "source": {"git_commit": commit, "tracked_worktree_dirty": bool(dirty), "root": str(ROOT)},
+            "source": source, "harness_sha256": digest(Path(__file__)),
             "host": {"platform": sys.platform, "machine": os.uname().machine, "cpu_count": os.cpu_count(),
                      "python": sys.version, "executable": sys.executable},
             "training_performed": False, "optimizer_updates": 0}
+    plan["native_snapshot"] = native_snapshot(plan)
     return output, plan
+
+
+def real_supervisor_operations():
+    from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
+    return {"spawn": guarded_popen, "close_process": close_owned_process, "cleanup_evidence": cleanup_from_evidence,
+            "monotonic": time.monotonic, "wall": time.time, "sleep": time.sleep, "inspect": foreign_processes,
+            "kill": os.kill, "monitor_interval": 5.0}
 
 
 def run(args):
     cfg = config()
     output, plan = prepare(args, cfg)
     import torch
-    from validation.probes.validate_hero_policy import frozen_fingerprints  # noqa: F401
     torch.set_num_threads(cfg["torch_threads"])
     _, plan["frozen"] = load_fixed(plan["checkpoint"]["path"], cfg, cfg["interface"])
     plan["torch"] = str(torch.__version__)
     output.mkdir(parents=True)
     (output / "attempts").mkdir()
     write(output / "plan.json", plan)
-    from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
-    started, wall_started = time.monotonic(), time.time()
-    deadline, wall_deadline = started + args.campaign_seconds, wall_started + args.campaign_seconds
+    return supervise(plan, output, real_supervisor_operations())
+
+
+def supervise(plan, output, ops):
+    """Launch, bound and clean up every worker, then always write the report.
+
+    The whole campaign, including cleanup verification, ends by
+    campaign_seconds + cleanup_grace_seconds. Cleanup shares one absolute
+    budget; each wait gets only what remains of it.
+    """
+    plan_sha256 = digest(output / "plan.json")
+    started, wall_started = ops["monotonic"](), ops["wall"]()
+    deadline, wall_deadline = started + plan["campaign_seconds"], wall_started + plan["campaign_seconds"]
+    cleanup_end = deadline + plan["cleanup_grace_seconds"]
     load_start = os.getloadavg()
-    own_pids = [os.getpid()]
-    monitor = LoadMonitor(ROOT, own_pids)
-    initial_foreign = foreign_processes(ROOT, set(own_pids))
+    supervisor_pid = os.getpid()
+    monitor = LoadMonitor(supervisor_pid, ROOT, interval=ops["monitor_interval"], inspect=ops["inspect"])
+    initial_foreign = ops["inspect"](supervisor_pid, ROOT)
     monitor.start()
     processes = {}
-    for worker_index in range(args.workers):
-        command = [sys.executable, "-m", "experiments.perf.contextual_benchmark", "worker",
-                   "--plan", str(output / "plan.json"), "--worker", str(worker_index),
-                   "--deadline", str(deadline - 2), "--wall-deadline", str(wall_deadline - 2)]
-        if args.cprofile:
-            command.append("--cprofile")
-        log = (output / f"worker-{worker_index:02d}.log").open("xb")
-        process = guarded_popen(command, deadline_monotonic=deadline - 1, deadline_wall=wall_deadline - 1,
-            evidence_path=output / f"worker-deadline-{worker_index:02d}.jsonl", cwd=ROOT,
-            stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
-        processes[worker_index] = (process, log)
-        own_pids.append(process.pid)
-    signalled = False
-    while any(process.poll() is None for process, _ in processes.values()):
-        left = deadline - time.monotonic()
-        if not signalled and left <= CLEANUP_RESERVE_SECONDS:
-            for process, _ in processes.values():
-                if process.poll() is None:
-                    try:
-                        os.kill(process.pid, signal.SIGUSR1)
-                    except ProcessLookupError:
-                        pass
-            signalled = True
-        if left <= 1:
-            break
-        time.sleep(0.2)
     supervisor_errors = []
-    for worker_index, (process, log) in processes.items():
-        try:
-            close_owned_process(process, timeout=2.0)
-        except Exception as error:
-            supervisor_errors.append(f"worker {worker_index}: {type(error).__name__}: {error}")
-        log.close()
-        try:
-            cleanup_from_evidence(output / f"native-deadline-worker-{worker_index:02d}.jsonl", timeout=2.0)
-        except FileNotFoundError:
-            pass
-        except Exception as error:
-            supervisor_errors.append(f"native cleanup {worker_index}: {type(error).__name__}: {error}")
-    campaign_wall = time.monotonic() - started
-    monitor.halt.set()
-    monitor.join(timeout=10)
-    attempts = []
-    for row in plan["rows"]:
-        path = output / "attempts" / f"row-{row['row']:03d}.json"
-        attempts.append(json.loads(path.read_text()) if path.exists()
-                        else {**row, "status": "not_started", "reason": "campaign_deadline" if signalled else "worker_failure"})
-    workers = []
-    for worker_index in range(args.workers):
-        path = output / f"worker-{worker_index:02d}.json"
-        workers.append(json.loads(path.read_text()) if path.exists() else {"worker": worker_index, "status": "missing"})
-    concurrent = bool(initial_foreign) or bool(monitor.foreign)
-    for attempt in attempts:
-        attempt["concurrent_load_free"] = not concurrent
-    report = {"schema": SCHEMA + "-result", "label": args.label, "plan_sha256": digest(output / "plan.json"),
-              "workers": args.workers, "row_count": args.rows, "choice_limit": plan["choice_limit"],
-              "campaign_wall_seconds": round(campaign_wall, 6), "deadline_signalled": signalled,
-              "supervisor_errors": supervisor_errors, "load_average_start": load_start,
-              "load_average_end": os.getloadavg(), "load_average_max_1m": monitor.max_load,
-              "foreign_processes_at_start": initial_foreign, "foreign_processes_during": list(monitor.foreign.values()),
-              "concurrent_load_detected": concurrent, "cprofile": args.cprofile,
-              "attempts": attempts, "worker_reports": workers, "summary": summarize_attempts(attempts, campaign_wall),
-              "training_performed": False, "optimizer_updates": 0}
-    write(output / "campaign.json", report)
+    signalled = False
+    try:
+        for worker_index in range(plan["workers"]):
+            command = [sys.executable, "-m", "experiments.perf.contextual_benchmark", "worker",
+                       "--plan", str(output / "plan.json"), "--plan-sha256", plan_sha256, "--worker", str(worker_index),
+                       "--deadline", str(deadline - 2), "--wall-deadline", str(wall_deadline - 2)]
+            if plan["cprofile"]:
+                command.append("--cprofile")
+            log = (output / f"worker-{worker_index:02d}.log").open("xb")
+            try:
+                process = ops["spawn"](command, deadline_monotonic=deadline - 1, deadline_wall=wall_deadline - 1,
+                    evidence_path=output / f"worker-deadline-{worker_index:02d}.jsonl", cwd=ROOT,
+                    stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+            except BaseException:
+                log.close()
+                raise
+            processes[worker_index] = (process, log)
+        while any(process.poll() is None for process, _ in processes.values()):
+            left = deadline - ops["monotonic"]()
+            if not signalled and left <= CLEANUP_RESERVE_SECONDS:
+                for process, _ in processes.values():
+                    if process.poll() is None:
+                        try:
+                            ops["kill"](process.pid, signal.SIGUSR1)
+                        except ProcessLookupError:
+                            pass
+                signalled = True
+            if left <= 1:
+                break
+            ops["sleep"](0.2)
+    except BaseException as error:
+        supervisor_errors.append(f"supervisor: {type(error).__name__}: {error}")
+    finally:
+        def budget():
+            return max(0.01, cleanup_end - ops["monotonic"]())
+        for worker_index, (process, log) in processes.items():
+            try:
+                ops["close_process"](process, timeout=budget())
+            except Exception as error:
+                supervisor_errors.append(f"worker {worker_index}: {type(error).__name__}: {error}")
+            log.close()
+        for worker_index in processes:
+            try:
+                ops["cleanup_evidence"](output / f"native-deadline-worker-{worker_index:02d}.jsonl", timeout=budget())
+            except Exception as error:
+                supervisor_errors.append(f"native cleanup {worker_index}: {type(error).__name__}: {error}")
+        campaign_wall = ops["monotonic"]() - started
+        monitor.halt.set()
+        monitor.join(timeout=10)
+        workers = []
+        for worker_index in range(plan["workers"]):
+            path = output / f"worker-{worker_index:02d}.json"
+            workers.append(read_json(path) or {"worker": worker_index, "status": "missing" if worker_index in processes else "not_launched"})
+        attempts = collect_attempts(plan["rows"], output, workers, signalled)
+        inspection_failed = initial_foreign is None or monitor.failed_samples > 0
+        concurrent = bool(initial_foreign) or bool(monitor.foreign)
+        clean = not concurrent and not inspection_failed and not plan["cprofile"] and not supervisor_errors
+        for attempt in attempts:
+            attempt["concurrent_load_free"] = None if inspection_failed else not concurrent
+        report = {"schema": SCHEMA + "-result", "label": plan["label"], "plan_sha256": plan_sha256,
+                  "workers": plan["workers"], "row_count": plan["row_count"], "choice_limit": plan["choice_limit"],
+                  "campaign_seconds": plan["campaign_seconds"], "declared_source": plan["declared_source"],
+                  "source_tracked_sha256": plan["source"]["tracked_sha256"], "git_commit": plan["source"]["git_commit"],
+                  "campaign_wall_seconds": round(campaign_wall, 6), "deadline_signalled": signalled,
+                  "supervisor_errors": supervisor_errors, "load_average_start": load_start,
+                  "load_average_end": os.getloadavg(), "load_average_max_1m": monitor.max_load,
+                  "foreign_processes_at_start": initial_foreign, "foreign_processes_during": list(monitor.foreign.values()),
+                  "inspection_samples": monitor.samples, "inspection_failed_samples": monitor.failed_samples,
+                  "inspection_failed": inspection_failed, "concurrent_load_detected": concurrent,
+                  "clean_timing_sample": clean, "cprofile": plan["cprofile"],
+                  "attempts": attempts, "worker_reports": workers, "summary": summarize_attempts(attempts, campaign_wall),
+                  "training_performed": False, "optimizer_updates": 0}
+        write(output / "campaign.json", report)
     return report
+
+
+def read_json(path):
+    try:
+        return json.loads(Path(path).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def collect_attempts(plan_rows, output, workers, signalled):
+    """Every scheduled row exactly once. A started row never becomes not_started."""
+    skipped = {}
+    for report in workers:
+        for item in report.get("attempts") or []:
+            if item.get("status") == "not_started":
+                skipped[item["row"]] = item.get("reason")
+    attempts = []
+    for row in plan_rows:
+        path = output / "attempts" / f"row-{row['row']:03d}.json"
+        data = read_json(path) if path.exists() else None
+        if path.exists() and data is None:
+            attempts.append({**row, "status": "incomplete", "reason": "unreadable_attempt_record",
+                             "outcomes": dict.fromkeys(COLORS)})
+        elif data is None:
+            reason = skipped.get(row["row"]) or ("campaign_deadline" if signalled else "worker_failure")
+            attempts.append({**row, "status": "not_started", "reason": reason})
+        elif data.get("status") in ("started", "running"):
+            attempts.append({**data, "status": "incomplete", "reason": "attempt_not_finished",
+                             "outcomes": dict.fromkeys(COLORS)})
+        else:
+            attempts.append(data)
+    return attempts
 
 
 # -- summaries -----------------------------------------------------------------
@@ -720,7 +940,7 @@ def summarize_attempts(attempts, campaign_wall):
             "natural_endings_verified": sum(1 for a in passed if a.get("episode_status") == "completed"),
             "cutoffs_verified": sum(1 for a in passed if a.get("episode_status") == "truncated"),
             "failures": sum(1 for a in attempts if a.get("status") not in ("passed", "not_started")),
-            "not_started": statuses.get("not_started", 0),
+            "incomplete": statuses.get("incomplete", 0), "not_started": statuses.get("not_started", 0),
             "sampled_choices": choices, "actions_accepted": accepted, "actions_rejected": rejected,
             "campaign_wall_seconds": round(campaign_wall, 6),
             "verified_attempts_per_hour": round(3600 * len(passed) / campaign_wall, 3) if campaign_wall else None,
@@ -728,34 +948,61 @@ def summarize_attempts(attempts, campaign_wall):
             "totals_seconds": {key: round(value, 6) for key, value in sorted(totals.items())}}
 
 
+def campaign_group(report, plan):
+    """Campaigns are comparable only with identical workload and implementation."""
+    cfg_sha = hashlib.sha256(json.dumps(plan["configuration"], sort_keys=True).encode()).hexdigest()
+    return (report["label"], report["workers"], plan["declared_source"]["implementation"], plan["source"]["tracked_sha256"],
+            plan["row_count"], plan["choice_limit"], plan["campaign_seconds"], plan["cprofile"], cfg_sha,
+            plan["native_snapshot"]["binary"]["sha256"], plan["checkpoint"]["sha256"])
+
+
+def exclusion_reasons(report):
+    reasons = []
+    if report.get("cprofile"):
+        reasons.append("profiled")
+    if report.get("concurrent_load_detected"):
+        reasons.append("concurrent_load")
+    if report.get("inspection_failed", True):
+        reasons.append("load_inspection_unknown")
+    if report.get("supervisor_errors"):
+        reasons.append("supervisor_errors")
+    if report["summary"].get("failures") or report["summary"].get("not_started"):
+        reasons.append("incomplete_or_failed_rows")
+    return reasons
+
+
 def summarize(args):
-    """Group campaigns by label and worker count; report median and spread."""
+    """Median and spread per comparable group, over clean campaigns only."""
     groups = defaultdict(list)
     for path in args.campaigns:
         report = json.loads((Path(path) / "campaign.json").read_text())
-        groups[(report["label"], report["workers"])].append(report)
+        plan = json.loads((Path(path) / "plan.json").read_text())
+        groups[campaign_group(report, plan)].append((str(path), report))
     result = []
-    for (label, workers), reports in sorted(groups.items()):
-        entry = {"label": label, "workers": workers, "campaigns": len(reports),
-                 "concurrent_load_detected": [r["concurrent_load_detected"] for r in reports],
-                 "cprofile": [r["cprofile"] for r in reports]}
+    for key, members in sorted(groups.items(), key=lambda item: json.dumps(item[0], default=str)):
+        label, workers, implementation, source_sha, row_count, choice_limit, seconds, profiled = key[:8]
+        clean = [(path, report) for path, report in members if not exclusion_reasons(report)]
+        entry = {"label": label, "workers": workers, "implementation": implementation, "source_tracked_sha256": source_sha,
+                 "rows": row_count, "choice_limit": choice_limit, "campaign_seconds": seconds, "cprofile": profiled,
+                 "campaigns": [path for path, _ in members], "clean_campaigns": [path for path, _ in clean],
+                 "excluded": {path: exclusion_reasons(report) for path, report in members if exclusion_reasons(report)}}
         metrics = defaultdict(list)
-        for report in reports:
+        for _, report in clean:
             summary = report["summary"]
             metrics["campaign_wall_seconds"].append(summary["campaign_wall_seconds"])
             metrics["sampled_choices"].append(summary["sampled_choices"])
             metrics["verified_attempts_per_hour"].append(summary["verified_attempts_per_hour"])
             metrics["sampled_choices_per_second_end_to_end"].append(summary["sampled_choices_per_second_end_to_end"])
-            for key, value in summary["totals_seconds"].items():
-                metrics[key].append(value)
-            for key in ("natural_endings_verified", "cutoffs_verified", "failures", "not_started",
-                        "actions_accepted", "actions_rejected"):
-                metrics[key].append(summary[key])
-        entry["metrics"] = {key: {"median": statistics.median(values), "min": min(values), "max": max(values),
-                                  "n": len(values)} for key, values in sorted(metrics.items())
-                            if all(isinstance(v, (int, float)) for v in values)}
+            for name, value in summary["totals_seconds"].items():
+                metrics[name].append(value)
+            for name in ("natural_endings_verified", "cutoffs_verified", "failures", "not_started",
+                         "actions_accepted", "actions_rejected"):
+                metrics[name].append(summary[name])
+        entry["clean_metrics"] = {name: {"median": statistics.median(values), "min": min(values), "max": max(values),
+                                         "n": len(values)} for name, values in sorted(metrics.items())
+                                  if values and all(isinstance(v, (int, float)) for v in values)}
         histories = defaultdict(set)
-        for report in reports:
+        for _, report in members:
             for attempt in report["attempts"]:
                 for color, data in (attempt.get("histories") or {}).items():
                     histories[(attempt["row"], color)].add(data["history_sha256"])
@@ -780,8 +1027,11 @@ def main():
     campaign.add_argument("--campaign-seconds", type=float, required=True)
     campaign.add_argument("--choice-limit", type=int, default=None)
     campaign.add_argument("--cprofile", action="store_true")
+    campaign.add_argument("--implementation", choices=("baseline", "optimized"), required=True)
+    campaign.add_argument("--baseline-commit", default="9193db35857e07ddbc45e98a1dd7c3f4a8c07da0")
     work = sub.add_parser("worker")
     work.add_argument("--plan", type=Path, required=True)
+    work.add_argument("--plan-sha256", required=True)
     work.add_argument("--worker", type=int, required=True)
     work.add_argument("--deadline", type=float, required=True)
     work.add_argument("--wall-deadline", type=float, required=True)
