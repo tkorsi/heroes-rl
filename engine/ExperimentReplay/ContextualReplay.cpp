@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "ContextualReplay.h"
+#include "RequestAccounting.h"
 
 #include "../AI/ExplorerRL/ExplorerRL.h"
 #include "../AI/ExplorerRL/ContextualEvidence.h"
@@ -149,6 +150,20 @@ void ContextualReplay::input(const JsonNode & record)
 	inputs.push_back(record);
 }
 
+void ContextualReplay::verifiedTerminalInput(const CPackForServer & request, int64_t sequence,
+	uint64_t firstClientPacket, uint64_t lastClientPacket)
+{
+	if(!terminalInput.isNull() || sequence < 0 || static_cast<uint64_t>(sequence) + 1 != inputs.size()
+		|| firstClientPacket == 0 || firstClientPacket >= lastClientPacket || lastClientPacket != packets.size())
+		throw std::runtime_error("Invalid independently verified terminal input range");
+	terminalInput["input_seq"].Integer() = sequence;
+	terminalInput["player"].Integer() = request.player.getNum();
+	terminalInput["request_id"].Integer() = request.requestID;
+	terminalInput["pack_type"].Integer() = CTypeList::getInstance().getTypeID(&request);
+	terminalInput["first_client_packet"].Integer() = firstClientPacket;
+	terminalInput["last_client_packet"].Integer() = lastClientPacket;
+}
+
 JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 {
 	if(initialState.empty()) throw std::runtime_error("Missing independently regenerated initial client state");
@@ -180,50 +195,13 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	deserializer & *state;
 	if(!reader.complete()) throw std::runtime_error("Trailing replay initial-state bytes");
 
-	// Check every recorded native request against the authoritative receive
-	// stream before allowing any request bytes to act as external battle input.
-	size_t requestIndex = 0;
-	std::optional<std::pair<std::string, std::string>> transaction;
-	for(const auto & item : tape)
-	{
-		const auto & kind = item["kind"].String();
-		if(kind == "enter") transaction = std::pair{item["actor"].String(), item["operation"].String()};
-		if(kind == "leave") transaction.reset();
-		if(kind != "request") continue;
-		if(requestIndex >= inputs.size() || !transaction)
-			throw std::runtime_error("Client native request has no authoritative input");
-		const auto & expected = inputs[requestIndex++];
-		if(item["pack"].String() != expected["pack"].String()
-			|| item["pack_type"].Integer() != expected["type"].Integer())
-			throw std::runtime_error("Client request bytes/order differ from authoritative server input");
-		auto decoded = experiment_replay::decodePack(experiment_replay::fromHex(item["pack"].String()), state.get());
-		const auto * request = dynamic_cast<const CPackForServer *>(decoded.get());
-		if(!request || item["player"].Integer() != request->player.getNum()
-			|| item["request_id"].Integer() != request->requestID)
-			throw std::runtime_error("Native request metadata does not bind its serialized packet");
-		if(learner >= 0 && (expected["player"].Integer() != request->player.getNum()
-			|| expected["request"].Integer() != request->requestID))
-			throw std::runtime_error("Authoritative mixed request metadata differs from its native packet");
-		const auto & source = item["source"].String();
-		if(source == "adapter")
+	// Bind every send attempt. The only unapplied exception needs a final
+	// terminal range established by the independent server replay above.
+	const auto accounting = contextualRequestAccounting(tape, inputs, terminalInput, prefix, learner,
+		[&state](const std::string & encoded)
 		{
-			if(transaction->first != "player" + std::to_string(request->player.getNum())
-				|| (learner >= 0 && request->player != PlayerColor(learner)))
-				throw std::runtime_error("Adapter request is not inside its player's transaction");
-		}
-		else if(source == "native_opponent")
-		{
-			if(learner < 0 || request->player != PlayerColor(1 - learner) || transaction->first != "client"
-				|| (transaction->second != "request" && transaction->second != "packet"))
-				throw std::runtime_error("Recorded opponent input names the wrong controller or transaction");
-		}
-		else if(source != "automatic" || transaction->first != "client"
-			|| (learner >= 0 && request->player == PlayerColor(1 - learner))
-			|| !automaticAllowed(*decoded, transaction->second))
-			throw std::runtime_error("Unsupported automatic request source/type");
-	}
-	if(requestIndex != inputs.size())
-		throw std::runtime_error("Authoritative server input omitted from contextual request ledger");
+			return experiment_replay::decodePack(experiment_replay::fromHex(encoded), state.get());
+		}, automaticAllowed);
 
 	GAME = std::make_unique<GameInstance>();
 	GAME->server().client = std::make_unique<CClient>();
@@ -240,7 +218,8 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	{
 		evidence->check();
 		for(const auto & [color, interface] : interfaces) interface->finish();
-		const auto result = evidence->summary(packets.size());
+		auto result = evidence->summary(packets.size());
+		if(learner >= 0) result["request_accounting"] = accounting;
 		GAME.reset();
 		setExperimentEvidenceHooks(nullptr);
 		return result;

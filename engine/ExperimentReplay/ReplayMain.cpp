@@ -452,6 +452,9 @@ public:
 #endif
 
 			server.outgoing.clearFlags();
+#ifdef HEROES_CONTEXTUAL_REPLAY
+			const auto firstClientPacket = server.outgoing.clientCount + 1;
+#endif
 			gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
 			++inputs;
 
@@ -478,6 +481,11 @@ public:
 				if(applied["digest"].isNull())
 					throw Divergence(after, "digest", "null", digestHex(stateDigest(*gameHandler)));
 				expectState(after, applied, *gameHandler);
+#ifdef HEROES_CONTEXTUAL_REPLAY
+				if(contextual && !prefix && index + 2 == records.size() && std::string(boundary) == "game_end"
+					&& gameHandler->experimentTerminalBarrierSent())
+					contextual->verifiedTerminalInput(*pack, sequence, firstClientPacket, server.outgoing.clientCount);
+#endif
 				++boundaries[boundary];
 				for(const auto & entry : replayedTerminals.Vector())
 					terminals.Vector().push_back(entry);
