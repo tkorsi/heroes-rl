@@ -5,6 +5,8 @@
  *
  */
 #include "StdInc.h"
+#include "ReplayWorker.h"
+#include <chrono>
 #ifdef HEROES_CONTEXTUAL_REPLAY
 #include "ContextualReplay.h"
 #endif
@@ -49,6 +51,14 @@
 namespace
 {
 using namespace experiment_replay;
+using Clock = std::chrono::steady_clock;
+struct PhaseTimer
+{
+	double & total;
+	Clock::time_point start = Clock::now();
+	explicit PhaseTimer(double & value) : total(value) {}
+	~PhaseTimer() { total += std::chrono::duration<double>(Clock::now() - start).count(); }
+};
 
 /// Where and why a replay stopped matching its recording.
 struct Divergence : std::runtime_error
@@ -224,6 +234,7 @@ class Replay
 	int64_t inputs = 0;
 	std::map<std::string, int64_t> boundaries;
 	JsonNode terminals;
+	std::map<std::string, double> timings;
 
 	uint64_t digestCapture(int player)
 	{
@@ -234,6 +245,7 @@ class Replay
 
 	void checkObservations(uint16_t packType)
 	{
+		PhaseTimer timer(timings["observation_verification"]);
 		const auto position = server.outgoing.clientCount;
 		const auto [first, last] = observations.equal_range(position);
 		for(auto entry = first; entry != last; ++entry)
@@ -393,11 +405,14 @@ public:
 
 		StartInfo startInfo;
 		decodeStartInfo(fromHex(init["start_info"].String()), startInfo);
-		gameHandler = std::make_unique<CGameHandler>(server);
-		server.gameHandler = gameHandler.get();
-		Load::ProgressAccumulator progress;
-		gameHandler->init(&startInfo, progress);
-		expectState("init", init, *gameHandler);
+		{
+			PhaseTimer timer(timings["episode_init"]);
+			gameHandler = std::make_unique<CGameHandler>(server);
+			server.gameHandler = gameHandler.get();
+			Load::ProgressAccumulator progress;
+			gameHandler->init(&startInfo, progress);
+		}
+		{ PhaseTimer timer(timings["state_verification"]); expectState("init", init, *gameHandler); }
 #ifdef HEROES_CONTEXTUAL_REPLAY
 		if(contextual)
 		{
@@ -414,13 +429,16 @@ public:
 		server.clientPackApplied = [this](uint16_t type) { checkObservations(type); };
 		writeTraceMap();
 
-		gameHandler->start(false);
+		{
+			PhaseTimer timer(timings["episode_start"]);
+			gameHandler->start(false);
+		}
 		server.setState(EServerState::GAMEPLAY);
 		const auto & start = records[1];
 		expectEqual("start", "out", text(start["out"]), std::to_string(server.outgoing.count));
 		expectEqual("start", "client_out", text(start["client_out"]), std::to_string(server.outgoing.clientCount));
 		expectChain("start", start, server.outgoing);
-		expectState("start", start, *gameHandler);
+		{ PhaseTimer timer(timings["state_verification"]); expectState("start", start, *gameHandler); }
 		writeTrace(-1, nullptr);
 
 		for(size_t index = 2; index < records.size(); index += 2)
@@ -437,6 +455,7 @@ public:
 			std::unique_ptr<CPack> decoded;
 			try
 			{
+				PhaseTimer timer(timings["input_decode"]);
 				decoded = decodePack(fromHex(input["pack"].String()), &gameHandler->gameInfo());
 			}
 			catch(const std::runtime_error &)
@@ -455,7 +474,10 @@ public:
 #ifdef HEROES_CONTEXTUAL_REPLAY
 			const auto firstClientPacket = server.outgoing.clientCount + 1;
 #endif
-			gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
+			{
+				PhaseTimer timer(timings["native_transition_inclusive"]);
+				gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
+			}
 			++inputs;
 
 			const char * boundary = boundaryAfter(*pack, gameHandler->lastPackResult, server.outgoing);
@@ -480,7 +502,7 @@ public:
 			{
 				if(applied["digest"].isNull())
 					throw Divergence(after, "digest", "null", digestHex(stateDigest(*gameHandler)));
-				expectState(after, applied, *gameHandler);
+				{ PhaseTimer timer(timings["state_verification"]); expectState(after, applied, *gameHandler); }
 #ifdef HEROES_CONTEXTUAL_REPLAY
 				if(contextual && !prefix && index + 2 == records.size() && std::string(boundary) == "game_end"
 					&& gameHandler->experimentTerminalBarrierSent())
@@ -506,6 +528,8 @@ public:
 				std::to_string(observationsChecked[player] + unchecked[player]));
 
 		JsonNode summary;
+		for(const auto & [name, seconds] : timings)
+			summary["timing_seconds"][name].Float() = seconds;
 		summary["inputs"].Integer() = inputs;
 		summary["prefix"].Bool() = prefix;
 		summary["observations_after_prefix"].Integer() = std::distance(unreached, observations.end());
@@ -547,7 +571,7 @@ void writeReport(const std::string & path, const JsonNode & report)
 }
 }
 
-int main(int argc, const char * argv[])
+int replayMain(int argc, const char * argv[])
 {
 	std::string logPath;
 	std::string observationDirectory;
@@ -600,10 +624,13 @@ int main(int argc, const char * argv[])
 	report["verified"].Bool() = false;
 	int status = 1;
 	Replay replay;
+	std::map<std::string, double> timings;
+	const auto replayStart = Clock::now();
 	try
 	{
 		// Malformed evidence fails before the game library loads.
-		const auto records = readLines(logPath);
+		std::vector<JsonNode> records;
+		{ PhaseTimer timer(timings["read_server_log"]); records = readLines(logPath); }
 		std::vector<JsonNode> contextualTape;
 #ifdef HEROES_CONTEXTUAL_REPLAY
 		ContextualReplay contextual;
@@ -627,10 +654,19 @@ int main(int argc, const char * argv[])
 #endif
 		if(!observationDirectory.empty())
 			replay.loadObservations(observationDirectory);
-		LIBRARY = new GameLibrary;
-		LIBRARY->initializeFilesystem(false);
-		logConfigurator.configure();
-		LIBRARY->initializeLibrary();
+		if(!LIBRARY)
+		{
+			PhaseTimer timer(timings["library_load"]);
+			LIBRARY = new GameLibrary;
+			LIBRARY->initializeFilesystem(false);
+			logConfigurator.configure();
+			LIBRARY->initializeLibrary();
+		}
+		else
+		{
+			timings["library_load"] = 0;
+			logConfigurator.configure();
+		}
 		if(!tracePath.empty())
 			replay.openTrace(tracePath);
 		report["summary"] = replay.run(records, allowPlatformMismatch, prefix,
@@ -639,7 +675,7 @@ int main(int argc, const char * argv[])
 		if(!contextualPath.empty())
 		{
 			auto serverSummary = report["summary"];
-			report["summary"] = contextual.run(contextualTape, prefix);
+			{ PhaseTimer timer(timings["contextual_verification"]); report["summary"] = contextual.run(contextualTape, prefix); }
 			report["summary"]["server"] = serverSummary;
 		}
 #endif
@@ -660,6 +696,9 @@ int main(int argc, const char * argv[])
 	}
 	try
 	{
+		for(const auto & [name, seconds] : timings)
+			report["timing_seconds"][name].Float() = seconds;
+		report["timing_seconds"]["replay_total_before_report"].Float() = std::chrono::duration<double>(Clock::now() - replayStart).count();
 		writeReport(reportPath, report);
 	}
 	catch(const std::exception & error)
@@ -670,4 +709,11 @@ int main(int argc, const char * argv[])
 	std::cout << jsonLine(report) << "\n";
 	logConfigurator.deconfigure();
 	return status;
+}
+
+int main(int argc, const char * argv[])
+{
+	if(argc > 1 && std::string(argv[1]) == "--experimental-worker")
+		return replayWorker(argc, argv, replayMain);
+	return replayMain(argc, argv);
 }
