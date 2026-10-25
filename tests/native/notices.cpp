@@ -2,6 +2,7 @@
 #include "StdInc.h"
 #include "Notice.h"
 #include "lib/GameLibrary.h"
+#include "lib/CCreatureHandler.h"
 #include "lib/entities/artifact/CArtHandler.h"
 #include "lib/spells/CSpellHandler.h"
 
@@ -231,6 +232,77 @@ void trophies()
 	LIBRARY->spellh->objects.at(spell.getNum()) = nativeSpell;
 }
 
+void necromancy()
+{
+	LIBRARY = new GameLibrary;
+	LIBRARY->initializeFilesystem(false);
+	LIBRARY->initializeLibrary();
+	const CreatureID skeleton(CreatureID::decode("core:skeleton"));
+	const auto * raised = LIBRARY->creatures()->getById(skeleton);
+	const auto textFor = [&](int count)
+	{
+		MetaString text;
+		text.appendLocalString(EMetaText::GENERAL_TXT, count > 1 ? 145 : 146);
+		if(count > 1) text.replaceNumber(count);
+		text.replaceTextID(count > 1 ? raised->getNamePluralTextID() : raised->getNameSingularTextID());
+		return text;
+	};
+	const auto parseNecromancy = [&](EInfoWindowMode mode, const MetaString & text,
+		const std::vector<Component> & components, bool dialogs = true)
+	{
+		return explorer_rl::normalizeNotice(mode, text, components, PlayerColor(0), {}, dialogs);
+	};
+	for(int count : {1, 4, std::numeric_limits<int32_t>::max()})
+	{
+		const auto text = textFor(count);
+		const std::vector<Component> components{Component(ComponentType::CREATURE, skeleton, count)};
+		for(int player : {0, 1})
+		{
+			const auto notice = explorer_rl::normalizeNotice(EInfoWindowMode::AUTO, text, components, PlayerColor(player), {}, true);
+			expect(notice["display_mode"].String() == "auto", "Necromancy is an automatic notice");
+			expect(notice["text"].Vector().size() == (count > 1 ? 3 : 2), "Exact native singular/plural tokens");
+			expect(notice["components"][0]["kind"].String() == "creature"
+				&& notice["components"][0]["content_id"].String() == "core:skeleton", "Displayed static creature type");
+			expect(notice["components"][0]["amount"].Integer() == count, "Displayed raised count");
+			if(count > 1)
+				expect(notice["text"][1]["op"].String() == "replace_number"
+					&& notice["text"][1]["number"].Integer() == count, "Exact number substitution");
+		}
+		reject([&] { parseNecromancy(EInfoWindowMode::AUTO, text, components, false); }, "Legacy profile unchanged");
+		for(auto mode : {EInfoWindowMode::MODAL, EInfoWindowMode::INFO})
+			reject([&] { parseNecromancy(mode, text, components); }, "Wrong necromancy mode");
+	}
+	const auto text = textFor(4);
+	const std::vector<Component> components{Component(ComponentType::CREATURE, skeleton, 4)};
+	for(const auto & bad : std::vector<Component>{
+		Component(ComponentType::CREATURE, skeleton),
+		Component(ComponentType::CREATURE, skeleton, 0),
+		Component(ComponentType::CREATURE, skeleton, -1),
+		Component(ComponentType::CREATURE, skeleton, 3),
+		Component(ComponentType::CREATURE, CreatureID(0), 4),
+		Component(ComponentType::CREATURE, CreatureID(-1), 4),
+		Component(ComponentType::CREATURE, CreatureID(std::numeric_limits<int32_t>::max()), 4),
+		Component(ComponentType::CREATURE, GameResID(skeleton.getNum()), 4),
+		Component(ComponentType::RESOURCE, GameResID(6), 4)})
+		reject([&] { parseNecromancy(EInfoWindowMode::AUTO, text, {bad}); }, "Malformed or contradictory raised component");
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, text, {}); }, "Missing raised component");
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, text, {components[0], components[0]}); }, "Extra raised component");
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, textFor(1), components); }, "Singular/count mismatch");
+	auto extra = text;
+	extra.replaceTextID("hero.core.thant.name");
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, extra, components); }, "Undisplayed hero substitution");
+	MetaString wrongName;
+	wrongName.appendLocalString(EMetaText::GENERAL_TXT, 145);
+	wrongName.replaceNumber(4);
+	wrongName.replaceTextID(raised->getNameSingularTextID());
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, wrongName, components); }, "Wrong number agreement in name");
+	MetaString wrongNumber;
+	wrongNumber.appendLocalString(EMetaText::GENERAL_TXT, 145);
+	wrongNumber.replacePositiveNumber(4);
+	wrongNumber.replaceTextID(raised->getNamePluralTextID());
+	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, wrongNumber, components); }, "Wrong numeric operation");
+}
+
 void malformedPoolsAndUnsupported()
 {
 	const std::vector<Component> gold{Component(ComponentType::RESOURCE, GameResID(6), 500)};
@@ -277,6 +349,12 @@ void malformedPoolsAndUnsupported()
 
 int main(int argc, char ** argv)
 {
+	if(argc == 2 && std::string(argv[1]) == "--necromancy")
+	{
+		necromancy();
+		std::cout << "native necromancy notice parser: " << checks << " checks passed\n";
+		return 0;
+	}
 	if(argc == 2 && std::string(argv[1]) == "--trophies")
 	{
 		trophies();

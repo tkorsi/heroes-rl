@@ -2,6 +2,7 @@
 #include "Notice.h"
 
 #include "../../lib/GameLibrary.h"
+#include "../../lib/CCreatureHandler.h"
 #include "../../lib/CSkillHandler.h"
 #include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/spells/CSpellHandler.h"
@@ -247,10 +248,10 @@ JsonNode tokenJSON(const Token & token, PlayerColor recipient)
 		result["owner"].String() = relative(playerName(token), recipient);
 		return result;
 	}
-	if(token.operation == REPLACE_POSITIVE)
+	if(token.operation == REPLACE_POSITIVE || token.operation == REPLACE_NUMBER)
 	{
 		JsonNode result;
-		result["op"].String() = "replace_positive_number";
+		result["op"].String() = token.operation == REPLACE_POSITIVE ? "replace_positive_number" : "replace_number";
 		result["number"].Integer() = token.number;
 		return result;
 	}
@@ -294,6 +295,14 @@ const Entity * shownContent(const Component & component)
 		trophyContentID(component); // exact type/range/core checks, no instance lookup
 		content = LIBRARY->artifacts()->getById(component.subType.as<ArtifactID>());
 	}
+	else if(component.type == ComponentType::CREATURE)
+	{
+		const auto id = component.subType.as<CreatureID>();
+		if(component.subType != ComponentSubType(id) || !component.value || *component.value <= 0
+			|| id.getNum() < 0 || !LIBRARY->creh || static_cast<size_t>(id.getNum()) >= LIBRARY->creh->size())
+			unsupported("Invalid displayed notice creature");
+		content = LIBRARY->creatures()->getById(id);
+	}
 	else unsupported("Unsupported displayed notice content");
 	static const std::regex key("core:[A-Za-z][A-Za-z0-9_]{0,63}");
 	if(!content || !std::regex_match(content->getJsonKey(), key)) unsupported("Unsupported displayed notice content key");
@@ -318,7 +327,8 @@ JsonNode shownComponent(const Component & component)
 	{
 		result["content_id"].String() = shownContent(component)->getJsonKey();
 		result["kind"].String() = component.type == ComponentType::SPELL ? "spell"
-			: component.type == ComponentType::SEC_SKILL ? "secondary_skill" : "artifact";
+			: component.type == ComponentType::SEC_SKILL ? "secondary_skill"
+			: component.type == ComponentType::CREATURE ? "creature" : "artifact";
 		if(component.value) result["amount"].Integer() = *component.value;
 	}
 	return result;
@@ -340,6 +350,26 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 	std::vector<Token> shown;
 	auto displayedComponents = components;
 	bool supported = false;
+	// BattleResultsApplied delivers this automatic, zero-choice notification
+	// only to the victor. Resolve only its displayed creature type in the static
+	// catalog; the template, name form and quantity must agree with the component.
+	if(mode == EInfoWindowMode::AUTO && components.size() == 1
+		&& components[0].type == ComponentType::CREATURE
+		&& (exact(tokens[0], APPEND_LOCAL, "core.genrltxt.145")
+			|| exact(tokens[0], APPEND_LOCAL, "core.genrltxt.146")))
+	{
+		const auto & component = components[0];
+		shownContent(component);
+		const auto * raised = LIBRARY->creatures()->getById(component.subType.as<CreatureID>());
+		const bool plural = *component.value > 1;
+		if(tokens.size() != (plural ? 3 : 2)
+			|| !exact(tokens[0], APPEND_LOCAL, plural ? "core.genrltxt.145" : "core.genrltxt.146")
+			|| (plural && (tokens[1].operation != REPLACE_NUMBER || tokens[1].number != *component.value))
+			|| !exact(tokens.back(), REPLACE_TEXT, plural ? raised->getNamePluralTextID() : raised->getNameSingularTextID()))
+			unsupported("Unsupported necromancy notice grammar");
+		shown = tokens;
+		supported = true;
+	}
 	// An abandoned mine's native victory continuation precedes flagMine.
 	if(mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
 		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.85"))

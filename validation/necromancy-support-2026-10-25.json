@@ -1,0 +1,203 @@
+{
+  "schema": "heroes-necromancy-support-v1",
+  "recorded_at_utc": "2026-10-25T20:48:21.273433+00:00",
+  "source_base_commit": "dc23fb43f9cae038b1ec99ae85d09f52871d35d9",
+  "change": "Accept exact v7 automatic necromancy notifications for singular/plural native templates, bound to one displayed core creature and positive int32 count.",
+  "policy_effect": "A structured observation only; no new action, query response, reward, learned weights or model tensor shapes.",
+  "legacy_profiles": "Reject the new notification; existing behavior retained.",
+  "source_sha256": {
+    "engine/ExplorerRL/Notice.cpp": "c1440335fd1d3f8298ced4c3b8ab4c3ca22819fbcfa3577475d0282da83c6c74",
+    "experiments/learner/contextual.py": "6e08e422b940c945eb2a4677b1be4db4092e51a31b07b85a83b9117815080751",
+    "tests/native/notices.cpp": "605729fa616edc66785d7a846bc9f41e751deecdffe08de097219b60ea97dede",
+    "tests/test_native_notices.py": "be9da847acdf0b7f47fc98e4af92777760454f7a43d835516dfec3c2c9fca504",
+    "tests/test_contextual_necromancy.py": "76f34228216920ebdbf475c202b5cd765c6acd994d9b26b8b01209dabb2b6bdc"
+  },
+  "checks": {
+    "native_notice_tests": {
+      "tests": 3,
+      "checks": {
+        "legacy": 98,
+        "trophies": 42,
+        "necromancy": 52
+      },
+      "passed": true
+    },
+    "python_notice_and_model_tests": {
+      "tests": 32,
+      "passed": true,
+      "modules": [
+        "tests.test_contextual_necromancy",
+        "tests.test_contextual_notices",
+        "tests.test_contextual_dialogs_notices",
+        "tests.test_contextual_dialogs_model"
+      ]
+    },
+    "native_adventure_history_and_replay_tests": {
+      "tests": 26,
+      "passed": true,
+      "modules": [
+        "tests.test_native_adventure_dialogs",
+        "tests.test_hero_notice",
+        "tests.test_contextual_replay_history",
+        "tests.test_contextual_dialogs_replay"
+      ]
+    },
+    "total_tests": 61,
+    "skipped": 0,
+    "native_targets_built": [
+      "ExplorerRL",
+      "vcmireplay"
+    ],
+    "prepare_vcmi_check": "passed",
+    "independent_code_review": "No actionable findings."
+  },
+  "retained_failure_regression": {
+    "run": "local365-continuation-093",
+    "episode": 1,
+    "day": 62,
+    "server_prefix_verified": true,
+    "inputs": 1112,
+    "outgoing_packets": 5605,
+    "divergence": null,
+    "recorded_log_sha256": "0bfc05caca373a29ef39e72d7c9c16324cf065b9a55a1c92a9198af12458a1cf",
+    "original_state_and_packet_checks": "unchanged",
+    "native_normalizer": "accepted",
+    "python_v7_decoder": "accepted",
+    "normalized_notice": {
+      "components": [
+        {
+          "amount": 4,
+          "content_id": "core:skeleton",
+          "kind": "creature",
+          "owner": null,
+          "resource": null,
+          "skill": null
+        }
+      ],
+      "display_mode": "auto",
+      "text": [
+        {
+          "number": null,
+          "op": "append_text",
+          "owner": null,
+          "text_id": "core.genrltxt.145"
+        },
+        {
+          "number": 4,
+          "op": "replace_number",
+          "owner": null,
+          "text_id": null
+        },
+        {
+          "number": null,
+          "op": "replace_text",
+          "owner": null,
+          "text_id": "creatures.core.skeleton.name.plural"
+        }
+      ]
+    },
+    "probe_report_sha256": "9eb93203c7db0f67dafe0d6da2784defed4f5b14b4d08282b4128c5d3193e5eb",
+    "probe_binary_sha256": "e01758cb62879b3ad67bd10708279bb4bdec1630707a6b152f0f33a39e8c35c3",
+    "limitation": "Server-only recorded-prefix replay plus the exact native notice and Python decoder; not a new completed game or full contextual-ledger verification. The historical failure remains excluded from training."
+  },
+  "coverage_audit": [
+    {
+      "priority": 1,
+      "feature": "Eagle Eye automatic spell-learning notice",
+      "status": "unsupported",
+      "trigger": "A hired hero such as Sanya or Nimbus wins a battle and learns an eligible enemy spell. Level1 cap does not prevent this.",
+      "evidence": [
+        "vcmi/client/UIHelper.cpp: getEagleEyeInfoWindowText, template221",
+        "vcmi/server/battles/BattleResultProcessor.cpp: Eagle Eye result processing",
+        "vcmi/config/heroes/castle.json: sanya",
+        "vcmi/config/heroes/necropolis.json: nimbus"
+      ]
+    },
+    {
+      "priority": 1,
+      "feature": "Castle Stables movement-bonus notice",
+      "status": "unsupported",
+      "trigger": "Build Stables with an owned hero present or visit that town.",
+      "evidence": [
+        "vcmi/config/factions/castle.json: special2, core.genrltxt.580",
+        "vcmi/lib/mapObjects/TownBuildingInstance.cpp: modal reward notification",
+        "engine/ExplorerRL/Notice.cpp: template580 absent"
+      ]
+    },
+    {
+      "priority": 2,
+      "feature": "Joining neutrals with a full incompatible army",
+      "status": "unsupported continuation",
+      "trigger": "Standard join/flee choices exist, but the overflow garrison window does not. New-month monster spawning makes this conditional branch possible even though authored initial guards never join.",
+      "evidence": [
+        "vcmi/server/processors/NewTurnProcessor.cpp: spawnWanderingMonsters",
+        "vcmi/server/CGameHandler.cpp: tryJoiningArmy",
+        "engine/ExplorerRL/ExplorerRL.cpp: showGarrisonDialog"
+      ]
+    },
+    {
+      "priority": 2,
+      "feature": "Marketplace trade, spellbook and war-machine purchases",
+      "status": "missing player actions",
+      "trigger": "Controls for existing towns/buildings are absent from the learner action set.",
+      "evidence": [
+        "experiments/learner/contextual.py: Action",
+        "engine/ExplorerRL/ExplorerRL.cpp: showMarketWindow",
+        "vcmi/lib/callback/IGameActionCallback.h"
+      ]
+    },
+    {
+      "priority": 2,
+      "feature": "Artifact inventory, equipment, exchange and assembly",
+      "status": "missing player actions",
+      "trigger": "Trophies and hired heroes can introduce artifacts; a trophy notice does not expose inventory controls.",
+      "evidence": [
+        "experiments/learner/contextual.py: Action",
+        "engine/ExplorerRL/Contextual.cpp: askToAssembleArtifact"
+      ]
+    },
+    {
+      "priority": 3,
+      "feature": "Hero level-up skill choices",
+      "status": "unsupported contextual callback; dormant under current cap",
+      "trigger": "Requires deliberate lifting of scenario level_cap=1.",
+      "evidence": [
+        "configs/hero-management-v1.json",
+        "engine/ExplorerRL/ExplorerRL.cpp: heroGotLevel"
+      ]
+    },
+    {
+      "priority": 3,
+      "feature": "Adventure spells, boats, external dwellings/Taverns, universities, quests and remaining object windows",
+      "status": "missing or explicitly unsupported",
+      "trigger": "Broader scenarios and hero capabilities require separate interface work.",
+      "evidence": [
+        "experiments/learner/contextual.py: Action",
+        "engine/ExplorerRL/ExplorerRL.cpp: unsupported callbacks",
+        "engine/ExplorerRL/Contextual.cpp: unsupported windows",
+        "engine/ExplorerRL/KnowledgePlanner.cpp: land movement restrictions"
+      ]
+    }
+  ],
+  "already_implemented": [
+    "Coordinate movement/native routing",
+    "Town construction and creature recruitment",
+    "Town Tavern/hero hiring",
+    "Creature upgrades",
+    "Army split/merge/swap and garrison transfers",
+    "Own-hero army exchange",
+    "Selected guard, neutral, chest, Arena and school dialogs"
+  ],
+  "intentionally_automatic": [
+    "Tactical combat and its BattleAI decisions"
+  ],
+  "audit_limits": [
+    "Source inspection identifies concrete gaps but is not exhaustive coverage of every VCMI path.",
+    "No newly identified gap other than necromancy was changed by this patch.",
+    "The frozen campaign runtime and verified checkpoint92 were not replaced. A future campaign still requires fresh source/runtime identity and validation."
+  ],
+  "new_games": 0,
+  "ppo_updates": 0,
+  "historical_failed_samples_admitted": 0,
+  "training_restart_authorized": false
+}

@@ -1086,6 +1086,7 @@ DIALOG_NOTICE_TEXT_IDS = frozenset({
     *(f"core.genrltxt.{index}" for index in (29, 139, 140, 141, 142, 147, 148)),
     "heroes.notice.comma_space",
 })
+NECROMANCY_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.145", "core.genrltxt.146"})
 _REWARD_NOTICE_TEXT_ID = re.compile(r"(?:spell|skill|artifact)\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.name")
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
@@ -1108,7 +1109,7 @@ class NoticeToken:
             if self.number is not None or (self.text_id is None) == (self.owner is None):
                 raise ValueError("Notice text operation requires exactly one text ID or relative owner")
             if self.text_id is not None:
-                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS | DIALOG_TEXT_IDS | DIALOG_NOTICE_TEXT_IDS
+                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS | DIALOG_TEXT_IDS | DIALOG_NOTICE_TEXT_IDS | NECROMANCY_NOTICE_TEXT_IDS
                         and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _REWARD_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _HERO_NAME_TEXT_ID.fullmatch(self.text_id) is None):
@@ -1234,7 +1235,7 @@ class NoticeComponent:
     resource: str | None = None
     amount: int | None = None
     owner: str | None = None
-    # Static artifact/spell definition shown by a delivered trophy component;
+    # Static content definition shown by a delivered informational component;
     # never an instance identifier, inventory query or description/utility text.
     content_id: str | None = None
     skill: str | None = None
@@ -1260,6 +1261,11 @@ class NoticeComponent:
             if (any(value is not None for value in (self.resource, self.amount, self.owner))
                     or type(self.content_id) is not str or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
                 raise ValueError("Trophy notice component requires only a static core content ID")
+        elif self.kind == "creature":
+            if (self.resource is not None or self.owner is not None or type(self.content_id) is not str
+                    or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
+                raise ValueError("Raised creature requires only its displayed static core definition and count")
+            _integer(self.amount, low=1, high=2**31 - 1, name="displayed raised creature count")
         elif self.kind in ("secondary_skill", "spell"):
             if (self.resource is not None or self.owner is not None or type(self.content_id) is not str
                     or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
@@ -1373,9 +1379,29 @@ def _dialog_notice(notice):
     return False
 
 
+def _necromancy_notice(notice):
+    """Exact automatic native result; it creates no action, query or reward."""
+    if notice.display_mode != "auto" or len(notice.components) != 1:
+        return False
+    creature = notice.components[0]
+    if creature.kind != "creature":
+        return False
+    plural = creature.amount > 1
+    expected = (NoticeToken("append_text", text_id="core.genrltxt.145" if plural else "core.genrltxt.146"),)
+    if plural:
+        expected += (NoticeToken("replace_number", number=creature.amount),)
+    expected += (NoticeToken("replace_text", text_id=f"creatures.core.{creature.content_id[5:]}.name.{'plural' if plural else 'singular'}"),)
+    return notice.text == expected
+
+
 def _validate_notice(notice, profile):
     if not profile.dialogs and (len(notice.text) > 64 or len(notice.components) > 32):
         raise ValueError("Legacy notices retain their original bounded payload limits")
+    if (any(token.text_id in NECROMANCY_NOTICE_TEXT_IDS for token in notice.text)
+            or any(component.kind == "creature" for component in notice.components)):
+        if not profile.dialogs or not _necromancy_notice(notice):
+            raise ValueError("Necromancy requires its exact automatic v7 delivered notice grammar")
+        return
     additional = (any(token.text_id is not None and (token.text_id in DIALOG_NOTICE_TEXT_IDS
                    or _REWARD_NOTICE_TEXT_ID.fullmatch(token.text_id) is not None) for token in notice.text)
                   or any(component.kind in ("primary_skill", "secondary_skill", "spell") for component in notice.components))
