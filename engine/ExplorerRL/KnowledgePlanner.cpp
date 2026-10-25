@@ -2,6 +2,7 @@
 #include "KnowledgePlanner.h"
 #include "VisibleWorld.h"
 
+#include "../../lib/CPlayerState.h"
 #include "../../lib/callback/CCallback.h"
 #include "../../lib/mapObjects/CGHeroInstance.h"
 #include "../../lib/mapObjects/ObjectTemplate.h"
@@ -12,6 +13,7 @@
 #include "../../lib/pathfinder/NodeStorage.h"
 #include "../../lib/pathfinder/PathfinderOptions.h"
 #include "../../lib/pathfinder/PathfindingRules.h"
+#include "../../lib/pathfinder/PathfinderUtil.h"
 #include "../../lib/pathfinder/TurnInfo.h"
 
 #include <unordered_map>
@@ -282,26 +284,36 @@ private:
 	}
 };
 
-/// Land nodes only, with knowledge accessibility. Water tiles get no node, so
-/// boats and coastal objects are unreachable rather than embark targets.
+/// Land accessibility uses only visible objects. The native air/water rules
+/// consume those same filtered tiles and this player's fog map; neither can
+/// route through unknown tiles. Sailing nodes remain absent.
 class KnowledgeNodeStorage final : public NodeStorage
 {
 public:
 	KnowledgeNodeStorage(CPathsInfo & paths, const CGHeroInstance * hero, const KnowledgeMap & knowledge)
-		: NodeStorage(paths, hero), knowledge(knowledge)
+		: NodeStorage(paths, hero), knowledge(knowledge), hero(hero)
 	{
 	}
 
-	void initialize(const PathfinderOptions &, const IGameInfoCallback &) override
+	void initialize(const PathfinderOptions & options, const IGameInfoCallback &) override
 	{
 		const auto size = knowledge.getMapSize();
+		const auto owner = hero->getOwner();
+		const auto & fog = knowledge.getPlayerTeam(owner)->fogOfWarMap;
 		for(int z = 0; z < size.z; ++z)
 			for(int x = 0; x < size.x; ++x)
 				for(int y = 0; y < size.y; ++y)
 				{
 					const int3 position(x, y, z);
-					if(knowledge.getTile(position, false)->isLand())
+					const auto & tile = *knowledge.getTile(position, false);
+					if(tile.isLand())
 						getNode(position, EPathfindingLayer::LAND)->update(position, EPathfindingLayer::LAND, knowledge.landAccessibility(position));
+					if(options.useFlying && (tile.isLand() || tile.isWater()))
+						getNode(position, EPathfindingLayer::AIR)->update(position, EPathfindingLayer::AIR,
+							PathfinderUtil::evaluateAccessibility<EPathfindingLayer::AIR>(position, tile, fog, owner, knowledge));
+					if(options.useWaterWalking && tile.isWater())
+						getNode(position, EPathfindingLayer::WATER)->update(position, EPathfindingLayer::WATER,
+							PathfinderUtil::evaluateAccessibility<EPathfindingLayer::WATER>(position, tile, fog, owner, knowledge));
 				}
 	}
 
@@ -312,16 +324,17 @@ public:
 
 private:
 	const KnowledgeMap & knowledge;
+	const CGHeroInstance * hero;
 };
 
-/// Refuses every destination outside the land layer before any rule can
-/// commit it. The options cannot express this: sailing stays available.
-class LandOnlyRule final : public IPathfindingRule
+/// Refuses sailing before any rule can commit it. Embark options alone do not
+/// disable the sailing layer; active flight/water walking remain native layers.
+class SupportedLayerRule final : public IPathfindingRule
 {
 public:
 	void process(const PathNodeInfo & source, CDestinationNodeInfo & destination, const PathfinderConfig *, CPathfinderHelper *) const override
 	{
-		if(source.node->layer != EPathfindingLayer::LAND || destination.node->layer != EPathfindingLayer::LAND)
+		if(source.node->layer == EPathfindingLayer::SAIL || destination.node->layer == EPathfindingLayer::SAIL)
 			destination.blocked = true;
 	}
 };
@@ -335,6 +348,13 @@ public:
 	{
 		if(destination.action != EPathNodeAction::UNKNOWN)
 			return;
+		// Match DestinationActionRule: special layers transit without visits or
+		// battles, even above a visible guard. Landing follows the land rules.
+		if(destination.node->layer != EPathfindingLayer::LAND)
+		{
+			destination.action = EPathNodeAction::NORMAL;
+			return;
+		}
 		auto action = EPathNodeAction::NORMAL;
 		if(destination.isNodeObjectVisitable())
 		{
@@ -376,13 +396,13 @@ public:
 	}
 };
 
-/// One hero's fixed ordinary-land configuration over a knowledge map.
+/// One hero's native movement configuration over a knowledge map.
 class KnowledgeConfig final : public PathfinderConfig
 {
 public:
 	KnowledgeConfig(std::shared_ptr<INodeStorage> storage, const KnowledgeMap & knowledge, const CGHeroInstance * hero)
 		: PathfinderConfig(std::move(storage), knowledge, {
-			std::make_shared<LandOnlyRule>(),
+			std::make_shared<SupportedLayerRule>(),
 			std::make_shared<LayerTransitionRule>(),
 			std::make_shared<KnowledgeDestinationActionRule>(),
 			std::make_shared<MovementToDestinationRule>(),
@@ -390,8 +410,9 @@ public:
 			std::make_shared<MovementAfterDestinationRule>()})
 		, hero(hero)
 	{
-		options.useFlying = false;
-		options.useWaterWalking = false;
+		const auto turn = hero->getTurnInfo(0);
+		options.useFlying = turn->hasFlyingMovement();
+		options.useWaterWalking = turn->hasWaterWalking();
 		options.ignoreGuards = false;
 		options.useEmbarkAndDisembark = false;
 		options.useTeleportTwoWay = false;
@@ -429,8 +450,6 @@ RoutePlan planRoute(const CCallback & player, const CGHeroInstance & hero, const
 {
 	if(!player.getPlayerID() || *player.getPlayerID() != hero.getOwner())
 		throw std::logic_error("Knowledge routing requires the owned hero's player callback");
-	if(hero.getTurnInfo(0)->hasFlyingMovement() || hero.getTurnInfo(0)->hasWaterWalking())
-		throw std::runtime_error("Unsupported scenario interaction: special movement bonus");
 	RoutePlan plan;
 	if(hero.inBoat())
 		return plan; // sailing is outside the travel modes
@@ -445,21 +464,34 @@ RoutePlan planRoute(const CCallback & player, const CGHeroInstance & hero, const
 	CGPath path;
 	if(!paths.getPath(path, destination))
 		return plan;
-	std::vector<PlannedNode> nodes;
 	for(size_t i = 0; i < path.nodes.size(); ++i)
 	{
 		const auto & node = path.nodes[i];
 		const bool origin = i + 1 == path.nodes.size();
 		const bool supported = node.action == EPathNodeAction::NORMAL || node.action == EPathNodeAction::VISIT
 			|| node.action == EPathNodeAction::BLOCKING_VISIT || node.action == EPathNodeAction::BATTLE;
-		if(node.layer != EPathfindingLayer::LAND || !(origin || supported))
-			throw std::logic_error("The knowledge planner produced a step outside ordinary land movement");
-		nodes.push_back({gridPosition(node.coord), node.turns});
+		const bool supportedLayer = node.layer == EPathfindingLayer::LAND || node.layer == EPathfindingLayer::AIR
+			|| node.layer == EPathfindingLayer::WATER;
+		if(!supportedLayer || !(origin || supported))
+			throw std::logic_error("The knowledge planner produced an unsupported movement step");
 	}
 	plan.known = true;
-	for(const auto & step : currentTurnPrefix(nodes))
-		plan.steps.emplace_back(step[0], step[1], step[2]);
-	plan.complete = plan.steps.size() + 1 == nodes.size();
+	size_t landedPrefix = 0;
+	for(size_t i = path.nodes.size() - 1; i-- > 0;)
+	{
+		const auto & node = path.nodes[i];
+		if(node.turns != 0)
+			break;
+		const bool transit = node.layer == EPathfindingLayer::AIR || node.layer == EPathfindingLayer::WATER;
+		plan.steps.push_back({node.coord, transit});
+		if(!transit)
+			landedPrefix = plan.steps.size();
+	}
+	// A move choice must finish where the hero can stand. The native one-turn
+	// special-layer rule already enforces this for ordinary routes; retaining
+	// only a landed prefix also prevents a turn cutoff from stranding the hero.
+	plan.steps.resize(landedPrefix);
+	plan.complete = plan.steps.size() + 1 == path.nodes.size();
 	return plan;
 }
 }
