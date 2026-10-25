@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 import subprocess
 import time
+import math
 
 
 def digest(path):
@@ -55,6 +56,29 @@ def validate_jobs(jobs):
     return jobs
 
 
+def input_identity(jobs):
+    paths = set()
+    for job in jobs:
+        for index, option in enumerate(job):
+            if option in ('--log', '--contextual'):
+                paths.add(Path(job[index + 1]).resolve())
+            elif option == '--observations':
+                paths.update(Path(job[index + 1]).resolve().glob('observations-p*.jsonl'))
+    return {str(path): digest(path) for path in sorted(paths)}
+
+
+def library_identity(binary):
+    # These are the directly linked runtime libraries, not a complete inventory
+    # of mods, Data or libraries opened later by dlopen.
+    output = subprocess.check_output(['ldd', str(binary)], text=True)
+    paths = set()
+    for line in output.splitlines():
+        for token in line.split():
+            if token.startswith('/') and Path(token).is_file():
+                paths.add(Path(token).resolve())
+    return {str(path): digest(path) for path in sorted(paths)}
+
+
 def measure(binary, jobs, output, mode, job_seconds, startup_seconds):
     output.mkdir()
     commands = [job + ['--report', str(output / f'{i}.json')] for i, job in enumerate(jobs)]
@@ -88,7 +112,9 @@ def measure(binary, jobs, output, mode, job_seconds, startup_seconds):
         raise RuntimeError('Unverified native replay')
     return {'mode': mode, 'wall_seconds': elapsed, 'receipts': receipts,
             'native_timings': [report.get('timing_seconds') for report in reports],
-            'native_episode_timings': [report.get('summary', {}).get('timing_seconds') for report in reports],
+            'native_episode_timings': [report.get('summary', {}).get('timing_seconds',
+                                      report.get('summary', {}).get('server', {}).get('timing_seconds'))
+                                      for report in reports],
             'semantic_reports': [semantic(report) for report in reports]}
 
 
@@ -101,14 +127,20 @@ def main():
     parser.add_argument('--job-seconds', type=float, default=120)
     parser.add_argument('--startup-seconds', type=float, default=120)
     args = parser.parse_args()
-    if args.repeats < 1 or args.job_seconds <= 0 or args.startup_seconds <= 0:
+    if (args.repeats < 1 or not 0.001 <= args.job_seconds <= 3600
+            or not math.isfinite(args.startup_seconds) or args.startup_seconds <= 0):
         parser.error('repeats and deadlines must be positive')
     jobs = validate_jobs(json.loads(args.jobs.read_text()))
     binary = args.binary.resolve(strict=True)
     args.output = args.output.resolve()
     args.output.mkdir()
+    root = Path(__file__).resolve().parents[1]
+    revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+    dirty = subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).splitlines()
     report = {'schema': 'heroes-native-lifecycle-benchmark-v1', 'status': 'incomplete',
+              'source_revision': revision, 'source_dirty': dirty,
               'binary_sha256': digest(binary), 'jobs_sha256': digest(args.jobs),
+              'input_files': input_identity(jobs), 'linked_libraries': library_identity(binary),
               'workload': 'native replay verification; not gameplay throughput', 'runs': [],
               'unmeasured': ['complete_game_throughput', 'policy_inference', 'live_transport',
                              'live_opponent_work', 'pathfinding_and_autobattle_breakdown',
@@ -126,8 +158,10 @@ def main():
                     reference = semantics
                 if reference != semantics:
                     raise RuntimeError('Fresh and reset replay reports differ')
-                if digest(binary) != report['binary_sha256'] or digest(args.jobs) != report['jobs_sha256']:
-                    raise RuntimeError('Binary or job manifest drift')
+                if (digest(binary) != report['binary_sha256'] or digest(args.jobs) != report['jobs_sha256']
+                        or input_identity(jobs) != report['input_files']
+                        or library_identity(binary) != report['linked_libraries']):
+                    raise RuntimeError('Binary, job manifest, capture or linked-library drift')
                 report['runs'].append(run)
         report['status'] = 'verified_report_equivalence'
     except Exception as error:

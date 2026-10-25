@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <filesystem>
 #include <functional>
+#include <iostream>
 #include <map>
 #include <stdexcept>
 #include <thread>
@@ -70,6 +71,8 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 		throw std::runtime_error("Episode deadline must be positive");
 	requireSingleThread();
 	const auto positions = descriptorPositions();
+	std::cout.flush();
+	std::cerr.flush();
 	std::fflush(nullptr);
 	const auto start = std::chrono::steady_clock::now();
 	const pid_t parent = getpid();
@@ -85,6 +88,8 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 		int code = 125;
 		try { code = run(); }
 		catch(...) { code = 125; }
+		std::cout.flush();
+		std::cerr.flush();
 		std::fflush(nullptr);
 		// No inherited global destructors/settings saves in the episode process.
 		_exit(code >= 0 && code <= 125 ? code : 125);
@@ -95,11 +100,20 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 	bool timedOut = false;
 	for(;;)
 	{
-		const auto waited = waitpid(child, &status, WNOHANG);
-		if(waited == child)
+		siginfo_t info{};
+		const auto waited = waitid(P_PID, child, &info, WEXITED | WNOHANG | WNOWAIT);
+		if(waited == 0 && info.si_pid == child)
+		{
+			// Keep the leader unreaped until group cleanup: its PID cannot be
+			// recycled into an unrelated process group between wait and kill.
+			kill(-child, SIGKILL);
+			while(waitpid(child, &status, 0) < 0)
+				if(errno != EINTR)
+					throw std::runtime_error("Cannot reap episode");
 			break;
+		}
 		if(waited < 0 && errno != EINTR)
-			throw std::runtime_error("Cannot reap episode");
+			throw std::runtime_error("Cannot observe episode exit");
 		if(std::chrono::steady_clock::now() - start >= limit)
 		{
 			timedOut = true;
@@ -112,8 +126,6 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 		}
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
-	// Descendants must not outlive even a normally exiting episode leader.
-	kill(-child, SIGKILL);
 	for(const auto & [fd, offset] : positions)
 		if(lseek(fd, offset, SEEK_SET) != offset)
 			throw std::runtime_error("Cannot restore inherited descriptor position");

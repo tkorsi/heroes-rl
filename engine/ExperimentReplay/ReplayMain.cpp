@@ -406,13 +406,13 @@ public:
 		StartInfo startInfo;
 		decodeStartInfo(fromHex(init["start_info"].String()), startInfo);
 		{
-		PhaseTimer timer(timings["episode_init"]);
-		gameHandler = std::make_unique<CGameHandler>(server);
-		server.gameHandler = gameHandler.get();
-		Load::ProgressAccumulator progress;
-		gameHandler->init(&startInfo, progress);
+			PhaseTimer timer(timings["episode_init"]);
+			gameHandler = std::make_unique<CGameHandler>(server);
+			server.gameHandler = gameHandler.get();
+			Load::ProgressAccumulator progress;
+			gameHandler->init(&startInfo, progress);
 		}
-		expectState("init", init, *gameHandler);
+		{ PhaseTimer timer(timings["state_verification"]); expectState("init", init, *gameHandler); }
 #ifdef HEROES_CONTEXTUAL_REPLAY
 		if(contextual)
 		{
@@ -430,15 +430,15 @@ public:
 		writeTraceMap();
 
 		{
-		PhaseTimer timer(timings["episode_start"]);
-		gameHandler->start(false);
+			PhaseTimer timer(timings["episode_start"]);
+			gameHandler->start(false);
 		}
 		server.setState(EServerState::GAMEPLAY);
 		const auto & start = records[1];
 		expectEqual("start", "out", text(start["out"]), std::to_string(server.outgoing.count));
 		expectEqual("start", "client_out", text(start["client_out"]), std::to_string(server.outgoing.clientCount));
 		expectChain("start", start, server.outgoing);
-		expectState("start", start, *gameHandler);
+		{ PhaseTimer timer(timings["state_verification"]); expectState("start", start, *gameHandler); }
 		writeTrace(-1, nullptr);
 
 		for(size_t index = 2; index < records.size(); index += 2)
@@ -455,6 +455,7 @@ public:
 			std::unique_ptr<CPack> decoded;
 			try
 			{
+				PhaseTimer timer(timings["input_decode"]);
 				decoded = decodePack(fromHex(input["pack"].String()), &gameHandler->gameInfo());
 			}
 			catch(const std::runtime_error &)
@@ -474,8 +475,8 @@ public:
 			const auto firstClientPacket = server.outgoing.clientCount + 1;
 #endif
 			{
-			PhaseTimer timer(timings["native_transition_inclusive"]);
-			gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
+				PhaseTimer timer(timings["native_transition_inclusive"]);
+				gameHandler->handleReceivedPack(GameConnectionID(static_cast<int8_t>(input["connection"].Integer())), *pack);
 			}
 			++inputs;
 
@@ -501,7 +502,7 @@ public:
 			{
 				if(applied["digest"].isNull())
 					throw Divergence(after, "digest", "null", digestHex(stateDigest(*gameHandler)));
-				expectState(after, applied, *gameHandler);
+				{ PhaseTimer timer(timings["state_verification"]); expectState(after, applied, *gameHandler); }
 #ifdef HEROES_CONTEXTUAL_REPLAY
 				if(contextual && !prefix && index + 2 == records.size() && std::string(boundary) == "game_end"
 					&& gameHandler->experimentTerminalBarrierSent())
@@ -674,7 +675,7 @@ int replayMain(int argc, const char * argv[])
 		if(!contextualPath.empty())
 		{
 			auto serverSummary = report["summary"];
-			report["summary"] = contextual.run(contextualTape, prefix);
+			{ PhaseTimer timer(timings["contextual_verification"]); report["summary"] = contextual.run(contextualTape, prefix); }
 			report["summary"]["server"] = serverSummary;
 		}
 #endif

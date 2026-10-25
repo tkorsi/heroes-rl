@@ -11,6 +11,28 @@
 #include "../lib/json/JsonNode.h"
 #include "../lib/logging/CBasicLogConfigurator.h"
 
+#ifdef __linux__
+namespace
+{
+bool readJob(std::string & line)
+{
+	line.clear();
+	char byte;
+	while(std::cin.get(byte))
+	{
+		if(byte == '\n')
+			return true;
+		if(line.size() == 65536)
+			throw std::runtime_error("Job exceeds 65536 bytes");
+		line += byte;
+	}
+	if(!std::cin.eof())
+		throw std::runtime_error("Cannot read worker input");
+	return !line.empty();
+}
+}
+#endif
+
 int replayWorker(int argc, const char * argv[], int (*run)(int, const char **))
 {
 #ifndef __linux__
@@ -50,7 +72,7 @@ int replayWorker(int argc, const char * argv[], int (*run)(int, const char **))
 			std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count());
 		fflush(replies);
 		std::string line;
-		while(std::getline(std::cin, line))
+		while(readJob(line))
 		{
 			if(line.empty() || line.size() > 65536)
 				throw std::runtime_error("Expected a JSON argument array of at most 65536 bytes");

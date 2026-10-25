@@ -22,7 +22,8 @@ Neither supplies a cost breakdown for this runtime.
 | Episode reset/init | `summary.timing_seconds.episode_init` and `episode_start` | Requires real capture/assets |
 | Native transitions | `native_transition_inclusive` around `handleReceivedPack` | Requires real capture/assets |
 | Observation verification | `observation_verification` inside packet application | Requires real capture/assets; overlaps native transition |
-| Other verification / trace / decoding | Internal replay total less measured phases is an unattributed residual | Requires real capture/assets |
+| State / contextual verification and input decoding | `state_verification`, `contextual_verification`, `input_decode` | Requires real capture/assets |
+| Other verification / trace | Internal replay total less measured phases is an unattributed residual | Requires real capture/assets |
 | Pathfinding and automatic battle detail | Not separated by this prototype | Unmeasured |
 | Live opponent work, transport, policy inference | Existing Claude end-to-end campaign lane | Unmeasured here |
 | Complete-game throughput / end-to-end experiment | Existing validated gameplay runner and Claude campaigns | Unmeasured here |
@@ -97,7 +98,10 @@ python3 tools/benchmark_native_lifecycle.py \
 The tool alternates cold/worker ordering, requires every native report to verify,
 and compares complete report semantics across both modes and all repeats,
 excluding only timing metadata. Exact existing state/packet/observation hashes
-remain mandatory. Failed or incomplete runs cannot acquire an equivalence label.
+remain mandatory. It binds binary, job-manifest, capture, observation-file and
+directly linked library bytes and rejects drift. Mods, Data and later `dlopen`
+libraries still require an immutable external runtime; the tool does not certify
+their identity or a clean host load. Failed or incomplete runs cannot acquire an equivalence label.
 Native logs and reports remain ignored. The tool measures replay wall time and
 per-job replay latency, not learned-policy step latency or full-game throughput.
 Do not accept the optimization for training until real repeated-reset equivalence
