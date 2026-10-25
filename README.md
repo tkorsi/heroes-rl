@@ -101,7 +101,9 @@ consolidated hashes, with a trained-policy parity proof; the generic portable
 guard still rejects arbitrary policy changes. A fresh frozen two-seat gate
 passed native replay and cleanup in 8.432 seconds (two losses, zero updates).
 
-The new local configuration explicitly assigns `max_days=365`. A single durable
+The [local configuration](configs/builtin-local365-v1.json) explicitly assigns
+`max_days=365`; the [training migration](configs/builtin-local365-migration-training-v1.json)
+binds the exact update-31 state and fresh native gate. A single durable
 `local365/campaign-session.json` and exclusive controller lock cap the campaign
 at two hours from actual launch, with five minutes reserved for cleanup and
 publication. The entire controller has an independent deadline guardian; each
