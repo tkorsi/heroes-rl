@@ -3046,7 +3046,14 @@ seven army slots are summarized beside the maps. Click a map tile to inspect its
 coordinates, readable object names and visible object IDs. Map objects use distinct
 semantic icons (hero, town, mine, neutral army and resource subtype), with owner
 colors on their borders. Co-located heroes and towns are offset so both remain
-visible. These are schematic symbols, not original game sprites. No network inference or training runs in the app.
+visible. Clicking an icon selects that exact object and displays a description
+card below the maps. Resource quantities and starting inventories come from the
+verified map and are explicitly marked as spectator data. The learner hero card
+also displays the latest delivered army, movement and hero-window statistics,
+with packet freshness. Enemy current inventories remain unavailable rather than
+being inferred from starting quantities. Selected cards update with timeline
+navigation and hide when the selected object disappears from the chosen view.
+These are schematic symbols, not original game sprites. No network inference or training runs in the app.
 
 Map snapshots advance only when the client reaches a completed native input's
 packet endpoint. Intermediate events retain the last completed snapshot. Army

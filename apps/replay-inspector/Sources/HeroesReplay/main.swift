@@ -6,8 +6,10 @@ struct PlayerView: Decodable { let visible: String; let objects: [Int] }
 struct Frame: Decodable { let seq: Int; let day: Int; let boundary: String?; let objects: [[Int]]; let players: [String: PlayerView]; let battles: [[Int]] }
 struct Slot: Decodable { let slot: Int; let creature: Int; let count: Int }
 struct Army: Decodable { let name: String; let status: String; let position: [Int]?; let slots: [Slot]; let source_packet: Int; let freshness: String }
-struct Event: Decodable, Identifiable { let id: Int; let title: String; let actor: String; let category: String; let frame: Int; let packet: Int; let source: String; let raw: String; let observation: String; let policy: String; let summary: String; let army: Army }
+struct Event: Decodable, Identifiable { let id: Int; let title: String; let actor: String; let category: String; let frame: Int; let packet: Int; let source: String; let raw: String; let observation: String; let policy: String; let summary: String; let army: Army; let hero_details: String?; let hero_details_packet: Int? }
+struct ObjectDetails: Decodable { let initial: String; let quantity: Int?; let subtype: String }
 struct Replay: Decodable {
+    let object_details: [String:ObjectDetails]?
     let schema: String; let title: String; let subtitle: String; let header: Header
     let frames: [Frame]; let armies: [Army]; let events: [Event]; let documents: [String: String]
     func validate() throws {
@@ -76,6 +78,7 @@ struct MapView: View {
     let header: Header
     let frame: Frame
     let fog: Bool
+    let selectObject: (Int?, Bool) -> Void
     @State private var tile = "Нажмите клетку: координаты и объекты"
     let colors = [0x6f5b43,0xc3af76,0x4b7743,0xd8e0ea,0x415844,0x786852,0x554d46,0x6e3127,0x2a5288,0x373b43]
     var body: some View {
@@ -115,12 +118,14 @@ struct MapView: View {
                 let shown = frame.objects.filter { !fog || frame.players["1"]!.objects.contains($0[0]) }
                 let w = geo.size.width / Double(header.width), h = geo.size.height / Double(header.height)
                 // Hit-test the displayed symbols, including co-located icon offsets.
+                var picked: Int? = nil
                 if let hit = shown.sorted(by: { ($0[4] == 34 ? 1 : 0) > ($1[4] == 34 ? 1 : 0) }).first(where: { obj in
                     let shared = shown.contains { $0[0] != obj[0] && $0[1] == obj[1] && $0[2] == obj[2] }
                     let offset = shared ? (obj[4] == 34 ? 0.7 : -0.7) : 0.0
                     return abs(p.x - (Double(obj[1])+0.5+offset)*w) <= min(w,h)*0.675 && abs(p.y - (Double(obj[2])+0.5)*h) <= min(w,h)*0.675
-                }) { x = hit[1]; y = hit[2] }
+                }) { x = hit[1]; y = hit[2]; picked = hit[0] }
                 let objects = shown.filter { $0[1] == x && $0[2] == y }
+                selectObject(picked ?? objects.first?[0], fog)
                 tile = "(\(x), \(y)) · " + (objects.isEmpty ? "нет видимых объектов" : objects.map { "\(objectAppearance($0).icon) \(objectAppearance($0).name) · id \($0[0])" }.joined(separator: "; "))
             } } }
             Text(tile).font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(2).frame(height:28,alignment:.topLeading)
@@ -135,6 +140,8 @@ struct RawText: View {
 }
 struct ContentView: View {
     @EnvironmentObject var store: Store
+    @State private var selectedObject: Int?
+    @State private var selectionUsesFog = false
     var body: some View {
         VStack(spacing: 0) {
             if let r = store.replay, let e = store.event {
@@ -143,7 +150,8 @@ struct ContentView: View {
                     timeline.frame(minWidth:240,idealWidth:275,maxWidth:360)
                     ScrollView {
                         VStack(alignment:.leading,spacing:12) {
-                            HStack { MapView(header:r.header,frame:r.frames[e.frame],fog:false); MapView(header:r.header,frame:r.frames[e.frame],fog:true) }
+                            HStack(alignment:.top) { MapView(header:r.header,frame:r.frames[e.frame],fog:false,selectObject:selectObject); MapView(header:r.header,frame:r.frames[e.frame],fog:true,selectObject:selectObject) }
+                            objectCard(r,e)
                             Text("♞ герой   🏰 город   ⛏️ шахта   🛡️ нейтралы   💰 золото   ⚔ автобой").font(.caption).foregroundStyle(.secondary)
                             army(e.army)
                             observationSummary(e.observation)
@@ -159,6 +167,68 @@ struct ContentView: View {
             } else { VStack(spacing:20) { Text("Heroes Replay").font(.largeTitle); Button("Открыть replay…") { store.open() } }.frame(maxWidth:.infinity,maxHeight:.infinity) }
         }.background(navy).preferredColorScheme(.dark)
         .alert("Не удалось открыть replay", isPresented: Binding(get: { !store.error.isEmpty }, set: { if !$0 { store.error = "" } })) { Button("OK") { store.error = "" } } message: { Text(store.error) }
+    }
+    func selectObject(_ id: Int?, _ fog: Bool) { selectedObject = id; selectionUsesFog = fog }
+    func dictionary(_ text: String?) -> [String:Any]? {
+        guard let data = text?.data(using:.utf8) else { return nil }
+        return (try? JSONSerialization.jsonObject(with:data)) as? [String:Any]
+    }
+    @ViewBuilder func objectCard(_ r: Replay, _ e: Event) -> some View {
+        if let id = selectedObject {
+            let frame = r.frames[e.frame]
+            if let obj = frame.objects.first(where:{$0[0] == id}), !selectionUsesFog || frame.players["1"]!.objects.contains(id) {
+                let appearance = objectAppearance(obj)
+                let meta = r.object_details?[String(id)]
+                VStack(alignment:.leading,spacing:8) {
+                    HStack {
+                        Text("\(appearance.icon) \(obj[4] == 53 && meta?.subtype == "sawmill" ? "Лесопилка" : appearance.name)").font(.title3.bold())
+                        Spacer()
+                        Text("(\(obj[1]), \(obj[2])) · \(obj[6] == 1 ? "Синие" : obj[6] == 0 ? "Красные" : "Нейтральный")").font(.caption).foregroundStyle(.secondary)
+                    }
+                    if obj[4] == 79 {
+                        Text("Ресурс на карте. Герой может подобрать его при посещении.").font(.callout)
+                        if let quantity = meta?.quantity {
+                            Text("\(appearance.name): \(quantity)").font(.headline).foregroundStyle(.yellow)
+                            Text("Количество задано в исходной карте; после подбора объект исчезает.").font(.caption).foregroundStyle(.secondary)
+                        } else { Text("Количество не записано.").font(.caption) }
+                    } else if obj[4] == 34 {
+                        Text("Герой с армией: перемещается по карте, посещает объекты и вступает в бой.").font(.callout)
+                        if obj[6] == 1 && obj[5] == 2 {
+                            Text("Армия: " + e.army.slots.map { "\($0.count) × \($0.creature == 0 ? "копейщики" : "тип \($0.creature)") (слот \($0.slot+1))" }.joined(separator:"; ")).font(.callout)
+                            Text(e.army.freshness == "pre_battle" ? "Показана армия до автобоя; текущие потери не записаны." : "Последний снимок армии · пакет \(e.army.source_packet)").font(.caption).foregroundStyle(.secondary)
+                            if let observation = dictionary(e.observation), let heroes = observation["heroes"] as? [[String:Any]], let hero = heroes.first(where: { $0["handle"] as? String == "object-0" }) {
+                                Text("Очки хода: \(hero["movement"] as? Int ?? 0) / \(hero["movement_max"] as? Int ?? 0) · последнее наблюдение").font(.callout)
+                            }
+                            if let window = dictionary(e.hero_details) {
+                                Text("Уровень: \(window["level"] as? Int ?? 0) · мана: \(window["mana"] as? Int ?? 0)").font(.callout)
+                                if let skills = window["primary_skills"] as? [Int], skills.count == 4 {
+                                    Text("Атака \(skills[0]) · защита \(skills[1]) · сила магии \(skills[2]) · знания \(skills[3])").font(.callout)
+                                }
+                                Text("Характеристики из последнего открытого окна · пакет \(e.hero_details_packet ?? 0). Артефакты и заклинания это окно не записывает.").font(.caption).foregroundStyle(.secondary)
+                            }
+                        } else {
+                            Text("Текущая армия, мана, очки хода и инвентарь противника в этом журнале не записаны. Ниже — только сведения на старте.").font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let meta { Text(meta.initial).font(.caption).foregroundStyle(.secondary).textSelection(.enabled) }
+                    } else if obj[4] == 54 {
+                        Text("Нейтральный отряд, охраняющий проход. Посещение может начать бой.").font(.callout)
+                        if let meta { Text(meta.initial).font(.headline) }
+                        Text("Численность из исходной карты; это не счётчик потерь в бою.").font(.caption).foregroundStyle(.secondary)
+                    } else if obj[4] == 53 {
+                        Text(meta?.subtype == "sawmill" ? "Лесопилка — источник древесины. После захвата снабжает владельца ресурсом." : "Добывающий объект. После захвата снабжает владельца ресурсом.").font(.callout)
+                    } else if obj[4] == 98 {
+                        Text("Город: строительство зданий, найм войск и управление гарнизоном.").font(.callout)
+                        if let meta { Text(meta.initial).font(.caption).foregroundStyle(.secondary) }
+                        Text("Текущее содержимое открытого города доступно во вкладке «Вход»; стартовые здания выше не обновляются.").font(.caption).foregroundStyle(.secondary)
+                    } else { Text("Дополнительное описание не записано.").font(.caption) }
+                    Text("Карточка зрителя. Стартовые сведения из карты не являются входом нейросети.").font(.caption2).foregroundStyle(.secondary)
+                }.padding(14).frame(maxWidth:.infinity,alignment:.leading).background(card).overlay(RoundedRectangle(cornerRadius:12).stroke(blue.opacity(0.5))).cornerRadius(12)
+            } else {
+                Text(selectionUsesFog ? "Выбранный объект сейчас не виден этому игроку или исчез с карты." : "Выбранный объект больше не присутствует на карте.").font(.callout).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(card).cornerRadius(12)
+            }
+        } else {
+            Text("Нажмите на иконку: здесь появятся название и описание объекта.").font(.callout).foregroundStyle(.secondary).padding(12)
+        }
     }
     func header(_ r: Replay,_ e: Event) -> some View {
         HStack {

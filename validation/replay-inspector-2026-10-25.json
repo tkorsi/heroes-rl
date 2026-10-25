@@ -1,7 +1,7 @@
 {
   "schema": "heroes-replay-inspector-validation-v1",
   "passed": true,
-  "bundle_sha256": "b224123a29cfff929c10e5529380d3f46496381b844ec0103115552f8a672c90",
+  "bundle_sha256": "67929ab94b115dc0092187383e76c7dba9cd94750a0f6215f27e05f6e3131078",
   "states": 85,
   "events": 1894,
   "decisions": 13,
@@ -13,16 +13,15 @@
     "all native endpoints",
     "no future map, observation or army",
     "conditional log-probability sum",
-    "natural terminal"
+    "natural terminal",
+    "no future hero window",
+    "object metadata coverage and gold amounts"
   ],
   "swift_build": "Apple Swift 6.2 arm64 macOS release build passed",
-  "army_regression_tests": 6,
   "manual_ui_checks": [
-    "native window rendered",
-    "decision filter and keyboard right arrow",
-    "last decision army slots and probabilities",
-    "final day 2 loss and absent hero",
-    "all-event filter and recruitment search"
+    "gold icon selects resource card with quantity 500",
+    "offset blue hero icon selects Edric instead of town",
+    "hero card updates movement, level, mana and primary skills after recorded window opens"
   ],
   "training_started": false
 }
