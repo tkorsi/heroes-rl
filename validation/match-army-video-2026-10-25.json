@@ -1,0 +1,299 @@
+{
+  "all_trace_frames_preserved": true,
+  "army_boundaries": {
+    "-1": {
+      "freshness": "initial_map",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        15,
+        7,
+        0
+      ],
+      "slots": [
+        {
+          "count": 25,
+          "creature": 0,
+          "slot": 0
+        }
+      ],
+      "source_packet": 0,
+      "status": "active"
+    },
+    "21": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        15,
+        7,
+        0
+      ],
+      "slots": [
+        {
+          "count": 25,
+          "creature": 0,
+          "slot": 0
+        }
+      ],
+      "source_packet": 131,
+      "status": "active"
+    },
+    "22": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        15,
+        7,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 17,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 134,
+      "status": "active"
+    },
+    "26": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        18,
+        8,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 6,
+          "creature": 0,
+          "slot": 2
+        },
+        {
+          "count": 11,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 153,
+      "status": "active"
+    },
+    "27": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        18,
+        8,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 6,
+          "creature": 0,
+          "slot": 2
+        },
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 4
+        },
+        {
+          "count": 3,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 156,
+      "status": "active"
+    },
+    "28": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        18,
+        8,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 6,
+          "creature": 0,
+          "slot": 2
+        },
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 3
+        },
+        {
+          "count": 3,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 159,
+      "status": "active"
+    },
+    "29": {
+      "freshness": "observed",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        18,
+        8,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 2,
+          "creature": 0,
+          "slot": 1
+        },
+        {
+          "count": 4,
+          "creature": 0,
+          "slot": 2
+        },
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 3
+        },
+        {
+          "count": 3,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 162,
+      "status": "active"
+    },
+    "52": {
+      "freshness": "pre_battle",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": [
+        18,
+        8,
+        0
+      ],
+      "slots": [
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 0
+        },
+        {
+          "count": 2,
+          "creature": 0,
+          "slot": 1
+        },
+        {
+          "count": 4,
+          "creature": 0,
+          "slot": 2
+        },
+        {
+          "count": 8,
+          "creature": 0,
+          "slot": 3
+        },
+        {
+          "count": 3,
+          "creature": 0,
+          "slot": 6
+        }
+      ],
+      "source_packet": 162,
+      "status": "battle"
+    },
+    "83": {
+      "freshness": "absent",
+      "hero_id": 3,
+      "name": "Edric",
+      "position": null,
+      "slots": [],
+      "source_packet": 485,
+      "status": "absent"
+    }
+  },
+  "checks": {
+    "focused_tests_passed": 6,
+    "source_hashes_match_after_render": true,
+    "visual_inspection_seconds": [
+      27,
+      46
+    ]
+  },
+  "date": "2026-10-25",
+  "episode": "2",
+  "ffprobe": {
+    "codec": "h264",
+    "duration_seconds": 56.0,
+    "frames": 840,
+    "height": 1248,
+    "pixel_format": "yuv420p",
+    "width": 1600
+  },
+  "fresh_native_replay_verified": true,
+  "input_sha256": {
+    "army_annotation_source": "09588a3a64729e09a7b57442abb8ef8b1d8f7fff468db7ecb86842ea77c9b0f9",
+    "contextual_capture": "9239e43c5fb1ec278142a1c4bd7da69858a484a4c72a060d0b1fcadb372e48b1",
+    "generation_receipt": "83e04c1036eb27e912241eb3bd1604ab2acd422bdfd54960bc253c4aa2052850",
+    "learner_history": "8c93c13bea835f62d2d077c9716f10cb9057320fb7a2b1c0967a492b63cc4a5d",
+    "manifest": "697e492cff0734a9bb45460e25260c6d4f2c90f148248b379730e046a833b997",
+    "map": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+    "native_report": "165976e6b00097f156a3f7208409beeed9bc2606e717de18e7e25a728360adb2",
+    "native_trace": "c0c5ff38f45269e01fb3150d0ac8da10837518a89d4c673d25638f86d5b79736",
+    "original_builtin_verification": "17b9151a57f03d749393a55f13711ddac2fe9826660629bb1b01e4c876bc82dd",
+    "plan": "d88366b615519679a83e6afabb1cd52f33ee8869c84071c459e9f7aa9ed88aca",
+    "renderer": "07f582fe152628642e938b7a1d65c83e183ce64e0d02960bd64c5b56fb222926",
+    "server_capture": "40fd536487b5979cf9b6c212896ab9129a950d6d313dd24248bfecca43b28458"
+  },
+  "learner": "blue Edric, Castle, frozen random v7",
+  "limitations": [
+    "Window actions are not animated. Army slots update from recorded snapshots.",
+    "Automatic battles are map markers; the army panel shows pre-battle counts, not live tactical losses.",
+    "Presentation time is slowed and does not measure simulation speed.",
+    "The fog panel is an engine map view, not the network's complete structured input."
+  ],
+  "local_video": "videos/edric-vs-nullkiller-episode-2-hero-army.mp4",
+  "map": "Hero management: two castles",
+  "new_gameplay_performed": false,
+  "original_builtin_replay_verified": true,
+  "schema": "heroes-match-army-video-validation-v1",
+  "trace_frames": 85,
+  "training_performed": false,
+  "video_sha256": "189ae5f9804c131e3e3b037c6a61439decd3788bfe91dea86a1d4dd9e4c7ec0a"
+}

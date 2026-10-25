@@ -256,6 +256,9 @@ the same logical simulation:
 - **Schematic replay:** a readable map, objects, fog, actions and outcome. The
   first verified built-in-opponent example is available; its current viewer is
   scoped to that recorded scenario and labels window/army actions in summary.
+  The viewed side's hero and army appear beneath the map; army slots follow
+  recorded state changes, with pre-battle counts explicitly labelled during
+  automatic combat and no active army shown after the hero leaves the map.
 - **VCMI graphics replay:** reconstruct a retained match through the original
   game renderer and encode a video. This remains pending; a schematic video
   does not establish that the original graphical replay is implemented.
@@ -3017,7 +3020,9 @@ For the v7 built-in-opponent interface, `experiments/recording/render_builtin_ma
 provides a separate schematic match viewer. It draws the full map and the learner's
 fog view from a fresh native `vcmireplay --contextual ... --trace ...` pass over an
 already verified capture. This is a map reconstruction, not footage of the game
-window; window interactions and army changes are listed rather than animated.
+window; window interactions are summarized and the viewed hero's army slots
+update from packet-bound recorded snapshots. During automatic combat the panel
+explicitly shows the army entering battle, not unrecorded tactical casualty counts.
 The viewer checks the original verification, the fresh native report, and the
 trace-generation receipt's file hashes. It keeps raw traces, video and provenance
 under ignored local `runs/` and `videos/` directories. It does not start games or

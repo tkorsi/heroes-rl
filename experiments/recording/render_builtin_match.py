@@ -21,12 +21,17 @@ import zipfile
 
 from PIL import Image, ImageDraw, ImageFont
 
+if __package__:
+    from .match_army import build_hero_army_timeline
+else:
+    from match_army import build_hero_army_timeline
+
 HERE = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("recording_video", HERE / "video.py")
 video = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(video)
 
-WIDTH, HEIGHT, FPS = 1600, 1152, 15
+WIDTH, HEIGHT, FPS = 1600, 1248, 15
 TILE, MAP_TOP = 31, 278
 BACKGROUND, CARD = "#101722", "#182332"
 TEXT, MUTED = "#edf3fc", "#acbbd0"
@@ -139,8 +144,10 @@ def inspect_inputs(episode: Path, trace: Path, native_report: Path) -> dict:
              "server_capture": episode / "engine/replay.jsonl",
              "contextual_capture": episode / "engine/contextual-replay.jsonl",
              "native_report": native_report, "native_trace": trace, "generation_receipt": generation_path,
+             "army_annotation_source": HERE / "match_army.py",
              "renderer": Path(__file__)}
     return {"manifest": manifest, "header": header, "frames": frames, "history": history,
+            "hero_army": build_hero_army_timeline(episode, frames, player=1),
             "native": native, "plan": plan, "map_name": map_header["name"],
             "action_counts": actions, "action_summary": action_summary,
             "provenance": {key: {"path": str(path), "sha256": digest(path)} for key, path in paths.items()}}
@@ -227,6 +234,30 @@ def event_label(frame: dict, previous: dict | None) -> str:
     return "Recorded engine state after a native input"
 
 
+def hero_army_lines(row: dict) -> tuple[str, str]:
+    """Describe the viewed hero without presenting pre-battle counts as live losses."""
+    if row["status"] == "absent":
+        return (f"Viewed hero: {row['name']} / Blue / Castle - no longer on the map",
+                "Army: no active hero army remains on the map")
+    x, y, _ = row["position"]
+    hero = f"Viewed hero: {row['name']} / Blue / Castle    Position: ({x}, {y})"
+    totals = {}
+    for stack in row["slots"]:
+        totals[stack["creature"]] = totals.get(stack["creature"], 0) + stack["count"]
+    names = {0: "Pikemen"}
+    units = ", ".join(f"{count} {names.get(creature, f'creature #{creature}')}"
+                      for creature, count in sorted(totals.items())) or "empty"
+    by_slot = {stack["slot"]: stack["count"] for stack in row["slots"]}
+    slots = " / ".join(str(by_slot[slot]) if slot in by_slot else "-" for slot in range(7))
+    if row["status"] == "battle":
+        prefix = "Army entering automatic battle"
+    elif row["freshness"] == "pre_battle":
+        prefix = "Last known army (before battle)"
+    else:
+        prefix = "Army"
+    return hero, f"{prefix}: {units}    Seven slots: {slots}"
+
+
 def draw_frame(data: dict, frame: dict, previous: dict | None) -> bytes:
     image = Image.new("RGB", (WIDTH, HEIGHT), BACKGROUND)
     draw = ImageDraw.Draw(image)
@@ -254,12 +285,15 @@ def draw_frame(data: dict, frame: dict, previous: dict | None) -> bytes:
         marker(draw, x, 1030, kind, 1 if kind in (HERO, TOWN) else -1, 9)
         text(draw, (x + 24, 1018), label, 20, MUTED)
     text(draw, (1010, 1018), "Black = outside learner fog view", 20, MUTED)
-    text(draw, (44, 1058), data["action_summary"], 20, BLUE)
-    text(draw, (44, 1092), "Offline map replay, not game-window footage. No PPO update. Windows / army changes are not animated.", 20, MUTED)
+    hero_line, army_line = hero_army_lines(data["hero_army"][frame["seq"]])
+    text(draw, (44, 1056), hero_line, 24, BLUE)
+    text(draw, (44, 1093), army_line, 24)
+    text(draw, (44, 1142), data["action_summary"], 20, BLUE)
+    text(draw, (44, 1176), "Offline map replay, not game-window footage. No PPO update. Window actions are not animated.", 20, MUTED)
     progress = (frame["seq"] + 1) / max(1, total)
-    draw.rectangle((44, 1134, 1556, 1139), fill="#2a384b")
+    draw.rectangle((44, 1230, 1556, 1235), fill="#2a384b")
     if progress:
-        draw.rectangle((44, 1134, 44 + int(1512 * progress), 1139), fill=BLUE)
+        draw.rectangle((44, 1230, 44 + int(1512 * progress), 1235), fill=BLUE)
     return image.tobytes()
 
 
@@ -331,11 +365,13 @@ def render(episode: Path, trace: Path, native_report: Path, output: Path) -> dic
               "training_performed": False, "checkpoint_sha256": data["plan"]["checkpoint"]["sha256"],
               "native_inputs": len(data["frames"]) - 1, "learner_choices": data["manifest"]["env_steps"],
               "history_action_counts": data["action_counts"], "all_trace_frames_preserved": True,
+              "viewed_hero_army_by_native_input": data["hero_army"],
+              "army_annotation_scope": "Viewer-only. Initial map and packet-bound own-window snapshots; automatic combat shows the army entering battle, not live tactical losses.",
               "trace_frames": len(data["frames"]), "trace_frame_repeats": repeats, "fps": FPS,
               "views": ["omniscient spectator", "blue recorded fog"], "provenance": data["provenance"],
               "original_builtin_replay_verified": True, "fresh_native_replay_verified": True,
               "verification_scope": "Native trace-generation receipt binds the successful command, source captures, verified report and trace by hash; the original builtin replay remains unchanged.",
-              "limitations": ["Window and army actions are not animated.", "Automatic battles are map markers, not tactical battle footage.",
+              "limitations": ["Window actions are not animated. Army slots update from recorded snapshots.", "Automatic battles are map markers; the army panel shows pre-battle counts, not live tactical losses.",
                               "Presentation time is slowed and does not measure simulation speed.", "The fog panel is an engine map view, not the network's complete structured input."],
               "ffprobe": probe}
     output.with_suffix(".json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
