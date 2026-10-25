@@ -6,16 +6,13 @@ It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
 **Current milestone:** stages 1–3 of the capability expansion have passed their
-bounded native checks. The user has now authorized exactly eight longer
-ordinary games with frozen v7 weights, four fresh engine seeds and both learner
-colors, under one shared hour on this Mac. Each game allows at most 4,096 total
-policy choices and 200 days. There are no new PPO or optimizer updates.
-Automatic BattleAI combat, normal fog and terminal-only rewards remain fixed.
-Source changes alone are not evidence that a mechanic works in the real engine.
-After that cohort finishes, a separate authorized eight-game comparison will
-use the same frozen learner against native Nullkiller on Easy. Its development
-and runtime are isolated from the currently running cohort. No training is
-authorized by either evaluation.
+bounded native checks. The authorized longer ordinary v7 evaluation stopped on
+its third game: **two verified cutoffs, one failed native replay and five games
+not started**. No natural game outcome or optimizer update occurred. The failed
+attempt remains unscored; it is not replaced. A separate matched comparison
+against Nullkiller Easy is planned but has not run. Automatic BattleAI combat,
+normal fog and terminal-only rewards remain fixed. Source changes alone are not
+evidence that a mechanic works in the real engine.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2259,7 +2256,7 @@ Different interfaces, checkpoints and budgets prevent an improvement or
 regression claim. No movement heuristic, scripted strategy, shaped reward or
 forced outcome has been added to the ordinary policy.
 
-## Longer ordinary dialog evaluation — authorized scope
+## Longer ordinary dialog evaluation — scope and results
 
 The separately versioned `configs/long-dialog-evaluation-v1.json` and
 `experiments/learner/evaluate_long_dialogs.py` define exactly eight planned games:
@@ -2299,7 +2296,68 @@ invariants or the shared deadline stop the schedule. A verifier failure does not
 rewrite a native manifest or become a loss/draw. Reports distinguish observed
 prefix behavior from complete verified games and label comparisons across
 interfaces or budgets as descriptive. These rollouts are diagnostic and cannot
-enter an optimizer. Execution results will be recorded here after the run.
+enter an optimizer.
+
+The original cohort ran from frozen source `8f2c8db` and stopped after
+2,114.5 seconds of the shared execution budget because independent native replay
+failed on episode 3. Final offline report assembly took another 29.3 seconds.
+The original eight rows, raw captures and failed verification are preserved;
+there were no retries or replacements. Compact evidence and file bindings are
+in [validation/long-dialog-evaluation-2026-10-25.json](validation/long-dialog-evaluation-2026-10-25.json).
+
+| Episode | Engine seed | Learner color | Actual policy choices, both players | Last sampled day | Result |
+|---|---|---|---|---|---|
+| 1 | 120501 | Red | 4,088 | 104 | Verified unscored cutoff |
+| 2 | 120501 | Blue | 4,088 | 140 | Verified unscored cutoff |
+| 3 | 120502 | Red | 4,088 | 132 | Native replay failed; unscored |
+| 4–8 | Predeclared remaining schedule | Both colors | None | Not observed | Not started |
+
+There are **zero verified natural outcomes, zero optimizer updates and zero
+training samples**. Episodes 1 and 2 independently reconstruct all 8,176 sampled
+actions, 8,180 values and 20,565 conditional probabilities with zero difference,
+and their native replay checks pass. The checkpoint file remains byte-identical.
+Episode 3's local manifest records a collection-window cutoff, but the failed
+independent verifier prevents it from becoming a verified game. Its observed
+prefix is retained for descriptive analysis only.
+
+Across the two verified games, **7,187 of 8,176 choices (87.9%)** navigate or
+select controls or rearrange armies. There are 320 movement attempts and 197
+observed endpoint changes, with 1,226 newly known tiles summed across the four
+player perspectives. The histories record 156 completed creature-recruitment
+actions, three hero hires and seven player-visible battle completions; battle
+counts are perspectives, not necessarily distinct fights. They contain no
+owned-town roster changes or corroborated town captures. An opponent town is
+visible at 246 movement decisions, but none targets that visible town. These
+longer runs reach exploration, recruitment and combat that the earlier
+128-choice checks missed, while most choices still go to controls and stack
+management. Different budgets and this incomplete, untrained sample do not
+establish improved strategy or prove that ordinary victories are unreachable.
+
+The failed third capture separately contains 179 movement attempts, five hero
+hires and six player-visible battle completions, without town-capture evidence.
+Its full player-visible prefix is hash-bound, but those observations do not
+establish that independent engine replay is correct. The overall descriptive
+aggregate in the compact report includes this failed capture; its history
+coverage labels must not be read as native-verification success.
+
+The preserved failure is
+`runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/native-report.json`:
+server input 2029 is Blue's automatic BattleAI Frost Ring cast. Replay first
+differs at emitted packet 4, `StacksInjured` (type 148), with expected digest
+`1bd11e18eb73b519` and actual `06da7da3d60da7a9`. Earlier packet digests match
+through input 2028; the last full logical-state check before it is end-turn
+input 2008. Source inspection finds address-dependent target ordering in
+`UnitEffect::transformTargetByRange`, whose pointer-ordered set feeds the injury
+vector. This is a concrete nondeterminism candidate. The original capture has
+packet digests rather than outgoing injury payloads, so a permutation-only
+explanation has **not** been proved. The original failure remains unchanged.
+
+The separately authorized eight matched games against built-in **Nullkiller
+Easy** remain planned, with the same ordinary Tavern-enabled map, fixed learner
+weights, four engine seeds and both learner colors, a 200-day limit and a
+separate shared hour. They have not run. Mixed-controller replay and boundary
+validation must pass first, and this replay blocker must be understood. No
+training is authorized by that comparison.
 
 ## Built-in opponent comparison — authorized scope
 
