@@ -2066,7 +2066,7 @@ implementation is not implied by the stage 1 results. Every later stage still
 requires native effects/receipts for both colors, player-local history, replay,
 tamper checks and fixed-weight inference, with all failed attempts preserved.
 
-## Army operations — implementation awaiting native validation
+## Army operations — native validation complete
 
 The opt-in `adventure-army-management-v1` profile uses protocol 8,
 `heroes-player-history-v6`, `heroes-context-actions-v6` and model/policy v4.
@@ -2092,11 +2092,54 @@ returns to the original parent. All mutations require a corresponding native
 receipt and exact observed effects. Player histories and fixed-weight neural
 inference retain separate per-player memory.
 
-The new sources compile locally. Bounded both-color mechanics, open-dialog
-cutoffs, natural-ending compatibility, replay/tamper and fixed-weight inference
-checks are still pending at this implementation checkpoint. No new game or
-optimizer update is implied by this section; failed attempts will remain in the
-validation evidence. Stage 3 adventure choices are still pending.
+Stage 2 is implemented and locally validated. Compact evidence is in
+`validation/army-management-2026-10-25.json`, with an independent audit in
+`validation/army-management-independent-audit-2026-10-25.json`. The full suite
+passes **704 tests, zero skips**, and the prepared engine exactly matches the
+tracked source and patches. The v6 native build is preserved locally before
+stage 3 changes.
+
+- Nineteen real-game attempts are retained: eighteen valid games and one probe
+  failure. Sixteen games end at valid unscored cutoffs; two controlled capture
+  games end naturally on day 8 with complementary +1/-1 results. All eighteen
+  independent native replays pass. Eight unmodified replay controls pass and
+  all **208 rehashed semantic mutations** are detected.
+- Both colors exercise town/visitor transfers in both directions, exact splits,
+  merges, unlike-creature swaps, unequal-count same-creature swaps and full
+  relocation within a hero army. Native last-stack restrictions remain intact.
+  Both upgrade their 25 Pikemen for exactly 375 gold, and exercise garrison
+  entry with town-army consolidation, exit and an occupied hero-slot swap.
+- Native own-hero exchanges preserve the parent movement/query order. Opening
+  and closing a child stack popup hides the parent rows and leaves the exchange
+  active. The explicit exchange close sends its native reply. Both colors also
+  complete paired cutoffs from actual stack-upgrade and exchange contexts.
+- The two unassisted fixed-weight diagnostics reconstruct all **256 actions,
+  260 values and 630 conditional probabilities exactly**, with separate player
+  memories and unchanged weights. They naturally sample splits, merges, swaps,
+  garrison operations and stack opening. Separate offline scoring of fourteen
+  verified mechanics histories covers all seven new v6 army actions, including upgrades;
+  those operator choices were not sampled by the policy and are not learner
+  data.
+- Both unassisted games truncate after 128 choices. Across them, only four
+  moves are attempted; all target tiles absent from the player's known terrain
+  and return `no_route_known`. Window navigation and army management consume
+  most choices. Native victories remain reachable in controlled games; these
+  bounded results establish neither ordinary outcome frequency nor improved
+  strategy.
+
+The preserved failed attempt exposed an extra probe `back` after recruitment
+had already returned to town overview. The probe now checks that actual return;
+no engine rule changed. Independent auditing checks exact army/resource effects,
+owned-only army rows, closed-panel privacy, normal fog and historical bindings.
+All native acknowledgements in this cohort are accepted: invalid-choice tests
+reject before send and are not rejected-server-ack evidence. Live unaffordable
+or multiple upgrade choices, full-army capacity, garrison-limit notices and
+Scholar interactions remain unexercised. There is no wholly transient enemy
+sighting in this cohort; earlier visibility evidence remains separate.
+
+No new gameplay optimizer update, training, paid compute or merge occurred.
+Stage 3 enumerated adventure choices remain pending; earlier initial/timer-origin
+terminal limitations remain explicit.
 
 ## Headless self-play environment (issue #4, in progress)
 
