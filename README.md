@@ -9,10 +9,13 @@ omniscient and player-fog videos.
 bounded native checks. The authorized longer ordinary v7 evaluation stopped on
 its third game: **two verified cutoffs, one failed native replay and five games
 not started**. No natural game outcome or optimizer update occurred. The failed
-attempt remains unscored; it is not replaced. A separate matched comparison
-against Nullkiller Easy is planned but has not run. Automatic BattleAI combat,
-normal fog and terminal-only rewards remain fixed. Source changes alone are not
-evidence that a mechanic works in the real engine.
+attempt remains unscored; it is not replaced. The separate comparison against
+Nullkiller Easy also stopped: its first game delivered a day-2 Red defeat/Blue
+victory, but a native request-accounting precheck failed, so the original row
+remains unscored and seven games were not started. Neither stopped evaluation
+performed optimizer updates. Automatic BattleAI combat, normal fog and
+terminal-only rewards remain fixed; observed terminal arrival alone does not
+establish independent replay verification.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2352,17 +2355,16 @@ vector. This is a concrete nondeterminism candidate. The original capture has
 packet digests rather than outgoing injury payloads, so a permutation-only
 explanation has **not** been proved. The original failure remains unchanged.
 
-The separately authorized eight matched games against built-in **Nullkiller
-Easy** remain planned, with the same ordinary Tavern-enabled map, fixed learner
-weights, four engine seeds and both learner colors, a 200-day limit and a
-separate shared hour. They have not run. Mixed-controller replay and boundary
-validation must pass first, and this replay blocker must be understood. No
-training is authorized by that comparison.
+The separately authorized comparison against built-in **Nullkiller Easy**
+subsequently started after repaired mixed-controller cutoff checks passed. It
+stopped on its first independent replay precheck, as recorded below. Both
+original schedules remain preserved; neither authorizes training or silently
+replaces a failed attempt.
 
-## Built-in opponent comparison — authorized scope
+## Built-in opponent comparison — scope and stopped result
 
-After the longer neural-opponent cohort finishes, a separate eight-game
-comparison uses the same ordinary Tavern-enabled map, engine seeds
+After the longer neural-opponent cohort stopped, a separate eight-game
+comparison was prepared with the same ordinary Tavern-enabled map, engine seeds
 120501–120504, both learner colors, and the exact same frozen v7 learner
 checkpoint. Learner sampling seeds 120601, 120603, 120605 and 120607 follow the
 learner across colors. The opponent is fixed native Nullkiller on Easy
@@ -2389,9 +2391,9 @@ Natural outcomes require its actual terminal message, both native results,
 complete native callbacks and capture closure, and a clean process exit.
 These records are diagnostic and never optimizer eligible.
 
-Before the comparison, two separate native startup/cutoff checks will hold the
+Before the comparison, separate native startup/cutoff checks held the
 first safe learner decision, one per color, without submitting any learner
-action or loading a model. They use the existing declared `natural-townless`
+action or loading a model. They used the existing declared `natural-townless`
 diagnostic fixture and its exact field-isolation check, not the ordinary
 comparison map. Each check has a fixed 90-second budget including replay and
 cleanup. Its historical end-turn fixture script is not executed. These checks
@@ -2436,10 +2438,57 @@ because its local raw captures are in the original worktree). Exact dependency
 preparation and the production rebuild pass. The compact record
 [validation/builtin-opponent-preflight-2026-10-25.json](validation/builtin-opponent-preflight-2026-10-25.json)
 binds all four original/repaired rows and the build/test logs; the one failed
-probe is not overwritten. The ordinary eight-game comparison remains pending;
-these startup checks do not establish natural-ending or long-combat replay
-coverage. Its runtime also includes the stable spell-order and synchronization
-repairs, so this is not a strictly isolated opponent-only comparison.
+probe is not overwritten. These startup checks establish cutoff coverage only.
+The comparison runtime also includes the stable spell-order and synchronization
+repairs, so it is not a strictly isolated opponent-only comparison.
+
+The original comparison ran from frozen source `52076a9` and stopped after
+**2.938 seconds** of its separate execution budget; final offline report
+assembly took 0.040 seconds. Episode 1 used engine seed 120501, learner Red and
+learner sampling seed 120601. It made **23 learner choices through day 2**.
+The native process exited cleanly and delivered Red's defeat and Blue's victory,
+with native terminal callback/barrier records. However, the independent replay
+precheck found **196 captured client requests but only 195 authoritative server
+inputs** and rejected the episode before native replay execution. The unmatched
+last request is native-opponent request 196, type 182; its accounting is an open
+validation gap. No request is discarded to make this original result pass.
+
+The original report therefore contains **one failed, unscored attempt and seven
+not-started rows**, with null outcomes and rewards for every row. The local
+native manifest's completed result is retained as terminal-arrival evidence;
+it is not a verified win/loss rate. There were no retries, replacements,
+optimizer updates or training samples. The checkpoint file remains unchanged.
+Own-policy reconstruction separately passes for all 23 actions, 23 values and
+69 conditional probabilities with zero difference; that does not validate the
+missing native request accounting. Compact evidence is
+[validation/builtin-opponent-evaluation-2026-10-25.json](validation/builtin-opponent-evaluation-2026-10-25.json),
+and the preserved failure is
+`runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/builtin-verification/builtin-replay-verification.json`.
+
+Only the actual learner perspective contributes to the descriptive comparison.
+Its available 162-frame history records 12 navigation/selection choices, seven
+within-army rearrangements and two movement attempts at unknown tiles; both
+return `no_route_known`. It records no endpoint changes, new known tiles,
+recruitment or hiring. One battle completes, and its owned hero and town rosters
+both change from one to zero. This is the player's delivered observation, not
+an invented Nullkiller history or a claim about hidden intermediate positions.
+
+| Same-seed Red learner perspective | Frozen neural opponent, verified cutoff | Nullkiller Easy, failed replay precheck |
+|---|---|---|
+| Actual learner choices | 1,959 | 23 |
+| Last sampled day | 104 | 2 |
+| Movement attempts / observed endpoint changes | 101 / 68 | 2 / 0 |
+| Newly known tiles | 308 | 0 |
+| Creature-recruitment actions / hero hires | 23 / 3 | 0 / 0 |
+| Visible battle completions | 0 | 1 |
+| Final owned heroes / towns | 4 / 1 | 0 / 0 |
+
+These unequal observed prefixes, changed native runtime, unverified new result
+and seven unstarted matched rows cannot establish opponent superiority or a
+causal opponent effect. Native requests are evidence, not equivalent policy
+choices; no native-opponent probability, value or trajectory is fabricated.
+The original comparison remains stopped while request-tail accounting is
+investigated, and its result will not be overwritten by a later repair.
 
 ## Stable spell target ordering
 
@@ -2456,8 +2505,9 @@ collection and `Damage::apply` functions and checks emitted injury target IDs,
 order and damage over 576 independent allocation/input permutations. Geometry,
 unit-state and RNG collaborators are explicit test fakes; this is not native
 packet-serialization or rebirth-RNG validation. The production engine rebuild
-and exact generated-source check pass. Real mixed-controller validation remains
-a separate gate before the ordinary comparison.
+and exact generated-source check pass. Mixed-controller cutoff replay passes,
+but the stopped ordinary comparison does not establish complete natural-ending
+or wider spell/combat replay coverage.
 
 ## Headless self-play environment (issue #4, in progress)
 
