@@ -1,0 +1,104 @@
+{
+  "attempts": [
+    {
+      "behavior_diagnostics": {
+        "army_operations": {
+          "across_armies": 0,
+          "displayed_comparisons": 24,
+          "observed_cross_army_net_count_redistribution": 0,
+          "unavailable_comparisons": 0,
+          "within_army": 17
+        },
+        "movement": {
+          "attempts": 2,
+          "endpoint_changes": 0,
+          "known_targets": 0,
+          "missing_endpoints": 0,
+          "results": {
+            "no_route_known": 2
+          },
+          "targets_visible_opponent_town": 0,
+          "unknown_targets": 2,
+          "while_opponent_town_visible": 0
+        },
+        "recruitment": {
+          "attempts": 0,
+          "completed": 0
+        }
+      },
+      "cleanup_verified": true,
+      "episode": 1,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "learner_player": 0,
+      "native_returncode": 0,
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "replay_verified": true,
+      "sampled_choices": 72
+    },
+    {
+      "behavior_diagnostics": {
+        "army_operations": {
+          "across_armies": 13,
+          "displayed_comparisons": 49,
+          "observed_cross_army_net_count_redistribution": 139,
+          "unavailable_comparisons": 3,
+          "within_army": 30
+        },
+        "movement": {
+          "attempts": 4,
+          "endpoint_changes": 0,
+          "known_targets": 1,
+          "missing_endpoints": 0,
+          "results": {
+            "no_route_known": 4
+          },
+          "targets_visible_opponent_town": 0,
+          "unknown_targets": 3,
+          "while_opponent_town_visible": 0
+        },
+        "recruitment": {
+          "attempts": 3,
+          "completed": 3
+        }
+      },
+      "cleanup_verified": true,
+      "episode": 2,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "learner_player": 1,
+      "native_returncode": 0,
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "replay_verified": true,
+      "sampled_choices": 150
+    }
+  ],
+  "complete_parent_and_independent_backup_restored_exactly": true,
+  "date": "2026-10-25",
+  "execution_wall_seconds": 46.31009501900007,
+  "minimal_fix_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "optimizer_steps": 0,
+  "original_failed_gate_remains_unscored": true,
+  "plan": {
+    "bytes": 54324,
+    "path": "/workspace/Heroes-artifacts/runs/linux-update21-gate-002/plan.json",
+    "sha256": "756b0a826d73a834bb84f0a5365e5a1230245e7bc4bdf8ec048870b23808870d"
+  },
+  "report": {
+    "bytes": 11380,
+    "path": "/workspace/Heroes-artifacts/runs/linux-update21-gate-002/execution/report.json",
+    "sha256": "9be7e7441f084ef8bf7896302e63777ae1ac9122a6ab1f4cf7e9db2507340805"
+  },
+  "schema": "heroes-cloud-linux-gate-v2",
+  "self_relative_runtime_library_verified": true,
+  "source_commit": "f2d0ebf1a7b0af79d6334b4bf45e4fa84ab8819a",
+  "supervisor_cleanup_verified": true,
+  "training_samples": 0,
+  "within_shared_budget": true
+}

@@ -1,5 +1,5 @@
 {
-  "activity": "Integrated only Optimizer ca488fd as a5fe044; rebuilt the exact recipe with relative ELF lookup.41 focused checks passed, including100 native shutdown order iterations. Preparing fresh two-seat restored-policy gate.",
+  "activity": "Repaired Linux both-seat evaluation passed with2 natural losses,0 samples/updates; freezing first fresh four-game5120-choice continuation from exact update21.",
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
   "deadline": {
@@ -24,6 +24,15 @@
     "second_seat": "not_started",
     "training_samples": 0
   },
+  "last_gate": {
+    "choices": [
+      72,
+      150
+    ],
+    "learning_performed": false,
+    "run": "linux-update21-gate-002",
+    "wall_seconds": 46.31009501900007
+  },
   "latest_complete": {
     "adam_steps": 149,
     "decisions": 3944,
@@ -35,14 +44,14 @@
   },
   "linux_gates": {
     "canonical_source": "passed_after_minimal_repair",
-    "cleanup": "pending_fresh_repaired_gate",
+    "cleanup": "passed_both_seats",
     "focused_tests": "passed",
-    "fresh_capture": "pending_fresh_repaired_gate",
+    "fresh_capture": "passed_both_seats_clean_exit0",
     "historical_plan_report": "passed_complete_parent_and_backup_restore",
     "native_build": "passed_linux_v2",
-    "same_runtime_replay": "pending_fresh_repaired_gate"
+    "same_runtime_replay": "passed_both_seats"
   },
-  "next_step": "Integrate only the tested minimal C++ correctness slice; rebuild an ordinary self-contained runtime, bind fresh provenance, validate both seats, then resume update22 within the fixed deadline.",
+  "next_step": "Launch sequence22, preserve and restore-test both checkpoint copies, then publish private snapshot before continuing.",
   "next_unused_training_sequence": 22,
   "optimizer_status_observed": {
     "branch": "codex/portable-engine-session",
@@ -79,7 +88,14 @@
     "target_mapping": "anonymous non-executable rw-p heap",
     "training_admission": false
   },
-  "state": "validating_minimal_shutdown_repair",
+  "state": "preparing_update22",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T16:09:12.483591+00:00"
+  "updated_utc": "2026-10-25T16:11:42.557028+00:00",
+  "validated_cloud_outcomes": {
+    "cutoffs": 0,
+    "diagnostic_reproductions": 2,
+    "failed_gate_games": 1,
+    "natural_losses": 2,
+    "natural_wins": 0
+  }
 }
