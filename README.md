@@ -88,6 +88,7 @@ preserved in private storage.
 | `experiments/headless/` | Environment, histories, capture/replay and bounded processes |
 | `experiments/learner/` | Models, inference, PPO, admission, checkpoints and evaluation |
 | `experiments/recording/` | Renderer footage and montages |
+| `apps/replay-inspector/` | Offline macOS Swift inspector for a historical recorded match |
 | `configs/`, `dependencies/` | Experiment configurations and dependency locks |
 | `tests/`, `validation/` | Regression tests and compact experiment evidence |
 | `tools/`, `reports/cloud/` | Operational utilities and dated progress snapshots |
@@ -159,11 +160,16 @@ plan; execution is separate. One-off migration configurations bind historical
 inputs and cannot be relabelled as new experiments. Do not admit a partial or
 failed batch as an unconditional successful update.
 
-There are two visual outputs: actual renderer footage and an offline state-based
-replay visualization. Label which is shown. Replay requires its input bindings
-and independent verifier; footage of a built-in bot is not learned-policy
-footage. Earlier recorder commands remain in
-[project history](docs/project-history.md).
+There are two requested replay presentations: a schematic state-based view and
+original VCMI graphics. The schematic video and Swift inspector show a retained
+historical match with its viewed hero and army; they are not generic viewers for
+the latest Teacher checkpoint. Exact recorded-match reconstruction through the
+original renderer remains pending. Ordinary live renderer recording already
+exists. See [viewer scope and commands](docs/replay-viewers.md).
+
+Label which presentation is shown. Replay requires its input bindings and an
+independent verifier; footage of a built-in bot is not learned-policy footage.
+Earlier recorder commands remain in [project history](docs/project-history.md).
 
 ## Artifacts and development
 

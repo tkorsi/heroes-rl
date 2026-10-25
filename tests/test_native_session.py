@@ -12,6 +12,13 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def native_include_flags(engine):
+    includes = [engine, engine / 'include', engine / 'build']
+    if Path('/opt/homebrew/include/boost').exists():
+        includes.append(Path('/opt/homebrew/include'))
+    return ['-I' + str(path) for path in includes]
+
+
 @unittest.skipUnless(shutil.which('g++') or shutil.which('clang++'), 'requires a C++20 compiler')
 class NativeSessionChannelTests(unittest.TestCase):
     def test_production_channel_consecutive_generations_and_isolation(self):
@@ -22,8 +29,7 @@ class NativeSessionChannelTests(unittest.TestCase):
         compiler = shutil.which('g++') or shutil.which('clang++')
         with tempfile.TemporaryDirectory(prefix='native-session-channel-') as temporary:
             binary = Path(temporary) / 'channel-contract'
-            command = [compiler, '-std=gnu++20', '-pthread', '-I' + str(engine),
-                       '-I' + str(engine / 'include'), '-I' + str(engine / 'build'),
+            command = [compiler, '-std=gnu++20', '-pthread', *native_include_flags(engine),
                        str(ROOT / 'tests/native/session_channel.cpp'), '-L' + str(library),
                        '-lvcmi', '-Wl,-rpath,' + str(library), '-o', str(binary)]
             result = subprocess.run(command, capture_output=True, text=True, timeout=90)
@@ -41,8 +47,7 @@ class NativeSessionChannelTests(unittest.TestCase):
         compiler = shutil.which('g++') or shutil.which('clang++')
         with tempfile.TemporaryDirectory(prefix='native-socket-') as temporary:
             binary = Path(temporary) / 'socket-contract'
-            command = [compiler, '-std=gnu++20', '-pthread', '-I' + str(engine),
-                       '-I' + str(engine / 'include'), '-I' + str(engine / 'build'),
+            command = [compiler, '-std=gnu++20', '-pthread', *native_include_flags(engine),
                        str(ROOT / 'tests/native/socket_policy.cpp'),
                        str(engine / 'AI/ExplorerRL/SocketPolicyTransport.cpp'),
                        '-I' + str(ROOT / 'engine/ExplorerRL'), '-L' + str(library),
