@@ -11,7 +11,9 @@ transitions (five Adam steps)** in 62.161 seconds. Both policy and value weights
 changed; exact checkpoint restoration and all native replays passed. The learner
 lost all eight games, including both evaluations before and both after the update.
 This proves the bounded training path works, not improved strategy. The run is
-complete; no further training campaign is authorized by that pilot.
+complete. Its trained checkpoints were subsequently lost during managed-worktree
+archival; historical results remain unchanged. The new recovery authorization
+below supersedes the earlier restriction on further training.
 
 The preceding local v2 revalidation on frozen source `6abbfdb` produced
 **four verified frozen-neural cutoffs and four verified natural learner defeats
@@ -44,6 +46,40 @@ Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
 
 This is the canonical project document. Last agreement: **25 October 2026**.
+
+## Active recovery and continuation authorization — 25 October 2026
+
+The user explicitly authorized a new recovery experiment from the original v7
+baseline after the trained pilot checkpoints and ignored runtime were lost during
+managed-worktree cleanup. The preserved baseline at
+`/Users/orsi/Projects/Heroes-artifacts/checkpoints/baseline-v7/fixed-policy.pt`
+has SHA256 `4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1`.
+The lost one-update trained state is not reconstructed. Recovery uses fresh
+real games and new plan/report/checkpoint provenance through the existing pilot
+runner: two before evaluations, four training games, one PPO update and two
+matched after evaluations. The historical pilot evidence below is unchanged.
+
+Following a verified recovery batch, successive bounded resumable local batches
+and periodic fixed held-out evaluation on both seats are authorized until
+sustained improvement, a meaningful plateau, or a material correctness/resource
+failure requires a user decision. Nullkiller Easy, the ordinary 20×20 two-castle
+scenario, automatic BattleAI, private structured observations, contextual actions
+and terminal-only +1/-1 rewards remain unchanged. Recruitment, army concentration
+and town-loss timing are diagnostics only. No demonstrations, shaping, hidden
+information, strategic filtering, paid compute or PR merges are authorized.
+
+Canonical plans, reports, histories, replay captures and checkpoints now go
+directly under `/Users/orsi/Projects/Heroes-artifacts/runs/<run-id>/`, outside all
+managed worktrees. `experiments.learner.builtin_preservation` verifies the completed
+plan/report and checkpoint pair, atomically publishes a second copy under
+`/Users/orsi/Projects/Heroes-artifacts/checkpoints/<run-id>/`, and restore-tests
+model, Adam, RNG, progress and archived pool before continuation. Absolute evidence
+bindings are retained. The baseline is never overwritten. Heavy work is coordinated
+with Claude through issue #4 in short concrete windows.
+
+Current recovery status: baseline and recovered continuation files verified;
+isolated compatible runtime preparation and durable-preservation checks underway.
+No recovery games or updates have run yet.
 
 ## Current authorized local PPO pilot
 

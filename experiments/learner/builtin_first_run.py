@@ -26,10 +26,11 @@ SCHEMA = "heroes-builtin-ppo-pilot-v1"
 CHECKPOINT_SHA = "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
 AUTHORIZATION = {
     "source_thread": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
-    "human_turn": "01a172f9-ad09-7db0-b4e1-90aea22fd9f1",
-    "human_message": "01a172f9-ad90-7521-9916-700ec8d31344",
-    "resume_human_message": "01a1730e-601c-7080-b33d-acadcd16a0de",
     "verified_direct_human_instruction": True,
+    "date": "2026-10-25",
+    "purpose": "New recovery experiment from the exact surviving original baseline after loss of the trained pilot artifacts; not a reconstruction of the historical pilot.",
+    "continuation": "Successive bounded local batches and held-out evaluation authorized after this verified recovery batch.",
+    "durability": "Canonical run artifacts live outside managed worktrees in /Users/orsi/Projects/Heroes-artifacts.",
 }
 
 
@@ -108,7 +109,8 @@ def prepare(args):
     from .inference import source_identity
     from validation.probes.validate_hero_policy import hero_map_identity
     cfg = config()
-    output = args.output.expanduser().resolve()
+    from .builtin_preservation import durable_path
+    output = durable_path(args.output)
     require(not output.exists(), "Use a new preparation folder")
     require(not subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip(),
             "Commit and review the complete implementation before freezing the plan")
