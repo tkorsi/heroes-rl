@@ -1,0 +1,254 @@
+{
+  "baseline_runtime_commit": "9193db35857e07ddbc45e98a1dd7c3f4a8c07da0",
+  "commits": {
+    "0235507": "proposal 1: exact fixed-weight inference speedups (leaf memo, digest)",
+    "030d2ad": "proposal 2: serialize each immutable history frame once",
+    "1b1f0c0": "proposal 3: cached field-name sets in the strict decoder",
+    "713a854": "harness: five review blockers",
+    "87f0d68": "harness: completion receipts, plan binding, one cleanup bound",
+    "c45e307": "proposal 2 review fixes: exact-type redelivery, released frame text, original to_dict key order",
+    "fb91ca2": "proposal 1 review fixes: value-checked fail-closed memo, owned digest"
+  },
+  "date": "2026-10-25",
+  "limitations": [
+    "Offline and synthetic numbers cover post-collection and inference work only; end-to-end native campaigns are pending the next Mac window.",
+    "Offline real-episode numbers are one run per commit.",
+    "Never extrapolate games/second from these numbers."
+  ],
+  "offline_real_episode": {
+    "baseline_cprofile_note": "diagnostic only; overlapped Codex's 12:06-12:07 correctness window; excluded from every speed claim. _wire via encode_frame was ~73% of reconstruction and ~86% of rollout_from_dict (442k encode_frame calls for 29.5k frames)",
+    "concurrent_load": false,
+    "description": "experiments/perf/offline_profile.py on a COPY of retained long-dialog episode 1; Apple Silicon Mac, one process, torch 2.9.1 with 1 thread; no foreign heavy process at start/end; desktop load average 5-8; one run per commit",
+    "episode": {
+      "decisions": [
+        1959,
+        2129
+      ],
+      "frames": [
+        14248,
+        15260
+      ],
+      "history_mb": [
+        126.2,
+        139.8
+      ],
+      "status": "truncated",
+      "termination_reason": "collection_window"
+    },
+    "identical_details": "audit consistent; frames; history digests ff2204d4...bd76 / 23515cdf...37ea (= history-v7 file hashes); transitions [1959,2129]; decisions; 929091121 rollout bytes; behavior complete; reconstruction resampled/values/conditionals 1959/1960/4751 and 2129/2130/5584",
+    "peak_memory_footprint_gb": {
+      "030d2ad": 4.73,
+      "baseline_7a81a79": 4.37,
+      "fb91ca2": 4.42
+    },
+    "peak_rss_gb": {
+      "030d2ad": 6.42,
+      "baseline_7a81a79": 5.43,
+      "fb91ca2": 5.96
+    },
+    "process_real_seconds": {
+      "030d2ad": 143.73,
+      "baseline_7a81a79": 431.97,
+      "fb91ca2": 154.57
+    },
+    "steps": [
+      "audit",
+      "decode",
+      "digest",
+      "transitions",
+      "rollout_from_dict",
+      "rollout_to_dict",
+      "behavior",
+      "reconstruction"
+    ],
+    "sum_wall_seconds": {
+      "030d2ad": 142.82,
+      "baseline_7a81a79": 431.15,
+      "fb91ca2": 153.76
+    },
+    "wall_seconds": {
+      "030d2ad": {
+        "audit": 25.0,
+        "behavior": 10.9,
+        "decode": 14.1,
+        "digest": 0.1,
+        "reconstruction": 70.18,
+        "rollout_from_dict": 17.07,
+        "rollout_to_dict": 5.43,
+        "transitions": 0.04
+      },
+      "baseline_7a81a79": {
+        "audit": 64.39,
+        "behavior": 10.84,
+        "decode": 18.69,
+        "digest": 8.94,
+        "reconstruction": 243.3,
+        "rollout_from_dict": 73.82,
+        "rollout_to_dict": 11.12,
+        "transitions": 0.04
+      },
+      "fb91ca2": {
+        "audit": 23.96,
+        "behavior": 10.49,
+        "decode": 13.47,
+        "digest": 0.1,
+        "reconstruction": 78.93,
+        "rollout_from_dict": 20.49,
+        "rollout_to_dict": 6.29,
+        "transitions": 0.04
+      }
+    }
+  },
+  "optimizer_updates": 0,
+  "purpose": "performance_measurement_only",
+  "schema": "heroes-performance-evidence-v1",
+  "synthetic_cloud": {
+    "baseline_9193db3": {
+      "audit_sha256": [
+        [
+          "907d241486d04c864001ac2cff077cc6f3562f4bc70715c82c11843ab0a84986",
+          "b18855c46b53d61d282e8eb9de61ca9ec7a62297f731f777ee150ffc47a808f3",
+          true
+        ],
+        [
+          "268d3f4cc5efd11fd815522e3b2803047b1cd5d3c33abf1557ebc5275fd053eb",
+          "e31891f3c75b2941027c12b8cb9d71dc039d3dd0b4a479e1fdf93f1d26f61b8d",
+          true
+        ]
+      ],
+      "history_sha256": [
+        "907d241486d04c864001ac2cff077cc6f3562f4bc70715c82c11843ab0a84986",
+        "268d3f4cc5efd11fd815522e3b2803047b1cd5d3c33abf1557ebc5275fd053eb"
+      ],
+      "peak_rss_bytes": [
+        1192620032,
+        1192624128,
+        1181728768
+      ],
+      "repeats": 3,
+      "rollout_sha256": "de9214acceb0244afb76b1021b7ca573c973f1e43ace6e375211bf4166430372",
+      "steps_wall_seconds": {
+        "audit_players": {
+          "max": 11.645,
+          "median": 11.341,
+          "min": 11.037
+        },
+        "collect": {
+          "max": 40.516,
+          "median": 40.422,
+          "min": 38.269
+        },
+        "dumps": {
+          "max": 0.455,
+          "median": 0.435,
+          "min": 0.415
+        },
+        "finish": {
+          "max": 22.929,
+          "median": 22.749,
+          "min": 21.485
+        },
+        "from_dict": {
+          "max": 13.938,
+          "median": 13.645,
+          "min": 13.459
+        },
+        "loads": {
+          "max": 0.459,
+          "median": 0.443,
+          "min": 0.353
+        },
+        "replay_inference": {
+          "max": 10.675,
+          "median": 10.309,
+          "min": 10.291
+        },
+        "to_dict": {
+          "max": 2.32,
+          "median": 2.31,
+          "min": 2.24
+        }
+      },
+      "total_wall_seconds": {
+        "max": 101.959,
+        "median": 100.505,
+        "min": 99.678
+      }
+    },
+    "description": "experiments/perf/synthetic_episode.py --decisions 250 (two 1753-frame dialog-schema histories, 92-400 tile observations, 40 objects); cloud Linux container, 4 vCPU, Python 3.13, torch 2.9.1 1 thread; interleaved base/opt repeats; no native engine; NOT a game-throughput measurement",
+    "hashes_identical": true,
+    "optimized_fb91ca2": {
+      "audit_sha256": [
+        [
+          "907d241486d04c864001ac2cff077cc6f3562f4bc70715c82c11843ab0a84986",
+          "b18855c46b53d61d282e8eb9de61ca9ec7a62297f731f777ee150ffc47a808f3",
+          true
+        ],
+        [
+          "268d3f4cc5efd11fd815522e3b2803047b1cd5d3c33abf1557ebc5275fd053eb",
+          "e31891f3c75b2941027c12b8cb9d71dc039d3dd0b4a479e1fdf93f1d26f61b8d",
+          true
+        ]
+      ],
+      "history_sha256": [
+        "907d241486d04c864001ac2cff077cc6f3562f4bc70715c82c11843ab0a84986",
+        "268d3f4cc5efd11fd815522e3b2803047b1cd5d3c33abf1557ebc5275fd053eb"
+      ],
+      "peak_rss_bytes": [
+        1198358528,
+        1198489600,
+        1197719552
+      ],
+      "repeats": 3,
+      "rollout_sha256": "de9214acceb0244afb76b1021b7ca573c973f1e43ace6e375211bf4166430372",
+      "steps_wall_seconds": {
+        "audit_players": {
+          "max": 4.763,
+          "median": 4.141,
+          "min": 3.681
+        },
+        "collect": {
+          "max": 17.526,
+          "median": 16.932,
+          "min": 16.798
+        },
+        "dumps": {
+          "max": 0.408,
+          "median": 0.396,
+          "min": 0.371
+        },
+        "finish": {
+          "max": 1.132,
+          "median": 1.121,
+          "min": 1.06
+        },
+        "from_dict": {
+          "max": 3.978,
+          "median": 3.968,
+          "min": 3.944
+        },
+        "loads": {
+          "max": 0.419,
+          "median": 0.406,
+          "min": 0.4
+        },
+        "replay_inference": {
+          "max": 3.29,
+          "median": 3.133,
+          "min": 2.981
+        },
+        "to_dict": {
+          "max": 1.228,
+          "median": 1.139,
+          "min": 1.107
+        }
+      },
+      "total_wall_seconds": {
+        "max": 31.734,
+        "median": 31.435,
+        "min": 31.154
+      }
+    }
+  },
+  "training_performed": false
+}
