@@ -401,15 +401,82 @@
       "run": "cloud-continuation-2026-10-25-027",
       "training_samples": 37,
       "wall_seconds": 29.522731978000593
+    },
+    {
+      "optimizer_steps": 3,
+      "plan_sha256": "1a425960720e02031f65795416bebf47391dda7f05aec6f7622e8c2396fa4bf5",
+      "progress": {
+        "decisions": 5172,
+        "rollouts": 112,
+        "updates": 28
+      },
+      "report_sha256": "e93bea662e561ca8c2ed42e5da535e5168c6a3e857f4e41bf8967ae422be634b",
+      "rows": [
+        {
+          "choices": 8,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 6,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 33,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 2,
+            "cross_army_operations": 1,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-028",
+      "training_samples": 48,
+      "wall_seconds": 38.427265784000156
     }
   ],
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 634,
-    "cross_army_operations": 70,
+    "cross_army_net_count_redistribution": 636,
+    "cross_army_operations": 71,
     "moves_toward_visible_opponent_town": 0,
     "recruitment_completed": 25,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 30
+    "visible_battle_starts": 34
   },
   "heldout_checks": [
     {
@@ -484,35 +551,35 @@
     }
   ],
   "latest_complete": {
-    "adam_steps": 195,
+    "adam_steps": 198,
     "after_checkpoint": {
       "exact_model_adam_rng_progress_pool": true,
       "policy": {
         "bytes": 637363,
-        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-027/execution/after-policy.pt",
-        "sha256": "0f81feb7842202ae5f88664eec40db7dcbbfae5de3b973e870fd0d4f0e64bb34"
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-028/execution/after-policy.pt",
+        "sha256": "257216c80471f88153abba5177f12d9fcba83fa728f6eb6379d953278bd0b75e"
       },
       "resume": {
         "bytes": 1265461,
-        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-027/execution/after-resume.pt",
-        "sha256": "a96eb1f81137e6a829f5c4c238287a325acb2859cfab3796da0227411764aede"
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-028/execution/after-resume.pt",
+        "sha256": "0339a46c84fbe691667de82fbc902efd860471e97415c64ef572a34aaa929eaf"
       },
-      "weights_sha256": "3b5033636e54f530d3d17be55ef1d70290abfb8232a7ddb41686c8106c4f64f0"
+      "weights_sha256": "c752cda67bc1d6f8be54dcd24eaf01a07445d08f5dc2be8b0ad55fcd0f699d87"
     },
     "plan": {
       "bytes": 50062,
-      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-027/plan.json",
-      "sha256": "3876f302a16dcb96811f5e224457f167d44ef157ac6bc4b05066b6075e6526cb"
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-028/plan.json",
+      "sha256": "1a425960720e02031f65795416bebf47391dda7f05aec6f7622e8c2396fa4bf5"
     },
     "progress": {
-      "decisions": 5124,
-      "rollouts": 108,
-      "updates": 27
+      "decisions": 5172,
+      "rollouts": 112,
+      "updates": 28
     },
     "report": {
-      "bytes": 10394,
-      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-027/execution/report.json",
-      "sha256": "6b8d134e9d72bdc404d188c7bab9964f8d3e336042d0686d9a1d32f7f0bbffda"
+      "bytes": 10393,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-028/execution/report.json",
+      "sha256": "e93bea662e561ca8c2ed42e5da535e5168c6a3e857f4e41bf8967ae422be634b"
     }
   },
   "limitations": [
@@ -523,20 +590,20 @@
   ],
   "schema": "heroes-cloud-continuation-summary-v1",
   "throughput": {
-    "admitted_decisions_per_reported_batch_second": 1.127929150755378,
-    "reported_training_batch_wall_seconds": 1046.165,
+    "admitted_decisions_per_reported_batch_second": 1.1322229926092022,
+    "reported_training_batch_wall_seconds": 1084.592,
     "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
-    "verified_training_games_per_reported_batch_second": 0.0229409318797704
+    "verified_training_games_per_reported_batch_second": 0.025816159440600703
   },
   "totals": {
-    "adam_steps": 46,
+    "adam_steps": 49,
     "evaluation_games": 4,
-    "loss": 28,
-    "training_games": 24,
-    "training_samples": 1180,
-    "training_wall_milliseconds": 1046165,
-    "updates": 6,
-    "verified_games": 28
+    "loss": 32,
+    "training_games": 28,
+    "training_samples": 1228,
+    "training_wall_milliseconds": 1084592,
+    "updates": 7,
+    "verified_games": 32
   },
-  "updated_utc": "2026-10-25T16:40:16.066762+00:00"
+  "updated_utc": "2026-10-25T16:41:09.456559+00:00"
 }
