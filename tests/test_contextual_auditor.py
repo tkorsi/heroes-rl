@@ -70,13 +70,14 @@ class ContextualAuditorTests(unittest.TestCase):
         self.temp.cleanup()
 
     def persist(self, pair):
+        profile = pair[0].profile
         for history, path in zip(pair, self.paths):
             # Deliberately noncanonical whitespace demonstrates the distinction
             # between file-byte hashes and canonical contract-prefix hashes.
             path.write_text("".join(json.dumps(c.encode_frame(frame), sort_keys=True) + "\n" for frame in history.frames))
         manifest = {
-            "schema_version": 1, "kind": "contextual-headless-self-play", "environment": c.ENVIRONMENT,
-            "history_schema": c.SCHEMA, "action_schema": c.ACTION_SCHEMA, "episode": pair[0].episode,
+            "schema_version": 1, "kind": "contextual-headless-self-play", "environment": profile.environment,
+            "history_schema": profile.history_schema, "action_schema": profile.action_schema, "episode": pair[0].episode,
             "status": {"natural": "completed", "cutoff": "truncated", "failure": "failed"}[pair[0].boundary],
             "termination_reason": "synthetic_fixture", "returncode": 0, "evidence_ref": "synthetic-native-evidence",
             "outcomes_by_player": {color: history.terminal if history.boundary == "natural" else None
@@ -86,14 +87,29 @@ class ContextualAuditorTests(unittest.TestCase):
             "identity": {"engine_revision": "synthetic-no-game", "bridge_source_sha256": "a" * 64, "map_sha256": "b" * 64},
             "players": {},
         }
+        if profile.dialogs:
+            manifest["dialog_cutoff_drain"] = None
         for color, path, history in zip(("red", "blue"), self.paths, pair):
             proof = (history.frames[-1].verification if history.boundary == "natural" else
                      history.frames[-1].cutoff_verification if history.boundary == "cutoff" else None)
             prefix = proof.history_sha256[history.player] if proof else history.digest()
-            manifest["players"][color] = {"history_v2": {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            manifest["players"][color] = {profile.history_key: {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
                 "canonical_sha256": history.digest(), "prefix_sha256": prefix,
                 "boundary": history.boundary, "complete": history.boundary != "failure"}}
         return manifest
+
+    def test_expanded_profile_is_explicit_and_rejects_mixed_history_declarations(self):
+        pair = tuple(c.PlayerHistory("synthetic-expanded-audit", player, schema=c.EXPANDED_SCHEMA) for player in (0, 1))
+        for history, outcome in zip(pair, ("win", "loss")):
+            history.emit("terminal", outcome=outcome)
+        c.finalize_natural(pair, engine_outcomes=("win", "loss"), socket_outcomes=("win", "loss"),
+                           process_exit_code=0, evidence_ref="synthetic-native-evidence")
+        manifest = self.persist(pair)
+        report = audit(*self.paths, manifest)
+        self.assertTrue(report["consistent"] and report["manifest_bound"], report["failures"])
+        self.assertFalse(report["has_eligible_samples"])
+        manifest["players"]["red"]["history_v7"] = dict(manifest["players"]["red"]["history_v8"])
+        self.assertFalse(audit(*self.paths, manifest)["consistent"])
 
     def rows(self, player=0):
         return [json.loads(line) for line in self.paths[player].read_text().splitlines()]

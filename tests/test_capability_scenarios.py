@@ -36,8 +36,19 @@ class CapabilityScenarioTests(unittest.TestCase):
                                      set(scenarios.COLORS))
                     for obj in value["objects.json"]:
                         self.assertNotIn("variables", obj["options"])
-                    if fixture != "adventure_spells":
+                    if fixture not in ("adventure_spells", "fly_movement", "water_walk_movement"):
                         self.assertEqual(value["surface_terrain.json"], ordinary["surface_terrain.json"])
+
+    def test_movement_spells_are_isolated_and_crossing_has_no_land_detour(self):
+        for fixture, spell in (("fly_movement", "fly"), ("water_walk_movement", "waterWalk")):
+            for player in scenarios.COLORS:
+                value = scenarios.capability_payloads(fixture, player)
+                hero = next(obj for obj in value["objects.json"] if obj["type"] == "hero" and obj["options"]["owner"] == player)
+                self.assertEqual(hero["options"]["spellBook"], ["core:" + spell])
+                self.assertFalse(any(obj["type"] == "boat" for obj in value["objects.json"]))
+                for row in (11, 12, 13):
+                    self.assertEqual(value["surface_terrain.json"][row], ["wt0_"] * 20)
+                self.assertTrue(all(tile != "wt0_" for tile in value["surface_terrain.json"][14]))
 
     def test_initial_full_army_cannot_silently_merge_joining_creature(self):
         for player in scenarios.COLORS:

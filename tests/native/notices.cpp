@@ -317,7 +317,8 @@ void capabilities()
 	{
 		return explorer_rl::normalizeNotice(mode, text, components, PlayerColor(player), own, true, true);
 	};
-	const auto unusedPools = [&](const MetaString & text, const std::vector<Component> & components)
+	const auto unusedPools = [&](const MetaString & text, const std::vector<Component> & components,
+		EInfoWindowMode mode = EInfoWindowMode::MODAL)
 	{
 		JsonNode original;
 		text.jsonSerialize(original);
@@ -328,10 +329,10 @@ void capabilities()
 				? JsonNode(int64_t(17)) : JsonNode("hidden data"));
 			MetaString forged;
 			forged.jsonDeserialize(data);
-			reject([&] { expanded(EInfoWindowMode::MODAL, forged, components); }, "Capability unused pool rejected");
+			reject([&] { expanded(mode, forged, components); }, "Capability unused pool rejected");
 		}
 	};
-	for(int id : {123, 124, 125, 135, 335, 580})
+	for(int id : {123, 124, 125, 135, 335})
 	{
 		MetaString text;
 		text.appendLocalString(EMetaText::GENERAL_TXT, id);
@@ -353,6 +354,28 @@ void capabilities()
 			"Capability native operation must match");
 		unusedPools(text, {});
 	}
+	// Castle special2 is a JSON Rewardable with an @ text ID and default
+	// AUTO presentation; it does not use a local-string or modal operation.
+	MetaString stables;
+	stables.appendTextID("core.genrltxt.580");
+	for(int player : {0, 1})
+	{
+		const auto result = expanded(EInfoWindowMode::AUTO, stables, {}, player);
+		expect(result["display_mode"].String() == "auto", "Castle Stables native AUTO mode preserved");
+		expect(result["text"].Vector().size() == 1 && result["text"][0]["text_id"].String() == "core.genrltxt.580",
+			"Castle Stables native append-text template preserved");
+		expect(result["components"].Vector().empty(), "Stables notification invents no resource reward");
+	}
+	for(auto mode : {EInfoWindowMode::INFO, EInfoWindowMode::MODAL})
+		reject([&] { expanded(mode, stables); }, "Castle Stables wrong mode rejected");
+	MetaString badStables;
+	badStables.appendLocalString(EMetaText::GENERAL_TXT, 580);
+	reject([&] { expanded(EInfoWindowMode::AUTO, badStables); }, "Castle Stables append-local is not native grammar");
+	reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::AUTO, stables, {}, PlayerColor(0), own, true, false); },
+		"Stables cannot expand legacy profiles");
+	reject([&] { expanded(EInfoWindowMode::AUTO, stables, {Component(ComponentType::RESOURCE, GameResID(6), 400)}); },
+		"Stables does not expose its movement as a resource component");
+	unusedPools(stables, {}, EInfoWindowMode::AUTO);
 	MetaString summon;
 	summon.appendLocalString(EMetaText::GENERAL_TXT, 336);
 	summon.replaceRawString(LIBRARY->generaltexth->translate(*own.begin()));
