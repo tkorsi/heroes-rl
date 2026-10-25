@@ -59,21 +59,37 @@ def _wire_text(raw):
         return None
 
 
+def _json_native(value):
+    """True when every node has exactly a JSON type: no subclasses, tuples or floats."""
+    stack = [value]
+    while stack:
+        item = stack.pop()
+        kind = type(item)
+        if kind is dict:
+            for key, inner in item.items():
+                if type(key) is not str:
+                    return False
+                stack.append(inner)
+        elif kind is list:
+            stack.extend(item)
+        elif kind is not str and kind is not int and kind is not bool and item is not None:
+            return False
+    return True
+
+
 def _repeats(raw, known, verbatim):
     """True only for a byte-identical redelivery of an accepted record.
 
     verbatim holds positions whose accepted record had exactly the canonical
-    text of the frame decoded from it. A later record with that same text and
-    the same JSON value decodes to that same frame, so the strict decoder is
-    skipped. Anything else, valid or not, takes the original path.
+    text of the frame decoded from it. JSON text is injective over exact JSON
+    types, so a later record of exact JSON types with that same text is that
+    same record and decodes to that same frame; the strict decoder is skipped.
+    Anything else, valid or not, takes the original path.
     """
     seq = raw.get("seq") if type(raw) is dict else None
     if type(seq) is not int or seq not in verbatim:
         return False
-    text = c.canonical_frame(known[seq])
-    # Text alone conflates tuples with lists and equality alone conflates
-    # booleans with integers; JSON-decoded records satisfy both exactly.
-    return _wire_text(raw) == text and json.loads(text) == raw
+    return _wire_text(raw) == c.canonical_frame(known[seq]) and _json_native(raw)
 
 
 def _support_dict(support):
@@ -334,7 +350,7 @@ class ContextualRollout:
 
     def to_dict(self):
         result = {"episode": self.episode, "player": self.player, "role": self.role,
-            "history": [json.loads(c.canonical_frame(frame)) for frame in self.history], "decisions": [item.to_dict() for item in self.decisions],
+            "history": [c.encode_frame(frame) for frame in self.history], "decisions": [item.to_dict() for item in self.decisions],
             "samples": [item.to_dict(schema=self.trajectory_schema) for item in self.samples], "boundary": self.boundary,
             "history_sha256": self.history_sha256, "evidence_ref": self.evidence_ref,
             "behavior_checkpoint": self.behavior_checkpoint, "opponent_checkpoint": self.opponent_checkpoint,
@@ -371,7 +387,9 @@ class ContextualRollout:
         for raw_estimate in data["estimates"]:
             estimate = _record(raw_estimate, ("decision_seq", "value", "prefix"))
             estimates.append(DecisionEstimate(estimate["decision_seq"], estimate["value"], RecurrentPrefix(**estimate["prefix"])))
-        return cls(**{**data, "history": history, "decisions": decisions, "samples": tuple(samples), "estimates": tuple(estimates)})
+        result = cls(**{**data, "history": history, "decisions": decisions, "samples": tuple(samples), "estimates": tuple(estimates)})
+        c.release_canonical(history)
+        return result
 
 
 class ContextualSession:
@@ -544,9 +562,11 @@ class CollectedEpisode:
         data = _record(raw, ("schema", "rollouts", "manifest", "audit", "model_configs"))
         if data["schema"] not in _TRAJECTORIES or type(data["rollouts"]) is not list or type(data["model_configs"]) is not list:
             raise ValueError("Unsupported collection artifact schema")
-        return cls(tuple(ContextualRollout.from_dict(item, trajectory_schema=_TRAJECTORIES[data["schema"]]) for item in data["rollouts"]),
-                   _canonical(data["manifest"]), _canonical(data["audit"]),
-                   tuple(_canonical(config) for config in data["model_configs"]), data["schema"])
+        result = cls(tuple(ContextualRollout.from_dict(item, trajectory_schema=_TRAJECTORIES[data["schema"]]) for item in data["rollouts"]),
+                     _canonical(data["manifest"]), _canonical(data["audit"]),
+                     tuple(_canonical(config) for config in data["model_configs"]), data["schema"])
+        for rollout in result.rollouts: c.release_canonical(rollout.history)
+        return result
 
 
 class ContextualCollector:
@@ -594,6 +614,15 @@ class ContextualCollector:
         return session.choose(last.seq).action
 
     def finish(self, end, *, histories, manifest_path=None):
+        try:
+            return self._finish(end, histories=histories, manifest_path=manifest_path)
+        finally:
+            # Canonical text served this episode's checks; returned or retained
+            # rollouts do not keep a second copy of every frame.
+            for session in self.sessions or ():
+                c.release_canonical(session.history.frames)
+
+    def _finish(self, end, *, histories, manifest_path=None):
         if self.sessions is None or not end.done or type(histories) is not tuple or len(histories) != 2:
             raise ValueError("Finish requires both complete contextual histories")
         for session, frames in zip(self.sessions, histories): session.consume(frames)

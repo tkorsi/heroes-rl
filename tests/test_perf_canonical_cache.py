@@ -92,6 +92,60 @@ class CanonicalFrameCacheTests(unittest.TestCase):
                     self.assertEqual(rebuilt.frames, frames)
 
 
+class CacheReleaseTests(unittest.TestCase):
+    def setUp(self):
+        try:
+            import torch
+        except ModuleNotFoundError as error:
+            if error.name != "torch": raise
+            self.skipTest("Optional torch is not installed")
+        from tests.test_contextual_rollout import ContextualRolloutTests
+        case = ContextualRolloutTests("test_complete_natural_roundtrip_binds_exact_behavior_and_pair")
+        case.setUp()
+        self.case = case
+
+    def cached(self, collected):
+        return [frame for rollout in collected.rollouts for frame in rollout.history if "_canonical_json" in frame.__dict__]
+
+    def test_finished_and_loaded_episodes_keep_no_canonical_text(self):
+        from experiments.learner.contextual_rollout import CollectedEpisode, ContextualRollout
+        for boundary in ("natural", "cutoff", "failure"):
+            with self.subTest(boundary=boundary):
+                result, collector, pair, _ = self.case.collect(boundary)
+                self.assertEqual(self.cached(result), [])
+                self.assertTrue(all("_canonical_json" not in f.__dict__ for s in collector.sessions for f in s.history.frames))
+                raw = json.loads(json.dumps(result.to_dict()))
+                loaded = CollectedEpisode.from_dict(raw)
+                self.assertEqual(loaded, result)
+                self.assertEqual(self.cached(loaded), [])
+                single = ContextualRollout.from_dict(raw["rollouts"][0], trajectory_schema=result.rollouts[0].trajectory_schema)
+                self.assertFalse(any("_canonical_json" in f.__dict__ for f in single.history))
+                # Released text is re-derived exactly.
+                for rollout in loaded.rollouts:
+                    self.assertEqual(reference_digest(rollout.history), rollout.history_sha256)
+
+    def test_rollout_history_dicts_keep_the_original_encoder_key_order(self):
+        result, _, _, _ = self.case.collect("natural")
+        for rollout in result.rollouts:
+            for frame, data in zip(rollout.history, rollout.to_dict()["history"]):
+                expected = reference_encode(frame)
+                self.assertEqual(data, expected)
+                self.assertEqual(json.dumps(data), json.dumps(expected))
+
+    def test_a_failed_finish_also_releases(self):
+        from tests.test_contextual_rollout import finish_pair, initial, request, resolve
+        collector = self.case.collector()
+        collector.start("synthetic-collector")
+        pair = tuple(initial(player) for player in (0, 1))
+        for history in pair:
+            resolve(history, collector.act(request(history)))
+        end = finish_pair(pair, "natural")
+        end.manifest["status"] = "truncated"
+        with self.assertRaises(ValueError):
+            collector.finish(end, histories=tuple(h.frames for h in pair))
+        self.assertTrue(all("_canonical_json" not in f.__dict__ for s in collector.sessions for f in s.history.frames))
+
+
 class VerbatimRedeliveryTests(unittest.TestCase):
     def setUp(self):
         try:
@@ -146,9 +200,31 @@ class VerbatimRedeliveryTests(unittest.TestCase):
         variants.append(nested)
         extra = json.loads(json.dumps(decision)); extra["unknown"] = None; variants.append(extra)
         floated = json.loads(json.dumps(decision)); floated["day"] = float(floated["day"]); variants.append(floated)
+        # Subclasses serialize to the same text and compare equal; the strict
+        # decoder rejects them, so they must never take the shortcut.
+        from collections import OrderedDict
+        from enum import IntEnum
+
+        class Text(str):
+            pass
+
+        class Day(IntEnum):
+            ONE = 1
+        ordered = json.loads(json.dumps(self.records[0])); ordered["observation"] = OrderedDict(ordered["observation"])
+        variants.append(ordered)
+        texted = json.loads(json.dumps(self.records[0])); texted["episode"] = Text(texted["episode"]); variants.append(texted)
+        enum = json.loads(json.dumps(self.records[0])); enum["day"] = Day(enum["day"]); variants.append(enum)
+        top = OrderedDict(json.loads(json.dumps(self.records[0]))); variants.append(top)
         for raw in variants:
             with self.subTest(raw=sorted(raw)):
                 self.assertEqual(self.outcome(raw), self.original_outcome(raw))
+
+    def test_json_native_accepts_only_exact_json_types(self):
+        from experiments.learner.contextual_rollout import _json_native
+        self.assertTrue(all(_json_native(record) for record in self.records))
+        for value in ({1: "a"}, {"a": (1,)}, {"a": [1.0]}, {"a": [True, None, {"b": ["c", 2]}]}):
+            with self.subTest(value=value):
+                self.assertEqual(_json_native(value), value == {"a": [True, None, {"b": ["c", 2]}]})
 
     def test_unproven_positions_are_decoded(self):
         self.session._verbatim.clear()

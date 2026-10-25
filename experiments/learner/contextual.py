@@ -2597,6 +2597,8 @@ def canonical_frame(frame):
     Frames are frozen trees of tuples, strings, integers and frozen records, so
     the text cannot change after the first encoding. The cache is per object
     and is never a dataclass field: equality, replace() and decoding ignore it.
+    It costs memory while the frame lives, so owners that finish with a history
+    drop it with release_canonical.
     """
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
@@ -2605,6 +2607,12 @@ def canonical_frame(frame):
         text = json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":"), allow_nan=False)
         object.__setattr__(frame, "_canonical_json", text)
     return text
+
+
+def release_canonical(frames):
+    """Drop cached canonical text; a later canonical_frame re-encodes exactly."""
+    for frame in frames:
+        frame.__dict__.pop("_canonical_json", None)
 
 
 def decode_frame(raw):
