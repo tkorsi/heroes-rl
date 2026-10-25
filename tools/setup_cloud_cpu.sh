@@ -8,8 +8,9 @@ usage() {
 Usage: tools/setup_cloud_cpu.sh [--dry-run] STAGE [STAGE ...]
 
 No arguments (or --help) prints this message without changing anything.
-Run only on a dedicated Ubuntu 24.04+ or Debian 12+ Linux host. Linux execution
-is not yet validated. Python 3.11+ is required; CPU PyTorch is pinned to 2.9.1.
+Run only on a dedicated Ubuntu 24.04+ or Debian 12+ Linux host. Python 3.11+
+is required; CPU PyTorch is pinned to 2.9.1. The Debian 13 amd64 build is tested
+through setup_cloud_locked.sh; other hosts and real gameplay need separate checks.
 
 Explicit stages, normally in this order:
   apt       Install system build/test prerequisites (root or passwordless sudo).
