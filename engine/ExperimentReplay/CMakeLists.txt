@@ -5,7 +5,7 @@ if(ENABLE_CLIENT)
 	# Compile the exact adapter implementation into the offline verifier; no
 	# dynamic AI loading or socket policy server is used by contextual replay.
 	target_sources(vcmireplay PRIVATE ContextualReplay.cpp ContextualReplay.h ReplayClientHost.cpp
-		../AI/ExplorerRL/ExplorerRL.cpp ../AI/ExplorerRL/Contextual.cpp
+		../AI/ExplorerRL/ExplorerRL.cpp ../AI/ExplorerRL/SocketPolicyTransport.cpp ../AI/ExplorerRL/Contextual.cpp
 		../AI/ExplorerRL/ContextualEvidence.cpp ../AI/ExplorerRL/TownEconomy.cpp
 		../AI/ExplorerRL/TownRecruitment.cpp ../AI/ExplorerRL/Tavern.cpp ../AI/ExplorerRL/ArmyOperations.cpp ../AI/ExplorerRL/Exchange.cpp ../AI/ExplorerRL/Dialog.cpp ../AI/ExplorerRL/DialogContext.cpp ../AI/ExplorerRL/TownTransfer.cpp ../AI/ExplorerRL/Notice.cpp
 		../AI/ExplorerRL/KnowledgePlanner.cpp)

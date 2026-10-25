@@ -4,6 +4,7 @@
 #include "../../lib/json/JsonNode.h"
 #include "VisibleState.h"
 #include "Contextual.h"
+#include "../../nativesession/PolicyTransport.h"
 #include "../../lib/callback/ExperimentHooks.h"
 
 #include <array>
@@ -70,7 +71,7 @@ public:
 private:
 	std::shared_ptr<CCallback> callback;
 	std::thread worker;
-	std::atomic<int> socketFD{-1};
+	std::atomic<std::shared_ptr<native_session::PolicyTransport>> policyTransport;
 	std::mutex stateMutex;
 	std::mutex sendMutex;
 	std::condition_variable changed;
@@ -90,7 +91,6 @@ private:
 	int pendingRequest = -1;
 	std::string failure;
 	std::string episode;
-	std::string receiveBuffer;
 	int timeoutSeconds = 30;
 	int snapshotEvery = 1; ///< observations carry the visible tile list every N decisions, never when 0
 	int64_t observations = 0;

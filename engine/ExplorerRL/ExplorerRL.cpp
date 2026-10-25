@@ -16,14 +16,8 @@
 #include "../../lib/networkPacks/PacksForClient.h"
 #include "../../lib/networkPacks/PacksForClientBattle.h"
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <cerrno>
+#include "SocketPolicyTransport.h"
 #include <cstdlib>
-#include <poll.h>
-#include <sys/socket.h>
-#include <unistd.h>
 
 namespace
 {
@@ -141,17 +135,6 @@ JsonNode visibleChangeJson(const explorer_rl::VisibleChange & change, int64_t se
 	return event;
 }
 
-void waitSocket(int fd, short events, int timeoutSeconds)
-{
-	pollfd descriptor{fd, events, 0};
-	int result;
-	do
-		result = ::poll(&descriptor, 1, timeoutSeconds * 1000);
-	while(result < 0 && errno == EINTR);
-	if(result <= 0 || !(descriptor.revents & events))
-		throw std::runtime_error(result == 0 ? "Policy socket timeout" : "Policy socket disconnected");
-}
-
 thread_local bool gameStateReadHeld = false;
 }
 
@@ -226,9 +209,7 @@ void ExplorerRL::finish()
 		stopping = true;
 	}
 	changed.notify_all();
-	const int fd = socketFD.load();
-	if(fd >= 0)
-		::shutdown(fd, SHUT_RDWR);
+	if(const auto endpoint = policyTransport.load()) endpoint->close();
 	if(worker.joinable())
 		worker.join();
 	{
@@ -237,58 +218,31 @@ void ExplorerRL::finish()
 			std::fclose(observationLedger);
 		observationLedger = nullptr;
 	}
-	const int closedFD = socketFD.exchange(-1);
-	if(closedFD >= 0)
-		::close(closedFD);
+	policyTransport.store(nullptr);
 }
 
 void ExplorerRL::connectPolicy()
 {
 	if(explorer_rl::ContextualEvidence::replaying())
 		return;
-	// Each instance has its own callback, state and socket. Plural routing never
-	// falls back to a shared port, so a missing endpoint fails explicitly.
-	const std::string portKey = std::getenv("EXPLORER_RL_PLAYERS")
-		? "EXPLORER_RL_PORT_" + std::to_string(playerID.getNum()) : "EXPLORER_RL_PORT";
-	const int port = environmentInteger(portKey.c_str(), 0, 1, 65535);
-	if(port == 0)
-		throw std::runtime_error(portKey + " is required");
-	const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-	if(fd < 0)
-		throw std::runtime_error("Cannot create policy socket");
-	// Publish the descriptor only once connected, so that a terminal before
-	// the connection fails explicitly instead of writing to a bare socket.
-	struct CloseUnpublished
+	auto endpoint = native_session::claimPolicy(playerID.getNum(), episode);
+	if(!endpoint)
 	{
-		int fd;
-		~CloseUnpublished() { if(fd >= 0) ::close(fd); }
-	} closeUnpublished{fd};
-#ifdef SO_NOSIGPIPE
-	const int yes = 1;
-	::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(yes));
-#endif
-	// Each message is one complete line; coalescing small writes only adds latency.
-	const int noDelay = 1;
-	::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &noDelay, sizeof(noDelay));
-	timeval timeout{timeoutSeconds, 0};
-	::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-	sockaddr_in address{};
-	address.sin_family = AF_INET;
-	address.sin_port = htons(static_cast<uint16_t>(port));
-	address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-	if(::connect(fd, reinterpret_cast<sockaddr *>(&address), sizeof(address)) != 0)
-		throw std::runtime_error("Cannot connect to local policy server");
-	closeUnpublished.fd = -1;
-	{
-		std::lock_guard lock(stateMutex);
-		if(stopping)
-		{
-			::close(fd);
-			throw std::runtime_error("Stopped while connecting to the policy server");
-		}
-		socketFD.store(fd);
+		if(const char * mode = std::getenv("EXPLORER_RL_TRANSPORT"); mode && std::string(mode) == "in-process")
+			throw std::runtime_error("Missing explicitly requested in-process policy endpoint");
+		const std::string portKey = std::getenv("EXPLORER_RL_PLAYERS")
+			? "EXPLORER_RL_PORT_" + std::to_string(playerID.getNum()) : "EXPLORER_RL_PORT";
+		const int port = environmentInteger(portKey.c_str(), 0, 1, 65535);
+		if(port == 0) throw std::runtime_error(portKey + " is required");
+		endpoint = makeSocketPolicyTransport(port, timeoutSeconds);
 	}
+	std::lock_guard lock(stateMutex);
+	if(stopping)
+	{
+		endpoint->close();
+		throw std::runtime_error("Stopped while connecting to policy endpoint");
+	}
+	policyTransport.store(std::move(endpoint));
 }
 
 JsonNode ExplorerRL::message(const std::string & type) const
@@ -326,68 +280,25 @@ void ExplorerRL::writeMessage(const JsonNode & message)
 		if(explorer_rl::ContextualEvidence::replaying())
 			return;
 	}
-	const auto encodeStart = std::chrono::steady_clock::now();
-	// VCMI's compact writer can retain formatting newlines. JSON strings escape
-	// their own newlines, so removing literal CR/LF produces a JSONL record.
-	std::string line = message.toCompactString();
-	line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
-	line.erase(std::remove(line.begin(), line.end(), '\r'), line.end());
-	line += '\n';
-	const auto encodeMicros = microsecondsSince(encodeStart);
-	const int fd = socketFD.load();
-	if(fd < 0)
-		throw std::runtime_error("Policy socket is not connected");
-	size_t offset = 0;
-	while(offset < line.size())
-	{
-		waitSocket(fd, POLLOUT, timeoutSeconds);
-#ifdef MSG_NOSIGNAL
-		constexpr int sendFlags = MSG_NOSIGNAL;
-#else
-		constexpr int sendFlags = 0;
-#endif
-		const auto sent = ::send(fd, line.data() + offset, line.size() - offset, sendFlags);
-		if(sent <= 0)
-			throw std::runtime_error("Cannot write policy socket");
-		offset += static_cast<size_t>(sent);
-	}
-	lastEncodeMicros = encodeMicros;
-	lastSendMicros = microsecondsSince(encodeStart) - encodeMicros;
-	lastMessageBytes = static_cast<int64_t>(line.size());
+	const auto endpoint = policyTransport.load();
+	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
+	const auto metrics = endpoint->send(message);
+	lastEncodeMicros = metrics.encodeMicros;
+	lastSendMicros = metrics.sendMicros;
+	lastMessageBytes = metrics.wireBytes;
 }
 
 JsonNode ExplorerRL::receiveMessage()
 {
 	if(explorer_rl::ContextualEvidence::replaying())
 		return explorer_rl::ContextualEvidence::current()->replayResponse(playerID.getNum());
-	while(true)
-	{
-		const auto newline = receiveBuffer.find('\n');
-		if(newline != std::string::npos)
-		{
-			if(newline > 65536)
-				throw std::runtime_error("Policy response exceeds 64 KiB");
-			std::string line = receiveBuffer.substr(0, newline);
-			receiveBuffer.erase(0, newline + 1);
-			JsonParsingSettings parsing;
-			parsing.mode = JsonParsingSettings::JsonFormatMode::JSON;
-			parsing.strict = true;
-			JsonNode response(line.data(), line.size(), parsing, "ExplorerRL policy response");
-			ExperimentEventGuard event(evidenceActor.c_str(), "receive");
-			if(auto * evidence = explorer_rl::ContextualEvidence::current())
-				evidence->response(playerID.getNum(), response);
-			return response;
-		}
-		if(receiveBuffer.size() > 65536)
-			throw std::runtime_error("Policy response exceeds 64 KiB");
-		const int fd = socketFD.load();
-		waitSocket(fd, POLLIN, timeoutSeconds);
-		char buffer[4096];
-		const auto received = ::recv(fd, buffer, sizeof(buffer), 0);
-		if(received <= 0)
-			throw std::runtime_error("Policy socket disconnected");
-		receiveBuffer.append(buffer, static_cast<size_t>(received));
-	}
+	const auto endpoint = policyTransport.load();
+	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
+	auto response = endpoint->receive(std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds));
+	ExperimentEventGuard event(evidenceActor.c_str(), "receive");
+	if(auto * evidence = explorer_rl::ContextualEvidence::current())
+		evidence->response(playerID.getNum(), response);
+	return response;
 }
 
 bool ExplorerRL::ended()
@@ -460,6 +371,10 @@ void ExplorerRL::run() noexcept
 	{
 		if(explorer_rl::ContextualEvidence::cancelled())
 			return;
+		// Explicit native-session truncation closes the channel before joining
+		// the client network thread. It is not a failed game or a scored loss.
+		if(const auto endpoint = policyTransport.load(); endpoint && endpoint->cancelled())
+			return;
 		bool report;
 		{
 			std::lock_guard lock(stateMutex);
@@ -492,9 +407,7 @@ void ExplorerRL::run() noexcept
 		// The error record is diagnostic; the client's failure exit is what
 		// makes an unattended run end as a technical failure.
 		reportExperimentFailure(std::string("ExplorerRL: ") + error.what());
-		const int fd = socketFD.load();
-		if(fd >= 0)
-			::shutdown(fd, SHUT_RDWR);
+		if(const auto endpoint = policyTransport.load()) endpoint->close();
 	}
 }
 

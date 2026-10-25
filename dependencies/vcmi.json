@@ -14,6 +14,10 @@
     {
       "source": "engine/ExperimentReplay",
       "destination": "experimentreplay"
+    },
+    {
+      "source": "engine/NativeSession",
+      "destination": "nativesession"
     }
   ],
   "initialize_upstream_submodules": true,
