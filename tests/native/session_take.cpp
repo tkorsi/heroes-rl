@@ -85,6 +85,10 @@ int main()
 			check(end.terminalObserved && !end.needsAction && end.failure.empty(), "terminal reported");
 			check(markers(end) == std::vector<int>{5, 6}, "terminal and later envelope delivered once");
 			rejects([&] { policy.submit(end.token, message("context_action")); });
+			// The superseded decision's own answer is admitted once and never
+			// applied, like a socket line written after the peer's terminal.
+			check(!policy.submit(offered.token, message("context_action", 11)), "superseded answer not applied");
+			rejects([&] { policy.submit(offered.token, message("context_action", 12)); });
 			auto later = policy.take(soon(20ms), true);
 			check(later.messages.empty() && later.terminalObserved && !later.needsAction, "terminal does not wake twice");
 			policy.send(message("contextual", 7));

@@ -98,7 +98,10 @@ public:
 	std::vector<JsonNode> drain();
 	/// lineAdmitted: the caller already applied the socket's 64 KiB limit to
 	/// the response's own wire line; otherwise its JsonWriter text is bounded.
-	void submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted = false);
+	/// Returns false when the player's own terminal superseded exactly this
+	/// offered decision: like a socket line written after the peer's terminal,
+	/// the response is admitted but never applied. Other tokens are refused.
+	bool submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted = false);
 	void fail(const std::string & reason) noexcept;
 };
 

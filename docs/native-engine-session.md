@@ -41,7 +41,8 @@ alone does not capture all Nullkiller/BattleAI thread-local randomness.
 `waitForShutdown` and `closeEpisode`, with typed JSON messages and generation
 identities. It has no socket descriptor, fork mode, PID or `/proc` contract.
 The API is C++20 and uses the existing VCMI `JsonNode`; it is not a new policy,
-observation schema, C ABI or Python binding.
+observation schema or C ABI. The CPython binding built over it is described in
+[embedded engine](embedded-engine.md).
 
 The implementation owns one process exclusively because VCMI's `LIBRARY`,
 `GAME`, settings, diagnostics and module state are still global. It refuses a
@@ -93,7 +94,8 @@ the next adapter response wait, which may be a dialog rather than a whole turn.
 The existing adapter still validates action availability, response identity and
 server outcomes. Submission is not evidence of an accepted game action.
 
-The queue is bounded at 64 messages. Overflow fails explicitly instead of
+The queue that `reset` creates holds 1024 messages (the channel's own default is
+64). Overflow fails explicitly instead of
 blocking a native callback while it owns event/game-state locks or dropping a
 visible event. `close` wakes a pending response wait. Host-requested truncation
 is unscored; it suppresses the expected channel-cancellation exception, not a
@@ -200,7 +202,8 @@ Record load time, reset dispatch plus waits through the first held boundary,
 submit-to-next-boundary latency, successful/rejected native actions, terminal or
 cutoff reason, cleanup and process peak resident bytes. Timings are cumulative
 per session; subtract successive receipt counters for each episode/step. Reset
-and step timers exclude caller idle/inference. Peak RSS is a **process high-water
+and step (or `take` advance) timers count only time spent waiting inside the
+call and exclude caller idle, ingest and inference. Peak RSS is a **process high-water
 mark**, not current RSS or an episode delta (Linux KiB and macOS bytes are
 normalized by private platform glue; unsupported platforms report unavailable).
 Inspect retained memory/caches and file/thread cleanup across many episodes;
@@ -294,8 +297,9 @@ The ordinary shutdown fix is separately applicable in PR #27 (`ca488fd4`), with
 an explicit additional terminal-attempt accounting contract (`16085b1`). See
 [shutdown evidence](native-headless-shutdown.md). The live session remains opt-in;
 the ordinary cold client is the fallback. Broader maps/mods, long games, retained
-AI randomness/caches, macOS execution and Teacher integration require their own
-gates. Portable execution does not promise cross-compiler bit identity.
+AI randomness/caches and Teacher integration require their own gates; macOS
+execution of the embedded backend is recorded in the
+[embedded engine validation](../validation/embedded-engine-2026-10-25.json). Portable execution does not promise cross-compiler bit identity.
 
 ### Failure-reset regression
 

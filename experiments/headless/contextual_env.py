@@ -485,8 +485,11 @@ class ContextualMixin:
                 native = Path(binary).parent
                 # The verifier and linked rules/AI libraries are part of the
                 # executable recipe, not just the client entry-point binary.
-                self._context_identity["native_runtime_sha256"] = contextual_evidence.runtime_identity(native)
+                self._context_identity["native_runtime_sha256"] = self._runtime_identity(native)
         return self._context_identity
+
+    def _runtime_identity(self, directory):
+        return contextual_evidence.runtime_identity(directory)
 
     def _finish(self, exited):
         if self.result is not None:

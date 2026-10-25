@@ -45,8 +45,9 @@ public:
 	/// unchanged Easy/BattleAI selections. No game client may exist yet.
 	void attach(int player);
 	void detach() noexcept;
-	/// Requires detach() and a destroyed game. Not released means poisoned.
-	OpponentStats release();
+	/// Requires detach() and a destroyed game. Not released, or a created
+	/// instance whose module state was not reset, means poisoned. Never throws.
+	OpponentStats release() noexcept;
 	void shutdown() noexcept;
 	bool initialized() const noexcept { return ready; }
 private:

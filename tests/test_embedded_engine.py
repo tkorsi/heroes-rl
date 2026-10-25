@@ -124,6 +124,26 @@ class StreamConversionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             MODULE.json_text(deep)
 
+    def test_duplicate_spellings_and_oversized_lines_are_refused_like_the_cold_reader(self):
+        from experiments.headless.contextual_protocol import loads
+        for value in ({"a\\n": 1, "a\n": 2}, {"\\": 1, "\\\\": 2}):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError) as cold:
+                    loads(MODULE.json_text(value).replace("\n", ""))
+                with self.assertRaises(ValueError) as embedded:
+                    MODULE.json_roundtrip(value)
+                self.assertTrue(str(cold.exception).startswith("Duplicate JSON field"))
+                self.assertEqual(str(embedded.exception), str(cold.exception))
+        limit = 16 * 1024 * 1024
+        for size, refused in ((limit - 16, False), (limit + 16, True)):
+            with self.subTest(size=size):
+                converted, text, refusal = MODULE.stream_value("string", b"x" * size)
+                self.assertEqual(len(text), size + 2)
+                if refused:
+                    self.assertEqual((converted, refusal), (None, "ProtocolError: Bridge message exceeds 16 MiB"))
+                else:
+                    self.assertEqual((len(converted), refusal), (size, None))
+
     def test_lifecycle_refusals_without_assets(self):
         script = (
             "import importlib.util, sys\n"
@@ -141,6 +161,9 @@ class StreamConversionTests(unittest.TestCase):
             "except TypeError: checks.append('refused')\n"
             "try: m.Engine(); checks.append('second')\n"
             "except m.EngineError: checks.append('refused')\n"
+            "for token, kind in ((2 ** 64 + 5, OverflowError), (-1, OverflowError), ('1', TypeError)):\n"
+            "    try: e.submit_text(token, 1, '{}'); checks.append('wrapped')\n"
+            "    except kind: checks.append('refused')\n"
             "print(e.poisoned, e.active, checks)\n"
             "e.close()\n"
             "try: e.take(0.0)\n"
@@ -149,7 +172,7 @@ class StreamConversionTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "-I", "-c", script], cwd=temporary, capture_output=True,
                                     text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("False False ['refused', 'refused', 'refused', 'refused', 'refused', 'refused', 'refused']", result.stdout)
+        self.assertIn("False False " + str(["refused"] * 10), result.stdout)
         self.assertIn("closed: Engine is closed", result.stdout)
 
 

@@ -32,7 +32,7 @@ import time
 
 from experiments.headless.builtin_env import (BuiltinHeadlessEnv, COLORS, ContextualProducer, ENGINE_FAILURE_MARKERS,
     EpisodeEnd, Limits, _Side, c, encoded, evidence, native, persist_history, scoring)
-from experiments.headless.env import VcmiLauncher
+from experiments.headless.env import ROOT, VcmiLauncher, _git_state
 from experiments.headless import embedded_evidence as embedded
 
 IMPORTED_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
@@ -51,6 +51,27 @@ def profile_layout(profile):
     return (profile / "data" / "vcmi", profile / "config" / "vcmi",
             {"XDG_DATA_HOME": str(profile / "data"), "XDG_CONFIG_HOME": str(profile / "config"),
              "XDG_CACHE_HOME": str(profile / "cache")})
+
+
+def runtime_files(launcher, module):
+    """Every file whose loaded copy this process runs or records as identity."""
+    directory = launcher.binary.parent.resolve()
+    paths = {directory / "vcmireplay", launcher.binary, launcher.ai_library, launcher.game_map, Path(module),
+             *directory.glob("*.dylib"), *directory.glob("*.so*"), *directory.glob("AI/*.dylib"), *directory.glob("AI/*.so*")}
+    return sorted(Path(path).resolve() for path in paths)
+
+
+def fingerprint(paths):
+    """Inventory and stat identity: a rebuild, copy or in-place write changes it."""
+    result = {}
+    for path in paths:
+        try:
+            status = os.stat(path)
+        except OSError:
+            result[str(path)] = None
+            continue
+        result[str(path)] = (status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns, status.st_ctime_ns)
+    return result
 
 
 def write_profile(profile, data, game_map, settings):
@@ -82,10 +103,10 @@ class EmbeddedLauncher(VcmiLauncher):
     def launch(self, *args, **kwargs):
         raise ValueError("The embedded backend never launches a game process")
 
-    def episode_profile(self, directory, seed, environment):
+    def episode_profile(self, directory, seed, environment, game_map=None):
         """Episode evidence of the map and settings this game used, at the cold paths."""
         settings = self.settings(seed)
-        write_profile(directory / "profile", self.data, self.game_map, settings)
+        write_profile(directory / "profile", self.data, game_map or self.game_map, settings)
         return {"command": None, "backend": BACKEND, "environment": environment, "requested_settings": settings}
 
 
@@ -107,12 +128,23 @@ class EmbeddedEngine:
         workspace = Path(workspace).expanduser()
         if not workspace.is_absolute() or workspace.exists():
             raise ValueError("The embedded engine needs a new absolute workspace")
-        launcher.preflight()
         self.binary_directory = launcher.binary.parent
         self.data, self.game_map = launcher.data, launcher.game_map
-        self.map_sha256 = scoring.digest(launcher.game_map)
         self.module_path = embedded.module_path(self.binary_directory)
-        self.module_sha256 = scoring.digest(self.module_path)
+        # The process keeps running the copies it loads now: libvcmi with the
+        # module, ExplorerRL/Nullkiller/BattleAI at the first game (never closed),
+        # the worker map copy. Identity is hashed once, from these files, and every
+        # later reset and finish requires them unchanged on disk.
+        self.files = runtime_files(launcher, self.module_path)
+        self.fingerprint = fingerprint(self.files)
+        launcher.preflight()
+        self.runtime_sha256 = native.runtime_identity(self.binary_directory)
+        self.loaded_identity = {**launcher.identity(), "engine": _git_state(ROOT / "vcmi"), "project": _git_state(ROOT),
+                                "engine_recipe": scoring.engine_recipe_digests(ROOT)}
+        self.map_sha256 = self.loaded_identity["map"]["sha256"]
+        self.module_sha256 = self.loaded_identity["backend"]["module_sha256"]
+        self.require_unchanged("while loading")
+        self.contextual_preflight = False
         self.workspace = workspace
         workspace.mkdir(parents=True)
         self.profile = workspace / "profile"
@@ -130,15 +162,25 @@ class EmbeddedEngine:
         spec = importlib.util.spec_from_file_location(embedded.MODULE_NAME, self.module_path)
         self.module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(self.module)
-        if self.module.PROTOCOL != embedded.PROTOCOL or scoring.digest(self.module_path) != self.module_sha256:
-            raise ValueError("Embedded engine module changed while loading")
+        if self.module.PROTOCOL != embedded.PROTOCOL:
+            raise ValueError("Embedded engine module protocol differs")
+        # Only the binding's own failures are engine failures; anything else,
+        # such as a budget alarm raised by a signal handler, propagates.
+        self.errors = (self.module.EngineError, ValueError, TypeError, OverflowError)
         self.resources_before_load = self.module.resources()
         started = time.perf_counter()
         self.engine = self.module.Engine(console_log=False)
         self.engine.load()
         self.load_seconds = time.perf_counter() - started
         self.resources_after_load = self.module.resources()
+        self.require_unchanged("while loading")
+        if scoring.digest(self.local_map) != self.map_sha256:
+            raise ValueError("Embedded worker map copy differs from the loaded map")
         self.games = 0
+
+    def require_unchanged(self, when="since this process loaded it"):
+        if fingerprint(self.files) != self.fingerprint:
+            raise ValueError(f"Native runtime, module or map changed on disk {when}; restart Python")
 
     def require_compatible(self, launcher):
         if (launcher.binary.parent != self.binary_directory or launcher.data != self.data
@@ -152,8 +194,7 @@ class EmbeddedEngine:
             raise ValueError("Embedded engine is poisoned by an earlier failure; start a new process")
         if self.engine.active:
             raise ValueError("Embedded engine still holds an unfinished game")
-        if scoring.digest(self.module_path) != self.module_sha256:
-            raise ValueError("Embedded engine module changed; restart Python")
+        self.require_unchanged()
         if scoring.digest(self.local_map) != self.map_sha256:
             raise ValueError("Embedded worker map copy changed")
 
@@ -165,7 +206,7 @@ class EmbeddedEngine:
         return self.engine.take(timeout, until_boundary)
 
     def submit_text(self, generation, decision, text):
-        self.engine.submit_text(generation, decision, text)
+        return self.engine.submit_text(generation, decision, text)
 
     def finish(self, natural, timeout):
         return self.engine.finish(natural=natural, timeout=timeout)
@@ -215,10 +256,14 @@ class EmbeddedEvents:
 
     def __init__(self, env):
         self.env, self.engine, self.player = env, env.engine, env.learner_player
+        # The binding's own refusals; a signal handler's exception (budget alarm,
+        # Ctrl-C) propagates to the driver exactly as from the socket queue.
+        self.errors = getattr(self.engine, "errors", (RuntimeError, ValueError))
         self.items = deque()
         self.token = None
         self.end_pending = None  # natural flag once the engine reported its end
         self.ended = self.refused = False
+        self.superseded = 0  # answers the player's own terminal made moot, as on a socket
 
     def put(self, item):
         self.items.append(item)
@@ -251,7 +296,7 @@ class EmbeddedEvents:
             wait = min(WAIT_SLICE_SECONDS, max(0.0, deadline - time.monotonic()))
             try:
                 delivery = self.engine.take(wait, until_boundary)
-            except Exception as error:
+            except self.errors as error:
                 self.items.append(("bridge_error", self.player, f"{type(error).__name__}: {error}", time.monotonic()))
                 self.end_pending = False
                 return
@@ -282,13 +327,20 @@ class EmbeddedEvents:
             while self.token is None and self.end_pending is None and time.monotonic() < deadline:
                 self._pull(deadline - time.monotonic(), True)
         if self.token is None:
+            if self.end_pending is True and not self.ended:
+                # The player's own terminal came before the decision's native wait:
+                # the socket backend writes this line to a peer that already ended.
+                self.superseded += 1
+                return None
             return "No native decision is waiting for a response"
         (generation, decision), self.token = self.token, None
         try:
             # The socket backend's own line and parser: identical admission and values.
-            self.engine.submit_text(generation, decision, json.dumps(response, separators=(",", ":")))
-        except Exception as error:
+            applied = self.engine.submit_text(generation, decision, json.dumps(response, separators=(",", ":")))
+        except self.errors as error:
             return f"{type(error).__name__}: {error}"
+        if applied is False:
+            self.superseded += 1  # admitted after the own terminal, never applied
         return None
 
     def stop(self):
@@ -297,7 +349,7 @@ class EmbeddedEvents:
             self._end(False)
 
     def _end(self, natural):
-        self.ended, self.token = True, None
+        self.token = None
         env = self.env
         if natural:
             deadline = env.shutdown_deadline or time.monotonic() + env.limits.shutdown_seconds
@@ -305,14 +357,16 @@ class EmbeddedEvents:
         else:
             timeout = 0.0
         try:
+            # A foreign exception leaves ended unset: the binding keeps the report
+            # and the next stop() collects it.
             report = self.engine.finish(natural, timeout)
-        except Exception as error:
+        except self.errors as error:
+            self.ended = True
             text = f"{type(error).__name__}: {error}"
             env.process.complete(None, text)
-            received = time.monotonic()
-            self.items.append(("bridge_error", self.player, "Embedded engine close failed: " + text, received))
-            self.items.append(("eof", self.player, None, received))
+            self.items.append(("bridge_error", self.player, "Embedded engine close failed: " + text, time.monotonic()))
             return
+        self.ended = True
         received = time.monotonic()
         if not self.refused:
             for message in report["messages"]:
@@ -324,7 +378,9 @@ class EmbeddedEvents:
             # so an ExplorerRL error record in it classifies first.
             self.items.append(("bridge_error", self.player, report["channel_failure"], received))
         env.process.complete(report)
-        self.items.append(("eof", self.player, None, received))
+        if not self.refused and report["decode_error"] is None:
+            # A reader that stopped at an undecodable line never reaches its end of stream.
+            self.items.append(("eof", self.player, None, received))
         if report["exit_code"] is not None:
             self.items.append(("exit", None, report["exit_code"], received))
 
@@ -347,6 +403,17 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
             launcher, workspace or self.output / f"embedded-worker-{os.getpid()}")
         self.native_close = None
 
+    def _preflight_contextual(self):
+        # The engine's files are fingerprinted at load and checked on every reset,
+        # so their contents are read once per process, not once per game.
+        if not getattr(self.engine, "contextual_preflight", False):
+            super()._preflight_contextual()
+            self.engine.contextual_preflight = True
+
+    def _runtime_identity(self, directory):
+        loaded = getattr(self.engine, "runtime_sha256", None)
+        return dict(loaded) if loaded is not None else super()._runtime_identity(directory)
+
     def reset(self, episode, seed):
         if type(episode) is not int or episode < 1 or type(seed) is not int or not 1 <= seed <= 2147483647:
             raise ValueError("Use a positive episode and signed-32-bit engine seed")
@@ -355,6 +422,10 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
         self._preflight_contextual()
         self.engine.require_ready()
         self._identity_cache = self._context_identity = None
+        loaded = getattr(self.engine, "loaded_identity", None)
+        if loaded is not None:
+            # What this process loaded, not what is on disk now (require_ready proved they agree).
+            self._identity_cache = dict(loaded)
         identity = self._identity()
         library = next((sha for name, sha in identity["native_runtime_sha256"].items()
                         if name in ("AI/libNullkiller.dylib", "AI/libNullkiller.so")), None)
@@ -393,7 +464,8 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
         self.process = EmbeddedProcess()
         self.events = EmbeddedEvents(self)
         try:
-            self.launch_info = self.launcher.episode_profile(self.episode_dir, seed, environment)
+            self.launch_info = self.launcher.episode_profile(self.episode_dir, seed, environment,
+                                                             getattr(self.engine, "local_map", None))
             self.engine.reset(episode=str(episode), map="Maps/headless" + self.launcher.game_map.suffix.lower(),
                               capture_directory=str(capture), seed=seed, learner=player,
                               policy_timeout=self.limits.bridge_timeout,
@@ -481,6 +553,11 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
             self._note_problem("engine_error", "Authoritative engine failure: " + marker)
         if side.error or "ExplorerRL: " in log or "ExplorerRL terminal delivery failed" in log:
             self._note_problem("protocol_error", side.error or "Native policy failure")
+        if hasattr(self.engine, "require_unchanged"):
+            try:
+                self.engine.require_unchanged("during this game")
+            except ValueError as error:
+                self._note_problem("engine_error", str(error))
         if report is None:
             self._note_problem("engine_error", "Embedded engine close failed: " + str(self.process.error))
         elif report["poisoned"] or report["close_error"] is not None or report["experiment_failed"]:

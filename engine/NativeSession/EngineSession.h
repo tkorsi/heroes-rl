@@ -28,15 +28,15 @@ struct SessionTimings
 {
 	double loadSeconds = 0;
 	double resetSeconds = 0; ///< startup dispatch plus waits through first held boundary; caller idle excluded
-	double advanceSeconds = 0; ///< submit-to-next-boundary, excludes caller inference
+	double advanceSeconds = 0; ///< host waits for the engine after a response until the next boundary
 	double cleanupSeconds = 0;
 	double finishWaitSeconds = 0; ///< natural terminal barrier waits after the own terminal
 	uint64_t episodes = 0;
 	uint64_t steps = 0;
 	uint64_t opponentTurns = 0;
-	double opponentTurnSeconds = 0; ///< built-in opponent turns, engine work included
+	double opponentTurnSeconds = 0; ///< built-in opponent turns, engine work included (nested in advance)
 	uint64_t battles = 0;
-	double battleSeconds = 0; ///< automatic battles, both BattleAI sides and engine work
+	double battleSeconds = 0; ///< automatic battles, both BattleAI sides and engine work (may overlap opponent turns)
 };
 /// What finish() proved about one game. Never a replay verification.
 struct EpisodeReport
@@ -75,7 +75,8 @@ public:
 	Boundary step(BoundaryToken token, const JsonNode & response, Deadline deadline);
 	/// Incremental alternative to observe/step: each message is delivered once.
 	Delivery take(Deadline deadline, bool untilBoundary = true);
-	void submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted = false);
+	/// False: the player's own terminal superseded this decision; admitted, never applied.
+	bool submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted = false);
 	/// Ends the game: natural waits for the terminal barrier's exit status
 	/// until deadline, then (always) joins every episode thread and destroys
 	/// the game. Returns the remaining stream and what was proven.

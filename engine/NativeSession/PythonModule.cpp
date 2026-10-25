@@ -29,6 +29,7 @@ public:
 	Ref & operator=(const Ref &) = delete;
 	PyObject * get() const { return value; }
 	PyObject * release() { auto * result = value; value = nullptr; return result; }
+	void reset(PyObject * object) { Py_XDECREF(value); value = object; }
 	explicit operator bool() const { return value != nullptr; }
 };
 
@@ -50,8 +51,12 @@ template<class F> bool withoutGil(F && action)
 
 // --- engine stream to Python ------------------------------------------------
 // The executable backend serializes each message with JsonWriter and the
-// learner decodes that line with json.loads. These conversions produce the
-// same Python values, without the text round trip on the common path.
+// learner decodes that line with contextual_protocol.loads (json.loads that
+// refuses duplicate fields and nonfinite numbers). These conversions produce
+// the same Python values, without the text round trip on the common path.
+
+/// The cold reader refuses a line longer than this (env.MAX_MESSAGE_BYTES).
+constexpr size_t MAX_MESSAGE_BYTES = 16 * 1024 * 1024;
 
 PyObject * jsonModuleLoads()
 {
@@ -110,8 +115,12 @@ bool commentFree(const JsonNode & container, const JsonNode & entry)
 	return false;
 }
 
-PyObject * toPython(const JsonNode & node)
+/// bound accumulates an upper bound of the node's JsonWriter line length:
+/// every string or key at most six bytes per input byte plus quotes, every
+/// other token and separator, and its tab indentation, within 32 + depth.
+PyObject * toPython(const JsonNode & node, size_t & bound, size_t depth)
 {
+	bound += 32 + depth;
 	switch(node.getType())
 	{
 		case JsonNode::JsonType::DATA_NULL:
@@ -123,6 +132,7 @@ PyObject * toPython(const JsonNode & node)
 		case JsonNode::JsonType::DATA_FLOAT:
 			return floatValue(node.Float());
 		case JsonNode::JsonType::DATA_STRING:
+			bound += 6 * node.String().size() + 2;
 			return stringValue(node.String());
 		case JsonNode::JsonType::DATA_VECTOR:
 		{
@@ -132,7 +142,7 @@ PyObject * toPython(const JsonNode & node)
 			for(size_t index = 0; index < items.size(); ++index)
 			{
 				if(!commentFree(node, items[index])) return nullptr;
-				auto * item = toPython(items[index]);
+				auto * item = toPython(items[index], bound, depth + 1);
 				if(!item) return nullptr;
 				PyList_SET_ITEM(list.get(), static_cast<Py_ssize_t>(index), item);
 			}
@@ -142,19 +152,46 @@ PyObject * toPython(const JsonNode & node)
 		{
 			Ref dict(PyDict_New()); // std::map order is the serialized key order
 			if(!dict) return nullptr;
+			Ref duplicate;
 			for(const auto & [key, value] : node.Struct())
 			{
 				if(!commentFree(node, value)) return nullptr;
+				bound += 6 * key.size() + 6;
 				Ref name(stringValue(key));
 				if(!name) return nullptr;
-				Ref item(toPython(value));
-				if(!item || PyDict_SetItem(dict.get(), name.get(), item.get()) != 0) return nullptr;
+				Ref item(toPython(value, bound, depth + 1));
+				if(!item) return nullptr;
+				// JsonWriter keeps already-escaped text, so distinct keys can share
+				// one JSON spelling. The cold decoder refuses the repeat after the
+				// object's values decoded, so report it only then.
+				const int present = PyDict_Contains(dict.get(), name.get());
+				if(present < 0) return nullptr;
+				if(present && !duplicate) duplicate.reset(Py_NewRef(name.get()));
+				if(!present && PyDict_SetItem(dict.get(), name.get(), item.get()) != 0) return nullptr;
+			}
+			if(duplicate)
+			{
+				PyErr_Format(PyExc_ValueError, "Duplicate JSON field: %U", duplicate.get());
+				return nullptr;
 			}
 			return dict.release();
 		}
 	}
 	PyErr_SetString(engineError, "Unknown native JSON type");
 	return nullptr;
+}
+
+PyObject * toPython(const JsonNode & node)
+{
+	size_t bound = 0;
+	return toPython(node, bound, 0);
+}
+
+/// The socket line's exact length: JsonWriter text without line breaks.
+size_t socketLineBytes(const JsonNode & node)
+{
+	const auto text = node.toCompactString();
+	return text.size() - static_cast<size_t>(std::count_if(text.begin(), text.end(), [](char c) { return c == '\n' || c == '\r'; }));
 }
 
 /// Converts in order up to the first message json.loads would refuse, like a
@@ -166,7 +203,13 @@ PyObject * messageList(const std::vector<JsonNode> & messages, std::string & ref
 	if(!list) return nullptr;
 	for(const auto & message : messages)
 	{
-		Ref item(toPython(message));
+		size_t bound = 0;
+		Ref item(toPython(message, bound, 0));
+		if(item && bound > MAX_MESSAGE_BYTES && socketLineBytes(message) > MAX_MESSAGE_BYTES)
+		{
+			refused = "ProtocolError: Bridge message exceeds 16 MiB";
+			break;
+		}
 		if(!item)
 		{
 			if(!PyErr_ExceptionMatches(PyExc_ValueError) && !PyErr_ExceptionMatches(engineError)) return nullptr;
@@ -193,7 +236,10 @@ PyObject * optionalText(const std::string & text)
 }
 
 // --- Python response to the engine -----------------------------------------
-// The same values json.dumps then the strict VCMI parser would produce.
+// Fixture conversion only (json_roundtrip, json_text). It is not equivalent to
+// the socket path: VCMI's strict parser splits keys at '#', accumulates decimal
+// digits and limits nesting to 30. Engine.submit therefore uses json.dumps and
+// the socket path's parser, exactly like submit_text.
 
 bool toJson(PyObject * value, JsonNode & output, int depth = 0)
 {
@@ -293,7 +339,22 @@ struct EngineObject
 	PyObject_HEAD
 	EngineSession * session;
 	bool busy; ///< one controller thread at a time; checked under the GIL
+	/// A delivery or close report already taken from the engine when a Python
+	/// signal handler raised (a budget alarm during the wait). Handed out by the
+	/// next take() or finish(), so the exception propagates and nothing is lost.
+	PyObject * pendingDelivery;
+	PyObject * pendingReport;
 };
+
+/// Runs Python signal handlers that became due while the GIL was released. If
+/// one raises, keep the already-taken result for the next call and propagate.
+PyObject * handOver(PyObject * result, PyObject *& pending)
+{
+	if(!result || PyErr_CheckSignals() == 0) return result;
+	Py_XDECREF(pending);
+	pending = result;
+	return nullptr;
+}
 
 /// Rejects a concurrent call from another Python thread while the GIL is released.
 class Exclusive
@@ -338,6 +399,8 @@ void destroySession(EngineObject * self)
 
 void engineDealloc(EngineObject * self)
 {
+	Py_CLEAR(self->pendingDelivery);
+	Py_CLEAR(self->pendingReport);
 	destroySession(self); // no other reference, so no concurrent call
 	Py_TYPE(self)->tp_free(reinterpret_cast<PyObject *>(self));
 }
@@ -376,6 +439,8 @@ PyObject * engineReset(EngineObject * self, PyObject * args, PyObject * kwargs)
 	if(!exclusive) return nullptr;
 	auto * session = requireSession(self);
 	if(!session) return nullptr;
+	Py_CLEAR(self->pendingDelivery);
+	Py_CLEAR(self->pendingReport);
 	native_session::EpisodeConfig config;
 	config.episode = episode;
 	config.map = map;
@@ -398,6 +463,12 @@ PyObject * engineTake(EngineObject * self, PyObject * args, PyObject * kwargs)
 	if(!exclusive) return nullptr;
 	auto * session = requireSession(self);
 	if(!session) return nullptr;
+	if(self->pendingDelivery)
+	{
+		auto * pending = self->pendingDelivery;
+		self->pendingDelivery = nullptr;
+		return pending;
+	}
 	native_session::Delivery delivery;
 	if(!withoutGil([&] { delivery = session->take(deadlineAfter(timeout), untilBoundary != 0); })) return nullptr;
 	std::string refused;
@@ -405,41 +476,39 @@ PyObject * engineTake(EngineObject * self, PyObject * args, PyObject * kwargs)
 	Ref failure(optionalText(delivery.failure));
 	Ref decode(optionalText(refused));
 	if(!messages || !failure || !decode) return nullptr;
-	return Py_BuildValue("{s:K,s:K,s:O,s:O,s:O,s:O,s:O,s:O,s:O}",
+	return handOver(Py_BuildValue("{s:K,s:K,s:O,s:O,s:O,s:O,s:O,s:O,s:O}",
 		"generation", static_cast<unsigned long long>(delivery.token.generation),
 		"decision", static_cast<unsigned long long>(delivery.token.decision),
 		"messages", messages.get(), "needs_action", delivery.needsAction ? Py_True : Py_False,
 		"terminal", delivery.terminalObserved ? Py_True : Py_False, "closed", delivery.closed ? Py_True : Py_False,
-		"timed_out", delivery.timedOut ? Py_True : Py_False, "failure", failure.get(), "decode_error", decode.get());
+		"timed_out", delivery.timedOut ? Py_True : Py_False, "failure", failure.get(), "decode_error", decode.get()),
+		self->pendingDelivery);
 }
 
-PyObject * engineSubmit(EngineObject * self, PyObject * args)
+/// Generation and decision exactly as Python ints in 0..2**64-1; never wrapped.
+bool parseToken(PyObject * generation, PyObject * decision, BoundaryToken & token)
 {
-	unsigned long long generation = 0, decision = 0;
-	PyObject * response = nullptr;
-	if(!PyArg_ParseTuple(args, "KKO!", &generation, &decision, &PyDict_Type, &response)) return nullptr;
-	Exclusive exclusive(self);
-	if(!exclusive) return nullptr;
-	auto * session = requireSession(self);
-	if(!session) return nullptr;
-	JsonNode value;
-	if(!toJson(response, value)) return nullptr;
-	if(!withoutGil([&] { session->submit(BoundaryToken{generation, decision}, value); })) return nullptr;
-	Py_RETURN_NONE;
+	if(!PyLong_Check(generation) || !PyLong_Check(decision))
+	{
+		PyErr_SetString(PyExc_TypeError, "Decision tokens must be integers");
+		return false;
+	}
+	token.generation = PyLong_AsUnsignedLongLong(generation);
+	if(PyErr_Occurred()) return false;
+	token.decision = PyLong_AsUnsignedLongLong(decision);
+	return !PyErr_Occurred();
 }
 
 /// The socket backend's exact response codec: the json.dumps line, its 64 KiB
-/// admission and VCMI's strict JSON parser, without the socket.
-PyObject * engineSubmitText(EngineObject * self, PyObject * args)
+/// admission and VCMI's strict JSON parser, without the socket. True: applied
+/// to the waiting decision; False: the player's own terminal superseded it.
+PyObject * submitLine(EngineObject * self, const BoundaryToken & token, const char * text, Py_ssize_t size)
 {
-	unsigned long long generation = 0, decision = 0;
-	const char * text = nullptr;
-	Py_ssize_t size = 0;
-	if(!PyArg_ParseTuple(args, "KKs#", &generation, &decision, &text, &size)) return nullptr;
-	Exclusive exclusive(self);
-	if(!exclusive) return nullptr;
 	auto * session = requireSession(self);
 	if(!session) return nullptr;
+	// A handler that became due earlier runs before anything reaches the engine.
+	if(PyErr_CheckSignals() < 0) return nullptr;
+	bool applied = false;
 	if(!withoutGil([&] {
 		if(size > 65536) throw std::invalid_argument("Policy response exceeds 64 KiB");
 		JsonNode value;
@@ -451,9 +520,54 @@ PyObject * engineSubmitText(EngineObject * self, PyObject * args)
 			value = JsonNode(text, static_cast<size_t>(size), parsing, "ExplorerRL policy response");
 		}
 		catch(const std::exception & error) { throw std::invalid_argument(std::string("Policy response is not strict JSON: ") + error.what()); }
-		session->submit(BoundaryToken{generation, decision}, value, true);
+		applied = session->submit(token, value, true);
 	})) return nullptr;
-	Py_RETURN_NONE;
+	return PyBool_FromLong(applied);
+}
+
+PyObject * engineSubmit(EngineObject * self, PyObject * args)
+{
+	PyObject * generation = nullptr;
+	PyObject * decision = nullptr;
+	PyObject * response = nullptr;
+	if(!PyArg_ParseTuple(args, "OOO!", &generation, &decision, &PyDict_Type, &response)) return nullptr;
+	BoundaryToken token;
+	if(!parseToken(generation, decision, token)) return nullptr;
+	Exclusive exclusive(self);
+	if(!exclusive) return nullptr;
+	static PyObject * dumps = nullptr;
+	static PyObject * options = nullptr;
+	if(!dumps)
+	{
+		Ref module(PyImport_ImportModule("json"));
+		if(!module) return nullptr;
+		dumps = PyObject_GetAttrString(module.get(), "dumps");
+		if(!dumps) return nullptr;
+		options = Py_BuildValue("{s:(ss)}", "separators", ",", ":");
+		if(!options) return nullptr;
+	}
+	Ref positional(PyTuple_Pack(1, response));
+	if(!positional) return nullptr;
+	Ref line(PyObject_Call(dumps, positional.get(), options));
+	if(!line) return nullptr;
+	Py_ssize_t size = 0;
+	const char * text = PyUnicode_AsUTF8AndSize(line.get(), &size);
+	if(!text) return nullptr;
+	return submitLine(self, token, text, size);
+}
+
+PyObject * engineSubmitText(EngineObject * self, PyObject * args)
+{
+	PyObject * generation = nullptr;
+	PyObject * decision = nullptr;
+	const char * text = nullptr;
+	Py_ssize_t size = 0;
+	if(!PyArg_ParseTuple(args, "OOs#", &generation, &decision, &text, &size)) return nullptr;
+	BoundaryToken token;
+	if(!parseToken(generation, decision, token)) return nullptr;
+	Exclusive exclusive(self);
+	if(!exclusive) return nullptr;
+	return submitLine(self, token, text, size);
 }
 
 PyObject * engineFinish(EngineObject * self, PyObject * args, PyObject * kwargs)
@@ -471,6 +585,12 @@ PyObject * engineFinish(EngineObject * self, PyObject * args, PyObject * kwargs)
 	if(!exclusive) return nullptr;
 	auto * session = requireSession(self);
 	if(!session) return nullptr;
+	if(self->pendingReport)
+	{
+		auto * pending = self->pendingReport;
+		self->pendingReport = nullptr;
+		return pending;
+	}
 	native_session::EpisodeReport report;
 	if(!withoutGil([&] { report = session->finish(natural != 0, deadlineAfter(timeout)); })) return nullptr;
 	std::string refused;
@@ -481,14 +601,14 @@ PyObject * engineFinish(EngineObject * self, PyObject * args, PyObject * kwargs)
 	Ref close(optionalText(report.closeError));
 	Ref decode(optionalText(refused));
 	if(!messages || !opponent || !exitCode || !channel || !close || !decode) return nullptr;
-	return Py_BuildValue("{s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:d,s:d}",
+	return handOver(Py_BuildValue("{s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:O,s:d,s:d}",
 		"exit_code", exitCode.get(), "natural", report.natural ? Py_True : Py_False,
 		"host_stopped", report.hostStopped ? Py_True : Py_False,
 		"shutdown_deadline", report.shutdownDeadline ? Py_True : Py_False,
 		"close_clean", report.closeClean ? Py_True : Py_False, "poisoned", report.poisoned ? Py_True : Py_False,
 		"experiment_failed", report.experimentFailed ? Py_True : Py_False, "channel_failure", channel.get(),
 		"close_error", close.get(), "messages", messages.get(), "decode_error", decode.get(), "opponent", opponent.get(),
-		"wait_seconds", report.waitSeconds, "close_seconds", report.closeSeconds);
+		"wait_seconds", report.waitSeconds, "close_seconds", report.closeSeconds), self->pendingReport);
 }
 
 PyObject * engineTimings(EngineObject * self, PyObject *)
@@ -507,14 +627,18 @@ PyObject * engineClose(EngineObject * self, PyObject *)
 	Py_RETURN_NONE;
 }
 
+// The session's state is written without the GIL while a call runs, so the
+// state getters are refused then, like every other call from another thread.
 PyObject * enginePoisoned(EngineObject * self, void *)
 {
+	if(self->busy) { PyErr_SetString(engineError, "Engine is in use by another thread"); return nullptr; }
 	return PyBool_FromLong(self->session && self->session->poisoned());
 }
 
 PyObject * engineActive(EngineObject * self, void *)
 {
-	return PyBool_FromLong(self->session && self->session->active());
+	if(self->busy) { PyErr_SetString(engineError, "Engine is in use by another thread"); return nullptr; }
+	return PyBool_FromLong((self->session && self->session->active()) || self->pendingReport);
 }
 
 PyObject * resources(PyObject *, PyObject *)
@@ -627,8 +751,8 @@ PyMethodDef engineMethods[] = {
 	{"load", reinterpret_cast<PyCFunction>(engineLoad), METH_NOARGS, "Load immutable game resources once per process."},
 	{"reset", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(engineReset)), METH_VARARGS | METH_KEYWORDS, "Start a new game."},
 	{"take", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(engineTake)), METH_VARARGS | METH_KEYWORDS, "Receive new player messages."},
-	{"submit", reinterpret_cast<PyCFunction>(engineSubmit), METH_VARARGS, "Answer the current decision with typed values."},
-	{"submit_text", reinterpret_cast<PyCFunction>(engineSubmitText), METH_VARARGS, "Answer with the socket backend's JSON line."},
+	{"submit", reinterpret_cast<PyCFunction>(engineSubmit), METH_VARARGS, "Answer the current decision: json.dumps, then submit_text."},
+	{"submit_text", reinterpret_cast<PyCFunction>(engineSubmitText), METH_VARARGS, "Answer with the socket backend's JSON line; False if the own terminal superseded it."},
 	{"finish", reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(engineFinish)), METH_VARARGS | METH_KEYWORDS, "End and destroy the game."},
 	{"timings", reinterpret_cast<PyCFunction>(engineTimings), METH_NOARGS, "Cumulative native timings."},
 	{"close", reinterpret_cast<PyCFunction>(engineClose), METH_NOARGS, "Destroy the session and its resources."},

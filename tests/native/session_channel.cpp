@@ -87,6 +87,7 @@ int main()
 			const auto pending = policy->observe(deadline());
 			policy->send(message("terminal")); // terminal supersedes an observed pending action
 			check(!policy->observe(deadline()).needsAction, "Terminal left a live decision token");
+			check(!policy->submit(pending.token, message("fixture-response")), "Superseded response was applied");
 			rejects([&] { policy->submit(pending.token, message("fixture-response")); });
 			policy->close();
 			adapter.get();

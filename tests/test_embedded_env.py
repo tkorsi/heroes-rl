@@ -310,6 +310,82 @@ class EventOrderTests(unittest.TestCase):
         self.assertEqual(events.submit({"type": "context_action"}), "No native decision is waiting for a response")
 
 
+    def test_an_answer_the_own_terminal_superseded_is_written_like_a_socket_line(self):
+        class Engine:
+            def __init__(self, applied):
+                self.applied = applied
+                self.script = deque([delivery(generation=2, decision=1, needs_action=True)])
+            def take(self, timeout, until_boundary): return self.script.popleft() if self.script else delivery()
+            def submit_text(self, generation, decision, text): return self.applied
+        for applied in (True, False):
+            with self.subTest(applied=applied):
+                events, _ = self.events(Engine(applied))
+                events.env.limits = ee.Limits(bridge_timeout=1)
+                self.assertIsNone(events.submit({"type": "context_action"}))
+                self.assertEqual(events.superseded, 0 if applied else 1)
+        # The terminal arrived before the decision's native wait: no token was ever offered.
+        class Ended:
+            def take(self, timeout, until_boundary): return delivery(messages=[{"type": "contextual"}], terminal=True)
+        events, _ = self.events(Ended())
+        events.env.limits = ee.Limits(bridge_timeout=1)
+        self.assertEqual(events.get_nowait()[0], "message")
+        self.assertIsNone(events.submit({"type": "context_action"}))
+        self.assertEqual(events.superseded, 1)
+        # A failure, unlike the own terminal, still refuses the answer.
+        class Failed:
+            def take(self, timeout, until_boundary): return delivery(failure="Native policy response timeout")
+        events, _ = self.events(Failed())
+        events.env.limits = ee.Limits(bridge_timeout=1)
+        self.assertEqual(events.submit({"type": "context_action"}), "No native decision is waiting for a response")
+
+    def test_signal_handler_exceptions_propagate_and_nothing_is_lost(self):
+        class Budget(RuntimeError): pass
+        class EngineFailure(RuntimeError): pass
+        class Engine:
+            errors = (EngineFailure, ValueError)
+            def __init__(self):
+                self.takes, self.finishes = 0, 0
+            def take(self, timeout, until_boundary):
+                self.takes += 1
+                if self.takes == 1:
+                    raise Budget("Global wall-time budget expired")
+                return delivery(messages=[{"type": "a"}], terminal=True)
+            def finish(self, natural, timeout):
+                self.finishes += 1
+                if self.finishes == 1:
+                    raise Budget("expired during the close")
+                return report(exit_code=0, natural=True, host_stopped=False)
+        events, env = self.events(Engine())
+        with self.assertRaises(Budget):
+            events.get(1)
+        self.assertIsNone(events.end_pending)
+        self.assertEqual(events.get(1)[0], "message")
+        with self.assertRaises(Budget):
+            events.get(1)  # the natural close was interrupted; the binding keeps its report
+        self.assertFalse(events.ended or env.process.finished)
+        self.assertEqual([events.get(1)[0] for _ in range(2)], ["eof", "exit"])
+        self.assertTrue(env.process.finished and env.process.poll() == 0)
+        class Refusing(Engine):
+            def take(self, timeout, until_boundary): raise EngineFailure("No active native episode")
+        events, _ = self.events(Refusing())
+        self.assertEqual(events.get(1)[:3], ("bridge_error", 0, "EngineFailure: No active native episode"))
+
+    def test_a_decode_refusal_ends_the_stream_without_an_end_of_stream(self):
+        class Engine:
+            def take(self, timeout, until_boundary):
+                return delivery(messages=[{"type": "ready"}], decode_error="ValueError: Duplicate JSON field: a")
+            def finish(self, natural, timeout):
+                return report(exit_code=None, natural=False, host_stopped=True, messages=[{"type": "late"}])
+        events, _ = self.events(Engine())
+        kinds = []
+        while True:
+            try:
+                kinds.append(events.get(1)[0])
+            except queue.Empty:
+                break
+        self.assertEqual(kinds, ["message", "bridge_error"])
+
+
 class EvidenceRuleTests(unittest.TestCase):
     def test_host_stop_and_natural_rules_refuse_every_unclean_variant(self):
         stop = {"returncode": None, "native_close": ev.close_record(report(exit_code=None, natural=False, host_stopped=True))}
@@ -321,12 +397,48 @@ class EvidenceRuleTests(unittest.TestCase):
         for mutate in (lambda f: f.update(returncode=-15), lambda f: f["native_close"].update(exit_code=1),
                        lambda f: f["native_close"].update(close_clean=False), lambda f: f["native_close"].update(poisoned=True),
                        lambda f: f["native_close"].update(channel_failure="x"), lambda f: f["native_close"].update(host_stopped=False),
-                       lambda f: f["native_close"]["opponent"].update(released=False), lambda f: f.pop("native_close")):
+                       lambda f: f["native_close"]["opponent"].update(released=False),
+                       lambda f: f["native_close"]["opponent"].update(module_reset=False),
+                       lambda f: f["native_close"]["opponent"].update(created=False), lambda f: f.pop("native_close")):
             changed = deepcopy(stop); mutate(changed)
             with self.subTest(mutate=mutate):
                 self.assertFalse(ev.truncation_closed(changed) if "native_close" in changed else False)
         with self.assertRaises(ValueError):
             ev.truncation_closed({"returncode": None})
+        for key in ("module_reset", "created"):
+            changed = deepcopy(natural); changed["native_close"]["opponent"][key] = False
+            self.assertFalse(ev.natural_closed(changed))
+
+    def test_every_bound_field_names_one_backend(self):
+        close = ev.close_record(report(exit_code=None, natural=False, host_stopped=True))
+        embedded = {"identity": {"backend": {"kind": ev.BACKEND}}, "launch": {"command": None, "backend": ev.BACKEND,
+                    "environment": {"EXPLORER_RL_TRANSPORT": "in-process"}}}
+        cold = {"identity": {}, "launch": {"command": ["vcmiclient", "--headless"], "environment": {}}}
+        ev.require_consistent_backend(embedded, {"native_close": close})
+        ev.require_consistent_backend(cold, {})
+        stripped = deepcopy(embedded); del stripped["identity"]["backend"]
+        ev.require_consistent_backend({"identity": {}, "launch": {"environment": {}}}, {})  # older synthetic records
+        for manifest, final in ((stripped, {"native_close": close}), (stripped, {}), (cold, {"native_close": close}),
+                                (embedded, {}), ({**cold, "identity": embedded["identity"]}, {"native_close": close})):
+            with self.subTest(manifest=manifest, final=final), self.assertRaises(ValueError):
+                ev.require_consistent_backend(manifest, final)
+
+    def test_loaded_runtime_changes_are_detected_by_inventory_and_stat_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            launcher = SyntheticEmbeddedLauncher(Path(tmp))
+            module = Path(tmp) / "embedded" / (ev.MODULE_NAME + ".so")
+            module.parent.mkdir()
+            module.write_bytes(b"module")
+            engine = object.__new__(ee.EmbeddedEngine)
+            engine.files = ee.runtime_files(launcher, module)
+            self.assertIn(launcher.game_map.resolve(), engine.files)
+            engine.fingerprint = ee.fingerprint(engine.files)
+            engine.require_unchanged()
+            library = launcher.binary.parent / ("AI/libNullkiller" + (".dylib" if sys.platform == "darwin" else ".so"))
+            for change in (lambda: library.write_bytes(b"rebuilt"), lambda: module.unlink()):
+                change()
+                with self.subTest(change=change), self.assertRaisesRegex(ValueError, "restart Python"):
+                    engine.require_unchanged()
 
 
 class EmbeddedIdentityTests(unittest.TestCase):
@@ -352,6 +464,15 @@ class EmbeddedIdentityTests(unittest.TestCase):
             path.write_bytes(old)
         self.file("engine/NativeSession/Extra.cpp", "new host source")
         with self.assertRaisesRegex(ValueError, "host sources"): self.check()
+
+    def test_the_captured_module_file_is_verified_under_any_python_abi(self):
+        other = "embedded/" + ev.MODULE_NAME + ".cpython-399-synthetic.so"
+        self.file(other, "module built for another interpreter")
+        self.manifest["identity"]["backend"].update(module=other, module_sha256=self.sha(other))
+        self.assertTrue(self.check()["embedded_backend"]["embedded_module_unchanged"])
+        for name in ("../escape.so", "bin/" + ev.MODULE_NAME + ".so"):
+            self.manifest["identity"]["backend"]["module"] = name
+            with self.subTest(name=name), self.assertRaises(ValueError): self.check()
 
     def test_cold_capture_cannot_carry_embedded_sources(self):
         del self.manifest["identity"]["backend"]

@@ -20,7 +20,7 @@
  		requestHeadlessShutdown(experimentHasFailed() ? EXIT_FAILURE : EXIT_SUCCESS);
 --- a/client/ServerRunner.cpp
 +++ b/client/ServerRunner.cpp
-@@ -10,11 +10,14 @@
+@@ -10,11 +10,15 @@
  #include "StdInc.h"
  
  #include "ServerRunner.h"
@@ -32,10 +32,11 @@
  #include "../lib/network/NetworkInterface.h"
  #include "../lib/CConfigHandler.h"
 +#include "../lib/callback/CGameInterface.h"
++#include "../lib/callback/ExperimentHooks.h"
  #include "../server/CVCMIServer.h"
  
  #ifdef ENABLE_SERVER_PROCESS
-@@ -51,9 +54,27 @@
+@@ -51,9 +55,27 @@
  
  	threadRunLocalServer = std::thread([this, connectToLobby, listenForConnections, &promise]{
  		setThreadName("runServer");
@@ -52,10 +53,10 @@
 +		}
 +		catch(const std::exception & e)
 +		{
-+			if(ENGINE)
++			// Only an embedded host that asked for it observes this as a failed
++			// episode; the executable clients keep their std::terminate path.
++			if(ENGINE || !experimentServerFailureCapture())
 +				throw;
-+			// No main loop catches on this thread. A headless or embedded host
-+			// must observe a failed episode, not have std::terminate abort it.
 +			logNetwork->error("Headless local server thread failed: %s", e.what());
 +			reportExperimentFailure(std::string("Headless local server thread failed: ") + e.what());
 +			if(!prepared)
@@ -68,7 +69,7 @@
  	logNetwork->trace("Waiting for server port...");
 --- a/lib/callback/CDynLibHandler.cpp
 +++ b/lib/callback/CDynLibHandler.cpp
-@@ -444,6 +444,64 @@
+@@ -444,6 +444,75 @@
  	return createAnyAI<CGlobalAI>(dllname, "GetNewAI");
  }
  
@@ -78,6 +79,17 @@
 +ExperimentOpponentProvider experimentOpponentProvider;
 +std::mutex experimentObserverMutex;
 +std::shared_ptr<const std::function<void(const CPackForClient &)>> experimentPacketObserver;
++std::atomic<bool> experimentServerFailures{false};
++}
++
++void setExperimentServerFailureCapture(bool enabled) noexcept
++{
++	experimentServerFailures = enabled;
++}
++
++bool experimentServerFailureCapture() noexcept
++{
++	return experimentServerFailures;
 +}
 +
 +std::shared_ptr<CGlobalAI> CDynLibHandler::getExperimentOpponent(const std::string & dllname, int player)
@@ -164,7 +176,7 @@
  #include <memory>
  #include <mutex>
  #include <string>
-@@ -63,6 +64,13 @@
+@@ -63,6 +64,18 @@
  DLL_LINKAGE void noteExperimentPacketCallbacksComplete();
  DLL_LINKAGE ExperimentReceiptPosition experimentReceiptPosition();
  
@@ -174,6 +186,11 @@
 +/// replay evidence. Install/remove only while no game client exists.
 +DLL_LINKAGE void setExperimentPacketObserver(std::function<void(const CPackForClient &)> observer);
 +DLL_LINKAGE void notifyExperimentPacketObserver(const CPackForClient & pack) noexcept;
++/// Native-session host only: a failure escaping the in-thread local server is
++/// reported as an experiment failure instead of reaching std::terminate.
++/// Off by default, so executable clients keep their original failure path.
++DLL_LINKAGE void setExperimentServerFailureCapture(bool enabled) noexcept;
++DLL_LINKAGE bool experimentServerFailureCapture() noexcept;
 +
  /// Cancellation before a native request enters the sealed terminal stream.
  /// This is never a successful request or an exemption from replay validation.

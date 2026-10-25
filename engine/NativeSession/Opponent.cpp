@@ -102,7 +102,7 @@ void NullkillerOpponent::detach() noexcept
 	setExperimentPacketObserver({});
 }
 
-OpponentStats NullkillerOpponent::release()
+OpponentStats NullkillerOpponent::release() noexcept
 {
 	detach();
 	std::lock_guard lock(mutex);
@@ -111,8 +111,17 @@ OpponentStats NullkillerOpponent::release()
 	attached = false;
 	stats.released = instance.expired();
 	// Never touch module state beneath a surviving instance or its tasks.
+	// A failed reset is reported, not thrown: the session poisons on it.
 	if(stats.released && stats.created)
-		stats.moduleReset = CDynLibHandler::resetExperimentModule(MODULE);
+	{
+		try { stats.moduleReset = CDynLibHandler::resetExperimentModule(MODULE); }
+		catch(const std::exception & error)
+		{
+			stats.moduleReset = false;
+			try { logGlobal->error("Built-in opponent module reset failed: %s", error.what()); } catch(...) {}
+		}
+		catch(...) { stats.moduleReset = false; }
+	}
 	return stats;
 }
 

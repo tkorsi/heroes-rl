@@ -203,6 +203,8 @@ def read_finalization(directory, manifest):
     data = path.read_bytes()
     require(hashlib.sha256(data).hexdigest() == sha, "One-seat finalization bytes changed")
     final = native.strict_json(data)
+    from experiments.headless import embedded_evidence
+    embedded_evidence.require_consistent_backend(manifest, final)
     player, color = manifest["learner_player"], COLORS[manifest["learner_player"]]
     require(final.get("schema") == FINAL_SCHEMA and type(final.get("learner_player")) is int
             and final["learner_player"] == player

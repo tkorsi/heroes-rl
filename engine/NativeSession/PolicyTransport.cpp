@@ -26,6 +26,7 @@ public:
 	std::vector<JsonNode> messages; ///< not yet handed to the host
 	std::optional<Boundary> boundary; ///< idempotent observe() view
 	std::optional<uint64_t> offered; ///< decision handed out as needing an action
+	std::optional<uint64_t> superseded; ///< offered decision the player's own terminal invalidated
 	std::optional<JsonNode> response;
 	explicit Impl(uint64_t generation_, size_t capacity_) : generation(generation_), capacity(capacity_) {}
 	void check() const
@@ -76,6 +77,7 @@ WriteMetrics InProcessPolicy::send(const JsonNode & message)
 		// observed frames. Its new token can never authorize an action. Later
 		// permitted final envelopes are queued behind it, never rejected.
 		impl->terminal = true;
+		if(impl->offered == impl->decision) impl->superseded = impl->offered;
 		++impl->decision;
 		impl->boundary.reset();
 		impl->offered.reset();
@@ -171,13 +173,20 @@ std::vector<JsonNode> InProcessPolicy::drain()
 	return result;
 }
 
-void InProcessPolicy::submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted)
+bool InProcessPolicy::submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted)
 {
 	// Preserve the original socket response-size admission even without a wire.
 	if(!lineAdmitted && response.toCompactString().size() > 65536)
 		throw std::invalid_argument("Policy response exceeds 64 KiB");
 	std::lock_guard lock(impl->mutex);
 	impl->check();
+	if(impl->terminal && impl->superseded && token == BoundaryToken{impl->generation, *impl->superseded})
+	{
+		// The socket backend writes this line to a peer that already sent its
+		// terminal; the engine never reads it. Once only, never an action.
+		impl->superseded.reset();
+		return false;
+	}
 	if(impl->terminal || !impl->waiting || impl->response || impl->offered != impl->decision
 		|| token != BoundaryToken{impl->generation, impl->decision})
 		throw std::invalid_argument("Stale, duplicate or nondecision native step token");
@@ -188,6 +197,7 @@ void InProcessPolicy::submit(BoundaryToken token, const JsonNode & response, boo
 	// waking previous one. receive() owns clearing waiting after response.
 	impl->waiting = false;
 	impl->changed.notify_all();
+	return true;
 }
 
 void InProcessPolicy::close() noexcept

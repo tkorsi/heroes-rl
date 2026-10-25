@@ -72,17 +72,36 @@ def backend_identity(binary_directory, root=None):
 
 
 def verify_backend(identity, binary_directory, root=None):
-    """The captured module and host sources must be the ones present now."""
+    """The captured module file and host sources must be the ones present now.
+
+    The module is the file the capture names, whatever Python ABI verifies it.
+    """
     require(is_embedded(identity), "Not an embedded-backend capture")
     captured = identity["backend"]
     require(type(captured) is dict and set(captured) == {"kind", "protocol", "module", "module_sha256",
             "native_session_sha256"} and captured["protocol"] == PROTOCOL, "Invalid embedded backend identity")
-    current = backend_identity(binary_directory, root)
-    require(captured["module"] == current["module"] and captured["module_sha256"] == current["module_sha256"],
+    name = captured["module"]
+    require(type(name) is str and Path(name).parent == Path("embedded") and Path(name).name.startswith(MODULE_NAME),
+            "Invalid embedded module path")
+    module = native.inside(Path(binary_directory).resolve().parent, name)
+    require(module.is_file() and native.file_identity(module)["sha256"] == captured["module_sha256"],
             "Captured embedded engine module changed")
-    require(captured["native_session_sha256"] == current["native_session_sha256"],
+    require(captured["native_session_sha256"] == native_session_digests(root),
             "Captured embedded host sources changed")
     return {"embedded_module_unchanged": True, "embedded_host_sources_unchanged": True}
+
+
+def require_consistent_backend(manifest, final):
+    """Every bound field must name the same backend; no mixture selects weaker rules."""
+    launch = manifest.get("launch") if type(manifest.get("launch")) is dict else {}
+    if is_embedded(manifest.get("identity")):
+        require(launch.get("backend") == BACKEND and launch.get("command") is None and "native_close" in final
+                and (launch.get("environment") or {}).get("EXPLORER_RL_TRANSPORT") == "in-process",
+                "Embedded identity without an embedded launch and close report")
+    else:
+        require("backend" not in launch and ("command" not in launch or type(launch["command"]) is list)
+                and (launch.get("environment") or {}).get("EXPLORER_RL_TRANSPORT") != "in-process"
+                and "native_close" not in final, "Executable-backend capture carries embedded launch evidence")
 
 
 def close_record(report):
@@ -103,6 +122,12 @@ def _close(final):
     return close
 
 
+def _opponent_closed(close):
+    """The owned opponent existed, died with its game and its module state was reset."""
+    opponent = close.get("opponent") if type(close.get("opponent")) is dict else {}
+    return opponent.get("created") is True and opponent.get("released") is True and opponent.get("module_reset") is True
+
+
 def truncation_closed(final):
     """A host stop before any exit status, with a clean join and no failure."""
     close = _close(final)
@@ -110,7 +135,7 @@ def truncation_closed(final):
             and close.get("host_stopped") is True and close.get("close_clean") is True
             and close.get("poisoned") is False and close.get("experiment_failed") is False
             and close.get("channel_failure") is None and close.get("close_error") is None
-            and close.get("decode_error") is None and close.get("opponent", {}).get("released") is True)
+            and close.get("decode_error") is None and _opponent_closed(close))
 
 
 def natural_closed(final):
@@ -119,4 +144,4 @@ def natural_closed(final):
     return (final.get("returncode") == 0 and type(final.get("returncode")) is int and close.get("exit_code") == 0
             and close.get("natural") is True and close.get("host_stopped") is False
             and close.get("shutdown_deadline") is False and close.get("close_clean") is True
-            and close.get("opponent", {}).get("released") is True)
+            and _opponent_closed(close))

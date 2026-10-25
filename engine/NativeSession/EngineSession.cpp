@@ -21,7 +21,6 @@
 #include <filesystem>
 #include <mutex>
 #include <optional>
-#include <set>
 
 namespace
 {
@@ -127,11 +126,10 @@ public:
 	std::shared_ptr<Shutdown> shutdown;
 	native_session_host::NullkillerOpponent opponent;
 	native_session_host::OpponentStats lastOpponent;
-	std::set<std::string> episodes;
 	JsonNode settingsBaseline;
 	JsonNode persistentBaseline;
 	SessionTimings timing;
-	std::optional<Clock::time_point> submitted;
+	bool advancing = false; ///< a response was applied; its next boundary is not yet delivered
 	int player = -1;
 	bool loaded = false;
 	bool awaitingInitialBoundary = false;
@@ -165,8 +163,15 @@ public:
 EngineSession::EngineSession(SessionOptions options) : impl(std::make_unique<Impl>(options)) {}
 EngineSession::~EngineSession()
 {
-	try { closeEpisode(); } catch(...) { std::terminate(); } // never destroy resources beneath live episode threads
+	try { closeEpisode(); }
+	catch(...)
+	{
+		// Never destroy resources beneath live episode threads. A failure after
+		// the game was destroyed (its log or the opponent module reset) is not one.
+		if(GAME || impl->policy) std::terminate();
+	}
 	impl->opponent.shutdown();
+	setExperimentServerFailureCapture(false);
 	setExperimentFailureHandler({});
 	setExperimentEvidenceHooks(nullptr);
 	delete LIBRARY;
@@ -204,6 +209,8 @@ void EngineSession::load()
 		CLogger::getGlobalLogger()->addTarget(std::make_unique<EpisodeLogTarget>(impl->episodeLog));
 		LIBRARY->initializeLibrary();
 		impl->opponent.initialize();
+		// A failure on the in-thread server poisons this game, never the host process.
+		setExperimentServerFailureCapture(true);
 		// Each game starts from the loaded configuration, as each executable
 		// launch starts from its freshly written profile.
 		impl->settingsBaseline = settings.toJsonNode();
@@ -218,8 +225,8 @@ void EngineSession::reset(const EpisodeConfig & config)
 {
 	impl->health.requireResetReady(impl->loaded);
 	if(config.episode.empty() || config.map.empty() || config.seed <= 0 || config.learner < 0 || config.learner > 1
-		|| config.policyTimeoutSeconds < 1 || config.policyTimeoutSeconds > 300 || impl->episodes.contains(config.episode))
-		throw std::invalid_argument("Invalid or reused native episode identity/configuration");
+		|| config.policyTimeoutSeconds < 1 || config.policyTimeoutSeconds > 300)
+		throw std::invalid_argument("Invalid native episode identity/configuration");
 	const std::filesystem::path capture(config.captureDirectory);
 	if(!capture.is_absolute() || std::filesystem::exists(capture))
 		throw std::invalid_argument("Native capture directory must be new and absolute");
@@ -234,7 +241,6 @@ void EngineSession::reset(const EpisodeConfig & config)
 	try
 	{
 		std::filesystem::create_directories(capture);
-		impl->episodes.insert(config.episode);
 		impl->openEpisodeLog(config.logPath);
 		restore(settings, impl->settingsBaseline);
 		restore(persistentStorage, impl->persistentBaseline);
@@ -279,10 +285,16 @@ void EngineSession::reset(const EpisodeConfig & config)
 			std::lock_guard lock(activeMutex);
 			activeShutdown = impl->shutdown;
 		}
-		setExperimentFailureHandler([](const std::string &) { requestHeadlessShutdown(EXIT_FAILURE); });
+		// The executable headless client's handler: the reason reaches the game log.
+		setExperimentFailureHandler([](const std::string & reason)
+		{
+			logGlobal->error("Experiment failure: %s", reason);
+			requestHeadlessShutdown(EXIT_FAILURE);
+		});
+		impl->lastOpponent = {};
 		impl->opponent.attach(1 - config.learner);
 		impl->opponentAttached = true;
-		impl->submitted.reset();
+		impl->advancing = false;
 		GAME = std::make_unique<GameInstance>();
 		GAME->server().debugStartTest(config.map, false);
 		impl->awaitingInitialBoundary = true;
@@ -337,19 +349,21 @@ Delivery EngineSession::take(Deadline deadline, bool untilBoundary)
 		impl->timing.resetSeconds += elapsed(start);
 		if(boundary) impl->awaitingInitialBoundary = false;
 	}
-	else if(boundary && impl->submitted)
+	else if(impl->advancing)
 	{
-		impl->timing.advanceSeconds += elapsed(*impl->submitted);
-		impl->submitted.reset();
+		// Only time spent waiting here: host-side work between takes is not engine time.
+		impl->timing.advanceSeconds += elapsed(start);
+		if(boundary) impl->advancing = false;
 	}
 	return result;
 }
-void EngineSession::submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted)
+bool EngineSession::submit(BoundaryToken token, const JsonNode & response, bool lineAdmitted)
 {
 	if(!impl->policy) throw std::logic_error("No active native episode");
-	impl->policy->submit(token, response, lineAdmitted);
+	if(!impl->policy->submit(token, response, lineAdmitted)) return false;
 	++impl->timing.steps;
-	impl->submitted = Clock::now();
+	impl->advancing = true;
+	return true;
 }
 EpisodeReport EngineSession::finish(bool natural, Deadline deadline)
 {
@@ -365,7 +379,11 @@ EpisodeReport EngineSession::finish(bool natural, Deadline deadline)
 		if(natural && !shutdown->changed.wait_until(lock, deadline, [&] { return shutdown->code.has_value(); }))
 			report.shutdownDeadline = true;
 		before = shutdown->code;
+		// From this snapshot on, a success status can no longer appear; a failure still can.
+		shutdown->stopping = true;
 	}
+	// The natural terminal barrier never completed: a native shutdown failure.
+	if(report.shutdownDeadline) impl->health.poison();
 	report.waitSeconds = elapsed(start);
 	if(natural) impl->timing.finishWaitSeconds += report.waitSeconds;
 	report.hostStopped = !before.has_value();
@@ -385,7 +403,7 @@ EpisodeReport EngineSession::finish(bool natural, Deadline deadline)
 	report.poisoned = impl->health.failed();
 	report.closeClean = report.closeError.empty() && !report.poisoned && !report.experimentFailed
 		&& report.channelFailure.empty() && !(report.exitCode && *report.exitCode != 0)
-		&& report.opponent.released && !report.shutdownDeadline;
+		&& report.opponent.released && (!report.opponent.created || report.opponent.moduleReset) && !report.shutdownDeadline;
 	return report;
 }
 void EngineSession::closeEpisode()
@@ -419,7 +437,7 @@ void EngineSession::closeEpisode()
 			// Every thread and object of the game is gone. An opponent instance
 			// that survived it would carry state into the next game.
 			impl->opponentAttached = false;
-			impl->lastOpponent = impl->opponent.release();
+			impl->lastOpponent = impl->opponent.release(); // never throws
 			impl->timing.opponentTurns += impl->lastOpponent.turns;
 			impl->timing.opponentTurnSeconds += impl->lastOpponent.turnSeconds;
 			impl->timing.battles += impl->lastOpponent.battles;
@@ -427,6 +445,12 @@ void EngineSession::closeEpisode()
 			if(!impl->lastOpponent.released)
 			{
 				logGlobal->error("Native session cleanup: built-in opponent instance outlived its game");
+				impl->health.poison();
+			}
+			else if(impl->lastOpponent.created && !impl->lastOpponent.moduleReset)
+			{
+				// The next game would start with this game's Nullkiller module caches.
+				logGlobal->error("Native session cleanup: built-in opponent module state was not reset");
 				impl->health.poison();
 			}
 		}
