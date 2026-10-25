@@ -1,5 +1,5 @@
 {
-  "activity": "cloud-continuation-2026-10-25-031 completed and verified; independent backup and private snapshot complete.",
+  "activity": "No new batch launched: 1924.9s remains before compute cutoff; safe estimate is2234.5s.",
   "behavior_diagnostics": {
     "cross_army_net_count_redistribution": 1260,
     "cross_army_operations": 118,
@@ -216,7 +216,7 @@
     "admitted_rollouts": 40,
     "updates": 10
   },
-  "state": "continuing_within_deadline",
+  "state": "stopped_for_deadline_reserve",
   "throughput": {
     "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
     "reported_training_batch_wall_seconds": 3200.917,
@@ -224,7 +224,7 @@
     "verified_training_games_per_reported_batch_second": 0.012496418994931766
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T17:17:52.825119+00:00",
+  "updated_utc": "2026-10-25T17:17:55.092252+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 104,
     "cutoff": 1,
