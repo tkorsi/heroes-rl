@@ -15,6 +15,18 @@ no native reset-independence acceptance yet. The local eight-game 62.161-second
 PPO pilot and Claude's offline reconstruction speedups are different workloads.
 Neither supplies a cost breakdown for this runtime.
 
+Cloud validation built all six native targets (`vcmiclient`, `vcmiserver`,
+`ExplorerRL`, `BattleAI`, `Nullkiller`, `vcmireplay`) and a repeat build had no
+work. Exact prepared-source agreement passed. The full suite ran 984 tests:
+980 passed and four skipped. A focused nine-test follow-up passed, including
+the native notice parser that had skipped before library linking finished;
+the three remaining prerequisites are private Data/captures. The final four
+lifecycle/admission checks also pass. All four shared libraries load, and native
+CLI/error checks pass. The worker's actual load probe exits 3 with
+`Resource with name DATA/VCDESC and type TEXT wasn't found.` and emits no ready
+receipt. This is an explicit unavailable prerequisite, not a native episode test.
+Compact results: [validation evidence](../validation/optimizer-native-lifecycle-2026-10-25.json).
+
 | Cost | Measurement entry point | Current evidence |
 | --- | --- | --- |
 | Process startup and exit | Cold subprocess wall time minus internal replay time (residual includes report writing) | Requires real capture/assets |
