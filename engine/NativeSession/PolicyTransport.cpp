@@ -55,6 +55,9 @@ WriteMetrics InProcessPolicy::send(const JsonNode & message)
 	// Never block a packet callback while it owns the event/game-state locks.
 	impl->messages.push_back(message);
 	impl->terminal = message["type"].String() == "terminal";
+	if(message["type"].String() == "contextual" && message["records"].isVector())
+		for(const auto & record : message["records"].Vector())
+			if(record["kind"].String() == "terminal") impl->terminal = true;
 	if(impl->terminal)
 	{
 		// Terminal invalidates a held decision without redelivering its already

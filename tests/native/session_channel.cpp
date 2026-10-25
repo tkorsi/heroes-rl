@@ -109,6 +109,15 @@ int main()
 			check(left.observe(deadline()).messages[0]["fixture_marker"].Integer() == 7, "Cross-player leak");
 			check(right.observe(deadline()).messages[0]["fixture_marker"].Integer() == 8, "Cross-player leak");
 		}
+		{
+			InProcessPolicy policy(107);
+			auto envelope = message("contextual");
+			JsonNode terminal;
+			terminal["kind"].String() = "terminal";
+			envelope["records"].Vector().push_back(terminal);
+			policy.send(envelope);
+			check(policy.observe(deadline()).terminalObserved, "Contextual terminal was not recognized");
+		}
 		std::cout << "100 native channel generations, cancellation, deadlines, terminal, capacity and evidence reset passed; no gameplay simulated\n";
 		return 0;
 	}

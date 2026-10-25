@@ -50,6 +50,7 @@ void requestHeadlessShutdown(int code)
 	if(auto value = currentShutdown())
 	{
 		std::lock_guard lock(value->mutex);
+		if(value->stopping) return; // intentional cleanup is not a new game outcome
 		if(!value->code || code != 0) value->code = code;
 		value->changed.notify_all();
 		if(code != 0 && !value->stopping)
@@ -121,7 +122,7 @@ void EngineSession::load()
 		LIBRARY->initializeLibrary();
 		impl->loaded = true;
 	}
-	catch(...) { impl->poisoned = true; throw; }
+	catch(...) { impl->timing.loadSeconds = elapsed(start); impl->poisoned = true; throw; }
 	impl->timing.loadSeconds = elapsed(start);
 }
 
@@ -175,7 +176,8 @@ void EngineSession::reset(const EpisodeConfig & config)
 		}
 		{
 			Settings ai = settings.write["ai"];
-			ai["combatAI"].String() = "BattleAI";
+			ai["combatEnemyAI"].String() = "BattleAI";
+			ai["combatAlliedAI"].String() = "BattleAI";
 			ai["combatNeutralAI"].String() = "BattleAI";
 		}
 		resetNativeSessionEvidence(); // previous native objects and threads are gone
