@@ -8,8 +8,9 @@ before using the shared numerical kernel.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 import math
+from time import perf_counter
 
 import torch
 
@@ -90,6 +91,14 @@ class EvaluatedDecision:
     value: torch.Tensor
 
 
+def _check_window(inputs, decisions, start_seq):
+    if not decisions or type(start_seq) is not int or not 0 <= start_seq <= decisions[0].decision_seq:
+        raise ValueError("Invalid recurrent loss-window boundary")
+    sequences = tuple(record.decision_seq for record in decisions)
+    if sequences != tuple(sorted(set(sequences))) or sequences[-1] >= len(inputs):
+        raise ValueError("Loss decisions must be ordered within the complete input prefix")
+
+
 def evaluate_window(model, inputs, decisions, *, start_seq):
     """Replay a complete current-weight prefix, then a differentiable window.
 
@@ -97,19 +106,18 @@ def evaluate_window(model, inputs, decisions, *, start_seq):
     mask; every intervening frame is still forwarded, including other decisions.
     ``start_seq`` denotes the first differentiable frame, not a memory reset.
     """
-    if not decisions or type(start_seq) is not int or not 0 <= start_seq <= decisions[0].decision_seq:
-        raise ValueError("Invalid recurrent loss-window boundary")
-    sequences = tuple(record.decision_seq for record in decisions)
-    if sequences != tuple(sorted(set(sequences))) or sequences[-1] >= len(inputs):
-        raise ValueError("Loss decisions must be ordered within the complete input prefix")
-    state = model.initial_state()
-    with torch.no_grad():
-        for item in inputs[:start_seq]:
-            state = model.forward_step(item, state).state
+    _check_window(inputs, decisions, start_seq)
+    state = model.prefix_states(inputs, (start_seq,))[start_seq]
+    return _evaluate_from_state(model, inputs, decisions, start_seq, state)
+
+
+def _evaluate_from_state(model, inputs, decisions, start_seq, state):
+    # Only the caller's current minibatch may supply this detached state. It is
+    # never persisted in a rollout or reused after optimizer.step().
     state = state.detach()
     wanted = {record.decision_seq: record for record in decisions}
     result = []
-    for seq in range(start_seq, sequences[-1] + 1):
+    for seq in range(start_seq, decisions[-1].decision_seq + 1):
         output = model.forward_step(inputs[seq], state)
         state = output.state
         if seq in wanted:
@@ -221,6 +229,8 @@ class PPOReport:
     clip_fraction: float
     entropy: None = None
     purpose: str = "synthetic_optimizer_test"
+    # Wall-clock diagnostics do not affect deterministic report equivalence.
+    timings_seconds: dict[str, float] | None = field(default=None, compare=False)
 
 
 def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
@@ -236,6 +246,9 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
     gameplay runner verifies native artifacts and replay before using this kernel.
     """
     from .contextual_model import encode_history
+    started = perf_counter()
+    timings = dict(history_encoding=0.0, behavior_verification=0.0, prefix_reconstruction=0.0,
+                   loss_forward=0.0, backward_and_clip=0.0, optimizer_step=0.0)
     if type(config) is not PPOConfig or type(generator) is not torch.Generator or generator.device.type != "cpu":
         raise ValueError("Expected explicit PPO config and CPU minibatch RNG")
     if max_optimizer_steps is not None and (type(max_optimizer_steps) is not int or max_optimizer_steps < 1):
@@ -244,8 +257,12 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
     optimized = [id(p) for group in optimizer.param_groups for p in group["params"]]
     if set(optimized) != owned or len(optimized) != len(owned):
         raise ValueError("Optimizer must own exactly the current trainable model parameters")
+    phase = perf_counter()
     inputs = tuple(encode_history(item.history) for item in rollouts)
+    timings["history_encoding"] = perf_counter() - phase
+    phase = perf_counter()
     _verify_behavior(model, rollouts, inputs)
+    timings["behavior_verification"] = perf_counter() - phase
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)
@@ -274,11 +291,34 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
         order = torch.randperm(len(windows), generator=generator).tolist()
         for batch_start in range(0, len(order), config.windows_per_minibatch):
             selected = [windows[index] for index in order[batch_start:batch_start + config.windows_per_minibatch]]
+            # All selected windows see identical parameters. Reconstruct each
+            # episode once up to its furthest boundary, then retain the original
+            # selected-window order and separate detached autograd graphs.
+            phase = perf_counter()
+            boundaries = {}
+            if model._can_cache_prefix():
+                for window in selected:
+                    boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
+            prefixes = {index: model.prefix_states(inputs[index], stops) for index, stops in boundaries.items()}
+            timings["prefix_reconstruction"] += perf_counter() - phase
+            phase = perf_counter()
             new_log_probs, new_values, old_log_probs, old_values, batch_advantages, returns = [], [], [], [], [], []
             for window in selected:
                 item = rollouts[window.rollout_index]
                 records = tuple(item.samples[index].decision for index in window.sample_indices)
-                evaluated = evaluate_window(model, inputs[window.rollout_index], records, start_seq=window.start_seq)
+                _check_window(inputs[window.rollout_index], records, window.start_seq)
+                if not prefixes:
+                    # Hooks/custom or stochastic modules retain the original
+                    # prefix/window execution order, without shared replay.
+                    timings["loss_forward"] += perf_counter() - phase
+                    phase = perf_counter()
+                    state = model.prefix_states(inputs[window.rollout_index], (window.start_seq,))[window.start_seq]
+                    timings["prefix_reconstruction"] += perf_counter() - phase
+                    phase = perf_counter()
+                else:
+                    state = prefixes[window.rollout_index][window.start_seq]
+                evaluated = _evaluate_from_state(model, inputs[window.rollout_index], records, window.start_seq,
+                                                 state)
                 for index, current, old in zip(window.sample_indices, evaluated, records):
                     new_log_probs.append(current.log_prob)
                     new_values.append(current.value)
@@ -291,14 +331,21 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
             make = log_probs.new_tensor
             loss, policy, value, kl, clipped = clipped_losses(log_probs, values, make(old_log_probs), make(old_values),
                                                            make(batch_advantages), make(returns), config)
+            # Discard the minibatch's state lookup before parameters change.
+            del prefixes, state
+            timings["loss_forward"] += perf_counter() - phase
             if before_step is not None:
                 before_step()
+            phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
+            timings["backward_and_clip"] += perf_counter() - phase
             if before_step is not None:
                 before_step()
+            phase = perf_counter()
             optimizer.step()
+            timings["optimizer_step"] += perf_counter() - phase
             if after_step is not None:
                 after_step()
             count = len(new_log_probs)
@@ -306,4 +353,6 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
                 totals[index] += metric.detach().item() * count
             weighted_count += count
             steps += 1
-    return PPOReport(sum(len(item.samples) for item in rollouts), steps, *(value / weighted_count for value in totals))
+    timings["total"] = perf_counter() - started
+    return PPOReport(sum(len(item.samples) for item in rollouts), steps, *(value / weighted_count for value in totals),
+                     timings_seconds=timings)

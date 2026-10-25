@@ -590,7 +590,7 @@ class ContextualActorCritic(nn.Module):
             own = _node("management_observation", own, _set("army_bindings", bindings))
         return global_map, self._encode_tree(own, cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
 
-    def forward_step(self, frame, state):
+    def _check_step(self, frame, state):
         if type(frame) is not ContextualInput:
             raise ValueError("Use the checked contextual history codec")
         if self.config.schema != model_schema_for(frame.frame.schema):
@@ -598,19 +598,86 @@ class ContextualActorCritic(nn.Module):
         if (not isinstance(state, Tensor) or state.shape != (self.config.hidden_size,)
                 or state.device != self.device or state.dtype != self.byte.weight.dtype):
             raise ValueError("State must match model dimensions, dtype and device")
-        cache = {}
-        memo = self._leaf_memo()
-        if memo is not None:
-            cache[_LEAF_MEMO] = memo
+
+    def _frame_features(self, frame, cache):
+        """State-independent features; callers retain their own per-frame tree cache."""
         zero = self.byte.weight.new_zeros(self.config.feature_size)
-        if frame.semantics is None:
-            return StepOutput(state, None)
         if frame.observation is None:
             map_features = own = zero
             cells = None
         else:
             map_features, own, cells = self._encode_observation(frame.observation, cache)
-        state = self.gru(torch.cat((self._encode_tree(frame.semantics, cache), map_features, own)), state)
+        return torch.cat((self._encode_tree(frame.semantics, cache), map_features, own)), cells
+
+    def _can_cache_prefix(self):
+        # These exact modules have no stochastic or mutable training behavior.
+        # In particular, the text/ordered GRUs have no dropout. Do not elide
+        # custom forwards, hooks or autocast operations by reusing their output.
+        # Accelerator kernels keep the reference path until separately verified.
+        allowed = (ContextualActorCritic, nn.Embedding, nn.GRU, nn.GRUCell, nn.Sequential,
+                   nn.Linear, nn.Tanh, nn.Conv2d, nn.AdaptiveAvgPool2d, nn.Flatten)
+        if (type(self) is not ContextualActorCritic or self.device.type != "cpu"
+                or torch._C._is_any_autocast_enabled()
+                or nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks
+                or any(name in self.__dict__ for name in
+                       ("forward_step", "_frame_features", "_encode_tree", "_encode_observation", "_check_step"))):
+            return False
+        return all(type(module) in allowed and not module._forward_hooks and not module._forward_pre_hooks
+                   and "forward" not in module.__dict__
+                   and (type(module) is not nn.GRU or module.dropout == 0)
+                   for module in self.modules())
+
+    def prefix_states(self, inputs, stops):
+        """Reconstruct detached states at frame boundaries under the current weights.
+
+        The memo exists only for this synchronous call, before an optimizer step.
+        It reuses pure frame/leaf encodings, never recurrent state across weight
+        versions. Every chronological GRU transition still executes in order.
+        Training mode is unchanged; train-mode leaves use only this local memo,
+        not the persistent inference memo. Differentiable windows never see it.
+        """
+        stops = tuple(stops)
+        if not stops or any(type(stop) is not int or not 0 <= stop <= len(inputs) for stop in stops):
+            raise ValueError("Prefix boundaries must lie within the complete history")
+        wanted, result = set(stops), {}
+        state = self.initial_state()
+        use_cache = self._can_cache_prefix()
+        features, leaves = {}, {"text": {}, "number": {}}
+        with torch.no_grad():
+            if 0 in wanted:
+                result[0] = state.detach()
+            for seq in range(max(stops)):
+                frame = inputs[seq]
+                if not use_cache:
+                    state = self.forward_step(frame, state).state
+                else:
+                    self._check_step(frame, state)
+                    if frame.semantics is not None:
+                        # repr preserves number types and signed zeros. A fresh
+                        # tree cache on a miss preserves within-frame evaluation
+                        # order and the original cache's equality semantics.
+                        key = repr((frame.semantics, frame.observation))
+                        vector = features.get(key)
+                        if vector is None:
+                            vector, _ = self._frame_features(frame, {_LEAF_MEMO: leaves})
+                            if len(features) >= 4096:
+                                features.clear()
+                            features[key] = vector
+                        state = self.gru(vector, state)
+                if seq + 1 in wanted:
+                    result[seq + 1] = state.detach()
+        return result
+
+    def forward_step(self, frame, state):
+        self._check_step(frame, state)
+        cache = {}
+        memo = self._leaf_memo()
+        if memo is not None:
+            cache[_LEAF_MEMO] = memo
+        if frame.semantics is None:
+            return StepOutput(state, None)
+        vector, cells = self._frame_features(frame, cache)
+        state = self.gru(vector, state)
         decision = None
         if frame.frame.kind == "decision":
             distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache)
