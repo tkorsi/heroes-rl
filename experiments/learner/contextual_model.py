@@ -8,6 +8,7 @@ retains earlier information: there is no accumulated last-seen world cache.
 from __future__ import annotations
 
 from copy import copy
+import ctypes
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
@@ -89,12 +90,18 @@ def weights_sha256(model):
     for name, tensor in sorted(model.state_dict().items()):
         value = tensor.detach().cpu().contiguous().clone()
         header = json.dumps((name, str(value.dtype), tuple(value.shape)), separators=(",", ":")).encode()
-        # Tensor's byte-list conversion runs in C; iterating untyped_storage
-        # through Python is hundreds of milliseconds even for this small model.
-        data = bytes(value.reshape(-1).view(torch.uint8).tolist())
+        # The private contiguous copy's exact memory bytes: the same bytes as a
+        # uint8 view, without one Python integer per byte (or NumPy/pickle).
+        size = value.numel() * value.element_size()
+        data = ctypes.string_at(value.data_ptr(), size) if size else b""
         digest.update(len(header).to_bytes(8, "big")); digest.update(header)
         digest.update(len(data).to_bytes(8, "big")); digest.update(data)
     return digest.hexdigest()
+
+
+# Key of the per-frame cache entry that holds the exact leaf memo; no tree equals it.
+_LEAF_MEMO = object()
+_LEAF_MEMO_LIMIT = 65536
 
 
 def _node(tag, *children):
@@ -401,10 +408,48 @@ class ContextualActorCritic(nn.Module):
     def _long(self, values):
         return torch.tensor(values, dtype=torch.long, device=self.device)
 
+    def _leaf_memo(self):
+        """Inference-only memo of text/number leaf encodings, or None.
+
+        A leaf encoding is a pure function of its value and the weights, so a
+        memo hit is the identical tensor that recomputation would return. It
+        holds no game information between frames. It is used only without
+        autograd and is discarded when any parameter is replaced or changed in
+        place (its version counter advances).
+        """
+        if torch.is_grad_enabled():
+            return None
+        # The exact current parameter set, walked without nn.Module's generic
+        # generators, which would cost more than the memo saves on small frames.
+        token, modules = [], [self]
+        while modules:
+            module = modules.pop()
+            token.extend((id(parameter), parameter._version) for parameter in module._parameters.values() if parameter is not None)
+            modules.extend(module._modules.values())
+        token = tuple(token)
+        memo = self.__dict__.get("_leaf_memo_state")
+        if memo is None or memo[0] != token:
+            memo = (token, {"text": {}, "number": {}})
+            self.__dict__["_leaf_memo_state"] = memo
+        return memo[1]
+
     def _encode_tree(self, tree, cache):
         if tree in cache:
             return cache[tree]
         kind = tree[0]
+        memo = cache.get(_LEAF_MEMO) if kind in ("text", "number") else None
+        if memo is not None and not torch.is_grad_enabled():
+            # Signed zero stays distinct; equal floats otherwise share one entry.
+            key = tree[1] if kind == "text" else (tree[1], copysign(1.0, tree[1]))
+            entries = memo[kind]
+            result = entries.get(key)
+            if result is None:
+                result = self._encode_tree(tree, {})
+                if len(entries) >= _LEAF_MEMO_LIMIT:
+                    entries.clear()  # bounded memory; a miss only recomputes
+                entries[key] = result
+            cache[tree] = result
+            return result
         if kind == "text":
             raw = tree[1].encode("utf-8")
             if not raw:
@@ -480,6 +525,9 @@ class ContextualActorCritic(nn.Module):
                 or state.device != self.device or state.dtype != self.byte.weight.dtype):
             raise ValueError("State must match model dimensions, dtype and device")
         cache = {}
+        memo = self._leaf_memo()
+        if memo is not None:
+            cache[_LEAF_MEMO] = memo
         zero = self.byte.weight.new_zeros(self.config.feature_size)
         if frame.semantics is None:
             return StepOutput(state, None)
