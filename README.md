@@ -166,6 +166,15 @@ and full-army neutral joining are part of the same acceptance work. This is
 `adventure-capabilities-v1`, history/actions v8, protocol 10. The ordinary v7
 interface and historical observations retain their original serialized forms.
 
+The [final native acceptance](validation/capabilities-native-2026-10-25.json)
+passed all **28 cases** (14 mechanics in both seats) against one frozen
+implementation/runtime. Every case passed independent history and native replay;
+3,036 transactions were checked with none skipped. Matched Dimension Door cases
+showed identical visible observations and 224 target candidates with/without an
+unseen blocker, followed by genuine success/rejection. The retained draft
+failures are separate and supplied no training samples. These are controlled
+mechanics checks, not evidence of learned strategy or ordinary-game victories.
+
 Available controls appear in the currently open hero/town/exchange window.
 Inventory, prices, spell choices and inspection details appear only after the
 corresponding window or target is explicitly opened. Visions uses the engine's
