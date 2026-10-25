@@ -16,10 +16,10 @@ from experiments.learner import contextual as c
 from tests.test_contextual_dialogs import history_at, panel, action, begin_answer, finish_answer, decide, observation
 
 
-def initial(player=0):
-    history = c.PlayerHistory("synthetic-one-seat", player, schema=c.DIALOGS_SCHEMA)
+def initial(player=0, profile=c.DIALOGS_PROFILE):
+    history = c.PlayerHistory("synthetic-one-seat", player, schema=profile.history_schema)
     obs = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),), (), (0,) * 7, (), ())
-    history.emit("decision", observation=obs, revision=0, offers=c.Offers.from_observation(obs, schema=c.DIALOGS_ACTION_SCHEMA))
+    history.emit("decision", observation=obs, revision=0, offers=c.Offers.from_observation(obs, schema=profile.action_schema))
     return history
 
 

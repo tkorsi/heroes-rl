@@ -1,6 +1,6 @@
 """One controlled player's evaluation boundary; never a fabricated AI trajectory.
 
-The unchanged v7 player stream has no paired finalization frame. This separate
+The explicit v7/v8 player stream has no paired finalization frame. This separate
 envelope binds its complete prefix to native completion or an explicit cutoff.
 It is diagnostic evidence and is never passed to the policy or value model.
 """
@@ -30,6 +30,25 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def profile_for(value):
+    """Allow only the two reviewed built-in interfaces, never a latest-version fallback."""
+    profile = c.profile_for(value)
+    require((profile.environment, profile.history_schema, profile.action_schema, profile.protocol, profile.version) in (
+        ("adventure-dialogs-v1", "heroes-player-history-v7", "heroes-context-actions-v7", 9, 7),
+        ("adventure-capabilities-v1", "heroes-player-history-v8", "heroes-context-actions-v8", 10, 8)),
+        "Built-in evidence requires an explicit v7 or v8 profile")
+    return profile
+
+
+def manifest_profile(manifest):
+    require(type(manifest) is dict, "Expected a built-in manifest")
+    profile = profile_for(manifest.get("environment"))
+    require(manifest.get("history_schema") == profile.history_schema
+            and manifest.get("action_schema") == profile.action_schema,
+            "Mixed built-in manifest interface/history/action schemas")
+    return profile
+
+
 def same(left, right):
     return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(right, sort_keys=True, allow_nan=False)
 
@@ -54,8 +73,9 @@ def capture_files(directory):
 
 
 def terminal_barrier(directory, *, episode, interface, outcomes, learner_player):
+    profile_for(interface)
     expected_controllers = controllers(learner_player)
-    require(type(episode) is str and bool(episode) and interface == c.DIALOGS_ENVIRONMENT
+    require(type(episode) is str and bool(episode)
             and outcomes in (["win", "loss"], ["loss", "win"]), "Invalid mixed terminal identity")
     records, files = [], {}
     for side, name in zip(("server", "client"), native.FILES):
@@ -122,12 +142,13 @@ def _drain(history, manifest):
 
 def validate_manifest_history(history, manifest):
     """Validate one genuine history and its external boundary, without an engine claim."""
-    require(type(history) is c.PlayerHistory and history.schema == c.DIALOGS_SCHEMA and history.frames,
-            "Expected a nonempty v7 own history")
+    profile = manifest_profile(manifest)
+    require(type(history) is c.PlayerHistory and history.schema == profile.history_schema and history.frames,
+            "Expected a nonempty own history matching the manifest profile")
     player, color = history.player, COLORS[history.player]
     expected = {"schema_version": 1, "kind": MANIFEST_KIND, "episode": history.episode,
-                "environment": c.DIALOGS_ENVIRONMENT, "history_schema": c.DIALOGS_SCHEMA,
-                "action_schema": c.DIALOGS_ACTION_SCHEMA, "learner_player": player}
+                "environment": profile.environment, "history_schema": profile.history_schema,
+                "action_schema": profile.action_schema, "learner_player": player}
     require(type(manifest) is dict and all(type(manifest.get(k)) is type(v) and manifest[k] == v
             for k, v in expected.items()), "Single-player manifest identity mismatch")
     require(same(manifest.get("controllers"), controllers(player)), "Mixed controller declaration changed")
@@ -141,7 +162,7 @@ def validate_manifest_history(history, manifest):
     status = manifest.get("status")
     boundary = {"completed": "natural", "truncated": "cutoff", "failed": "failure"}.get(status)
     require(boundary is not None, "Unsupported single-player status")
-    declaration = manifest["players"][color].get("history_v7", {})
+    declaration = manifest["players"][color].get(profile.history_key, {})
     sha = history.digest()
     require(declaration.get("canonical_sha256") == sha and declaration.get("prefix_sha256") == sha
             and declaration.get("boundary") == boundary, "Single-player history hash or boundary changed")
@@ -176,6 +197,7 @@ def validate_manifest_history(history, manifest):
 
 def read_finalization(directory, manifest):
     """Bind the external proof; replay additionally verifies native semantics/source."""
+    profile = manifest_profile(manifest)
     name, marker, sha = manifest.get("evidence_ref", "").partition("#sha256=")
     require(marker and name == "builtin-finalization.json", "Missing one-seat finalization reference")
     path = native.inside(directory, name)
@@ -189,7 +211,7 @@ def read_finalization(directory, manifest):
             and final.get("returncode") == manifest["returncode"] and final.get("identity") == manifest["identity"]
             and final.get("native_capture") == manifest["replay"]
             and final.get("dialog_cutoff_drain") == manifest["dialog_cutoff_drain"]
-            and final.get("history_sha256") == manifest["players"][color]["history_v7"]["canonical_sha256"],
+            and final.get("history_sha256") == manifest["players"][color][profile.history_key]["canonical_sha256"],
             "Finalization does not bind the one-seat manifest")
     if manifest["status"] in ("completed", "truncated"):
         require(final.get("stream_complete") is True and final.get("engine_evidence_error") is None,

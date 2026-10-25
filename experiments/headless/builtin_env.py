@@ -32,8 +32,7 @@ class BuiltinHeadlessEnv(ContextualMixin, HeadlessSelfPlayEnv):
     def __init__(self, launcher, output, *, learner_player, limits=Limits(), agents=None,
                  ledger=True, replay=True, interface=c.DIALOGS_ENVIRONMENT):
         evidence.controllers(learner_player)
-        if interface != c.DIALOGS_ENVIRONMENT:
-            raise ValueError("Built-in evaluation requires unchanged v7 player semantics")
+        evidence.profile_for(interface)
         self.learner_player = learner_player
         super().__init__(launcher, output, limits, agents=agents, ledger=ledger, replay=replay, interface=interface)
         self._imported_sources.update({"experiments/headless/builtin_env.py": IMPORTED_SOURCE_SHA256,
@@ -212,14 +211,15 @@ class BuiltinHeadlessEnv(ContextualMixin, HeadlessSelfPlayEnv):
             outcomes = dict.fromkeys(COLORS)
         rewards = {color: 1 if o == "win" else -1 if o == "loss" else None for color, o in outcomes.items()}
         folder = self.episode_dir / "agents" / side.color
-        path, live = folder / "history-v7.jsonl", folder / "live-history-v7.jsonl"
+        profile = evidence.profile_for(self.interface)
+        path, live = folder / profile.history_filename, folder / ("live-" + profile.history_filename)
         sha, live_sha = persist_history(path, history), persist_history(live, side.validator.live)
         boundary = {"completed": "natural", "truncated": "cutoff", "failed": "failure"}[status]
         declaration = {"ready": side.validator.ready, "actions_sent": side.actions_sent, "error": side.error,
             "terminal": {"outcome": side.validator.terminal} if side.validator.terminal else None,
             "actions_accepted": side.accepted, "actions_rejected": side.rejected,
             "responses_undelivered": side.responses_undelivered,
-            "history_v7": {"path": str(path.relative_to(self.episode_dir)), "sha256": sha,
+            profile.history_key: {"path": str(path.relative_to(self.episode_dir)), "sha256": sha,
                 "canonical_sha256": sha, "prefix_sha256": sha, "boundary": boundary, "complete": complete},
             "live_evidence": {"path": str(live.relative_to(self.episode_dir)), "sha256": live_sha,
                               "continuation_steps": 0, "learner_input": False}}
@@ -235,7 +235,7 @@ class BuiltinHeadlessEnv(ContextualMixin, HeadlessSelfPlayEnv):
         proof_path = self.episode_dir / "builtin-finalization.json"
         scoring.write_json(proof_path, final)
         manifest = {"schema_version": 1, "kind": evidence.MANIFEST_KIND, "episode": str(self.episode),
-            "environment": self.interface, "history_schema": c.DIALOGS_SCHEMA, "action_schema": c.DIALOGS_ACTION_SCHEMA,
+            "environment": self.interface, "history_schema": profile.history_schema, "action_schema": profile.action_schema,
             "learner_player": self.learner_player, "controllers": evidence.controllers(self.learner_player),
             "opponent_identity": self.opponent_identity, "seed": self.seed, "created_at": self.created_at,
             "status": status, "termination_reason": termination, "failure_detail": self.detail,

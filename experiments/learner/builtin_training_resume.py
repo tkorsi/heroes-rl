@@ -115,7 +115,10 @@ def compatible_source(parent, current, migration=None):
     else:
         for key in ("torch", "python", "interface"):
             require(parent.get(key) == current.get(key), "Parent runtime/interface changed: " + key)
-    require(current.get("interface") == INTERFACE, "Continuation requires the explicit v7 interface")
+    from experiments.headless.builtin_evidence import profile_for
+    profile_for(current.get("interface"))
+    require(parent.get("interface") == current.get("interface"),
+            "Schema transition requires a separately verified checkpoint migration")
     approved_changes = {}
     for name, digest in parent["source_sha256"].items():
         actual = current["source_sha256"].get(name)
@@ -258,13 +261,13 @@ def load_parent(plan_path, report_path, current_source, *, current_runtime, curr
                     "Parent checkpoint is outside its completed execution")
         options = migration.checkpoint_options if migration else {}
         policy = cp.load_policy_checkpoint(resolve(saved["policy"]["path"]), expected_source_metadata=metadata,
-            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), interface=INTERFACE, **options)
+            allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), interface=plan["source"]["interface"], **options)
         model = policy.model.requires_grad_(True)
         optimizer = torch.optim.Adam(model.parameters(), **plan["configuration"]["adam"])
         generator = torch.Generator(device="cpu")
         resumed = cp.load_checkpoint(resolve(saved["resume"]["path"]), model, optimizer,
             expected_ppo_config=plan["configuration"]["ppo"], expected_source_metadata=metadata,
-            generators={"minibatch": generator}, interface=INTERFACE,
+            generators={"minibatch": generator}, interface=plan["source"]["interface"],
             allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,), at_rollout_boundary=True, **options)
         raw = torch.load(resolve(saved["resume"]["path"]), map_location="cpu", weights_only=True)
         require(resumed.checkpoint == policy.checkpoint and resumed.progress == progress

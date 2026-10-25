@@ -1,0 +1,40 @@
+{
+  "campaign_started": false,
+  "date": "2026-10-25",
+  "gameplay_started": false,
+  "launch_ready": false,
+  "legacy_tests": {
+    "command": "python -m unittest discover -s tests -p 'test_builtin*.py' -q",
+    "failed": 0,
+    "run": 201,
+    "scope": "asset-free built-in tests; v8 tests skip without coordinator contract",
+    "skipped": 6
+  },
+  "migrated_checkpoint_written": false,
+  "parent_audit_unchanged": true,
+  "remaining": [
+    "final committed v8 contract integration",
+    "full native feature and replay validation",
+    "explicit update92 schema migration and roundtrip",
+    "fresh campaign controller and coordinator release"
+  ],
+  "schema": "heroes-builtin-v8-preparation-validation-v1",
+  "status": "python_compatibility_verified_native_release_pending",
+  "v8_snapshot_tests": {
+    "coordinator_uncommitted_snapshot_sha256": {
+      "experiments/learner/contextual.py": "706fcf32e668277c1ee3aa43f13e118d0e43f51f5ef1b42604cf1ae1ee9af88a",
+      "experiments/learner/contextual_model.py": "c3476c141f491e381efbaf5189684b74a0d4ee7468b228edbd3ab1f1506b6156"
+    },
+    "failed": 0,
+    "modules": [
+      "test_builtin_profiles",
+      "test_builtin_rollout",
+      "test_builtin_env",
+      "test_builtin_replay",
+      "test_builtin_gameplay_checkpoint"
+    ],
+    "run": 36,
+    "scope": "isolated copy of local Python modules plus these coordinator contract/model bytes; synthetic socket transport and mocked native proof only",
+    "skipped": 0
+  }
+}

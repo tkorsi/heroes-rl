@@ -29,7 +29,7 @@ def verify_history(directory, manifest, finalization_document):
     require(manifest == evidence.strict_json((directory / "manifest.json").read_bytes()), "Manifest differs from disk")
     final = builtin.read_finalization(directory, manifest)
     require(final == finalization_document, "Finalization differs from supplied document")
-    player, profile = manifest["learner_player"], contract.DIALOGS_PROFILE
+    player, profile = manifest["learner_player"], builtin.manifest_profile(manifest)
     require(type(player) is int and player in (0, 1), "Invalid learner seat")
     color = COLORS[player]
     exact(manifest["players"], {color}, "sole learner declaration")

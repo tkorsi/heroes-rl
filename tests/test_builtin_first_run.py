@@ -246,7 +246,7 @@ class PilotAttemptCleanupTests(PilotPlanTests):
         from validation.probes import validate_hero_policy
         cfg = pilot.config()
         plan = {**self.plan(), "binary": str(self.root / "vcmiclient"), "data": str(self.root / "data"),
-            "game_map": str(self.root / "map.vmap"), "runtime": {}, "source": {}, "native": {},
+            "game_map": str(self.root / "map.vmap"), "runtime": {}, "source": {"interface": pilot.INTERFACE}, "native": {},
             "replay_binary": {"path": str(self.root / "vcmireplay")},
             "checkpoint": {"path": str(self.root / "initial.pt"), "sha256": "c" * 64}}
         output = Path(plan["execution_output"]); output.mkdir()
