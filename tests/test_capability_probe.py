@@ -6,6 +6,15 @@ from validation.probes import validate_capabilities as probe
 
 
 class CapabilityProbeTests(unittest.TestCase):
+    def test_fingerprint_keeps_runtime_dependencies_but_excludes_concurrent_launch_controller(self):
+        identity = probe.capability_implementation_identity()
+        self.assertNotIn("experiments/learner/builtin_v8_session.py", identity)
+        self.assertFalse(any(name.startswith("tests/") for name in identity))
+        for name in ("experiments/learner/contextual.py", "experiments/learner/contextual_model.py",
+                     "experiments/learner/contextual_rollout.py", "experiments/headless/contextual_replay.py",
+                     "validation/probes/validate_capabilities.py", "experiments/explorer/create_capability_scenarios.py"):
+            self.assertEqual(identity[name], probe.digest(probe.ROOT / name))
+
     def test_trade_checks_native_lot_rounding_and_both_resources(self):
         offer = SimpleNamespace(kind="trade_resource", max_count=3, resource_from=6,
                                 resource_to=0, give=250, receive=1)

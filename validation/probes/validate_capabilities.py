@@ -74,6 +74,22 @@ def value_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
 
+def capability_implementation_identity():
+    """Bind the diagnostic dependency closure without a concurrent launch gate.
+
+    The native recipe, adapters, codec/model/policy reconstruction and probes
+    remain bound. Unit-test files and the independent training-session
+    controller cannot execute during this diagnostic and are excluded. The
+    launch controller imports this same definition when checking acceptance.
+    """
+    identity = {name: value for name, value in implementation_identity().items()
+                if not name.startswith("tests/") and name != "experiments/learner/builtin_v8_session.py"}
+    for name in ("experiments/explorer/create_capability_scenarios.py", "validation/probes/validate_capabilities.py",
+                 "validation/probes/validate_contextual_native.py"):
+        identity[name] = digest(ROOT / name)
+    return dict(sorted(identity.items()))
+
+
 def schedule(cases, colors, seed, repeats):
     return [{"case": case, "fixture": CASES[case], "player": color, "repeat": repeat,
              "seed": seed + 128 * tuple(CASES).index("dimension-door-clear" if case == "dimension-door-blocked" else case)
@@ -639,15 +655,13 @@ def main(argv=None):
     for identity in identities.values():
         environment.VcmiLauncher(args.binary, args.data, Path(identity["path"])).preflight()
     subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], cwd=ROOT, check=True, timeout=60)
-    implementation = implementation_identity()
-    for name in ("experiments/explorer/create_capability_scenarios.py", "validation/probes/validate_capabilities.py",
-                 "validation/probes/validate_contextual_native.py"):
-        implementation[name] = digest(ROOT / name)
+    implementation = capability_implementation_identity()
     native = runtime_identity(args.binary.parent)
     args.output.mkdir(parents=True)
     plan = {"schema": "heroes-capability-diagnostic-plan-v1", "interface": INTERFACE,
             "schedule": schedule(cases, colors, args.seed, args.seed_count), "fixtures": list(identities.values()),
             "implementation": implementation, "native_runtime": native,
+            "implementation_scope": "Shared capability_implementation_identity: native recipe/adapters, learner dependencies and probes; excludes unit tests and the independent training-session controller.",
             "binary_sha256": digest(args.binary), "replay_binary_sha256": digest(args.replay_binary),
             "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
             "bounds": {key: getattr(args, key) for key in ("max_days", "max_decisions", "case_seconds", "watchdog", "startup_seconds")},
