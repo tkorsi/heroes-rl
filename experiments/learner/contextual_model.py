@@ -28,6 +28,8 @@ MANAGEMENT_MODEL_SCHEMA = "heroes-context-model-v4"
 MANAGEMENT_DISTRIBUTION_SCHEMA = "heroes-context-policy-v4"
 DIALOGS_MODEL_SCHEMA = "heroes-context-model-v5"
 DIALOGS_DISTRIBUTION_SCHEMA = "heroes-context-policy-v5"
+EXPANDED_MODEL_SCHEMA = "heroes-context-model-v6"
+EXPANDED_DISTRIBUTION_SCHEMA = "heroes-context-policy-v6"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
             "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks", "swap_stacks",
             "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison", "choose_dialog")
@@ -43,7 +45,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA):
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA, EXPANDED_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -63,6 +65,8 @@ class ModelConfig:
 
 def model_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.capabilities:
+        return EXPANDED_MODEL_SCHEMA
     if profile.dialogs:
         return DIALOGS_MODEL_SCHEMA
     if profile.army_management:
@@ -74,6 +78,8 @@ def model_schema_for(profile_or_schema):
 
 def distribution_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.capabilities:
+        return EXPANDED_DISTRIBUTION_SCHEMA
     if profile.dialogs:
         return DIALOGS_DISTRIBUTION_SCHEMA
     if profile.army_management:
@@ -153,6 +159,9 @@ def _subject(observation, ref):
 
 
 def _selection(observation, ref):
+    if observation is not None and observation.window is not None and observation.window.capability_panel is not None:
+        return next((_capability_choice(choice, observation) for choice in observation.window.capability_panel.choices
+                     if choice.ref == ref), _node("unresolved_selection"))
     if observation is not None and observation.window is not None and observation.window.dialog_panel is not None:
         panel = observation.window.dialog_panel
         return next((_dialog_choice(panel, item) for item in panel.choices if item.ref == ref), _node("unresolved_selection"))
@@ -212,6 +221,25 @@ def _dialog_choice(panel, choice):
     return _node("dialog_choice", _text(choice.kind), _semantic(component))
 
 
+def _capability_choice(choice, observation):
+    return _node("capability_choice", _semantic(choice),
+                 _node("actor", _subject(observation, choice.subject)),
+                 _node("recipient", _subject(observation, choice.destination))
+                 if choice.destination is not None else _node("no_recipient"))
+
+
+def _window_semantic(observation):
+    """Bind expanded inventory ownership without learning opaque references."""
+    window = observation.window
+    ordinary = _semantic(window)
+    if window is None or window.capability_panel is None:
+        return ordinary
+    panel = window.capability_panel
+    items = [_node("owned_item", _semantic(item), _subject(observation, item.subject)) for item in panel.items]
+    choices = [_capability_choice(choice, observation) for choice in panel.choices]
+    return _node("capability_window", ordinary, _set("bound_items", items), _set("bound_choices", choices))
+
+
 def _semantic(value):
     """Lossless field selection before learned compression; no reference IDs.
 
@@ -261,17 +289,21 @@ def _semantic(value):
             # old observations: archived values/probabilities remain exact.
             if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
                                  or type(value) is c.Hero and name == "in_garrison"
-                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel")
-                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog")
+                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel", "capability_panel", "capability_controls")
+                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog", "capability")
                                  or type(value) is c.NoticeComponent and name == "skill"):
                 continue
             if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
             if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema"):
                 continue
-            if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class") and type(item) is int:
+            if type(value) is c.CapabilityChoice and name == "destination":
+                continue  # requires its displayed recipient binding, never handle bytes
+            if (name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class")
+                    or type(value) in (c.CapabilityChoice, c.CapabilityItem, c.CapabilityPanel)
+                    and name in ("id", "artifact", "spell", "skill", "slot", "destination_slot", "resource_from", "resource_to", "primary_skill")) and type(item) is int:
                 encoded = _text(f"category:{item}")
-            elif name in ("children", "controls", "buildings", "army") and type(item) is tuple:
+            elif name in ("children", "controls", "buildings", "army", "items", "choices", "capability_controls") and type(item) is tuple:
                 encoded = _set(name, [_semantic(entry) for entry in item])
             else:
                 encoded = _semantic(item)
@@ -299,6 +331,7 @@ class ContextualEncoder:
         candidate = copy(self.history)
         candidate._frames = list(self.history.frames)
         candidate.dialog_refs = set(self.history.dialog_refs)
+        candidate.capability_refs = set(self.history.capability_refs)
         candidate.append(frame)
         basis = self.history.decision.observation if self.history.decision is not None else self.observation
         kind = frame.kind
@@ -543,7 +576,7 @@ class ContextualActorCritic(nn.Module):
                     _node("resources", _semantic(observation.resources)),
                     _set("heroes", [_semantic(hero) for hero in observation.heroes]),
                     _set("towns", [_semantic(town) for town in observation.towns]),
-                    _semantic(observation.window),
+                    _window_semantic(observation),
                     _node("current_window_subject", _subject(observation, observation.context.subject)))
         if observation.window is not None and observation.window.armies is not None:
             window = observation.window
@@ -607,6 +640,14 @@ class ContextualDistribution:
         return candidates.mv(torch.tanh(self.model.policy_query(self.state))) / sqrt(self.model.config.feature_size)
 
     def _kinds(self):
+        if self.offers.capability_panel is not None:
+            panel = self.offers.capability_panel
+            return (("close_capability",) if not panel.mandatory else ()) + tuple(
+                kind for kind in c.CAPABILITY_ACTIONS if any(choice.kind == kind for choice in panel.choices))
+        kinds = self._legacy_kinds()
+        return kinds + (("open_capability",) if self.offers.capability_controls else ())
+
+    def _legacy_kinds(self):
         offers, context = self.offers, self.offers.context
         if context.kind == "dialog":
             return ("choose_dialog",)
@@ -663,7 +704,33 @@ class ContextualDistribution:
         kind = kinds[choose("kind", self._logits([_node("action_kind", _text(kind)) for kind in kinds]),
                             kinds.index(action.kind) if action else None)]
         subject = panel = selection = destination = x = y = count = None
-        if kind == "choose_dialog":
+        if kind == "open_capability":
+            controls = self.offers.capability_controls
+            index = choose("capability_panel", self._logits([_node("capability_panel", _text(item)) for item in controls]),
+                           controls.index(action.panel) if action else None)
+            subject, panel = self.offers.context.subject, controls[index]
+        elif kind == "close_capability":
+            subject = self.offers.context.subject
+        elif kind in c.CAPABILITY_ACTIONS:
+            choices = tuple(item for item in self.offers.capability_panel.choices if item.kind == kind)
+            index = choose("capability_choice", self._logits([_capability_choice(item, self.observation) for item in choices]),
+                           next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
+            choice = choices[index]
+            subject, selection = self.offers.context.subject, choice.ref
+            if kind == "trade_resource":
+                low, high, maximum, depth = 1, choice.max_count, choice.max_count, 0
+                features = self._features(_capability_choice(choice, self.observation))
+                while low < high:
+                    middle = (low + high) // 2
+                    numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
+                    logits = self.model.quantity(torch.cat((self.state, features, numeric)))
+                    logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                    branch = choose(f"count:{low}:{high}", logits, int(action.count > middle) if action else None)
+                    if branch: low = middle + 1
+                    else: high = middle
+                    depth += 1
+                count = low
+        elif kind == "choose_dialog":
             delivered = self.offers.dialog_panel
             choices = delivered.choices
             index = choose("dialog_choice", self._logits([_dialog_choice(delivered, item) for item in choices]),
