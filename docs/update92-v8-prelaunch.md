@@ -69,8 +69,8 @@ modules. Before migration, pin the final committed target and verify this again:
    **not** imply equal probabilities: additional legal actions change support.
    Keep v7 and v8 behavior cohorts separate.
 
-The converter and fresh-session controller must be reviewed against the final
-contract before use; this preparation does not provide a launch command. The
+The implemented converter and fresh-session controller below must be reviewed
+against the final contract before use; their launch command requires release. The
 legacy local365 controller remains bound to its consumed session and v7 scope.
 
 ## Release gates and fresh campaign
@@ -102,3 +102,100 @@ unused sequence after scanning all existing plans; do not retry93 as new
 experience. Stop on technical failure or deadline, preserve the last fully
 admitted update in independent local and private copies, verify cleanup, and
 report all outcomes. No cloud launch is authorized by this document.
+
+## Implemented preparation and launch tooling
+
+The Teacher tooling now implements the converter and separately gated session
+controller. It is still **not released**. Native suite completion and a final
+committed source/runtime are prerequisites. Temporary conversion of the real
+update92 pair passed exact named-tensor, Adam, RNG, progress and archived-pool
+checks; those temporary files were removed. See
+[the exact-parent test](../validation/v8-converter-exact-parent-test-2026-10-25.json).
+
+The ordinary target map is **hero-management-v2**, SHA-256
+`ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3`.
+`builtin_v8_migration.map_identity` verifies its authored scenario using
+`create_capability_scenarios.verify_scenario(fixture=None)` plus exact bytes.
+The sole baseline map change is the native hero level cap from1 to0. v1's
+verifier remains unchanged. The migration records source, interface, runtime
+and map transitions explicitly.
+
+After the final source/runtime is committed, these preparation commands create
+no session and launch no gameplay (replace the explicit path placeholders):
+
+```sh
+export HEROES_ARTIFACT_ROOT=/Users/orsi/Projects/Heroes-artifacts
+PYTHON=/Users/orsi/Projects/Heroes/.venv/bin/python
+$PYTHON tools/v8_teacher_campaign.py prepare-migration \
+  --parent "$HEROES_ARTIFACT_ROOT/runs/local365-continuation-092/plan.json" \
+  --runtime-bin /absolute/final-v8-runtime/bin \
+  --data "$HEROES_ARTIFACT_ROOT/game-data" \
+  --game-map /absolute/hero-management-v2.vmap \
+  --output "$HEROES_ARTIFACT_ROOT/migrations/update92-v8-final"
+$PYTHON tools/v8_teacher_campaign.py verify-migration \
+  --plan "$HEROES_ARTIFACT_ROOT/migrations/update92-v8-final/plan.json"
+$PYTHON tools/v8_teacher_campaign.py preserve-migration \
+  --plan "$HEROES_ARTIFACT_ROOT/migrations/update92-v8-final/plan.json" \
+  --private-repo "$HEROES_ARTIFACT_ROOT/private-local365-state"
+```
+
+Private preservation copies only the derived baseline and its manifests into
+`checkpoints/local-v8-update92/migration-<plan-digest>/` on the existing authorized
+private result branch. It verifies the copy, commits/pushes explicit paths and
+then reconstructs the pair from immutable Git blobs, verifying bytes and exact
+restore again. The public report contains no raw checkpoints or game assets.
+A private preservation receipt is mandatory in the release and checked before
+the one-use session is burned.
+
+The coordinator-authored release JSON must use schema
+`heroes-local-v8-update92-v1-release`, `coordinator_released: true`, a nonempty
+`release_message`, exact `authorization` and `configuration` from
+`builtin_v8_session`, current clean `source`, migrated `runtime` and `map`, and
+bindings for `migration_receipt` and `private_migration_receipt`. Each of the26
+`feature_cases` contains `feature`, integer `player`0/1, `passed: true`,
+`replay_verified: true`, and bound native diagnostic `plan` and `evidence`
+(report). Supported feature names are the module's `FEATURES` tuple. Validation
+matches actual passed case/seat rows and the released runtime; Boolean labels
+alone cannot satisfy a feature gate. Optional `additional_evidence` binds other
+review/validation reports. No preparation command manufactures this release.
+
+Only after explicit release:
+
+```sh
+$PYTHON tools/v8_teacher_campaign.py launch \
+  --release "$HEROES_ARTIFACT_ROOT/local-v8-update92/release.json" \
+  --private-repo "$HEROES_ARTIFACT_ROOT/private-local365-state"
+```
+
+The fixed new session is `local-v8-update92/campaign-session.json`. Exclusive
+session and worker locks prohibit a second launch. Its supervised worker must
+have the original supervisor as its parent. The initial both-seat v8 baseline
+runs **inside** the new two-hour budget before any update; later fixed held-out
+pairs run each fifth update. Batch plans retain the existing strict admission
+and independent preservation gates. Legacy cloud/local365 controllers and their
+consumed session paths are unchanged.
+
+An intended batch path and full schedule are journaled atomically before any
+prepare/execute/preservation subprocess. Failures retain partial raw capture,
+existing reports, unstarted rows and a separate failure/preservation record;
+private publication failure is explicit and leaves the last admitted parent
+unchanged. No failed batch is retried. Cleanup uses the single absolute wall
+and monotonic hard deadline across all operations, scans only journaled
+session-owned run directories and reports any incomplete cleanup as a failure.
+
+## Mandatory query boundaries
+
+Built-in cutoff, replay reconstruction and collection use
+`PlayerHistory.requires_choice`. Deferred choices remain genuine policy samples:
+`choose_dialog`, `choose_level_up`, `choose_spell_target` and
+`cancel_spell_target`. The evidence checker reconstructs the exact delivered
+panel at each reply, rejects optional actions in the drain, and requires actual
+native issuance/acknowledgement through the unchanged history contract. No
+cleanup reply or acknowledgement is synthesized.
+
+Neutral joining uses the explicit exchange context and native `close` query
+reply. As with the existing own-hero exchange, its ordinary pending decision can
+be a cutoff: the one-player runtime stops with the captured unacted decision,
+without issuing a synthetic dismissal. It must not report that query as closed
+or the game as naturally completed. Native neutral-joining/replay evidence is
+still a release gate.

@@ -216,7 +216,7 @@ class BuiltinCollector:
         request, choices = env.reset(episode=episode, seed=seed), 0
         while not request.done:
             if choices >= max_requests:
-                if c.decode_frame(request.frames[-1]).observation.context.kind == "dialog":
+                if env.sides[self.learner_player].validator.live.requires_choice:
                     env.defer_dialog_cutoff("collection_window")
                     request = env.step(self.act(request))
                     choices += 1

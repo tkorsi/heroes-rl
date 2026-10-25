@@ -107,8 +107,8 @@ class BuiltinHeadlessEnv(ContextualMixin, HeadlessSelfPlayEnv):
     def defer_dialog_cutoff(self, reason):
         if (self.request is None or self.request.player != self.learner_player or self.request.past_horizon
                 or reason not in scoring.HEADLESS_TRUNCATIONS or self.cutoff_reason is not None
-                or self.sides[self.learner_player].validator.live.context.kind != "dialog"):
-            raise ValueError("Defer only the current learner's unfrozen strategic dialog")
+                or not self.sides[self.learner_player].validator.live.requires_choice):
+            raise ValueError("Defer only the current learner's unfrozen mandatory choice")
         if self.dialog_cutoff_drain is None:
             side = self.sides[self.learner_player]
             self.dialog_cutoff_drain = {"reason": reason, "trigger": {"player": self.learner_player,
@@ -122,7 +122,7 @@ class BuiltinHeadlessEnv(ContextualMixin, HeadlessSelfPlayEnv):
 
     def _continue_cutoff(self):
         side = self.sides[self.learner_player]
-        if side.validator.cutoff is None or side.validator.history.context.kind == "dialog":
+        if side.validator.cutoff is None or side.validator.history.requires_choice:
             raise ValueError("Single-player cutoff requires its actual safe held decision")
         self.request = None
         self._note_problem(self.cutoff_reason, "The controlled player's real decision cutoff was captured")

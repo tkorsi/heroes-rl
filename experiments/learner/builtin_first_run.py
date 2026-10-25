@@ -171,6 +171,8 @@ def check_identity(plan):
     from validation.probes.validate_hero_policy import hero_map_identity
     from experiments.headless.builtin_evidence import profile_for
     interface = profile_for(plan["source"]["interface"]).environment
+    if interface == "adventure-capabilities-v1":
+        from .builtin_v8_migration import map_identity as hero_map_identity
     require(source_identity(interface) == plan["source"] and implementation() == plan["implementation"],
             "Prepared source or implementation changed")
     require(prerequisites() == plan["prerequisites"] and binding(plan["checkpoint"]["path"]) == plan["checkpoint"]

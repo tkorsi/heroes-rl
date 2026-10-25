@@ -1,0 +1,54 @@
+{
+  "adam_steps": 783,
+  "durable_migration_created": false,
+  "gameplay_started": false,
+  "new_session_created": false,
+  "optimizer_run": false,
+  "parameters": 39,
+  "parent": {
+    "plan": {
+      "bytes": 53287,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/plan.json",
+      "sha256": "aa65d37019dc62252fee9d6269719c31d48b9df011fc9886abf59c314835517e"
+    },
+    "policy": {
+      "bytes": 637555,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/after-policy.pt",
+      "sha256": "1d6f9a68b61fd60d6c6e49155b2c8b479c0324b2d3c5bd89ddda3e97fbaab344"
+    },
+    "report": {
+      "bytes": 10429,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/report.json",
+      "sha256": "a76c8e1ec41e7ce4196a1f54c4bb343ee1a1a92a25e2913bf6b94402e05c353a"
+    },
+    "resume": {
+      "bytes": 1265589,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/after-resume.pt",
+      "sha256": "1c21b70deaf35de410501cf1b6e1b37768dfc054cbcd23bfe86df6c05f483ce4"
+    }
+  },
+  "pool_mapping": [
+    {
+      "from_checkpoint": "hero-opponent-7176f1a2e81393cb",
+      "from_weights_sha256": "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82",
+      "to_checkpoint": "hero-opponent-7176f1a2e81393cb:derived-v8:7176f1a2e81393cb",
+      "to_weights_sha256": "e4b16c86d2c500868026580a62999e3b4e7fe8a26bcc907efe721228db96e28a"
+    }
+  ],
+  "progress": {
+    "decisions": 21062,
+    "rollouts": 368,
+    "updates": 92
+  },
+  "proof": {
+    "adam_rng_progress_sampler_unchanged": true,
+    "archived_neural_pool_executed": false,
+    "archived_pool_tensors_unchanged": true,
+    "named_tensors_unchanged": true,
+    "native_opponent": "Nullkiller Easy",
+    "probability_parity_claimed": false
+  },
+  "schema": "heroes-v8-converter-exact-parent-test-v1",
+  "target_source_status": "integration through3c96bbe plus uncommitted Teacher tooling; final contract still requires review",
+  "temporary_derived_files_removed": true
+}
