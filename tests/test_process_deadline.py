@@ -310,6 +310,30 @@ class ProcessDeadlineTests(unittest.TestCase):
         self.assertAlmostEqual(timeouts[0], 1)
         self.assertAlmostEqual(timeouts[1], .4)
 
+    def test_unresolved_launch_receipt_cannot_certify_absent_native_group(self):
+        path = self.root / 'unresolved-launch.jsonl'
+        requested = {'schema': d.SCHEMA, 'event': 'launch_requested', 'command': ['unused']}
+        path.write_text(json.dumps(requested) + '\n')
+        with patch.object(d, 'group_live_members') as scan, patch.object(d.os, 'killpg') as signal_group, \
+                self.assertRaisesRegex(RuntimeError, 'Unresolved process launch'):
+            d.cleanup_from_evidence(path)
+        scan.assert_not_called()
+        signal_group.assert_not_called()
+        self.assertEqual(path.read_text(), json.dumps(requested) + '\n')
+
+    def test_failed_spawn_receipt_needs_no_process_group_cleanup(self):
+        evidence = self.root / 'spawn-failure.jsonl'
+        with patch.object(d.subprocess, 'Popen', side_effect=OSError('synthetic failed spawn')), \
+                self.assertRaisesRegex(OSError, 'failed spawn'):
+            d.guarded_popen([sys.executable, '-c', 'pass'], deadline_monotonic=time.monotonic()+5,
+                deadline_wall=time.time()+5, evidence_path=evidence)
+        self.assertEqual([row['event'] for row in self.records('spawn-failure.jsonl')],
+                         ['launch_requested', 'launch_failed'])
+        with patch.object(d, 'group_live_members') as scan, patch.object(d.os, 'killpg') as signal_group:
+            self.assertEqual(d.cleanup_from_evidence(evidence), ())
+        scan.assert_not_called()
+        signal_group.assert_not_called()
+
     def test_exhausted_launcher_releases_every_real_group_before_any_wait(self):
         launcher = d.DeadlineVcmiLauncher(Path(sys.executable), self.root, self.root / 'unused.vmap',
             deadline_monotonic=time.monotonic()+20, deadline_wall=time.time()+20)

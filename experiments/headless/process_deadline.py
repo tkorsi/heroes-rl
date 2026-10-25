@@ -299,16 +299,26 @@ def cleanup_from_evidence(path, *, timeout=2.0, deadline_monotonic=None, deadlin
     if not path.exists():
         return ()
     groups = set()
+    launch_requested = launch_failed = False
     for line in path.read_text().splitlines():
         _cleanup_remaining(end, wall)
         row = json.loads(line)
         if row.get("schema") != SCHEMA:
             raise ValueError("Unexpected supervision evidence schema")
+        if row.get("event") == "launch_requested":
+            launch_requested = True
+        elif row.get("event") == "launch_failed":
+            launch_failed = True
         if row.get("event") == "wrapper_started":
             group = row["process_group"]
             if row["writer_pid"] != row["leader_pid"] or group != row["leader_pid"]:
                 raise ValueError("Supervision evidence does not bind its own private leader")
             groups.add(group)
+    if launch_requested and not groups and not launch_failed:
+        # The owner may die after Popen but before the wrapper's first write.
+        # Its pipe guardian still stops that child once scheduled, but this
+        # incomplete receipt supplies no PGID whose closure we can observe.
+        raise RuntimeError("Unresolved process launch; closure cannot be verified from this receipt")
     while groups:
         live = False
         for group in sorted(groups):
