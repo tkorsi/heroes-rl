@@ -5,6 +5,7 @@
 #include "lib/CCreatureHandler.h"
 #include "lib/entities/artifact/CArtHandler.h"
 #include "lib/spells/CSpellHandler.h"
+#include "lib/texts/CGeneralTextHandler.h"
 
 #include <array>
 #include <cstdlib>
@@ -303,6 +304,166 @@ void necromancy()
 	reject([&] { parseNecromancy(EInfoWindowMode::AUTO, wrongNumber, components); }, "Wrong numeric operation");
 }
 
+void capabilities()
+{
+	// These are actual native MetaString/Component values, normalized with the
+	// static VCMI catalog only. No world, native callback or game is fabricated.
+	LIBRARY = new GameLibrary;
+	LIBRARY->initializeFilesystem(false);
+	LIBRARY->initializeLibrary();
+	const std::set<std::string> own{"hero.core.orrin.name"};
+	const auto expanded = [&](EInfoWindowMode mode, const MetaString & text,
+		const std::vector<Component> & components = std::vector<Component>{}, int player = 0)
+	{
+		return explorer_rl::normalizeNotice(mode, text, components, PlayerColor(player), own, true, true);
+	};
+	const auto unusedPools = [&](const MetaString & text, const std::vector<Component> & components)
+	{
+		JsonNode original;
+		text.jsonSerialize(original);
+		for(const char * pool : {"exactStrings", "localStrings", "stringsTextID", "numbers"})
+		{
+			auto data = original;
+			data[pool].Vector().push_back(pool == std::string("localStrings") || pool == std::string("numbers")
+				? JsonNode(int64_t(17)) : JsonNode("hidden data"));
+			MetaString forged;
+			forged.jsonDeserialize(data);
+			reject([&] { expanded(EInfoWindowMode::MODAL, forged, components); }, "Capability unused pool rejected");
+		}
+	};
+	for(int id : {123, 124, 125, 135, 335, 580})
+	{
+		MetaString text;
+		text.appendLocalString(EMetaText::GENERAL_TXT, id);
+		for(int player : {0, 1})
+		{
+			const auto result = expanded(EInfoWindowMode::MODAL, text, {}, player);
+			expect(result["display_mode"].String() == "modal", "Capability exact display mode");
+			expect(result["text"].Vector().size() == 1
+				&& result["text"][0]["text_id"].String() == "core.genrltxt." + std::to_string(id), "Capability exact template");
+			expect(result["components"].Vector().empty(), "Informational template creates no reward component");
+		}
+		for(auto mode : {EInfoWindowMode::AUTO, EInfoWindowMode::INFO})
+			reject([&] { expanded(mode, text); }, "Capability wrong display mode");
+		reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::MODAL, text, {}, PlayerColor(0), own, true, false); },
+			"Capability template cannot expand a legacy profile");
+		reject([&] { expanded(EInfoWindowMode::MODAL, text, {Component(ComponentType::RESOURCE, GameResID(6), 400)}); },
+			"Capability template cannot invent resource reward");
+		reject([&] { expanded(EInfoWindowMode::MODAL, MetaString::createFromTextID("core.genrltxt." + std::to_string(id))); },
+			"Capability native operation must match");
+		unusedPools(text, {});
+	}
+	MetaString summon;
+	summon.appendLocalString(EMetaText::GENERAL_TXT, 336);
+	summon.replaceRawString(LIBRARY->generaltexth->translate(*own.begin()));
+	const auto summonResult = expanded(EInfoWindowMode::MODAL, summon);
+	expect(summonResult["text"].Vector().size() == 2
+		&& summonResult["text"][1]["text_id"].String() == *own.begin(), "Owned caster localized name becomes its allowed text ID");
+	reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::MODAL, summon, {}, PlayerColor(0), {}, true, true); },
+		"Summon caster must be owned");
+	MetaString foreign;
+	foreign.appendLocalString(EMetaText::GENERAL_TXT, 336);
+	foreign.replaceRawString("Unrelated hidden hero");
+	reject([&] { expanded(EInfoWindowMode::MODAL, foreign); }, "Arbitrary raw caster name rejected");
+	unusedPools(summon, {});
+	MetaString dimensionDoor;
+	dimensionDoor.appendTextID("core.genrltxt.70");
+	expect(expanded(EInfoWindowMode::MODAL, dimensionDoor)["text"][0]["text_id"].String() == "core.genrltxt.70",
+		"Dimension Door native append-text operation preserved");
+	MetaString badDimensionDoor;
+	badDimensionDoor.appendLocalString(EMetaText::GENERAL_TXT, 70);
+	reject([&] { expanded(EInfoWindowMode::MODAL, badDimensionDoor); }, "Dimension Door append-local is not native grammar");
+	MetaString scuttle;
+	scuttle.appendTextID("core.genrltxt.337");
+	scuttle.replaceRawString(LIBRARY->generaltexth->translate(*own.begin()));
+	expect(expanded(EInfoWindowMode::MODAL, scuttle)["text"][1]["text_id"].String() == *own.begin(),
+		"Scuttle owned caster localized name normalized");
+	MetaString badScuttle;
+	badScuttle.appendLocalString(EMetaText::GENERAL_TXT, 337);
+	badScuttle.replaceRawString(LIBRARY->generaltexth->translate(*own.begin()));
+	reject([&] { expanded(EInfoWindowMode::MODAL, badScuttle); }, "Scuttle append-local is not native grammar");
+	for(const auto & text : {dimensionDoor, scuttle})
+	{
+		for(auto mode : {EInfoWindowMode::AUTO, EInfoWindowMode::INFO})
+			reject([&] { expanded(mode, text); }, "Casting failure wrong display mode");
+		reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::MODAL, text, {}, PlayerColor(0), own, true, false); },
+			"Casting failure cannot expand legacy profiles");
+		unusedPools(text, {});
+	}
+	reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::MODAL, scuttle, {}, PlayerColor(0), {}, true, true); },
+		"Scuttle caster must be owned");
+	std::vector<SpellID> spells;
+	for(const char * name : {"core:magicArrow", "core:haste", "core:slow"}) spells.emplace_back(SpellID::decode(name));
+	std::sort(spells.begin(), spells.end());
+	const auto eagle = [&](const std::vector<SpellID> & ids, bool period = true, const std::string & hero = "hero.core.orrin.name")
+	{
+		MetaString text;
+		text.appendLocalString(EMetaText::GENERAL_TXT, 221);
+		text.replaceTextID(hero);
+		for(size_t i = 0; i < ids.size(); ++i)
+		{
+			const auto name = LIBRARY->spells()->getById(ids[i])->getNameTextID();
+			if(i == 0) text.replaceTextID(name);
+			else
+			{
+				if(i + 1 == ids.size()) text.appendLocalString(EMetaText::GENERAL_TXT, 141);
+				else text.appendRawString(", ");
+				text.appendTextID(name);
+			}
+		}
+		if(period) text.appendRawString(".");
+		return text;
+	};
+	for(size_t count : {1, 2, 3})
+	{
+		const std::vector<SpellID> selected(spells.begin(), spells.begin() + count);
+		const auto text = eagle(selected);
+		std::vector<Component> components;
+		for(const auto spell : selected) components.emplace_back(ComponentType::SPELL, spell);
+		for(int player : {0, 1})
+		{
+			const auto result = expanded(EInfoWindowMode::MODAL, text, components, player);
+			expect(result["text"].Vector().size() == 2 * count + 2, "Native Eagle Eye text order preserved");
+			expect(result["components"].Vector().size() == count, "Native Eagle Eye spell count preserved");
+			for(size_t i = 0; i < count; ++i)
+			{
+				expect(result["components"][i]["kind"].String() == "spell"
+					&& result["components"][i]["content_id"].String() == LIBRARY->spells()->getById(selected[i])->getJsonKey(),
+					"Native learned spell type and order preserved");
+				expect(result["components"][i]["amount"].isNull() && result["components"][i]["owner"].isNull(),
+					"Eagle Eye adds no inferred quantity or owner");
+			}
+			expect(result["text"][2 * count + 1]["text_id"].String() == "heroes.notice.period", "Native period normalized");
+			if(count == 3) expect(result["text"][3]["text_id"].String() == "heroes.notice.comma_space", "Native comma normalized");
+			if(count > 1) expect(result["text"][2 * count - 1]["text_id"].String() == "core.genrltxt.141", "Native final conjunction preserved");
+		}
+		for(auto mode : {EInfoWindowMode::INFO, EInfoWindowMode::AUTO})
+			reject([&] { expanded(mode, text, components); }, "Eagle Eye wrong mode rejected");
+		reject([&] { expanded(EInfoWindowMode::MODAL, eagle(selected, false), components); }, "Eagle Eye missing final punctuation");
+		reject([&] { expanded(EInfoWindowMode::MODAL, eagle(selected, true, "hero.core.edric.name"), components); }, "Eagle Eye foreign hero rejected");
+		reject([&] { expanded(EInfoWindowMode::MODAL, text, {}); }, "Eagle Eye missing learned spells");
+		reject([&] { explorer_rl::normalizeNotice(EInfoWindowMode::MODAL, text, components, PlayerColor(0), own, true, false); },
+			"Eagle Eye cannot expand legacy profiles");
+		auto extra = components;
+		extra.push_back(Component(ComponentType::SPELL, selected.front(), 0));
+		reject([&] { expanded(EInfoWindowMode::MODAL, text, extra); }, "Eagle Eye unrendered spell component rejected");
+		if(count > 1)
+		{
+			auto reversed = components;
+			std::reverse(reversed.begin(), reversed.end());
+			reject([&] { expanded(EInfoWindowMode::MODAL, text, reversed); }, "Eagle Eye component order mismatch rejected");
+		}
+		unusedPools(text, components);
+	}
+	const auto single = eagle({spells[0]});
+	for(const auto & malformed : std::vector<Component>{Component(ComponentType::SPELL, spells[0], 0),
+		Component(ComponentType::SPELL, ArtifactID(spells[0].getNum())), Component(ComponentType::SPELL, SpellID(-1)),
+		Component(ComponentType::SPELL_SCROLL, spells[0]), Component(ComponentType::SPELL, spells[1])})
+		reject([&] { expanded(EInfoWindowMode::MODAL, single, {malformed}); }, "Eagle Eye malformed or mismatched spell rejected");
+	reject([&] { expanded(EInfoWindowMode::MODAL, eagle({spells[0], spells[0]}),
+		{Component(ComponentType::SPELL, spells[0]), Component(ComponentType::SPELL, spells[0])}); }, "Eagle Eye duplicate spell rejected");
+}
+
 void malformedPoolsAndUnsupported()
 {
 	const std::vector<Component> gold{Component(ComponentType::RESOURCE, GameResID(6), 500)};
@@ -349,6 +510,12 @@ void malformedPoolsAndUnsupported()
 
 int main(int argc, char ** argv)
 {
+	if(argc == 2 && std::string(argv[1]) == "--capabilities")
+	{
+		capabilities();
+		std::cout << "native capability notice parser: " << checks << " checks passed\n";
+		return 0;
+	}
 	if(argc == 2 && std::string(argv[1]) == "--necromancy")
 	{
 		necromancy();
