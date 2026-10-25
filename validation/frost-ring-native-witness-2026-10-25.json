@@ -1,0 +1,261 @@
+{
+  "attempt": {
+    "cleanup_verified": true,
+    "identity_verified": true,
+    "optimizer_steps": 0,
+    "outcomes": {
+      "blue": null,
+      "red": null
+    },
+    "phase": "finished",
+    "reconstruction": [
+      {
+        "actions_resampled": 2301,
+        "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+        "conditionals_recomputed": 5730,
+        "maximum_absolute_difference": 0,
+        "optimization_eligible": false,
+        "player": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 2302,
+        "weights_unchanged": true
+      },
+      {
+        "actions_resampled": 1787,
+        "checkpoint": "hero-opponent-7176f1a2e81393cb",
+        "conditionals_recomputed": 4362,
+        "maximum_absolute_difference": 0,
+        "optimization_eligible": false,
+        "player": 1,
+        "private_memory_reset": true,
+        "values_recomputed": 1788,
+        "weights_unchanged": true
+      }
+    ],
+    "rewards": {
+      "blue": null,
+      "red": null
+    },
+    "status": "passed",
+    "training_samples": 0,
+    "weights_unchanged": true
+  },
+  "captures": {
+    "new": {
+      "bytes": 1117483,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/engine/replay.jsonl",
+      "sha256": "aecc8fc9293357fbe0851b8cf91c8e838a2b48e47da9f009858bb147077bb4dc"
+    },
+    "original": {
+      "bytes": 1117483,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/replay.jsonl",
+      "sha256": "ea6fd62c983f4597542dedd9ab206b53365b59fccdb3ecc4d82135bd9daa4abf"
+    }
+  },
+  "conclusions": {
+    "held_out_seed_evidence": false,
+    "natural_outcome_demonstrated": false,
+    "original_cohort_reclassified": false,
+    "rebirth_coverage_established": false,
+    "specific_frost_ring_native_replay_gap_closed": true
+  },
+  "limitations": [
+    "No decoded attacked-stack REBIRTH flag, eligible stack-state, or conditional RNG-branch witness.",
+    "Only this captured execution is established; broader spell support is not implied."
+  ],
+  "native_verification": {
+    "divergence": null,
+    "log": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/contextual-verification/replay.jsonl",
+    "schema": "heroes-contextual-replay-verification-v1",
+    "summary": {
+      "boundary": {
+        "barrier_id": null,
+        "client_packets": 10967,
+        "kind": "cutoff"
+      },
+      "captured_prefix_only": true,
+      "checked": {
+        "client_packets": 10967,
+        "messages": 8181,
+        "requests": 2469,
+        "responses": 4089,
+        "transactions": 30988
+      },
+      "final_client_position": {
+        "completed": 10967,
+        "index": 10967,
+        "phase": "callbacks_complete",
+        "type": 84
+      },
+      "loaded": {
+        "client_packets": 10967,
+        "messages": 8181,
+        "requests": 2469,
+        "responses": 4089,
+        "transactions": 30988
+      },
+      "open_final_transaction": false,
+      "regenerated_server_packets_after_prefix": 0,
+      "server": {
+        "boundaries": {
+          "battle_end": 5,
+          "end_turn": 265
+        },
+        "client_packs": 10967,
+        "inputs": 2469,
+        "observations_after_prefix": 0,
+        "packs_sent": 10967,
+        "prefix": true,
+        "terminals": []
+      },
+      "server_verified": true,
+      "terminal_barrier": null,
+      "unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      }
+    },
+    "verified": true
+  },
+  "new_artifact_bindings": {
+    "../attempt-03.json": {
+      "bytes": 2312,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/../attempt-03.json",
+      "sha256": "1f055c0eb43916c5eb84a533369f8080fc01ea0a22810889ed4b526c7fdc6bb5"
+    },
+    "contextual-verification/contextual-replay-verification.json": {
+      "bytes": 6380,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/contextual-verification/contextual-replay-verification.json",
+      "sha256": "d832eebcdd9fb8484bab8417babde59641fb08a28c119e79436e8645d43a6700"
+    },
+    "contextual-verification/native-report.json": {
+      "bytes": 1286,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/contextual-verification/native-report.json",
+      "sha256": "45355b03fa35cf4d4a0ac129f94d80af8064c9eb30e6979ce0358cefb6800a59"
+    },
+    "manifest.json": {
+      "bytes": 16681,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/manifest.json",
+      "sha256": "44ebb15a66a84a3dee23d36f6ce39084e80ee6e999475f017a7a465816a3b1fb"
+    },
+    "policy-reconstruction.json": {
+      "bytes": 17376,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/episode-000003/policy-reconstruction.json",
+      "sha256": "e99ed69bd593a238f94c5a8879d2d242f3e8805007144782f691c3f195ff17ad"
+    }
+  },
+  "original_failure": {
+    "binding": {
+      "bytes": 458,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/native-report.json",
+      "sha256": "11e4d50e9a001ee5176043811c2fdf620cbeb73894bbce8c208db942df407260"
+    },
+    "report": {
+      "divergence": {
+        "actual": "148:06da7da3d60da7a9",
+        "expected": "148:1bd11e18eb73b519",
+        "field": "sent pack 4 (type:digest)",
+        "stage": "applied 2029"
+      },
+      "log": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/replay.jsonl",
+      "schema": "heroes-contextual-replay-verification-v1",
+      "summary": {
+        "client_packs": 8744,
+        "inputs": 2030
+      },
+      "verified": false
+    }
+  },
+  "schema": "heroes-frost-ring-replay-witness-v1",
+  "scope": "Fresh repaired-runtime verification of the complete captured cutoff prefix; original failed attempt remains unchanged and unscored.",
+  "shared_spell_witness": {
+    "applied": {
+      "line": 4062,
+      "line_sha256": "23c35c3cff3d8266bd7acfd525c37d14c14a8bab44bff6b548af3c0229a19232",
+      "record": {
+        "blocked": false,
+        "boundary": null,
+        "chain": "0d293ee06063d015",
+        "client_out": 8744,
+        "digest": null,
+        "kind": "applied",
+        "out": 8744,
+        "parts": null,
+        "result": true,
+        "sent": [
+          [
+            251,
+            "1fe5d57f32e19f2a"
+          ],
+          [
+            141,
+            "d7169a919e32cd20"
+          ],
+          [
+            138,
+            "582f10270a314477"
+          ],
+          [
+            143,
+            "915d0ccd34dadc4e"
+          ],
+          [
+            148,
+            "1bd11e18eb73b519"
+          ],
+          [
+            138,
+            "9440375fbeca66dc"
+          ],
+          [
+            96,
+            "3194de0794e8066c"
+          ],
+          [
+            148,
+            "0ff4794bdd0e7f13"
+          ],
+          [
+            142,
+            "be74703635be8c01"
+          ],
+          [
+            134,
+            "53e1ef0e6144e3b3"
+          ],
+          [
+            84,
+            "c0a920978dad3aae"
+          ]
+        ],
+        "seq": 2029,
+        "terminals": []
+      }
+    },
+    "exact_raw_lines_equal": true,
+    "input": {
+      "line": 4061,
+      "line_sha256": "5b60d100477a38712ad2c3f63139b8097d18b00e6316c661be2429765bb35d36",
+      "record": {
+        "connection": 1,
+        "kind": "input",
+        "out": 8733,
+        "pack": "0000c60101ee0f00ffffffff0f040e636f72653a66726f737452696e6701e847e30003",
+        "player": 1,
+        "request": 2030,
+        "seq": 2029,
+        "type": 198
+      }
+    },
+    "line_hash_scope": "Original UTF-8 JSONL bytes including trailing LF",
+    "packet_names": {
+      "148": "StacksInjured",
+      "198": "MakeAction"
+    },
+    "spell_id": "core:frostRing"
+  },
+  "source_commit": "6abbfdbb15025d6b65fa692fe66ac0f9b1b58bcd"
+}
