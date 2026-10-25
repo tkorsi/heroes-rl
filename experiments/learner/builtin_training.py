@@ -5,6 +5,7 @@ supervision and checkpoint roundtrip. No failed attempt is retried or replaced.
 """
 from __future__ import annotations
 import argparse
+from datetime import datetime, timezone
 from copy import deepcopy
 from dataclasses import asdict
 import json
@@ -20,6 +21,8 @@ from .inference import source_identity
 
 SCHEMA = resume.CONTINUATION
 EVALUATION = 'heroes-builtin-checkpoint-evaluation-v1'
+HARD_DEADLINE = datetime(2026, 10, 25, 17, 53, tzinfo=timezone.utc).timestamp()
+COMPUTE_DEADLINE = HARD_DEADLINE - 180
 
 
 def configuration():
@@ -100,6 +103,8 @@ def require_heldout(state, runtime, native):
 def prepare(args):
     import torch
     torch.set_num_threads(1)
+    minimum = 300 if not args.evaluate else 180
+    pilot.require(time.time()+minimum < COMPUTE_DEADLINE, 'Absolute cloud session deadline leaves insufficient execution/preservation reserve')
     output = durable_path(args.output)
     parent_path = durable_path(args.parent)
     parent_plan = json.loads(parent_path.read_text())
@@ -175,7 +180,8 @@ def prepare(args):
             if prior.get('schema') == SCHEMA+'-plan':
                 used = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in prior['schedule']}
                 pilot.require(not keys & used, 'Training seeds already scheduled; choose an unused sequence')
-    plan.update(prepared_check=source_check.stdout.strip(), batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
+    plan.update(absolute_deadline_unix=HARD_DEADLINE, compute_deadline_unix=COMPUTE_DEADLINE,
+        prepared_check=source_check.stdout.strip(), batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
         schedule=planned_schedule, execution_output=str(output/'execution'),
         checkpoint=state.bindings['policy'], source=source, implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), authorization=pilot.AUTHORIZATION, parent=state.bindings,
@@ -197,6 +203,9 @@ def read_plan(path, sha):
     pilot.require(pilot.digest(path) == sha, 'Immutable batch plan changed')
     plan = json.loads(path.read_text())
     evaluation = plan.get('mode') == 'evaluation'
+    pilot.require(plan.get('absolute_deadline_unix') == HARD_DEADLINE
+                  and plan.get('compute_deadline_unix') == COMPUTE_DEADLINE
+                  and time.time() < COMPUTE_DEADLINE, 'Absolute cloud session deadline reached or changed')
     pilot.require(plan['schema'] == (EVALUATION if evaluation else SCHEMA)+'-plan'
         and plan['configuration'] == configuration() and plan['authorization'] == pilot.AUTHORIZATION
         and plan['execution_output'] == str(path.parent/'execution')
@@ -220,7 +229,7 @@ def worker(args):
         pilot.write(output/'worker-report.json', report)
     def budget(phase):
         offset = cfg['phase_deadlines_seconds'][phase]
-        return pilot.Budget(args.started+offset, args.wall_started+offset)
+        return pilot.Budget(args.started+offset, min(args.wall_started+offset, plan['compute_deadline_unix']))
     try:
         pilot.check_identity(plan)
         state = parent_state(plan)

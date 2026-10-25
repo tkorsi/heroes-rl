@@ -269,6 +269,29 @@ The runner also explicitly requires gate/evaluation completion within its shared
 budget. `reports/cloud/teacher-status.json` records the current compact status;
 status commits occur between batches to preserve frozen source identity.
 
+### Fixed cloud stop window
+
+The user limited this cloud session to **25 October 2026, 17:53 UTC** (19:53 Kyiv),
+including diagnosis, repairs and validation. No new two-hour allowance begins when
+training becomes available. Continuation plans bind the absolute deadline and
+use **17:50 UTC** as the independent worker/native compute cutoff, reserving three
+minutes for preservation/publication. Preparation refuses insufficient remaining
+reserve; expired or changed deadlines cannot execute. Engineering jobs use
+`tools/run_cloud_teacher_job.py` with the same absolute cutoff. An independent
+cloud watcher records stop boundaries under the private artifact root. No restart
+after the cutoff is authorized without a new user instruction. Interrupted games
+and incomplete/interrupted optimizer work never count as completed updates.
+
+GDB diagnostic `shutdown-gdb-001` reproduced the original 72-choice shutdown
+SIGSEGV: a Nullkiller TBB `AIGateway::yourTurn` task crashes while the main thread
+waits in `AIGateway::finish()` through `CClient::finishGameplay()`. Its full
+backtrace, same-runtime inventory, reproducer and debugger package hashes are
+preserved privately at training-state results commit `a8ce321`. The loaded VCMI
+library digest matches the pinned runtime. This remains diagnostic-only evidence;
+no canonical C++ was edited by Teacher. Follow Optimizer's
+`codex/portable-engine-session` status for a tested minimal separately applicable
+correctness repair before a fresh ordinary-runtime gate.
+
 ## Current authorized local PPO pilot
 
 After the four replay-verified natural defeats against Nullkiller Easy, the user

@@ -12,7 +12,7 @@ from experiments.headless.contextual_evidence import strict_json
 
 SCHEMA = 'heroes-portable-resume-v1'
 GLUE = frozenset(('builtin_training.py', 'builtin_training_resume.py',
-                  'builtin_preservation.py', 'builtin_gameplay.py', 'checkpoints.py'))
+                  'builtin_preservation.py', 'builtin_gameplay.py', 'checkpoints.py', 'builtin_first_run.py'))
 
 
 class Migration:

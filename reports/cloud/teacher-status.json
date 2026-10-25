@@ -1,7 +1,18 @@
 {
-  "activity": "Fresh Linux evaluation stopped after first game native SIGSEGV; failure preserved unscored; second seat not started.",
+  "activity": "Reproduced SIGSEGV under GDB with the same 72 choices; Nullkiller TBB yourTurn task crashes while main waits in AIGateway::finish. Monitoring Optimizer status for a separately applicable tested repair.",
   "blocker": "VCMI exited -11 (SIGSEGV) during shutdown after terminal callbacks/barrier and Ending network thread; same-runtime replay gate was not reached.",
   "checkpoint_pair_restore_exact": true,
+  "deadline": {
+    "authorized_window_start_utc": "2026-10-25T15:53:00Z",
+    "compute_stop_utc": "2026-10-25T17:50:00Z",
+    "engineering_job_guard": "tools/run_cloud_teacher_job.py",
+    "hard_stop_utc": "2026-10-25T17:53:00Z",
+    "owned_child_timeout_smoke": "passed; child stopped after 0.5-second bound with exit137",
+    "restart_after_cutoff_authorized": false,
+    "watchdog_pid": 9430,
+    "watchdog_private_receipt": "/workspace/Heroes-artifacts/session/deadline-watchdog.json",
+    "worker_and_native_absolute_guardians": true
+  },
   "experimental_replay_worker_enabled": false,
   "last_attempt": {
     "choices": 72,
@@ -31,8 +42,13 @@
     "native_build": "passed",
     "same_runtime_replay": "not_reached"
   },
-  "next_step": "Optimizer native lifecycle diagnosis/repair, exact recipe rebuild and separately labelled fresh Linux gate; no training until that gate passes.",
+  "next_step": "Integrate only the tested minimal C++ correctness slice; rebuild an ordinary self-contained runtime, bind fresh provenance, validate both seats, then resume update22 within the fixed deadline.",
   "next_unused_training_sequence": 22,
+  "optimizer_status_observed": {
+    "branch": "codex/portable-engine-session",
+    "commit": "be6df08",
+    "tested_minimal_shutdown_fix": null
+  },
   "private_failure_evidence": {
     "branch": "codex/cloud-teacher-results",
     "commit": "0c31105",
@@ -43,7 +59,18 @@
   "private_git_read_access": true,
   "private_transfer_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
   "schema": "heroes-cloud-teacher-status-v1",
-  "state": "blocked_native_shutdown",
+  "shutdown_diagnostic": {
+    "choices": 72,
+    "cleanup_verified": true,
+    "crashing_thread": "Nullkiller TBB AIGateway::yourTurn lambda #2",
+    "main_thread": "AIGateway::finish -> CClient::finishGameplay -> CServerHandler::endGameplay",
+    "private_commit": "a8ce321",
+    "private_path": "results/shutdown-gdb-001.tar.gz",
+    "sha256": "fd4683d5d48927c05aeccd60e93016de121d65de4f3f88f4197350bfed1a3d56",
+    "signal": "SIGSEGV",
+    "training_admission": false
+  },
+  "state": "waiting_minimal_native_repair",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T15:46:45.773403+00:00"
+  "updated_utc": "2026-10-25T15:59:43.442153+00:00"
 }

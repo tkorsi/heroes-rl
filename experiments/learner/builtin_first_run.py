@@ -480,7 +480,8 @@ def execute(args, *, plan_reader=None, worker_module="experiments.learner.builti
     output, cfg = Path(plan["execution_output"]), plan["configuration"]
     output.mkdir(exist_ok=False)
     started, wall_started = time.monotonic(), time.time()
-    budget = Budget(started + cfg["shared_wall_seconds"], wall_started + cfg["shared_wall_seconds"])
+    budget = Budget(started + cfg["shared_wall_seconds"],
+        min(wall_started + cfg["shared_wall_seconds"], plan.get("compute_deadline_unix", float("inf"))))
     report = {"schema": plan["schema"].removesuffix("-plan") + "-result", "plan_sha256": args.sha256, "status": "running",
         "attempts": [empty_attempt(row) for row in plan["schedule"]], "training_performed": False,
         "optimizer_updates": 0, "optimizer_steps": 0, "training_samples": 0, "update_status": "not_started",
