@@ -135,7 +135,8 @@ def prepare(args):
         require_heldout(state, current_runtime, current_native)
     pilot.require(not output.exists(), 'Use a new batch directory')
     # Require the independently restored second copy before any further game.
-    receipt_path = DURABLE_ROOT / 'checkpoints' / parent_path.parent.name / 'preservation-receipt.json'
+    receipt_path = ((migration.resolve(migration.old_root/'checkpoints'/parent_path.parent.name/'preservation-receipt.json'))
+                    if migration else DURABLE_ROOT/'checkpoints'/parent_path.parent.name/'preservation-receipt.json')
     receipt = json.loads(receipt_path.read_text())
     report_bound = receipt['sources']['report.json']
     pilot.require((migration.artifact(report_bound) if migration else report_bound) == resume.binding(report_path)
@@ -165,7 +166,10 @@ def prepare(args):
     planned_schedule = schedule(sequence, args.evaluate)
     if not args.evaluate:
         keys = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in planned_schedule}
-        for prior_path in (DURABLE_ROOT/'runs').glob('*/plan.json'):
+        prior_roots = {DURABLE_ROOT/'runs'}
+        if migration:
+            prior_roots.add(migration.new_root/'runs')
+        for prior_path in (p for root in prior_roots for p in root.glob('*/plan.json')):
             prior = json.loads(prior_path.read_text())
             if prior.get('schema') == SCHEMA+'-plan':
                 used = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in prior['schedule']}

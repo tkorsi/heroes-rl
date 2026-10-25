@@ -15,7 +15,7 @@
     },
     "experiments/learner/builtin_training.py": {
       "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
-      "to": "75e03783eb9021f911b7978347c677f736a7d233f7802911cef8bbf05847dfcf"
+      "to": "7af8d74a3a18327c9446443a8c7ca044d7735df718a5bb0fa7b11e9d4a8ecb0b"
     },
     "experiments/learner/builtin_training_resume.py": {
       "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
