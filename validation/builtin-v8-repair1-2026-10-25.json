@@ -1,0 +1,337 @@
+{
+  "absolute_deadline_unix": 1792972149.568623,
+  "attempts": [
+    {
+      "latest_sampled_day": 9,
+      "learner_player": 0,
+      "manifest": {
+        "bytes": 18734,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/episode-000001/manifest.json",
+        "sha256": "a6ed5f10dd92b24510f2222f187afad5f1ce32475d5006e4a4e185940fee0f92"
+      },
+      "native_opponent_requests": 125,
+      "native_replay": {
+        "authoritative_inputs": 202,
+        "boundary": {
+          "barrier_id": 1,
+          "client_packets": 1052,
+          "kind": "natural"
+        },
+        "captured_prefix_only": false,
+        "checked": {
+          "client_packets": 1052,
+          "messages": 406,
+          "native_opponent_requests": 125,
+          "requests": 203,
+          "responses": 202,
+          "transactions": 2071
+        },
+        "server_verified": true,
+        "terminal_barrier": {
+          "barrier_id": 1,
+          "callbacks_complete": true,
+          "client_packets": 1052,
+          "controllers": {
+            "explorer_players": [
+              0
+            ],
+            "native_opponents": [
+              {
+                "module": "Nullkiller",
+                "player": 1
+              }
+            ],
+            "schema": "heroes-contextual-controllers-v1"
+          },
+          "episode": "1",
+          "explorer_terminal_callbacks": [
+            0
+          ],
+          "interface": "adventure-capabilities-v1",
+          "kind": "client",
+          "native_terminal_callbacks": [
+            0,
+            1
+          ],
+          "observed_count": 1052,
+          "origin": "request",
+          "outcomes": [
+            "loss",
+            "win"
+          ],
+          "request": {
+            "id": 202,
+            "player": 0,
+            "type": 198
+          },
+          "schema": "heroes-contextual-terminal-barrier-v1"
+        },
+        "terminal_unapplied_count": 1,
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        }
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "policy_reconstruction": {
+        "actions_resampled": 202,
+        "conditionals_recomputed": 414,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 1349,
+          "history_sha256": "131c7251f7e9ced7bfc8f409b74cd94b3a82549b4a8e73e0a153fee465441659",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 0,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 202,
+        "weights_unchanged": true
+      },
+      "replay": {
+        "bytes": 10000,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/episode-000001/builtin-verification/builtin-replay-verification.json",
+        "sha256": "3119daef30deb5511e9dc4c47f03e2401871589f92dd860bcec90d3bb2ef0781"
+      },
+      "sampled_choices": 202,
+      "status": "passed",
+      "terminal_day": 9,
+      "termination_reason": "natural_terminal",
+      "wall_seconds": 6.831689124985132,
+      "weights_unchanged": true
+    },
+    {
+      "latest_sampled_day": 1,
+      "learner_player": 1,
+      "manifest": {
+        "bytes": 18731,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/episode-000002/manifest.json",
+        "sha256": "10ab684b9618c3e91a819e2e93b409d797af493d25a518952079e34de79bd68a"
+      },
+      "native_opponent_requests": 72,
+      "native_replay": {
+        "authoritative_inputs": 84,
+        "boundary": {
+          "barrier_id": 1,
+          "client_packets": 546,
+          "kind": "natural"
+        },
+        "captured_prefix_only": false,
+        "checked": {
+          "client_packets": 546,
+          "messages": 20,
+          "native_opponent_requests": 72,
+          "requests": 84,
+          "responses": 9,
+          "transactions": 622
+        },
+        "server_verified": true,
+        "terminal_barrier": {
+          "barrier_id": 1,
+          "callbacks_complete": true,
+          "client_packets": 546,
+          "controllers": {
+            "explorer_players": [
+              1
+            ],
+            "native_opponents": [
+              {
+                "module": "Nullkiller",
+                "player": 0
+              }
+            ],
+            "schema": "heroes-contextual-controllers-v1"
+          },
+          "episode": "2",
+          "explorer_terminal_callbacks": [
+            1
+          ],
+          "interface": "adventure-capabilities-v1",
+          "kind": "client",
+          "native_terminal_callbacks": [
+            0,
+            1
+          ],
+          "observed_count": 546,
+          "origin": "request",
+          "outcomes": [
+            "win",
+            "loss"
+          ],
+          "request": {
+            "id": 84,
+            "player": 0,
+            "type": 197
+          },
+          "schema": "heroes-contextual-terminal-barrier-v1"
+        },
+        "terminal_unapplied_count": 0,
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        }
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "policy_reconstruction": {
+        "actions_resampled": 9,
+        "conditionals_recomputed": 17,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 78,
+          "history_sha256": "b7e42d07387240fc1acaeb41ed2874cb9bfa882f20039892c053e8a8fe4b5400",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 1,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 1,
+        "private_memory_reset": true,
+        "values_recomputed": 9,
+        "weights_unchanged": true
+      },
+      "replay": {
+        "bytes": 9148,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/episode-000002/builtin-verification/builtin-replay-verification.json",
+        "sha256": "a46f222c3816a8287323f85068a8d945a7fa3e5902771081fa508252ffab1388"
+      },
+      "sampled_choices": 9,
+      "status": "passed",
+      "terminal_day": 2,
+      "termination_reason": "natural_terminal",
+      "wall_seconds": 1.3433057079964783,
+      "weights_unchanged": true
+    }
+  ],
+  "capability_acceptance": {
+    "bytes": 373240,
+    "path": "/Users/orsi/.codex/worktrees/integrate-reviewed-project/Heroes/validation/capabilities-repair1-2026-10-25.json",
+    "sha256": "10084c9e9bca9e291ae903ac266aba69a3cc8f7f0cee495eaf8850b81f9adc2c"
+  },
+  "checkpoint": {
+    "bytes": 638515,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/migrations/update92-v8-final/after-policy.pt",
+    "sha256": "4deea9690f13d7d90896fd0ff61ed3e1b2fc6d2f38b3d111622a482fb720f13f"
+  },
+  "executables": {
+    "binary": {
+      "bytes": 11582880,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/bin/vcmiclient",
+      "sha256": "79e527665872bed791f2a3fed88e5087880964211dcbedebd0ba57917c541540"
+    },
+    "replay_binary": {
+      "bytes": 12617824,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/bin/vcmireplay",
+      "sha256": "b2d923cceb8e048809716bcb8de19c32652161e0c249900cd395b92dc228fd7c"
+    }
+  },
+  "frozen": {
+    "checkpoint_file_sha256": "4deea9690f13d7d90896fd0ff61ed3e1b2fc6d2f38b3d111622a482fb720f13f",
+    "learner_weights_sha256": "680d545284b98349ec34040d651b908e340ef939cba5f629f9f5b721b52a03a6",
+    "opponents": [
+      [
+        "hero-opponent-7176f1a2e81393cb:derived-v8:7176f1a2e81393cb",
+        "e4b16c86d2c500868026580a62999e3b4e7fe8a26bcc907efe721228db96e28a"
+      ]
+    ]
+  },
+  "implementation_sha256": "e7a1164c855dffbbc9774937f2bc01dfcaeeaa3e5b2a129dd9c1710469f3e7ac",
+  "interface": "adventure-capabilities-v1",
+  "map": {
+    "fixture": false,
+    "layout_seed": 0,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/maps/hero-management-v2.vmap",
+    "scenario": "hero-management-v2",
+    "semantics_verified": true,
+    "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+  },
+  "native_replay_totals": {
+    "client_packets": 1598,
+    "messages": 426,
+    "native_opponent_requests": 197,
+    "requests": 287,
+    "responses": 211,
+    "transactions": 2693
+  },
+  "natural_outcomes": {
+    "learner_losses": 2,
+    "learner_wins": 0
+  },
+  "optimizer_steps": 0,
+  "ordinary_cohort_member": false,
+  "plan": {
+    "bytes": 25057,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/plan.json",
+    "sha256": "5f12abf1fc1067ccad1e7d66e92531635edf2100ab465a9eb0244fda9de201bc"
+  },
+  "policy_improvement_claimed": false,
+  "prior_failed_startup": {
+    "attempts": [
+      {
+        "episode": 1,
+        "learner_player": 0,
+        "optimizer_steps": 0,
+        "sampled_choices": 0,
+        "status": "failed",
+        "termination_reason": "engine_error",
+        "training_samples": 0
+      },
+      {
+        "episode": 2,
+        "learner_player": 1,
+        "optimizer_steps": 0,
+        "sampled_choices": null,
+        "status": "not_started",
+        "termination_reason": null,
+        "training_samples": 0
+      }
+    ],
+    "optimizer_updates": 0,
+    "reason": "Native builtin controller whitelist allowed only adventure-dialogs-v1. Fixed startup and both server/client terminal-barrier interface guards; original failed attempt remains unscored.",
+    "report": {
+      "bytes": 5541,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-heldout-092/execution/report.json",
+      "sha256": "4a62c384c566f1b8d03fdcbf63702147bce9e4674adc3881a1fa68b01df2cd21"
+    },
+    "status": "stopped",
+    "training_samples": 0
+  },
+  "qualification": "Separate unchanged-policy plumbing diagnostics on the ordinary map. Both seats must reach native natural termination, exercise real Nullkiller commands, replay every transaction and exactly reconstruct learner actions/values. These games are not campaign baseline replacements or admitted samples.",
+  "report": {
+    "bytes": 15362,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/report.json",
+    "sha256": "bfb922bba8dc698f975922dcdcad2f8b8384cbd4d4cde071f56497b43ff2a811"
+  },
+  "runtime_freeze_receipt": {
+    "bytes": 130488,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/freeze-receipt.json",
+    "sha256": "67be13d1f1e9978c6a88425510966c75bef21ce91c46bf02a28a2610813eff96"
+  },
+  "runtime_sha256": "6e2d6ec2e95d90ffabae63c5eb3291e9f088ab34c426d2b372c6cd2598407a9c",
+  "schema": "heroes-builtin-v8-repair-validation-v1",
+  "status": "passed",
+  "total_sampled_choices": 211,
+  "training_performed": false,
+  "training_samples": 0
+}
