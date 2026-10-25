@@ -1,0 +1,361 @@
+{
+  "branch": "codex/cloud-environment",
+  "checks": {
+    "build": {
+      "exit_code": 0,
+      "repeat": "ninja: no work to do.",
+      "targets": [
+        "vcmiclient",
+        "vcmiserver",
+        "ExplorerRL",
+        "BattleAI",
+        "Nullkiller",
+        "vcmireplay"
+      ]
+    },
+    "debian_archives": {
+      "fresh_download_and_extract": "passed",
+      "host_base_dependency": "base-system-packages.tsv",
+      "repeat_install": "passed",
+      "verified": 152
+    },
+    "full_suite": {
+      "discovered": 925,
+      "errors": 0,
+      "exit_code": 0,
+      "failures": 0,
+      "passed": 922,
+      "seconds": 178.629,
+      "skipped": [
+        {
+          "reason": "Local retained game captures are intentionally not committed",
+          "test": "test_prior_real_v7_behavior_regression_when_local_evidence_exists (test_evaluation_behavior.EvaluationBehaviorTests.test_prior_real_v7_behavior_regression_when_local_evidence_exists)"
+        },
+        {
+          "reason": "Requires original local Data to resolve static displayed content",
+          "test": "test_displayed_scholar_and_artifact_content_without_latent_data (test_native_adventure_dialogs.NativeAdventureDialogTests.test_displayed_scholar_and_artifact_content_without_latent_data)"
+        },
+        {
+          "reason": "Requires original local game Data for static content; set HEROES_VCMI_DATA to its parent",
+          "test": "test_trophies_with_actual_static_game_content (test_native_notices.NativeNoticeTests.test_trophies_with_actual_static_game_content)"
+        }
+      ]
+    },
+    "initial_native_suite_before_link": {
+      "discovered": 13,
+      "failures": 0,
+      "passed": 5,
+      "skipped": 8
+    },
+    "initial_pre_link_suite": {
+      "discovered": 916,
+      "errors": 0,
+      "failures": 0,
+      "passed": 907,
+      "skipped": 9
+    },
+    "linked_native_suite": {
+      "coverage": "Real libvcmi, production notice/dialog parsers, evidence teardown, terminal barrier callbacks, 65 native request-accounting checks. No game/replay capture.",
+      "discovered": 13,
+      "failures": 0,
+      "passed": 11,
+      "skipped": 2
+    },
+    "linux_python_lock": {
+      "cpu_torch_import": "passed",
+      "fresh_venv_hash_install": "passed",
+      "pip_check": "passed"
+    },
+    "native_startup": [
+      {
+        "args": [
+          "--version"
+        ],
+        "expected_output_found": true,
+        "expected_returncode": 0,
+        "program": "vcmiclient",
+        "returncode": 0
+      },
+      {
+        "args": [
+          "--help"
+        ],
+        "expected_output_found": true,
+        "expected_returncode": 0,
+        "program": "vcmiclient",
+        "returncode": 0
+      },
+      {
+        "args": [
+          "--version"
+        ],
+        "expected_output_found": true,
+        "expected_returncode": 0,
+        "program": "vcmiserver",
+        "returncode": 0
+      },
+      {
+        "args": [],
+        "expected_output_found": true,
+        "expected_returncode": 2,
+        "program": "vcmireplay",
+        "returncode": 2
+      },
+      {
+        "dynamic_load": "passed",
+        "library": "libvcmi.so"
+      },
+      {
+        "dynamic_load": "passed",
+        "library": "AI/libExplorerRL.so"
+      },
+      {
+        "dynamic_load": "passed",
+        "library": "AI/libBattleAI.so"
+      },
+      {
+        "dynamic_load": "passed",
+        "library": "AI/libNullkiller.so"
+      }
+    ],
+    "new_cloud_tool_tests": {
+      "discovered": 9,
+      "passed": 9,
+      "skipped": 0,
+      "synthetic_only": true
+    },
+    "recipe": {
+      "canonical_files": 63,
+      "canonical_inventory_sha256": "dcd579b109f8027d9caf1a6f613a3737a01fb0ba7f34847924f07af688f61e24",
+      "output": "Verified /workspace/heroes-rl/vcmi: pinned upstream + root patches + owned source match exactly.",
+      "status": "passed",
+      "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752"
+    }
+  },
+  "compiler_warnings": [
+    "/workspace/cloud-setup/sysroot/usr/include/boost/core/allocator_access.hpp:529:5: warning: \u2018void* __builtin_memset(void*, int, long unsigned int)\u2019 offset 0 is out of the bounds [0, 0] [-Warray-bounds=]",
+    "/workspace/heroes-rl/vcmi/client/renderSDL/ScreenHandler.cpp:67:71: warning: ignoring attributes on template argument \u2018int (*)(FILE*)\u2019 [-Wignored-attributes]",
+    "/workspace/heroes-rl/vcmi/client/CServerHandler.cpp:147:58: warning: ignoring attributes on template argument \u2018int (*)(FILE*)\u2019 [-Wignored-attributes]",
+    "/usr/include/c++/14/bits/char_traits.h:427:56: warning: \u2018void* __builtin_memcpy(void*, const void*, long unsigned int)\u2019 forming offset 32 is out of the bounds [0, 32] of object \u2018<anonymous>\u2019 with type \u2018std::__cxx11::basic_string<char>\u2019 [-Warray-bounds=]",
+    "/usr/include/c++/14/bits/char_traits.h:427:56: warning: \u2018void* __builtin_memcpy(void*, const void*, long unsigned int)\u2019 forming offset 32 is out of the bounds [0, 32] of object \u2018<anonymous>\u2019 with type \u2018std::__cxx11::basic_string<char>\u2019 [-Warray-bounds=]"
+  ],
+  "implementation_commit": "709193028b89354e9c07e366c7543af080b2f4db",
+  "limitations": [
+    "No proprietary game content or original checkpoint was available.",
+    "Actual checkpoint conversion, separate Linux plan integration, real games and replay remain pending; old Mac evaluators deliberately still reject a converted checkpoint.",
+    "The Debian archive lock is a local dependency layer, not a standalone OS image.",
+    "No environment publication or fresh-task snapshot restoration has been verified."
+  ],
+  "linux_games": {
+    "attempts": 0,
+    "both_color_diagnostics": "not_started",
+    "cohort_execution_seconds": 0,
+    "cutoffs": 0,
+    "failures": 0,
+    "frozen_neural_cohort": "not_started",
+    "native_replays": 0,
+    "natural_outcomes": 0,
+    "nullkiller_easy_cohort": "not_started"
+  },
+  "local_logs": {
+    "apt-download.log": {
+      "bytes": 21477,
+      "sha256": "f55057c18e825341b6cf41b830fc19838f1b0da8e4f252de9c9ecb59c9e8728a"
+    },
+    "apt-local.log": {
+      "bytes": 607,
+      "sha256": "88fdf322bf50b616ccbc56b182fc8c3e1b5e0e4f37984c07265f2f76c6c93e5a"
+    },
+    "apt.log": {
+      "bytes": 96,
+      "sha256": "0a3daa67cb31c7412c4e5c51a22fa78c2705deab60e143a2aa7131feabf1745a"
+    },
+    "base-system-packages.tsv": {
+      "bytes": 44597,
+      "sha256": "462784577de97e73bf62888eda11d2c3954c587762e98a66f9c5f1631ca42428"
+    },
+    "build-shared-sdl.log": {
+      "bytes": 3993,
+      "sha256": "ac919b37d11c46de8a863e356597545d4d34f9298fbf6a50f33fc5b847bae4f9"
+    },
+    "build-static-sdl-failure.log": {
+      "bytes": 86827,
+      "sha256": "3f0976a8d6a7d5ee0383641b9042883b8be0fb540f609d1ced048c6c52b9d74f"
+    },
+    "cloud-tools-tests-final.log": {
+      "bytes": 2015,
+      "sha256": "c459fca3c2d0047271dff9ae6826d3d3211f67e6931459c5efd1c413848dd0e7"
+    },
+    "lock-check.log": {
+      "bytes": 2492,
+      "sha256": "fae240f9698a09cda9e6c048bc969b544d0b01f7e640246d8a0673c8f684ce0a"
+    },
+    "locked-setup-repeat.log": {
+      "bytes": 6941,
+      "sha256": "0d6075276890ad12612e00598bb072b21629b3cd7174a0ac4a03420ed1a6939c"
+    },
+    "native-smoke.json": {
+      "bytes": 4129,
+      "sha256": "210de71e4d613caf17e6588dbab8af1a394287b2daa88c835bf0a4a42b69ce77"
+    },
+    "native-tests-linked.log": {
+      "bytes": 2494,
+      "sha256": "dd75d0e26ea63c3d6027e5b17bea902bc993e5782d402251c06a5d40c8ba3b96"
+    },
+    "native-tests.log": {
+      "bytes": 2899,
+      "sha256": "46895dabec0fdf68efe01ca0170dcc136b9186f45def47ae3540e8439e3fcb63"
+    },
+    "python-prepare.log": {
+      "bytes": 8119,
+      "sha256": "aba5704066761b1bc46499f6dabbd212d8cf365fd924488fc5d5d16927778496"
+    },
+    "recipe-final.log": {
+      "bytes": 97,
+      "sha256": "aa967b542abccc2d2eabdd5f6a221152efbe837a16624c3927c8261cbfdac6c8"
+    },
+    "tests-final.log": {
+      "bytes": 160240,
+      "sha256": "98e8939ba2f3e48fc66155345867f6a52e47d3d60ebb2f3ec20f75e1de9fd735"
+    },
+    "tests.log": {
+      "bytes": 159085,
+      "sha256": "111a0b4c9ba5bbd2dbc3a5e2709b4a5a42a03364038e5e704cb05b9ad1025b4a"
+    },
+    "user-setup-fresh.log": {
+      "bytes": 15712,
+      "sha256": "1db739b74f73a685bac263ffafcddec37548837b939283c387e47e9045ecb4ac"
+    },
+    "user-setup-repeat.log": {
+      "bytes": 77,
+      "sha256": "e18afa0cf2ce1bb7ed0db4501f81a502d067b437657953475cdc2779d9618cbe"
+    }
+  },
+  "native_artifacts": {
+    "AI/libBattleAI.so": {
+      "bytes": 615752,
+      "sha256": "0f3fe88b6887a512827e11eea90a4877ca3323adea3381986d8b7ca78a6ed719"
+    },
+    "AI/libExplorerRL.so": {
+      "bytes": 1299312,
+      "sha256": "f095b7ebf09c14a59588808cc2fa53bfea30ef9b6f73d9804a70f41daee23fc1"
+    },
+    "AI/libNullkiller.so": {
+      "bytes": 3498832,
+      "sha256": "de687f6893f96fdca851c6bdeb3fb507952405ec0de40bc8242d3332debb93d4"
+    },
+    "libvcmi.so": {
+      "bytes": 14323152,
+      "sha256": "9e2891271366d3ab6981d70d4dc893c79faf7132602637943b856b5b070ae5a7"
+    },
+    "vcmiclient": {
+      "bytes": 13950776,
+      "sha256": "fc038e438227a604878c24371d2272fff91b70f4d5f31f6f571bbcefd4ffb8a2"
+    },
+    "vcmireplay": {
+      "bytes": 15187008,
+      "sha256": "9c0af1369c436205dc33d00cececda0ff76a7b4fa872a5bd9ed0cfe0f4a34225"
+    },
+    "vcmiserver": {
+      "bytes": 2050440,
+      "sha256": "883f18a6c00864e29dc4e462607330cb214b39de635c9a6d267d0af13b2a0651"
+    }
+  },
+  "private_inputs": {
+    "actual_inventory_and_conversion": "not_run",
+    "data": "missing",
+    "fixed_policy": "missing",
+    "original_checkpoint_bytes": 629494,
+    "original_checkpoint_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+    "portability_tests": "synthetic only",
+    "status": "not_provided"
+  },
+  "recorded_at_utc": "2026-10-25T04:00:12Z",
+  "resolved_setup_failures": [
+    {
+      "failure": "Bootstrap requires sudo; host has no sudo and cannot write system apt directories",
+      "resolution": "Authenticated, hash-bound Debian archives extracted into a writable local prefix; no system writes",
+      "stage": "system_packages"
+    },
+    {
+      "failure": "Relocated TBB config referenced host runtime library absent from local prefix",
+      "resolution": "Reuse existing Debian runtime libraries through explicit prefix symlinks",
+      "stage": "initial_cmake"
+    },
+    {
+      "failure": "Cached static SDL2 selection caused missing ALSA symbols in vcmiclient and vcmireplay",
+      "resolution": "Explicit SDL2 shared-library cache value; reused objects and relinked only the two executables",
+      "stage": "final_link"
+    }
+  ],
+  "resources": {
+    "affinity_cpus": 5,
+    "architecture": "x86_64",
+    "build_parallelism": 2,
+    "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "cpu_quota": "400000 100000",
+    "cpu_quota_cores": 4,
+    "disk_free_bytes": 25703587840,
+    "disk_total_bytes": 33770192896,
+    "kernel": "6.18.55",
+    "memory_limit_bytes": 34359738368,
+    "os": "Debian 13 (trixie)",
+    "torch_threads": 1,
+    "visible_cpus": 5
+  },
+  "reviewed_incorporated_commit": "9193db35857e07ddbc45e98a1dd7c3f4a8c07da0",
+  "schema": "heroes-cloud-cpu-validation-v1",
+  "source_files": {
+    "dependencies/cloud-debian13-amd64.json": {
+      "bytes": 38162,
+      "sha256": "917bdb0944556e37bdca61f7b6cd2196ffa76596e2ed7acea8dc76749e1ab965"
+    },
+    "dependencies/learner-linux-x86_64-py312.lock": {
+      "bytes": 1092,
+      "sha256": "76bbd4a33b8476e56ce41ca4236a46187872d78175b9bb681187bfd98125c8ba"
+    },
+    "tests/test_cloud_input_inventory.py": {
+      "bytes": 2975,
+      "sha256": "f880233f9d144b642f17f33b62b01be32a72a834188645febc2fab8e80774389"
+    },
+    "tests/test_linux_policy_portability.py": {
+      "bytes": 5417,
+      "sha256": "c8b7f6af3dbc34e82c9d5a8a3ba0ed098f979a73240406ca6fd4e04849e4caba"
+    },
+    "tools/inventory_cloud_inputs.py": {
+      "bytes": 3943,
+      "sha256": "5ec6de482fdbb07bd0cbac6cca57e1fbec1f55d65933d50c375c37d0f3327a80"
+    },
+    "tools/port_fixed_policy_linux.py": {
+      "bytes": 7069,
+      "sha256": "4fc5d354c9cbe5ccc81cefe872494a24253365eb0cf2bd887f70e3697721ea10"
+    },
+    "tools/setup_cloud_cpu.sh": {
+      "bytes": 7747,
+      "sha256": "e496e84f94535f411cd5f43ae8eb51f7e104ecf1af5b97a2c97077f02c2d93dc"
+    },
+    "tools/setup_cloud_locked.sh": {
+      "bytes": 760,
+      "sha256": "82b1f1e4951ebc93b615f39f6865125bf9e23dd25d306fa0b69e246d8a4b0586"
+    },
+    "tools/setup_cloud_user.py": {
+      "bytes": 5239,
+      "sha256": "d7d963c3cd0a2c642bd31a65c69c5c3c1e936f7b2d9851e55cab1486e4c9a27d"
+    }
+  },
+  "training": {
+    "existing_synthetic_optimizer_tests_executed": true,
+    "gameplay_optimizer_updates": 0,
+    "gameplay_training": false
+  },
+  "versions": {
+    "c++": "c++ (Debian 14.2.0-19) 14.2.0",
+    "cmake": "cmake version 3.31.6",
+    "cuda": null,
+    "ffmpeg": "ffmpeg version 7.1.5-0+deb13u1 Copyright (c) 2000-2026 the FFmpeg developers",
+    "ninja": "1.12.1",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "torch": "2.9.1+cpu"
+  },
+  "workflow_status": "development_build_and_tests_validated; real_games_blocked_on_private_inputs"
+}

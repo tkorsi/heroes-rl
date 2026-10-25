@@ -245,6 +245,113 @@ class ProcessDeadlineTests(unittest.TestCase):
             d.cleanup_from_evidence(path, timeout=0.01)
         kill.assert_not_called()
 
+    def test_expired_cleanup_releases_and_polls_without_new_wait_or_scan(self):
+        for monotonic, wall in ((99, 1005), (105, 999)):
+            with self.subTest(monotonic=monotonic, wall=wall):
+                reader, writer = os.pipe()
+                process = MagicMock()
+                process._deadline_guarded = True
+                process._deadline_owner_fd = writer
+                try:
+                    with patch.object(d.time, 'monotonic', return_value=100), \
+                            patch.object(d.time, 'time', return_value=1000), \
+                            patch.object(d, 'group_live_members') as scan, \
+                            self.assertRaisesRegex(TimeoutError, 'not verified'):
+                        d.close_owned_process(process, timeout=20,
+                            deadline_monotonic=monotonic, deadline_wall=wall)
+                    self.assertIsNone(process._deadline_owner_fd)
+                    self.assertEqual(os.read(reader, 1), b'')
+                    process.poll.assert_called()
+                    process.wait.assert_not_called()
+                    scan.assert_not_called()
+                finally:
+                    os.close(reader)
+
+    def test_cleanup_uses_actual_submillisecond_remainder_and_rejects_late_receipt(self):
+        clock = [100.0, 1000.0]
+        process = MagicMock()
+        process._deadline_guarded = True
+        process._deadline_owner_fd = None
+        def elapsed(seconds):
+            clock[0] += seconds
+            clock[1] += seconds
+        process.wait.side_effect = lambda **kwargs: elapsed(.9995)
+        def scan(group, *, timeout):
+            self.assertGreater(timeout, 0)
+            self.assertLess(timeout, .001)
+            elapsed(.001)  # An empty scan completed after the fixed deadline.
+            return ()
+        with patch.object(d.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(d.time, 'time', side_effect=lambda: clock[1]), \
+                patch.object(d, 'group_live_members', side_effect=scan) as observed, \
+                self.assertRaises(TimeoutError):
+            d.close_owned_process(process, timeout=1)
+        process.wait.assert_called_once_with(timeout=1)
+        observed.assert_called_once()
+
+    def test_multiple_receipt_groups_share_one_budget_without_postexpiry_scans(self):
+        path = self.root / 'many-groups.jsonl'
+        path.write_text(''.join(json.dumps({'schema': d.SCHEMA, 'event': 'wrapper_started',
+            'writer_pid': group, 'leader_pid': group, 'process_group': group}) + '\n'
+            for group in (71, 72, 73)))
+        clock = [100.0, 1000.0]
+        timeouts = []
+        def scan(group, *, timeout):
+            timeouts.append(timeout)
+            clock[0] += .6
+            clock[1] += .6
+            return ()
+        with patch.object(d.time, 'monotonic', side_effect=lambda: clock[0]), \
+                patch.object(d.time, 'time', side_effect=lambda: clock[1]), \
+                patch.object(d, 'group_live_members', side_effect=scan) as observed, \
+                self.assertRaises(TimeoutError):
+            d.cleanup_from_evidence(path, timeout=30, deadline_monotonic=101, deadline_wall=1001)
+        self.assertEqual(observed.call_count, 2)
+        self.assertAlmostEqual(timeouts[0], 1)
+        self.assertAlmostEqual(timeouts[1], .4)
+
+    def test_unresolved_launch_receipt_cannot_certify_absent_native_group(self):
+        path = self.root / 'unresolved-launch.jsonl'
+        requested = {'schema': d.SCHEMA, 'event': 'launch_requested', 'command': ['unused']}
+        path.write_text(json.dumps(requested) + '\n')
+        with patch.object(d, 'group_live_members') as scan, patch.object(d.os, 'killpg') as signal_group, \
+                self.assertRaisesRegex(RuntimeError, 'Unresolved process launch'):
+            d.cleanup_from_evidence(path)
+        scan.assert_not_called()
+        signal_group.assert_not_called()
+        self.assertEqual(path.read_text(), json.dumps(requested) + '\n')
+
+    def test_failed_spawn_receipt_needs_no_process_group_cleanup(self):
+        evidence = self.root / 'spawn-failure.jsonl'
+        with patch.object(d.subprocess, 'Popen', side_effect=OSError('synthetic failed spawn')), \
+                self.assertRaisesRegex(OSError, 'failed spawn'):
+            d.guarded_popen([sys.executable, '-c', 'pass'], deadline_monotonic=time.monotonic()+5,
+                deadline_wall=time.time()+5, evidence_path=evidence)
+        self.assertEqual([row['event'] for row in self.records('spawn-failure.jsonl')],
+                         ['launch_requested', 'launch_failed'])
+        with patch.object(d, 'group_live_members') as scan, patch.object(d.os, 'killpg') as signal_group:
+            self.assertEqual(d.cleanup_from_evidence(evidence), ())
+        scan.assert_not_called()
+        signal_group.assert_not_called()
+
+    def test_exhausted_launcher_releases_every_real_group_before_any_wait(self):
+        launcher = d.DeadlineVcmiLauncher(Path(sys.executable), self.root, self.root / 'unused.vmap',
+            deadline_monotonic=time.monotonic()+20, deadline_wall=time.time()+20)
+        for index in range(2):
+            name = f'multiple-{index}.jsonl'
+            process = self.start('import time;time.sleep(30)', seconds=20, name=name)
+            launcher.launched_processes.append(process)
+            self.wait_for(lambda name=name: any(row['event'] == 'exec_attempt' for row in self.records(name)))
+        with patch.object(d, 'group_live_members') as scan, self.assertRaises(TimeoutError):
+            launcher.close_owned_groups(timeout=0)
+        scan.assert_not_called()
+        self.assertTrue(all(process._deadline_owner_fd is None for process in launcher.launched_processes))
+        # This is test-harness observation, not an extension of the expired
+        # cleanup budget. Guardians must stop both groups on owner-pipe EOF.
+        for process in launcher.launched_processes:
+            self.assertEqual(process.wait(timeout=3), -signal.SIGKILL)
+            self.wait_for(lambda process=process: not d.group_live_members(process.pid))
+
 
 if __name__ == '__main__':
     unittest.main()
