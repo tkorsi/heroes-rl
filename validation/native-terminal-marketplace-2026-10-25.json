@@ -1,0 +1,37 @@
+{
+  "schema": "heroes-native-terminal-contract-validation-v1",
+  "source_commit": "16085b145871bd358a35bcd430ac605d2dc68b90",
+  "independent_shutdown_fix": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "contract_change": "Allow a single proven unapplied TradeOnMarketplace at independently verified natural terminal closure, alongside existing allowed terminal attempts; no execution or charge is invented",
+  "preserved_checks": [
+    "exact decoded request and metadata",
+    "final authoritative terminal input and packet range",
+    "opposite native controller and exact nextID",
+    "no subsequent learner response",
+    "actual connection close",
+    "all state, packet and private-view checks; zero unchecked items"
+  ],
+  "focused_tests": {
+    "tests": 2,
+    "passed": 2,
+    "codec_and_tamper_checks": 460
+  },
+  "fresh_ordinary_game": {
+    "map": "random-baseline-v1",
+    "learner": 1,
+    "seed": 845022,
+    "choices": 1,
+    "native_exit_code": 0,
+    "seconds": 0.641,
+    "independent_contextual_replay_verified": true,
+    "unchecked_items": 0
+  },
+  "additional_new_opt_in_live_cohort": {
+    "natural_games": 18,
+    "independent_contextual_replays": 18,
+    "unchecked_items": 0,
+    "evidence": "PR26 validation/native-engine-session-2026-10-25.json"
+  },
+  "retained_failure_policy": "Original Teacher gate, precision campaign and discarded admission-guard trial remain failed/unscored. Supplemental rechecks are diagnostics only. Teacher must independently rebuild and rerun its own gate.",
+  "scope": "No policy math, game rules, Python runtime/checkpoint guards or training changes"
+}
