@@ -1,0 +1,258 @@
+--- a/AI/Nullkiller/Engine/Nullkiller.cpp
++++ b/AI/Nullkiller/Engine/Nullkiller.cpp
+@@ -97,7 +97,9 @@
+ 		useObjectGraph = false;
+ 		openMap = false;
+ 	}
+-	if(const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR"); recordingDirectory && *recordingDirectory)
++	const char * recordingDirectory = std::getenv("VCMI_RECORD_DIR");
++	const char * experimentDirectory = std::getenv("VCMI_EXPERIMENT_DIR");
++	if((recordingDirectory && *recordingDirectory) || (experimentDirectory && *experimentDirectory))
+ 		logAi->info("Experiment AI visibility: player=%d cheats_allowed=%d open_map=%d use_object_graph=%d",
+ 			playerID.getNum(), cb->getStartInfo()->extraOptionsInfo.cheatsAllowed, openMap, useObjectGraph);
+ 
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -41,6 +41,7 @@
+ #include "windows/GUIClasses.h"
+ 
+ #include "../lib/CConfigHandler.h"
++#include "../lib/callback/ExperimentHooks.h"
+ #include "../lib/GameLibrary.h"
+ #include "../lib/texts/CGeneralTextHandler.h"
+ #include "../lib/ConditionalWait.h"
+@@ -107,6 +108,8 @@
+ 	metadata["requested_agent_players"].Vector();
+ 	for(const auto explorerPlayer : client.configuredExplorerPlayers())
+ 		metadata["requested_agent_players"].Vector().emplace_back(explorerPlayer.getNum());
++	if(experimentBuiltinLearner() >= 0)
++		metadata["controllers"] = experimentBuiltinControllers();
+ 	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
+ 	{
+ 		if(std::string(noCheats) != "0" && std::string(noCheats) != "1")
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -150,6 +150,10 @@
+ 	gamestate->preInit(LIBRARY);
+ 	GAME->setMapInstance(std::make_unique<CMapHandler>(&gameState().getMap()));
+ 	reinitScripting();
++	if(experimentBuiltinLearner() >= 0 && (gameState().players.size() != 2
++		|| gameState().getPlayerTeam(PlayerColor(0)) == gameState().getPlayerTeam(PlayerColor(1))
++		|| gameState().getStartInfo()->difficulty != 0 || gameState().getStartInfo()->extraOptionsInfo.cheatsAllowed))
++		throw std::runtime_error("Mixed replay requires the recorded opposing Easy/no-cheats controller state");
+ 	for(const auto color : {PlayerColor(0), PlayerColor(1)})
+ 	{
+ 		if(!gameState().players.contains(color) || gameState().players.at(color).isHuman())
+@@ -284,7 +288,9 @@
+ void CClient::initPlayerInterfaces()
+ {
+ 	const auto explorerPlayers = configuredExplorerPlayers();
++	const int builtinLearner = experimentBuiltinLearner();
+ 	explorerTerminalsReceived.clear();
++	builtinNativeTerminalOutcomes.clear();
+ 	for(const auto explorerPlayer : explorerPlayers)
+ 	{
+ 		if(!gameState().players.contains(explorerPlayer) || !playerEnvironments.contains(explorerPlayer))
+@@ -294,9 +300,26 @@
+ 			throw std::runtime_error("ExplorerRL cannot replace a human player interface");
+ 	}
+ 
+-	for(const auto & playerInfo : gameState().getStartInfo()->playerInfos)
+-	{
+-		PlayerColor color = playerInfo.first;
++	std::vector<PlayerColor> interfaceOrder;
++	if(builtinLearner >= 0)
++	{
++		const auto & players = gameState().getStartInfo()->playerInfos;
++		if(players.size() != 2 || !players.contains(PlayerColor(0)) || !players.contains(PlayerColor(1))
++			|| !players.at(PlayerColor(0)).isControlledByAI() || !players.at(PlayerColor(1)).isControlledByAI()
++			|| gameState().getPlayerTeam(PlayerColor(0)) == gameState().getPlayerTeam(PlayerColor(1))
++			|| gameState().getStartInfo()->difficulty != 0 || gameState().getStartInfo()->extraOptionsInfo.cheatsAllowed
++			|| !playerEnvironments.contains(PlayerColor(0)) || !playerEnvironments.contains(PlayerColor(1)))
++			throw std::runtime_error("Built-in evaluation requires two opposing AI seats, Easy and disabled cheats");
++		// Install the recorder before either AdvInterfaceReady request. This
++		// preserves Red Nullkiller's initial request when the learner is Blue.
++		interfaceOrder = {PlayerColor(builtinLearner), PlayerColor(1 - builtinLearner)};
++	}
++	else
++		for(const auto & playerInfo : gameState().getStartInfo()->playerInfos)
++			interfaceOrder.push_back(playerInfo.first);
++	for(const auto color : interfaceOrder)
++	{
++		const auto & playerInfo = *gameState().getStartInfo()->playerInfos.find(color);
+ 		if(!vstd::contains(GAME->server().getAllClientPlayers(GAME->server().logicConnection->connectionID), color))
+ 			continue;
+ 
+@@ -310,7 +333,8 @@
+ 					if (gameState().getPlayerTeam(allyInfo.first) == gameState().getPlayerTeam(playerInfo.first) && allyInfo.second.isControlledByHuman())
+ 						alliedToHuman = true;
+ 
+-				auto AiToGive = explorerPlayers.contains(color) ? "ExplorerRL" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
++				auto AiToGive = explorerPlayers.contains(color) ? "ExplorerRL"
++					: builtinLearner >= 0 ? "Nullkiller" : aiNameForPlayer(playerInfo.second, false, alliedToHuman);
+ 				logNetwork->info("Player %s will be lead by %s", color.toString(), AiToGive);
+ 				installNewPlayerInterface(CDynLibHandler::getNewAI(AiToGive), color);
+ 			}
+@@ -386,6 +410,18 @@
+ 	explorerTerminalOutcomes.emplace(player, won);
+ 	logAi->info("Experiment player %d %s. Terminal received.", player.getNum(), won ? "won" : "lost");
+ 	return explorerTerminalsReceived.size() == expected.size();
++}
++
++bool CClient::recordBuiltinNativeTerminal(PlayerColor player, bool won)
++{
++	const int learner = experimentBuiltinLearner();
++	if(learner < 0 || (player != PlayerColor(0) && player != PlayerColor(1))
++		|| !builtinNativeTerminalOutcomes.emplace(player, won).second)
++		throw std::runtime_error("Unexpected or repeated built-in evaluation terminal callback");
++	if(player == PlayerColor(learner))
++		recordExplorerTerminal(player, won);
++	logAi->info("Experiment native player %d %s. Terminal callbacks complete.", player.getNum(), won ? "won" : "lost");
++	return builtinNativeTerminalOutcomes.size() == 2;
+ }
+ 
+ std::string CClient::aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const
+@@ -485,12 +521,26 @@
+ 	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
+ 	const auto position = experimentReceiptPosition();
+ 	const auto expected = std::set<PlayerColor>{PlayerColor(0), PlayerColor(1)};
++	const int learner = experimentBuiltinLearner();
++	bool controllersComplete = false;
++	if(learner >= 0)
++	{
++		const auto own = std::set<PlayerColor>{PlayerColor(learner)};
++		controllersComplete = configuredExplorerPlayers() == own && explorerTerminalsReceived == own
++			&& builtinNativeTerminalOutcomes.size() == 2
++			&& builtinNativeTerminalOutcomes.contains(PlayerColor(0)) && builtinNativeTerminalOutcomes.contains(PlayerColor(1))
++			&& builtinNativeTerminalOutcomes.at(PlayerColor(0)) == barrier.redWon
++			&& builtinNativeTerminalOutcomes.at(PlayerColor(1)) != barrier.redWon
++			&& explorerTerminalOutcomes.at(PlayerColor(learner)) == (learner == 0 ? barrier.redWon : !barrier.redWon);
++	}
++	else
++		controllersComplete = configuredExplorerPlayers() == expected && explorerTerminalsReceived == expected
++			&& explorerTerminalOutcomes.at(PlayerColor(0)) == barrier.redWon
++			&& explorerTerminalOutcomes.at(PlayerColor(1)) != barrier.redWon;
+ 	if(experimentHasFailed() || !episode || !interface || barrier.version != 1 || barrier.barrierId != 1
+ 		|| barrier.episode != episode || barrier.interface != interface
+ 		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1" && barrier.interface != "adventure-armies-v1" && barrier.interface != "adventure-heroes-v1" && barrier.interface != "adventure-army-management-v1" && barrier.interface != "adventure-dialogs-v1")
+-		|| configuredExplorerPlayers() != expected || explorerTerminalsReceived != expected
+-		|| explorerTerminalOutcomes.at(PlayerColor(0)) != barrier.redWon
+-		|| explorerTerminalOutcomes.at(PlayerColor(1)) == barrier.redWon
++		|| !controllersComplete
+ 		|| barrier.clientPackets != position.index || position.index != position.completed
+ 		|| position.phase != ExperimentPacketPhase::CallbacksComplete
+ 		|| !lastExperimentAcknowledgement
+--- a/client/Client.h
++++ b/client/Client.h
+@@ -134,6 +134,7 @@
+ 	std::set<PlayerColor> advInterfaceReadySent;
+ 	std::set<PlayerColor> explorerTerminalsReceived;
+ 	std::map<PlayerColor, bool> explorerTerminalOutcomes;
++	std::map<PlayerColor, bool> builtinNativeTerminalOutcomes;
+ 	std::optional<std::tuple<PlayerColor, uint32_t, uint16_t>> lastExperimentAcknowledgement;
+ 	bool experimentBarrierReceived = false;
+ 	bool experimentReplayMode = false;
+@@ -177,6 +178,7 @@
+ 	std::optional<PlayerColor> configuredExplorerPlayer() const;
+ 	std::set<PlayerColor> configuredExplorerPlayers() const;
+ 	bool recordExplorerTerminal(PlayerColor player, bool won);
++	bool recordBuiltinNativeTerminal(PlayerColor player, bool won);
+ 	std::string aiNameForPlayer(const PlayerSettings & ps, bool battleAI, bool alliedToHuman) const; //empty means no AI -> human
+ 	std::string aiNameForPlayer(bool battleAI, bool alliedToHuman) const;
+ 	void installNewPlayerInterface(std::shared_ptr<CGameInterface> gameInterface, PlayerColor color, bool battlecb = false);
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -436,14 +436,18 @@
+ 	bool experimentComplete = false;
+ 	if(!settings["session"]["testmap"].isNull())
+ 	{
+-		if(selfPlay && (pack.victoryLossCheckResult.victory() || pack.victoryLossCheckResult.loss()))
++		if(experimentBuiltinLearner() >= 0 && (pack.victoryLossCheckResult.victory() || pack.victoryLossCheckResult.loss()))
++			experimentComplete = cl.recordBuiltinNativeTerminal(pack.player, pack.victoryLossCheckResult.victory());
++		else if(selfPlay && (pack.victoryLossCheckResult.victory() || pack.victoryLossCheckResult.loss()))
+ 			experimentComplete = cl.recordExplorerTerminal(pack.player, pack.victoryLossCheckResult.victory());
+ 		else if(!selfPlay)
+ 			experimentComplete = pack.player == cl.configuredExplorerPlayer().value_or(PlayerColor(0));
+ 	}
+ 	if(experimentComplete)
+ 	{
+-		if(selfPlay)
++		if(experimentBuiltinLearner() >= 0)
++			logAi->info("Experiment built-in evaluation complete. Ending game.");
++		else if(selfPlay)
+ 			logAi->info("Experiment self-play complete. Ending game.");
+ 		else if(pack.player == PlayerColor(0))
+ 			logAi->info("Red player %s. Ending game.", pack.victoryLossCheckResult.victory() ? "won" : "lost");
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -117,6 +117,36 @@
+ 	return value && std::string(value) == "1";
+ }
+ 
++int experimentBuiltinLearner()
++{
++	const char * opponent = std::getenv("EXPLORER_RL_BUILTIN_OPPONENT");
++	if(!opponent)
++		return -1;
++	const char * players = std::getenv("EXPLORER_RL_PLAYERS");
++	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
++	if(std::string(opponent) != "Nullkiller" || !contextualEvidenceEnabled()
++		|| !interface || std::string(interface) != "adventure-dialogs-v1"
++		|| std::getenv("EXPLORER_RL_PLAYER") || !players
++		|| (std::string(players) != "0" && std::string(players) != "1"))
++		throw std::runtime_error("Built-in evaluation requires one explicit v7 ExplorerRL seat and Nullkiller");
++	return players[0] - '0';
++}
++
++JsonNode experimentBuiltinControllers()
++{
++	JsonNode result;
++	const int learner = experimentBuiltinLearner();
++	if(learner < 0)
++		return result;
++	result["schema"].String() = "heroes-contextual-controllers-v1";
++	result["explorer_players"].Vector().emplace_back(learner);
++	JsonNode opponent;
++	opponent["player"].Integer() = 1 - learner;
++	opponent["module"].String() = "Nullkiller";
++	result["native_opponents"].Vector().push_back(opponent);
++	return result;
++}
++
+ bool supportedExperimentTerminalRequest(const CPackForServer & input, bool neutralAuthenticated)
+ {
+ 	return input.player == PlayerColor(0) || input.player == PlayerColor(1)
+@@ -244,6 +274,16 @@
+ 	record["request"]["type"].Integer() = barrier.requestType;
+ 	record["client_packets"].Integer() = barrier.clientPackets;
+ 	record["outcomes"].Vector() = {JsonNode(barrier.redWon ? "win" : "loss"), JsonNode(barrier.redWon ? "loss" : "win")};
++	if(experimentBuiltinLearner() >= 0)
++	{
++		record["controllers"] = experimentBuiltinControllers();
++		if(client)
++		{
++			// CClient checks the two real post-callback outcomes before this write.
++			record["native_terminal_callbacks"].Vector() = {JsonNode(0), JsonNode(1)};
++			record["explorer_terminal_callbacks"] = record["controllers"]["explorer_players"];
++		}
++	}
+ 	if(client)
+ 	{
+ 		record["callbacks_complete"].Bool() = true;
+--- a/lib/callback/ExperimentHooks.h
++++ b/lib/callback/ExperimentHooks.h
+@@ -35,10 +35,14 @@
+ struct CPackForServer;
+ struct ExperimentTerminalBarrier;
+ class PlayerColor;
++class JsonNode;
+ 
+ /// Diagnostic-only serialization of client callbacks and adapter operations.
+ /// Nothing in this interface is a learner observation.
+ DLL_LINKAGE bool contextualEvidenceEnabled();
++/// Explicit evaluation-only controller mapping; -1 preserves legacy self-play.
++DLL_LINKAGE int experimentBuiltinLearner();
++DLL_LINKAGE JsonNode experimentBuiltinControllers();
+ DLL_LINKAGE bool experimentHasFailed();
+ /// Neutral can end a game only through a successful battle action from the
+ /// recorded connection that actually owns the neutral battle callback.

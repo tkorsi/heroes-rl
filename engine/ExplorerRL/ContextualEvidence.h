@@ -23,6 +23,7 @@ class ContextualEvidence final : public ExperimentEvidenceHooks
 {
 public:
 	static constexpr const char * SCHEMA = "heroes-contextual-replay-v1";
+	static constexpr const char * BUILTIN_SCHEMA = "heroes-contextual-builtin-replay-v1";
 	static ContextualEvidence & live(const std::string & episode, bool town, bool armies = false, bool heroes = false, bool management = false, bool dialogs = false);
 	static ContextualEvidence * current();
 	static bool replaying();
@@ -58,6 +59,7 @@ private:
 	size_t cursor = 0;
 	uint64_t nextSequence = 0;
 	bool replay = false;
+	bool builtin = false;
 	bool prefix = false;
 	bool stopping = false;
 	bool sealed = false;

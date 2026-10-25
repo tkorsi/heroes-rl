@@ -12,6 +12,10 @@ colors, under one shared hour on this Mac. Each game allows at most 4,096 total
 policy choices and 200 days. There are no new PPO or optimizer updates.
 Automatic BattleAI combat, normal fog and terminal-only rewards remain fixed.
 Source changes alone are not evidence that a mechanic works in the real engine.
+After that cohort finishes, a separate authorized eight-game comparison will
+use the same frozen learner against native Nullkiller on Easy. Its development
+and runtime are isolated from the currently running cohort. No training is
+authorized by either evaluation.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2296,6 +2300,62 @@ rewrite a native manifest or become a loss/draw. Reports distinguish observed
 prefix behavior from complete verified games and label comparisons across
 interfaces or budgets as descriptive. These rollouts are diagnostic and cannot
 enter an optimizer. Execution results will be recorded here after the run.
+
+## Built-in opponent comparison — authorized scope
+
+After the longer neural-opponent cohort finishes, a separate eight-game
+comparison uses the same ordinary Tavern-enabled map, engine seeds
+120501–120504, both learner colors, and the exact same frozen v7 learner
+checkpoint. Learner sampling seeds 120601, 120603, 120605 and 120607 follow the
+learner across colors. The opponent is fixed native Nullkiller on Easy
+(difficulty index 0), with its actual library hash recorded. Easy identifies
+the lowest game difficulty; it does not establish the empirically weakest AI.
+The archived neural opponent in the checkpoint is not used for decisions.
+
+The limits are 200 days and a new shared 3,600-second execution budget for the
+entire comparison, including collection, reconstruction, replay and cleanup.
+Native actions are not external policy choices. To avoid giving the learner
+the full two-model budget, this comparison caps it at 2,048 choices: 2,040
+ordinary choices plus at most eight reserved real dialog answers. This is an
+approximate half-budget, not equal exposure: the original 4,096-choice shared
+cap did not guarantee 2,048 choices for each model. Native opponent requests
+are reported separately, without conversion to fictitious policy choices.
+
+The additive `builtin_env`, `builtin_rollout` and `builtin_replay` paths preserve
+the existing v7 learner input and checkpoint semantics. Only the learner has
+an external history, recurrent state, behavior probabilities and value
+estimates. A separate evaluation proof binds its actual player-local prefix
+to the native episode; no second trajectory or paired finalization is invented
+for Nullkiller. A cutoff requires the learner's genuine unacted safe decision.
+Natural outcomes require its actual terminal message, both native results,
+complete native callbacks and capture closure, and a clean process exit.
+These records are diagnostic and never optimizer eligible.
+
+Before the comparison, two separate native startup/cutoff checks will hold the
+first safe learner decision, one per color, without submitting any learner
+action or loading a model. They use the existing declared `natural-townless`
+diagnostic fixture and its exact field-isolation check, not the ordinary
+comparison map. Each check has a fixed 90-second budget including replay and
+cleanup. Its historical end-turn fixture script is not executed. These checks
+verify actual one-player cutoff capture and replay, contribute no natural
+outcome evidence, and never enter the eight-game comparison statistics.
+
+Nullkiller uses randomness beyond the game seed. Independent replay therefore
+replays its captured requests as explicitly attributed external inputs, while
+regenerating the learner callbacks, engine transitions, packets and state
+digests. This verifies the recorded game, not regeneration of Nullkiller's
+strategy from a seed. Its command bytes, player, IDs and ordering must remain
+bound; arbitrary automatic requests are not accepted as an escape hatch.
+Normal fog, disabled AI map cheats, structured dialogs and automatic BattleAI
+remain unchanged. No scripted learner strategy or reward shaping is added.
+
+The immutable plan binds both cohorts' identities and preserves all eight
+rows, including failures, incomplete games and rows not started. There are no
+retries or replacements. The same independent deadline and fail-closed cleanup
+rules apply. Reports compare the matched learner perspectives, natural
+wins/losses, cutoffs, failures, available behavior prefixes and execution cost.
+This small diagnostic comparison cannot establish learning or superiority.
+Native integration and execution results remain pending until verified below.
 
 ## Headless self-play environment (issue #4, in progress)
 

@@ -69,7 +69,15 @@ JsonNode requestRecord(const CPackForServer & pack, PlayerColor player)
 	result["request_id"].Integer() = pack.requestID;
 	result["pack_type"].Integer() = CTypeList::getInstance().getTypeID(&pack);
 	result["pack"].String() = writer.hex;
-	result["source"].String() = transactionActor.starts_with("player") ? "adapter" : "automatic";
+	const int learner = experimentBuiltinLearner();
+	if(learner >= 0 && player == PlayerColor(1 - learner))
+	{
+		if(transactionActor != "client")
+			throw std::runtime_error("Native opponent request has an adapter transaction");
+		result["source"].String() = "native_opponent";
+	}
+	else
+		result["source"].String() = transactionActor.starts_with("player") ? "adapter" : "automatic";
 	return result;
 }
 }
@@ -98,7 +106,9 @@ ContextualEvidence & ContextualEvidence::live(const std::string & episode, bool 
 {
 	if(auto * existing = current())
 	{
+		const auto & existingMetadata = existing->metadata;
 		if(existing->metadata["episode"].String() != episode
+			|| existingMetadata["controllers"] != experimentBuiltinControllers()
 			|| existing->metadata["interface"].String() != (dialogs ? "adventure-dialogs-v1" : management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1"))
 			throw std::runtime_error("Contextual replay identity changed during initialization");
 		return *existing;
@@ -117,7 +127,10 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	if(!output)
 		throw std::runtime_error("Cannot create contextual replay ledger");
 	metadata["kind"].String() = "init";
-	metadata["schema"].String() = SCHEMA;
+	builtin = experimentBuiltinLearner() >= 0;
+	metadata["schema"].String() = builtin ? BUILTIN_SCHEMA : SCHEMA;
+	if(builtin)
+		metadata["controllers"] = experimentBuiltinControllers();
 	metadata["episode"].String() = episode;
 	metadata["interface"].String() = dialogs ? "adventure-dialogs-v1" : management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1";
 	metadata["protocol_version"].Integer() = dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4;
@@ -140,15 +153,25 @@ void ContextualEvidence::count(JsonNode & counts, const JsonNode & record) const
 	}
 	else if(kind == "message") ++counts["messages"].Integer();
 	else if(kind == "response") ++counts["responses"].Integer();
-	else if(kind == "request") ++counts["requests"].Integer();
+	else if(kind == "request")
+	{
+		++counts["requests"].Integer();
+		if(builtin && record["source"].String() == "native_opponent")
+			++counts["native_opponent_requests"].Integer();
+	}
 }
 
 ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool prefix)
 	: prefix(prefix), replay(true)
 {
-	if(tape.empty() || tape.front()["kind"].String() != "init" || tape.front()["schema"].String() != SCHEMA)
+	if(tape.empty() || tape.front()["kind"].String() != "init"
+		|| (tape.front()["schema"].String() != SCHEMA && tape.front()["schema"].String() != BUILTIN_SCHEMA))
 		throw std::runtime_error("Missing current contextual replay header");
 	metadata = tape.front();
+	builtin = metadata["schema"].String() == BUILTIN_SCHEMA;
+	if(builtin != (experimentBuiltinLearner() >= 0)
+		|| tape.front()["controllers"] != experimentBuiltinControllers())
+		throw std::runtime_error("Contextual replay controller mapping differs from explicit mode");
 	const bool dialogs = metadata["interface"].String() == "adventure-dialogs-v1";
 	const bool management = metadata["interface"].String() == "adventure-army-management-v1";
 	const bool heroes = metadata["interface"].String() == "adventure-heroes-v1";
@@ -161,6 +184,8 @@ ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool 
 		throw std::runtime_error("Inconsistent contextual replay interface versions");
 	for(const auto * key : {"transactions", "messages", "responses", "requests", "client_packets"})
 		loaded[key].Integer() = checked[key].Integer() = 0;
+	if(builtin)
+		loaded["native_opponent_requests"].Integer() = checked["native_opponent_requests"].Integer() = 0;
 	std::optional<std::pair<std::string, std::string>> transaction;
 	bool closed = false;
 	for(size_t index = 1; index < tape.size(); ++index)
@@ -232,7 +257,8 @@ void ContextualEvidence::fail(const std::string & message)
 void ContextualEvidence::drainAutomatic()
 {
 	while(cursor < records.size() && records[cursor]["kind"].String() == "request"
-		&& records[cursor]["source"].String() == "automatic")
+		&& (records[cursor]["source"].String() == "automatic"
+			|| (builtin && records[cursor]["source"].String() == "native_opponent")))
 	{
 		if(!automaticRequest) throw std::runtime_error("Automatic replay request handler missing");
 		automaticRequest(records[cursor]);
@@ -345,6 +371,12 @@ void ContextualEvidence::terminalBarrierComplete(const ExperimentTerminalBarrier
 	actualTerminalBarrier["outcomes"].Vector() = {JsonNode(value.redWon ? "win" : "loss"), JsonNode(value.redWon ? "loss" : "win")};
 	actualTerminalBarrier["callbacks_complete"].Bool() = true;
 	actualTerminalBarrier["observed_count"].Integer() = experimentReceiptPosition().completed;
+	if(builtin)
+	{
+		actualTerminalBarrier["controllers"] = metadata["controllers"];
+		actualTerminalBarrier["native_terminal_callbacks"].Vector() = {JsonNode(0), JsonNode(1)};
+		actualTerminalBarrier["explorer_terminal_callbacks"] = metadata["controllers"]["explorer_players"];
+	}
 	JsonNode record;
 	record["kind"].String() = "close";
 	record["barrier_id"].Integer() = value.barrierId;
@@ -437,6 +469,8 @@ JsonNode ContextualEvidence::summary(uint64_t regeneratedPackets) const
 	if(!error.empty()) throw std::runtime_error(error);
 	if(cursor != records.size()) throw std::runtime_error("Unconsumed contextual replay tail");
 	JsonNode result;
+	if(builtin)
+		result["controllers"] = metadata["controllers"];
 	result["loaded"] = loaded;
 	result["checked"] = checked;
 	for(const auto & [key, value] : loaded.Struct())

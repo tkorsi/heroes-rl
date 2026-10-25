@@ -605,6 +605,9 @@ int main(int argc, const char * argv[])
 				throw std::runtime_error("Contextual replay requires exact platform and its own ledger");
 			contextualTape = readLines(contextualPath);
 			if(contextualTape.empty()) throw std::runtime_error("Missing contextual replay header");
+			ContextualReplay::configureControllers(contextualTape.front());
+			if(contextualTape.front()["schema"].String() == "heroes-contextual-builtin-replay-v1")
+				report["schema"].String() = "heroes-contextual-builtin-replay-verification-v1";
 			setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
 			setenv("EXPLORER_RL_EPISODE", contextualTape.front()["episode"].String().c_str(), 1);
 			setenv("EXPLORER_RL_INTERFACE", contextualTape.front()["interface"].String().c_str(), 1);

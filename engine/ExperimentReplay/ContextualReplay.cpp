@@ -77,6 +77,23 @@ public:
 	}
 };
 
+/// Recorded opponent requests are external inputs. Never rerun Nullkiller or
+/// invent its decisions, observations or memories during exact verification.
+class PassiveOpponent final : public CGameInterface
+{
+public:
+	PassiveOpponent() { human = true; }
+	void activeStack(const BattleID &, const CStack *) override {}
+	void yourTacticPhase(const BattleID &, int) override {}
+	void heroGotLevel(const CGHeroInstance *, PrimarySkill, std::vector<SecondarySkill> &, QueryID) override {}
+	void commanderGotLevel(const CCommanderInstance *, std::vector<ui32>, QueryID) override {}
+	void showBlockingDialog(const std::string &, const std::vector<Component> &, QueryID, int, bool, bool, bool) override {}
+	void showGarrisonDialog(const CArmedInstance *, const CGHeroInstance *, bool, QueryID, const MetaString &) override {}
+	void showTeleportDialog(const CGHeroInstance *, TeleportChannelID, TTeleportExitsList, bool, QueryID) override {}
+	void showMapObjectSelectDialog(QueryID, const Component &, const MetaString &, const MetaString &, const std::vector<ObjectInstanceID> &) override {}
+	std::optional<BattleAction> makeSurrenderRetreatDecision(const BattleID &, const BattleStateInfoForRetreat &) override { return std::nullopt; }
+};
+
 /// Automatic requests may initialize the interface or choose a battle action.
 /// Movement, turn ending, queries, building and recruitment must be regenerated
 /// by the actual adapter and can never be relabelled automatic.
@@ -86,6 +103,32 @@ bool automaticAllowed(const CPack & pack, const std::string & operation)
 	if(operation == "packet") return dynamic_cast<const MakeAction *>(&pack) != nullptr;
 	return false;
 }
+}
+
+void ContextualReplay::configureControllers(const JsonNode & header)
+{
+	unsetenv("EXPLORER_RL_PLAYER");
+	if(header["schema"].String() == explorer_rl::ContextualEvidence::BUILTIN_SCHEMA)
+	{
+		const auto & players = header["controllers"]["explorer_players"];
+		if(header["interface"].String() != "adventure-dialogs-v1" || !players.isVector()
+			|| players.Vector().size() != 1 || players[0].getType() != JsonNode::JsonType::DATA_INTEGER
+			|| (players[0].Integer() != 0 && players[0].Integer() != 1))
+			throw std::runtime_error("Invalid recorded built-in controller configuration");
+		setenv("EXPLORER_RL_BUILTIN_OPPONENT", "Nullkiller", 1);
+		setenv("EXPLORER_RL_PLAYERS", players[0].Integer() == 0 ? "0" : "1", 1);
+		setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
+		setenv("EXPLORER_RL_INTERFACE", "adventure-dialogs-v1", 1);
+		if(header["controllers"] != experimentBuiltinControllers())
+			throw std::runtime_error("Recorded built-in controller fields differ from the supported mapping");
+	}
+	else
+	{
+		if(header["schema"].String() != explorer_rl::ContextualEvidence::SCHEMA || !header["controllers"].isNull())
+			throw std::runtime_error("Unknown contextual controller mode");
+		unsetenv("EXPLORER_RL_BUILTIN_OPPONENT");
+		setenv("EXPLORER_RL_PLAYERS", "0,1", 1);
+	}
 }
 
 void ContextualReplay::initialize(CGameState & state)
@@ -109,10 +152,12 @@ void ContextualReplay::input(const JsonNode & record)
 JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 {
 	if(initialState.empty()) throw std::runtime_error("Missing independently regenerated initial client state");
+	if(tape.empty()) throw std::runtime_error("Missing contextual replay header");
+	configureControllers(tape.front());
 	auto evidence = std::make_shared<explorer_rl::ContextualEvidence>(tape, prefix);
 	const auto & header = evidence->header();
+	const int learner = experimentBuiltinLearner();
 	setenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE", "1", 1);
-	setenv("EXPLORER_RL_PLAYERS", "0,1", 1);
 	setenv("EXPLORER_RL_EPISODE", header["episode"].String().c_str(), 1);
 	setenv("EXPLORER_RL_INTERFACE", header["interface"].String().c_str(), 1);
 	unsetenv("VCMI_EXPERIMENT_REPLAY");
@@ -156,13 +201,25 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 		if(!request || item["player"].Integer() != request->player.getNum()
 			|| item["request_id"].Integer() != request->requestID)
 			throw std::runtime_error("Native request metadata does not bind its serialized packet");
+		if(learner >= 0 && (expected["player"].Integer() != request->player.getNum()
+			|| expected["request"].Integer() != request->requestID))
+			throw std::runtime_error("Authoritative mixed request metadata differs from its native packet");
 		const auto & source = item["source"].String();
 		if(source == "adapter")
 		{
-			if(transaction->first != "player" + std::to_string(request->player.getNum()))
+			if(transaction->first != "player" + std::to_string(request->player.getNum())
+				|| (learner >= 0 && request->player != PlayerColor(learner)))
 				throw std::runtime_error("Adapter request is not inside its player's transaction");
 		}
-		else if(source != "automatic" || transaction->first != "client" || !automaticAllowed(*decoded, transaction->second))
+		else if(source == "native_opponent")
+		{
+			if(learner < 0 || request->player != PlayerColor(1 - learner) || transaction->first != "client"
+				|| (transaction->second != "request" && transaction->second != "packet"))
+				throw std::runtime_error("Recorded opponent input names the wrong controller or transaction");
+		}
+		else if(source != "automatic" || transaction->first != "client"
+			|| (learner >= 0 && request->player == PlayerColor(1 - learner))
+			|| !automaticAllowed(*decoded, transaction->second))
 			throw std::runtime_error("Unsupported automatic request source/type");
 	}
 	if(requestIndex != inputs.size())
@@ -190,8 +247,10 @@ JsonNode ContextualReplay::run(const std::vector<JsonNode> & tape, bool prefix)
 	};
 	try
 	{
-		client.initExperimentReplay(state, [&](PlayerColor color)
+		client.initExperimentReplay(state, [&](PlayerColor color) -> std::shared_ptr<CGameInterface>
 		{
+			if(learner >= 0 && color != PlayerColor(learner))
+				return std::make_shared<PassiveOpponent>();
 			auto interface = std::make_shared<ExplorerRL>();
 			interfaces[color] = interface;
 			return interface;
