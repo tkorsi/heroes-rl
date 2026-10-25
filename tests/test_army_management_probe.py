@@ -2,6 +2,7 @@
 from dataclasses import replace
 from types import SimpleNamespace as NS
 import unittest
+from unittest.mock import Mock
 
 from experiments.learner import contextual as c
 from validation.probes import validate_army_management as p
@@ -40,6 +41,30 @@ class ArmyManagementProbeTests(unittest.TestCase):
         self.hero = army("hero", "visiting_hero", {0: (0, 25)})
         self.before = frame((self.upper, self.hero))
 
+    def test_purchase_returns_to_overview_without_sending_an_extra_back(self):
+        # Regression for retained native mechanics-1: successful recruitment
+        # already closed its panel, then the old probe sent an invalid back.
+        selected = NS(slider_max=14, unit_cost=(0, 0, 0, 0, 0, 0, 60))
+        purchase = c.Action("recruit", "town", selection="recruit-0", destination="army-0",
+                            count=7, schema=c.MANAGEMENT_ACTION_SCHEMA)
+        after = frame((self.upper, self.hero), resources=4580)
+        after.observation.window.context = after.observation.context
+        after.observation.window.town_panel = NS(kind="overview")
+        additions, result = receipt("recruited")
+        run = object.__new__(p.ArmyRun)
+        run.open_recruitment = Mock()
+        run.select_creature = Mock(return_value=selected)
+        run.purchase = Mock(return_value=purchase)
+        run.call = Mock(return_value=(self.before, additions, result))
+        run.inspect_request = Mock(return_value=after)
+        run.buy(0, 7)
+        run.call.assert_called_once_with(purchase, "explicit_prepare_creature_purchase")
+        run.purchase.assert_called_once_with(selected, 7)
+        after.observation.window.context = c.Context("town", "town", "recruitment", "dwelling-0")
+        after.observation.window.town_panel = NS(kind="recruitment")
+        with self.assertRaisesRegex(p.base.ProbeFailure, "Wrong active town panel"):
+            run.buy(0, 7)
+
     def test_exact_partial_split_checks_both_rows_and_every_untouched_slot(self):
         selected = action("split_stack", "town-slot-0", "hero-slot-1", 3)
         after = frame((army("town", "town_garrison", {0: (0, 11), 1: (1, 7)}),
@@ -70,6 +95,17 @@ class ArmyManagementProbeTests(unittest.TestCase):
         self.assertEqual((swapped[1]["slots"][0]["creature"], swapped[1]["slots"][0]["count"]), (1, 7))
         with self.assertRaises(p.base.ProbeFailure):
             p.expected_stack_operation((self.upper, self.hero), action("split_stack", "town-slot-1", "hero-slot-0", 1))
+
+    def test_same_creature_swap_exchanges_unequal_counts_instead_of_merging(self):
+        selected = action("swap_stacks", "town-slot-0", "hero-slot-0")
+        after = frame((army("town", "town_garrison", {0: (0, 25), 1: (1, 7)}),
+                       army("hero", "visiting_hero", {0: (0, 14)})))
+        additions, result = receipt("swapped")
+        p.exact_stack_operation(self.before, after, selected, additions, result)
+        incorrectly_merged = frame((army("town", "town_garrison", {1: (1, 7)}),
+                                    army("hero", "visiting_hero", {0: (0, 39)})))
+        with self.assertRaisesRegex(p.base.ProbeFailure, "unexpected army"):
+            p.exact_stack_operation(self.before, incorrectly_merged, selected, additions, result)
 
     def test_native_receipt_rejects_missing_rejected_or_reordered_ack(self):
         additions, result = receipt("split")

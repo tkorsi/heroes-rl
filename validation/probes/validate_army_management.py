@@ -237,7 +237,9 @@ class ArmyRun(HeroRun):
         town.request_evidence(self, additions, result, "recruited")
         base.ensure(tuple(a - b for a, b in zip(before.observation.resources, self.inspect_request().observation.resources))
                     == tuple(count * unit for unit in panel.unit_cost), "Preparation recruitment cost changed")
-        self.call(self.town_action("back"), "explicit_back_from_preparation_recruitment")
+        # Accepting native recruitment closes the panel itself. A second back
+        # action would address an absent control in the returned overview.
+        self.panel("overview")
 
     def hire(self):
         panel = self.open_tavern()
@@ -269,6 +271,8 @@ def stacks_case(run):
         parameters = {"subject": run.inspect_request().observation.context.subject,
                       "selection": base_slot, "destination": empty, "count": 1, **changes}
         run.reject(run.action("split_stack", **parameters), "invalid_split_rejected_before_send")
+    run.manipulate("swap_stacks", base_slot, first)
+    run.manipulate("swap_stacks", base_slot, first)
     run.manipulate("split_stack", base_slot, empty, 3)
     run.manipulate("split_stack", empty, base_slot, 1)
     run.manipulate("split_stack", first, spare, 5)
