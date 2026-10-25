@@ -24,6 +24,9 @@ ARMIES_ENVIRONMENT = "adventure-armies-v1"
 HEROES_SCHEMA = "heroes-player-history-v5"
 HEROES_ACTION_SCHEMA = "heroes-context-actions-v5"
 HEROES_ENVIRONMENT = "adventure-heroes-v1"
+MANAGEMENT_SCHEMA = "heroes-player-history-v6"
+MANAGEMENT_ACTION_SCHEMA = "heroes-context-actions-v6"
+MANAGEMENT_ENVIRONMENT = "adventure-army-management-v1"
 TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
 TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
@@ -47,7 +50,7 @@ class InterfaceProfile:
 
     @property
     def town_economy(self):
-        return self.version in (3, 4, 5)
+        return self.version in (3, 4, 5, 6)
 
     @property
     def army_transfer(self):
@@ -55,18 +58,23 @@ class InterfaceProfile:
 
     @property
     def hero_recruitment(self):
-        return self.version == 5
+        return self.version in (5, 6)
+
+    @property
+    def army_management(self):
+        return self.version == 6
 
 
 WINDOWS_PROFILE = InterfaceProfile(ENVIRONMENT, SCHEMA, ACTION_SCHEMA, 4, 2)
 TOWN_PROFILE = InterfaceProfile(TOWN_ENVIRONMENT, TOWN_SCHEMA, TOWN_ACTION_SCHEMA, 5, 3)
 ARMIES_PROFILE = InterfaceProfile(ARMIES_ENVIRONMENT, ARMIES_SCHEMA, ARMIES_ACTION_SCHEMA, 6, 4)
 HEROES_PROFILE = InterfaceProfile(HEROES_ENVIRONMENT, HEROES_SCHEMA, HEROES_ACTION_SCHEMA, 7, 5)
+MANAGEMENT_PROFILE = InterfaceProfile(MANAGEMENT_ENVIRONMENT, MANAGEMENT_SCHEMA, MANAGEMENT_ACTION_SCHEMA, 8, 6)
 
 
 def profile_for(value):
     """Select an explicit interface/history/action version; v2 remains the default."""
-    for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE, HEROES_PROFILE):
+    for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE, HEROES_PROFILE, MANAGEMENT_PROFILE):
         if value in (profile.environment, profile.history_schema, profile.action_schema):
             return profile
     raise ValueError("Unsupported contextual interface/schema")
@@ -107,21 +115,31 @@ class Context:
     selection: str | None = None
 
     def __post_init__(self):
-        if self.kind not in ("map", "hero", "town"):
+        if self.kind not in ("map", "hero", "town", "exchange", "stack"):
             raise ValueError("Unsupported context")
         if self.kind == "map":
             if self.subject is not None:
                 raise ValueError("Map context has no subject")
         else:
             _text(self.subject)
-        if self.kind != "town" and (self.panel is not None or self.selection is not None):
-            raise ValueError("Only town contexts have panels")
-        if self.panel not in (None, "overview", "hall", "building", "recruitment", "tavern"):
-            raise ValueError("Unsupported town panel")
-        if self.panel in ("building", "recruitment"):
+        if self.kind == "exchange":
             _text(self.selection)
-        elif self.selection is not None:
-            raise ValueError("Only building or recruitment panels have a selection")
+            if self.panel is not None or self.subject == self.selection:
+                raise ValueError("Exchange requires two distinct own heroes and no panel")
+        elif self.kind == "stack":
+            _text(self.selection)
+            if self.panel not in ("overview", "upgrade"):
+                raise ValueError("Stack requires an explicit overview or upgrade panel")
+        elif self.kind != "town":
+            if self.panel is not None or self.selection is not None:
+                raise ValueError("This context has no panel or selection")
+        else:
+            if self.panel not in (None, "overview", "hall", "building", "recruitment", "tavern"):
+                raise ValueError("Unsupported town panel")
+            if self.panel in ("building", "recruitment"):
+                _text(self.selection)
+            elif self.selection is not None:
+                raise ValueError("Only building or recruitment panels have a selection")
 
 
 @dataclass(frozen=True)
@@ -145,6 +163,9 @@ class Action:
             town_actions += ("transfer_stack",)
         if profile.hero_recruitment:
             town_actions += ("select_hero", "hire_hero")
+        if profile.army_management:
+            town_actions += ("split_stack", "merge_stacks", "swap_stacks", "swap_garrison",
+                             "open_stack", "select_upgrade", "upgrade_stack")
         if self.kind not in ("move_to", "open_hero", "open_town", "close", "end_turn", *(
                 town_actions if profile.town_economy else ())):
             raise ValueError("Unsupported contextual action")
@@ -162,17 +183,22 @@ class Action:
                 _text(self.selection)
             elif self.panel not in (("hall", "tavern") if profile.hero_recruitment else ("hall",)) or self.selection is not None:
                 raise ValueError("Unsupported explicit town panel selection")
-        elif self.kind in ("open_building", "construct", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero"):
+        elif self.kind in ("open_building", "construct", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero",
+                           "split_stack", "merge_stacks", "swap_stacks", "open_stack", "select_upgrade", "upgrade_stack"):
             _text(self.selection)
             if self.panel is not None:
                 raise ValueError("This action selects a displayed entry, not a panel")
         elif self.panel is not None or self.selection is not None:
             raise ValueError("This action has no panel selection")
-        if self.kind in ("recruit", "transfer_stack"):
+        if self.kind in ("recruit", "transfer_stack", "split_stack"):
             _integer(self.count, low=1, high=2**31 - 1, name="explicit creature count")
             _text(self.destination)
+        elif self.kind in ("merge_stacks", "swap_stacks"):
+            _text(self.destination)
+            if self.count is not None:
+                raise ValueError("Whole-stack operation has no quantity parameter")
         elif self.count is not None or self.destination is not None:
-            raise ValueError("Only recruitment or transfer supplies a count and destination")
+            raise ValueError("Only recruitment or stack movement supplies a count and destination")
 
 
 BUILDING_STATUSES = ("have_capital", "no_water", "forbidden", "add_mages_guild", "already_present",
@@ -402,7 +428,7 @@ class ArmyView:
     def __post_init__(self):
         _text(self.ref)
         _text(self.subject)
-        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero"):
+        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero", "hero"):
             raise ValueError("Unsupported displayed town army role")
         if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role != "town_garrison"):
             raise ValueError("Last-stack rule must match the displayed army role")
@@ -451,6 +477,128 @@ class ArmyExchange:
         return tuple((source.ref, destination.ref, self.maximum(source.ref, destination.ref))
                      for source in self.source.slots for destination in self.destination.slots
                      if self.maximum(source.ref, destination.ref) > 0)
+
+
+def army_slot(armies, ref):
+    return next(((army, slot) for army in armies for slot in army.slots if slot.ref == ref), (None, None))
+
+
+def army_operation_maximum(armies, kind, source_ref, destination_ref):
+    """Displayed slot geometry and native conservation rules, never strategy."""
+    source_army, source = army_slot(armies, source_ref)
+    destination_army, destination = army_slot(armies, destination_ref)
+    if source is None or destination is None or source_ref == destination_ref:
+        return 0
+    crossing = source_army.subject != destination_army.subject
+    if kind == "swap_stacks":
+        if not source.count and not destination.count:
+            return 0
+        for army, outgoing, incoming in ((source_army, source, destination), (destination_army, destination, source)):
+            if crossing and army.requires_nonempty and outgoing.count and not incoming.count and sum(bool(s.count) for s in army.slots) == 1:
+                return 0
+        return 1
+    if kind not in ("split_stack", "merge_stacks") or not source.count or destination.creature not in (None, source.creature):
+        return 0
+    if source.count + destination.count > 2**31 - 1:
+        return 0
+    reserve = int(crossing and source_army.requires_nonempty and sum(bool(slot.count) for slot in source_army.slots) == 1)
+    maximum = source.count - reserve
+    if kind == "merge_stacks":
+        return int(bool(destination.count) and maximum == source.count)
+    return maximum
+
+
+def army_operation_choices(armies, kind):
+    return tuple((source.ref, destination.ref, maximum)
+                 for first in armies for source in first.slots for second in armies for destination in second.slots
+                 if (maximum := army_operation_maximum(armies, kind, source.ref, destination.ref)) > 0)
+
+
+def _replace_window_slots(window, changes):
+    armies = tuple(replace(army, slots=tuple(changes.get(slot.ref, slot) for slot in army.slots)) for army in window.armies)
+    primary = (None if window.army is None else tuple(Stack(slot.slot, slot.creature, slot.count) for slot in armies[0].slots if slot.count))
+    return replace(window, armies=armies, army=primary)
+
+
+def _arranged_window(window, action):
+    _, source = army_slot(window.armies, action.selection)
+    _, destination = army_slot(window.armies, action.destination)
+    if action.kind == "swap_stacks":
+        changes = {source.ref: replace(source, creature=destination.creature, count=destination.count),
+                   destination.ref: replace(destination, creature=source.creature, count=source.count)}
+    else:
+        count = action.count if action.kind == "split_stack" else source.count
+        changes = {source.ref: replace(source, count=source.count-count, creature=source.creature if source.count > count else None),
+                   destination.ref: replace(destination, count=destination.count+count, creature=source.creature)}
+    return _replace_window_slots(window, changes)
+
+
+def _same_heroes(before, after, *, army_subjects=(), garrison_subjects=()):
+    """Army speed may refresh movement_max, but cannot spend movement points."""
+    old, new = {hero.handle: hero for hero in before}, {hero.handle: hero for hero in after}
+    if old.keys() != new.keys():
+        return False
+    for ref, hero in old.items():
+        refreshed = new[ref]
+        if ref in army_subjects:
+            refreshed = replace(refreshed, movement_max=hero.movement_max)
+        if ref in garrison_subjects:
+            refreshed = replace(refreshed, in_garrison=hero.in_garrison)
+        if refreshed != hero:
+            return False
+    return True
+
+
+def _army_totals(armies):
+    totals = {}
+    for army in armies:
+        for slot in army.slots:
+            if slot.count:
+                totals[slot.creature] = totals.get(slot.creature, 0) + slot.count
+    return totals
+
+
+@dataclass(frozen=True)
+class UpgradeChoice:
+    ref: str
+    creature: int
+
+    def __post_init__(self):
+        _text(self.ref)
+        _integer(self.creature, high=2**31 - 1)
+
+
+@dataclass(frozen=True)
+class StackPanel:
+    parent_context: Context
+    source: ArmySlot
+    offers: tuple[UpgradeChoice, ...]
+    selected_upgrade_ref: str | None
+    total_cost: tuple[int, ...] | None
+    affordable: bool | None
+
+    def __post_init__(self):
+        if (type(self.parent_context) is not Context or self.parent_context.kind not in ("hero", "town", "exchange")
+                or self.parent_context.kind == "town" and self.parent_context.panel != "overview"):
+            raise ValueError("Stack popup requires its explicitly opened parent army window")
+        if type(self.source) is not ArmySlot or not self.source.count:
+            raise ValueError("Stack popup requires one displayed occupied slot")
+        _tuple(self.offers, UpgradeChoice, "displayed upgrade buttons")
+        if len(self.offers) > 3:
+            raise ValueError("Native stack window displays at most three upgrade buttons")
+        _unique([item.ref for item in self.offers], "upgrade reference")
+        _unique([item.creature for item in self.offers], "upgrade creature")
+        if self.selected_upgrade_ref is None:
+            if self.total_cost is not None or self.affordable is not None:
+                raise ValueError("Upgrade cost requires an explicitly selected button")
+        else:
+            if self.selected_upgrade_ref not in {item.ref for item in self.offers}:
+                raise ValueError("Selected upgrade must be a displayed button")
+            _tuple(self.total_cost, int, "displayed total upgrade cost")
+            if len(self.total_cost) != 7 or type(self.affordable) is not bool:
+                raise ValueError("Upgrade confirmation requires seven resource costs and availability")
+            for amount in self.total_cost:
+                _integer(amount)
 
 
 @dataclass(frozen=True)
@@ -534,6 +682,7 @@ class Hero:
     position: tuple[int, int, int]
     movement: int
     movement_max: int | None = None
+    in_garrison: bool | None = None
 
     def __post_init__(self):
         _text(self.handle)
@@ -541,6 +690,8 @@ class Hero:
         _integer(self.movement)
         if self.movement_max is not None:
             _integer(self.movement_max)
+        if self.in_garrison is not None and type(self.in_garrison) is not bool:
+            raise ValueError("Hero garrison flag must be boolean")
 
 
 @dataclass(frozen=True)
@@ -575,17 +726,43 @@ class Window:
     buildings: tuple[int, ...] | None = None
     faction: int | None = None
     town_panel: TownPanel | None = None
+    armies: tuple[ArmyView, ...] | None = None
+    stack_panel: StackPanel | None = None
 
     def __post_init__(self):
         if type(self.context) is not Context or self.context.kind == "map":
-            raise ValueError("Window requires a hero or town context")
+            raise ValueError("Window requires an explicit non-map context")
+        if self.armies is not None:
+            _tuple(self.armies, ArmyView, "displayed eligible armies")
+            _unique([army.subject for army in self.armies], "displayed army subject")
+            _unique([ref for army in self.armies for ref in (army.ref, *(slot.ref for slot in army.slots))], "army/slot reference")
+        if self.context.kind in ("exchange", "stack"):
+            if any(value is not None for value in (self.army, self.primary_skills, self.mana, self.level,
+                                                  self.buildings, self.faction, self.town_panel)):
+                raise ValueError("Army exchange/stack popup cannot expose another window's private fields")
+            if self.context.kind == "exchange":
+                if self.stack_panel is not None or self.armies is None or len(self.armies) != 2:
+                    raise ValueError("Exchange displays exactly its two own hero armies")
+                if tuple(army.subject for army in self.armies) != (self.context.subject, self.context.selection) or any(army.role != "hero" for army in self.armies):
+                    raise ValueError("Exchange rows must bind its two ordered hero participants")
+            else:
+                if type(self.stack_panel) is not StackPanel or self.armies != () or self.stack_panel.source.ref != self.context.selection:
+                    raise ValueError("Stack popup displays only its selected stack and no parent armies")
+                if (self.context.panel == "overview") != (self.stack_panel.selected_upgrade_ref is None):
+                    raise ValueError("Upgrade details require explicit matching stack panel")
+            return
+        if self.stack_panel is not None:
+            raise ValueError("Stack details require the explicit stack popup")
         overlay = self.context.kind == "town" and self.context.panel in ("hall", "building", "recruitment", "tavern")
         if overlay:
-            if self.army is not None or self.faction is not None:
-                raise ValueError("Town overlays cannot refresh overview army or faction")
+            if self.army is not None or self.faction is not None or self.armies not in (None, ()):
+                raise ValueError("Town overlays cannot refresh overview armies or faction")
         else:
             _tuple(self.army, Stack, "army")
             _unique([s.slot for s in self.army], "army slot")
+            if self.armies is not None:
+                if not self.armies or self.army != tuple(Stack(slot.slot, slot.creature, slot.count) for slot in self.armies[0].slots if slot.count):
+                    raise ValueError("Primary displayed army must equal its explicit first row")
         if self.context.kind == "hero":
             if self.buildings is not None or self.faction is not None or self.town_panel is not None:
                 raise ValueError("Hero window cannot expose town fields")
@@ -595,6 +772,8 @@ class Window:
                 _integer(value)
             _integer(self.mana)
             _integer(self.level, low=1)
+            if self.armies is not None and (len(self.armies) != 1 or self.armies[0].role != "hero" or self.armies[0].subject != self.context.subject):
+                raise ValueError("Hero window exposes only its subject's army")
         else:
             if any(x is not None for x in (self.primary_skills, self.mana, self.level)):
                 raise ValueError("Town window cannot expose hero fields")
@@ -602,6 +781,9 @@ class Window:
                 raise ValueError("Town building details are deferred in this interface")
             if not overlay:
                 _integer(self.faction)
+                if self.armies is not None and (len(self.armies) not in (1, 2) or self.armies[0].role not in ("town_garrison", "garrison_hero")
+                        or len(self.armies) == 2 and self.armies[1].role != "visiting_hero"):
+                    raise ValueError("Town overview exposes its upper army and optional actual visitor")
             if self.context.panel is not None:
                 if type(self.town_panel) is not TownPanel or self.town_panel.kind != self.context.panel:
                     raise ValueError("Town context requires its matching explicit panel")
@@ -647,9 +829,23 @@ class Observation:
         if self.window is not None:
             if type(self.window) is not Window:
                 raise ValueError("Expected typed active window")
-            own = self.heroes if self.window.context.kind == "hero" else self.towns
+            own = (self.towns if self.window.context.kind == "town" else
+                   (*self.heroes, *self.towns) if self.window.context.kind == "stack" else self.heroes)
             if self.window.context.subject not in {entry.handle for entry in own}:
                 raise ValueError("Window subject must be an accessible owned object")
+            if self.window.armies is not None:
+                own_heroes = {hero.handle: hero for hero in self.heroes}
+                for army in self.window.armies:
+                    if army.role == "town_garrison":
+                        if self.window.context.kind != "town" or army.subject != self.window.context.subject:
+                            raise ValueError("Town army must bind the currently open town")
+                    elif army.subject not in own_heroes:
+                        raise ValueError("Displayed hero army must be currently owned")
+                    elif own_heroes[army.subject].in_garrison is not None and army.role in ("garrison_hero", "visiting_hero") and own_heroes[army.subject].in_garrison != (army.role == "garrison_hero"):
+                        raise ValueError("Army role disagrees with visible hero garrison status")
+            if self.window.stack_panel is not None and self.window.stack_panel.total_cost is not None:
+                if self.window.stack_panel.affordable != all(available >= cost for available, cost in zip(self.resources, self.window.stack_panel.total_cost)):
+                    raise ValueError("Upgrade affordability must match displayed total cost and own resources")
             if self.window.context.panel == "recruitment":
                 panel = self.window.town_panel.recruitment
                 # Pinned CCreature::maxAmount starts at this native integer cap
@@ -693,6 +889,9 @@ class Offers:
     town_refs: tuple[str, ...] = ()
     panel: TownPanel | None = None
     schema: str = ACTION_SCHEMA
+    armies: tuple[ArmyView, ...] | None = None
+    stack_panel: StackPanel | None = None
+    movable_hero_refs: tuple[str, ...] | None = None
 
     def __post_init__(self):
         profile = profile_for(self.schema)
@@ -710,6 +909,18 @@ class Offers:
             _unique(refs, "offered subject")
         if self.context.kind != "map" and (self.hero_refs or self.town_refs):
             raise ValueError("Window support cannot expose map subject choices")
+        if profile.army_management:
+            _tuple(self.armies, ArmyView, "current army support")
+            _tuple(self.movable_hero_refs, str, "movable hero references")
+            _unique(self.movable_hero_refs, "movable hero")
+            if not set(self.movable_hero_refs) <= set(self.hero_refs):
+                raise ValueError("Movable heroes must be a subset of currently owned map subjects")
+            if (self.context.kind == "stack") != (type(self.stack_panel) is StackPanel):
+                raise ValueError("Stack support requires its current popup")
+            if self.context.kind in ("map", "stack") and self.armies:
+                raise ValueError("Map/stack support cannot refresh parent armies")
+        elif any(value is not None for value in (self.armies, self.stack_panel, self.movable_hero_refs)):
+            raise ValueError("Army management support requires v6")
         _validate_context(self.context, profile)
         if self.context.kind == "town" and profile.town_economy:
             if type(self.panel) is not TownPanel or self.panel.kind != self.context.panel:
@@ -722,14 +933,41 @@ class Offers:
     def from_observation(cls, observation, *, schema=ACTION_SCHEMA):
         if type(observation) is not Observation:
             raise ValueError("Expected typed observation")
+        profile = profile_for(schema)
+        _validate_observation(observation, profile)
+        extra = {} if not profile.army_management else {
+            "armies": observation.window.armies if observation.window else (),
+            "stack_panel": observation.window.stack_panel if observation.window else None,
+            "movable_hero_refs": tuple(h.handle for h in observation.heroes if not h.in_garrison)
+                                 if observation.context.kind == "map" else (),
+        }
         if observation.context.kind != "map":
-            return cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema)
+            return cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema, **extra)
         return cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
-                   tuple(t.handle for t in observation.towns), schema=schema)
+                   tuple(t.handle for t in observation.towns), schema=schema, **extra)
 
     def permits(self, action):
         if type(action) is not Action or action.schema != self.schema:
             return False
+        if self.armies is not None:
+            if action.kind in ("split_stack", "merge_stacks", "swap_stacks"):
+                maximum = army_operation_maximum(self.armies, action.kind, action.selection, action.destination)
+                return action.subject == self.context.subject and maximum > 0 and (action.kind != "split_stack" or action.count <= maximum)
+            if action.kind == "open_stack":
+                _, slot = army_slot(self.armies, action.selection)
+                return action.subject == self.context.subject and slot is not None and slot.count > 0
+            if action.kind == "swap_garrison":
+                return (self.context.kind == "town" and self.context.panel == "overview"
+                        and action.subject == self.context.subject and any(army.role in ("garrison_hero", "visiting_hero") for army in self.armies))
+            if self.context.kind == "stack":
+                if action.subject != self.context.subject:
+                    return False
+                if action.kind == "back":
+                    return True
+                if self.context.panel == "overview":
+                    return action.kind == "select_upgrade" and action.selection in {item.ref for item in self.stack_panel.offers}
+                return (action.kind == "upgrade_stack" and self.stack_panel.affordable
+                        and action.selection == self.stack_panel.selected_upgrade_ref)
         if self.panel is not None:
             if self.context.panel == "overview":
                 if action.kind == "transfer_stack":
@@ -764,7 +1002,8 @@ class Offers:
         if action.kind == "end_turn":
             return True
         if action.kind in ("open_hero", "move_to") and action.subject in self.hero_refs:
-            return action.kind == "open_hero" or (action.x < self.size[0] and action.y < self.size[1])
+            return action.kind == "open_hero" or ((self.movable_hero_refs is None or action.subject in self.movable_hero_refs)
+                                                  and action.x < self.size[0] and action.y < self.size[1])
         return action.kind == "open_town" and action.subject in self.town_refs
 
 
@@ -779,13 +1018,13 @@ class Result:
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
                                "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built",
-                               "selected", "recruited", "no_capacity", "transferred", "hired"):
+                               "selected", "recruited", "no_capacity", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
         if self.status in ("rejected", "no_capacity") and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -805,6 +1044,7 @@ NOTICE_TEXT_IDS = frozenset({
     *(f"core.arraytxt.{index}" for index in (*range(32, 42), *range(43, 58), *range(130, 136))),
 })
 TOWN_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.17"})
+MANAGEMENT_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.18", "core.genrltxt.19", "core.genrltxt.275"})
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
 # sequence and that the referenced creature is legitimate player information.
@@ -826,7 +1066,7 @@ class NoticeToken:
             if self.number is not None or (self.text_id is None) == (self.owner is None):
                 raise ValueError("Notice text operation requires exactly one text ID or relative owner")
             if self.text_id is not None:
-                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS
+                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS
                         and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _HERO_NAME_TEXT_ID.fullmatch(self.text_id) is None):
                     raise ValueError("Unsupported notice text ID")
@@ -898,7 +1138,20 @@ def _no_capacity_notice(notice):
             and notice.text == (NoticeToken("append_text", text_id="core.genrltxt.17"),))
 
 
+def _garrison_notice(notice):
+    if type(notice) is not Notice or notice.display_mode != "modal" or notice.components or not notice.text:
+        return False
+    first = notice.text[0]
+    if first in (NoticeToken("append_text", text_id="core.genrltxt.19"), NoticeToken("append_text", text_id="core.genrltxt.275")):
+        return len(notice.text) == 1
+    return (first == NoticeToken("append_text", text_id="core.genrltxt.18") and len(notice.text) == 2
+            and notice.text[1].op == "replace_number" and notice.text[1].number >= 0)
+
+
 def _validate_notice(notice, profile):
+    if any(token.text_id in MANAGEMENT_NOTICE_TEXT_IDS for token in notice.text):
+        if not profile.army_management or not _garrison_notice(notice):
+            raise ValueError("Garrison UI rejection requires its exact v6 displayed template")
     additional_hero_names = tuple(token for token in notice.text
                                  if token.text_id is not None and _HERO_NAME_TEXT_ID.fullmatch(token.text_id)
                                  and token.text_id not in NOTICE_TEXT_IDS)
@@ -923,8 +1176,18 @@ class VisibleEvent:
     side: str | None = None
     won: bool | None = None
     notice: Notice | None = None
+    partner: str | None = None
 
     def __post_init__(self):
+        if self.kind == "army_exchange_requested":
+            _text(self.subject)
+            _text(self.partner)
+            if self.subject == self.partner or any(value is not None for value in (
+                    self.object_kind, self.object_subtype, self.owner, self.side, self.won, self.notice)):
+                raise ValueError("Own-hero exchange event contains only two distinct participants")
+            return
+        if self.partner is not None:
+            raise ValueError("Only own-hero exchange carries a partner")
         if self.kind == "notice":
             if type(self.notice) is not Notice or any(value is not None for value in (
                     self.subject, self.object_kind, self.object_subtype, self.owner, self.side, self.won)):
@@ -1020,6 +1283,7 @@ class CutoffVerification:
 _PAYLOADS = {
     "view": {"observation"}, "event": {"event"}, "context": {"context", "revision", "decision_seq"},
     "context_invalidated": {"context", "revision", "reason"},
+    "context_opened": {"context", "revision", "reason"},
     "decision": {"observation", "offers", "revision"}, "submitted": {"action", "decision_seq"},
     "consumed": {"consumer", "decision_seq"}, "issued": {"command_index", "decision_seq"},
     "acknowledged": {"command_index", "accepted", "decision_seq"}, "result": {"result", "decision_seq"},
@@ -1029,6 +1293,8 @@ _PAYLOADS = {
 
 
 def _validate_context(context, profile):
+    if context.kind in ("exchange", "stack") and not profile.army_management:
+        raise ValueError("Army exchange and stack popup contexts require v6")
     if profile == WINDOWS_PROFILE and (context.panel is not None or context.selection is not None):
         raise ValueError("History v2 cannot contain town panels")
     if context.panel == "tavern" and not profile.hero_recruitment:
@@ -1047,6 +1313,16 @@ def _validate_panel(panel, profile):
 
 def _validate_observation(observation, profile):
     _validate_context(observation.context, profile)
+    if any(profile.army_management != (hero.in_garrison is not None) for hero in observation.heroes):
+        raise ValueError("Explicit garrison flags belong only to v6 owned hero rosters")
+    if observation.window is not None:
+        window = observation.window
+        if profile.army_management != (window.armies is not None):
+            raise ValueError("General displayed army rows belong only to v6 windows")
+        if window.stack_panel is not None:
+            if not profile.army_management:
+                raise ValueError("Stack popup requires v6")
+            _validate_context(window.stack_panel.parent_context, profile)
     if profile == WINDOWS_PROFILE and observation.window is not None and observation.window.town_panel is not None:
         raise ValueError("History v2 cannot contain town economy data")
     if observation.window is not None and observation.window.town_panel is not None:
@@ -1118,6 +1394,12 @@ class Frame:
             raise ValueError("Army transfer results require history v4")
         if self.result is not None and not profile.hero_recruitment and self.result.status == "hired":
             raise ValueError("Hero recruitment results require history v5")
+        if not profile.army_management and (self.kind == "context_opened"
+                or self.event is not None and self.event.kind == "army_exchange_requested"
+                or self.result is not None and self.result.status in ("split", "merged", "swapped", "garrison_swapped", "upgraded")):
+            raise ValueError("Army management records require v6")
+        if self.kind == "context_opened" and (self.reason != "own_hero_exchange" or self.context.kind != "exchange"):
+            raise ValueError("Only a supported own-hero query can open a context asynchronously")
         if self.event is not None and self.event.notice is not None:
             _validate_notice(self.event.notice, profile)
         if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
@@ -1179,6 +1461,10 @@ class PlayerHistory:
         self.consumed = False
         self.consumer = None
         self.capacity_notice = False
+        self.garrison_notice = False
+        self.pending_exchange = None
+        self.exchange_ready = False
+        self.stack_origin = None
         self.context_changes = 0
         self.commands = 0
         self.accepted_commands = 0
@@ -1220,6 +1506,8 @@ class PlayerHistory:
         if kind in ("view", "event") and self.decision is not None and self.action is None:
             raise ValueError("Supersede held decision before adding visible history")
         if kind == "decision":
+            if self.pending_exchange is not None:
+                raise ValueError("Pending native exchange must open before another decision")
             if self.decision is not None or self.action is not None:
                 raise ValueError("Prior decision/action has not completed")
             if frame.revision <= self.revision:
@@ -1235,18 +1523,25 @@ class PlayerHistory:
             self._match_action(frame)
             if self.consumed:
                 raise ValueError("Duplicate action consumption")
-            if self.action.kind in ("construct", "transfer_stack", "hire_hero") and frame.consumer != "engine":
+            if (self.action.kind in ("construct", "transfer_stack", "hire_hero", "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack")
+                    or self.action.kind == "close" and self.context.kind == "exchange") and frame.consumer != "engine":
                 raise ValueError("Construction, transfer and hero hiring require native engine consumption")
+            if self.profile.army_management and self.action.kind in ("open_stack", "select_upgrade", "back") and frame.consumer != "adapter":
+                raise ValueError("Stack navigation requires adapter consumption")
             self.consumed = True
             self.consumer = frame.consumer
         elif kind == "issued":
             self._match_consumed(frame)
-            if self.action.kind not in ("move_to", "end_turn", "construct", "recruit", "transfer_stack", "hire_hero"):
+            if self.action.kind not in ("move_to", "end_turn", "construct", "recruit", "transfer_stack", "hire_hero",
+                                        "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "swap_garrison") and not (
+                    self.action.kind == "close" and self.decision.observation.context.kind == "exchange"):
                 raise ValueError("Navigation cannot issue native game commands")
             if self.action.kind == "recruit" and (self.consumer != "engine" or self.capacity_notice):
                 raise ValueError("Recruitment issuance requires native consumption without capacity rejection")
+            if self.profile.army_management and (self.consumer != "engine" or self.garrison_notice):
+                raise ValueError("Native issuance requires engine consumption without UI rejection")
             if (self.pending_command is not None or frame.command_index != self.commands or self.native_rejected
-                    or self.action.kind in ("end_turn", "construct", "recruit", "transfer_stack", "hire_hero") and self.commands != 0):
+                    or self.action.kind != "move_to" and self.commands != 0):
                 raise ValueError("Native commands require ordered acknowledgement; rejected steps stop execution")
             self.pending_command = frame.command_index
             self.commands += 1
@@ -1264,10 +1559,32 @@ class PlayerHistory:
                 raise ValueError("Context change must match consumed navigation and advance revision")
             if self.action.kind in ("construct", "recruit", "hire_hero") and self.commands != 1:
                 raise ValueError("Purchase closes its panel only after genuine native issuance")
-            if self.action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit", "select_hero", "hire_hero") and self.context_changes:
+            if self.action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit", "select_hero", "hire_hero", "open_stack", "select_upgrade", "upgrade_stack", "close") and self.context_changes:
                 raise ValueError("Town action has already emitted its context transition")
+            if self.action.kind == "open_stack":
+                self.stack_origin = self.decision.observation
             self.context, self.revision = frame.context, frame.revision
             self.context_changes += 1
+        elif kind == "context_opened":
+            if (self.decision is not None or self.action is not None or not self.exchange_ready
+                    or self.context != Context() or self.pending_exchange != frame.context
+                    or frame.revision <= self.revision):
+                raise ValueError("Exchange context must follow its recorded encounter and completed parent movement")
+            self.context, self.revision = frame.context, frame.revision
+            self.pending_exchange, self.exchange_ready = None, False
+        elif kind == "event" and frame.event.kind == "army_exchange_requested":
+            observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), None)
+            own = {hero.handle for hero in observed.heroes} if observed else set()
+            if (self.action is None or self.action.kind != "move_to" or not self.consumed or self.commands < 1
+                    or self.pending_exchange is not None or frame.event.subject != self.action.subject
+                    or not {frame.event.subject, frame.event.partner} <= own or self.context != Context()):
+                raise ValueError("Exchange encounter must belong to the current native move between two own heroes")
+            self.pending_exchange = Context("exchange", frame.event.subject, None, frame.event.partner)
+        elif kind == "event" and frame.event.notice is not None and _garrison_notice(frame.event.notice):
+            if (self.action is None or self.action.kind != "swap_garrison" or not self.consumed
+                    or self.consumer != "adapter" or self.commands or self.garrison_notice):
+                raise ValueError("Garrison rejection requires one consumed adapter attempt without native issuance")
+            self.garrison_notice = True
         elif kind == "event" and frame.event.notice is not None and _no_capacity_notice(frame.event.notice):
             if (self.action is None or self.action.kind != "recruit" or not self.consumed
                     or self.consumer != "adapter" or self.commands != 0 or self.capacity_notice
@@ -1285,13 +1602,21 @@ class PlayerHistory:
             if self.pending_command is not None:
                 raise ValueError("Action result precedes native acknowledgement")
             self._check_result(frame.result)
+            if self.pending_exchange is not None:
+                if self.action.kind != "move_to" or frame.result.status != "interaction":
+                    raise ValueError("Pending exchange requires the parent move interaction result")
+                self.exchange_ready = True
+            if self.context.kind != "stack":
+                self.stack_origin = None
             self._clear_action()
         elif kind == "superseded":
             self._match_decision(frame)
+            self.pending_exchange, self.exchange_ready = None, False
             self._clear_action()
         elif kind == "terminal":
             if self.decision is not None or self.action is not None:
                 raise ValueError("Explicitly supersede outstanding decisions/actions before terminal")
+            self.pending_exchange, self.exchange_ready = None, False
             self.terminal = frame.outcome
         elif kind == "finalized":
             proof = frame.verification
@@ -1333,7 +1658,7 @@ class PlayerHistory:
     def _clear_action(self):
         self.decision, self.action = None, None
         self.consumed, self.commands, self.accepted_commands, self.pending_command = False, 0, 0, None
-        self.consumer, self.capacity_notice = None, False
+        self.consumer, self.capacity_notice, self.garrison_notice = None, False, False
         self.context_changes = 0
         self.native_rejected = False
 
@@ -1350,7 +1675,17 @@ class PlayerHistory:
             return Context("town", action.subject, action.panel, action.selection)
         if action.kind == "open_building":
             return Context("town", action.subject, "building", action.selection)
+        if action.kind == "open_stack":
+            army, _ = army_slot(self.decision.observation.window.armies, action.selection)
+            return Context("stack", army.subject, "overview", action.selection)
+        if action.kind == "select_upgrade":
+            return replace(before, panel="upgrade")
+        if action.kind == "upgrade_stack":
+            return self.decision.observation.window.stack_panel.parent_context
         if action.kind == "back":
+            if before.kind == "stack":
+                return (replace(before, panel="overview") if before.panel == "upgrade"
+                        else self.decision.observation.window.stack_panel.parent_context)
             return Context("town", action.subject, "hall" if before.panel == "building" else "overview")
         if action.kind in ("construct", "recruit", "hire_hero"):
             return Context("town", action.subject, "overview")
@@ -1360,7 +1695,10 @@ class PlayerHistory:
 
     def _check_result(self, result):
         action = self.action
-        if action.kind == "transfer_stack":
+        if action.kind in ("split_stack", "merge_stacks", "swap_stacks", "swap_garrison", "open_stack", "select_upgrade", "upgrade_stack") or (
+                action.kind == "back" and self.decision.observation.context.kind == "stack"):
+            self._check_management_result(result)
+        elif action.kind == "transfer_stack":
             self._check_transfer_result(result)
         elif action.kind == "move_to":
             if result.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
@@ -1398,6 +1736,10 @@ class PlayerHistory:
             if result.status not in (expected[action.kind], "rejected", *( ("no_capacity",) if action.kind == "recruit" else () )):
                 raise ValueError("Incorrect contextual result")
             target = self._context_target()
+            if action.kind == "close" and self.decision.observation.context.kind == "exchange":
+                if (self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted)
+                        or self.context_changes != 1 or self.context != Context()):
+                    raise ValueError("Closing an exchange requires one native query reply and explicit map return")
             if action.kind == "end_turn" and result.accepted and (self.commands != 1 or self.accepted_commands != 1):
                 raise ValueError("Successful turn ending requires exactly one accepted native command")
             if action.kind == "end_turn" and not result.accepted and self.accepted_commands != 0:
@@ -1442,6 +1784,104 @@ class PlayerHistory:
                 raise ValueError("Successful town operation requires its explicit context revision")
             if not result.accepted and action.kind not in ("construct", "recruit", "hire_hero") and self.context != self.decision.observation.context:
                 raise ValueError("Rejected navigation cannot have changed context")
+
+    def _check_management_result(self, result):
+        action, before = self.action, self.decision.observation
+        observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), before)
+        expected_status = {"split_stack": "split", "merge_stacks": "merged", "swap_stacks": "swapped",
+                           "swap_garrison": "garrison_swapped", "open_stack": "opened",
+                           "select_upgrade": "selected", "upgrade_stack": "upgraded", "back": "closed"}[action.kind]
+        if result.status not in (expected_status, "rejected") or any(value is not None for value in (
+                result.position, result.movement, result.destination_reached)):
+            raise ValueError("Army operation has an incompatible result")
+        if action.kind in ("split_stack", "merge_stacks", "swap_stacks", "swap_garrison"):
+            if (self.context_changes or self.revision != self.decision.revision or self.context != before.context
+                    or observed.context != before.context or observed.resources != before.resources
+                    or observed.towns != before.towns):
+                raise ValueError("Army arrangement preserves its current window, revision, towns and resources")
+            if action.kind == "swap_garrison" and self.consumer == "adapter":
+                if result.accepted or self.commands or not self.garrison_notice or observed != before:
+                    raise ValueError("Blocked garrison swap needs its exact UI notice and no state effect")
+                return
+            if self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted):
+                raise ValueError("Army operation requires one matching native acknowledgement")
+            if not result.accepted:
+                if observed.window != before.window or observed.heroes != before.heroes:
+                    raise ValueError("Rejected army operation cannot mutate displayed armies")
+                return
+            if action.kind == "swap_garrison":
+                if replace(observed.window, armies=before.window.armies, army=before.window.army) != before.window:
+                    raise ValueError("Garrison swap cannot change unrelated town window details")
+                if _army_totals(observed.window.armies) != _army_totals(before.window.armies):
+                    raise ValueError("Native garrison swap must conserve every displayed creature")
+                participants = {army.subject for army in before.window.armies if army.role != "town_garrison"}
+                if not _same_heroes(before.heroes, observed.heroes, army_subjects=participants, garrison_subjects=participants):
+                    raise ValueError("Garrison swap can change only the owned heroes' displayed garrison flags")
+                old_upper, old_visitor = before.window.armies[0], next((army for army in before.window.armies if army.role == "visiting_hero"), None)
+                new_upper, new_visitor = observed.window.armies[0], next((army for army in observed.window.armies if army.role == "visiting_hero"), None)
+                if old_visitor is not None:
+                    if new_upper.role != "garrison_hero" or new_upper.subject != old_visitor.subject:
+                        raise ValueError("Visitor must become the displayed garrison hero")
+                    if old_upper.role == "garrison_hero":
+                        if (new_visitor is None or new_visitor.subject != old_upper.subject
+                                or replace(new_visitor, role=old_upper.role) != old_upper
+                                or replace(new_upper, role=old_visitor.role) != old_visitor):
+                            raise ValueError("Occupied garrison swap must exchange the two hero roles without changing their armies")
+                    elif new_visitor is not None:
+                        raise ValueError("Entering an empty garrison leaves no visitor")
+                elif (new_upper.role != "town_garrison" or any(slot.count for slot in new_upper.slots)
+                      or new_visitor is None or new_visitor.subject != old_upper.subject
+                      or replace(new_visitor, role=old_upper.role) != old_upper):
+                    raise ValueError("Leaving the garrison must reveal the same visiting hero")
+                return
+            expected = _arranged_window(before.window, action)
+            participants = {army_slot(before.window.armies, ref)[0].subject for ref in (action.selection, action.destination)}
+            if observed.window != expected or not _same_heroes(before.heroes, observed.heroes, army_subjects=participants):
+                raise ValueError("Army acknowledgement must match the exact displayed slot effect")
+            return
+        if action.kind == "upgrade_stack":
+            if (self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted)
+                    or self.context_changes != 1 or self.context != before.window.stack_panel.parent_context
+                    or self.stack_origin is None):
+                raise ValueError("Upgrade requires one native command and explicit return to its frozen parent")
+            panel = before.window.stack_panel
+            target = next(item.creature for item in panel.offers if item.ref == action.selection)
+            expected_window = self.stack_origin.window
+            if result.accepted:
+                expected_window = _replace_window_slots(expected_window, {panel.source.ref: replace(panel.source, creature=target)})
+            resources = tuple(amount - (cost if result.accepted else 0) for amount, cost in zip(before.resources, panel.total_cost))
+            if (observed.window != expected_window or observed.resources != resources
+                    or not _same_heroes(before.heroes, observed.heroes,
+                                        army_subjects=(before.context.subject,) if result.accepted else ())
+                    or observed.towns != before.towns):
+                raise ValueError("Upgrade receipt must bind the selected whole stack and exact displayed cost")
+            return
+        if (self.consumer != "adapter" or self.commands or self.accepted_commands
+                or observed.resources != before.resources or observed.heroes != before.heroes or observed.towns != before.towns):
+            raise ValueError("Stack navigation cannot issue commands or change game state")
+        if not result.accepted:
+            if self.context_changes or observed.window != before.window or self.context != before.context:
+                raise ValueError("Rejected stack navigation must preserve the current popup")
+            return
+        if self.context_changes != 1 or observed.context != self._context_target() or self.context != observed.context:
+            raise ValueError("Stack navigation requires its exact explicit context transition")
+        if action.kind == "open_stack":
+            _, source = army_slot(before.window.armies, action.selection)
+            panel = observed.window.stack_panel
+            if panel.parent_context != before.context or panel.source != source:
+                raise ValueError("Stack popup must bind the previously displayed selected slot and parent")
+        elif action.kind == "select_upgrade":
+            old, new = before.window.stack_panel, observed.window.stack_panel
+            if (replace(new, selected_upgrade_ref=None, total_cost=None, affordable=None) != old
+                    or new.selected_upgrade_ref != action.selection):
+                raise ValueError("Upgrade confirmation must bind only the selected displayed button")
+        elif before.context.panel == "upgrade":
+            expected = replace(before.window, context=replace(before.context, panel="overview"),
+                               stack_panel=replace(before.window.stack_panel, selected_upgrade_ref=None, total_cost=None, affordable=None))
+            if observed.window != expected:
+                raise ValueError("Cancelling upgrade returns the unchanged stack overview")
+        elif self.stack_origin is None or observed.window != self.stack_origin.window:
+            raise ValueError("Closing stack popup returns its unchanged frozen parent")
 
     def _check_hire_effect(self, result):
         before = self.decision.observation
@@ -1610,7 +2050,7 @@ def _decode_simple(raw, cls, tuple_fields=()):
 
 def _decode_context(raw, profile):
     data = _record(raw, Context)
-    if profile == WINDOWS_PROFILE or data.get("kind", "map") != "town":
+    if profile == WINDOWS_PROFILE or data.get("kind", "map") not in ("town", "stack", "exchange"):
         if {"panel", "selection"} & data.keys():
             raise ValueError("Panel fields are absent from this context/schema")
     elif not {"panel", "selection"} <= data.keys():
@@ -1683,6 +2123,24 @@ def decode_town_panel(raw, *, schema=TOWN_SCHEMA):
     return TownPanel(**data)
 
 
+def decode_army(raw):
+    data = _exact_record(raw, ArmyView)
+    data["slots"] = tuple(ArmySlot(**_exact_record(slot, ArmySlot)) for slot in _array(data["slots"]))
+    return ArmyView(**data)
+
+
+def decode_stack_panel(raw, profile):
+    if not profile.army_management:
+        raise ValueError("Stack panel requires v6")
+    data = _exact_record(raw, StackPanel)
+    data["parent_context"] = _decode_context(data["parent_context"], profile)
+    data["source"] = ArmySlot(**_exact_record(data["source"], ArmySlot))
+    data["offers"] = tuple(UpgradeChoice(**_exact_record(item, UpgradeChoice)) for item in _array(data["offers"]))
+    if data["total_cost"] is not None:
+        data["total_cost"] = _array(data["total_cost"])
+    return StackPanel(**data)
+
+
 def decode_observation(raw, *, schema=SCHEMA):
     profile = profile_for(schema)
     if schema != profile.history_schema:
@@ -1702,6 +2160,10 @@ def decode_observation(raw, *, schema=SCHEMA):
                 raise ValueError("Town economy fields are absent from this context/schema")
         else:
             window["town_panel"] = decode_town_panel(window.get("town_panel"), schema=profile.history_schema)
+        if "armies" in window:
+            window["armies"] = tuple(decode_army(item) for item in _array(window["armies"]))
+        if window.get("stack_panel") is not None:
+            window["stack_panel"] = decode_stack_panel(window["stack_panel"], profile)
         if window.get("army") is not None:
             window["army"] = tuple(_decode_simple(item, Stack) for item in _array(window["army"]))
         for name in ("primary_skills", "buildings"):
@@ -1742,17 +2204,24 @@ def _wire(value):
         return [_wire(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
         data = {field.name: _wire(getattr(value, field.name)) for field in fields(value)}
-        if type(value) is Context and value.panel is None:
+        if type(value) is Context and value.panel is None and value.kind != "exchange":
             del data["panel"], data["selection"]
         elif type(value) is Action and value.schema == ACTION_SCHEMA:
             for name in ("panel", "selection", "count", "destination"):
                 del data[name]
-        elif type(value) is Window and value.town_panel is None:
-            del data["town_panel"]
+        elif type(value) is Window:
+            for name in ("town_panel", "armies", "stack_panel"):
+                if getattr(value, name) is None:
+                    del data[name]
+        elif type(value) is Hero and value.in_garrison is None:
+            del data["in_garrison"]
+        elif type(value) is VisibleEvent and value.partner is None:
+            del data["partner"]
         elif type(value) is Offers:
             del data["schema"]  # bound by the enclosing frame's explicit schema
-            if value.panel is None:
-                del data["panel"]
+            for name in ("panel", "armies", "stack_panel", "movable_hero_refs"):
+                if getattr(value, name) is None:
+                    del data[name]
         elif type(value) is TownPanel:
             for name in ("recruitment", "armies", "tavern"):
                 if getattr(value, name) is None:
@@ -1821,7 +2290,11 @@ def decode_frame(raw):
         offer["context"] = _decode_context(offer.get("context"), profile)
         if "panel" in offer:
             offer["panel"] = decode_town_panel(offer["panel"], schema=profile.history_schema)
-        for name in ("size", "hero_refs", "town_refs"):
+        if "armies" in offer:
+            offer["armies"] = tuple(decode_army(item) for item in _array(offer["armies"]))
+        if "stack_panel" in offer:
+            offer["stack_panel"] = decode_stack_panel(offer["stack_panel"], profile)
+        for name in ("size", "hero_refs", "town_refs", "movable_hero_refs"):
             if name in offer:
                 offer[name] = _array(offer[name])
         try:

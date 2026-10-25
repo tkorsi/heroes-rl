@@ -102,6 +102,7 @@ private:
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool heroRecruitment = false; ///< opt-in protocol-7 owned-town tavern and multiple heroes
 	bool armyTransfer = false; ///< opt-in protocol-6 overview armies and exact transfers
+	bool armyManagement = false; ///< opt-in protocol-8 explicit army operations and exchange queries
 	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
 	explorer_rl::ContextualState contextState; ///< protected by stateMutex
 	explorer_rl::VisibleTracker visibleTracker; ///< protected by stateMutex
@@ -186,5 +187,13 @@ private:
 	bool executeTavernAction(const JsonNode & action, int64_t decision);
 	JsonNode townArmyExchange(const CGTownInstance & town); ///< only the explicit v4 overview
 	bool executeTransferAction(const JsonNode & action, int64_t decision);
+	JsonNode contextualArmyViews(); ///< only the current explicitly displayed owned rows
+	JsonNode stackPanel(); ///< only the opened stack or selected upgrade confirmation
+	bool executeArmyAction(const JsonNode & action, int64_t decision);
+	bool executeStackAction(const JsonNode & action, int64_t decision);
+	bool executeGarrisonAction(const JsonNode & action, int64_t decision);
+	bool activeOwnHeroExchange(int firstEngineID, int secondEngineID) const; ///< stateMutex held
+	void installOwnHeroExchange(); ///< stable game state and stateMutex held, no pending action
+	bool executeExchangeClose(const JsonNode & action, int64_t decision);
 	void contextualResult(JsonNode result, int64_t decision);
 };

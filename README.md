@@ -2066,6 +2066,38 @@ implementation is not implied by the stage 1 results. Every later stage still
 requires native effects/receipts for both colors, player-local history, replay,
 tamper checks and fixed-weight inference, with all failed attempts preserved.
 
+## Army operations — implementation awaiting native validation
+
+The opt-in `adventure-army-management-v1` profile uses protocol 8,
+`heroes-player-history-v6`, `heroes-context-actions-v6` and model/policy v4.
+It preserves earlier profile encodings and the exact Tavern-enabled scenario.
+Automatic combat, native costs and restrictions, fog and rewards are unchanged.
+
+An explicitly opened hero window, town overview or native own-hero exchange
+shows its eligible army rows and seven slots. The policy chooses source,
+destination and exact moved count for a split; merges consume the full selected
+source. Explicit swaps exchange the selected contents, including unequal counts
+of the same creature. Native last-stack restrictions apply. Stack details expose
+up to three native upgrade buttons; selecting one reveals its full-stack cost
+and confirmation. Garrison entry, exit and occupied-slot swaps use the native
+operation, including its mandatory town-army consolidation on entry. There is
+no army optimization macro.
+
+A native own-hero meeting first finishes the parent movement action, then opens
+its query as a separate context. Closing that exchange sends the native query
+reply and waits for movement to finish. The query ID is private adapter state.
+Current own hero observations identify garrison placement. Closed parent army
+rows do not refresh through a stack popup; its explicit back/confirmation
+returns to the original parent. All mutations require a corresponding native
+receipt and exact observed effects. Player histories and fixed-weight neural
+inference retain separate per-player memory.
+
+The new sources compile locally. Bounded both-color mechanics, open-dialog
+cutoffs, natural-ending compatibility, replay/tamper and fixed-weight inference
+checks are still pending at this implementation checkpoint. No new game or
+optimizer update is implied by this section; failed attempts will remain in the
+validation evidence. Stage 3 adventure choices are still pending.
+
 ## Headless self-play environment (issue #4, in progress)
 
 Status: the legacy `movement-v1` environment has passed bounded real-game,

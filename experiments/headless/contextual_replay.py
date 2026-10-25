@@ -22,6 +22,7 @@ import time
 
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import replay as legacy
+from experiments.headless.army_replay_mutations import army_management_mutations
 from experiments.learner import contextual as contract
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -229,6 +230,7 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300):
                          "verifier_sources": {str(path.relative_to(ROOT)): evidence.file_identity(path)
                              for path in (Path(__file__), Path(evidence.__file__), Path(legacy.__file__),
                                           ROOT / "experiments/headless/contextual_replay_history.py",
+                                          ROOT / "experiments/headless/army_replay_mutations.py",
                                           ROOT / "experiments/headless/contextual_protocol.py",
                                           Path(contract.__file__)) if path.is_file()}}, "training_performed": False}
     try:
@@ -264,13 +266,14 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300):
 
 
 def _hero_recruitment_mutations(tape, add):
-    """Alter only recorded v5 tavern fields and witnessed hire effects.
+    """Alter only recorded v5/v6 tavern fields and witnessed hire effects.
 
     These are diagnostic counterexamples, never constructed positive engine
     evidence. The native verifier must first pass the original recording.
     """
     header = tape[0] if tape else {}
-    profile = contract.HEROES_PROFILE
+    profile = (contract.MANAGEMENT_PROFILE if header.get("interface") == contract.MANAGEMENT_ENVIRONMENT
+               else contract.HEROES_PROFILE)
     expected = {"schema": SCHEMA, "interface": profile.environment, "protocol_version": profile.protocol,
                 "history_schema": profile.history_schema, "action_schema": profile.action_schema}
     if (any(header.get(key) != value for key, value in expected.items())
@@ -387,14 +390,21 @@ def _hero_recruitment_mutations(tape, add):
                 change("hired_hero_position", after_index, (*prefix, "heroes", hero_index, "position", axis),
                        (hero["position"][axis] + 1) % extent)
                 break
-        exchange = (((observed.get("window") or {}).get("town_panel") or {}).get("armies") or {})
+        window = observed.get("window") or {}
+        exchange = ((window.get("town_panel") or {}).get("armies") or {})
         visitor = exchange.get("destination")
+        visitor_path = ("window", "town_panel", "armies", "destination")
+        if profile.army_management:
+            match = next(((i, army) for i, army in enumerate(window.get("armies", []))
+                          if army["role"] == "visiting_hero" and army["subject"] == hero["handle"]), None)
+            visitor = match[1] if match else None
+            if match: visitor_path = ("window", "armies", match[0])
         if visitor is not None and visitor.get("subject") == hero["handle"]:
             stack = next(((slot_index, slot) for slot_index, slot in enumerate(visitor["slots"]) if slot["count"]), None)
             if stack is not None:
                 slot_index, slot = stack
                 change("hired_hero_army_count", after_index,
-                       (*prefix, "window", "town_panel", "armies", "destination", "slots", slot_index, "count"),
+                       (*prefix, *visitor_path, "slots", slot_index, "count"),
                        slot["count"] + 1)
 
 
@@ -501,6 +511,7 @@ def tamper_cases(tape):
             add("window_navigation", index, navigation)
             selected.add("navigation")
     _hero_recruitment_mutations(tape, add)
+    army_management_mutations(tape, add)
     closes = [i for i, row in enumerate(tape) if row.get("kind") == "close"]
     if closes:
         add("missing_natural_close", closes[-1], lambda rows, i: rows.pop(i))

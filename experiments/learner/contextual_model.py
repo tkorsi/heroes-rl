@@ -24,8 +24,11 @@ ARMIES_MODEL_SCHEMA = "heroes-context-model-v2"
 ARMIES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v2"
 HEROES_MODEL_SCHEMA = "heroes-context-model-v3"
 HEROES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v3"
+MANAGEMENT_MODEL_SCHEMA = "heroes-context-model-v4"
+MANAGEMENT_DISTRIBUTION_SCHEMA = "heroes-context-policy-v4"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
-            "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero")
+            "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks", "swap_stacks",
+            "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison")
 # Verification, command identifiers and technical boundaries are not observations.
 _METADATA = frozenset(("issued", "cutoff", "cutoff_finalized", "finalized", "failure", "superseded"))
 
@@ -38,7 +41,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA):
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -58,6 +61,8 @@ class ModelConfig:
 
 def model_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.army_management:
+        return MANAGEMENT_MODEL_SCHEMA
     if profile.hero_recruitment:
         return HEROES_MODEL_SCHEMA
     return ARMIES_MODEL_SCHEMA if profile.army_transfer else MODEL_SCHEMA
@@ -65,6 +70,8 @@ def model_schema_for(profile_or_schema):
 
 def distribution_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.army_management:
+        return MANAGEMENT_DISTRIBUTION_SCHEMA
     if profile.hero_recruitment:
         return HEROES_DISTRIBUTION_SCHEMA
     return ARMIES_DISTRIBUTION_SCHEMA if profile.army_transfer else DISTRIBUTION_SCHEMA
@@ -111,6 +118,8 @@ def _subject(observation, ref):
 
 
 def _selection(observation, ref):
+    if observation is not None and observation.window is not None and observation.window.stack_panel is not None:
+        return next((_semantic(item) for item in observation.window.stack_panel.offers if item.ref == ref), _node("unresolved_selection"))
     if observation is None or observation.window is None or observation.window.town_panel is None:
         return _node("unresolved_selection")
     panel = observation.window.town_panel
@@ -131,9 +140,9 @@ def _action(action, observation):
         children.append(_node(key, _semantic(value)))
     children.extend((_node("panel", _semantic(action.panel)),
                      _node("decision_selection", _army_slot(observation, action.selection, receiving=False)
-                           if action.kind == "transfer_stack" else _selection(observation, action.selection))))
+                           if action.kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks", "open_stack") else _selection(observation, action.selection))))
     if action.destination is not None:
-        if action.kind == "transfer_stack":
+        if action.kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks"):
             children.append(_node("destination", _army_slot(observation, action.destination, receiving=True)))
         else:
             panel = observation.window.town_panel.recruitment
@@ -144,10 +153,14 @@ def _action(action, observation):
 
 
 def _army_slot(observation, ref, *, receiving):
-    panel = observation.window.town_panel if observation and observation.window else None
-    exchange = panel.armies if panel else None
-    army = (exchange.destination if receiving else exchange.source) if exchange else None
-    slot = next((slot for slot in army.slots if slot.ref == ref), None) if army else None
+    window = observation.window if observation else None
+    if window is not None and window.armies is not None:
+        army, slot = c.army_slot(window.armies, ref)
+    else:
+        panel = window.town_panel if window else None
+        exchange = panel.armies if panel else None
+        army = (exchange.destination if receiving else exchange.source) if exchange else None
+        slot = next((slot for slot in army.slots if slot.ref == ref), None) if army else None
     if slot is None:
         raise ValueError("Army slot has no current displayed semantic binding")
     return _node("army_slot", _node("role", _text(army.role)), _node("owner_subject", _subject(observation, army.subject)),
@@ -180,6 +193,10 @@ def _semantic(value):
         cards = [_node("card", _semantic(card), _semantic(card.ref == value.selected_offer_ref)) for card in value.offers]
         return _node("tavern", _set("cards", cards), _node("selected_detail", _semantic(value.selected_detail)),
                      _node("gold_cost", _number(value.gold_cost)), _node("recruit_status", _text(value.recruit_status)))
+    if type(value) is c.StackPanel:
+        cards = [_node("upgrade", _semantic(card), _semantic(card.ref == value.selected_upgrade_ref)) for card in value.offers]
+        return _node("stack_panel", _semantic(value.parent_context), _semantic(value.source), _set("offers", cards),
+                     _node("total_cost", _semantic(value.total_cost)), _node("affordable", _semantic(value.affordable)))
     if type(value) is c.Notice:
         return _node("notice", _text(value.display_mode),
                      ("ordered", "notice_text", tuple(_semantic(token) for token in value.text)),
@@ -190,9 +207,14 @@ def _semantic(value):
             name, item = field.name, getattr(value, field.name)
             # Additive profile fields must not add even an "absent" node to
             # old observations: archived values/probabilities remain exact.
+            if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
+                                 or type(value) is c.Hero and name == "in_garrison"
+                                 or type(value) is c.Window and name in ("armies", "stack_panel")
+                                 or type(value) is c.VisibleEvent and name == "partner"):
+                continue
             if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
-            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "subject", "selection", "schema"):
+            if name in ("handle", "ref", "control_ref", "selected_offer_ref", "selected_upgrade_ref", "subject", "selection", "partner", "schema"):
                 continue
             if name in ("creature", "terrain", "road", "kind", "subtype", "object_kind", "object_subtype", "faction", "portrait", "hero_class") and type(item) is int:
                 encoded = _text(f"category:{item}")
@@ -235,11 +257,15 @@ class ContextualEncoder:
                 children.append(_semantic(frame.event))
                 if frame.event.subject is not None:
                     children.append(_node("prior_observation_subject", _subject(self.observation, frame.event.subject)))
+                if frame.event.partner is not None:
+                    children.append(_node("prior_observation_partner", _subject(self.observation, frame.event.partner)))
             if frame.result is not None:
                 children.append(_semantic(frame.result))
             if frame.context is not None:
                 children.append(_semantic(frame.context))
                 children.append(_node("prior_observation_subject", _subject(self.observation, frame.context.subject)))
+                if frame.context.kind == "exchange":
+                    children.append(_node("prior_observation_partner", _subject(self.observation, frame.context.selection)))
             if frame.accepted is not None:
                 children.append(_node("accepted", _semantic(frame.accepted)))
             if frame.outcome is not None:
@@ -408,6 +434,16 @@ class ContextualActorCritic(nn.Module):
                     _set("towns", [_semantic(town) for town in observation.towns]),
                     _semantic(observation.window),
                     _node("current_window_subject", _subject(observation, observation.context.subject)))
+        if observation.window is not None and observation.window.armies is not None:
+            window = observation.window
+            bindings = [_node("displayed_army", _semantic(army), _subject(observation, army.subject)) for army in window.armies]
+            if window.stack_panel is not None:
+                parent = window.stack_panel.parent_context
+                bindings.append(_node("stack_parent", _subject(observation, parent.subject),
+                                      _subject(observation, parent.selection) if parent.kind == "exchange" else _node("absent")))
+            if window.context.kind == "exchange":
+                bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
+            own = _node("management_observation", own, _set("army_bindings", bindings))
         return global_map, self._encode_tree(own, cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
 
     def forward_step(self, frame, state):
@@ -459,8 +495,21 @@ class ContextualDistribution:
     def _kinds(self):
         offers, context = self.offers, self.offers.context
         if context.kind == "map":
+            movable = offers.hero_refs if offers.movable_hero_refs is None else offers.movable_hero_refs
             return tuple(kind for kind in _ACTIONS if kind == "end_turn"
-                         or kind in ("move_to", "open_hero") and offers.hero_refs or kind == "open_town" and offers.town_refs)
+                         or kind == "move_to" and movable or kind == "open_hero" and offers.hero_refs
+                         or kind == "open_town" and offers.town_refs)
+        if context.kind == "stack":
+            if context.panel == "overview":
+                return ("back",) + (("select_upgrade",) if offers.stack_panel.offers else ())
+            return ("back",) + (("upgrade_stack",) if offers.stack_panel.affordable else ())
+        if offers.armies:
+            kinds = ("close",) + (("open_panel",) if offers.panel and offers.panel.controls else ())
+            kinds += tuple(kind for kind in ("split_stack", "merge_stacks", "swap_stacks") if c.army_operation_choices(offers.armies, kind))
+            kinds += (("open_stack",) if any(slot.count for army in offers.armies for slot in army.slots) else ())
+            if context.kind == "town" and any(army.role in ("garrison_hero", "visiting_hero") for army in offers.armies):
+                kinds += ("swap_garrison",)
+            return kinds
         if offers.panel is None:
             return ("close",)
         if context.panel == "overview":
@@ -494,7 +543,8 @@ class ContextualDistribution:
                             kinds.index(action.kind) if action else None)]
         subject = panel = selection = destination = x = y = count = None
         if kind in ("move_to", "open_hero", "open_town"):
-            refs = self.offers.town_refs if kind == "open_town" else self.offers.hero_refs
+            refs = (self.offers.town_refs if kind == "open_town" else self.offers.movable_hero_refs
+                    if kind == "move_to" and self.offers.movable_hero_refs is not None else self.offers.hero_refs)
             semantics = [_node(kind, _subject(self.observation, ref)) for ref in refs]
             index = choose("subject", self._logits(semantics), refs.index(action.subject) if action else None)
             subject = refs[index]
@@ -519,29 +569,42 @@ class ContextualDistribution:
             control = controls[index]
             subject, panel = self.offers.context.subject, control.panel
             selection = control.ref if panel == "recruitment" else None
+        elif kind == "open_stack":
+            choices = tuple(slot.ref for army in self.offers.armies for slot in army.slots if slot.count)
+            index = choose("selection", self._logits([_army_slot(self.observation, ref, receiving=False) for ref in choices]),
+                           choices.index(action.selection) if action else None)
+            subject, selection = self.offers.context.subject, choices[index]
+        elif kind == "select_upgrade":
+            choices = self.offers.stack_panel.offers
+            index = choose("selection", self._logits([_semantic(item) for item in choices]),
+                           next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
+            subject, selection = self.offers.context.subject, choices[index].ref
         elif kind in ("open_building", "select_recruit", "select_hero"):
             choices = (self.offers.panel.buildings if kind == "open_building" else
                        self.offers.panel.tavern.offers if kind == "select_hero" else self.offers.panel.recruitment.offers)
             index = choose("selection", self._logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
-        elif kind == "transfer_stack":
-            exchange = self.offers.panel.armies
-            choices = exchange.choices()
+        elif kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks"):
+            exchange = self.offers.panel.armies if kind == "transfer_stack" else None
+            choices = exchange.choices() if exchange else c.army_operation_choices(self.offers.armies, kind)
             sources = tuple(dict.fromkeys(source for source, _, _ in choices))
-            source_index = choose("source_slot", self._logits([_army_slot(self.observation, ref, receiving=False) for ref in sources]),
+            source_semantics = [_army_slot(self.observation, ref, receiving=False) for ref in sources]
+            if kind != "transfer_stack": source_semantics = [_node(kind, item) for item in source_semantics]
+            source_index = choose("source_slot", self._logits(source_semantics),
                                   sources.index(action.selection) if action else None)
             selection = sources[source_index]
             destinations = tuple(destination for source, destination, _ in choices if source == selection)
             destination_index = choose("destination_slot", self._logits([
-                _node("transfer_pair", _army_slot(self.observation, selection, receiving=False),
+                _node("transfer_pair" if kind == "transfer_stack" else kind + "_pair", _army_slot(self.observation, selection, receiving=False),
                       _army_slot(self.observation, ref, receiving=True)) for ref in destinations]),
                 destinations.index(action.destination) if action else None)
             destination = destinations[destination_index]
             subject = self.offers.context.subject
-            low, maximum = 1, exchange.maximum(selection, destination)
-            high = maximum
-            features = self._features(_node("transfer_quantity", _army_slot(self.observation, selection, receiving=False),
+            low, maximum = 1, (exchange.maximum(selection, destination) if exchange else
+                               c.army_operation_maximum(self.offers.armies, kind, selection, destination))
+            high = maximum if kind in ("transfer_stack", "split_stack") else 1
+            features = self._features(_node("transfer_quantity" if kind == "transfer_stack" else kind + "_quantity", _army_slot(self.observation, selection, receiving=False),
                                            _army_slot(self.observation, destination, receiving=True)))
             depth = 0
             while low < high:
@@ -554,10 +617,12 @@ class ContextualDistribution:
                 if branch: low = middle + 1
                 else: high = middle
                 depth += 1
-            count = low
-        elif kind in ("construct", "back", "recruit", "hire_hero"):
+            count = low if kind in ("transfer_stack", "split_stack") else None
+        elif kind in ("construct", "back", "recruit", "hire_hero", "swap_garrison", "upgrade_stack"):
             subject = self.offers.context.subject
-            if kind == "construct":
+            if kind == "upgrade_stack":
+                selection = self.offers.stack_panel.selected_upgrade_ref
+            elif kind == "construct":
                 selection = self.offers.panel.building.ref
             elif kind == "hire_hero":
                 selection = self.offers.panel.tavern.selected_offer_ref

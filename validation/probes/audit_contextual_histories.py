@@ -138,7 +138,7 @@ def audit_player(path, player):
                 raw = _json(line)
                 # The serialized envelope must carry its version, even if a
                 # dataclass constructor has a convenient in-process default.
-                if type(raw) is not dict or raw.get("schema") not in (contract.SCHEMA, contract.TOWN_SCHEMA, contract.ARMIES_SCHEMA, contract.HEROES_SCHEMA):
+                if type(raw) is not dict or raw.get("schema") not in (contract.SCHEMA, contract.TOWN_SCHEMA, contract.ARMIES_SCHEMA, contract.HEROES_SCHEMA, contract.MANAGEMENT_SCHEMA):
                     raise ValueError("Explicit supported contextual history schema is required")
                 frame = contract.decode_frame(raw)
                 if frame.player != player:
@@ -236,7 +236,7 @@ def _manifest_checks(manifest, reports, histories):
     for color, report, history in zip(COLORS, reports, histories):
         player = players.get(color, {})
         declaration = player.get(profile.history_key, {}) if type(player) is dict else {}
-        other_keys = {candidate.history_key for candidate in (contract.WINDOWS_PROFILE, contract.TOWN_PROFILE, contract.ARMIES_PROFILE, contract.HEROES_PROFILE)
+        other_keys = {candidate.history_key for candidate in (contract.WINDOWS_PROFILE, contract.TOWN_PROFILE, contract.ARMIES_PROFILE, contract.HEROES_PROFILE, contract.MANAGEMENT_PROFILE)
                       if candidate != profile}
         require(type(player) is dict and not other_keys.intersection(player), f"{color} contains a different history version declaration")
         if type(declaration) is not dict:

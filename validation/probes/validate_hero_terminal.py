@@ -27,6 +27,7 @@ def main(argv=None):
     parser.add_argument('--data', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seed', type=int, default=102201)
+    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), default=c.HEROES_ENVIRONMENT)
     args = parser.parse_args(argv)
     if not 1 <= args.seed < 2147483647:
         parser.error('Use a positive bounded native seed')
@@ -35,7 +36,7 @@ def main(argv=None):
     if args.output.exists(): parser.error('Preserve every attempt; output exists')
     args.map = ROOT / 'experiments/explorer/maps/hero-management-v1.vmap'
     verify_hero_scenario(args.map)
-    args.interface = c.HEROES_ENVIRONMENT
+    profile = c.profile_for(args.interface)
     args.max_days, args.max_decisions = 20, 100
     args.case_seconds, args.watchdog, args.startup_seconds = 60, 20, 30
     env = base.load('heroes_terminal_probe_env', ROOT / 'experiments/headless/env.py')
@@ -45,7 +46,7 @@ def main(argv=None):
     args.output.mkdir(parents=True)
     implementation = implementation_identity()
     base.write(args.output / 'plan.json', {
-        'schema': 'heroes-v5-natural-boundary-diagnostics-v1', 'interface': args.interface,
+        'schema': f'heroes-v{profile.version}-natural-boundary-diagnostics-v1', 'interface': args.interface,
         'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
         'implementation': implementation, 'native_runtime': runtime_identity(args.binary.parent),
         'map_sha256': base.sha(args.map), 'attacker_colors': list(base.COLORS),
@@ -77,7 +78,7 @@ def main(argv=None):
         report.update(attacker=color, training_input=False, ordinary_outcome_frequency_claim=False)
         reports.append(report)
         base.write(run.directory / 'report.json', report)
-    report = {'schema': 'heroes-v5-natural-boundary-diagnostics-v1', 'cases': reports,
+    report = {'schema': f'heroes-v{profile.version}-natural-boundary-diagnostics-v1', 'cases': reports,
               'training_performed': False, 'ordinary_outcome_frequency_claim': False}
     base.write(args.output / 'report.json', report)
     print(json.dumps({'statuses': [row['probe_status'] for row in reports], 'report': str(args.output / 'report.json')}))

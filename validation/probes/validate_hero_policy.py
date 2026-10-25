@@ -1,4 +1,4 @@
-"""Bounded v5 fixed-weight diagnostics on the exact Tavern-enabled scenario.
+"""Bounded explicitly versioned fixed-weight diagnostics on the exact Tavern-enabled scenario.
 
 Exactly two games exchange the fixed learner/opponent seats. No optimizer is
 imported or constructed. Every started attempt is retained; errors stop the
@@ -96,10 +96,10 @@ def wall_limit(seconds):
         signal.signal(signal.SIGALRM, previous)
 
 
-def prepare_policy(path, settings, source):
+def prepare_policy(path, settings, source, *, interface=INTERFACE):
     """Save and reload fresh random weights without consuming caller RNG."""
     with torch.random.fork_rng(devices=[]):
-        config = ModelConfig(schema=model_schema_for(INTERFACE))
+        config = ModelConfig(schema=model_schema_for(interface))
         torch.manual_seed(settings.initialization_seed)
         learner = ContextualActorCritic(config).eval().requires_grad_(False)
         torch.manual_seed(settings.opponent_seed)
@@ -108,8 +108,8 @@ def prepare_policy(path, settings, source):
         pool.add("hero-opponent-" + weights_sha256(opponent)[:16], opponent)
         checkpoint = "hero-policy-" + weights_sha256(learner)[:16]
         save_policy_checkpoint(path, learner, checkpoint=checkpoint, source_metadata=source,
-                               provenance="random_initialization", opponent_pool=pool, interface=INTERFACE)
-        loaded = load_policy_checkpoint(path, expected_source_metadata=source, interface=INTERFACE)
+                               provenance="random_initialization", opponent_pool=pool, interface=interface)
+        loaded = load_policy_checkpoint(path, expected_source_metadata=source, interface=interface)
         require(loaded.weights_sha256 == weights_sha256(learner)
                 and loaded.opponent_pool.identities == pool.identities, "Saved random checkpoint roundtrip changed weights")
     loaded.model.requires_grad_(False)
@@ -127,13 +127,13 @@ def frozen_fingerprints(loaded, checkpoint):
             "opponents": [list(item) for item in loaded.opponent_pool.identities]}
 
 
-def reconstruct_behavior(history, decisions, estimates, model, seed):
+def reconstruct_behavior(history, decisions, estimates, model, seed, *, schema=c.HEROES_SCHEMA):
     """Independently restart one player's memory and RNG; replay every frame."""
-    require(history and all(frame.schema == c.HEROES_SCHEMA for frame in history), "Expected explicit v5 history")
+    require(history and all(frame.schema == schema for frame in history), "Expected the explicitly selected history version")
     before = weights_sha256(model)
     require(all(item.prefix.weights_sha256 == before for item in (*decisions, *estimates)),
             "Behavior belongs to different fixed weights")
-    encoder = ContextualEncoder(history[0].episode, history[0].player, c.HEROES_SCHEMA)
+    encoder = ContextualEncoder(history[0].episode, history[0].player, schema)
     state = model.initial_state()
     generator = torch.Generator(device="cpu").manual_seed(seed)
     by_choice = {item.decision_seq: item for item in decisions}
@@ -171,14 +171,15 @@ def reconstruct_behavior(history, decisions, estimates, model, seed):
             "weights_unchanged": True, "private_memory_reset": True}
 
 
-def audit_persisted_policy(folder, loaded, policy_seeds):
+def audit_persisted_policy(folder, loaded, policy_seeds, *, interface=INTERFACE):
     """Read the saved artifact and checkpoint anew, independently of collection."""
+    profile = c.profile_for(interface)
     raw = json.loads((folder / "neural-rollout.json").read_text())
     collected = CollectedEpisode.from_dict(raw)
     require(collected.to_dict() == raw, "Persisted rollout does not roundtrip exactly")
     manifest = json.loads((folder / "manifest.json").read_text())
     require(manifest == json.loads(collected.manifest_json), "Rollout embeds another manifest")
-    paths = tuple((folder / manifest["players"][color][c.HEROES_PROFILE.history_key]["path"]).resolve()
+    paths = tuple((folder / manifest["players"][color][profile.history_key]["path"]).resolve()
                   for color in COLORS)
     require(all(folder.resolve() in path.parents for path in paths), "History escapes its episode")
     independent = audit(*paths, folder / "manifest.json")
@@ -196,7 +197,7 @@ def audit_persisted_policy(folder, loaded, policy_seeds):
         require(tuple(c.decode_frame(json.loads(line)) for line in path.read_text().splitlines()) == rollout.history,
                 "Rollout changed or omitted persisted visible history")
         result = reconstruct_behavior(rollout.history, rollout.decisions, rollout.estimates,
-                                      model, policy_seeds[rollout.player])
+                                      model, policy_seeds[rollout.player], schema=profile.history_schema)
         players.append({"player": rollout.player, "checkpoint": rollout.behavior_checkpoint,
                         "optimization_eligible": False, **result})
     return {"passed": True, "players": players, "history_audit": independent}
@@ -241,6 +242,9 @@ def retain_failed_evidence(env, collector, attempt, error, *, cleanup_seconds=30
 
 
 def run(args):
+    interface = getattr(args, "interface", INTERFACE)
+    require(interface in (c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), "Unsupported diagnostic interface")
+    profile = c.profile_for(interface)
     settings = Settings(**{name: getattr(args, name) for name in Settings.__dataclass_fields__})
     torch.set_num_threads(1)
     output, game_map, binary, data, replay_binary = (
@@ -254,18 +258,18 @@ def run(args):
     subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"], cwd=ROOT,
                    check=True, timeout=60)
     output.mkdir(parents=True)
-    source = source_identity(INTERFACE)
+    source = source_identity(interface)
     implementation = implementation_identity()
     implementation["experiments/explorer/create_hero_scenario.py"] = digest(
         ROOT / "experiments/explorer/create_hero_scenario.py")
     native, runtime = launcher.identity(), runtime_identity(binary.parent)
     checkpoint = output / "fixed-policy.pt"
-    loaded = prepare_policy(checkpoint, settings, source)
+    loaded = prepare_policy(checkpoint, settings, source, interface=interface)
     fixed = frozen_fingerprints(loaded, checkpoint)
     opponent_id = loaded.opponent_pool.identities[0][0]
     limits = Limits(max_days=settings.max_days, max_actions=settings.max_requests + 1,
                     watchdog_seconds=30, startup_seconds=30, shutdown_seconds=30, bridge_timeout=30)
-    plan = {"schema": "heroes-v5-fixed-policy-plan-v1", "interface": INTERFACE, "settings": asdict(settings),
+    plan = {"schema": f"heroes-v{profile.version}-fixed-policy-plan-v1", "interface": interface, "settings": asdict(settings),
             "schedule": settings.schedule(), "source": source, "implementation": implementation, "map": scenario,
             "native": native, "runtime": runtime, "replay_binary_sha256": digest(replay_binary),
             "frozen": fixed, "environment_limits": asdict(limits), "training_performed": False,
@@ -273,7 +277,7 @@ def run(args):
             "wall_scope": "Each collection, reconstruction and replay share one case deadline; failed-episode finalization has a separate 30-second limit, then finite process cleanup follows"}
     write_json(output / "plan.json", plan)
     plan_hash = digest(output / "plan.json")
-    report = {"schema": "heroes-v5-fixed-policy-validation-v1", "plan_sha256": plan_hash, "status": "running",
+    report = {"schema": f"heroes-v{profile.version}-fixed-policy-validation-v1", "plan_sha256": plan_hash, "status": "running",
               "attempts": [], "training_performed": False, "optimizer_updates": 0, "optimizer_steps": 0,
               "training_samples": 0, "ordinary_outcome_claim": False, "frozen_before": fixed}
     write_json(output / "report.json", report)
@@ -299,9 +303,9 @@ def run(args):
                 models = (loaded.model, opponent.model) if row["learner_player"] == 0 else (opponent.model, loaded.model)
                 checkpoints = (loaded.checkpoint, opponent_id) if row["learner_player"] == 0 else (opponent_id, loaded.checkpoint)
                 collector = ContextualCollector(models, checkpoints, learner_player=row["learner_player"],
-                    opponent_pool="hero-fixed-diagnostic-v1", interface=INTERFACE, purpose="diagnostic", origin="native",
+                    opponent_pool="hero-fixed-diagnostic-v1", interface=interface, purpose="diagnostic", origin="native",
                     policy_seeds=tuple(row["policy_seeds"]))
-                env = HeadlessSelfPlayEnv(launcher, output, limits=limits, ledger=True, replay=True, interface=INTERFACE,
+                env = HeadlessSelfPlayEnv(launcher, output, limits=limits, ledger=True, replay=True, interface=interface,
                     agents={color: {"checkpoint": key, "kind": "fixed-untrained-recurrent"}
                             for color, key in zip(COLORS, checkpoints)})
                 collected = collector.run_episode(env, episode=row["episode"], seed=row["engine_seed"],
@@ -316,8 +320,8 @@ def run(args):
                 require(manifest["identity"]["map_sha256"] == scenario["sha256"], "Native game used another map")
                 require(collector.sessions[0]._state.data_ptr() != collector.sessions[1]._state.data_ptr(),
                         "Players share recurrent memory storage")
-                reloaded = load_policy_checkpoint(checkpoint, expected_source_metadata=source, interface=INTERFACE)
-                reconstruction = audit_persisted_policy(folder, reloaded, row["policy_seeds"])
+                reloaded = load_policy_checkpoint(checkpoint, expected_source_metadata=source, interface=interface)
+                reconstruction = audit_persisted_policy(folder, reloaded, row["policy_seeds"], interface=interface)
                 write_json(folder / "policy-reconstruction.json", reconstruction)
                 remaining = settings.case_seconds - (time.monotonic() - started)
                 require(remaining > 0, "No time remains for independent native replay")
@@ -367,6 +371,7 @@ def main(argv=None):
     parser.add_argument("--map", type=Path, default=ROOT / "experiments/explorer/maps/hero-management-v1.vmap")
     for name, default in asdict(Settings()).items():
         parser.add_argument("--" + name.replace("_", "-"), type=float if name == "case_seconds" else int, default=default)
+    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), default=INTERFACE)
     args = parser.parse_args(argv)
     report = run(args)
     print(json.dumps({"status": report["status"], "attempts": len(report["attempts"]),

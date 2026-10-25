@@ -28,6 +28,17 @@ struct ContextualState
 	size_t selectedTavernIndex = 0;
 	std::map<std::pair<int, int>, std::string> armyHandles;
 	std::map<std::tuple<int, int, int>, std::string> armySlotHandles;
+	JsonNode stackParentContext; ///< exact opened parent; never refreshed while stack is open
+	std::string selectedUpgradeRef;
+	std::map<int, std::string> upgradeHandles; ///< private CreatureID routing
+	struct OwnHeroExchange
+	{
+		int first;
+		int second;
+		int query;
+		bool installed = false;
+	};
+	std::optional<OwnHeroExchange> ownHeroExchange; ///< private native query, never policy input
 	int64_t revision = -1;
 	int64_t nextDecision = 0;
 	std::optional<int64_t> decision;

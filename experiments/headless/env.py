@@ -287,7 +287,7 @@ class HeadlessSelfPlayEnv:
     """Agent-environment cycle over one isolated engine process per episode."""
 
     def __new__(cls, *args, interface=None, **kwargs):
-        if cls is HeadlessSelfPlayEnv and interface in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1"):
+        if cls is HeadlessSelfPlayEnv and interface in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1"):
             from contextual_env import ContextualMixin
             contextual_type = type("ContextualSelfPlayEnv", (ContextualMixin, cls), {})
             return object.__new__(contextual_type)
@@ -457,6 +457,9 @@ class HeadlessSelfPlayEnv:
     def history_v5(self, color: str) -> list[dict]:
         """Hero recruitment histories require the explicit version-five interface."""
         raise ValueError("Legacy adjacent-step mode does not expose history-v5")
+
+    def history_v6(self, color: str) -> list[dict]:
+        raise ValueError("Legacy adjacent-step mode does not expose history-v6")
 
     def history_v1(self, color: str) -> list[dict]:
         """A copy of one player's complete heroes-player-history-v1 frames."""

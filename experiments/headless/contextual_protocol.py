@@ -26,6 +26,7 @@ RECORD_FIELDS = {
     "result": {"decision_id", "result"},
     "context": {"decision_id", "context", "revision"},
     "context_invalidated": {"context", "revision", "reason"},
+    "context_opened": {"context", "revision", "reason"},
     "superseded": {"decision_id", "reason"},
     "terminal": {"outcome"},
 }

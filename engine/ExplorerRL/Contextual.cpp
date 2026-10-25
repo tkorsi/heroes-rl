@@ -92,9 +92,9 @@ JsonNode ContextualState::contextJson() const
 	JsonNode node;
 	node["kind"].String() = context;
 	node["subject"] = context == "map" ? JsonNode() : JsonNode(subject);
-	if(context == "town" && !panel.empty())
+	if((context == "town" && !panel.empty()) || context == "stack" || context == "exchange")
 	{
-		node["panel"].String() = panel;
+		node["panel"] = panel.empty() ? JsonNode() : JsonNode(panel);
 		node["selection"] = selection.empty() ? JsonNode() : JsonNode(selection);
 	}
 	return node;
@@ -148,6 +148,7 @@ JsonNode ExplorerRL::contextualObservation()
 		item["position"] = coordinates(hero->visitablePos());
 		item["movement"].Integer() = hero->movementPointsRemaining();
 		item["movement_max"].Integer() = hero->movementPointsLimit();
+		if(armyManagement) item["in_garrison"].Bool() = hero->isGarrisoned();
 		observation["heroes"].Vector().push_back(std::move(item));
 		if(contextState.context == "hero" && contextState.subject == handle)
 			openHero = hero;
@@ -199,7 +200,8 @@ JsonNode ExplorerRL::contextualObservation()
 				observation["objects"].Vector().push_back(std::move(entry));
 			}
 		}
-	if(contextState.context != "map" && !openHero && !openTown)
+	const bool armyModal = armyManagement && (contextState.context == "exchange" || contextState.context == "stack");
+	if(contextState.context != "map" && !openHero && !openTown && !armyModal)
 	{
 		const auto day = callback->getDate(Date::DAY);
 		contextState.supersede(day, "subject_unavailable");
@@ -213,11 +215,11 @@ JsonNode ExplorerRL::contextualObservation()
 		record["reason"].String() = "subject_unavailable";
 		contextState.records.push_back(std::move(record));
 	}
-	if(openHero || openTown)
+	if(openHero || openTown || armyModal)
 	{
 		JsonNode window;
 		window["context"] = contextState.contextJson();
-		for(const char * key : {"primary_skills", "mana", "level", "buildings", "faction"})
+		for(const char * key : {"army", "primary_skills", "mana", "level", "buildings", "faction"})
 			window[key] = JsonNode();
 		if(openHero)
 		{
@@ -227,7 +229,7 @@ JsonNode ExplorerRL::contextualObservation()
 			window["mana"].Integer() = openHero->mana;
 			window["level"].Integer() = openHero->level;
 		}
-		else
+		else if(openTown)
 		{
 			if(townEconomy && contextState.panel != "overview")
 				window["army"] = JsonNode();
@@ -257,6 +259,11 @@ JsonNode ExplorerRL::contextualObservation()
 			}
 			if(armyTransfer && contextState.panel == "overview")
 				window["town_panel"]["armies"] = townArmyExchange(*openTown);
+		}
+		if(armyManagement)
+		{
+			window["armies"] = contextualArmyViews();
+			window["stack_panel"] = contextState.context == "stack" ? stackPanel() : JsonNode();
 		}
 		observation["window"] = std::move(window);
 	}
@@ -329,6 +336,9 @@ void ExplorerRL::contextualTerminal(const char * outcome)
 	{
 		std::lock_guard lock(stateMutex);
 		contextState.supersede(day, "terminal");
+		contextState.ownHeroExchange.reset();
+		contextState.stackParentContext = JsonNode();
+		contextState.selectedUpgradeRef.clear();
 		if(contextState.context != "map")
 		{
 			contextState.context = "map";
@@ -390,6 +400,10 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 		if(!buildAndSend([&]
 		{
 			const auto gameLock = readGameState();
+			{
+				std::lock_guard lock(stateMutex);
+				installOwnHeroExchange();
+			}
 			captureContextual();
 			{
 				std::lock_guard lock(stateMutex);
@@ -412,7 +426,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			return;
 		fields(response, {"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"},
 			{"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"});
-		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
+		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
 			|| response["type"].String() != "context_action" || response["episode"].String() != episode
 			|| !integer(response["player"]) || response["player"].Integer() != playerID.getNum()
 			|| !integer(response["decision_id"]) || response["decision_id"].Integer() != decision
@@ -589,9 +603,24 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 {
 	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
 		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
-	if(action["schema"].String() != (heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
+	if(action["schema"].String() != (armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(armyManagement)
+	{
+		bool stackBack = false, exchangeClose = false;
+		{
+			std::lock_guard lock(stateMutex);
+			stackBack = kind == "back" && contextState.context == "stack";
+			exchangeClose = kind == "close" && contextState.context == "exchange";
+		}
+		if(kind == "split_stack" || kind == "merge_stacks" || kind == "swap_stacks")
+			return executeArmyAction(action, decision);
+		if(kind == "open_stack" || kind == "select_upgrade" || kind == "upgrade_stack" || stackBack)
+			return executeStackAction(action, decision);
+		if(kind == "swap_garrison") return executeGarrisonAction(action, decision);
+		if(exchangeClose) return executeExchangeClose(action, decision);
+	}
 	if(heroRecruitment)
 	{
 		bool tavernBack = false;
@@ -654,6 +683,8 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 			if(std::none_of(own.begin(), own.end(), [&](const auto & item) { return item["handle"] == action["subject"]; }))
 				throw std::runtime_error("Contextual subject was not offered");
 			subject = ObjectInstanceID(contextState.subjects.at(action["subject"].String()));
+			if(armyManagement && kind == "move_to" && callback->getHero(subject)->isGarrisoned())
+				throw std::runtime_error("A garrisoned hero has no map movement control");
 		}
 		if(kind == "move_to")
 		{

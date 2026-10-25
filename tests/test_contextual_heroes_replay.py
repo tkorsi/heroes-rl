@@ -85,6 +85,22 @@ class HeroReplayMutationTests(unittest.TestCase):
         self.assertEqual(after(cases["hired_hero_position"])["heroes"][1]["position"], [2, 1, 0])
         self.assertEqual(after(cases["hired_hero_army_count"])["window"]["town_panel"]["armies"]["destination"]["slots"][0]["count"], 8)
 
+    def test_v6_uses_its_current_window_armies_for_hired_hero_effect(self):
+        tape = mutation_fixture()
+        profile = c.MANAGEMENT_PROFILE
+        tape[0].update(interface=profile.environment, protocol_version=profile.protocol,
+                       history_schema=profile.history_schema, action_schema=profile.action_schema)
+        for row in tape:
+            for record in row.get("message", {}).get("records", []):
+                window = (record.get("observation") or {}).get("window")
+                if window is None: continue
+                old = window.get("town_panel", {}).pop("armies", None)
+                window["armies"] = [army for army in (old.get("source"), old.get("destination")) if army] if old else []
+        cases = hero_cases(tape)
+        self.assertEqual(set(cases), HERO_CASES)
+        visitor = cases["hired_hero_army_count"][8]["message"]["records"][1]["observation"]["window"]["armies"][1]
+        self.assertEqual(visitor["slots"][0]["count"], 8)
+
     def test_new_cases_require_exact_v5_capture_profile(self):
         tape = mutation_fixture()
         for field, value in (("interface", c.ARMIES_ENVIRONMENT), ("protocol_version", 6), ("protocol_version", 7.0),
