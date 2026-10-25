@@ -243,4 +243,89 @@ class SessionScopeTests(unittest.TestCase):
                 self.assertEqual(len(result['cleanup_incomplete']),1)
 
 
+    def test_verified_update_survives_post_checkpoint_publication_failure(self):
+        from types import SimpleNamespace
+        from tools import v8_teacher_campaign as controller
+        from experiments.learner import builtin_v8_training as runner
+        import os, json
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve(); session=root/'campaign-session.json'; session.write_text('{}')
+            parent=root/'parent.json'; parent.write_text('{}')
+            value={'controller_pid':os.getppid(),'release':{'path':'/synthetic-release'},
+                   'compute_deadline_unix':7900,'absolute_deadline_unix':8200}
+            progress={'updates':93,'rollouts':372,'decisions':21100}
+            verified={'progress':progress,'restore':{'synthetic_independent_restore':True}}
+            def batch(parent_path, sequence, evaluate, session_value):
+                name='v8-update92-heldout-092' if evaluate else 'v8-update92-continuation-094'
+                folder=root/'runs'/name; (folder/'execution').mkdir(parents=True)
+                report={'status':'finished','worker_complete':True,'supervisor_cleanup_verified':True,
+                    'within_shared_budget':True,'training_samples':0 if evaluate else 38,
+                    'optimizer_steps':0 if evaluate else 1,'attempts':[],
+                    'cumulative_progress':progress,'execution_wall_seconds':1}
+                (folder/'plan.json').write_text(json.dumps({'execution_output':str(folder/'execution')}))
+                (folder/'execution/report.json').write_text(json.dumps(report))
+                return folder/'plan.json',report
+            def publish(plan, *args):
+                if 'heldout' in str(plan): return 'baseline-private-commit'
+                journal=json.loads((root/'campaign-report.json').read_text())
+                self.assertEqual(journal['latest_verified_parent'],migration.binding(plan))
+                self.assertEqual(journal['latest_verified_progress'],progress)
+                self.assertEqual(journal['latest_private_parent'],migration.binding(parent))
+                self.assertTrue(journal['batches'][-1]['checkpoint_admitted'])
+                raise OSError('synthetic push failure after verified checkpoint')
+            with patch.object(scope,'SESSION',session),patch.object(scope,'session_for',return_value=value), \
+                 patch.object(scope,'validate_release',return_value={'migration_receipt':{}}), \
+                 patch.object(scope,'checked',return_value={'plan':{'path':str(parent)}}), \
+                 patch.object(controller,'DURABLE_ROOT',root),patch.object(controller.time,'time',return_value=1000), \
+                 patch.object(runner,'unused_schedule'),patch.object(controller,'run_batch',side_effect=batch) as runs, \
+                 patch.object(controller,'verify_local_update',return_value=verified) as restore, \
+                 patch.object(controller,'publish_run',side_effect=publish),patch.object(controller,'preflight_private'), \
+                 patch.object(controller.subprocess,'check_output',return_value='failure-archive-commit'):
+                with self.assertRaisesRegex(OSError,'push failure'): controller.campaign(SimpleNamespace(private_repo=root/'private'))
+            self.assertEqual(runs.call_count,2); restore.assert_called_once()
+            journal=json.loads((root/'campaign-report.json').read_text())
+            final=root/'runs/v8-update92-continuation-094/plan.json'
+            self.assertEqual(journal['latest_parent'],migration.binding(final))
+            self.assertEqual(journal['latest_verified_parent'],migration.binding(final))
+            self.assertEqual(journal['latest_verified_progress'],progress)
+            self.assertEqual(journal['latest_private_parent'],migration.binding(parent))
+            row=journal['batches'][-1]
+            self.assertEqual(row['status'],'publication_failed')
+            self.assertEqual(row['publication_status'],'failed')
+            self.assertTrue(row['checkpoint_admitted'])
+            self.assertIsNone(row['private_commit'])
+            failure=json.loads((final.parent/'controller-failure.json').read_text())
+            self.assertTrue(failure['checkpoint_admitted'])
+            self.assertEqual(failure['verified_checkpoint']['progress'],progress)
+            self.assertEqual(failure['preservation_status'],'private_publication_failed')
+
+    def test_local_update_requires_unchanged_independent_copy_before_admission(self):
+        from types import SimpleNamespace
+        from tools import v8_teacher_campaign as controller
+        from experiments.learner import builtin_training_resume as resume
+        import json
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve(); folder=root/'runs/v8-update92-continuation-094'
+            execution=folder/'execution'; execution.mkdir(parents=True)
+            plan=folder/'plan.json'; plan.write_text(json.dumps({'execution_output':str(execution)}))
+            saved={}
+            for kind in ('policy','resume'):
+                path=execution/('after-'+kind+'.pt'); path.write_bytes(kind.encode()); saved[kind]=migration.binding(path)
+            report={'plan_sha256':migration.binding(plan)['sha256'],'after_checkpoint':saved}
+            report_path=execution/'report.json'; report_path.write_text(json.dumps(report))
+            backup=root/'checkpoints'/folder.name; backup.mkdir(parents=True)
+            sources={'plan.json':migration.binding(plan),'report.json':migration.binding(report_path)}
+            for kind in ('policy','resume'):
+                name='after-'+kind+'.pt'; (backup/name).write_bytes((execution/name).read_bytes()); sources[name]=saved[kind]
+            proof={'synthetic_restore':True}
+            receipt={'sources':sources,'restore':proof}
+            (backup/'preservation-receipt.json').write_text(json.dumps(receipt))
+            with patch.object(controller,'DURABLE_ROOT',root),patch.object(resume,'_completion',return_value=(SimpleNamespace(updates=93),784,{})), \
+                 patch.object(controller,'verify_pair',return_value=proof) as restore:
+                self.assertEqual(controller.verify_local_update(plan,report)['progress'],{'updates':93})
+                self.assertEqual(restore.call_count,2)
+                (backup/'after-resume.pt').write_bytes(b'corrupted')
+                with self.assertRaisesRegex(ValueError,'copy differs'): controller.verify_local_update(plan,report)
+
+
 if __name__ == '__main__': unittest.main()
