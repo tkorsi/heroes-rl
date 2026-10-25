@@ -42,7 +42,7 @@ class NativeContextualEvidenceTests(unittest.TestCase):
             self.assertEqual(compiled.returncode, 0, compiled.stdout + compiled.stderr)
             env = {key: value for key, value in os.environ.items()
                    if not key.startswith(("EXPLORER_RL_", "VCMI_EXPERIMENT_", "VCMI_RECORD_"))}
-            for mode in ("clear", "registry-exit", "live-exit"):
+            for mode in ("clear", "registry-exit", "live-exit", "session-close"):
                 with self.subTest(mode=mode):
                     result = subprocess.run([str(executable), mode, str(temporary)], env=env,
                                             capture_output=True, text=True, timeout=10)

@@ -51,6 +51,12 @@ binds declared bytes rather than proving complete loader coverage. It has no lea
 integration or measured full-game speedup; real reset/replay acceptance requires
 the private game Data and captures absent from this cloud workspace.
 
+The next opt-in native slice is [EngineSession](docs/native-engine-session.md):
+a typed in-process policy boundary around the existing live headless server/client
+path, with one loaded resource owner and fresh episode objects. Source/build and
+admission fixtures are separate from real reset-isolation and performance gates;
+it is not integrated with the Teacher or accepted for training.
+
 This is the canonical project document. Last agreement: **25 October 2026**.
 
 ## Current authorized local PPO pilot

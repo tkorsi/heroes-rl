@@ -228,6 +228,19 @@ ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool 
 // shared_ptr whose last release is already destroying this object.
 ContextualEvidence::~ContextualEvidence() = default;
 
+void ContextualEvidence::finishNativeSession()
+{
+	std::lock_guard lock(mutex);
+	if(replay || recorder.get() != this)
+		throw std::logic_error("Native session can close only its detached live recorder");
+	output.flush();
+	if(!output) throw std::runtime_error("Cannot flush final native session evidence");
+	output.close();
+	// The caller retains a shared owner throughout this call. Release the
+	// module's sticky live owner so no prior episode ledger/state is retained.
+	recorder.reset();
+}
+
 void ContextualEvidence::append(JsonNode record)
 {
 	if(sealed) throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");

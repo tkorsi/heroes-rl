@@ -35,11 +35,22 @@ int main(int argc, char ** argv)
 		if(argc != 3)
 			throw std::runtime_error("requires a lifecycle mode and temporary directory");
 		const std::string mode = argv[1];
-		if(mode == "live-exit")
+		if(mode == "live-exit" || mode == "session-close")
 		{
 			setenv("VCMI_EXPERIMENT_DIR", argv[2], 1);
 			auto & owner = explorer_rl::ContextualEvidence::live("lifetime-only", false);
 			check(explorer_rl::ContextualEvidence::current() == &owner);
+			if(mode == "session-close")
+			{
+				auto retained = experimentEvidenceHooks();
+				std::weak_ptr<ExperimentEvidenceHooks> lifetime = retained;
+				setExperimentEvidenceHooks(nullptr);
+				retained->finishNativeSession();
+				retained.reset();
+				check(lifetime.expired());
+				resetNativeSessionEvidence();
+				check(experimentPackPosition().index == 0);
+			}
 			// Both the live recorder and registry retain ownership until static
 			// teardown, exactly as in a successfully terminated native process.
 		}

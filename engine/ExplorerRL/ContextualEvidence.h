@@ -31,6 +31,7 @@ public:
 
 	explicit ContextualEvidence(const std::vector<JsonNode> & tape, bool prefix);
 	~ContextualEvidence() override;
+	void finishNativeSession() override;
 	const JsonNode & header() const { return metadata; }
 	void setAutomaticRequest(std::function<void(const JsonNode &)> callback);
 	void beforeEvent(const std::string & actor, const std::string & operation) override;
