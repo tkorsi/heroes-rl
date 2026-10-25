@@ -65,7 +65,8 @@ class RunnerTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(prefix="heroes-linux-runner-test-")
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # Completion receipts bind canonical paths, including on macOS TMPDIR.
+        self.root = Path(temporary.name).resolve()
         self.sha = "a" * 64
         self.plan = {"schedule": copy.deepcopy(runner.planning.SCHEDULE),
             "configuration": {"shared_wall_seconds": 10, "cleanup_reserve_seconds": .3,

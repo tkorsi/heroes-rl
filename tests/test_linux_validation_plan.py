@@ -21,7 +21,8 @@ class PlanDocumentTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # Plans bind canonical paths; macOS TMPDIR can use the /var symlink.
+        self.root = Path(temporary.name).resolve()
         self.path = self.root / "plan.json"
         self.document = dict.fromkeys(plan.PLAN_FIELDS)
         self.document.update(schema=plan.SCHEMA, configuration=deepcopy(plan.CONFIGURATION),
@@ -89,7 +90,7 @@ class PrivateInventoryBindingTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         (self.root / "game/Data").mkdir(parents=True)
         (self.root / "game/Data/test.bin").write_bytes(b"Synthetic bytes, not game data")
         self.original = {"bytes": 4, "sha256": "0" * 64}
@@ -132,7 +133,7 @@ class RuntimeResourceTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.binary = self.root / "vcmi/build/bin/vcmiclient"
         self.binary.parent.mkdir(parents=True)
         self.binary.write_bytes(b"synthetic")
@@ -163,6 +164,8 @@ class RuntimeResourceTests(unittest.TestCase):
                 plan.native_resources(self.binary)
 
     def test_case_variant_rule_roots_cannot_shadow_bound_resources(self):
+        if (self.binary.parent / "Config").exists():
+            self.skipTest("Requires a filesystem with distinct config and Config entries")
         with patch.object(plan, "ROOT", self.root):
             (self.binary.parent / "Config").mkdir()
             with self.assertRaisesRegex(ValueError, "Ambiguous"):
@@ -191,7 +194,7 @@ class LinuxCheckpointBindingTests(unittest.TestCase):
         torch.set_num_threads(1)
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.original = self.root / "synthetic-original.pt"
         model = ContextualActorCritic(ModelConfig(schema=DIALOGS_MODEL_SCHEMA, hidden_size=8, feature_size=4))
         pool = FrozenOpponentPool()
