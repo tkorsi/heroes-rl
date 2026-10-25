@@ -29,12 +29,16 @@ class Migration:
         self.binding = binding(self.path)
         require(self.value.get('historical_training_admission') is False,
                 'Historical captures cannot be admitted by a platform migration')
-        for name in self.value['source_changes']:
-            require(name.startswith('experiments/learner/') and Path(name).name in GLUE,
-                    'Migration cannot change policy, features or PPO math')
+        self.validate_source_changes()
         self.old_root = Path(self.value['historical_artifact_root'])
         self.new_root = Path(self.value['artifact_root']).resolve()
         require(self.old_root.is_absolute() and self.new_root.is_absolute(), 'Absolute artifact roots required')
+
+    def validate_source_changes(self):
+        from .builtin_training_resume import require
+        for name in self.value['source_changes']:
+            require(name.startswith('experiments/learner/') and Path(name).name in GLUE,
+                    'Migration cannot change policy, features or PPO math')
 
     def resolve(self, path):
         from .builtin_training_resume import require

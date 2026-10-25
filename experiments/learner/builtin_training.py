@@ -25,7 +25,10 @@ HARD_DEADLINE = datetime(2026, 10, 25, 17, 53, tzinfo=timezone.utc).timestamp()
 COMPUTE_DEADLINE = HARD_DEADLINE - 180
 
 
-def configuration():
+def configuration(session=None):
+    if session is not None:
+        from .builtin_local365 import configuration as local_configuration
+        return local_configuration(session)
     cfg = deepcopy(pilot.config())
     cloud = json.loads((pilot.ROOT/'configs/builtin-cloud-training-v1.json').read_text())
     pilot.require(cloud == {'schema': 'heroes-builtin-cloud-training-config-v1',
@@ -66,8 +69,8 @@ def migration_for(bound):
     if bound is None:
         return None
     pilot.require(resume.binding(bound['path']) == bound, 'Migration binding changed')
-    from .builtin_portable import Migration
-    return Migration(bound['path'], pilot.ROOT)
+    from .builtin_local365 import migration_class
+    return migration_class(bound['path'])(bound['path'], pilot.ROOT)
 
 
 def require_heldout(state, runtime, native):
@@ -103,15 +106,21 @@ def require_heldout(state, runtime, native):
 def prepare(args):
     import torch
     torch.set_num_threads(1)
+    from .builtin_local365 import session_for
+    session = session_for(getattr(args, 'session', None))
+    hard_deadline = session['absolute_deadline_unix'] if session else HARD_DEADLINE
+    compute_deadline = session['compute_deadline_unix'] if session else COMPUTE_DEADLINE
     minimum = 300 if not args.evaluate else 180
-    pilot.require(time.time()+minimum < COMPUTE_DEADLINE, 'Absolute cloud session deadline leaves insufficient execution/preservation reserve')
+    pilot.require(time.time()+minimum < compute_deadline, 'Absolute cloud session deadline leaves insufficient execution/preservation reserve')
     output = durable_path(args.output)
     parent_path = durable_path(args.parent)
     parent_plan = json.loads(parent_path.read_text())
     migration = None
     if getattr(args, 'migration', None):
-        from .builtin_portable import Migration
-        migration = Migration(args.migration, pilot.ROOT)
+        from .builtin_local365 import migration_class
+        migration = migration_class(args.migration)(args.migration, pilot.ROOT)
+        if session:
+            pilot.require(migration.binding == session['migration'], 'Session migration differs')
     report_path = (migration.resolve(parent_plan['execution_output']) if migration else Path(parent_plan['execution_output'])) / 'report.json'
     source = source_identity(pilot.INTERFACE)
     current_runtime, current_native = parent_plan['runtime'], deepcopy(parent_plan['native'])
@@ -180,14 +189,22 @@ def prepare(args):
             if prior.get('schema') == SCHEMA+'-plan':
                 used = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in prior['schedule']}
                 pilot.require(not keys & used, 'Training seeds already scheduled; choose an unused sequence')
-    plan.update(absolute_deadline_unix=HARD_DEADLINE, compute_deadline_unix=COMPUTE_DEADLINE,
-        prepared_check=source_check.stdout.strip(), batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
+    if session:
+        pilot.require(session['mode'] == ('gate' if args.evaluate and migration else 'campaign'), 'Session mode does not authorize this batch')
+        if not args.evaluate:
+            pilot.require(session['gate_verified'] is True, 'Both-seat local gate required')
+        plan['local_session'] = resume.binding(args.session)
+    plan.update(absolute_deadline_unix=hard_deadline, compute_deadline_unix=compute_deadline,
+        prepared_check=source_check.stdout.strip(), batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(session),
         schedule=planned_schedule, execution_output=str(output/'execution'),
         checkpoint=state.bindings['policy'], source=source, implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), authorization=pilot.AUTHORIZATION, parent=state.bindings,
         mode='evaluation' if args.evaluate else 'training',
         wall_scope='3600 seconds including fresh collection, reconstruction/replay, at most one update, checkpoint and cleanup.',
         comparison_scope='Fixed paired held-out seeds and both seats; evaluation supplies no training samples.')
+    if session:
+        from .builtin_local365 import AUTHORIZATION
+        plan['authorization'] = AUTHORIZATION
     plan['checkpoint_metadata'] = {**source, 'parent_plan_sha256': state.bindings['plan']['sha256'],
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
         'native_opponent': {k:v for k,v in plan['native_opponents'][0].items() if k!='player'},
@@ -203,11 +220,24 @@ def read_plan(path, sha):
     pilot.require(pilot.digest(path) == sha, 'Immutable batch plan changed')
     plan = json.loads(path.read_text())
     evaluation = plan.get('mode') == 'evaluation'
-    pilot.require(plan.get('absolute_deadline_unix') == HARD_DEADLINE
-                  and plan.get('compute_deadline_unix') == COMPUTE_DEADLINE
-                  and time.time() < COMPUTE_DEADLINE, 'Absolute cloud session deadline reached or changed')
+    from .builtin_local365 import session_for
+    bound = plan.get('local_session')
+    if bound:
+        pilot.require(resume.binding(bound['path']) == bound, 'Local session binding changed')
+    session = session_for(bound['path'] if bound else None)
+    if session:
+        pilot.require(session['mode'] == ('gate' if evaluation and plan.get('portable_migration') else 'campaign'), 'Session mode does not authorize plan')
+        if plan.get('portable_migration'):
+            pilot.require(plan['portable_migration'] == session['migration'], 'Session migration differs')
+    hard = session['absolute_deadline_unix'] if session else HARD_DEADLINE
+    compute = session['compute_deadline_unix'] if session else COMPUTE_DEADLINE
+    pilot.require(plan.get('absolute_deadline_unix') == hard
+                  and plan.get('compute_deadline_unix') == compute
+                  and time.time() < compute, 'Absolute session deadline reached or changed')
+    from .builtin_local365 import AUTHORIZATION
+    authorization = AUTHORIZATION if session else pilot.AUTHORIZATION
     pilot.require(plan['schema'] == (EVALUATION if evaluation else SCHEMA)+'-plan'
-        and plan['configuration'] == configuration() and plan['authorization'] == pilot.AUTHORIZATION
+        and plan['configuration'] == configuration(session) and plan['authorization'] == authorization
         and plan['execution_output'] == str(path.parent/'execution')
         and plan['schedule'] == schedule(plan['batch_sequence'], evaluation), 'Batch scope changed')
     return plan
@@ -288,7 +318,7 @@ def worker(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__); sub=parser.add_subparsers(dest='command',required=True)
     prep=sub.add_parser('prepare');prep.add_argument('--parent',type=Path,required=True)
-    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true');prep.add_argument('--runtime-bin',type=Path);prep.add_argument('--sequence',type=int);prep.add_argument('--migration',type=Path);prep.add_argument('--data',type=Path);prep.add_argument('--game-map',type=Path)
+    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true');prep.add_argument('--runtime-bin',type=Path);prep.add_argument('--sequence',type=int);prep.add_argument('--migration',type=Path);prep.add_argument('--data',type=Path);prep.add_argument('--game-map',type=Path);prep.add_argument('--session',type=Path)
     for name in ('execute','worker'):
         entry=sub.add_parser(name);entry.add_argument('--plan',type=Path,required=True);entry.add_argument('--sha256',required=True)
         if name=='worker':

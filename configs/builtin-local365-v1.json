@@ -1,0 +1,22 @@
+{
+  "schema": "heroes-local365-update31-v1",
+  "max_days": 365,
+  "ordinary_choice_limit": 4960,
+  "reserved_dialog_choices": 160,
+  "max_total_choices": 5120,
+  "max_optimizer_steps": 640,
+  "training_games": 4,
+  "heldout_every_updates": 5,
+  "allow_verified_training_prefix": false,
+  "shared_wall_seconds": 3600,
+  "attempt_wall_seconds": 600,
+  "phase_deadlines_seconds": {
+    "training": 2400,
+    "update": 3540,
+    "evaluation": 3540
+  },
+  "campaign_seconds": 7200,
+  "cleanup_publication_reserve_seconds": 300,
+  "native_backend": "cold",
+  "experimental_workers": false
+}

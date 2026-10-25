@@ -1,0 +1,44 @@
+{
+  "checker_sha256": "6b605ec1c51e776800bda7a7397fb46a4e374dadc5217c273d9ff166adfd913f",
+  "checks": [
+    "canonical frame bytes",
+    "trained weights digest",
+    "cold and warm recurrent state/value/action/conditional log-probability",
+    "parameter gradients"
+  ],
+  "exact_trace_and_gradients": true,
+  "fixtures": {
+    "bytes": 83318,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local365/parity-v2/fixtures.json",
+    "sha256": "f005e13be0a99e15ae94bb2e398dedf328f6eeff6b0c0b2a56dc4b22d09afb8d"
+  },
+  "histories": 14,
+  "new_result": {
+    "bytes": 4041123,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local365/parity-v2/new.pt",
+    "sha256": "4304dc8808c6cc61180b56683b0d8ad11c938567be7d68e53ebd0232672b5464"
+  },
+  "old_result": {
+    "bytes": 4041123,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local365/parity-v2/old.pt",
+    "sha256": "71ace3ff9df176a5a5096f92fd5ce83ab62595b48cf4638b2b5517a0e168e29c"
+  },
+  "policy_sha256": "84b0cc3c884023b92c68bc7b98c4499a97d65d39492ceaade4fe1e4c06dd45a3",
+  "schema": "heroes-local365-parity-v1",
+  "scope": "Synthetic dialog families and both-seat terminal/cutoff/failure histories on the same Mac CPU runtime; fresh native both-seat gate still required.",
+  "source_changes": {
+    "experiments/learner/contextual.py": {
+      "from": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+      "to": "79496a50adbcc932d0147ae66ca287d1660e32282982779907af1b1f74d26585"
+    },
+    "experiments/learner/contextual_model.py": {
+      "from": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+      "to": "b0e0cda2eac058f9f170de81c26d0a734b1a7d2c7f60b63cb121a81d0cdf383c"
+    },
+    "experiments/learner/contextual_rollout.py": {
+      "from": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+      "to": "afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637"
+    }
+  },
+  "status": "passed"
+}

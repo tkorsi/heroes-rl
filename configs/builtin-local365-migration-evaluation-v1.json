@@ -1,0 +1,97 @@
+{
+  "artifact_root": "/Users/orsi/Projects/Heroes-artifacts/local365/imported-cloud",
+  "from_source": {
+    "interface": "adventure-dialogs-v1",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "torch": "2.9.1+cpu"
+  },
+  "historical_artifact_root": "/workspace/Heroes-artifacts",
+  "historical_training_admission": false,
+  "linux_gate": null,
+  "parent": {
+    "optimizer_steps": 253,
+    "plan_sha256": "b6e02771ab069cd541f57716d9b9d36974fb9b37c1c360f9b1e3c8bebc76f228",
+    "policy_sha256": "84b0cc3c884023b92c68bc7b98c4499a97d65d39492ceaade4fe1e4c06dd45a3",
+    "progress": {
+      "decisions": 6776,
+      "rollouts": 124,
+      "updates": 31
+    },
+    "report_sha256": "b6fcb958deaf4cb4997254dca7f31b4ec67848d85e934e452a06d923e921133b",
+    "resume_sha256": "63ddf8d19fbd3a963a6886f9bfa4df6944e7a8d68b53f8b34ddfe39d6af86bf4"
+  },
+  "performance_parity": {
+    "bytes": 1931,
+    "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/validation/local365-parity-2026-10-25.json",
+    "sha256": "1989def9b1543a1af18c7ca09d5fbb85dad15cd098cc6a2e0846064f8c21715e"
+  },
+  "runtime_transition": {
+    "from_native": {
+      "binary": "/workspace/Heroes-artifacts/runtime/linux-v2/bin/vcmiclient",
+      "binary_sha256": "ae0720879fe490c5f115fda6b6937a21110a4f72549dcf7738dbebab61bea5cd",
+      "explorer_rl_sha256": "4ca7197da29feaebd712978b4dbe4473442983695049fede8165ada8bd96b84e",
+      "log_level": "info",
+      "map": {
+        "name": "hero-management-v1.vmap",
+        "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+      }
+    },
+    "from_runtime": {
+      "AI/libBattleAI.so": "9bd248a5c95fd8194203493114cef9b3979a35c34ef3f632d7efc6f10baaf219",
+      "AI/libEmptyAI.so": "d07183cf13f4a71c3cc7d76a063c3426f81e5edd0c1dc02ca3a711778eddbc77",
+      "AI/libExplorerRL.so": "4ca7197da29feaebd712978b4dbe4473442983695049fede8165ada8bd96b84e",
+      "AI/libNullkiller.so": "4b2eac86cf8bf16b24d8cf7084c6851ea028ae5dd6e24cc55be89f61a74a52fc",
+      "libvcmi.so": "b598c556a84a87f2faec62bbfc570c9b263230c14883f08b1dba517b939efbdf",
+      "vcmireplay": "581413586ddaf2bfa4345da5fb734468ba99ad8080f49547de80ded31d8e8e2e"
+    },
+    "to_native": {
+      "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/local365-v1/bin/vcmiclient",
+      "binary_sha256": "f24f2934ad83eeb105404bf9b6d9361878a142525cb383d4b0aa84c4c2d519fd",
+      "explorer_rl_sha256": "70685c05cb399a660849c706b2b047a84dab7b074c10d8b014e28ca4bf29e390",
+      "log_level": "info",
+      "map": {
+        "name": "hero-management-v1.vmap",
+        "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+      }
+    },
+    "to_runtime": {
+      "AI/libBattleAI.dylib": "e1f1178ee0145a3fa3f53fded6f11d6ed6ea38b06861ca6c19b52f91d7681f97",
+      "AI/libEmptyAI.dylib": "0f01258d8ae31a72c10b18f48c9015dffd95096800b15bbad26117815d9ea84d",
+      "AI/libExplorerRL.dylib": "70685c05cb399a660849c706b2b047a84dab7b074c10d8b014e28ca4bf29e390",
+      "AI/libNullkiller.dylib": "c6dfd47797ecf78f527f29161de4f68f099f5a97ee1b4ad2784cfda559deabd1",
+      "AI/libStupidAI.dylib": "39f2ecaacf2f8fa070df8bd05f6dd500691c57d8ba0d9a74a816cbe2896e5d97",
+      "libvcmi.dylib": "265ac34ec09206884cb86d02b286f8af957d3359b22034c2c1d5b07be8d7df50",
+      "vcmireplay": "ac5b348d16fa4e7715cb148fb91899c12e8af0561f8d75499c7d7458858d77a0"
+    }
+  },
+  "schema": "heroes-portable-resume-v1",
+  "scope": "Exact cloud update31 to consolidated macOS; frozen both-seat 365-day evaluation only until separately committed fresh gate permits training. linux_gate is the legacy field name for the destination gate.",
+  "scope_id": "heroes-local365-update31-v1",
+  "source_changes": {
+    "experiments/learner/builtin_portable.py": {
+      "from": "e37c978724ced3ed754b7101f0842a26c2ca93c7c7141639d2e9b780468f8dcb",
+      "to": "cbeb1573ce89c93edd329e404c0e239cd4ce894cd42861ff3d7b5cfaabc7fe66"
+    },
+    "experiments/learner/builtin_training.py": {
+      "from": "19020e6b1e1e78ec28749c775c734b89a7f74d9b59305a0137cd607f57d4f542",
+      "to": "4d73ce2ca6d9af92e7bb62682bb8fe1c31d690baec604ae56122147609978083"
+    },
+    "experiments/learner/contextual.py": {
+      "from": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+      "to": "79496a50adbcc932d0147ae66ca287d1660e32282982779907af1b1f74d26585"
+    },
+    "experiments/learner/contextual_model.py": {
+      "from": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+      "to": "b0e0cda2eac058f9f170de81c26d0a734b1a7d2c7f60b63cb121a81d0cdf383c"
+    },
+    "experiments/learner/contextual_rollout.py": {
+      "from": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+      "to": "afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637"
+    }
+  },
+  "to_source": {
+    "interface": "adventure-dialogs-v1",
+    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+    "torch": "2.9.1"
+  }
+}
