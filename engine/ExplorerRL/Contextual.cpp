@@ -92,7 +92,7 @@ JsonNode ContextualState::contextJson() const
 	JsonNode node;
 	node["kind"].String() = context;
 	node["subject"] = context == "map" ? JsonNode() : JsonNode(subject);
-	if((context == "town" && !panel.empty()) || context == "stack" || context == "exchange" || context == "dialog")
+	if((context == "town" && !panel.empty()) || context == "stack" || context == "exchange" || context == "dialog" || context == "capability")
 	{
 		node["panel"] = panel.empty() ? JsonNode() : JsonNode(panel);
 		node["selection"] = selection.empty() ? JsonNode() : JsonNode(selection);
@@ -202,8 +202,9 @@ JsonNode ExplorerRL::contextualObservation()
 			}
 		}
 	const bool dialogModal = adventureDialogs && contextState.context == "dialog";
+	const bool capabilityModal = expandedInterface && contextState.context == "capability";
 	const bool armyModal = armyManagement && (contextState.context == "exchange" || contextState.context == "stack");
-	if(contextState.context != "map" && !openHero && !openTown && !armyModal && !dialogModal)
+	if(contextState.context != "map" && !openHero && !openTown && !armyModal && !dialogModal && !capabilityModal)
 	{
 		const auto day = callback->getDate(Date::DAY);
 		contextState.supersede(day, "subject_unavailable");
@@ -217,7 +218,7 @@ JsonNode ExplorerRL::contextualObservation()
 		record["reason"].String() = "subject_unavailable";
 		contextState.records.push_back(std::move(record));
 	}
-	if(openHero || openTown || armyModal || dialogModal)
+	if(openHero || openTown || armyModal || dialogModal || capabilityModal)
 	{
 		JsonNode window;
 		window["context"] = contextState.contextJson();
@@ -269,6 +270,13 @@ JsonNode ExplorerRL::contextualObservation()
 		}
 		if(adventureDialogs) window["dialog_panel"] = dialogModal ? adventureDialogPanel() : JsonNode();
 		observation["window"] = std::move(window);
+	}
+	if(expandedInterface && !observation["window"].isNull())
+	{
+		observation["window"]["capability_controls"] = capabilityControls();
+		observation["window"]["capability_panel"] = capabilityModal ? capabilityPanel() : JsonNode();
+		if(capabilityModal && contextState.panel == "spellbook")
+			observation["window"]["mana"].Integer() = callback->getHero(ObjectInstanceID(contextState.subjects.at(contextState.subject)))->mana;
 	}
 	return observation;
 }
@@ -341,6 +349,7 @@ void ExplorerRL::contextualTerminal(const char * outcome)
 		contextState.supersede(day, "terminal");
 		contextState.ownHeroExchange.reset();
 		contextState.adventureDialog.reset();
+		contextState.capabilityDialog.reset();
 		contextState.executingHero.reset();
 		contextState.stackParentContext = JsonNode();
 		contextState.selectedUpgradeRef.clear();
@@ -391,7 +400,7 @@ void ExplorerRL::contextualResult(JsonNode result, int64_t decision)
 	});
 }
 
-void ExplorerRL::runContextualTurn(QueryID queryID)
+void ExplorerRL::runContextualTurn(QueryID queryID, bool modalOnly)
 {
 	if(queryID != QueryID(-1) && !executeRequest([this, queryID] { callback->selectionMade(0, queryID); }))
 	{
@@ -401,6 +410,11 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 	}
 	while(!ended())
 	{
+		if(modalOnly)
+		{
+			std::lock_guard lock(stateMutex);
+			if(!contextState.capabilityDialog) return;
+		}
 		int64_t decision = -1;
 		int64_t revision = -1;
 		if(!buildAndSend([&]
@@ -410,6 +424,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 				std::lock_guard lock(stateMutex);
 				installOwnHeroExchange();
 				installAdventureDialog();
+				installCapabilityDialog();
 			}
 			captureContextual();
 			{
@@ -433,7 +448,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			return;
 		fields(response, {"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"},
 			{"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"});
-		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
+		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (expandedInterface ? 10 : adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
 			|| response["type"].String() != "context_action" || response["episode"].String() != episode
 			|| !integer(response["player"]) || response["player"].Integer() != playerID.getNum()
 			|| !integer(response["decision_id"]) || response["decision_id"].Integer() != decision
@@ -610,9 +625,15 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 {
 	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
 		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
-	if(action["schema"].String() != (adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
+	if(action["schema"].String() != (expandedInterface ? "heroes-context-actions-v8" : adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(expandedInterface)
+	{
+		bool active;
+		{ std::lock_guard lock(stateMutex); active = contextState.context == "capability"; }
+		if(active || kind == "open_capability") return executeCapabilityAction(action, decision);
+	}
 	if(adventureDialogs)
 	{
 		bool activeDialog;
@@ -878,7 +899,7 @@ void ExplorerRL::showStructuredInfoDialog(EInfoWindowMode mode, const MetaString
 				names.insert(hero->getNameTextID());
 		JsonNode event;
 		event["kind"].String() = "notice";
-		event["notice"] = explorer_rl::normalizeNotice(mode, text, components, playerID, names, adventureDialogs);
+		event["notice"] = explorer_rl::normalizeNotice(mode, text, components, playerID, names, adventureDialogs, expandedInterface);
 		contextualEvent(std::move(event));
 	}
 	catch(const explorer_rl::UnsupportedNotice &)
@@ -901,13 +922,12 @@ void ExplorerRL::showInfoDialog(EInfoWindowMode mode, const std::string & text, 
 void ExplorerRL::showShipyardDialog(const IShipyard *) { if(contextual) unsupported("unsupported_interaction: shipyard"); }
 void ExplorerRL::showPuzzleMap() { if(contextual) unsupported("unsupported_interaction: puzzle map"); }
 void ExplorerRL::viewWorldMap() { if(contextual) unsupported("unsupported_interaction: world map"); }
-void ExplorerRL::showWorldViewEx(const std::vector<ObjectPosInfo> &, bool) { if(contextual) unsupported("unsupported_interaction: world view"); }
 void ExplorerRL::showHillFortWindow(const CGObjectInstance *, const CGHeroInstance *) { if(contextual) unsupported("unsupported_interaction: hill fort"); }
 void ExplorerRL::showThievesGuildWindow(const CGObjectInstance *) { if(contextual) unsupported("unsupported_interaction: thieves guild"); }
 void ExplorerRL::showQuestLog() { if(contextual) unsupported("unsupported_interaction: quest log"); }
 void ExplorerRL::askToAssembleArtifact(const ArtifactLocation & location)
 {
-	if(!contextual)
+	if(!contextual || expandedInterface)
 		return;
 	// PutArtifact/BulkMoveArtifacts also deliver this hint for ordinary trophies
 	// that cannot be assembled. Match ArtifactsUIController::askToAssemble:

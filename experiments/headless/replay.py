@@ -66,9 +66,9 @@ class ReplayError(ValueError):
 def require_legacy_interface(metadata: dict) -> None:
     """The v1 replay digests do not bind contextual windows, notices or commands."""
     if (metadata.get("kind") == "contextual-headless-self-play"
-            or metadata.get("environment") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1", "adventure-dialogs-v1")
-            or metadata.get("interface") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1", "adventure-dialogs-v1")
-            or metadata.get("history_schema") in ("heroes-player-history-v2", "heroes-player-history-v3", "heroes-player-history-v4", "heroes-player-history-v5", "heroes-player-history-v6", "heroes-player-history-v7")
+            or metadata.get("environment") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1", "adventure-dialogs-v1", "adventure-capabilities-v1")
+            or metadata.get("interface") in ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1", "adventure-dialogs-v1", "adventure-capabilities-v1")
+            or metadata.get("history_schema") in ("heroes-player-history-v2", "heroes-player-history-v3", "heroes-player-history-v4", "heroes-player-history-v5", "heroes-player-history-v6", "heroes-player-history-v7", "heroes-player-history-v8")
             or metadata.get("action_schema") in ("heroes-context-actions-v2", "heroes-context-actions-v3", "heroes-context-actions-v4", "heroes-context-actions-v5", "heroes-context-actions-v6", "heroes-context-actions-v7")
             or metadata.get("type") == "contextual"
             or metadata.get("protocol_version") not in (None, 3)):

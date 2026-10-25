@@ -90,7 +90,9 @@ and private copies restore the exact model, Adam, RNG, progress and pool.
 
 All **244 training games**, **24 scheduled evaluation games** and the **two
 initial frozen gate games** were verified natural losses: zero wins and zero
-cutoffs. No town capture was observed. The fixed Red check improved from a
+cutoffs or timeouts. A terminal-history audit identified 268 standard losses
+and two defeats under the seven-days-without-a-town rule. No town capture was
+observed. The fixed Red check improved from a
 day-2 loss at update31 to days8–9 at updates70–90, with recruitment; Blue
 remained a day-2 loss except for a transient day-8 result at update50. These
 repeated seeds demonstrate limited behavior changes, not general strategic
@@ -104,12 +106,44 @@ additional terminal feedback but did not produce a verified learner victory.
 
 Batch93 stopped in its first game on day62 after 1,337 choices with
 `unsupported_interaction: informational notice`, raised by the structured
-informational-notice handler. The exact rejected notice grammar remains
-unidentified. A preceding visible battle-win event is not a verified game win.
+informational-notice handler. The original failure log omitted the rejected
+template. A subsequent
+[offline diagnostic replay](validation/local365-day62-notice-investigation-2026-10-25.json)
+reproduced all 1,112 recorded server inputs and 5,605 outgoing packets without
+state or packet-hash divergence: Thant won a defensive battle, then raised four
+Skeletons. The resulting necromancy notice (`core.genrltxt.145`, automatic
+display, creature/count component) was rejected by the existing normalizer.
+This adapter coverage defect is now fixed in the v7 native/Python notice path;
+see the [repair and coverage audit](validation/necromancy-support-2026-10-25.json).
+A preceding visible battle-win event is not a verified game win.
 The failed attempt is unscored and supplies **zero samples**; three remaining
 games were not started. Its raw capture is privately preserved. No retry,
 repair campaign or restart was performed. Native and controller cleanup passed,
 and no owned native/training processes remained. The Mac window was released.
+
+The post-campaign repair accepts the exact singular/plural necromancy notice,
+including the displayed creature and count, without adding a policy action or
+reward. Its recorded server prefix still matches all 1,112 inputs and 5,605
+packets; the repaired native payload also passes the Python v7 decoder.
+This diagnostic does not complete or admit the failed game. Legacy interfaces,
+model tensor shapes, checkpoint92 and the frozen campaign runtime are unchanged.
+The repaired ExplorerRL and replay targets build, and 61 focused tests pass.
+No new game or training campaign was started.
+
+The source audit identified these next gaps; they are not implemented by the
+necromancy repair:
+
+| Priority | Missing interface | Reachability |
+| --- | --- | --- |
+| First | Eagle Eye spell-learning notice; Castle Stables bonus notice | Existing Tavern recruits and town construction can trigger them |
+| Next | Army overflow window when neutrals join a full army | New-month monster spawns can reach this branch in long games |
+| Next | Marketplace exchange; spellbook/war-machine purchases; artifact inventory/equipment | Town and hero controls missing from the current action set |
+| Before lifting the level cap | Hero level-up skill choices | Current scenario explicitly caps heroes at level 1 |
+| Later map expansion | Boats, external dwellings, universities, quests and further object windows | Coverage is limited to explicitly supported object families |
+
+Creature upgrades, split/merge/swap, garrison transfers, own-hero army exchange
+and town Tavern hiring are already implemented. Tactical battles remain
+automatic. This audit is a source inventory, not proof of every live branch.
 
 The final parent is
 `/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/plan.json`,

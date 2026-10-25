@@ -1,0 +1,34 @@
+{
+  "automatic_battles": true,
+  "changed_header_fields": {
+    "description": {
+      "after": "Versioned two-Castle scenario with normal native hero leveling. Only the previous level-1 cap is removed; starting heroes, buildings, armies, resources, terrain, objects, fog and outcomes are unchanged.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "heroLevelLimit": {
+      "after": 0,
+      "before": 1
+    },
+    "name": {
+      "after": "Hero management: levels enabled",
+      "before": "Hero management: two castles"
+    }
+  },
+  "diagnostic_only": false,
+  "engine_verified": false,
+  "fixture": null,
+  "fog": "normal native team fog",
+  "layout_seed": 0,
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "native_hero_level_limit": 0,
+  "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
+  "object_changes": [],
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "player": null,
+  "rules_and_rewards_unchanged": true,
+  "runtime_state_grants": false,
+  "scenario_id": "hero-management-v2",
+  "schema": "heroes-capability-scenario-v1",
+  "terrain_changes": [],
+  "training_performed": false
+}

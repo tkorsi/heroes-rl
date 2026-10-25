@@ -204,6 +204,11 @@ class ContextualMixin:
             raise ValueError("history_v7 requires adventure-dialogs-v1")
         return self.history(color)
 
+    def history_v8(self, color):
+        if self.context_profile != contract.EXPANDED_PROFILE:
+            raise ValueError("history_v8 requires adventure-capabilities-v1")
+        return self.history(color)
+
     def history(self, color):
         if color not in COLORS:
             raise ValueError("Unknown player color")
@@ -229,7 +234,7 @@ class ContextualMixin:
             return
         drain = self.dialog_cutoff_drain if not continuation else None
         if drain is not None:
-            if action.kind != "choose_dialog":
+            if action.kind not in ("choose_dialog", "choose_level_up", "choose_spell_target", "cancel_spell_target"):
                 raise ValueError("Deferred dialog cutoff accepts only a real dialog choice")
             if len(drain["choices"]) >= DIALOG_DRAIN_LIMIT:
                 self._note_problem("cutoff_boundary_unavailable", "Strategic dialog chain exceeded its real-policy answer bound")
@@ -306,7 +311,7 @@ class ContextualMixin:
         """
         if (not self.context_profile.dialogs or self.request is None
                 or self.request.past_horizon or reason not in scoring.HEADLESS_TRUNCATIONS
-                or self.sides[self.request.player].validator.live.context.kind != "dialog"
+                or not self.sides[self.request.player].validator.live.requires_choice
                 or self.cutoff_reason is not None):
             raise ValueError("Defer a horizon only at an unfrozen strategic dialog")
         if self.dialog_cutoff_drain is None:
@@ -320,7 +325,7 @@ class ContextualMixin:
         if self.request is None or reason not in scoring.HEADLESS_TRUNCATIONS:
             raise ValueError("Truncate only at a pending own request with a declared horizon")
         request = self.request
-        if self.sides[request.player].validator.live.context.kind == "dialog":
+        if self.sides[request.player].validator.live.requires_choice:
             raise ValueError("A strategic dialog needs a recorded policy answer before cutoff")
         exited = self._settle()
         if self.reason is not None or exited is not None:
@@ -348,7 +353,7 @@ class ContextualMixin:
                 return self._finish(None)
             if self.request is not None:
                 side = self.sides[self.request.player]
-                if side.validator.live.context.kind == "dialog":
+                if side.validator.live.requires_choice:
                     self._note_problem("cutoff_boundary_unavailable", "Strategic dialog arose during frozen technical continuation")
                     self.request = None
                     return self._finish(None)
@@ -367,8 +372,8 @@ class ContextualMixin:
                     self.request = None
                 else:
                     context = side.validator.live.context
-                    kind = "end_turn" if context.kind == "map" else "back" if context.kind == "stack" or context.panel in ("hall", "building", "recruitment", "tavern") else "close"
-                    action = contract.Action(kind, subject=context.subject if kind == "back" else None,
+                    kind = "close_capability" if context.kind == "capability" else "end_turn" if context.kind == "map" else "back" if context.kind == "stack" or context.panel in ("hall", "building", "recruitment", "tavern") else "close"
+                    action = contract.Action(kind, subject=context.subject if kind in ("back", "close_capability") else None,
                                              schema=self.context_profile.action_schema)
                     self._send_current(action, continuation=True)
             state = super()._advance()
@@ -409,11 +414,11 @@ class ContextualMixin:
         reason = self.dialog_cutoff_drain["reason"] if self.dialog_cutoff_drain is not None else None
         if reason is None and (decision.day > self.limits.max_days or side.actions_sent >= self.limits.max_actions):
             reason = "game_day_limit" if decision.day > self.limits.max_days else "agent_action_limit"
-        if self.cutoff_reason is not None and producer.live.context.kind == "dialog":
+        if self.cutoff_reason is not None and producer.live.requires_choice:
             self._note_problem("cutoff_boundary_unavailable", "Strategic dialog arose during frozen technical continuation")
             return None
         if self.cutoff_reason is None and reason is not None:
-            if producer.live.context.kind == "dialog":
+            if producer.live.requires_choice:
                 request = self._issue(side.player)
                 self.defer_dialog_cutoff(reason)
                 return request

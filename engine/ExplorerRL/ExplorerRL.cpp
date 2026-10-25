@@ -169,9 +169,10 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
-		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1" && name != "adventure-armies-v1" && name != "adventure-heroes-v1" && name != "adventure-army-management-v1" && name != "adventure-dialogs-v1")
+		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1" && name != "adventure-armies-v1" && name != "adventure-heroes-v1" && name != "adventure-army-management-v1" && name != "adventure-dialogs-v1" && name != "adventure-capabilities-v1")
 			throw std::runtime_error("Unsupported ExplorerRL interface");
-		adventureDialogs = name == "adventure-dialogs-v1";
+		expandedInterface = name == "adventure-capabilities-v1";
+		adventureDialogs = expandedInterface || name == "adventure-dialogs-v1";
 		armyManagement = adventureDialogs || name == "adventure-army-management-v1";
 		heroRecruitment = armyManagement || name == "adventure-heroes-v1";
 		armyTransfer = name == "adventure-heroes-v1" || name == "adventure-armies-v1";
@@ -185,7 +186,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
 	if(contextual && contextualEvidenceEnabled())
-		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs);
+		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs, expandedInterface);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
@@ -249,7 +250,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : contextual ? 4 : 3;
+	result["protocol_version"].Integer() = expandedInterface ? 10 : adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : contextual ? 4 : 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -319,9 +320,9 @@ void ExplorerRL::run() noexcept
 		auto ready = message("ready");
 		if(contextual)
 		{
-			ready["interface"].String() = adventureDialogs ? "adventure-dialogs-v1" : armyManagement ? "adventure-army-management-v1" : heroRecruitment ? "adventure-heroes-v1" : armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
-			ready["history_schema"].String() = adventureDialogs ? "heroes-player-history-v7" : armyManagement ? "heroes-player-history-v6" : heroRecruitment ? "heroes-player-history-v5" : armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
-			ready["action_schema"].String() = adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+			ready["interface"].String() = expandedInterface ? "adventure-capabilities-v1" : adventureDialogs ? "adventure-dialogs-v1" : armyManagement ? "adventure-army-management-v1" : heroRecruitment ? "adventure-heroes-v1" : armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
+			ready["history_schema"].String() = expandedInterface ? "heroes-player-history-v8" : adventureDialogs ? "heroes-player-history-v7" : armyManagement ? "heroes-player-history-v6" : heroRecruitment ? "heroes-player-history-v5" : armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
+			ready["action_schema"].String() = expandedInterface ? "heroes-context-actions-v8" : adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 		}
 		else
 		{
@@ -345,7 +346,7 @@ void ExplorerRL::run() noexcept
 			QueryID query;
 			{
 				std::unique_lock lock(stateMutex);
-				changed.wait(lock, [this] { return stopping || terminal || !failure.empty() || !decisions.empty() || !turns.empty(); });
+				changed.wait(lock, [this] { return stopping || terminal || !failure.empty() || !decisions.empty() || !turns.empty() || (expandedInterface && contextState.capabilityDialog); });
 				if(stopping || terminal)
 					return;
 				if(!failure.empty())
@@ -356,6 +357,12 @@ void ExplorerRL::run() noexcept
 					decisions.pop_front();
 					lock.unlock();
 					handleDecision(std::move(decision));
+					continue;
+				}
+				if(expandedInterface && contextState.capabilityDialog && turns.empty())
+				{
+					lock.unlock();
+					runContextualTurn(QueryID(-1), true);
 					continue;
 				}
 				query = turns.front();
@@ -781,7 +788,8 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 		const auto acknowledged = acknowledgements.find(requestID);
 		if(acknowledged != acknowledgements.end() && (!waitForAdventure || (!moving && !inBattle)
 			|| (armyManagement && contextState.ownHeroExchange && !contextState.ownHeroExchange->installed && !inBattle)
-			|| (adventureDialogs && contextState.adventureDialog && !contextState.adventureDialog->installed && !inBattle)))
+			|| (adventureDialogs && contextState.adventureDialog && !contextState.adventureDialog->installed && !inBattle)
+			|| (expandedInterface && contextState.capabilityDialog && !contextState.capabilityDialog->installed)))
 		{
 			const bool accepted = acknowledged->second;
 			acknowledgements.erase(acknowledged);
@@ -1185,6 +1193,11 @@ void ExplorerRL::handleDecision(Decision decision)
 
 void ExplorerRL::heroGotLevel(const CGHeroInstance * hero, PrimarySkill primary, std::vector<SecondarySkill> & skills, QueryID query)
 {
+	if(expandedInterface)
+	{
+		receiveLevelUp(hero, primary, skills, query);
+		return;
+	}
 	if(contextual)
 	{
 		unsupported("unsupported_interaction: hero level-up");
@@ -1266,8 +1279,9 @@ void ExplorerRL::showBlockingDialog(const std::string & text, const std::vector<
 	enqueueDecision(query, std::move(payload));
 }
 
-void ExplorerRL::showGarrisonDialog(const CArmedInstance *, const CGHeroInstance *, bool, QueryID query, const MetaString &)
+void ExplorerRL::showGarrisonDialog(const CArmedInstance * army, const CGHeroInstance * hero, bool removable, QueryID query, const MetaString &)
 {
+	if(expandedInterface) { receiveGarrison(army, hero, removable, query); return; }
 	// The first action interface has no army-transfer action. Closing this
 	// window is still an explicit, logged external choice, never a strategy.
 	JsonNode payload;
@@ -1280,7 +1294,6 @@ void ExplorerRL::showGarrisonDialog(const CArmedInstance *, const CGHeroInstance
 
 void ExplorerRL::commanderGotLevel(const CCommanderInstance *, std::vector<ui32>, QueryID) { unsupported("commander level-up"); }
 void ExplorerRL::showTeleportDialog(const CGHeroInstance *, TeleportChannelID, TTeleportExitsList, bool, QueryID) { unsupported("teleport"); }
-void ExplorerRL::showMapObjectSelectDialog(QueryID, const Component &, const MetaString &, const MetaString &, const std::vector<ObjectInstanceID> &) { unsupported("object selection"); }
 void ExplorerRL::showRecruitmentDialog(const CGDwelling *, const CArmedInstance *, int, QueryID) { unsupported("dwelling recruitment"); }
 void ExplorerRL::showMarketWindow(const IMarket *, const CGHeroInstance *, QueryID) { unsupported("market"); }
 void ExplorerRL::showUniversityWindow(const IMarket *, const CGHeroInstance *, QueryID) { unsupported("university"); }

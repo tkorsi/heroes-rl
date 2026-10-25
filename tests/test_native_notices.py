@@ -18,7 +18,13 @@ class NativeNoticeTests(unittest.TestCase):
     def test_trophies_with_actual_static_game_content(self):
         self._check_native(trophies=True)
 
-    def _check_native(self, *, trophies):
+    def test_necromancy_with_actual_static_game_content(self):
+        self._check_native(trophies=True, necromancy=True)
+
+    def test_capabilities_with_actual_static_game_content(self):
+        self._check_native(trophies=True, capabilities=True)
+
+    def _check_native(self, *, trophies, necromancy=False, capabilities=False):
         compiler = shutil.which("clang++") or shutil.which("c++")
         engine = ROOT / "vcmi"
         library = engine / "build/bin" / ("libvcmi.dylib" if sys.platform == "darwin" else "libvcmi.so")
@@ -65,10 +71,15 @@ class NativeNoticeTests(unittest.TestCase):
                 (data_root / "Data").symlink_to((data / "Data").resolve(), target_is_directory=True)
                 inherited = {key: value for key, value in os.environ.items()
                              if not key.startswith(("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_", "VCMI_USER_DATA_DIR", "XDG_"))}
-                result = subprocess.run([str(executable), "--trophies"], cwd=library.parent,
+                mode = "--capabilities" if capabilities else "--necromancy" if necromancy else "--trophies"
+                result = subprocess.run([str(executable), mode], cwd=library.parent,
                                         env={**inherited, **profile_env}, check=True,
                                         capture_output=True, text=True, timeout=30)
-                self.assertIn("native trophy notice parser: 42 checks passed", result.stdout)
+                if capabilities:
+                    self.assertIn("native capability notice parser: 205 checks passed", result.stdout)
+                else:
+                    self.assertIn("native necromancy notice parser: 52 checks passed" if necromancy else
+                                  "native trophy notice parser: 42 checks passed", result.stdout)
             else:
                 result = subprocess.run([str(executable)], check=True, capture_output=True, text=True, timeout=10)
                 self.assertIn("native notice parser: 98 checks passed", result.stdout)

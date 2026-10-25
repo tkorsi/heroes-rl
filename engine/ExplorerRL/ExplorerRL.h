@@ -100,6 +100,7 @@ private:
 	int64_t decisionID = 0;
 	int64_t completedBattles = 0;
 	bool contextual = false;
+	bool expandedInterface = false; ///< opt-in protocol-10 native adventure capabilities
 	std::string evidenceActor;
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool heroRecruitment = false; ///< opt-in protocol-7 owned-town tavern and multiple heroes
@@ -176,7 +177,7 @@ private:
 		bool * issued = nullptr, const std::function<bool()> & beforeIssue = {});
 	bool ended();
 	void unsupported(const std::string & operation);
-	void runContextualTurn(QueryID queryID);
+	void runContextualTurn(QueryID queryID, bool modalOnly = false);
 	void captureContextual(); ///< stable game state; acquires stateMutex
 	void captureContextualLocked(); ///< stable game state and stateMutex held
 	JsonNode contextualObservation(); ///< stable game state and stateMutex held
@@ -201,5 +202,11 @@ private:
 	void installAdventureDialog(); ///< stable game state and stateMutex held, parent action finished
 	JsonNode adventureDialogPanel() const; ///< immutable received payload only, stateMutex held
 	bool executeDialogAction(const JsonNode & action, int64_t decision);
+	JsonNode capabilityControls(); ///< only controls in the explicitly opened parent
+	JsonNode capabilityPanel(); ///< player-visible native contents and legal typed controls
+	bool executeCapabilityAction(const JsonNode & action, int64_t decision);
+	void installCapabilityDialog(); ///< state/read locks held
+	void receiveLevelUp(const CGHeroInstance *, PrimarySkill, const std::vector<SecondarySkill> &, QueryID);
+	void receiveGarrison(const CArmedInstance *, const CGHeroInstance *, bool, QueryID);
 	void contextualResult(JsonNode result, int64_t decision);
 };

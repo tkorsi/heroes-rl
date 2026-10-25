@@ -64,11 +64,18 @@ Rows displayedRows(const CCallback & callback, const State & state, const JsonNo
 		if(first == second || !exchange(first, second))
 			throw std::runtime_error("Army exchange requires its active native owned-hero query");
 		rows.push_back({ownedHero(callback, first), "hero"});
-		rows.push_back({ownedHero(callback, second), "hero"});
+		if(state.ownHeroExchange && state.ownHeroExchange->joiningNeutral && state.ownHeroExchange->second == second)
+		{
+			const auto * joining = dynamic_cast<const CArmedInstance *>(callback.getObj(ObjectInstanceID(second), false));
+			if(!joining || joining->ID != Obj::MONSTER || joining->getOwner().isValidPlayer())
+				throw std::runtime_error("Received joining army is unavailable");
+			rows.push_back({joining, "joining_neutral"});
+		}
+		else rows.push_back({ownedHero(callback, second), "hero"});
 	}
 	else throw std::runtime_error("Army operations require an explicitly opened army window");
 	for(const auto & row : rows)
-		if(!row.army || row.army->getOwner() != callback.getPlayerID())
+		if(!row.army || (row.army->getOwner() != callback.getPlayerID() && std::string(row.role) != "joining_neutral"))
 			throw std::runtime_error("Displayed army row is not owned");
 	return rows;
 }
@@ -191,7 +198,7 @@ std::pair<const CArmedInstance *, int> openedStack(const CCallback & callback, c
 UpgradeInfo upgrades(const CCallback & callback, const CArmedInstance & army, int slot)
 {
 	UpgradeInfo result(army.getStackPtr(SlotID(slot))->getCreatureID());
-	callback.fillUpgradeInfo(&army, SlotID(slot), result);
+	if(army.getOwner() == callback.getPlayerID()) callback.fillUpgradeInfo(&army, SlotID(slot), result);
 	return result;
 }
 
@@ -315,6 +322,8 @@ bool ExplorerRL::executeArmyAction(const JsonNode & action, int64_t decision)
 		const auto & wire = contextState.lastObservation["window"]["armies"];
 		const auto [source, from] = selectedSlot(contextState, current, wire, action["selection"].String());
 		const auto [destination, to] = selectedSlot(contextState, current, wire, action["destination"].String());
+		if(splitting && source->getOwner() != playerID)
+			throw std::runtime_error("Native split requires an owned source army");
 		sourceID = source->id.getNum(); destinationID = destination->id.getNum();
 		sourceSlot = from; destinationSlot = to;
 		before = snapshot(current);

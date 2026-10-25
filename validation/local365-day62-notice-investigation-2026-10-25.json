@@ -1,0 +1,97 @@
+{
+  "schema": "heroes-local365-notice-investigation-v1",
+  "recorded_at_utc": "2026-10-25T20:39:00.069743+00:00",
+  "scope": "Offline diagnosis of retained episode93 and terminal-history audit; no new games, PPO updates, retries or experience admission.",
+  "campaign_source": "aebe2fb28ed89d2cd446dc6e1606f60a40aae67b",
+  "campaign_outcomes": {
+    "started": 271,
+    "verified_natural_losses": 270,
+    "standard_loss_notices": 268,
+    "seven_days_without_town_losses": 2,
+    "verified_wins": 0,
+    "timeouts": 0,
+    "day_limit_cutoffs": 0,
+    "action_limit_cutoffs": 0,
+    "technical_failures": 1,
+    "unstarted_batch93_games": 3
+  },
+  "town_rule_defeats": [
+    {
+      "run": "local365-continuation-046",
+      "episode": 1,
+      "town_lost_day": 3,
+      "defeat_day": 10,
+      "notice_seq": 1719,
+      "terminal_seq": 1721
+    },
+    {
+      "run": "local365-continuation-049",
+      "episode": 3,
+      "town_lost_day": 8,
+      "defeat_day": 15,
+      "notice_seq": 2407,
+      "terminal_seq": 2409
+    }
+  ],
+  "town_rule_evidence": "Both histories deliver heroes.baseline.seven_days_without_town while the hero is still alive; hero_lost follows the terminal as elimination cleanup.",
+  "failed_episode": {
+    "run": "local365-continuation-093",
+    "episode": 1,
+    "day": 62,
+    "sampled_choices": 1337,
+    "admitted_training_samples": 0,
+    "outcome": null,
+    "events": [
+      "Visiting hero lost the first defensive battle.",
+      "Thant won the following defensive battle; the opponent log reports Edric lost.",
+      "Thant raised four Skeletons by necromancy.",
+      "The structured informational-notice adapter rejected this notification and stopped the episode."
+    ]
+  },
+  "native_replay": {
+    "mode": "Server-only recorded prefix, diagnostic observer; original state and sent-packet digest checks retained.",
+    "verified": true,
+    "inputs": 1112,
+    "outgoing_packets": 5605,
+    "divergence": null,
+    "terminals": [],
+    "client_observation_or_contextual_validation_performed": false,
+    "recorded_server_log_sha256": "0bfc05caca373a29ef39e72d7c9c16324cf065b9a55a1c92a9198af12458a1cf",
+    "diagnostic_source_sha256": "ad87ec0a459aabc172f531609a0d39aa0d036cf16f3a4830b47627e226d69293",
+    "diagnostic_binary_sha256": "d73f9ca91c1fd087cdd7db580aacc006be7bfa11bbc143396ec10ba67bbf7990",
+    "report_sha256": "e5e6d6ea885cc85e4cd3d3d24a4f3d764e1672bd7f583f98d32abc0a57b10974",
+    "probe_location": "Private local artifacts: diagnostics/day62-notice; temporary observer compiled separately from the existing donor objects without changing the campaign runtime."
+  },
+  "failing_notification": {
+    "packet": {
+      "client_pack": 5594,
+      "day": 62,
+      "type": 149,
+      "victor": 0,
+      "loser": 1,
+      "learned_spells": 0,
+      "moving_artifacts": 0,
+      "raised_creature": 56,
+      "raised_count": 4
+    },
+    "recorded_packet_digest": "c80a91386c714fa5",
+    "server_input_seq": 1110,
+    "template": "core.genrltxt.145",
+    "display_mode": "auto",
+    "creature": "core.skeleton",
+    "count": 4,
+    "normalizer_result": "Unsupported informational notice template",
+    "eagle_eye_and_artifact_notices_in_same_packet": false
+  },
+  "required_repair": [
+    "Add an explicit validated necromancy-notice grammar for singular and plural messages.",
+    "Handle count substitution and creature/count components without exposing hidden game state.",
+    "Cover the retained regression before authorizing another training run."
+  ],
+  "limits": [
+    "This server replay diagnoses the stopped prefix; it does not complete the game or validate its experience for PPO.",
+    "The final verified checkpoint remains update92.",
+    "The notice adapter was not changed in this investigation.",
+    "No claim of strategic improvement follows from winning this battle."
+  ]
+}

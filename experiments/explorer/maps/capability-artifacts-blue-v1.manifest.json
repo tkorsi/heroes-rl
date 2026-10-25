@@ -1,0 +1,434 @@
+{
+  "automatic_battles": true,
+  "changed_header_fields": {
+    "description": {
+      "after": "Isolated native capability diagnostic; excluded from training. All authored initial-state differences are recorded in its manifest. Normal fog, VCMI mechanics, automatic battles and native leveling remain enabled.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "heroLevelLimit": {
+      "after": 0,
+      "before": 1
+    },
+    "name": {
+      "after": "capability-artifacts-blue-v1",
+      "before": "Hero management: two castles"
+    },
+    "players": {
+      "after": {
+        "blue": {
+          "allowedFactions": {
+            "anyOf": [
+              "core:castle"
+            ]
+          },
+          "canPlay": "PlayerOrAI",
+          "heroes": {
+            "diagnostic_partner": {
+              "type": "core:valeska"
+            },
+            "hero_1": {
+              "type": "core:edric"
+            }
+          },
+          "mainHero": "hero_1",
+          "mainTown": {
+            "generateHero": false,
+            "l": 0,
+            "x": 15,
+            "y": 7
+          }
+        },
+        "red": {
+          "allowedFactions": {
+            "anyOf": [
+              "core:castle"
+            ]
+          },
+          "canPlay": "PlayerOrAI",
+          "heroes": {
+            "hero_0": {
+              "type": "core:orrin"
+            }
+          },
+          "mainHero": "hero_0",
+          "mainTown": {
+            "generateHero": false,
+            "l": 0,
+            "x": 4,
+            "y": 7
+          }
+        }
+      },
+      "before": {
+        "blue": {
+          "allowedFactions": {
+            "anyOf": [
+              "core:castle"
+            ]
+          },
+          "canPlay": "PlayerOrAI",
+          "heroes": {
+            "hero_1": {
+              "type": "core:edric"
+            }
+          },
+          "mainHero": "hero_1",
+          "mainTown": {
+            "generateHero": false,
+            "l": 0,
+            "x": 15,
+            "y": 7
+          }
+        },
+        "red": {
+          "allowedFactions": {
+            "anyOf": [
+              "core:castle"
+            ]
+          },
+          "canPlay": "PlayerOrAI",
+          "heroes": {
+            "hero_0": {
+              "type": "core:orrin"
+            }
+          },
+          "mainHero": "hero_0",
+          "mainTown": {
+            "generateHero": false,
+            "l": 0,
+            "x": 4,
+            "y": 7
+          }
+        }
+      }
+    }
+  },
+  "diagnostic_only": true,
+  "engine_verified": false,
+  "fixture": "artifacts",
+  "fog": "normal native team fog",
+  "layout_seed": 0,
+  "map_sha256": "5a13f0bbbe52d8fb58db4a449cad123cf5d902ba4ba96dd03520c118bd5363b9",
+  "native_hero_level_limit": 0,
+  "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
+  "object_changes": [
+    {
+      "after": {
+        "instanceName": "diagnostic_partner",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:valeska"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 10
+      },
+      "before": null,
+      "instance": "diagnostic_partner"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_0",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 4,
+        "y": 10
+      },
+      "instance": "gold_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_1",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 15,
+        "y": 10
+      },
+      "instance": "gold_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 6,
+        "y": 12
+      },
+      "instance": "guard_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_1",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 13,
+        "y": 12
+      },
+      "instance": "guard_1"
+    },
+    {
+      "after": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {
+            "backpack": [
+              "core:centaurAxe"
+            ],
+            "feet": "core:sandalsOfTheSaint",
+            "head": "core:helmOfHeavenlyEnlightenment",
+            "leftHand": "core:lionsShieldOfCourage",
+            "neck": "core:celestialNecklaceOfBliss",
+            "rightHand": "core:swordOfJudgement",
+            "torso": "core:armorOfWonder"
+          },
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 7
+      },
+      "before": {
+        "instanceName": "hero_1",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 0,
+          "formation": "loose",
+          "owner": "blue",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:edric"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 16,
+        "y": 7
+      },
+      "instance": "hero_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_0",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 6,
+        "y": 16
+      },
+      "instance": "mine_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_1",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 15,
+        "y": 16
+      },
+      "instance": "mine_1"
+    }
+  ],
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "player": "blue",
+  "rules_and_rewards_unchanged": true,
+  "runtime_state_grants": false,
+  "scenario_id": "capability-artifacts-blue-v1",
+  "schema": "heroes-capability-scenario-v1",
+  "terrain_changes": [],
+  "training_performed": false
+}

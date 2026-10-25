@@ -30,9 +30,16 @@ MANAGEMENT_ENVIRONMENT = "adventure-army-management-v1"
 DIALOGS_SCHEMA = "heroes-player-history-v7"
 DIALOGS_ACTION_SCHEMA = "heroes-context-actions-v7"
 DIALOGS_ENVIRONMENT = "adventure-dialogs-v1"
+EXPANDED_SCHEMA = "heroes-player-history-v8"
+EXPANDED_ACTION_SCHEMA = "heroes-context-actions-v8"
+EXPANDED_ENVIRONMENT = "adventure-capabilities-v1"
 TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
 TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
+CAPABILITY_PANELS = ("marketplace", "purchases", "artifacts", "spellbook", "level_up", "spell_target", "world_view")
+CAPABILITY_ACTIONS = ("trade_resource", "buy_artifact", "move_artifact", "assemble_artifact",
+                      "disassemble_artifact", "cast_adventure_spell", "choose_level_up",
+                      "choose_spell_target", "cancel_spell_target")
 
 
 @dataclass(frozen=True)
@@ -53,7 +60,7 @@ class InterfaceProfile:
 
     @property
     def town_economy(self):
-        return self.version in (3, 4, 5, 6, 7)
+        return self.version in (3, 4, 5, 6, 7, 8)
 
     @property
     def army_transfer(self):
@@ -61,15 +68,19 @@ class InterfaceProfile:
 
     @property
     def hero_recruitment(self):
-        return self.version in (5, 6, 7)
+        return self.version in (5, 6, 7, 8)
 
     @property
     def army_management(self):
-        return self.version in (6, 7)
+        return self.version in (6, 7, 8)
 
     @property
     def dialogs(self):
-        return self.version == 7
+        return self.version in (7, 8)
+
+    @property
+    def capabilities(self):
+        return self.version == 8
 
 
 WINDOWS_PROFILE = InterfaceProfile(ENVIRONMENT, SCHEMA, ACTION_SCHEMA, 4, 2)
@@ -78,11 +89,12 @@ ARMIES_PROFILE = InterfaceProfile(ARMIES_ENVIRONMENT, ARMIES_SCHEMA, ARMIES_ACTI
 HEROES_PROFILE = InterfaceProfile(HEROES_ENVIRONMENT, HEROES_SCHEMA, HEROES_ACTION_SCHEMA, 7, 5)
 MANAGEMENT_PROFILE = InterfaceProfile(MANAGEMENT_ENVIRONMENT, MANAGEMENT_SCHEMA, MANAGEMENT_ACTION_SCHEMA, 8, 6)
 DIALOGS_PROFILE = InterfaceProfile(DIALOGS_ENVIRONMENT, DIALOGS_SCHEMA, DIALOGS_ACTION_SCHEMA, 9, 7)
+EXPANDED_PROFILE = InterfaceProfile(EXPANDED_ENVIRONMENT, EXPANDED_SCHEMA, EXPANDED_ACTION_SCHEMA, 10, 8)
 
 
 def profile_for(value):
     """Select an explicit interface/history/action version; v2 remains the default."""
-    for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE, HEROES_PROFILE, MANAGEMENT_PROFILE, DIALOGS_PROFILE):
+    for profile in (WINDOWS_PROFILE, TOWN_PROFILE, ARMIES_PROFILE, HEROES_PROFILE, MANAGEMENT_PROFILE, DIALOGS_PROFILE, EXPANDED_PROFILE):
         if value in (profile.environment, profile.history_schema, profile.action_schema):
             return profile
     raise ValueError("Unsupported contextual interface/schema")
@@ -123,14 +135,21 @@ class Context:
     selection: str | None = None
 
     def __post_init__(self):
-        if self.kind not in ("map", "hero", "town", "exchange", "stack", "dialog"):
+        if self.kind not in ("map", "hero", "town", "exchange", "stack", "dialog", "capability"):
             raise ValueError("Unsupported context")
         if self.kind == "map":
             if self.subject is not None:
                 raise ValueError("Map context has no subject")
         else:
             _text(self.subject)
-        if self.kind == "dialog":
+        if self.kind == "capability":
+            if self.panel not in CAPABILITY_PANELS:
+                raise ValueError("Unknown capability panel")
+            if self.panel in ("level_up", "spell_target", "world_view"):
+                _text(self.selection)
+            elif self.selection is not None:
+                raise ValueError("Only a delivered native query carries a capability selection")
+        elif self.kind == "dialog":
             _text(self.selection)
             if self.panel is not None:
                 raise ValueError("Adventure dialog has no subpanel")
@@ -180,6 +199,8 @@ class Action:
                              "open_stack", "select_upgrade", "upgrade_stack")
         if profile.dialogs:
             town_actions += ("choose_dialog",)
+        if profile.capabilities:
+            town_actions += ("open_capability", "close_capability", *CAPABILITY_ACTIONS)
         if self.kind not in ("move_to", "open_hero", "open_town", "close", "end_turn", *(
                 town_actions if profile.town_economy else ())):
             raise ValueError("Unsupported contextual action")
@@ -192,19 +213,26 @@ class Action:
             _integer(self.y)
         elif self.x is not None or self.y is not None:
             raise ValueError("Only destination movement takes coordinates")
-        if self.kind == "open_panel":
+        if self.kind == "open_capability":
+            if self.panel not in ("marketplace", "purchases", "artifacts", "spellbook") or self.selection is not None:
+                raise ValueError("Capability navigation selects an explicit available window")
+        elif self.kind == "open_panel":
             if self.panel == "recruitment":
                 _text(self.selection)
             elif self.panel not in (("hall", "tavern") if profile.hero_recruitment else ("hall",)) or self.selection is not None:
                 raise ValueError("Unsupported explicit town panel selection")
         elif self.kind in ("open_building", "construct", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero",
-                           "split_stack", "merge_stacks", "swap_stacks", "open_stack", "select_upgrade", "upgrade_stack", "choose_dialog"):
+                           "split_stack", "merge_stacks", "swap_stacks", "open_stack", "select_upgrade", "upgrade_stack", "choose_dialog", *CAPABILITY_ACTIONS):
             _text(self.selection)
             if self.panel is not None:
                 raise ValueError("This action selects a displayed entry, not a panel")
         elif self.panel is not None or self.selection is not None:
             raise ValueError("This action has no panel selection")
-        if self.kind in ("recruit", "transfer_stack", "split_stack"):
+        if self.kind == "trade_resource":
+            _integer(self.count, low=1, high=2**31 - 1, name="explicit trade lots")
+            if self.destination is not None:
+                raise ValueError("A trade binds its displayed resource pair through the selection")
+        elif self.kind in ("recruit", "transfer_stack", "split_stack"):
             _integer(self.count, low=1, high=2**31 - 1, name="explicit creature count")
             _text(self.destination)
         elif self.kind in ("merge_stacks", "swap_stacks"):
@@ -442,9 +470,9 @@ class ArmyView:
     def __post_init__(self):
         _text(self.ref)
         _text(self.subject)
-        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero", "hero"):
+        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero", "hero", "joining_neutral"):
             raise ValueError("Unsupported displayed town army role")
-        if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role != "town_garrison"):
+        if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role not in ("town_garrison", "joining_neutral")):
             raise ValueError("Last-stack rule must match the displayed army role")
         _tuple(self.slots, ArmySlot, "displayed army slots")
         if tuple(slot.slot for slot in self.slots) != tuple(range(7)):
@@ -502,6 +530,8 @@ def army_operation_maximum(armies, kind, source_ref, destination_ref):
     source_army, source = army_slot(armies, source_ref)
     destination_army, destination = army_slot(armies, destination_ref)
     if source is None or destination is None or source_ref == destination_ref:
+        return 0
+    if kind == "split_stack" and source_army.role == "joining_neutral":
         return 0
     crossing = source_army.subject != destination_army.subject
     if kind == "swap_stacks":
@@ -730,6 +760,165 @@ class Stack:
         _integer(self.count, low=1)
 
 
+def _capability_cost(cost):
+    if cost is not None:
+        _tuple(cost, int, "displayed resource cost")
+        if len(cost) != 7:
+            raise ValueError("A displayed cost has seven resources")
+        for amount in cost:
+            _integer(amount, high=2**31 - 1)
+
+
+@dataclass(frozen=True)
+class CapabilityItem:
+    ref: str
+    kind: str
+    subject: str | None
+    id: int
+    slot: int | None
+    amount: int | None
+    locked: bool
+    cost: tuple[int, ...] | None
+    x: int | None
+    y: int | None
+    z: int | None
+
+    def __post_init__(self):
+        _text(self.ref)
+        if self.kind not in ("artifact", "spell", "world_object", "world_terrain"):
+            raise ValueError("Unknown displayed capability item")
+        if self.subject is not None:
+            _text(self.subject)
+        _integer(self.id, high=2**31 - 1, name="static content category")
+        for value in (self.slot, self.amount):
+            if value is not None:
+                _integer(value, high=2**31 - 1)
+        if type(self.locked) is not bool:
+            raise ValueError("Inventory lock is an explicit boolean")
+        _capability_cost(self.cost)
+        if self.kind in ("world_object", "world_terrain"):
+            _position((self.x, self.y, self.z))
+            if self.slot is not None or self.cost is not None or self.locked:
+                raise ValueError("Delivered world-view item has no inventory or purchase fields")
+            if self.kind == "world_terrain" and self.amount is not None:
+                raise ValueError("Revealed terrain does not reveal movement or hidden object properties")
+        elif any(value is not None for value in (self.x, self.y, self.z)):
+            raise ValueError("Only a delivered world-view item exposes coordinates")
+
+
+@dataclass(frozen=True)
+class CapabilityChoice:
+    ref: str
+    kind: str
+    subject: str
+    destination: str | None
+    artifact: int | None
+    slot: int | None
+    destination_slot: int | None
+    spell: int | None
+    skill: int | None
+    skill_level: int | None
+    resource_from: int | None
+    resource_to: int | None
+    give: int | None
+    receive: int | None
+    max_count: int | None
+    x: int | None
+    y: int | None
+    cost: tuple[int, ...] | None
+
+    def __post_init__(self):
+        _text(self.ref)
+        _text(self.subject)
+        if self.kind not in CAPABILITY_ACTIONS:
+            raise ValueError("Unknown typed capability choice")
+        if self.destination is not None:
+            _text(self.destination)
+        for name in ("artifact", "slot", "destination_slot", "spell", "skill", "x", "y"):
+            value = getattr(self, name)
+            if value is not None:
+                _integer(value, high=2**31 - 1, name=name)
+        _capability_cost(self.cost)
+        allowed = {
+            "trade_resource": {"resource_from", "resource_to", "give", "receive", "max_count"},
+            "buy_artifact": {"artifact", "cost"},
+            "move_artifact": {"artifact", "slot", "destination", "destination_slot"},
+            "assemble_artifact": {"artifact", "slot"},
+            "disassemble_artifact": {"artifact", "slot"},
+            "cast_adventure_spell": {"spell", "x", "y", "cost"},
+            "choose_level_up": {"skill", "skill_level"},
+            "choose_spell_target": {"spell", "destination", "x", "y"},
+            "cancel_spell_target": {"spell"},
+        }[self.kind]
+        for field in fields(self):
+            if field.name not in {"ref", "kind", "subject"} | allowed and getattr(self, field.name) is not None:
+                raise ValueError("Capability choice contains fields unrelated to its typed action")
+        required = {
+            "trade_resource": allowed,
+            "buy_artifact": {"artifact", "cost"},
+            "move_artifact": allowed,
+            "assemble_artifact": allowed,
+            "disassemble_artifact": allowed,
+            "cast_adventure_spell": {"spell"},
+            "choose_level_up": allowed,
+            "choose_spell_target": {"spell", "destination"},
+            "cancel_spell_target": {"spell"},
+        }[self.kind]
+        if any(getattr(self, name) is None for name in required):
+            raise ValueError("Capability choice omits a displayed argument")
+        if self.kind == "trade_resource":
+            _integer(self.resource_from, high=6)
+            _integer(self.resource_to, high=6)
+            if self.resource_from == self.resource_to:
+                raise ValueError("Trade resources must differ")
+            for value in (self.give, self.receive, self.max_count):
+                _integer(value, low=1, high=2**31 - 1)
+        if self.kind == "choose_level_up":
+            _integer(self.skill_level, low=1, high=3)
+        if (self.x is None) != (self.y is None):
+            raise ValueError("Spell target coordinates form one displayed pair")
+
+
+@dataclass(frozen=True)
+class CapabilityPanel:
+    ref: str
+    kind: str
+    parent_context: Context
+    mandatory: bool
+    hero_level: int | None
+    primary_skill: int | None
+    items: tuple[CapabilityItem, ...]
+    choices: tuple[CapabilityChoice, ...]
+
+    def __post_init__(self):
+        _text(self.ref)
+        if self.kind not in CAPABILITY_PANELS or type(self.parent_context) is not Context:
+            raise ValueError("Capability panel requires an exact kind and parent context")
+        if (type(self.mandatory) is not bool or self.kind == "spell_target" and not self.mandatory
+                or self.kind not in ("level_up", "spell_target") and self.mandatory):
+            raise ValueError("Only delivered skill/target queries are mandatory")
+        _tuple(self.items, CapabilityItem, "displayed capability items")
+        _tuple(self.choices, CapabilityChoice, "displayed capability choices")
+        _unique([self.ref, *(item.ref for item in self.items), *(choice.ref for choice in self.choices)], "capability reference")
+        allowed = {"marketplace": {"trade_resource"}, "purchases": {"buy_artifact"},
+                   "artifacts": {"move_artifact", "assemble_artifact", "disassemble_artifact"},
+                   "spellbook": {"cast_adventure_spell"}, "level_up": {"choose_level_up"},
+                   "spell_target": {"choose_spell_target", "cancel_spell_target"}, "world_view": set()}[self.kind]
+        if any(choice.kind not in allowed for choice in self.choices):
+            raise ValueError("Capability choices must belong to the displayed panel")
+        if self.kind == "level_up":
+            _integer(self.hero_level, low=2)
+            _integer(self.primary_skill, high=3)
+            if self.items or (len(self.choices) != 2 if self.mandatory else len(self.choices) > 1):
+                raise ValueError("Level-up query requires its one or two native secondary-skill choices")
+        elif self.hero_level is not None or self.primary_skill is not None:
+            raise ValueError("Only a delivered level-up exposes its level and gained primary skill")
+        if self.kind in ("marketplace", "level_up", "spell_target") and self.items:
+            raise ValueError("This choice panel contains no inventory")
+        if self.kind == "world_view" and any(item.kind not in ("world_object", "world_terrain") for item in self.items):
+            raise ValueError("World view contains only delivered objects")
+
+
 @dataclass(frozen=True)
 class Window:
     context: Context
@@ -743,10 +932,34 @@ class Window:
     armies: tuple[ArmyView, ...] | None = None
     stack_panel: StackPanel | None = None
     dialog_panel: DialogPanel | None = None
+    capability_controls: tuple[str, ...] | None = None
+    capability_panel: CapabilityPanel | None = None
 
     def __post_init__(self):
         if type(self.context) is not Context or self.context.kind == "map":
             raise ValueError("Window requires an explicit non-map context")
+        if self.capability_controls is not None:
+            _tuple(self.capability_controls, str, "available capability windows")
+            _unique(self.capability_controls, "capability control")
+            allowed = {"hero": ("artifacts", "spellbook"), "town": ("marketplace", "purchases"),
+                       "exchange": ("artifacts",)}.get(self.context.kind, ())
+            if any(control not in allowed for control in self.capability_controls):
+                raise ValueError("Capability control does not belong to this open window")
+        if self.context.kind == "capability":
+            panel = self.capability_panel
+            if (type(panel) is not CapabilityPanel or panel.kind != self.context.panel
+                    or panel.mandatory and panel.ref != self.context.selection
+                    or self.capability_controls != () or self.armies != ()
+                    or any(value is not None for value in (self.army, self.primary_skills,
+                        self.level, self.buildings, self.faction, self.town_panel, self.stack_panel, self.dialog_panel))):
+                raise ValueError("Capability window exposes only its current explicit panel")
+            if panel.kind == "spellbook":
+                _integer(self.mana)
+            elif self.mana is not None:
+                raise ValueError("Only an open spellbook refreshes hero mana")
+            return
+        if self.capability_panel is not None:
+            raise ValueError("Capability contents require an explicitly open capability window")
         if self.armies is not None:
             _tuple(self.armies, ArmyView, "displayed eligible armies")
             _unique([army.subject for army in self.armies], "displayed army subject")
@@ -767,7 +980,8 @@ class Window:
             if self.context.kind == "exchange":
                 if self.stack_panel is not None or self.armies is None or len(self.armies) != 2:
                     raise ValueError("Exchange displays exactly its two own hero armies")
-                if tuple(army.subject for army in self.armies) != (self.context.subject, self.context.selection) or any(army.role != "hero" for army in self.armies):
+                if (tuple(army.subject for army in self.armies) != (self.context.subject, self.context.selection)
+                        or self.armies[0].role != "hero" or self.armies[1].role not in ("hero", "joining_neutral")):
                     raise ValueError("Exchange rows must bind its two ordered hero participants")
             else:
                 if type(self.stack_panel) is not StackPanel or self.armies != () or self.stack_panel.source.ref != self.context.selection:
@@ -854,7 +1068,11 @@ class Observation:
             if type(self.window) is not Window:
                 raise ValueError("Expected typed active window")
             own = (self.towns if self.window.context.kind == "town" else
-                   (*self.heroes, *self.towns) if self.window.context.kind == "stack" else self.heroes)
+                   (*self.heroes, *self.towns) if self.window.context.kind in ("stack", "capability") else self.heroes)
+            stack = self.window.stack_panel
+            if (stack is not None and stack.parent_context.kind == "exchange"
+                    and self.window.context.subject == stack.parent_context.selection):
+                own = (*own, *(obj for obj in self.objects if obj.owner == "neutral"))
             if self.window.context.subject not in {entry.handle for entry in own}:
                 raise ValueError("Window subject must be an accessible owned object")
             if self.window.armies is not None:
@@ -863,6 +1081,9 @@ class Observation:
                     if army.role == "town_garrison":
                         if self.window.context.kind != "town" or army.subject != self.window.context.subject:
                             raise ValueError("Town army must bind the currently open town")
+                    elif army.role == "joining_neutral":
+                        if (self.window.context.kind != "exchange" or army.subject != self.window.context.selection):
+                            raise ValueError("Joining army must bind the delivered neutral exchange")
                     elif army.subject not in own_heroes:
                         raise ValueError("Displayed hero army must be currently owned")
                     elif own_heroes[army.subject].in_garrison is not None and army.role in ("garrison_hero", "visiting_hero") and own_heroes[army.subject].in_garrison != (army.role == "garrison_hero"):
@@ -885,6 +1106,25 @@ class Observation:
                     raise ValueError("Allowed hero recruitment must be affordable from visible gold")
                 if tavern.recruit_status == "no_gold" and self.resources[6] >= tavern.gold_cost:
                     raise ValueError("Insufficient-gold status must match visible resources")
+            capability = self.window.capability_panel
+            if capability is not None:
+                own_subjects = {entry.handle for entry in (*self.heroes, *self.towns)}
+                for choice in capability.choices:
+                    if choice.subject not in own_subjects:
+                        raise ValueError("Capability actor must be a currently owned subject")
+                    if choice.destination is not None and choice.destination not in own_subjects:
+                        raise ValueError("Capability destination must bind a displayed owned recipient")
+                    if choice.x is not None and (choice.x >= self.size[0] or choice.y >= self.size[1]):
+                        raise ValueError("Displayed spell target is outside map bounds")
+                    if choice.kind == "trade_resource" and choice.max_count != min((2**31 - 1) // choice.give, self.resources[choice.resource_from] // choice.give):
+                        raise ValueError("Trade lots must match visible funds and displayed native exchange rate")
+                    if choice.kind == "buy_artifact" and any(price > held for price, held in zip(choice.cost, self.resources)):
+                        raise ValueError("Available purchase must be affordable from visible resources")
+                for item in capability.items:
+                    if item.subject is not None and item.subject not in own_subjects:
+                        raise ValueError("Capability inventory owner must be currently owned")
+                    if item.kind in ("world_object", "world_terrain") and any(p >= bound for p, bound in zip((item.x, item.y, item.z), self.size)):
+                        raise ValueError("Delivered world-view position is outside map bounds")
             if panel is not None and panel.armies is not None:
                 exchange = panel.armies
                 source = exchange.source
@@ -917,6 +1157,8 @@ class Offers:
     stack_panel: StackPanel | None = None
     movable_hero_refs: tuple[str, ...] | None = None
     dialog_panel: DialogPanel | None = None
+    capability_controls: tuple[str, ...] | None = None
+    capability_panel: CapabilityPanel | None = None
 
     def __post_init__(self):
         profile = profile_for(self.schema)
@@ -947,6 +1189,12 @@ class Offers:
         elif any(value is not None for value in (self.armies, self.stack_panel, self.movable_hero_refs)):
             raise ValueError("Army management support requires v6")
         _validate_context(self.context, profile)
+        if profile.capabilities:
+            _tuple(self.capability_controls, str, "capability controls")
+            if (self.context.kind == "capability") != (type(self.capability_panel) is CapabilityPanel):
+                raise ValueError("Capability support requires its current explicit panel")
+        elif self.capability_controls is not None or self.capability_panel is not None:
+            raise ValueError("Expanded capabilities require v8")
         if self.context.kind == "dialog":
             if type(self.dialog_panel) is not DialogPanel or self.dialog_panel.ref != self.context.selection:
                 raise ValueError("Dialog choices must bind the active displayed query")
@@ -973,6 +1221,9 @@ class Offers:
         }
         if profile.dialogs:
             extra["dialog_panel"] = observation.window.dialog_panel if observation.window else None
+        if profile.capabilities:
+            extra["capability_controls"] = observation.window.capability_controls if observation.window else ()
+            extra["capability_panel"] = observation.window.capability_panel if observation.window else None
         if observation.context.kind != "map":
             return cls(observation.context, observation.size, panel=observation.window.town_panel, schema=schema, **extra)
         return cls(Context(), observation.size, tuple(h.handle for h in observation.heroes),
@@ -981,6 +1232,17 @@ class Offers:
     def permits(self, action):
         if type(action) is not Action or action.schema != self.schema:
             return False
+        if action.kind == "open_capability":
+            return (action.subject == self.context.subject and self.capability_controls is not None
+                    and action.panel in self.capability_controls)
+        if self.context.kind == "capability":
+            panel = self.capability_panel
+            if action.subject != self.context.subject:
+                return False
+            if action.kind == "close_capability":
+                return not panel.mandatory
+            choice = next((item for item in panel.choices if item.ref == action.selection and item.kind == action.kind), None)
+            return choice is not None and (choice.kind != "trade_resource" or action.count <= choice.max_count)
         if self.context.kind == "dialog":
             return (action.kind == "choose_dialog" and action.subject == self.context.subject
                     and action.selection in {choice.ref for choice in self.dialog_panel.choices})
@@ -989,8 +1251,9 @@ class Offers:
                 maximum = army_operation_maximum(self.armies, action.kind, action.selection, action.destination)
                 return action.subject == self.context.subject and maximum > 0 and (action.kind != "split_stack" or action.count <= maximum)
             if action.kind == "open_stack":
-                _, slot = army_slot(self.armies, action.selection)
-                return action.subject == self.context.subject and slot is not None and slot.count > 0
+                army, slot = army_slot(self.armies, action.selection)
+                return (action.subject == self.context.subject and slot is not None and slot.count > 0
+                        )
             if action.kind == "swap_garrison":
                 return (self.context.kind == "town" and self.context.panel == "overview"
                         and action.subject == self.context.subject and any(army.role in ("garrison_hero", "visiting_hero") for army in self.armies))
@@ -1053,13 +1316,13 @@ class Result:
     def __post_init__(self):
         if self.status not in ("reached", "movement_limit", "no_route_known", "interrupted",
                                "interaction", "hero_unavailable", "opened", "closed", "turn_ended", "rejected", "built",
-                               "selected", "recruited", "no_capacity", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered"):
+                               "selected", "recruited", "no_capacity", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied"):
             raise ValueError("Unsupported action result")
         if type(self.accepted) is not bool:
             raise ValueError("Result requires explicit action acceptance")
         if self.status in ("rejected", "no_capacity") and self.accepted:
             raise ValueError("Rejected result cannot be accepted")
-        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered") and not self.accepted:
+        if self.status in ("opened", "closed", "turn_ended", "reached", "movement_limit", "no_route_known", "interaction", "built", "selected", "recruited", "transferred", "hired", "split", "merged", "swapped", "garrison_swapped", "upgraded", "dialog_answered", "capability_applied") and not self.accepted:
             raise ValueError("Completed operation must be accepted")
         if self.position is not None:
             _position(self.position)
@@ -1086,6 +1349,8 @@ DIALOG_NOTICE_TEXT_IDS = frozenset({
     *(f"core.genrltxt.{index}" for index in (29, 139, 140, 141, 142, 147, 148)),
     "heroes.notice.comma_space",
 })
+CAPABILITY_NOTICE_TEXT_IDS = frozenset({*(f"core.genrltxt.{index}" for index in (70, 123, 124, 125, 135, 221, 335, 336, 337, 580)), "heroes.notice.period"})
+NECROMANCY_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.145", "core.genrltxt.146"})
 _REWARD_NOTICE_TEXT_ID = re.compile(r"(?:spell|skill|artifact)\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.name")
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
@@ -1108,7 +1373,7 @@ class NoticeToken:
             if self.number is not None or (self.text_id is None) == (self.owner is None):
                 raise ValueError("Notice text operation requires exactly one text ID or relative owner")
             if self.text_id is not None:
-                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS | DIALOG_TEXT_IDS | DIALOG_NOTICE_TEXT_IDS
+                if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS | DIALOG_TEXT_IDS | DIALOG_NOTICE_TEXT_IDS | NECROMANCY_NOTICE_TEXT_IDS | CAPABILITY_NOTICE_TEXT_IDS
                         and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _REWARD_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _HERO_NAME_TEXT_ID.fullmatch(self.text_id) is None):
@@ -1234,7 +1499,7 @@ class NoticeComponent:
     resource: str | None = None
     amount: int | None = None
     owner: str | None = None
-    # Static artifact/spell definition shown by a delivered trophy component;
+    # Static content definition shown by a delivered informational component;
     # never an instance identifier, inventory query or description/utility text.
     content_id: str | None = None
     skill: str | None = None
@@ -1260,6 +1525,11 @@ class NoticeComponent:
             if (any(value is not None for value in (self.resource, self.amount, self.owner))
                     or type(self.content_id) is not str or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
                 raise ValueError("Trophy notice component requires only a static core content ID")
+        elif self.kind == "creature":
+            if (self.resource is not None or self.owner is not None or type(self.content_id) is not str
+                    or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
+                raise ValueError("Raised creature requires only its displayed static core definition and count")
+            _integer(self.amount, low=1, high=2**31 - 1, name="displayed raised creature count")
         elif self.kind in ("secondary_skill", "spell"):
             if (self.resource is not None or self.owner is not None or type(self.content_id) is not str
                     or _NOTICE_CONTENT_ID.fullmatch(self.content_id) is None):
@@ -1291,8 +1561,8 @@ class Notice:
         _tuple(self.components, NoticeComponent, "notice components")
         if len(self.text) > 512 or len(self.components) > 128:
             raise ValueError("Notice exceeds bounded token/component limits")
-        if (len(self.text) > 64 or len(self.components) > 32) and not _scholar_notice(self):
-            raise ValueError("Only exact Scholar lists may use the larger v7 notice bounds")
+        if (len(self.text) > 64 or len(self.components) > 32) and not (_scholar_notice(self) or _eagle_eye_notice(self)):
+            raise ValueError("Only exact delivered spell lists may use the larger notice bounds")
 
 
 def _no_capacity_notice(notice):
@@ -1373,9 +1643,70 @@ def _dialog_notice(notice):
     return False
 
 
+def _necromancy_notice(notice):
+    """Exact automatic native result; it creates no action, query or reward."""
+    if notice.display_mode != "auto" or len(notice.components) != 1:
+        return False
+    creature = notice.components[0]
+    if creature.kind != "creature":
+        return False
+    plural = creature.amount > 1
+    expected = (NoticeToken("append_text", text_id="core.genrltxt.145" if plural else "core.genrltxt.146"),)
+    if plural:
+        expected += (NoticeToken("replace_number", number=creature.amount),)
+    expected += (NoticeToken("replace_text", text_id=f"creatures.core.{creature.content_id[5:]}.name.{'plural' if plural else 'singular'}"),)
+    return notice.text == expected
+
+
+def _eagle_eye_notice(notice):
+    """Exact delivered spell-learning list; ownership is checked by the producer."""
+    if notice.display_mode != "modal" or not notice.components or len(notice.text) < 4:
+        return False
+    if notice.text[0] != NoticeToken("append_text", text_id="core.genrltxt.221"):
+        return False
+    hero = notice.text[1]
+    if hero.op != "replace_text" or hero.text_id is None or _HERO_NAME_TEXT_ID.fullmatch(hero.text_id) is None:
+        return False
+    if any(item.kind != "spell" for item in notice.components):
+        return False
+    if len({item.content_id for item in notice.components}) != len(notice.components):
+        return False
+    expected = list(notice.text[:2])
+    for index, item in enumerate(notice.components):
+        if index:
+            expected.append(NoticeToken("append_text", text_id="core.genrltxt.141"
+                if index == len(notice.components) - 1 else "heroes.notice.comma_space"))
+        expected.append(NoticeToken("replace_text" if index == 0 else "append_text",
+                                   text_id=f"spell.core.{item.content_id[5:]}.name"))
+    expected.append(NoticeToken("append_text", text_id="heroes.notice.period"))
+    return notice.text == tuple(expected)
+
+
+def _capability_notice(notice):
+    if _eagle_eye_notice(notice):
+        return True
+    if notice.display_mode != "modal" or notice.components:
+        return False
+    if notice.text in tuple((NoticeToken("append_text", text_id=f"core.genrltxt.{index}"),)
+                            for index in (70, 123, 124, 125, 135, 335, 580)):
+        return True
+    return (len(notice.text) == 2 and notice.text[0] in (NoticeToken("append_text", text_id="core.genrltxt.336"), NoticeToken("append_text", text_id="core.genrltxt.337"))
+            and notice.text[1].op == "replace_text" and notice.text[1].text_id is not None
+            and _HERO_NAME_TEXT_ID.fullmatch(notice.text[1].text_id) is not None)
+
+
 def _validate_notice(notice, profile):
+    if any(token.text_id in CAPABILITY_NOTICE_TEXT_IDS for token in notice.text):
+        if not profile.capabilities or not _capability_notice(notice):
+            raise ValueError("Expanded notice requires its exact delivered v8 grammar")
+        return
     if not profile.dialogs and (len(notice.text) > 64 or len(notice.components) > 32):
         raise ValueError("Legacy notices retain their original bounded payload limits")
+    if (any(token.text_id in NECROMANCY_NOTICE_TEXT_IDS for token in notice.text)
+            or any(component.kind == "creature" for component in notice.components)):
+        if not profile.dialogs or not _necromancy_notice(notice):
+            raise ValueError("Necromancy requires its exact automatic v7 delivered notice grammar")
+        return
     additional = (any(token.text_id is not None and (token.text_id in DIALOG_NOTICE_TEXT_IDS
                    or _REWARD_NOTICE_TEXT_ID.fullmatch(token.text_id) is not None) for token in notice.text)
                   or any(component.kind in ("primary_skill", "secondary_skill", "spell") for component in notice.components))
@@ -1414,8 +1745,20 @@ class VisibleEvent:
     notice: Notice | None = None
     partner: str | None = None
     dialog: DialogPanel | None = None
+    capability: CapabilityPanel | None = None
 
     def __post_init__(self):
+        if self.kind in ("capability_requested", "level_gained"):
+            _text(self.subject)
+            if (type(self.capability) is not CapabilityPanel
+                    or self.kind == "level_gained" and (self.capability.kind != "level_up" or self.capability.mandatory)
+                    or self.kind == "capability_requested" and not (self.capability.mandatory or self.capability.kind == "world_view")
+                    or any(value is not None for value in (self.object_kind, self.object_subtype, self.owner,
+                        self.side, self.won, self.notice, self.partner, self.dialog))):
+                raise ValueError("Capability request contains only its owned actor and exact delivered query")
+            return
+        if self.capability is not None:
+            raise ValueError("Only a delivered capability request carries a capability query")
         if self.kind == "dialog_requested":
             _text(self.subject)
             if type(self.dialog) is not DialogPanel or any(value is not None for value in (
@@ -1424,7 +1767,7 @@ class VisibleEvent:
             return
         if self.dialog is not None:
             raise ValueError("Only a dialog-requested event carries a delivered query payload")
-        if self.kind == "army_exchange_requested":
+        if self.kind in ("army_exchange_requested", "army_join_requested"):
             _text(self.subject)
             _text(self.partner)
             if self.subject == self.partner or any(value is not None for value in (
@@ -1538,6 +1881,8 @@ _PAYLOADS = {
 
 
 def _validate_context(context, profile):
+    if context.kind == "capability" and not profile.capabilities:
+        raise ValueError("Expanded capability windows require v8")
     if context.kind == "dialog" and not profile.dialogs:
         raise ValueError("Adventure choice dialogs require v7")
     if context.kind in ("exchange", "stack") and not profile.army_management:
@@ -1564,6 +1909,18 @@ def _validate_observation(observation, profile):
         raise ValueError("Explicit garrison flags belong only to v6 owned hero rosters")
     if observation.window is not None:
         window = observation.window
+        if profile.capabilities != (window.capability_controls is not None):
+            raise ValueError("Capability controls are explicit only in v8 windows")
+        if window.capability_panel is not None:
+            if not profile.capabilities:
+                raise ValueError("Capability contents require v8")
+            _validate_context(window.capability_panel.parent_context, profile)
+        if not profile.capabilities and any(army.role == "joining_neutral" for army in (window.armies or ())):
+            raise ValueError("Delivered neutral overflow requires v8")
+        if (window.stack_panel is not None and window.context.subject not in
+                {item.handle for item in (*observation.heroes, *observation.towns)}):
+            if not profile.capabilities or window.stack_panel.offers:
+                raise ValueError("A joining neutral stack is inspection-only in v8")
         if profile.army_management != (window.armies is not None):
             raise ValueError("General displayed army rows belong only to v6 windows")
         if window.stack_panel is not None:
@@ -1648,11 +2005,17 @@ class Frame:
                 or self.result is not None and self.result.status in ("split", "merged", "swapped", "garrison_swapped", "upgraded")):
             raise ValueError("Army management records require v6")
         opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
+        if profile.capabilities:
+            opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"))
         if self.kind == "context_opened" and (self.reason, self.context.kind) not in opened_contexts:
             raise ValueError("Only a supported delivered query can open a context asynchronously")
         if not profile.dialogs and (self.event is not None and self.event.kind == "dialog_requested"
                                    or self.result is not None and self.result.status == "dialog_answered"):
             raise ValueError("Adventure dialog records require v7")
+        if not profile.capabilities and (self.event is not None and self.event.kind in
+                ("capability_requested", "level_gained", "army_join_requested")
+                or self.result is not None and self.result.status == "capability_applied"):
+            raise ValueError("Expanded capability records require v8")
         if self.event is not None and self.event.notice is not None:
             _validate_notice(self.event.notice, profile)
         if self.kind == "decision" and self.offers != Offers.from_observation(self.observation, schema=profile.action_schema):
@@ -1721,6 +2084,11 @@ class PlayerHistory:
         self.dialog_ready = False
         self.active_dialog = None
         self.dialog_refs = set()
+        self.pending_capability = None
+        self.active_capability = None
+        self.capability_refs = set()
+        self.pending_join = False
+        self.active_join = False
         self.stack_origin = None
         self.context_changes = 0
         self.commands = 0
@@ -1733,6 +2101,11 @@ class PlayerHistory:
     @property
     def frames(self):
         return tuple(self._frames)
+
+    @property
+    def requires_choice(self):
+        return self.context.kind == "dialog" or (self.context.kind == "capability"
+            and self.active_capability is not None and self.active_capability.mandatory)
 
     def digest(self):
         digest = hashlib.sha256()
@@ -1762,10 +2135,17 @@ class PlayerHistory:
                 raise ValueError("Window fields need an explicit matching context change")
             if self.context.kind == "dialog" and frame.observation.window.dialog_panel != self.active_dialog:
                 raise ValueError("Dialog snapshots must preserve the exact delivered event payload")
+            if self.context.kind == "capability" and self.active_capability is not None and frame.observation.window.capability_panel != self.active_capability:
+                raise ValueError("Native capability query snapshots must preserve the delivered payload")
+            if self.context.kind == "exchange" and any(army.role == "joining_neutral" for army in frame.observation.window.armies) != self.active_join:
+                raise ValueError("Neutral army exposure requires its recorded live joining query")
+            if (self.context.kind == "stack" and self.context.subject not in
+                    {item.handle for item in (*frame.observation.heroes, *frame.observation.towns)} and not self.active_join):
+                raise ValueError("Neutral stack inspection requires its active native joining query")
         if kind in ("view", "event") and self.decision is not None and self.action is None:
             raise ValueError("Supersede held decision before adding visible history")
         if kind == "decision":
-            if self.pending_exchange is not None or self.pending_dialog is not None:
+            if self.pending_exchange is not None or self.pending_dialog is not None or self.pending_capability is not None:
                 raise ValueError("Pending native query must open before another decision")
             if self.decision is not None or self.action is not None:
                 raise ValueError("Prior decision/action has not completed")
@@ -1782,17 +2162,19 @@ class PlayerHistory:
             self._match_action(frame)
             if self.consumed:
                 raise ValueError("Duplicate action consumption")
-            if (self.action.kind in ("construct", "transfer_stack", "hire_hero", "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "choose_dialog")
+            if (self.action.kind in ("construct", "transfer_stack", "hire_hero", "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "choose_dialog", *CAPABILITY_ACTIONS)
                     or self.action.kind == "close" and self.context.kind == "exchange") and frame.consumer != "engine":
                 raise ValueError("Construction, transfer and hero hiring require native engine consumption")
             if self.profile.army_management and self.action.kind in ("open_stack", "select_upgrade", "back") and frame.consumer != "adapter":
                 raise ValueError("Stack navigation requires adapter consumption")
+            if self.action.kind in ("open_capability", "close_capability") and frame.consumer != "adapter":
+                raise ValueError("Explicit capability navigation requires adapter consumption")
             self.consumed = True
             self.consumer = frame.consumer
         elif kind == "issued":
             self._match_consumed(frame)
             if self.action.kind not in ("move_to", "end_turn", "construct", "recruit", "transfer_stack", "hire_hero",
-                                        "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "swap_garrison", "choose_dialog") and not (
+                                        "split_stack", "merge_stacks", "swap_stacks", "upgrade_stack", "swap_garrison", "choose_dialog", *CAPABILITY_ACTIONS) and not (
                     self.action.kind == "close" and self.decision.observation.context.kind == "exchange"):
                 raise ValueError("Navigation cannot issue native game commands")
             if self.action.kind == "recruit" and (self.consumer != "engine" or self.capacity_notice):
@@ -1801,6 +2183,8 @@ class PlayerHistory:
                 raise ValueError("Native issuance requires engine consumption without UI rejection")
             if self.action.kind == "choose_dialog" and (self.context != Context() or self.context_changes != 1):
                 raise ValueError("Dialog must return to map before issuing its explicit native reply")
+            if self.action.kind in ("cast_adventure_spell", "choose_level_up", "choose_spell_target", "cancel_spell_target") and (self.context != Context() or self.context_changes != 1):
+                raise ValueError("Spell/query command requires explicit map return before native issuance")
             if (self.pending_command is not None or frame.command_index != self.commands or self.native_rejected
                     or self.action.kind != "move_to" and self.commands != 0):
                 raise ValueError("Native commands require ordered acknowledgement; rejected steps stop execution")
@@ -1820,7 +2204,7 @@ class PlayerHistory:
                 raise ValueError("Context change must match consumed navigation and advance revision")
             if self.action.kind in ("construct", "recruit", "hire_hero") and self.commands != 1:
                 raise ValueError("Purchase closes its panel only after genuine native issuance")
-            if self.action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit", "select_hero", "hire_hero", "open_stack", "select_upgrade", "upgrade_stack", "close", "choose_dialog") and self.context_changes:
+            if self.action.kind in ("open_panel", "open_building", "back", "construct", "select_recruit", "recruit", "select_hero", "hire_hero", "open_stack", "select_upgrade", "upgrade_stack", "close", "choose_dialog", "open_capability", "close_capability", *CAPABILITY_ACTIONS) and self.context_changes:
                 raise ValueError("Town action has already emitted its context transition")
             if self.action.kind == "open_stack":
                 self.stack_origin = self.decision.observation
@@ -1828,8 +2212,19 @@ class PlayerHistory:
             self.context_changes += 1
             if self.action.kind == "choose_dialog":
                 self.active_dialog = None
+            if self.action.kind in ("close_capability", "cast_adventure_spell", "choose_level_up", "choose_spell_target", "cancel_spell_target"):
+                self.active_capability = None
+            if self.action.kind == "close":
+                self.active_join = False
         elif kind == "context_opened":
-            if frame.reason == "adventure_dialog":
+            if frame.reason == "capability_dialog":
+                if (self.decision is not None or self.action is not None or self.pending_capability is None
+                        or self.pending_capability[0] != frame.context or self.context != Context()
+                        or frame.revision <= self.revision):
+                    raise ValueError("Capability opening requires its delivered request and completed parent action")
+                self.active_capability = self.pending_capability[1]
+                self.pending_capability = None
+            elif frame.reason == "adventure_dialog":
                 if (self.decision is not None or self.action is not None or not self.dialog_ready
                         or self.context != Context() or self.pending_dialog is None
                         or self.pending_dialog[0] != frame.context or frame.revision <= self.revision):
@@ -1842,7 +2237,29 @@ class PlayerHistory:
                         or frame.revision <= self.revision):
                     raise ValueError("Exchange context must follow its recorded encounter and completed parent movement")
                 self.pending_exchange, self.exchange_ready = None, False
+                if (frame.reason == "neutral_join") != self.pending_join:
+                    raise ValueError("Exchange type must match the delivered native query")
+                self.active_join, self.pending_join = self.pending_join, False
             self.context, self.revision = frame.context, frame.revision
+        elif kind == "event" and frame.event.kind in ("capability_requested", "level_gained"):
+            event = frame.event
+            observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), None)
+            own = {hero.handle for hero in observed.heroes} if observed else set()
+            panel = event.capability
+            refs = {panel.ref, *(item.ref for item in panel.items), *(item.ref for item in panel.choices)}
+            if event.subject not in own or refs & self.capability_refs:
+                raise ValueError("Capability event requires its owned actor and fresh delivered references")
+            if event.kind == "capability_requested":
+                if self.pending_capability is not None or self.pending_dialog is not None or self.pending_exchange is not None or self.context != Context():
+                    raise ValueError("A new native capability query cannot overlap an existing one")
+                if self.action is not None and (not self.consumed or self.consumer != "engine" or self.commands < 1):
+                    raise ValueError("Capability query must follow genuine native command issuance")
+                if panel.kind in ("spell_target", "world_view") and (self.action is None or self.action.kind not in ("cast_adventure_spell", "choose_spell_target")):
+                    raise ValueError("Spell window must follow this player's explicit cast")
+                if panel.parent_context != Context():
+                    raise ValueError("Delivered native capability query returns to the adventure map")
+                self.pending_capability = (Context("capability", event.subject, panel.kind, panel.ref), panel)
+            self.capability_refs.update(refs)
         elif kind == "event" and frame.event.kind == "dialog_requested":
             event = frame.event
             observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), None)
@@ -1856,14 +2273,17 @@ class PlayerHistory:
                 raise ValueError("Dialog request must bind the current own-hero native action and fresh opaque choices")
             self.pending_dialog = (Context("dialog", event.subject, None, event.dialog.ref), event.dialog)
             self.dialog_refs.update(refs)
-        elif kind == "event" and frame.event.kind == "army_exchange_requested":
+        elif kind == "event" and frame.event.kind in ("army_exchange_requested", "army_join_requested"):
             observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), None)
             own = {hero.handle for hero in observed.heroes} if observed else set()
-            if (self.action is None or self.action.kind != "move_to" or not self.consumed or self.commands < 1
+            joining = frame.event.kind == "army_join_requested"
+            visible_neutrals = {item.handle for item in observed.objects if item.owner == "neutral"} if observed else set()
+            if (self.action is None or self.action.kind not in (("move_to", "choose_dialog") if joining else ("move_to",)) or not self.consumed or self.commands < 1
                     or self.pending_exchange is not None or self.pending_dialog is not None or frame.event.subject != self.action.subject
-                    or not {frame.event.subject, frame.event.partner} <= own or self.context != Context()):
+                    or frame.event.subject not in own or frame.event.partner not in (visible_neutrals if joining else own) or self.context != Context()):
                 raise ValueError("Exchange encounter must belong to the current native move between two own heroes")
             self.pending_exchange = Context("exchange", frame.event.subject, None, frame.event.partner)
+            self.pending_join = joining
         elif kind == "event" and frame.event.notice is not None and _garrison_notice(frame.event.notice):
             if (self.action is None or self.action.kind != "swap_garrison" or not self.consumed
                     or self.consumer != "adapter" or self.commands or self.garrison_notice):
@@ -1887,7 +2307,8 @@ class PlayerHistory:
                 raise ValueError("Action result precedes native acknowledgement")
             self._check_result(frame.result)
             if self.pending_exchange is not None:
-                if self.action.kind != "move_to" or frame.result.status != "interaction":
+                allowed_parent = (("move_to", "interaction"), ("choose_dialog", "dialog_answered")) if self.pending_join else (("move_to", "interaction"),)
+                if (self.action.kind, frame.result.status) not in allowed_parent:
                     raise ValueError("Pending exchange requires the parent move interaction result")
                 self.exchange_ready = True
             if self.pending_dialog is not None:
@@ -1902,12 +2323,14 @@ class PlayerHistory:
             self._match_decision(frame)
             self.pending_exchange, self.exchange_ready = None, False
             self.pending_dialog, self.dialog_ready = None, False
+            self.pending_capability, self.pending_join = None, False
             self._clear_action()
         elif kind == "terminal":
             if self.decision is not None or self.action is not None:
                 raise ValueError("Explicitly supersede outstanding decisions/actions before terminal")
             self.pending_exchange, self.exchange_ready = None, False
             self.pending_dialog, self.dialog_ready = None, False
+            self.pending_capability, self.pending_join = None, False
             self.terminal = frame.outcome
         elif kind == "finalized":
             proof = frame.verification
@@ -1918,7 +2341,7 @@ class PlayerHistory:
             self.boundary = "natural"
         elif kind == "cutoff":
             self._match_decision(frame)
-            if self.action is not None or self.context.kind == "dialog":
+            if self.action is not None or self.requires_choice:
                 raise ValueError("Cutoff requires a real unacted decision outside a mandatory strategic dialog")
             self.boundary = "cutoff_pending"
         elif kind == "cutoff_finalized":
@@ -1956,6 +2379,12 @@ class PlayerHistory:
     def _context_target(self):
         action = self.action
         before = self.decision.observation.context
+        if action.kind == "open_capability":
+            return Context("capability", action.subject, action.panel)
+        if action.kind == "close_capability":
+            return self.decision.observation.window.capability_panel.parent_context
+        if action.kind in ("cast_adventure_spell", "choose_level_up", "choose_spell_target", "cancel_spell_target"):
+            return Context()
         if action.kind == "open_hero":
             return Context("hero", action.subject)
         if action.kind == "open_town":
@@ -1986,7 +2415,24 @@ class PlayerHistory:
 
     def _check_result(self, result):
         action = self.action
-        if action.kind == "choose_dialog":
+        if action.kind in ("open_capability", "close_capability", *CAPABILITY_ACTIONS):
+            navigation = action.kind in ("open_capability", "close_capability")
+            if any(value is not None for value in (result.position, result.movement, result.destination_reached)):
+                raise ValueError("Capability result cannot manufacture movement metadata")
+            expected = "opened" if action.kind == "open_capability" else "closed" if navigation else "capability_applied"
+            if result.status != (expected if result.accepted else "rejected"):
+                raise ValueError("Capability result must match its typed action")
+            if navigation:
+                if (not result.accepted or self.consumer != "adapter" or self.commands or self.context_changes != 1
+                        or self.context != self._context_target()):
+                    raise ValueError("Capability navigation requires one exact adapter context transition")
+            else:
+                target = self._context_target()
+                if (self.consumer != "engine" or self.commands != 1 or self.accepted_commands != int(result.accepted)
+                        or self.native_rejected == result.accepted or self.context_changes != int(target is not None)
+                        or self.context != (target or self.decision.observation.context)):
+                    raise ValueError("Capability mutation requires its real native acknowledgement and exact context")
+        elif action.kind == "choose_dialog":
             if (result != Result("dialog_answered", True) or self.consumer != "engine" or self.commands != 1
                     or self.accepted_commands != 1 or self.native_rejected or self.context_changes != 1
                     or self.context != Context()):
@@ -2346,7 +2792,7 @@ def _decode_simple(raw, cls, tuple_fields=()):
 
 def _decode_context(raw, profile):
     data = _record(raw, Context)
-    if profile == WINDOWS_PROFILE or data.get("kind", "map") not in ("town", "stack", "exchange", "dialog"):
+    if profile == WINDOWS_PROFILE or data.get("kind", "map") not in ("town", "stack", "exchange", "dialog", "capability"):
         if {"panel", "selection"} & data.keys():
             raise ValueError("Panel fields are absent from this context/schema")
     elif not {"panel", "selection"} <= data.keys():
@@ -2447,6 +2893,23 @@ def decode_dialog_panel(raw, *, schema=DIALOGS_SCHEMA):
     return DialogPanel(**data)
 
 
+def decode_capability_panel(raw, *, schema=EXPANDED_SCHEMA):
+    profile = profile_for(schema)
+    if schema != profile.history_schema or not profile.capabilities:
+        raise ValueError("Capability panel requires its explicit v8 history schema")
+    data = _exact_record(raw, CapabilityPanel)
+    data["parent_context"] = _decode_context(data["parent_context"], profile)
+    for name, cls in (("items", CapabilityItem), ("choices", CapabilityChoice)):
+        rows = []
+        for raw_row in _array(data[name]):
+            row = _exact_record(raw_row, cls)
+            if row["cost"] is not None:
+                row["cost"] = _array(row["cost"])
+            rows.append(cls(**row))
+        data[name] = tuple(rows)
+    return CapabilityPanel(**data)
+
+
 def decode_observation(raw, *, schema=SCHEMA):
     profile = profile_for(schema)
     if schema != profile.history_schema:
@@ -2460,6 +2923,13 @@ def decode_observation(raw, *, schema=SCHEMA):
             data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
     if data.get("window") is not None:
         window = _record(data["window"], Window)
+        if (profile.capabilities != ("capability_controls" in window)
+                or profile.capabilities != ("capability_panel" in window)):
+            raise ValueError("Capability controls and contents are explicit only in v8 windows")
+        if "capability_controls" in window:
+            window["capability_controls"] = _array(window["capability_controls"])
+        if window.get("capability_panel") is not None:
+            window["capability_panel"] = decode_capability_panel(window["capability_panel"], schema=schema)
         if profile.dialogs != ("dialog_panel" in window):
             raise ValueError("dialog_panel is explicit in v7 windows and absent in older profiles")
         if window.get("dialog_panel") is not None:
@@ -2538,18 +3008,18 @@ def _wire(value):
             for name in ("panel", "selection", "count", "destination"):
                 del data[name]
         elif type(value) is Window:
-            for name in ("town_panel", "armies", "stack_panel", "dialog_panel"):
+            for name in ("town_panel", "armies", "stack_panel", "dialog_panel", "capability_controls", "capability_panel"):
                 if getattr(value, name) is None:
                     del data[name]
         elif type(value) is Hero and value.in_garrison is None:
             del data["in_garrison"]
         elif type(value) is VisibleEvent:
-            for name in ("partner", "dialog"):
+            for name in ("partner", "dialog", "capability"):
                 if getattr(value, name) is None:
                     del data[name]
         elif type(value) is Offers:
             del data["schema"]  # bound by the enclosing frame's explicit schema
-            for name in ("panel", "armies", "stack_panel", "movable_hero_refs", "dialog_panel"):
+            for name in ("panel", "armies", "stack_panel", "movable_hero_refs", "dialog_panel", "capability_controls", "capability_panel"):
                 if getattr(value, name) is None:
                     del data[name]
         elif type(value) is TownPanel:
@@ -2580,6 +3050,8 @@ def encode_observation(observation, *, schema=SCHEMA):
     data = _wire(observation)
     if profile.dialogs and data["window"] is not None:
         data["window"]["dialog_panel"] = _wire(observation.window.dialog_panel)
+    if profile.capabilities and data["window"] is not None:
+        data["window"]["capability_panel"] = _wire(observation.window.capability_panel)
     return data
 
 
@@ -2646,6 +3118,8 @@ def decode_frame(raw):
             event["notice"] = decode_notice(event["notice"], schema=profile.history_schema)
         if event.get("dialog") is not None:
             event["dialog"] = decode_dialog_panel(event["dialog"], schema=profile.history_schema)
+        if event.get("capability") is not None:
+            event["capability"] = decode_capability_panel(event["capability"], schema=profile.history_schema)
         data["event"] = _decode_simple(event, VisibleEvent)
     if data.get("offers") is not None:
         offer = _record(data["offers"], Offers)
@@ -2661,7 +3135,9 @@ def decode_frame(raw):
             offer["stack_panel"] = decode_stack_panel(offer["stack_panel"], profile)
         if "dialog_panel" in offer:
             offer["dialog_panel"] = decode_dialog_panel(offer["dialog_panel"], schema=profile.history_schema)
-        for name in ("size", "hero_refs", "town_refs", "movable_hero_refs"):
+        if "capability_panel" in offer:
+            offer["capability_panel"] = decode_capability_panel(offer["capability_panel"], schema=profile.history_schema)
+        for name in ("size", "hero_refs", "town_refs", "movable_hero_refs", "capability_controls"):
             if name in offer:
                 offer[name] = _array(offer[name])
         try:
