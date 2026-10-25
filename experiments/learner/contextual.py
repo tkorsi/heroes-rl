@@ -817,6 +817,18 @@ class CapabilityItem:
                 raise ValueError("Revealed terrain does not reveal movement or hidden object properties")
         elif any(value is not None for value in (self.x, self.y, self.z)):
             raise ValueError("Only a delivered world-view item exposes coordinates")
+        if self.kind in ("creature_exact", "creature_quantity", "primary_skill", "hero_stat", "town_stat", "monster_intent"):
+            if self.amount is None or self.locked or self.cost is not None:
+                raise ValueError("Inspection statistics require an explicit displayed value without inventory flags")
+            if self.kind in ("creature_exact", "creature_quantity"):
+                _integer(self.slot, high=6)
+                _integer(self.amount, low=1, high=2**31 - 1)
+            elif self.slot is not None:
+                raise ValueError("Only a displayed inspected creature occupies an army slot")
+            if self.kind in ("primary_skill", "town_stat", "monster_intent"):
+                _integer(self.id, high=3)
+            elif self.kind == "hero_stat":
+                _integer(self.id, high=2)
 
 
 @dataclass(frozen=True)
@@ -2393,6 +2405,8 @@ class PlayerHistory:
             self.boundary = "cutoff"
         elif kind == "failure":
             self.boundary = "failure"
+        if kind in ("view", "decision") and self.context.kind == "capability" and self.context.panel == "visions":
+            self.inspected_subject = frame.observation.window.capability_panel.inspected_subject
         self._frames.append(frame)
         self.day = frame.day
 
