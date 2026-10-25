@@ -178,9 +178,10 @@ The tool alternates cold/worker ordering, requires every native report to verify
 and compares complete report semantics across both modes and all repeats,
 excluding only timing metadata. Exact existing state/packet/observation hashes
 remain mandatory. It binds binary, job-manifest, capture, observation-file and
-directly linked library bytes and rejects drift. Mods, Data and later `dlopen`
-libraries still require an immutable external runtime; the tool does not certify
-their identity or a clean host load. Failed or incomplete runs cannot acquire an equivalence label.
+directly linked library bytes and rejects drift. The optional explicit runtime
+inventory below additionally binds declared Data, configuration, mods and extra
+library files. It cannot certify that these are all inputs used by the loader.
+Failed or incomplete runs cannot acquire an equivalence label.
 Native logs and reports remain ignored. The tool measures replay wall time and
 per-job replay latency, not learned-policy step latency or full-game throughput.
 Do not accept the optimization for training until real repeated-reset equivalence
@@ -199,3 +200,115 @@ The original validation record preserves its historical access failures; the
 records the subsequent successful operations. No native validation was rerun or
 new game evidence obtained during the access repair. Do not message or redirect
 Claude, or launch anything on the user's Mac.
+
+
+## Explicit runtime inventory and admission
+
+The replacement cloud Optimizer continues the same branch/PR from `a6414d8`.
+This opt-in extension is limited to this native replay benchmark. Existing
+one-shot and service protocol behavior is unchanged. No private game inputs
+were supplied by this milestone; temporary test files are admission fixtures,
+not replay captures or substitute Data.
+
+Create an untracked `/private/runtime-spec.json` using **absolute canonical real
+paths** from the actual runtime installation. All four lists are mandatory;
+`data` and `configuration` must each contain at least one existing nonempty
+file/tree. Explicit empty `mods` and `additional_libraries` lists mean that no
+such additional inputs are declared, not that their absence was measured.
+For example (replace every placeholder):
+
+```json
+{
+  "schema": "heroes-native-runtime-inventory-v1",
+  "data": ["/private/heroes-runtime/Data", "/private/vcmi-runtime/config"],
+  "configuration": ["/private/isolated-profile/config/settings.json"],
+  "mods": ["/private/vcmi-runtime/Mods"],
+  "additional_libraries": ["/private/vcmi-runtime/AI/libBattleAI.so"]
+}
+```
+
+List every resource/search root and configuration input actually selected by
+this installation, including engine resource/config trees outside the proprietary
+Data directory. Review enabled mods and plugin paths manually. Use the same
+isolated profile and exported path variables for inventory and execution. Keep
+mutable logs/cache/report directories outside inventoried roots. The worker must
+not save changes into these declared immutable inputs. A deliberately empty mod
+tree can be omitted via `"mods": []`; a declared empty root is rejected to catch
+accidental placeholder installations. File symlinks bind both link text and real
+target bytes. Directory symlinks are refused with an actionable error: declare
+canonical targets as separate roots and use a real directory layout. Special
+files are refused; no FIFO/device is opened for hashing.
+
+The commands below use the source build's `vcmi/build/bin` working directory,
+which selects its development resource paths. For an installed runtime, use its
+actual resource-selecting working directory for both commands. A root-directory
+launch without installed resources can fail on `CONFIG/FILESYSTEM` before game
+Data is inspected. First generate and review an inventory without launching a
+native process:
+
+```sh
+(cd vcmi/build/bin && python3 ../../../tools/benchmark_native_lifecycle.py \
+  --inventory-only --runtime-spec /private/runtime-spec.json \
+  --output ../../../runs/native-runtime-inventory)
+```
+
+`inventory.json` retains all missing/unreadable declared paths and role errors;
+exit 2 means admission failed. Fix the local inputs and choose a **new** output
+path before retrying. Hashes, names, file sizes, executable bits, empty directory
+membership, symlink targets, working directory and selected path variables
+(`HOME`, XDG config/data/cache roots and `XDG_DATA_DIRS`, `LD_LIBRARY_PATH`,
+`LD_PRELOAD`, `VCMI_USER_DATA_DIR`) are retained. No general environment or credential dump occurs.
+Treat local inventories as private: they contain installation paths. They are
+not intended for committing/uploading with copyrighted captures/assets.
+
+For A/B/A, write `/private/jobs-aba.json` as a JSON list of the same argument
+array A, a different array B, and A again, using existing native captures.
+A and B must cover different seeds/maps and both seats; include verified natural
+termination and a `--prefix` job and changed controller mode when available.
+Do not invent captures to complete this matrix. Then run:
+
+```sh
+(cd vcmi/build/bin && python3 ../../../tools/benchmark_native_lifecycle.py \
+  --binary ./vcmireplay --jobs /private/jobs-aba.json \
+  --runtime-spec /private/runtime-spec.json \
+  --runtime-manifest ../../../runs/native-runtime-inventory/inventory.json \
+  --output ../../../runs/native-lifecycle-aba-inventoried --repeats 3 \
+  --startup-seconds 120 --job-seconds 120 --overall-seconds 3600 --cleanup-seconds 2)
+```
+
+The reviewed inventory is required alongside the spec; an ordinary comparison
+cannot silently regenerate its expected identity. Preflight rejects missing
+captures, empty observation evidence, unresolved linked libraries, unavailable
+runtime inputs or drift before launching either replay mode. It rechecks binary,
+capture/job bytes, observation membership, directly linked libraries, declared
+runtime trees, selectors and the spec/manifest bytes before every mode launch
+and every individual cold/worker dispatch. It rechecks again before accepting
+each comparison and final equivalence. A mismatch stops without retry and
+retains failed `summary.json` plus any existing native/receipt logs. Admission
+checks retain stage, timing and error; runtime drift also retains expected and
+actual inventory and changed path names. Missing capture failures retain their
+exact error even before runtime admission. Completed service receipts survive a
+later admission failure and undispatched jobs stay `not_started`.
+
+These checks establish **declared bytes at sampling boundaries**, not a complete
+runtime provenance proof. Preflight cannot prove that VCMI will find logical
+`DATA/VCDESC` inside archives, validate every asset's format, establish successful
+resource loading, or infer undeclared search roots. Additional library paths are
+operator-declared, not measured `dlopen` coverage; `ldd` covers resolved startup
+libraries only. There is no open-file trace, loader namespace audit, hash binding
+of every host environment variable, or protection against a concurrent writer
+that changes and restores bytes between checks. Maintain exclusive access to an
+immutable runtime for the whole campaign. Native readiness and existing replay
+verification remain separate mandatory gates. Inventory hashing is synchronous
+and may be expensive for real Data: recorded wall times include this admission
+I/O, while native phase timers remain unchanged. Overall deadline checks reject
+late admission before dispatch/acceptance, but blocking filesystem operations
+are not preemptible wall-clock guarantees. Use native phase measurements and
+account for admission overhead before making any performance claim.
+
+Remaining real acceptance prerequisites: legally supplied usable game Data,
+complete selected VCMI resources/config/mods/plugin paths, an isolated stable
+profile, and actual A/B/A native capture/contextual/observation files covering
+the matrix above. The prior native probe failed before ready on missing
+`DATA/VCDESC`. This milestone provides no real reset-equivalence or speedup
+result and does not integrate with the Teacher or a second gameplay verifier.

@@ -45,7 +45,9 @@ Original game assets are required locally and are not included or downloaded.
 
 The separate cloud Optimizer prototype is documented in
 [native lifecycle optimizer](docs/native-lifecycle-optimizer.md). It adds opt-in
-preloaded, process-isolated native replay jobs and phase timers. It has no learner
+preloaded, process-isolated native replay jobs, phase timers and an optional
+explicit-path runtime inventory with preflight/drift admission. The inventory
+binds declared bytes rather than proving complete loader coverage. It has no learner
 integration or measured full-game speedup; real reset/replay acceptance requires
 the private game Data and captures absent from this cloud workspace.
 

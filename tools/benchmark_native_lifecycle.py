@@ -19,6 +19,11 @@ import os
 import select
 import signal
 
+try:
+    from tools.native_lifecycle_inventory import runtime_inventory, require_inventory
+except ModuleNotFoundError:  # Direct script execution.
+    from native_lifecycle_inventory import runtime_inventory, require_inventory
+
 
 def digest(path):
     with Path(path).open('rb') as stream:
@@ -51,6 +56,12 @@ def validate_jobs(jobs):
                 index += 1
                 if index >= len(job) or not Path(job[index]).exists():
                     raise ValueError('Missing input for ' + option)
+                path = Path(job[index])
+                if option == '--observations':
+                    if not path.is_dir() or not list(path.glob('observations-p*.jsonl')):
+                        raise ValueError('Observation directory needs observations-p*.jsonl: ' + str(path))
+                elif not path.is_file():
+                    raise ValueError('Expected regular file for ' + option)
             elif option != '--prefix':
                 raise ValueError('Unsupported manifest option: ' + option)
             index += 1
@@ -73,7 +84,9 @@ def input_identity(jobs):
 def library_identity(binary):
     # These are the directly linked runtime libraries, not a complete inventory
     # of mods, Data or libraries opened later by dlopen.
-    output = subprocess.check_output(['ldd', str(binary)], text=True)
+    output = subprocess.check_output(['ldd', str(binary)], text=True, stderr=subprocess.STDOUT)
+    if 'not found' in output:
+        raise ValueError('Unresolved linked libraries: ' + output.strip())
     paths = set()
     for line in output.splitlines():
         for token in line.split():
@@ -166,7 +179,7 @@ def validate_response(row, kind, fields, job_id=None):
 
 
 def streaming_worker(binary, commands, output, job_seconds, startup_seconds,
-                     overall_seconds, cleanup_seconds=2):
+                     overall_seconds, cleanup_seconds=2, admission=None):
     """One outstanding job. Persist attribution before dispatch and each receipt.
 
     Callbacks must remain in the episode process group. No retries. A killed
@@ -201,6 +214,8 @@ def streaming_worker(binary, commands, output, job_seconds, startup_seconds,
             for row in state['jobs']:
                 if time.monotonic() >= deadline:
                     raise TimeoutError('Overall worker deadline')
+                if admission:
+                    admission('before_worker_job')
                 row['status'] = 'requested'
                 save_state(state_path, state)
                 job_deadline = min(deadline, time.monotonic() + job_seconds)
@@ -293,7 +308,7 @@ def streaming_worker(binary, commands, output, job_seconds, startup_seconds,
     return state
 
 
-def measure(binary, jobs, output, mode, job_seconds, startup_seconds, overall_seconds=None, cleanup_seconds=2):
+def measure(binary, jobs, output, mode, job_seconds, startup_seconds, overall_seconds=None, cleanup_seconds=2, admission=None):
     output.mkdir()
     commands = [job + ['--report', str(output / f'{i}.json')] for i, job in enumerate(jobs)]
     started = time.monotonic()
@@ -309,6 +324,8 @@ def measure(binary, jobs, output, mode, job_seconds, startup_seconds, overall_se
                 for row, command in zip(cold['jobs'], commands):
                     if time.monotonic() >= run_end:
                         raise TimeoutError('Overall cold replay deadline')
+                    if admission:
+                        admission('before_cold_job')
                     before = time.monotonic()
                     row['status'] = 'requested'
                     save_state(path, cold)
@@ -342,7 +359,7 @@ def measure(binary, jobs, output, mode, job_seconds, startup_seconds, overall_se
         else:
             service = streaming_worker(binary, commands, output, job_seconds, startup_seconds,
                                        overall_seconds or startup_seconds + len(jobs) * job_seconds + 5,
-                                       cleanup_seconds)
+                                       cleanup_seconds, admission)
             receipts = [service['ready'], *[receipt for row in service['jobs'] for receipt in row['receipts']],
                         service['closed']]
     elapsed = time.monotonic() - started
@@ -359,8 +376,11 @@ def measure(binary, jobs, output, mode, job_seconds, startup_seconds, overall_se
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--binary', type=Path, required=True)
-    parser.add_argument('--jobs', type=Path, required=True)
+    parser.add_argument('--binary', type=Path)
+    parser.add_argument('--runtime-spec', type=Path, help='Explicit real-path inventory specification')
+    parser.add_argument('--runtime-manifest', type=Path, help='Previously reviewed inventory.json to enforce')
+    parser.add_argument('--inventory-only', action='store_true', help='Write runtime inventory/missing-input report without launching')
+    parser.add_argument('--jobs', type=Path)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--repeats', type=int, default=3)
     parser.add_argument('--job-seconds', type=float, default=120)
@@ -371,8 +391,22 @@ def main():
     if (args.repeats < 1 or not 0.001 <= args.job_seconds <= 3600
             or any(not math.isfinite(v) or v <= 0 for v in (args.startup_seconds, args.overall_seconds, args.cleanup_seconds))):
         parser.error('repeats and deadlines must be positive')
-    jobs = validate_jobs(json.loads(args.jobs.read_text()))
-    binary = args.binary.resolve(strict=True)
+    if args.inventory_only:
+        if not args.runtime_spec or args.runtime_manifest:
+            parser.error('--inventory-only requires --runtime-spec and no --runtime-manifest')
+        args.output.mkdir()
+        try:
+            inventory = runtime_inventory(strict_json(args.runtime_spec.read_text()))
+        except (OSError, ValueError) as error:
+            inventory = {'admitted': False, 'errors': [str(error)]}
+        save_state(args.output / 'inventory.json', inventory)
+        if not inventory['admitted']:
+            parser.exit(2, 'Missing runtime prerequisites; see ' + str(args.output / 'inventory.json') + '\n')
+        return
+    if not args.binary or not args.jobs:
+        parser.error('--binary and --jobs are required for a benchmark')
+    if bool(args.runtime_spec) != bool(args.runtime_manifest):
+        parser.error('Use --runtime-spec and --runtime-manifest together')
     args.output = args.output.resolve()
     args.output.mkdir()
     root = Path(__file__).resolve().parents[1]
@@ -380,41 +414,80 @@ def main():
     dirty = subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).splitlines()
     report = {'schema': 'heroes-native-lifecycle-benchmark-v1', 'status': 'incomplete',
               'source_revision': revision, 'source_dirty': dirty,
-              'binary_sha256': digest(binary), 'jobs_sha256': digest(args.jobs),
-              'input_files': input_identity(jobs), 'linked_libraries': library_identity(binary),
+              'runtime_admission': {'enabled': bool(args.runtime_spec), 'checks': []},
               'workload': 'native replay verification; not gameplay throughput', 'runs': [],
+              'wall_timing_scope': 'Includes synchronous inventory/admission overhead; native phase timers are unchanged',
               'unmeasured': ['complete_game_throughput', 'policy_inference', 'live_transport',
                              'live_opponent_work', 'pathfinding_and_autobattle_breakdown',
                              'end_to_end_training_experiment']}
     destination = args.output / 'summary.json'
     destination.write_text(json.dumps(report, indent=2) + '\n')
+    campaign_deadline = time.monotonic() + args.overall_seconds
     try:
+        spec = None
+        if args.runtime_spec:
+            spec = strict_json(args.runtime_spec.read_text())
+            expected = strict_json(args.runtime_manifest.read_text())
+            report['runtime_admission']['expected'] = expected
+            spec_sha = digest(args.runtime_spec)
+            manifest_sha = digest(args.runtime_manifest)
+        def admission(stage):
+            check_started = time.monotonic()
+            check = {'stage': stage, 'admitted': False}
+            report['runtime_admission']['checks'].append(check)
+            try:
+                if spec is not None:
+                    current = runtime_inventory(spec)
+                    check['runtime'] = current
+                    require_inventory(spec, expected, current)
+                    if digest(args.runtime_spec) != spec_sha or digest(args.runtime_manifest) != manifest_sha:
+                        raise ValueError('Runtime spec or reviewed manifest drift')
+                    check.pop('runtime')
+                actual = {'binary_sha256': digest(binary), 'jobs_sha256': digest(args.jobs),
+                          'input_files': input_identity(jobs), 'linked_libraries': library_identity(binary)}
+                changed = [key for key in actual if actual[key] != report[key]]
+                if changed:
+                    check['actual_input_identity'] = actual
+                    raise ValueError('Input identity drift: ' + ', '.join(changed))
+                if time.monotonic() >= campaign_deadline:
+                    raise TimeoutError('Overall deadline during admission; no dispatch/acceptance')
+                check['admitted'] = True
+            except BaseException as error:
+                check['error'] = str(error)
+                raise
+            finally:
+                check['seconds'] = time.monotonic() - check_started
+                save_state(destination, report)
+        # All admission failures remain attributable even before a native process exists.
+        jobs = validate_jobs(strict_json(args.jobs.read_text()))
+        binary = args.binary.resolve(strict=True)
+        report.update(binary_sha256=digest(binary), jobs_sha256=digest(args.jobs),
+                      input_files=input_identity(jobs), linked_libraries=library_identity(binary))
+        admission('preflight')
         reference = None
-        campaign_deadline = time.monotonic() + args.overall_seconds
         for repeat in range(args.repeats):
             for mode in (('cold', 'worker') if repeat % 2 == 0 else ('worker', 'cold')):
                 if time.monotonic() >= campaign_deadline:
                     raise TimeoutError('Overall campaign deadline; no further run started')
+                admission('before_mode_launch')
                 run = measure(binary, jobs, args.output / f'{repeat}-{mode}', mode,
                               args.job_seconds, args.startup_seconds,
-                              max(0.001, campaign_deadline - time.monotonic()), args.cleanup_seconds)
+                              max(0.001, campaign_deadline - time.monotonic()), args.cleanup_seconds, admission)
+                admission('before_comparison_acceptance')
                 semantics = run.pop('semantic_reports')
                 if reference is None:
                     reference = semantics
                 if reference != semantics:
                     raise RuntimeError('Fresh and reset replay reports differ')
-                if (digest(binary) != report['binary_sha256'] or digest(args.jobs) != report['jobs_sha256']
-                        or input_identity(jobs) != report['input_files']
-                        or library_identity(binary) != report['linked_libraries']):
-                    raise RuntimeError('Binary, job manifest, capture or linked-library drift')
                 report['runs'].append(run)
+        admission('final_acceptance')
         report['status'] = 'verified_report_equivalence'
     except BaseException as error:
         report['status'] = 'interrupted' if isinstance(error, (KeyboardInterrupt, SystemExit)) else 'failed'
         report['error'] = str(error)
         raise
     finally:
-        destination.write_text(json.dumps(report, indent=2) + '\n')
+        save_state(destination, report)
 
 
 if __name__ == '__main__':

@@ -74,6 +74,32 @@ class NativeWorkerProtocolTests(unittest.TestCase):
         output, errors = process.communicate(data, timeout=4)
         return [json.loads(line) for line in output.splitlines()], errors.decode()
 
+    def test_runtime_admission_drift_stops_next_worker_dispatch(self):
+        from tools.native_lifecycle_inventory import SCHEMA as INVENTORY_SCHEMA, require_inventory
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / 'config.json'
+            config.write_text('{}')
+            spec = {'schema': INVENTORY_SCHEMA, 'data': [str(config)],
+                    'configuration': [str(config)], 'mods': [], 'additional_libraries': []}
+            expected = require_inventory(spec)
+            calls = []
+            def admission(stage):
+                calls.append(stage)
+                if len(calls) == 2:
+                    config.write_text('{"drift":true}')
+                require_inventory(spec, expected)
+            commands = [self.request(i)['args'] for i in range(3)]
+            with self.assertRaisesRegex(ValueError, 'config.json'):
+                streaming_worker(self.binary, commands, root, .5, 1, 4, admission=admission)
+            state = json.loads((root / 'service.json').read_text())
+            self.assertEqual([row['status'] for row in state['jobs']],
+                             ['completed', 'not_started', 'not_started'])
+            self.assertEqual(len(state['jobs'][0]['receipts']), 2)
+            self.assertTrue(state['cleanup']['worker_reaped'])
+            self.assertEqual(state['status'], 'failed')
+            # Actual production protocol callback only; no verified game report.
+
     def test_actual_protocol_crash_timeout_reuse_and_order(self):
         process = self.launch()
         requests = [self.request(i, mode) for i, mode in enumerate(['ok', 'crash', 'hang', 'ok', 'throw', 'ok'])]
