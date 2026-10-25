@@ -1,0 +1,204 @@
+{
+  "actual_client_libvcmi_load": [
+    "dyld[10047]: <84BF346E-98A4-36B2-ACC4-ED9E885A0CD6> /Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/bin/libvcmi.dylib"
+  ],
+  "artifacts": [
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 11582880,
+      "donor_sha256": "cbed767f5cabcaf27e721c4de48d2c2a66db4d0b8d47d43c44720ed7f96dd021",
+      "frozen_sha256": "79e527665872bed791f2a3fed88e5087880964211dcbedebd0ba57917c541540",
+      "path": "vcmiclient",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1779728,
+      "donor_sha256": "a15f58b32d600cb5ab2f47b4cf7be1a87a0fc340b9209e40d2bba67256dd4ace",
+      "frozen_sha256": "1254dc45fed2c1ef7abc1b3c860adb33f77e009c8675600e08b66d3a90c55e81",
+      "path": "vcmiserver",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 12617824,
+      "donor_sha256": "0240f2f1efe265bd2df7ff51f12d9c8ceeca02bebb7872486e585f250f922ac7",
+      "frozen_sha256": "b2d923cceb8e048809716bcb8de19c32652161e0c249900cd395b92dc228fd7c",
+      "path": "vcmireplay",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 9958160,
+      "donor_sha256": "26815e7cc7da80700dd21d2d90ab0a0c746b3c70dd9ca912b576bf9b414b2b88",
+      "frozen_sha256": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+      "path": "libvcmi.dylib",
+      "rpath_replacement": null
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 501744,
+      "donor_sha256": "a7dddbfbeb96ef334ee82dd4bbe9a66e76f07b70c2f768f33f252ded171399f8",
+      "frozen_sha256": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+      "path": "AI/libBattleAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 81968,
+      "donor_sha256": "64984b44cfbc4078f749fe921ff9749f704b84ab99255c15df534d053a08608d",
+      "frozen_sha256": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+      "path": "AI/libEmptyAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1092432,
+      "donor_sha256": "9ff5b7b00edf1f467fb48fb2637bf4a963d9d71b74baf6542e546abb794be1eb",
+      "frozen_sha256": "cdd46b2e81304a1fa57c8d7a7e8dc0727350a7be3df14eb98f41e544149d3371",
+      "path": "AI/libExplorerRL.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 2196656,
+      "donor_sha256": "efc04758c41e4f992beaa4459e525e81cda9090cefa134e0850d87e24278d786",
+      "frozen_sha256": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+      "path": "AI/libNullkiller.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 152208,
+      "donor_sha256": "5b5f4ddcd8b2f08a1fabcb5eec13770b2b386668f1ef3a635a9113e6337ec227",
+      "frozen_sha256": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+      "path": "AI/libStupidAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    }
+  ],
+  "builtin_acceptance": {
+    "cases_passed": 2,
+    "independent_native_replay": true,
+    "independent_policy_reconstruction": true,
+    "natural_outcomes": [
+      "loss",
+      "loss"
+    ],
+    "opponent": "Nullkiller",
+    "ordinary_map": true,
+    "plan": {
+      "bytes": 25057,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/plan.json",
+      "sha256": "5f12abf1fc1067ccad1e7d66e92531635edf2100ab465a9eb0244fda9de201bc"
+    },
+    "report": {
+      "bytes": 15362,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/builtin-01/report.json",
+      "sha256": "bfb922bba8dc698f975922dcdcad2f8b8384cbd4d4cde071f56497b43ff2a811"
+    },
+    "unchecked_transactions": 0
+  },
+  "canonical_engine_recipe_check_passed": true,
+  "canonical_patch": "engine/patches/0029-expanded-builtin-terminal-profile.patch",
+  "client_help_exit_code": 0,
+  "donor_load_references_removed": true,
+  "durable_receipts": {
+    "freeze": {
+      "bytes": 130488,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/freeze-receipt.json",
+      "sha256": "67be13d1f1e9978c6a88425510966c75bef21ce91c46bf02a28a2610813eff96"
+    },
+    "preflight": {
+      "bytes": 1877,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/preflight.json",
+      "sha256": "98d6b2d883634378492a3e8054c455fe1b7e9a2489eb77ee9b814f5c9bb41146"
+    }
+  },
+  "external_dependencies_bundled": false,
+  "external_dependency_count": 74,
+  "external_dependency_note": "Installed Homebrew dependency paths were individually hashed; system frameworks remain supplied by macOS.",
+  "failed_original_attempt_preserved": true,
+  "focused_tests": {
+    "log": {
+      "bytes": 2069,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/repair1-native-tests.log",
+      "sha256": "5451aae9e6b80b24d38e797ed1317e58f562c68bd4f8724283920bd72cf82a62"
+    },
+    "status": "passed",
+    "suites": [
+      "tests.test_builtin_native_contract",
+      "tests.test_native_terminal_barrier",
+      "tests.test_native_terminal_accounting"
+    ],
+    "tests_run": 10
+  },
+  "game_data_copied": false,
+  "historical_patches_modified": false,
+  "launcher_preflight_passed": true,
+  "native_acceptance": {
+    "cases_failed": 0,
+    "cases_passed": 28,
+    "cases_unstarted": 0,
+    "plan": {
+      "bytes": 37461,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/capabilities-01/plan.json",
+      "sha256": "2461f595fefadddea90be5f0bc2c92dd01a868936f75872db60e3811f6a763c9"
+    },
+    "report": {
+      "bytes": 151541,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-repair1-2026-10-25/capabilities-01/report.json",
+      "sha256": "4e6ce0e675bf7d47ad0204dc0d67591bebb859687933ff67590128e5216436de"
+    }
+  },
+  "native_build": {
+    "log": {
+      "bytes": 926,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/repair1-build.log",
+      "sha256": "c14b8e97c1e46f1372e0a7ac8a2caf6b2f646ea26a49707295ff0a03bfae9d04"
+    },
+    "status": "passed",
+    "targets": [
+      "vcmiclient",
+      "vcmiserver",
+      "ExplorerRL",
+      "vcmireplay",
+      "BattleAI",
+      "EmptyAI",
+      "Nullkiller",
+      "StupidAI"
+    ]
+  },
+  "old_runtime_integrity": "All nine original binaries and all 592 original resource files were rehashed and match the pre-repair receipt.",
+  "old_runtime_modified": false,
+  "optimizer_steps": 0,
+  "ordinary_map": {
+    "fixture": false,
+    "layout_seed": 0,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1/maps/hero-management-v2.vmap",
+    "scenario": "hero-management-v2",
+    "semantics_verified": true,
+    "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+  },
+  "repair_commit": "a38bd9c",
+  "repair_scope": [
+    "Allow exactly adventure-dialogs-v1 or adventure-capabilities-v1 for one explicit ExplorerRL seat against Nullkiller.",
+    "Add adventure-capabilities-v1 to both native terminal-barrier interface allow-lists.",
+    "Keep all existing player, difficulty, fog, acknowledgement and terminal-outcome checks unchanged."
+  ],
+  "resource_file_count": 592,
+  "resource_symlinks_dereferenced": true,
+  "runtime_directory": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-repair1",
+  "runtime_identity": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "cdd46b2e81304a1fa57c8d7a7e8dc0727350a7be3df14eb98f41e544149d3371",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "b2d923cceb8e048809716bcb8de19c32652161e0c249900cd395b92dc228fd7c"
+  },
+  "schema": "heroes-local-v8-runtime-freeze-summary-v1",
+  "source_commit_at_freeze": "16d44dadd1f519596991dfc64328ee3816702093",
+  "status": "frozen_and_native_verified",
+  "training_started": false
+}
