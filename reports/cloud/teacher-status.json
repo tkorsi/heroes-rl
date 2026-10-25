@@ -1,12 +1,12 @@
 {
-  "activity": "cloud-continuation-2026-10-25-023 completed and verified; independent backup and private snapshot complete.",
+  "activity": "cloud-continuation-2026-10-25-024 completed and verified; independent backup and private snapshot complete.",
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 276,
-    "cross_army_operations": 34,
+    "cross_army_net_count_redistribution": 378,
+    "cross_army_operations": 43,
     "moves_toward_visible_opponent_town": 0,
-    "recruitment_completed": 10,
+    "recruitment_completed": 18,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 11
+    "visible_battle_starts": 16
   },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
@@ -76,28 +76,28 @@
     "wall_seconds": 46.31009501900007
   },
   "latest_complete": {
-    "adam_steps": 163,
-    "decisions": 4309,
-    "plan": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-023/plan.json",
-    "policy_sha256": "ab833cf8158a8d9b18a76fd6fdfba415f98d888a340873e128181d33e77d447b",
-    "resume_sha256": "8baf0200a614c9ad575b3be431653b9d247fb177bd7a765ea9d93f5cb1d117b4",
-    "rollouts": 92,
-    "updates": 23,
-    "weights_sha256": "658d0da7c985e0a7a575f2e3604030ec52fa1c37a6deff6a2ffb5c7a546988d7"
+    "adam_steps": 176,
+    "decisions": 4660,
+    "plan": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-024/plan.json",
+    "policy_sha256": "38f843817c5d6e1ffea9e7385d78930f8436f665962638f0af46d566d499c144",
+    "resume_sha256": "d6da53b0713ac4a2490e95425b5ad4d8651ef0c12d7ed39593aefa90e991de42",
+    "rollouts": 96,
+    "updates": 24,
+    "weights_sha256": "b5e2fadc9ac50fde71285ae88209c3e24c13437184d43118a4b23866e647bfc3"
   },
   "latest_private_snapshot": {
-    "manifest": "results/cloud/cloud-continuation-2026-10-25-023.tar.json",
-    "private_commit": "dd62d8a36b5a17effa090f5f9b9e56937b6b0a3d",
-    "raw_archive_sha256": "07c021b25adf640421d5cb9b09881ab8ee2ca20c351c559550395a8d5239b8d6",
+    "manifest": "results/cloud/cloud-continuation-2026-10-25-024.tar.json",
+    "private_commit": "bc2a5b0eb32e50b2cdb740083025cc2662a35645",
+    "raw_archive_sha256": "083346134ee174e6a8e733966320d0b2a8d69196755e95dffe1d81fe7824111a",
     "restore": {
-      "checkpoint": "builtin-pilot-after-658d0da7c985e0a7",
+      "checkpoint": "builtin-pilot-after-b5e2fadc9ac50fde",
       "exact_model_adam_rng_progress_pool": true,
       "progress": {
-        "decisions": 4309,
-        "rollouts": 92,
-        "updates": 23
+        "decisions": 4660,
+        "rollouts": 96,
+        "updates": 24
       },
-      "weights_sha256": "658d0da7c985e0a7a575f2e3604030ec52fa1c37a6deff6a2ffb5c7a546988d7"
+      "weights_sha256": "b5e2fadc9ac50fde71285ae88209c3e24c13437184d43118a4b23866e647bfc3"
     }
   },
   "linux_gates": {
@@ -147,28 +147,28 @@
     "training_admission": false
   },
   "since_update21": {
-    "adam_steps": 14,
-    "admitted_decisions": 365,
-    "admitted_rollouts": 8,
-    "updates": 2
+    "adam_steps": 27,
+    "admitted_decisions": 716,
+    "admitted_rollouts": 12,
+    "updates": 3
   },
   "state": "continuing_within_deadline",
   "throughput": {
-    "admitted_decisions_per_reported_batch_second": 1.2636403921785853,
-    "reported_training_batch_wall_seconds": 288.848,
+    "admitted_decisions_per_reported_batch_second": 1.1481203538006632,
+    "reported_training_batch_wall_seconds": 623.628,
     "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
-    "verified_training_games_per_reported_batch_second": 0.02769622777377721
+    "verified_training_games_per_reported_batch_second": 0.01924224056649156
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T16:25:29.356504+00:00",
+  "updated_utc": "2026-10-25T16:31:20.689775+00:00",
   "validated_cloud_outcomes": {
-    "adam_steps": 14,
+    "adam_steps": 27,
     "evaluation_games": 2,
-    "loss": 10,
-    "training_games": 8,
-    "training_samples": 365,
-    "training_wall_milliseconds": 288848,
-    "updates": 2,
-    "verified_games": 10
+    "loss": 14,
+    "training_games": 12,
+    "training_samples": 716,
+    "training_wall_milliseconds": 623628,
+    "updates": 3,
+    "verified_games": 14
   }
 }

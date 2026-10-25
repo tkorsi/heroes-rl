@@ -133,15 +133,82 @@
       "run": "cloud-continuation-2026-10-25-023",
       "training_samples": 173,
       "wall_seconds": 143.88332292800033
+    },
+    {
+      "optimizer_steps": 13,
+      "plan_sha256": "57b3a565114fa8c26849de2fc62d50f714465fb5e37b1fff66eb814f49205eba",
+      "progress": {
+        "decisions": 4660,
+        "rollouts": 96,
+        "updates": 24
+      },
+      "report_sha256": "daaa3836ecedc0ec4dba2b4039d91409d437024f52ac501f50aa201dba24dcf1",
+      "rows": [
+        {
+          "choices": 2,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 129,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 44,
+            "cross_army_operations": 4,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 2,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        },
+        {
+          "choices": 219,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 58,
+            "cross_army_operations": 5,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 6,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 2
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 1,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-continuation-2026-10-25-024",
+      "training_samples": 351,
+      "wall_seconds": 334.7801015310006
     }
   ],
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 276,
-    "cross_army_operations": 34,
+    "cross_army_net_count_redistribution": 378,
+    "cross_army_operations": 43,
     "moves_toward_visible_opponent_town": 0,
-    "recruitment_completed": 10,
+    "recruitment_completed": 18,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 11
+    "visible_battle_starts": 16
   },
   "heldout_checks": [
     {
@@ -181,35 +248,35 @@
     }
   ],
   "latest_complete": {
-    "adam_steps": 163,
+    "adam_steps": 176,
     "after_checkpoint": {
       "exact_model_adam_rng_progress_pool": true,
       "policy": {
         "bytes": 637363,
-        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-023/execution/after-policy.pt",
-        "sha256": "ab833cf8158a8d9b18a76fd6fdfba415f98d888a340873e128181d33e77d447b"
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-024/execution/after-policy.pt",
+        "sha256": "38f843817c5d6e1ffea9e7385d78930f8436f665962638f0af46d566d499c144"
       },
       "resume": {
         "bytes": 1265461,
-        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-023/execution/after-resume.pt",
-        "sha256": "8baf0200a614c9ad575b3be431653b9d247fb177bd7a765ea9d93f5cb1d117b4"
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-024/execution/after-resume.pt",
+        "sha256": "d6da53b0713ac4a2490e95425b5ad4d8651ef0c12d7ed39593aefa90e991de42"
       },
-      "weights_sha256": "658d0da7c985e0a7a575f2e3604030ec52fa1c37a6deff6a2ffb5c7a546988d7"
+      "weights_sha256": "b5e2fadc9ac50fde71285ae88209c3e24c13437184d43118a4b23866e647bfc3"
     },
     "plan": {
       "bytes": 50061,
-      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-023/plan.json",
-      "sha256": "930186f075abfbb0bf96026ef5f27c9936a775c571b8336e3a0d18ab18095749"
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-024/plan.json",
+      "sha256": "57b3a565114fa8c26849de2fc62d50f714465fb5e37b1fff66eb814f49205eba"
     },
     "progress": {
-      "decisions": 4309,
-      "rollouts": 92,
-      "updates": 23
+      "decisions": 4660,
+      "rollouts": 96,
+      "updates": 24
     },
     "report": {
-      "bytes": 10395,
-      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-023/execution/report.json",
-      "sha256": "018907f47fb66aefb7a08027eaeb5f032640e3bc0702aecc21fea43ea9e5a68d"
+      "bytes": 10399,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-024/execution/report.json",
+      "sha256": "daaa3836ecedc0ec4dba2b4039d91409d437024f52ac501f50aa201dba24dcf1"
     }
   },
   "limitations": [
@@ -220,20 +287,20 @@
   ],
   "schema": "heroes-cloud-continuation-summary-v1",
   "throughput": {
-    "admitted_decisions_per_reported_batch_second": 1.2636403921785853,
-    "reported_training_batch_wall_seconds": 288.848,
+    "admitted_decisions_per_reported_batch_second": 1.1481203538006632,
+    "reported_training_batch_wall_seconds": 623.628,
     "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
-    "verified_training_games_per_reported_batch_second": 0.02769622777377721
+    "verified_training_games_per_reported_batch_second": 0.01924224056649156
   },
   "totals": {
-    "adam_steps": 14,
+    "adam_steps": 27,
     "evaluation_games": 2,
-    "loss": 10,
-    "training_games": 8,
-    "training_samples": 365,
-    "training_wall_milliseconds": 288848,
-    "updates": 2,
-    "verified_games": 10
+    "loss": 14,
+    "training_games": 12,
+    "training_samples": 716,
+    "training_wall_milliseconds": 623628,
+    "updates": 3,
+    "verified_games": 14
   },
-  "updated_utc": "2026-10-25T16:25:29.355955+00:00"
+  "updated_utc": "2026-10-25T16:31:20.689007+00:00"
 }
