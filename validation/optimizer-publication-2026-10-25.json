@@ -1,0 +1,45 @@
+{
+  "schema": "heroes-optimizer-publication-v1",
+  "date": "2026-10-25",
+  "implementation_head_at_creation": "35e0097996f8dd8278fbaeb3661bfbf916999b14",
+  "environment": {
+    "instance_changed_after_publication": true,
+    "observations_current": true,
+    "observed_phase": "running",
+    "spec_revision": "4",
+    "observed_spec_revision": "4",
+    "network_mode": "restricted",
+    "custom_allowed_hosts": ["api.github.com"],
+    "preset": "package_managers",
+    "runtime_policy_file_contains_api_github": true,
+    "reported_network_state": "unknown",
+    "new_credentials_created": false,
+    "proxy_bypassed": false,
+    "note": "Policy metadata alone did not establish access; authenticated requests below verified the required operations. Local sandbox socket restrictions required approved network execution."
+  },
+  "operations": {
+    "issue_4_authenticated_read": "succeeded",
+    "issue_comments_authenticated_read": "succeeded",
+    "existing_pr_query_before_creation": "succeeded; none existed for optimizer head",
+    "cli_graphql_pr_operation": "HTTP 503; subsequent REST duplicate query found no PR",
+    "rest_draft_pr_creation": "succeeded",
+    "rest_issue_comment_creation": "succeeded"
+  },
+  "pull_request": {
+    "number": 25,
+    "url": "https://github.com/tkorsi/heroes-rl/pull/25",
+    "draft": true,
+    "head": "codex/optimizer-native-lifecycle",
+    "base": "codex/builtin-ppo-pilot"
+  },
+  "coordination_comment": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6398668855",
+  "build_or_test_reruns": false,
+  "new_real_games": 0,
+  "new_captured_native_replays": 0,
+  "gameplay_training": false,
+  "merges": 0,
+  "remaining_optimization_validation_prerequisites": [
+    "Legally available original game Data",
+    "Existing verified native captures covering A/B/A resets, natural/prefix endings, both seats and controller modes"
+  ]
+}

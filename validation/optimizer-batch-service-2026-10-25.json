@@ -1,0 +1,139 @@
+{
+  "binary": {
+    "path": "vcmi/build/bin/vcmireplay",
+    "sha256": "8884d45fa2281f58626fe04c77df4d8d5dfd6b34de8c4808e193619c876f4b72"
+  },
+  "bounds": {
+    "native_additional_group_reaping_seconds": 1,
+    "native_input_bytes_before_newline": 65536,
+    "native_output_write_seconds": 1,
+    "supervisor_cleanup": "one shared additional allowance; default 2 seconds",
+    "supervisor_startup_and_per_job": "separate absolute deadlines capped by one campaign deadline",
+    "test_cleanup_thresholds_seconds": {
+      "ordinary_descendant": 2,
+      "supervisor_interruption": 3
+    }
+  },
+  "branch": "codex/optimizer-native-lifecycle",
+  "captured_native_replays": 0,
+  "checks": {
+    "canonical_recipe": {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "exact_match": true,
+      "exit_code": 0
+    },
+    "diff_check": "passed",
+    "focused_tests": {
+      "command": "source /workspace/cloud-setup/activate.sh; python3 -m unittest tests.test_optimizer_lifecycle tests.test_optimizer_benchmark -v",
+      "errors": 0,
+      "failures": 0,
+      "passed": 14,
+      "seconds": 8.403,
+      "skipped": 0,
+      "tests_run": 14
+    },
+    "native_build": {
+      "exit_code": 0,
+      "parallel_jobs": 4,
+      "repeat_output": "ninja: no work to do.",
+      "target": "vcmireplay"
+    },
+    "native_cli": [
+      {
+        "args": [],
+        "exit_code": 2,
+        "expected_exit_code": 2,
+        "stdout_empty": true
+      },
+      {
+        "args": [
+          "--experimental-worker",
+          "0"
+        ],
+        "exit_code": 3,
+        "expected_exit_code": 3,
+        "stdout_empty": true
+      },
+      {
+        "args": [
+          "--experimental-worker",
+          "1000"
+        ],
+        "exit_code": 3,
+        "expected_exit_code": 3,
+        "stdout_empty": true
+      }
+    ],
+    "production_resource_probe": "Exit 3, no ready receipt, missing DATA/VCDESC; remains a prerequisite probe, not a replay."
+  },
+  "cleanup_boundary": {
+    "not_guaranteed": [
+      "setsid/setpgid escape or signal-disposition interference",
+      "simultaneous external killing of template and episode leader",
+      "template death after leader death before group cleanup",
+      "wall-clock bounds for uninterruptible kernel tasks",
+      "reaping by a process after that process disappeared; remaining zombies belong to the system reaper"
+    ],
+    "receipt_rule": "cleanup_complete is emitted only after native group cleanup; missing or failed closure cannot establish verified report equivalence.",
+    "supervisor_targets": "Direct-child relationship and /proc birth time checked before targeting a live reported group.",
+    "supported": "Ordinary descendants stay in the episode process group; callbacks preserve reserved SIGUSR2 handler/mask. Service reserves SIGTERM for its parent loss and runs as a subreaper."
+  },
+  "coordination_scope_comment": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6398827494",
+  "coverage": [
+    "100 process memory/RNG/read-position resets and multithreaded-template rejection",
+    "Production ready/started/completed/closed schema and ordered integer job correlation",
+    "Normal completion, crash, timeout, exception and explicit post-failure next-job reuse",
+    "Malformed, duplicate-field, oversized and partial native requests; unknown fields and missing arguments",
+    "Empty EOF and broken output pipes before readiness and after job start",
+    "Ordinary descendants killed and reaped on completion, leader crash and timeout",
+    "Template disappearance kills active ordinary callback and descendants",
+    "Streaming startup and overall timeouts retain planned-job attribution and diagnostics",
+    "SIGINT, SIGTERM and SIGKILL supervisor interruptions retain the completed first receipt and undispatched suffix; active ordinary group stops",
+    "Corrupt ready schema/timing, missing/duplicate/mismatched completions, partial and oversized responses rejected",
+    "Transport completion without a verified native report is not admitted by the measurement entry point",
+    "Capture/observation drift changes identity; only timing metadata excluded from equivalence"
+  ],
+  "date": "2026-10-25",
+  "draft_pr": "https://github.com/tkorsi/heroes-rl/pull/25",
+  "gameplay_training": false,
+  "harness_scope": "Compiles actual canonical protocol and process-isolation helper with callbacks. No duplicate successful protocol implementation, game simulation or fabricated verified Heroes report.",
+  "implementation_commit": "a43b25e33c565966f6b904896532f99c1ed4c5d0",
+  "logs": {
+    "optimizer-service-build.log": {
+      "sha256": "20b5d7b9fe1873fb28efb26ca7231681afbec8dfd1529d043dca326acd2795af"
+    },
+    "optimizer-service-rebuild.log": {
+      "sha256": "8c35b1682f73592d30612d7b0fabdb384fcfff35cb5a076cb48b85b1368aa794"
+    },
+    "optimizer-service-tests.log": {
+      "sha256": "951de6687b65d14359533a0e7c90b7351584d0ad74d13fc1fabccd222dc2cef7"
+    }
+  },
+  "merges": 0,
+  "native_harness": "tests/native/worker_protocol.cpp",
+  "native_helper": "engine/ExperimentReplay/WorkerProtocol.cpp",
+  "ownership": {
+    "claude_performance_files_changed": false,
+    "environment_configuration_changed": false,
+    "mac_jobs": false,
+    "shared_gameplay_verifier_files_changed": false,
+    "teacher_contracts_changed": false
+  },
+  "pending": [
+    "Real Data/capture replay equivalence across resets, observations/fog/actions and terminal/cutoff semantics",
+    "Actual step latency, replay speed and complete-game or experiment throughput",
+    "Separate validation against actual Teacher source before any integration"
+  ],
+  "performance_claim": null,
+  "previous_head": "e7afada8735ffa8edb1481bb492f3ba77063c845",
+  "production_sources": {
+    "engine/ExperimentReplay/ForkEpisode.h": "b9a0dab325780318064abd1f146f5267b9bb352a4462b154cff63a64542cdd07",
+    "engine/ExperimentReplay/ReplayWorker.cpp": "5c53994ebc3ec87a26a931eade96b136b6642d50cb61622cd2a064f83ea476c0",
+    "engine/ExperimentReplay/WorkerProtocol.cpp": "30c067bd730a3bd190aea4df57f7f5e91769ef46ecef227c9a2ec7c28dfd89a6",
+    "engine/ExperimentReplay/WorkerProtocol.h": "47c23adf1b190454d73368346ea39d9268d3e5e4248902541fe3e6f336f7d2ea"
+  },
+  "protocol_change": "Incompatible experimental version; production helper and sole client updated together.",
+  "real_games": 0,
+  "schema": "heroes-optimizer-batch-service-validation-v1",
+  "worker_protocol_schema": "heroes-replay-worker-v2"
+}
