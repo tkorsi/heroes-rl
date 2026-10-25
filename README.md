@@ -23,7 +23,7 @@ This check launched no gameplay.
 | Area | Implemented | Current limit |
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
-| Actions | Coordinate targets with native routing, construction, recruitment, Tavern/hero hire, army operations and typical adventure dialogs | No tactical battle policy or path-cost oracle |
+| Actions | Native coordinate routing, construction/recruitment, Tavern, armies, dialogs, marketplace, artifacts, adventure spells and level-up choices | Supported object families only; no tactical battle policy or path-cost oracle |
 | Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Winning strategy has not been demonstrated |
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
@@ -214,7 +214,7 @@ retain the reviewed source/runtime transition, trained-policy parity proof and
 fresh two-seat replay gate. The earlier cloud session remains stopped; its
 expired deadlines, original 30-day plans and historical metadata are unchanged.
 
-### Gated v8 preparation
+### Reviewed v8 launch tooling
 
 A new local two-hour authorization is gated on all requested v8 capabilities,
 full native validation and coordinator release. The [prelaunch checklist](docs/update92-v8-prelaunch.md)
@@ -226,8 +226,10 @@ profiles; ordinary resume still refuses a schema transition. Explicit conversion
 new single-use controller now require a privately restored migrated baseline,
 all native feature gates and coordinator release. The target ordinary map is
 hero-management-v2, with native hero leveling enabled. Temporary conversion of
-the actual update92 pair passed and was removed; no permanent migrated
-checkpoint, new session, gameplay probe or training update has been created.
+the actual update92 pair passed and was removed. Permanent migration must preserve
+the original tensors and optimizer state in independent local and private copies
+before a fresh session starts. Preparation evidence alone does not claim gameplay
+or a new training update; the dated launch/campaign report records actual activity.
 
 ## Source layout
 
