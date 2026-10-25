@@ -1,6 +1,6 @@
 {
-  "activity": "Two same-trajectory GDB reproductions complete. Crash return site is Nullkiller ELF offset0x197b9d at TBB task-handle destructor virtual wait-tree release, after makeTurn returned. Monitoring minimal repair publication.",
-  "blocker": "VCMI exited -11 (SIGSEGV) during shutdown after terminal callbacks/barrier and Ending network thread; same-runtime replay gate was not reached.",
+  "activity": "Integrated only Optimizer ca488fd as a5fe044; rebuilt the exact recipe with relative ELF lookup.41 focused checks passed, including100 native shutdown order iterations. Preparing fresh two-seat restored-policy gate.",
+  "blocker": null,
   "checkpoint_pair_restore_exact": true,
   "deadline": {
     "authorized_window_start_utc": "2026-10-25T15:53:00Z",
@@ -34,20 +34,20 @@
     "weights_sha256": "0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb"
   },
   "linux_gates": {
-    "canonical_source": "passed",
-    "cleanup": "passed",
+    "canonical_source": "passed_after_minimal_repair",
+    "cleanup": "pending_fresh_repaired_gate",
     "focused_tests": "passed",
-    "fresh_capture": "failed_native_sigsegv",
+    "fresh_capture": "pending_fresh_repaired_gate",
     "historical_plan_report": "passed_complete_parent_and_backup_restore",
-    "native_build": "passed",
-    "same_runtime_replay": "not_reached"
+    "native_build": "passed_linux_v2",
+    "same_runtime_replay": "pending_fresh_repaired_gate"
   },
   "next_step": "Integrate only the tested minimal C++ correctness slice; rebuild an ordinary self-contained runtime, bind fresh provenance, validate both seats, then resume update22 within the fixed deadline.",
   "next_unused_training_sequence": 22,
   "optimizer_status_observed": {
     "branch": "codex/portable-engine-session",
-    "commit": "be6df08",
-    "tested_minimal_shutdown_fix": null
+    "commit": "bb98408",
+    "tested_minimal_shutdown_fix": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac"
   },
   "private_failure_evidence": {
     "branch": "codex/cloud-teacher-results",
@@ -58,6 +58,11 @@
   },
   "private_git_read_access": true,
   "private_transfer_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
+  "runtime": {
+    "directory": "/workspace/Heroes-artifacts/runtime/linux-v2/bin",
+    "experimental_workers_enabled": false,
+    "self_relative_vcmi_load_verified": true
+  },
   "schema": "heroes-cloud-teacher-status-v1",
   "shutdown_diagnostic": {
     "choices": 72,
@@ -74,7 +79,7 @@
     "target_mapping": "anonymous non-executable rw-p heap",
     "training_admission": false
   },
-  "state": "waiting_minimal_native_repair",
+  "state": "validating_minimal_shutdown_repair",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T16:04:18.645703+00:00"
+  "updated_utc": "2026-10-25T16:09:12.483591+00:00"
 }
