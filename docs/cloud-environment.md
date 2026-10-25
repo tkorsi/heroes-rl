@@ -160,3 +160,75 @@ After publishing, start a task on the migration branch with this handoff:
 > If blocked on private inputs or runtime permissions, identify the exact missing
 > item and continue independent source/testing work. Report what actually ran,
 > what passed, and what remains; never label an incomplete setup a working game.
+
+## Debian 13 cloud implementation
+
+The migration branch now includes `9193db35857e07ddbc45e98a1dd7c3f4a8c07da0`.
+Its terminal diagnostics remain historical Mac evidence; merging their records
+is not a Linux gameplay check.
+
+The current cloud host is Debian 13 amd64 with CPython 3.12.14. It provides
+neither root package-install privileges nor `sudo`. The original bootstrap's
+`apt` stage therefore fails on this host. The additional tested installation
+path uses authenticated Debian metadata and hash-bound package archives under
+`/workspace/cloud-setup`, with existing host runtime libraries linked into that
+prefix. It does not run package maintainer scripts or alter system directories.
+The local prefix remains dependent on the recorded Debian base; the package
+archive list is not a standalone operating-system image.
+
+```sh
+cd /workspace/heroes-rl
+bash tools/setup_cloud_locked.sh
+source /workspace/cloud-setup/activate.sh
+python -m unittest discover -s tests -v
+python tools/prepare_vcmi.py --check
+```
+
+`dependencies/learner-linux-x86_64-py312.lock` pins every resolved CPU Python
+package and its exact Linux wheel hash. It was also installed independently into
+a fresh virtual environment with `--require-hashes` and `pip check`.
+`dependencies/cloud-debian13-amd64.json` binds the downloaded Debian archives;
+`base-system-packages.tsv` under the local prefix records the host dependencies.
+The macOS learner lock and original learner source identities remain unchanged.
+Two compiler jobs and one PyTorch thread are the default. Source the activation
+file in each new shell; processes and shell exports do not survive publication.
+No persistent service or automatic gameplay startup is required.
+
+### Explicit frozen-policy portability
+
+The original fixed checkpoint is still an input, never a generated substitute.
+The only accepted public migration input has the full SHA-256 and byte count in
+**Private inputs** above. The shorter, differing digest in the later chat is not
+an alternative accepted identity. Preserve the original in private storage.
+
+```sh
+source /workspace/cloud-setup/activate.sh
+python tools/port_fixed_policy_linux.py \
+  --checkpoint /private-inputs/fixed-policy.pt \
+  --output /private-inputs/linux-policy-v1
+```
+
+These paths are placeholders for user-approved private storage, not assumed
+mounts. The command refuses an existing output. It verifies the original file,
+Torch 2.9.1/Python 3.13.5 provenance, v7 contracts, original learner source hashes,
+learner and opponent identities, model shapes and finite tensors. It creates a
+separate policy identity and runtime provenance for Linux CPU Torch 2.9.1+cpu,
+then uses the standard strict loader and exact tensor comparisons for both
+models. No compatibility flag is disabled, optimizer restored or update run.
+The original checkpoint and historical plans remain untouched. Its private
+`portability.json` binds both files and records that cross-platform behavioral
+equivalence and Linux gameplay have **not** been established.
+
+Synthetic portability tests cover success, immutable original/output behavior,
+wrong file identity, source/runtime drift, contract corruption, frozen-opponent
+identity drift and tensor corruption. Those tests do not validate the absent
+original checkpoint. The original Mac evaluators intentionally continue to
+reject the converted file's different digest. Before any new cohort, implement
+and validate a separately identified Linux plan binding the portability report,
+new file digest, actual native runtime and the original exact model weights.
+Do not patch the old Mac plans or overwrite their identities.
+
+Private Data, the original checkpoint and any raw games must remain outside
+Git and shared snapshots. Until those inputs are supplied and checked, native
+startup, both-color diagnostics and the two maximum-one-hour cohorts are blocked.
+Neither installing dependencies nor compiling replay establishes a working game.
