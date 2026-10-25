@@ -96,6 +96,7 @@ int main(int argc, char ** argv)
 			save(output / "plan.json", plan);
 			session.load();
 			report["load_seconds"].Float() = session.timings().loadSeconds;
+			report["resources_after_load"] = native_session_host::resourceSnapshot();
 			for(const auto & item : episodes)
 			{
 				native_session::EpisodeConfig config;
@@ -150,6 +151,7 @@ int main(int argc, char ** argv)
 				current["status"].String() = boundary.terminalObserved ? "natural_unverified" : "prefix_unverified";
 				current["submitted_steps"].Integer() = steps;
 				session.closeEpisode();
+				current["resources_after_cleanup"] = native_session_host::resourceSnapshot();
 				current["timing_seconds"] = times(before, session.timings());
 				current["wall_seconds"].Float() = std::chrono::duration<double>(Clock::now() - started).count();
 				if(const auto peak = native_session_host::peakResidentBytes()) current["peak_process_resident_bytes"].Integer() = *peak;
