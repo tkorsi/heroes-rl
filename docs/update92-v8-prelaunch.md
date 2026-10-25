@@ -205,3 +205,38 @@ be a cutoff: the one-player runtime stops with the captured unacted decision,
 without issuing a synthetic dismissal. It must not report that query as closed
 or the game as naturally completed. Native neutral-joining/replay evidence is
 still a release gate.
+
+
+## Original-window startup repair
+
+The initial v8 baseline failed before its first choice because the native
+built-in-opponent guard admitted only v7. Preserve that consumed session and
+all failed baseline evidence. `HEROES_V8_REPAIR=attempt2` selects exactly one
+separate session at `local-v8-update92-repair2/campaign-session.json` and run
+prefix `v8-update92-repair2`. All subprocesses inherit this explicit mode.
+Without it, the original consumed-session guard remains unchanged.
+
+A separately reviewed release retains all ordinary source, migration, private
+preservation and native acceptance gates. It additionally contains `repair`:
+
+- `attempt`: 2.
+- `original_session`: the complete binding of the original campaign-session JSON.
+- `failure`: the complete binding of the original heldout-092 execution report.
+- `controller_result`: the complete binding of the original controller-result.
+- `absolute_deadline_unix`: exactly 1792972149.568623 (2026-10-25 23:49:09 UTC).
+
+The first two artifact hashes are pinned in code. The repair is restricted to
+this zero-choice startup failure, with verified prior cleanup. Original start
+wall/monotonic timestamps and both deadlines are inherited unchanged; the
+actual repair start is recorded separately as `attempt_started_unix`. An
+expired original window, altered binding, extended deadline or reused repair
+session fails closed. The coordinator must supply repaired all28 mechanics
+acceptance and actual both-seat v8/Nullkiller startup evidence before release.
+
+Prepare a fresh exact-update92 migration against the final repaired committed
+source and frozen runtime and preserve it privately before launch. Do not
+reuse the previous source/runtime migration. The baseline is explicitly
+attempt2; original attempt1 remains visible with no scored result. Training
+still scans every existing plan and rejects consumed seed tuples, including
+failed/partial training attempts. No source edits, runtime edits, cloud run or
+budget extension are authorized by selecting repair mode.

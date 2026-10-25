@@ -49,6 +49,15 @@ Latest evidence is timestamped, not a live activity guarantee:
   [native session evidence](validation/native-engine-session-2026-10-25.json).
 - [Contextual pipeline performance](validation/performance-2026-10-25.json).
 
+The first released v8 campaign stopped during native startup before any policy
+choice or optimizer step: the built-in-opponent native guard still required v7.
+Its consumed session and failed baseline are retained. Explicit repair attempt2
+support uses a separate session and output namespace, but inherits the original
+absolute and monotonic deadlines; it grants no fresh two-hour budget. A new
+reviewed release, repaired native acceptance and exact privately preserved
+migration are required before repair gameplay. See
+[repair preparation](docs/update92-v8-prelaunch.md#original-window-startup-repair).
+
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
 games produced **zero wins, 47 natural losses and one day-limit cutoff**. The

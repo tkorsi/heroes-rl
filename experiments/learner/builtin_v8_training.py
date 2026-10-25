@@ -32,7 +32,7 @@ def require_heldout(state, runtime, native):
     if state.progress.updates != 92 and state.progress.updates % 5:
         return
     # Only this fresh v8 session can satisfy the new baseline or periodic gate.
-    for path in (DURABLE_ROOT/'runs').glob('v8-update92-heldout-*/plan.json'):
+    for path in (DURABLE_ROOT/'runs').glob(scope.RUN_PREFIX+'-heldout-*/plan.json'):
         plan = json.loads(path.read_text())
         if (plan.get('schema') != batches.EVALUATION+'-plan'
                 or plan.get('parent', {}).get('plan') != state.bindings['plan']
