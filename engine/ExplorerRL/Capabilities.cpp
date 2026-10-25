@@ -1,6 +1,7 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
 #include "VisibleWorld.h"
+#include "ArtifactMoveRules.h"
 
 #include "../../lib/GameLibrary.h"
 #include "../../lib/callback/CCallback.h"
@@ -298,6 +299,9 @@ JsonNode ExplorerRL::capabilityPanel()
 				{
 					if(vstd::contains(ArtifactUtils::unmovableSlots(), destinationSlot) || (source == destination && sourceSlot == destinationSlot)) continue;
 					const bool backpack = ArtifactUtils::isSlotBackpack(destinationSlot);
+					if(backpack && !explorer_rl::backpackInsertionFits(destination->artifactsInBackpack.size(),
+						source == destination && ArtifactUtils::isSlotBackpack(sourceSlot),
+						destinationSlot - ArtifactPosition::BACKPACK_START)) continue;
 					const auto * occupied = destination->getArt(destinationSlot, false);
 					const auto * info = destination->getSlot(destinationSlot);
 					if(info && info->locked) continue;
@@ -594,8 +598,15 @@ bool ExplorerRL::executeCapabilityAction(const JsonNode & action, int64_t decisi
 		else if(kind == "move_artifact")
 		{
 			const auto * destination = hero(*callback, contextState, selected["destination"].String());
-			if(!callback->swapArtifacts(ArtifactLocation(actor->id, ArtifactPosition(selected["slot"].Integer())),
-				ArtifactLocation(destination->id, ArtifactPosition(selected["destination_slot"].Integer()))))
+			const ArtifactPosition sourceSlot(selected["slot"].Integer());
+			const ArtifactPosition destinationSlot(selected["destination_slot"].Integer());
+			if(ArtifactUtils::isSlotBackpack(destinationSlot)
+				&& !explorer_rl::backpackInsertionFits(destination->artifactsInBackpack.size(),
+					actor == destination && ArtifactUtils::isSlotBackpack(sourceSlot),
+					destinationSlot - ArtifactPosition::BACKPACK_START))
+				throw std::runtime_error("Artifact destination exceeds the backpack after source removal");
+			if(!callback->swapArtifacts(ArtifactLocation(actor->id, sourceSlot),
+				ArtifactLocation(destination->id, destinationSlot)))
 				throw std::runtime_error("Displayed artifact operation failed to issue");
 		}
 		else if(kind == "assemble_artifact" || kind == "disassemble_artifact")

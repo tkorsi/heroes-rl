@@ -75,7 +75,7 @@ def run_batch(parent, sequence, evaluate, session):
     else:
         report = json.loads((Path(raw['execution_output'])/'report.json').read_text())
         update = _completion(raw, report)[0].updates
-    name = f'v8-update92-heldout-{update:03d}' if evaluate else f'v8-update92-continuation-{sequence:03d}'
+    name = f'{scope.RUN_PREFIX}-heldout-{update:03d}' if evaluate else f'{scope.RUN_PREFIX}-continuation-{sequence:03d}'
     output = DURABLE_ROOT/'runs'/name
     require(not output.exists(), 'Never retry an already prepared v8 batch')
     if not evaluate: unused_schedule(sequence)
@@ -168,6 +168,8 @@ def campaign(args):
     receipt = scope.checked(release['migration_receipt'])
     parent = Path(receipt['plan']['path'])
     result = {'schema': scope.SCOPE+'-campaign', 'session': binding(scope.SESSION), 'status': 'running', 'batches': []}
+    if scope.REPAIR:
+        result.update(attempt=session['attempt'], repair=session['repair'])
     durations, sequence, update, evaluated = [300.0], 94, 92, set()
     pending = None
     result.update(latest_verified_parent=binding(parent), latest_private_parent=binding(parent),
@@ -186,7 +188,7 @@ def campaign(args):
                     except ValueError:
                         sequence += 1
                         require(sequence < 100000, 'No unused training sequence')
-            name = f'v8-update92-heldout-{update:03d}' if evaluate else f'v8-update92-continuation-{sequence:03d}'
+            name = f'{scope.RUN_PREFIX}-heldout-{update:03d}' if evaluate else f'{scope.RUN_PREFIX}-continuation-{sequence:03d}'
             pending = DURABLE_ROOT/'runs'/name/'plan.json'
             row = {'mode': 'evaluation' if evaluate else 'training', 'at_update': update,
                    'intended_plan': str(pending), 'status': 'preparing', 'private_commit': None}

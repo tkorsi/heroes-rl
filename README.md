@@ -50,6 +50,48 @@ Latest evidence is timestamped, not a live activity guarantee:
   [native session evidence](validation/native-engine-session-2026-10-25.json).
 - [Contextual pipeline performance](validation/performance-2026-10-25.json).
 
+The first released v8 campaign stopped during native startup before any policy
+choice or optimizer step: the built-in-opponent native guard still required v7.
+Its consumed session and failed baseline are retained. Explicit repair attempt2
+support uses a separate session and output namespace, but inherits the original
+absolute and monotonic deadlines; it grants no fresh two-hour budget. A new
+reviewed release, repaired native acceptance and exact privately preserved
+migration are required before repair gameplay. See
+[repair preparation](docs/update92-v8-prelaunch.md#original-window-startup-repair).
+
+The [mixed-opponent repair check](validation/builtin-v8-repair1-2026-10-25.json)
+then completed two real v8/Nullkiller games with the fixed update92 policy: both
+were natural losses, on days 9 and 2. All 211 sampled decisions reconstructed
+exactly and 2,693 native transactions replayed with none unchecked. These
+diagnostics supplied no PPO samples. The repaired runtime also passed the full
+28-case capability suite; the original failed startup remains unscored.
+
+The subsequent repair2 campaign completed two verified baseline games (both
+natural losses, 274 decisions), then stopped on a native heap-corruption crash
+after 39 choices on day2 of its first training game. No PPO update or training
+sample was admitted; three remaining games were not started. Update92 and all
+failed evidence are preserved, and owned-process cleanup passed. The source
+trace identifies an invalid same-backpack artifact insertion after source
+removal. The user requested the fix and another launch within the original
+window. The reviewed repair now passes all 28 real capability checks, including
+both-seat backpack reorders and transfers; 3,120 native transactions replayed
+without unchecked operations. The initial stale-verifier packaging failure is
+retained separately. See the [new runtime evidence](validation/runtime-artifact-fix-2026-10-26.json). See the
+[dated failure analysis](validation/v8-artifact-crash-2026-10-26.json).
+
+The [bounded repair3 continuation](validation/local-v8-repair3-launch-2026-10-26.json)
+started at **22:20:31 UTC on 25 October** (00:20:31 Kyiv on 26 October),
+using pinned source `fe62a80` and a separately frozen artifact-fix runtime.
+Its two baseline games passed native replay and policy reconstruction. It then
+started fresh training sequence95 from unchanged update92. That complete four-game
+batch passed all checks and produced update93 (238 admitted decisions and nine
+Adam steps), privately preserved after exact checkpoint restoration. All four
+games ended in natural losses; this does not demonstrate strategic improvement.
+The campaign inherits the
+original **23:44:09 UTC compute cutoff and 23:49:09 UTC hard stop**; no new
+two-hour budget was granted. Activity and progress in this paragraph are dated
+launch evidence, not a guarantee that the campaign remains running.
+
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
 games produced **zero wins, 47 natural losses and one day-limit cutoff**. The
@@ -172,11 +214,11 @@ and full-army neutral joining are part of the same acceptance work. This is
 `adventure-capabilities-v1`, history/actions v8, protocol 10. The ordinary v7
 interface and historical observations retain their original serialized forms.
 
-The [final native acceptance](validation/capabilities-durable-runtime-2026-10-25.json)
+The [final native acceptance](validation/capabilities-repair1-2026-10-25.json)
 passed all **28 cases** (14 mechanics in both seats) against one frozen
 implementation/runtime. Every case passed independent history and native replay;
 3,036 transactions were checked with none skipped. The independently frozen
-[macOS runtime](validation/runtime-freeze-v8-2026-10-25.json) removes donor-build
+[macOS runtime](validation/runtime-freeze-v8-repair1-2026-10-25.json) removes donor-build
 loader references and copies its resources; the complete suite was repeated
 against those exact signed bytes. Matched Dimension Door cases
 showed identical visible observations and 224 target candidates with/without an

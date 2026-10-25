@@ -205,3 +205,64 @@ be a cutoff: the one-player runtime stops with the captured unacted decision,
 without issuing a synthetic dismissal. It must not report that query as closed
 or the game as naturally completed. Native neutral-joining/replay evidence is
 still a release gate.
+
+
+## Original-window startup repair
+
+The initial v8 baseline failed before its first choice because the native
+built-in-opponent guard admitted only v7. Preserve that consumed session and
+all failed baseline evidence. `HEROES_V8_REPAIR=attempt2` selects exactly one
+separate session at `local-v8-update92-repair2/campaign-session.json` and run
+prefix `v8-update92-repair2`. All subprocesses inherit this explicit mode.
+Without it, the original consumed-session guard remains unchanged.
+
+A separately reviewed release retains all ordinary source, migration, private
+preservation and native acceptance gates. It additionally contains `repair`:
+
+- `attempt`: 2.
+- `original_session`: the complete binding of the original campaign-session JSON.
+- `failure`: the complete binding of the original heldout-092 execution report.
+- `controller_result`: the complete binding of the original controller-result.
+- `absolute_deadline_unix`: exactly 1792972149.568623 (2026-10-25 23:49:09 UTC).
+
+The first two artifact hashes are pinned in code. The repair is restricted to
+this zero-choice startup failure, with verified prior cleanup. Original start
+wall/monotonic timestamps and both deadlines are inherited unchanged; the
+actual repair start is recorded separately as `attempt_started_unix`. An
+expired original window, altered binding, extended deadline or reused repair
+session fails closed. The coordinator must supply repaired all28 mechanics
+acceptance and actual both-seat v8/Nullkiller startup evidence before release.
+
+Prepare a fresh exact-update92 migration against the final repaired committed
+source and frozen runtime and preserve it privately before launch. Do not
+reuse the previous source/runtime migration. The baseline is explicitly
+attempt2; original attempt1 remains visible with no scored result. Training
+still scans every existing plan and rejects consumed seed tuples, including
+failed/partial training attempts. No source edits, runtime edits, cloud run or
+budget extension are authorized by selecting repair mode.
+
+## Artifact-crash repair within the same window
+
+Attempt2 completed the two-seat baseline (two natural losses, 274 choices), then
+its first training game crashed after 39 choices. Batch94 contributed no samples
+or PPO steps; three scheduled games were not started. The parent remains exact
+update92. All attempt2 evidence and cleanup receipts remain immutable.
+
+The user's renewed instruction to finish repairs and launch Teacher allows one
+explicit `HEROES_V8_REPAIR=attempt3` continuation after the artifact-memory defect
+is fixed and verified. This selects the fresh
+`local-v8-update92-repair3/campaign-session.json` and `v8-update92-repair3` run
+prefix. It inherits the original start and both original clocks: compute stops
+at **23:44:09 UTC**, and the hard deadline is **23:49:09 UTC on 25 October 2026**.
+There is no fresh two-hour budget.
+
+The new release retains the startup-repair bindings above, sets `repair.attempt`
+to `3`, and adds `repair.previous_attempt`. This contains complete bindings for
+the attempt2 `session`, `failure` (batch94 execution report), `controller_result`
+and `campaign_report`. Their exact paths and hashes are pinned in
+`ATTEMPT2_PINS`. Validation requires zero admitted samples/updates, the unchanged
+update92 parent, recorded failed/unstarted rows and confirmed cleanup. Attempt3
+still requires a fresh exact migration, private preservation, repaired native
+acceptance and its own both-seat baseline before training. The consumed batch94
+seed tuples remain unavailable; the controller advances to sequence95 or the
+next unused schedule. This preparation alone launches no gameplay.

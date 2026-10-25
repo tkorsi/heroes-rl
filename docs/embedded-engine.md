@@ -119,7 +119,7 @@ unchanged Easy and BattleAI selections. There is no separate advance call: the
 engine's own turn order advances Nullkiller exactly as in the cold client, and
 the host never drives or inspects it. `detach()` and `release()` are the
 per-game reset, after all game threads joined: the instance is released, then
-patch 0030 returns Nullkiller's module-level caches (pathfinding node storage,
+patch 0031 returns Nullkiller's module-level caches (pathfinding node storage,
 cached hero graphs) to fresh-process state. `shutdown()` runs with the session.
 An instance that outlives its game, or a module reset that did not happen
 (missing export, static AI build or an error), poisons the session, and close
@@ -130,7 +130,7 @@ finish without its exit status, or failed opponent module reset poisons the
 engine: the next `reset` is refused natively (`SessionHealth`, before any
 mutation) and by the Python environment, and the worker must start a new
 process. Experiment failures are logged as `Experiment failure: <reason>` in the
-game log, as in the cold client. Patch 0029 lets an embedded session capture an
+game log, as in the cold client. Patch 0030 lets an embedded session capture an
 exception on the in-thread server thread as an experiment failure; the capture
 is switched on only while an `EngineSession` is loaded, so the cold `vcmiclient`
 keeps its `std::terminate` path.
@@ -171,12 +171,9 @@ cutoff, history, manifest and finalization; it shares the cold response path
 and differs only in how a response line is delivered. It accepts the same two
 reviewed interfaces as the cold built-in environment, `adventure-dialogs-v1`
 (history v7) and `adventure-capabilities-v1` (history v8), and passes the
-choice to ExplorerRL through `reset(interface=)`. The native built-in gate
-(patch 0023, `experimentBuiltinLearner`) still admits only
-`adventure-dialogs-v1`, so a v8 built-in game is refused by both backends with
-the same experiment failure until that gate changes; the validation record
-shows the identical refusal. The existing `BuiltinCollector` runs on it
-unchanged.
+choice to ExplorerRL through `reset(interface=)`; main's patch 0029 admits
+both in the native built-in gate and terminal barrier. The existing
+`BuiltinCollector` runs on it unchanged.
 Hidden information, window-gated content, typed contextual actions including
 `move_to(x, y)`, engine-built routes and natural, cutoff and failure
 distinctions are those of the shared ExplorerRL and environment code.
@@ -190,10 +187,10 @@ they are hashed once at engine load, and every reset and finish requires their
 inventory and stat identity unchanged on disk ("restart Python" otherwise).
 
 The `ENGINE_RECIPE` tuple is unchanged, but `engine/patches` is part of it and
-this branch adds patches 0029 and 0030, so recipe digests differ from main.
-Patch 0029 touches `client/Client.cpp`, `client/ServerRunner.cpp` and the
+this branch adds patches 0030 and 0031, so recipe digests differ from main.
+Patch 0030 touches `client/Client.cpp`, `client/ServerRunner.cpp` and the
 experiment hooks in `libvcmi`, which are compiled into the cold `vcmiclient`
-and `vcmireplay` as well; patch 0030 adds the module reset export to
+and `vcmireplay` as well; patch 0031 adds the module reset export to
 `libNullkiller`, the cold opponent. Their cold behaviour is unchanged (the
 server-failure capture and the module reset are used only by the embedded
 session), but cold binary and Nullkiller digests change. The learner checkpoint

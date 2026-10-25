@@ -1,0 +1,77 @@
+{
+  "baseline": {
+    "games": 2,
+    "natural_losses": 2,
+    "natural_wins": 0,
+    "sampled_decisions": 274,
+    "training_samples": 0
+  },
+  "checkpoint": {
+    "adam_steps": 783,
+    "decisions": 21062,
+    "rollouts": 368,
+    "unchanged": true,
+    "updates": 92
+  },
+  "cleanup_verified": true,
+  "diagnosis": {
+    "allocator_message": "memory corruption of free block",
+    "crash_stack_is_detection_site_not_proof_of_origin": true,
+    "last_submitted_action": {
+      "backpack_items": 1,
+      "destination_slot": 20,
+      "kind": "move_artifact",
+      "same_hero": true,
+      "source_slot": 19
+    },
+    "native_signal": "SIGTRAP",
+    "source_trace": "The server clamps destination against the pre-removal backpack size. The state pack removes the source before unchecked vector insertion; destination index1 is invalid after removing the only item. The adapter must expose and submit destinations valid after removal."
+  },
+  "evidence": {
+    "campaign": {
+      "bytes": 5579,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair2/campaign-report.json",
+      "sha256": "30f701069c1b2b0b7a3dce1af1322cf48b3ac2c46eb97990055c71ec906e47a6"
+    },
+    "cleanup": {
+      "bytes": 430,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair2/controller-result.json",
+      "sha256": "7ddb8f5526a7c15e785d4ddd963b7ed3fff87e53b5c6aa91494198aab932c735"
+    },
+    "evaluation": {
+      "bytes": 8433,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair2-heldout-092/execution/report.json",
+      "sha256": "4d03dba3ade54ad9dbb7dec49d8168ca3e1db8922bd447ed5fbdf9059325af95"
+    },
+    "failed_training": {
+      "bytes": 6575,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair2-continuation-094/execution/report.json",
+      "sha256": "5eaa98a2b08527e5563dd12d45726398a54e5705e69c4b9595f470f8409df5e0"
+    }
+  },
+  "failed_training": {
+    "day": 2,
+    "native_returncode": -5,
+    "optimizer_steps": 0,
+    "outcome_scored": false,
+    "sampled_choices": 39,
+    "sequence": 94,
+    "started_games": 1,
+    "termination": "process_exit_without_verified_terminal",
+    "training_samples": 0,
+    "unstarted_games": 3
+  },
+  "private_preservation_commit": "aff9651",
+  "recovery": {
+    "failed_and_unstarted_seed_tuples_reserved": true,
+    "new_training_started": false,
+    "original_compute_cutoff_utc": "2026-10-25T23:44:09.568623+00:00",
+    "original_hard_stop_utc": "2026-10-25T23:49:09.568623+00:00",
+    "pending_native_regression": true,
+    "user_requested_finish_fixes_and_relaunch": true
+  },
+  "schema": "heroes-v8-repair2-failure-analysis-v1",
+  "source_commit": "ff19c0d3226219260b2b755136a3354cf7c340a6",
+  "status": "stopped_failure",
+  "updated_utc": "2026-10-25T22:15:31.154058+00:00"
+}
