@@ -8,7 +8,6 @@ retains earlier information: there is no accumulated last-seen world cache.
 from __future__ import annotations
 
 from copy import copy
-import ctypes
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
@@ -88,12 +87,17 @@ def weights_sha256(model):
     """Bind architecture/config and named tensors without NumPy or pickle."""
     digest = hashlib.sha256(json.dumps(model.config.to_dict(), sort_keys=True, separators=(",", ":")).encode())
     for name, tensor in sorted(model.state_dict().items()):
-        value = tensor.detach().cpu().contiguous().clone()
+        value = tensor.detach().to("cpu").contiguous().clone()
         header = json.dumps((name, str(value.dtype), tuple(value.shape)), separators=(",", ":")).encode()
-        # The private contiguous copy's exact memory bytes: the same bytes as a
-        # uint8 view, without one Python integer per byte (or NumPy/pickle).
-        size = value.numel() * value.element_size()
-        data = ctypes.string_at(value.data_ptr(), size) if size else b""
+        # The exact bytes of the uint8 view, copied by torch into Python-owned
+        # memory: no Python integer per byte, no pointer reads, NumPy or pickle.
+        if value.device.type != "cpu" or not value.is_contiguous():
+            raise ValueError("Weights digest requires an owned contiguous CPU copy")
+        flat = value.reshape(-1).view(torch.uint8)
+        data = bytearray(flat.numel())
+        if data:
+            torch.frombuffer(data, dtype=torch.uint8).copy_(flat)
+        data = bytes(data)
         digest.update(len(header).to_bytes(8, "big")); digest.update(header)
         digest.update(len(data).to_bytes(8, "big")); digest.update(data)
     return digest.hexdigest()
@@ -102,6 +106,24 @@ def weights_sha256(model):
 # Key of the per-frame cache entry that holds the exact leaf memo; no tree equals it.
 _LEAF_MEMO = object()
 _LEAF_MEMO_LIMIT = 65536
+# Every submodule that a text or number leaf encoding reads (with ``config``).
+_LEAF_MODULES = ("byte", "text_gru", "number")
+_BIT_DTYPES = {1: torch.uint8, 2: torch.int16, 4: torch.int32, 8: torch.int64}
+
+
+def _bits(tensor):
+    """Integer view of a tensor's exact bits: signed zeros and NaN payloads differ."""
+    dtype = _BIT_DTYPES.get(tensor.element_size())
+    return tensor.view(dtype) if dtype is not None else tensor.reshape(-1).view(torch.uint8)
+
+
+def _leaf_key(kind, value):
+    """Exact memo key, or None to bypass: 1, 1.0 and True stay distinct, as do 0.0 and -0.0."""
+    if kind == "text":
+        return value if type(value) is str else None
+    if type(value) is float:
+        return None if value != value else (float, value, copysign(1.0, value))
+    return (type(value), value) if type(value) in (int, bool) else None
 
 
 def _node(tag, *children):
@@ -408,39 +430,58 @@ class ContextualActorCritic(nn.Module):
     def _long(self, values):
         return torch.tensor(values, dtype=torch.long, device=self.device)
 
+    def __getstate__(self):
+        state = super().__getstate__()
+        state.pop("_leaf_memo_state", None)  # copies and pickles start without a memo
+        return state
+
     def _leaf_memo(self):
         """Inference-only memo of text/number leaf encodings, or None.
 
-        A leaf encoding is a pure function of its value and the weights, so a
-        memo hit is the identical tensor that recomputation would return. It
-        holds no game information between frames. It is used only without
-        autograd and is discarded when any parameter is replaced or changed in
-        place (its version counter advances).
+        A leaf encoding is a pure function of its exact value, ``config`` and
+        the leaf submodules, so a hit is the tensor recomputation would return.
+        It is computation reuse only, never player memory or input. It exists
+        only in eval mode with autograd and autocast off and no forward hooks; it is valid
+        only while the leaf submodules (identity, class, training flag,
+        parameter/buffer/submodule layout) and every parameter and buffer's
+        dtype, device, shape and bits equal the snapshot taken at creation,
+        under the same config, inference mode and thread count. Any difference,
+        however made, starts an empty memo. Entries made under inference mode
+        are used only under inference mode, and never under autograd.
         """
-        if torch.is_grad_enabled():
+        if (torch.is_grad_enabled() or self.training or torch._C._is_any_autocast_enabled()
+                or nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks):
             return None
-        # The exact current parameter set, walked without nn.Module's generic
-        # generators, which would cost more than the memo saves on small frames.
-        token, modules = [], [self]
+        layout, tensors, referenced, modules = [], [], [], [self._modules.get(name) for name in _LEAF_MODULES]
         while modules:
             module = modules.pop()
-            token.extend((id(parameter), parameter._version) for parameter in module._parameters.values() if parameter is not None)
+            if (not isinstance(module, nn.Module) or module.training or module._forward_hooks
+                    or module._forward_pre_hooks):
+                return None
+            flat = tuple(module.__dict__.get("_flat_weights", ()))
+            referenced.append((module, flat))
+            layout.append((id(module), type(module), tuple(module._parameters), tuple(module._buffers),
+                           tuple(map(id, flat)), tuple(module._modules)))
+            tensors.extend(value for value in (*module._parameters.values(), *module._buffers.values()) if value is not None)
             modules.extend(module._modules.values())
-        token = tuple(token)
+        context = (self.config, torch.is_inference_mode_enabled(), torch.get_num_threads(), layout)
         memo = self.__dict__.get("_leaf_memo_state")
-        if memo is None or memo[0] != token:
-            memo = (token, {"text": {}, "number": {}})
+        if (memo is None or memo[0] != context or len(memo[2]) != len(tensors)
+                or not all((value.dtype, value.device, value.shape) == saved[0] and torch.equal(_bits(value), saved[1])
+                           for value, saved in zip(tensors, memo[2]))):
+            # Referencing the modules and flat weights keeps every id in ``context`` unique.
+            snapshot = [((value.dtype, value.device, value.shape), _bits(value).clone()) for value in tensors]
+            memo = (context, referenced, snapshot, {"text": {}, "number": {}})
             self.__dict__["_leaf_memo_state"] = memo
-        return memo[1]
+        return memo[3]
 
     def _encode_tree(self, tree, cache):
         if tree in cache:
             return cache[tree]
         kind = tree[0]
         memo = cache.get(_LEAF_MEMO) if kind in ("text", "number") else None
-        if memo is not None and not torch.is_grad_enabled():
-            # Signed zero stays distinct; equal floats otherwise share one entry.
-            key = tree[1] if kind == "text" else (tree[1], copysign(1.0, tree[1]))
+        key = None if memo is None or torch.is_grad_enabled() else _leaf_key(kind, tree[1])
+        if key is not None:
             entries = memo[kind]
             result = entries.get(key)
             if result is None:
@@ -604,6 +645,11 @@ class ContextualDistribution:
     def _walk(self, action=None, generator=None):
         if action is not None and not self.offers.permits(action):
             raise ValueError("Action is outside this exact behavior support")
+        memo = self.model._leaf_memo()  # revalidated: weights or modes may differ from forward_step
+        if memo is None:
+            self.cache.pop(_LEAF_MEMO, None)
+        else:
+            self.cache[_LEAF_MEMO] = memo
         trace = []
 
         def choose(name, logits, selected=None):
