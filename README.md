@@ -249,6 +249,34 @@ re-running a checkpoint on a seed is not sufficient evidence of exact replay.
 Capture all relevant randomness or authoritative events, including automatic
 battles. Keep omniscient replay data inaccessible to the learner.
 
+The user clarified the viewing contract on 25 October: keep the current
+schematic style for now, with two explicitly selectable presentation modes of
+the same logical simulation:
+
+- **Schematic replay:** a readable map, objects, fog, actions and outcome. The
+  first verified built-in-opponent example is available; its current viewer is
+  scoped to that recorded scenario and labels window/army actions in summary.
+- **VCMI graphics replay:** reconstruct a retained match through the original
+  game renderer and encode a video. This remains pending; a schematic video
+  does not establish that the original graphical replay is implemented.
+
+Both modes must consume recorded play rather than make the policies choose
+again. The replay source comprises the initial state/map and configuration,
+ordered commands from every controller (including automatic battles), the
+required RNG state/events, and pinned engine/rules/data identities. Retain
+adapter/window events as well so a future graphical viewer can reconstruct the
+historical interface context. Check replay against state/event digests. Rendering
+is optional, offline and independent of episode validity or training speed.
+
+The performance direction is a reusable logical-core `reset`/`step` interface
+over the existing VCMI rules. Measure loading/reset, state transitions,
+pathfinding/combat, opponent decisions, policy inference, transport and validation
+separately before replacing expensive components. Reusing resources in persistent
+workers and reducing transport/copying are candidates, subject to equivalent
+outcomes and player-private observations. Millisecond complete games are an
+aspiration to test, not an achieved speed or a promise; report transition latency
+and complete-game throughput with episode lengths and worker counts.
+
 First prove a complete headless episode, correct terminal/truncation handling
 and replay fidelity. Then measure actions/second and naturally completed
 games/second separately, with hardware, worker count, setup/reset time, game
