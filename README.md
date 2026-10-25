@@ -2009,14 +2009,61 @@ gold debit, hero identity, initial army and visitor creation. Closed windows sto
 refreshing; old observations remain immutable. All owned heroes share the
 player's recurrent history but are selected individually by opaque references.
 
-Source implementation is in progress. Each stage requires source-pinned native
-success/rejection coverage for both colors, exact effects and ordered receipts,
-independent replay/tamper checks, player-local history checks, and bounded fixed-
-weight inference. Scripted mechanics probes are diagnostics only and never
-learner data. Preserve every failed attempt. Synthetic optimizer tests may check
-algorithm correctness; no real-game optimizer steps are authorized. Recovery
-after hero loss must be demonstrated on the unchanged new ordinary scenario,
-without claiming that diagnostic scripts establish ordinary-policy outcome rates.
+Stage 1 is implemented and locally validated, with compact source-bound evidence
+in `validation/hero-recruitment-2026-10-25.json`. Source evolved through `e2d8761`,
+`b7a479f`, `8c26cc7` and `3c3f7fc`; each capture retains its exact source/runtime
+identity. The complete current test suite passes **660 tests, zero skips**; the
+prepared VCMI dependency matches the canonical source/patch recipe exactly.
+
+- Eleven real-game attempts are retained: ten successful validations and one
+  development failure. Two controlled capture games end naturally on day 8,
+  with complementary +1/-1 results; eight are valid unscored cutoffs.
+- Both colors build a Tavern at its displayed native cost, select an offered
+  hero, hire with exactly one consumed/issued/accepted request and a 2,500-gold
+  debit, and independently inspect/move both owned heroes. Existing armies,
+  heroes and historical observations are preserved. Invalid, foreign, closed
+  and stale choices reject before send; this is not a server rejected-ack claim.
+- Both colors lose their original hero in actual automatic combat, retain their
+  town and a live zero-reward decision, then hire and move a replacement. These
+  scripted mechanics controls change no rule, army or resource directly and
+  never become learner data. They establish recovery is possible in the new
+  configuration, not that an untrained policy chooses it.
+- Ten independent native replays verify. Both Tavern mechanics tapes pass their
+  unmodified controls and reject all 27 rehashed semantic mutations each: **54
+  detected mutations**, including displayed details, selection, hire receipts,
+  new hero/army/resource effects and ordinary contextual transport.
+- Two unassisted fixed-weight diagnostics complete 128 choices each. Fresh
+  reconstruction matches all 256 actions, 260 values and 468 conditional
+  probabilities exactly. Both reach collection cutoffs, without natural
+  outcomes or a Tavern construction. Twenty of 24 movement attempts have no
+  known route. Window navigation and unsuccessful movement dominate these
+  bounded observations; natural endings remain reachable under diagnostic
+  controls, so zero observed ordinary endings is not an engine impossibility.
+- A separate diagnostic prepares legitimate Tavern contexts, then uses the
+  unchanged full neural distribution. Both colors sample hero selection and
+  hiring. All six neural choices, 34 values and eight conditional probabilities
+  reconstruct exactly; weights stay fixed. Scripted preparation and neural
+  choices are explicitly distinguished and all data is excluded from training.
+
+The first development game exposed two concrete defects: a probe logging keyword
+collision, and a finalizer that tried to close a Tavern without first returning
+to overview. Independent replay then found the same navigation omission in its
+own continuation verifier. Both navigation paths are fixed and regression-tested;
+the original failed attempt/replay remain preserved. Failed diagnostic cleanup
+now records an unscored technical failure while retaining the original error.
+The original failed game has no finalized manifest and is excluded from all
+successful-game and replay counts. Local v4 and v5 native binaries are preserved
+before subsequent builds; raw game assets and checkpoints remain ignored.
+
+No gameplay optimizer updates, training, paid compute or merge occurred in this
+stage. Native cap exhaustion and empty Tavern pools remain unexercised in live
+bounded games. New-hero level-cap notices have ownership-scoped native parser
+coverage, but no recruited-hero battle-XP case in this stage. Initial/timer-origin
+exceptional terminal support retains its prior scope limitation. Stage 2 army
+operations and stage 3 enumerated adventure choice dialogs are next; their
+implementation is not implied by the stage 1 results. Every later stage still
+requires native effects/receipts for both colors, player-local history, replay,
+tamper checks and fixed-weight inference, with all failed attempts preserved.
 
 ## Headless self-play environment (issue #4, in progress)
 
