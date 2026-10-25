@@ -1,0 +1,876 @@
+{
+  "bindings": {
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/case-1.json": {
+      "bytes": 2398,
+      "sha256": "97669f28a2e55439edfec33e34dbb51dc4a9283d8fc6672015acb481022dfc66"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/case-2.json": {
+      "bytes": 916,
+      "sha256": "c915867c1310c2f5fb34861702446e68ac804e5cdf635e4a2cab5dd68346f757"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/agents/red/bridge.jsonl": {
+      "bytes": 15375,
+      "sha256": "60fd7043d32af6e8b7fdeda68df5c80fbabaac2d12fdbcd295601995d8d6ac39"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/agents/red/history-v7.jsonl": {
+      "bytes": 16093,
+      "sha256": "4ec3c5b49adcd9eb5caedefbc71c2a4583250c49322bb0a48ed68d884e5994db"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/agents/red/live-history-v7.jsonl": {
+      "bytes": 15732,
+      "sha256": "a0dd16017c3ed137ca5a3f8d45e7c26255cd01065629847e9535494e2c9fcde0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/builtin-finalization.json": {
+      "bytes": 12003,
+      "sha256": "314bf6796a68424212ab181ae90fac8d99df8041e9cd41cca80da4ab93b66806"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 6247,
+      "sha256": "fa29e986b04c0f9b82e1ff3eb3210a926a270167bc9a08ded20d89a016d2fa97"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/builtin-verification/native-report.json": {
+      "bytes": 1465,
+      "sha256": "9f5fd0ee99e9a56e070a79a2069b7077c37df9e2eff70bb44a41410e83677bcf"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 34053,
+      "sha256": "7017610689cc16f1ae4b28d9f648fbdd926f2f17cbc4d48b9249329ff020a247"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "sha256": "86b6df1b81280f7612db64cbd572aae44e2771bb66266e0d71fed9093c52b905"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 2305,
+      "sha256": "36e38a95bc882b4a150fedbd7941cd3ea656c678cc1e0304d006777869e71b8f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/logs/process.log": {
+      "bytes": 5204,
+      "sha256": "09ae2a645ab099ee2c91f60c8a55345a42183b163a793b4928c05ce2bc95e8e2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/manifest.json": {
+      "bytes": 16394,
+      "sha256": "bf74fe94dd482556644ae08c7b3a5d854ebb7cb4fe0091788728ab8a036c81e7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/agents/blue/bridge.jsonl": {
+      "bytes": 232,
+      "sha256": "c797abd7d8cef62cd09e91f55bcd32685066fdede606633492315a2eca41401f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/agents/blue/history-v7.jsonl": {
+      "bytes": 364,
+      "sha256": "a8aa4443dde55b723336b2fcf68e44cc6cacce7cde5fa45eb59d8d93d2a4f38c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/agents/blue/live-history-v7.jsonl": {
+      "bytes": 364,
+      "sha256": "a8aa4443dde55b723336b2fcf68e44cc6cacce7cde5fa45eb59d8d93d2a4f38c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/builtin-finalization.json": {
+      "bytes": 11973,
+      "sha256": "fffa646b0fd08931f7949fb852be31f60ae872c0f162cce929c8430ba62dfcb8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 5518,
+      "sha256": "6e68ac68dc876c13c66bb83bf54afd4c94aa2f957c03ca51c6d239dc6ce12711"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/engine/replay.jsonl": {
+      "bytes": 2305,
+      "sha256": "ed9e77acee24dd2c0503b6be04763a9b55f62371d5f9f35f3e8feabe09f3d1d4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/logs/process.log": {
+      "bytes": 5252,
+      "sha256": "9d9c501328cca40965f11367926dfe33fc10c9e4dc7e275a3cbe4ef37a3cc350"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/manifest.json": {
+      "bytes": 16364,
+      "sha256": "a8a4cc5486ca7d7646da04473ac033db1cfea9030a685d948e209f154b4e5234"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/plan.json": {
+      "bytes": 2367,
+      "sha256": "dc3e9a160d86aac558b6fbe06bf7609226735f9a889ffabc08ad1c21fd55e6d6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/report.json": {
+      "bytes": 4323,
+      "sha256": "2426bcd7bb109d2ea1ed3585aee20aa8047568c3a4f35381cb3165ee79bb6a3c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/fixture.json": {
+      "bytes": 4156,
+      "sha256": "e635112434be00b75c0c5a9c47ceaaf2a73c500706391ffffb9894f28cd26756"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/natural-townless.vmap": {
+      "bytes": 2329,
+      "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/case-1.json": {
+      "bytes": 2425,
+      "sha256": "24021f6ed2b919da90c4b6cfe6055e2001446b1ff27ed5e78023c3402e0f52ed"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/case-2.json": {
+      "bytes": 2427,
+      "sha256": "203150c748dda353758eea0a556f97396811a96686d5f8b029edfdc27d0145db"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/agents/red/bridge.jsonl": {
+      "bytes": 15375,
+      "sha256": "6dffcf95db2174f2f2a5287395c2eee03c8f60d026fb64b0a131a896801a01d5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/agents/red/history-v7.jsonl": {
+      "bytes": 16093,
+      "sha256": "4ec3c5b49adcd9eb5caedefbc71c2a4583250c49322bb0a48ed68d884e5994db"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/agents/red/live-history-v7.jsonl": {
+      "bytes": 15732,
+      "sha256": "a0dd16017c3ed137ca5a3f8d45e7c26255cd01065629847e9535494e2c9fcde0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/builtin-finalization.json": {
+      "bytes": 12132,
+      "sha256": "2d7bf6e106661a297995194a938f442f2d5a92e89283800429af475bf913c4b7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 6256,
+      "sha256": "d48f634114ea2c64ad909e24ee7728885689504491030af026e3b9c90f5aa977"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/builtin-verification/native-report.json": {
+      "bytes": 1474,
+      "sha256": "be09afa2627d29f6aca6aae697448a1b11f48ebd0aac42124fc6c0c9f9f6c46a"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 34054,
+      "sha256": "86acf959c0d13f69531b24ed40679dca3ea886ec70d0e72137a5287cdfdc5a6c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "sha256": "86b6df1b81280f7612db64cbd572aae44e2771bb66266e0d71fed9093c52b905"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 2305,
+      "sha256": "35c673ae9bcdbe324a73d3c4a4498552d060e70d98e4e06b9805400900a3370d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/logs/process.log": {
+      "bytes": 5213,
+      "sha256": "036fd807208a208a15f343e5bb2df735306515fe0799bcdbde4266c370c03f3c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/manifest.json": {
+      "bytes": 16577,
+      "sha256": "f64c92400b2749dcfbcba9daeccfe0442abac51cd2d8d8b8a3c41b7470d268e6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/agents/blue/bridge.jsonl": {
+      "bytes": 62428,
+      "sha256": "3c45cd17d4e7cd268555d8506c7571bb18327959c9d9693b8f2fc929d6302b12"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/agents/blue/history-v7.jsonl": {
+      "bytes": 65327,
+      "sha256": "ca5b47e8ca8ba0d355b52ea71f1f978de906513b820b8734159fd2f4d348e65b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/agents/blue/live-history-v7.jsonl": {
+      "bytes": 64966,
+      "sha256": "f954c20e6bbd89354e49b4ea5a0a67693eca6c1a3b66b5d1da5795f1bb0991cb"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/builtin-finalization.json": {
+      "bytes": 12134,
+      "sha256": "8105003c7cc3669001028360225ce9f10c36f153041ced9291618f8b4dff4a6f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 6353,
+      "sha256": "9adf355ba98110ec0cca48e7c54bf423489b25e23d9dfd383196ea53522771ef"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/builtin-verification/native-report.json": {
+      "bytes": 1525,
+      "sha256": "3f31904fe925dc5c6a3983a47d5accaacb6aac08c36ad30d3fdf31b7d041a13d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 155959,
+      "sha256": "795a3713520624bc8bb10da4e860f0ea653440d12445fcda5cc3a9d917df34bc"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "sha256": "5156a52ae4461af1852fdbc0edb3084c770d35c291a9168d8e6703f6b3b8bb07"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/engine/replay.jsonl": {
+      "bytes": 9599,
+      "sha256": "2e570ca52c63c90a3941221df471006039ec61f79bd618450fb608b7c28c1f30"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/logs/process.log": {
+      "bytes": 5333,
+      "sha256": "2902ae6ade7aacb7b0af1d6ac8c214ece8cf6e1a67b705d5a9e24254cc535bd9"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/manifest.json": {
+      "bytes": 16583,
+      "sha256": "83cddb1bf57c7f2352822a8814ddfb5aa806d8a9368a61f57e4562fd85794426"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/plan.json": {
+      "bytes": 2376,
+      "sha256": "d300abf944be8b3d5781b4a2bb1113db9c523c3cbe055e12b935c477cdd9fb0b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/report.json": {
+      "bytes": 6062,
+      "sha256": "3de552896a256b632c4b35fcea67cfb7f2e8bd3398d00a833bec12fbbdfa0ed5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/build-lock-order.log": {
+      "bytes": 296,
+      "sha256": "add7d9cb6e246392568000d666b669466f607e3fc7adc568f7c642a5b8f7f39c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/build-stable-targets-final.log": {
+      "bytes": 585,
+      "sha256": "3e8d5e69cdb461814991a0f94cc9b4944c30066c8c03dfae471ff7c1f227d3c1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/native-regressions.log": {
+      "bytes": 474,
+      "sha256": "b2263acec34575b9ce2e418a11623f2e56b3a0e25934059a9ccdd19cfafb8600"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/python-full-final.log": {
+      "bytes": 150626,
+      "sha256": "4d9d46d0d3495e7292ef8701a8f966ba44b2d1eefae4ee118a5ab966f556df73"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/python-full.log": {
+      "bytes": 150579,
+      "sha256": "fee5f4622bd613b738652586f917738f099c61b6978fcaa43e2a7b14f2a5694a"
+    }
+  },
+  "cohorts": [
+    {
+      "attempts": [
+        {
+          "cutoff_seq": 2,
+          "effective_engine": {
+            "metadata_file": {
+              "bytes": 887,
+              "sha256": "86b6df1b81280f7612db64cbd572aae44e2771bb66266e0d71fed9093c52b905"
+            },
+            "settings": {
+              "metadata": {
+                "ai_players": [
+                  {
+                    "cheats_allowed": false,
+                    "open_map": false,
+                    "player_index": 1,
+                    "use_object_graph": false
+                  }
+                ],
+                "cheats_allowed": false,
+                "difficulty_index": 0,
+                "initial_visibility_by_player": {
+                  "blue": 92,
+                  "red": 92
+                },
+                "initial_visible_tiles": 92,
+                "observer_player_index": 0,
+                "requested_no_cheats": true,
+                "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+                "total_tiles": 400,
+                "validated": true
+              },
+              "seed": {
+                "deterministic_replay_verified": false,
+                "initial_sample": 153408310,
+                "initial_seed": 121901
+              }
+            },
+            "verified": true
+          },
+          "engine_seed": 121901,
+          "episode": 1,
+          "episode_directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001",
+          "episode_status": "truncated",
+          "evidence_checked": true,
+          "finished": true,
+          "held_decision_day": 1,
+          "held_decision_seq": 1,
+          "historical_identity": {
+            "binary_sha256": "00167fd1455c163f86a584277743abadab3165757e7b99372fb6d3e8289748a3",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "31992d3262f0363128df45c2a292634654d4b12e1052f44747e2ac92e975ecdf"
+            },
+            "project": {
+              "commit": "8d71831ac2a0c678a5402b8d022e777cd0fd33e1",
+              "dirty": true
+            },
+            "recorded_recipe_entries": 61,
+            "recorded_recipe_mapping_sha256": "0b3cbad162904b26ec08a1282a51d5a98bc9910301504c2d675be9dd6de8819f"
+          },
+          "learner_player": 0,
+          "manifest": {
+            "bytes": 16394,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/manifest.json",
+            "sha256": "bf74fe94dd482556644ae08c7b3a5d854ebb7cb4fe0091788728ab8a036c81e7"
+          },
+          "native_groups_closed": [
+            82731
+          ],
+          "native_opponent_requests": 1,
+          "observed_episode_status": "truncated",
+          "observed_policy_actions": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "own_history_frames": 3,
+          "policy_actions": 0,
+          "purpose": "diagnostic",
+          "recorded_verifier_sources": {
+            "experiments/headless/builtin_evidence.py": {
+              "bytes": 13116,
+              "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+            },
+            "experiments/headless/builtin_replay.py": {
+              "bytes": 20557,
+              "sha256": "c285806465d5251aeb4de15f9de00e244543b4fc93c04630dc4697c072c67236"
+            },
+            "experiments/headless/builtin_replay_history.py": {
+              "bytes": 7533,
+              "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+            },
+            "experiments/headless/contextual_evidence.py": {
+              "bytes": 7785,
+              "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+            },
+            "experiments/headless/contextual_replay.py": {
+              "bytes": 37368,
+              "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+            },
+            "experiments/headless/replay.py": {
+              "bytes": 43840,
+              "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+            },
+            "experiments/learner/contextual.py": {
+              "bytes": 146467,
+              "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            }
+          },
+          "replay": {
+            "bytes": 6247,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000001/builtin-verification/builtin-replay-verification.json",
+            "sha256": "fa29e986b04c0f9b82e1ff3eb3210a926a270167bc9a08ded20d89a016d2fa97"
+          },
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "passed",
+          "termination_reason": "collection_window",
+          "training_performed": false,
+          "training_samples": 0,
+          "visible_events_retained": 0,
+          "wall_seconds": 2.6285675419931067
+        },
+        {
+          "engine_seed": 121901,
+          "episode": 2,
+          "episode_directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002",
+          "error": "ValueError: Game ended before its initial safe own decision",
+          "evidence_checked": true,
+          "finished": true,
+          "historical_identity": {
+            "binary_sha256": "00167fd1455c163f86a584277743abadab3165757e7b99372fb6d3e8289748a3",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "31992d3262f0363128df45c2a292634654d4b12e1052f44747e2ac92e975ecdf"
+            },
+            "project": {
+              "commit": "8d71831ac2a0c678a5402b8d022e777cd0fd33e1",
+              "dirty": true
+            },
+            "recorded_recipe_entries": 61,
+            "recorded_recipe_mapping_sha256": "0b3cbad162904b26ec08a1282a51d5a98bc9910301504c2d675be9dd6de8819f"
+          },
+          "learner_player": 1,
+          "manifest": {
+            "bytes": 16364,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/episode-000002/manifest.json",
+            "sha256": "a8a4cc5486ca7d7646da04473ac033db1cfea9030a685d948e209f154b4e5234"
+          },
+          "native_groups_closed": [
+            82764
+          ],
+          "observed_episode_status": "failed",
+          "observed_policy_actions": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_actions": 0,
+          "purpose": "diagnostic",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "failed",
+          "termination_reason": "watchdog_timeout",
+          "training_performed": false,
+          "training_samples": 0,
+          "wall_seconds": 30.480294124994543
+        }
+      ],
+      "directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution",
+      "fixture": {
+        "kind": "natural-townless",
+        "manifest": {
+          "bytes": 4156,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/fixture.json",
+          "sha256": "e635112434be00b75c0c5a9c47ceaaf2a73c500706391ffffb9894f28cd26756"
+        },
+        "map": {
+          "bytes": 2329,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/natural-townless.vmap",
+          "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+        },
+        "natural_outcome_validation": false,
+        "ordinary_cohort_member": false,
+        "probe_plan": "Zero learner actions; freeze the initial real safe own decision. The fixture's historical end_turn evaluator plan is not used.",
+        "semantics_verified": true
+      },
+      "historical_executables": {
+        "binary": {
+          "bytes": 11632072,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+          "sha256": "00167fd1455c163f86a584277743abadab3165757e7b99372fb6d3e8289748a3"
+        },
+        "replay_binary": {
+          "bytes": 12552360,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay",
+          "sha256": "31992d3262f0363128df45c2a292634654d4b12e1052f44747e2ac92e975ecdf"
+        }
+      },
+      "historical_probe_source": {
+        "bytes": 14886,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_builtin_boundaries.py",
+        "sha256": "4f863049f237bb101839d3412f595699405be741d90f560343c54ab8b2c12298"
+      },
+      "plan": {
+        "bytes": 2367,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/plan.json",
+        "sha256": "dc3e9a160d86aac558b6fbe06bf7609226735f9a889ffabc08ad1c21fd55e6d6"
+      },
+      "report": {
+        "bytes": 4323,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/execution/report.json",
+        "sha256": "2426bcd7bb109d2ea1ed3585aee20aa8047568c3a4f35381cb3165ee79bb6a3c"
+      },
+      "status": "failed"
+    },
+    {
+      "attempts": [
+        {
+          "cutoff_seq": 2,
+          "effective_engine": {
+            "metadata_file": {
+              "bytes": 887,
+              "sha256": "86b6df1b81280f7612db64cbd572aae44e2771bb66266e0d71fed9093c52b905"
+            },
+            "settings": {
+              "metadata": {
+                "ai_players": [
+                  {
+                    "cheats_allowed": false,
+                    "open_map": false,
+                    "player_index": 1,
+                    "use_object_graph": false
+                  }
+                ],
+                "cheats_allowed": false,
+                "difficulty_index": 0,
+                "initial_visibility_by_player": {
+                  "blue": 92,
+                  "red": 92
+                },
+                "initial_visible_tiles": 92,
+                "observer_player_index": 0,
+                "requested_no_cheats": true,
+                "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+                "total_tiles": 400,
+                "validated": true
+              },
+              "seed": {
+                "deterministic_replay_verified": false,
+                "initial_sample": 153408310,
+                "initial_seed": 121901
+              }
+            },
+            "verified": true
+          },
+          "engine_seed": 121901,
+          "episode": 1,
+          "episode_directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001",
+          "episode_status": "truncated",
+          "evidence_checked": true,
+          "finished": true,
+          "held_decision_day": 1,
+          "held_decision_seq": 1,
+          "historical_identity": {
+            "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+            },
+            "project": {
+              "commit": "a8a7e5e098dbcde771a032fdef866133095b7c2a",
+              "dirty": true
+            },
+            "recorded_recipe_entries": 62,
+            "recorded_recipe_mapping_sha256": "444fcd96e7bf51c0c38faf288f602712d068439dd889b985321888cfef8ab200"
+          },
+          "learner_player": 0,
+          "manifest": {
+            "bytes": 16577,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/manifest.json",
+            "sha256": "f64c92400b2749dcfbcba9daeccfe0442abac51cd2d8d8b8a3c41b7470d268e6"
+          },
+          "native_groups_closed": [
+            84738
+          ],
+          "native_opponent_requests": 1,
+          "observed_episode_status": "truncated",
+          "observed_policy_actions": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "own_history_frames": 3,
+          "policy_actions": 0,
+          "purpose": "diagnostic",
+          "recorded_verifier_sources": {
+            "experiments/headless/builtin_evidence.py": {
+              "bytes": 13116,
+              "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+            },
+            "experiments/headless/builtin_replay.py": {
+              "bytes": 20557,
+              "sha256": "c285806465d5251aeb4de15f9de00e244543b4fc93c04630dc4697c072c67236"
+            },
+            "experiments/headless/builtin_replay_history.py": {
+              "bytes": 7533,
+              "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+            },
+            "experiments/headless/contextual_evidence.py": {
+              "bytes": 7785,
+              "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+            },
+            "experiments/headless/contextual_replay.py": {
+              "bytes": 37368,
+              "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+            },
+            "experiments/headless/replay.py": {
+              "bytes": 43840,
+              "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+            },
+            "experiments/learner/contextual.py": {
+              "bytes": 146467,
+              "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            }
+          },
+          "replay": {
+            "bytes": 6256,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000001/builtin-verification/builtin-replay-verification.json",
+            "sha256": "d48f634114ea2c64ad909e24ee7728885689504491030af026e3b9c90f5aa977"
+          },
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "passed",
+          "termination_reason": "collection_window",
+          "training_performed": false,
+          "training_samples": 0,
+          "visible_events_retained": 0,
+          "wall_seconds": 1.4769010409945622
+        },
+        {
+          "cutoff_seq": 9,
+          "effective_engine": {
+            "metadata_file": {
+              "bytes": 887,
+              "sha256": "5156a52ae4461af1852fdbc0edb3084c770d35c291a9168d8e6703f6b3b8bb07"
+            },
+            "settings": {
+              "metadata": {
+                "ai_players": [
+                  {
+                    "cheats_allowed": false,
+                    "open_map": false,
+                    "player_index": 0,
+                    "use_object_graph": false
+                  }
+                ],
+                "cheats_allowed": false,
+                "difficulty_index": 0,
+                "initial_visibility_by_player": {
+                  "blue": 92,
+                  "red": 92
+                },
+                "initial_visible_tiles": 92,
+                "observer_player_index": 1,
+                "requested_no_cheats": true,
+                "scope": "Effective engine settings, AI flags and fog counts; pixel rendering requires separate visual verification",
+                "total_tiles": 400,
+                "validated": true
+              },
+              "seed": {
+                "deterministic_replay_verified": false,
+                "initial_sample": 153408310,
+                "initial_seed": 121901
+              }
+            },
+            "verified": true
+          },
+          "engine_seed": 121901,
+          "episode": 2,
+          "episode_directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002",
+          "episode_status": "truncated",
+          "evidence_checked": true,
+          "finished": true,
+          "held_decision_day": 1,
+          "held_decision_seq": 8,
+          "historical_identity": {
+            "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+            },
+            "project": {
+              "commit": "a8a7e5e098dbcde771a032fdef866133095b7c2a",
+              "dirty": true
+            },
+            "recorded_recipe_entries": 62,
+            "recorded_recipe_mapping_sha256": "444fcd96e7bf51c0c38faf288f602712d068439dd889b985321888cfef8ab200"
+          },
+          "learner_player": 1,
+          "manifest": {
+            "bytes": 16583,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/manifest.json",
+            "sha256": "83cddb1bf57c7f2352822a8814ddfb5aa806d8a9368a61f57e4562fd85794426"
+          },
+          "native_groups_closed": [
+            84758
+          ],
+          "native_opponent_requests": 17,
+          "observed_episode_status": "truncated",
+          "observed_policy_actions": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "own_history_frames": 10,
+          "policy_actions": 0,
+          "purpose": "diagnostic",
+          "recorded_verifier_sources": {
+            "experiments/headless/builtin_evidence.py": {
+              "bytes": 13116,
+              "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+            },
+            "experiments/headless/builtin_replay.py": {
+              "bytes": 20557,
+              "sha256": "c285806465d5251aeb4de15f9de00e244543b4fc93c04630dc4697c072c67236"
+            },
+            "experiments/headless/builtin_replay_history.py": {
+              "bytes": 7533,
+              "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+            },
+            "experiments/headless/contextual_evidence.py": {
+              "bytes": 7785,
+              "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+            },
+            "experiments/headless/contextual_replay.py": {
+              "bytes": 37368,
+              "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+            },
+            "experiments/headless/replay.py": {
+              "bytes": 43840,
+              "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+            },
+            "experiments/learner/contextual.py": {
+              "bytes": 146467,
+              "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            }
+          },
+          "replay": {
+            "bytes": 6353,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/episode-000002/builtin-verification/builtin-replay-verification.json",
+            "sha256": "9adf355ba98110ec0cca48e7c54bf423489b25e23d9dfd383196ea53522771ef"
+          },
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "passed",
+          "termination_reason": "collection_window",
+          "training_performed": false,
+          "training_samples": 0,
+          "visible_events_retained": 1,
+          "wall_seconds": 0.7557891659962479
+        }
+      ],
+      "directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution",
+      "fixture": {
+        "kind": "natural-townless",
+        "manifest": {
+          "bytes": 4156,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/fixture.json",
+          "sha256": "e635112434be00b75c0c5a9c47ceaaf2a73c500706391ffffb9894f28cd26756"
+        },
+        "map": {
+          "bytes": 2329,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/natural-townless.vmap",
+          "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+        },
+        "natural_outcome_validation": false,
+        "ordinary_cohort_member": false,
+        "probe_plan": "Zero learner actions; freeze the initial real safe own decision. The fixture's historical end_turn evaluator plan is not used.",
+        "semantics_verified": true
+      },
+      "historical_executables": {
+        "binary": {
+          "bytes": 11632312,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+          "sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2"
+        },
+        "replay_binary": {
+          "bytes": 12552600,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay",
+          "sha256": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+        }
+      },
+      "historical_probe_source": {
+        "bytes": 14886,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_builtin_boundaries.py",
+        "sha256": "4f863049f237bb101839d3412f595699405be741d90f560343c54ab8b2c12298"
+      },
+      "plan": {
+        "bytes": 2376,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/plan.json",
+        "sha256": "d300abf944be8b3d5781b4a2bb1113db9c523c3cbe055e12b935c477cdd9fb0b"
+      },
+      "report": {
+        "bytes": 6062,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/repaired-execution/report.json",
+        "sha256": "3de552896a256b632c4b35fcea67cfb7f2e8bd3398d00a833bec12fbbdfa0ed5"
+      },
+      "status": "passed"
+    }
+  ],
+  "counts": {
+    "failed": 1,
+    "passed": 3
+  },
+  "limitations": [
+    "Offline binding check only; no game, policy, build, test or replay is executed.",
+    "Historical source/runtime hashes are preserved per cohort, not compared with today's files.",
+    "A passed row verifies only the recorded initial cutoff; it is not a natural outcome or ordinary-game result.",
+    "Absent failed-attempt action evidence remains null. Supplied build/test logs are bound, not interpreted as successful checks."
+  ],
+  "natural_outcome_validation": false,
+  "optimizer_steps": 0,
+  "ordinary_cohort_member": false,
+  "policy_actions": 0,
+  "schema": "heroes-builtin-preflight-summary-v1",
+  "training_performed": false,
+  "training_samples": 0,
+  "validation_logs": [
+    {
+      "bytes": 150579,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/python-full.log",
+      "sha256": "fee5f4622bd613b738652586f917738f099c61b6978fcaa43e2a7b14f2a5694a"
+    },
+    {
+      "bytes": 150626,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/python-full-final.log",
+      "sha256": "4d9d46d0d3495e7292ef8701a8f966ba44b2d1eefae4ee118a5ab966f556df73"
+    },
+    {
+      "bytes": 585,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/build-stable-targets-final.log",
+      "sha256": "3e8d5e69cdb461814991a0f94cc9b4944c30066c8c03dfae471ff7c1f227d3c1"
+    },
+    {
+      "bytes": 296,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/build-lock-order.log",
+      "sha256": "add7d9cb6e246392568000d666b669466f607e3fc7adc568f7c642a5b8f7f39c"
+    },
+    {
+      "bytes": 474,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/native-regressions.log",
+      "sha256": "b2263acec34575b9ce2e418a11623f2e56b3a0e25934059a9ccdd19cfafb8600"
+    }
+  ]
+}

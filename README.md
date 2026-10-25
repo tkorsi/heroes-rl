@@ -2413,7 +2413,33 @@ retries or replacements. The same independent deadline and fail-closed cleanup
 rules apply. Reports compare the matched learner perspectives, natural
 wins/losses, cutoffs, failures, available behavior prefixes and execution cost.
 This small diagnostic comparison cannot establish learning or superiority.
-Native integration and execution results remain pending until verified below.
+The first native cutoff preflight passed for Red but stalled for Blue before
+its first decision. Its 30-second watchdog failure is retained and unscored.
+The native opponent held the shared game-state lock while waiting for the
+recording lock; the packet thread held the recording lock while waiting for
+exclusive game-state access. Patch `0025-native-request-lock-order` releases
+only the explicit native opponent's synchronous caller lock while acquiring the
+recording lock, then restores it before accessing or serializing the request.
+The pinned request types own IDs and value data, so no borrowed game-object
+pointer crosses that release. Normal server action validation remains intact.
+
+The repaired two-color zero-action checks both pass capture and independent
+replay: Red records one native-opponent request, Blue records 17 and retains
+one visible event before its first decision. Both preserve ordinary fog and
+Easy difficulty with map cheats/object-graph access disabled. They freeze real
+initial decisions on day 1 and produce unscored cutoffs, not natural outcomes.
+The original failed probe remains separately bound. A production-function
+regression with real mutexes covers the inverse-lock schedule, restoration
+before capture/send, existing ACK waiting and constructor/capture exceptions.
+The full suite runs 873 tests successfully (one retained-game regression skips
+because its local raw captures are in the original worktree). Exact dependency
+preparation and the production rebuild pass. The compact record
+[validation/builtin-opponent-preflight-2026-10-25.json](validation/builtin-opponent-preflight-2026-10-25.json)
+binds all four original/repaired rows and the build/test logs; the one failed
+probe is not overwritten. The ordinary eight-game comparison remains pending;
+these startup checks do not establish natural-ending or long-combat replay
+coverage. Its runtime also includes the stable spell-order and synchronization
+repairs, so this is not a strictly isolated opponent-only comparison.
 
 ## Stable spell target ordering
 
