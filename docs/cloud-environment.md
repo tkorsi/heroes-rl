@@ -7,18 +7,19 @@ tests and real headless VCMI games, continuing while the Mac is offline.
 Gameplay training is still disabled. This document and the CPU bootstrap are
 preparation, not evidence of a working cloud environment or Linux game.
 
-The migration branch is `codex/cloud-environment`, based on builtin-opponent
-commit `b4b78e3278ee706d8d7ef3b450395b8c58203f1f`. Do not start from the older
-`main` branch. Work on terminal request accounting was still in progress on
-`codex/builtin-opponent-evaluation` at handoff. Inspect its later commits and
-incorporate the relevant reviewed fixes before attempting the full comparison;
-do not overwrite or interrupt the active Mac checkout.
+The migration branch is `codex/cloud-environment`, including published
+builtin-opponent commit `19ea34f54b65bdad2e1d19c5580aecc11ba9d6c2`. Do not start
+from the older `main` branch. Work on fresh terminal diagnostics was still in
+progress on `codex/builtin-opponent-evaluation` at handoff. Inspect its later
+commits and incorporate the relevant reviewed fixes before attempting the full
+comparison; do not overwrite or interrupt the active Mac checkout.
 
 At this base, the long frozen-neural cohort stopped after two replay-verified
 cutoffs and one replay failure; five games were not started. The builtin cohort
 then delivered a day-2 learner defeat but stopped on request-accounting
 validation. Its original result remains failed/unscored; seven games were not
-started. Later diagnostic verification must be labelled separately. These are
+started. A separately recorded repaired-verifier diagnostic now reproduces that
+ending exactly, without retroactively admitting the original row. These are
 historical results, not expected or guaranteed cloud outcomes.
 
 ## Cloud environment
