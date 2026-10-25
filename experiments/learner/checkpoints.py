@@ -268,7 +268,7 @@ def _payload(model, checkpoint, provenance, source_metadata, generators, python_
             "opponent_pool": None if pool is None else pool.state_dict(), "resume": None}
 
 
-def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
+def _read(path, kind, expected_source_metadata, allowed_provenance, interface, historical_torch_version=None):
     payload = torch.load(Path(path), map_location="cpu", weights_only=True)
     expected = {"schema", "kind", "checkpoint", "provenance", "contracts", "torch_version", "model_config", "weights_sha256",
                 "model_state", "source_metadata", "rng", "opponent_pool", "resume"}
@@ -279,7 +279,17 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
     if (type(allowed_provenance) is not tuple or not allowed_provenance
             or any(value not in PROVENANCES for value in allowed_provenance)):
         raise ValueError("Explicit supported checkpoint provenance allowlist required")
-    if payload["torch_version"] != str(torch.__version__) or payload["provenance"] not in allowed_provenance:
+    expected_version = str(torch.__version__)
+    if historical_torch_version is not None:
+        # Explicit loader-only CPU wheel relocation, never a release upgrade.
+        versions = (historical_torch_version, expected_version)
+        if (any(type(v) is not str or ('+' in v and not v.endswith('+cpu')) for v in versions)
+                or historical_torch_version.removesuffix('+cpu') != expected_version.removesuffix('+cpu')
+                or expected_source_metadata is None
+                or expected_source_metadata.get('torch') != historical_torch_version):
+            raise ValueError("Portable checkpoint requires the same public CPU Torch release")
+        expected_version = historical_torch_version
+    if payload["torch_version"] != expected_version or payload["provenance"] not in allowed_provenance:
         raise ValueError("Checkpoint version or provenance differs")
     if payload["contracts"] != _contracts(interface):
         raise ValueError("Checkpoint observation/action/encoder/distribution versions differ")
@@ -317,8 +327,9 @@ def save_policy_checkpoint(path, model, *, checkpoint, provenance="random_initia
 
 
 def load_policy_checkpoint(path, *, expected_source_metadata=None, allowed_provenance=("random_initialization",),
-                           restore_rng=False, generators=None, python_generators=None, interface="adventure-town-v1"):
-    payload = _read(path, "policy", expected_source_metadata, allowed_provenance, interface)
+                           restore_rng=False, generators=None, python_generators=None, interface="adventure-town-v1",
+                           historical_torch_version=None):
+    payload = _read(path, "policy", expected_source_metadata, allowed_provenance, interface, historical_torch_version)
     if payload["resume"] is not None:
         raise ValueError("Policy-only checkpoint contains optimizer resume state")
     model = _model_from_payload(payload).eval()
@@ -449,11 +460,11 @@ def save_checkpoint(path, model, optimizer, *, checkpoint, ppo_config, progress,
 
 def load_checkpoint(path, model, optimizer, *, expected_ppo_config, expected_source_metadata,
                     generators=None, python_generators=None, at_rollout_boundary=False, interface="adventure-town-v1",
-                    allowed_provenance=("synthetic_optimizer_test",)):
+                    allowed_provenance=("synthetic_optimizer_test",), historical_torch_version=None):
     if at_rollout_boundary is not True or optimizer is None:
         raise ValueError("Resume requires an explicit between-rollout boundary")
     layout = _optimizer_layout(model, optimizer)
-    payload = _read(path, "optimizer", expected_source_metadata, allowed_provenance, interface)
+    payload = _read(path, "optimizer", expected_source_metadata, allowed_provenance, interface, historical_torch_version)
     resume = payload["resume"]
     if (type(resume) is not dict or set(resume) != {"ppo_config", "progress", "sampler_state", "optimizer_class", "optimizer_state", "parameter_names", "at_rollout_boundary"}
             or resume["at_rollout_boundary"] is not True or resume["ppo_config"] != _json(expected_ppo_config)

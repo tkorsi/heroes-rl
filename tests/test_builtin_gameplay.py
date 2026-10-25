@@ -62,7 +62,7 @@ def write_plan(root, *, rows=4, allow_prefix=True, native_identity=None, runtime
         "implementation": {implementation_name: gameplay.digest(implementation_path)},
         "checkpoint": {"path": str(checkpoint), **evidence.native.file_identity(checkpoint)},
         "configuration": {"max_days": 30, "ordinary_choice_limit": 248, "max_total_choices": 256,
-            "allow_verified_training_prefix": allow_prefix, "ppo": PPOConfig(epochs=1).to_dict()},
+            "max_optimizer_steps": 32, "allow_verified_training_prefix": allow_prefix, "ppo": PPOConfig(epochs=1).to_dict()},
         "schedule": [{"episode": i+1, "phase": "training", "engine_seed": 11+i,
                       "learner_player": i % 2, "policy_seed": 17+i} for i in range(rows)]}
     path = root / "plan.json"

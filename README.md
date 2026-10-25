@@ -210,6 +210,51 @@ a fresh window and continue from this checkpoint, subject to the existing
 failure/plateau stop conditions. Use sequence 22 or the next unused sequence;
 never reuse failed plan seeds or restart from the original baseline.
 
+### Authorized cloud Teacher continuation — 25 October 2026
+
+The user explicitly authorized continuation on the existing free cloud instance
+from the exact update-21 state: 84 rollouts, 3,944 decisions and 149 Adam steps.
+This supersedes the earlier local-only/cloud-setup restriction for this workstream.
+`codex/cloud-teacher` starts at Teacher `65a4f48` and merges PR25 `875841a`;
+experimental replay-worker execution remains disabled. Policy, features, PPO math,
+terminal rewards, Nullkiller Easy, automatic BattleAI and the exact
+`hero-management-v1` map remain fixed. Source preparation must match the canonical
+recipe before building or launching.
+
+Cloud continuation uses 4,960 ordinary plus 160 reserved dialog choices (5,120
+total), 30 days, four fresh games per batch and one complete PPO epoch. The
+640-step guard covers all 1,280 recurrent windows at maximum collection size;
+no prefix can be optimized when the complete batch exceeds a guard. The
+shared cloud batch budget is bounded at 3,600 seconds: at most 600 per game,
+2,400 for collection, and 3,540 for update/checkpoint or evaluation work,
+leaving cleanup reserve. Use unused sequences from 22
+onward; failed scheduled seeds remain consumed. Run the fixed held-out pair on
+both seats every five updates, with no evaluation samples entering training.
+`configs/builtin-cloud-training-v1.json` freezes the expanded collection scope.
+
+`HEROES_ARTIFACT_ROOT` selects the artifact root (cloud default
+`/workspace/Heroes-artifacts`), outside the source/worktree. Existing Mac evidence
+is immutable. An exactly committed `heroes-portable-resume-v1` migration config
+must pin historical and current source/runtime identities, the parent plan/report
+and checkpoint hashes, progress, and explicit artifact-root relocation. Only
+loader/runner changes may be listed; existing policy/feature/PPO sources remain
+byte-identical. CPU wheel suffix relocation requires the same public Torch
+release and exact saved metadata. Schema, tensor, Adam, RNG, progress and pool
+validation remain strict; historical Mac histories never become Linux training
+inputs.
+
+Migration evaluation restores and independently checks the backup pair, then
+collects fresh Linux captures with same-runtime replay and supervised cleanup.
+The migration config must bind that successful two-seat evaluation before
+preparing training. Every new batch preserves and independently restore-tests a
+second checkpoint pair before another batch. Neither code changes nor synthetic
+tests establish successful restoration of the real update-21 state. Transfer uses
+the user-owned **private** training-state Git repository; proprietary assets,
+checkpoints and full evidence must never enter this public code repository.
+Private transfer revision `0b03c34` supplied the checkpoint pair; its original
+file hashes and model/Adam/RNG/progress/pool restoration pass on Linux. Historical
+plan/report restoration and fresh native gates remain pending the remaining parts.
+
 ## Current authorized local PPO pilot
 
 After the four replay-verified natural defeats against Nullkiller Easy, the user

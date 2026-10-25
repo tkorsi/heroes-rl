@@ -15,7 +15,7 @@ import tempfile
 
 from .builtin_training_resume import binding, require, _exact, _metadata, _completion
 
-DURABLE_ROOT = Path('/Users/orsi/Projects/Heroes-artifacts')
+DURABLE_ROOT = Path(os.environ.get('HEROES_ARTIFACT_ROOT', '/workspace/Heroes-artifacts')).expanduser().resolve()
 
 
 def durable_path(path, root=DURABLE_ROOT):
@@ -26,7 +26,7 @@ def durable_path(path, root=DURABLE_ROOT):
     return path
 
 
-def verify_pair(resume_path, policy_path, plan, report):
+def verify_pair(resume_path, policy_path, plan, report, *, migration=None):
     import torch
     from . import checkpoints as cp
     original_torch, original_python = torch.get_rng_state(), random.getstate()
@@ -34,15 +34,16 @@ def verify_pair(resume_path, policy_path, plan, report):
         progress, _, sampler = _completion(plan, report)
         metadata = _metadata(plan, report['plan_sha256'])
         allowed = (cp.BUILTIN_GAMEPLAY_PROVENANCE,)
+        options = migration.checkpoint_options if migration else {}
         policy = cp.load_policy_checkpoint(policy_path, expected_source_metadata=metadata,
-            allowed_provenance=allowed, interface=plan['source']['interface'])
+            allowed_provenance=allowed, interface=plan['source']['interface'], **options)
         model = policy.model.requires_grad_(True)
         optimizer = torch.optim.Adam(model.parameters(), **plan['configuration']['adam'])
         generator = torch.Generator()
         state = cp.load_checkpoint(resume_path, model, optimizer,
             expected_ppo_config=plan['configuration']['ppo'], expected_source_metadata=metadata,
             generators={'minibatch': generator}, interface=plan['source']['interface'],
-            allowed_provenance=allowed, at_rollout_boundary=True)
+            allowed_provenance=allowed, at_rollout_boundary=True, **options)
         raw = torch.load(resume_path, weights_only=True, map_location='cpu')
         require(state.progress == progress and state.sampler_state == sampler, 'Progress differs')
         require(state.checkpoint == policy.checkpoint and cp.model_weight_digest(model) == policy.weights_sha256

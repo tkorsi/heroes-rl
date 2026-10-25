@@ -43,12 +43,12 @@ class ContinuationTests(unittest.TestCase):
     def test_failed_capture_stops_without_update_or_replacement(self):
         with tempfile.TemporaryDirectory() as d:
             output=Path(d); rows=runner.schedule(1)
-            plan={'configuration':runner.configuration(),'execution_output':d,'parent':{},'mode':'training','schedule':rows}
+            plan={'configuration':runner.configuration(),'execution_output':d,'parent':{},'mode':'training','schedule':rows,'runtime':{}}
             report={'attempts':[runner.pilot.empty_attempt(r) for r in rows], 'update_status':'not_started',
                     'optimizer_updates':0,'optimizer_steps':0,'training_performed':False}
             (output/'report.json').write_text(json.dumps(report))
             args=SimpleNamespace(plan=output/'plan.json',sha256='a'*64,started=time.monotonic(),wall_started=time.time())
-            state=SimpleNamespace(model=object(),checkpoint='fixture')
+            state=SimpleNamespace(model=object(),checkpoint='fixture',progress=SimpleNamespace(updates=21))
             failed={**report['attempts'][0], 'status':'failed'}
             def attempt(*args):
                 args[-1](failed)

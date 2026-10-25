@@ -1,0 +1,18 @@
+{
+  "schema": "heroes-builtin-cloud-training-config-v1",
+  "ordinary_choice_limit": 4960,
+  "reserved_dialog_choices": 160,
+  "max_total_choices": 5120,
+  "max_optimizer_steps": 640,
+  "max_days": 30,
+  "training_games": 4,
+  "heldout_every_updates": 5,
+  "allow_verified_training_prefix": false,
+  "shared_wall_seconds": 3600,
+  "attempt_wall_seconds": 600,
+  "phase_deadlines_seconds": {
+    "training": 2400,
+    "update": 3540,
+    "evaluation": 3540
+  }
+}

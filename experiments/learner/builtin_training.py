@@ -8,6 +8,8 @@ import argparse
 from copy import deepcopy
 from dataclasses import asdict
 import json
+import subprocess
+import sys
 from pathlib import Path
 import time
 
@@ -22,8 +24,18 @@ EVALUATION = 'heroes-builtin-checkpoint-evaluation-v1'
 
 def configuration():
     cfg = deepcopy(pilot.config())
-    cfg.update(shared_wall_seconds=600, allow_verified_training_prefix=False,
-               phase_deadlines_seconds={'training': 480, 'update': 570, 'evaluation': 570})
+    cloud = json.loads((pilot.ROOT/'configs/builtin-cloud-training-v1.json').read_text())
+    pilot.require(cloud == {'schema': 'heroes-builtin-cloud-training-config-v1',
+        'ordinary_choice_limit': 4960, 'reserved_dialog_choices': 160, 'max_total_choices': 5120,
+        'max_optimizer_steps': 640, 'max_days': 30, 'training_games': 4,
+        'heldout_every_updates': 5, 'allow_verified_training_prefix': False,
+        'shared_wall_seconds': 3600, 'attempt_wall_seconds': 600,
+        'phase_deadlines_seconds': {'training': 2400, 'update': 3540, 'evaluation': 3540}},
+        'Versioned cloud continuation scope changed')
+    cfg.update(shared_wall_seconds=3600, attempt_wall_seconds=600, allow_verified_training_prefix=False,
+               ordinary_choice_limit=4960, reserved_dialog_choices=160, max_total_choices=5120,
+               max_optimizer_steps=640,
+               phase_deadlines_seconds={'training': 2400, 'update': 3540, 'evaluation': 3540})
     return cfg
 
 
@@ -39,9 +51,49 @@ def schedule(update, evaluation=False):
 
 def parent_state(plan):
     parent = plan['parent']
+    migration = migration_for(plan.get('portable_migration'))
+    if migration and plan['mode'] == 'training':
+        migration.training_gate(plan['runtime'])
     return resume.load_parent(parent['plan']['path'], parent['report']['path'], plan['source'],
         current_runtime=plan['runtime'], current_native=plan['native'],
-        expected_plan_sha256=parent['plan']['sha256'], expected_report_sha256=parent['report']['sha256'])
+        expected_plan_sha256=parent['plan']['sha256'], expected_report_sha256=parent['report']['sha256'], migration=migration)
+
+
+def migration_for(bound):
+    if bound is None:
+        return None
+    pilot.require(resume.binding(bound['path']) == bound, 'Migration binding changed')
+    from .builtin_portable import Migration
+    return Migration(bound['path'], pilot.ROOT)
+
+
+def require_heldout(state, runtime):
+    """Do not advance beyond a fifth update before its fixed two-seat check."""
+    if state.progress.updates % 5:
+        return
+    for path in (DURABLE_ROOT/'runs').glob('*/plan.json'):
+        plan = json.loads(path.read_text())
+        if (plan.get('schema') != EVALUATION+'-plan'
+                or plan.get('parent', {}).get('plan', {}).get('sha256') != state.bindings['plan']['sha256']
+                or plan.get('runtime') != runtime
+                or plan.get('schedule') != schedule(state.progress.updates, True)):
+            continue
+        report_path = Path(plan['execution_output'])/'report.json'
+        if not report_path.exists():
+            continue
+        report = json.loads(report_path.read_text())
+        if (report.get('plan_sha256') == pilot.digest(path) and report.get('status') == 'finished'
+                and report.get('worker_complete') is True and report.get('supervisor_cleanup_verified') is True
+                and report.get('training_performed') is False
+                and report.get('optimizer_updates') == report.get('optimizer_steps') == 0
+                and len(report.get('attempts', [])) == 2
+                and all(all(row.get(k) == v for k,v in expected.items())
+                        and row.get('status') == 'passed' and row.get('training_samples') == 0
+                        and all(row.get(k) is True for k in ('completion_receipt','cleanup_verified',
+                                                           'identity_verified','replay_verified'))
+                        for expected,row in zip(plan['schedule'],report['attempts']))):
+            return
+    raise ValueError('The fixed held-out pair for this fifth update must pass before more training')
 
 
 def prepare(args):
@@ -50,36 +102,66 @@ def prepare(args):
     output = durable_path(args.output)
     parent_path = durable_path(args.parent)
     parent_plan = json.loads(parent_path.read_text())
-    report_path = Path(parent_plan['execution_output']) / 'report.json'
+    migration = None
+    if getattr(args, 'migration', None):
+        from .builtin_portable import Migration
+        migration = Migration(args.migration, pilot.ROOT)
+    report_path = (migration.resolve(parent_plan['execution_output']) if migration else Path(parent_plan['execution_output'])) / 'report.json'
     source = source_identity(pilot.INTERFACE)
     current_runtime, current_native = parent_plan['runtime'], deepcopy(parent_plan['native'])
     runtime_bin = getattr(args, 'runtime_bin', None)
+    pilot.require(migration is None or runtime_bin is not None, 'Migration requires an explicit current runtime')
     if runtime_bin is not None:
         from experiments.headless.contextual_evidence import runtime_identity
         runtime_bin = durable_path(runtime_bin)
         current_runtime = runtime_identity(runtime_bin)
         current_native['binary'] = str(runtime_bin / 'vcmiclient')
-        pilot.require(pilot.digest(current_native['binary']) == current_native['binary_sha256'], 'Client bytes changed')
+        if migration:
+            from experiments.headless.env import VcmiLauncher
+            pilot.require(args.data is not None and args.game_map is not None, 'Migration requires current data and map paths')
+            launcher = VcmiLauncher(runtime_bin/'vcmiclient', durable_path(args.data), durable_path(args.game_map))
+            launcher.preflight()
+            current_native = launcher.identity()
+        else:
+            pilot.require(pilot.digest(current_native['binary']) == current_native['binary_sha256'], 'Client bytes changed')
+    source_check = subprocess.run([sys.executable, str(pilot.ROOT/'tools/prepare_vcmi.py'), '--check'],
+        cwd=pilot.ROOT, check=True, capture_output=True, text=True, timeout=60)
+    if migration and not args.evaluate:
+        migration.training_gate(current_runtime)
     state = resume.load_parent(parent_path, report_path, source,
         current_runtime=current_runtime, current_native=current_native,
-        expected_plan_sha256=pilot.digest(parent_path), expected_report_sha256=pilot.digest(report_path))
+        expected_plan_sha256=pilot.digest(parent_path), expected_report_sha256=pilot.digest(report_path), migration=migration)
+    if not args.evaluate:
+        require_heldout(state, current_runtime)
     pilot.require(not output.exists(), 'Use a new batch directory')
     # Require the independently restored second copy before any further game.
     receipt_path = DURABLE_ROOT / 'checkpoints' / parent_path.parent.name / 'preservation-receipt.json'
     receipt = json.loads(receipt_path.read_text())
-    pilot.require(receipt['sources']['report.json'] == resume.binding(report_path)
+    report_bound = receipt['sources']['report.json']
+    pilot.require((migration.artifact(report_bound) if migration else report_bound) == resume.binding(report_path)
                   and receipt['restore']['exact_model_adam_rng_progress_pool'] is True,
                   'Parent has not been durably preserved and restore-tested')
     for name in ('after-resume.pt', 'after-policy.pt'):
         pilot.require(pilot.digest(receipt_path.parent / name) == receipt['sources'][name]['sha256'],
                       'Parent backup changed')
+    from .builtin_preservation import verify_pair
+    verify_pair(receipt_path.parent/'after-resume.pt', receipt_path.parent/'after-policy.pt',
+                parent_plan, json.loads(report_path.read_text()), migration=migration)
     plan = {key: deepcopy(parent_plan[key]) for key in
             ('runtime', 'native', 'map', 'binary', 'data', 'game_map', 'replay_binary', 'native_opponents')}
     plan.update(runtime=current_runtime, native=current_native, binary=current_native['binary'],
                 replay_binary=resume.binding(Path(current_native['binary']).parent/'vcmireplay'))
+    if migration:
+        plan.update(data=str(durable_path(args.data)), game_map=str(durable_path(args.game_map)),
+                    portable_migration=migration.binding,
+                    native_opponents=[pilot.native_opponent(current_runtime, seat) for seat in (0,1)])
+        from validation.probes.validate_hero_policy import hero_map_identity
+        plan['map'] = hero_map_identity(plan['game_map'])
     sequence = getattr(args, 'sequence', None)
     if args.evaluate: sequence = state.progress.updates
     pilot.require(type(sequence) is int and sequence >= state.progress.updates, 'Choose an explicit unused batch sequence')
+    if not args.evaluate:
+        pilot.require(sequence >= 22, 'Cloud continuation starts at unused sequence 22 or later')
     planned_schedule = schedule(sequence, args.evaluate)
     if not args.evaluate:
         keys = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in planned_schedule}
@@ -88,12 +170,12 @@ def prepare(args):
             if prior.get('schema') == SCHEMA+'-plan':
                 used = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in prior['schedule']}
                 pilot.require(not keys & used, 'Training seeds already scheduled; choose an unused sequence')
-    plan.update(batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
+    plan.update(prepared_check=source_check.stdout.strip(), batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
         schedule=planned_schedule, execution_output=str(output/'execution'),
         checkpoint=state.bindings['policy'], source=source, implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), authorization=pilot.AUTHORIZATION, parent=state.bindings,
         mode='evaluation' if args.evaluate else 'training',
-        wall_scope='600 seconds including fresh collection, reconstruction/replay, at most one update, checkpoint and cleanup.',
+        wall_scope='3600 seconds including fresh collection, reconstruction/replay, at most one update, checkpoint and cleanup.',
         comparison_scope='Fixed paired held-out seeds and both seats; evaluation supplies no training samples.')
     plan['checkpoint_metadata'] = {**source, 'parent_plan_sha256': state.bindings['plan']['sha256'],
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
@@ -137,6 +219,8 @@ def worker(args):
     try:
         pilot.check_identity(plan)
         state = parent_state(plan)
+        if plan['mode'] == 'training':
+            require_heldout(state, plan['runtime'])
         model = state.model
         receipts = []
         for index, row in enumerate(plan['schedule']):
@@ -190,7 +274,7 @@ def worker(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__); sub=parser.add_subparsers(dest='command',required=True)
     prep=sub.add_parser('prepare');prep.add_argument('--parent',type=Path,required=True)
-    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true');prep.add_argument('--runtime-bin',type=Path);prep.add_argument('--sequence',type=int)
+    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true');prep.add_argument('--runtime-bin',type=Path);prep.add_argument('--sequence',type=int);prep.add_argument('--migration',type=Path);prep.add_argument('--data',type=Path);prep.add_argument('--game-map',type=Path)
     for name in ('execute','worker'):
         entry=sub.add_parser(name);entry.add_argument('--plan',type=Path,required=True);entry.add_argument('--sha256',required=True)
         if name=='worker':
