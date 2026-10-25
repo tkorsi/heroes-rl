@@ -34,6 +34,53 @@ def checked(bound):
     return json.loads(Path(bound['path']).read_text())
 
 
+def native_codec_identity():
+    """Bind the accepted engine/interface, independently of campaign tooling."""
+    from validation.probes.validate_capabilities import capability_implementation_identity
+    return capability_implementation_identity()
+
+
+def validate_native_acceptance(value, migration_plan):
+    """Recheck retained final mechanics evidence; never execute a game."""
+    from validation.probes.summarize_capabilities import compact_report, summarize
+    summary = checked(value['native_acceptance'])
+    require(summary.get('schema') == 'heroes-capability-native-summary-v1'
+            and summary.get('interface') == INTERFACE, 'Wrong final native acceptance summary')
+    saved_reports = summary.get('reports')
+    require(type(saved_reports) is list and bool(saved_reports), 'Final acceptance has no reports')
+    reports = [compact_report(row['report_path']) for row in saved_reports]
+    derived = summarize(reports)
+    require(all(summary.get(key) == actual for key, actual in derived.items() if key != 'reports'),
+            'Final native acceptance summary differs from its raw reports')
+    require(derived['native_coverage_complete'] is True
+            and derived['one_frozen_implementation_and_runtime'] is True
+            and derived['all_declared_attempts_completed_without_failure'] is True
+            and derived['started_attempts'] == 28
+            and derived['unverified_attempts'] == derived['failed_attempts'] == 0,
+            'Final 28-case native acceptance is incomplete')
+    current = native_codec_identity()
+    accepted = set()
+    for saved, actual in zip(saved_reports, reports):
+        # The committed summary may add replay counters to its compact rows.
+        require(all(saved.get(key) == content for key, content in actual.items() if key != 'rows')
+                and len(saved.get('rows', [])) == len(actual['rows'])
+                and all(all(recorded.get(key) == content for key, content in row.items())
+                        for recorded, row in zip(saved['rows'], actual['rows'])),
+                'Final native report binding or mechanics changed')
+        probe_path = Path(actual['report_path']).parent/'plan.json'
+        probe = json.loads(probe_path.read_text())
+        require(probe.get('native_runtime') == migration_plan['runtime']
+                and probe.get('binary_sha256') == binding(migration_plan['binary'])['sha256']
+                and probe.get('replay_binary_sha256') == migration_plan['runtime'].get('vcmireplay'),
+                'Final native acceptance runtime differs from the released runtime')
+        recorded = probe.get('implementation', {})
+        # The probe and release share one scope, including added/removed sources.
+        require(recorded == current,
+                'Final native acceptance engine or contextual codec source changed')
+        accepted.add((actual['report_sha256'], actual['plan_sha256']))
+    return accepted
+
+
 def validate_release(path):
     value = json.loads(Path(path).read_text())
     require(value.get('schema') == SCOPE+'-release' and value.get('coordinator_released') is True
@@ -56,6 +103,7 @@ def validate_release(path):
     from experiments.headless.contextual_evidence import runtime_identity
     require(runtime_identity(Path(plan['binary']).parent) == plan['runtime'], 'Released runtime bytes changed')
     require(binding(plan['game_map'])['sha256'] == plan['native']['map']['sha256'], 'Released map changed')
+    accepted_native = validate_native_acceptance(value, plan)
     cases = value.get('feature_cases')
     require(type(cases) is list and len(cases) == 2*len(FEATURES), 'Every feature requires both-seat native evidence')
     require({(case['feature'], case['player']) for case in cases} == {(f, p) for f in FEATURES for p in (0, 1)},
@@ -65,6 +113,8 @@ def validate_release(path):
                 'Feature case has no native pass/replay proof')
         report = checked(case['evidence'])
         probe_plan = checked(case['plan'])
+        require((case['evidence']['sha256'], case['plan']['sha256']) in accepted_native,
+                'Feature case is outside the final native acceptance')
         names = {'artifact_equipment': 'artifacts', 'artifact_assembly': 'artifacts',
                  'artifact_transfer': 'artifact-transfer', 'level_up': 'level-up',
                  'adventure_spells': 'adventure-spells', 'flight_movement': 'fly-movement',
