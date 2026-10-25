@@ -30,8 +30,10 @@ This check launched no gameplay.
 | Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
 
 The fixed opponent is **Nullkiller on Easy**, with BattleAI resolving battles.
-The ordinary map is the authored **hero-management-v1** scenario; see its
-[configuration](configs/hero-management-v1.json).
+Completed campaigns used the authored **hero-management-v1** scenario. The
+expanded interface uses **hero-management-v2**, which removes only the native
+level-one cap; see its [configuration](configs/hero-management-v2.json). Historical
+map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
@@ -130,8 +132,9 @@ model tensor shapes, checkpoint92 and the frozen campaign runtime are unchanged.
 The repaired ExplorerRL and replay targets build, and 61 focused tests pass.
 No new game or training campaign was started.
 
-The source audit identified these next gaps; they are not implemented by the
-necromancy repair:
+The source audit identified these gaps in the completed v7 campaign. Their v8
+implementation and acceptance work is described below; the necromancy repair
+alone did not supply them:
 
 | Priority | Missing interface | Reachability |
 | --- | --- | --- |
@@ -152,6 +155,48 @@ Private checkpoint commit `58b7826` and final raw-evidence commit `d610424` are 
 `codex/local365-teacher-results` in the private training-state repository.
 The consumed campaign lock/session remain in place; this authorization is
 complete and does not permit a restart.
+
+### Expanded interface and next local campaign
+
+The user requested the complete listed expansion **before** another training
+campaign: marketplace exchange; spellbook and war-machine purchases; artifact
+inventory, equipment, own-hero transfer and combination assembly/disassembly;
+adventure spells; and native hero level-up choices. Eagle Eye/Stables notices
+and full-army neutral joining are part of the same acceptance work. This is
+`adventure-capabilities-v1`, history/actions v8, protocol 10. The ordinary v7
+interface and historical observations retain their original serialized forms.
+
+Available controls appear in the currently open hero/town/exchange window.
+Inventory, prices, spell choices and inspection details appear only after the
+corresponding window or target is explicitly opened. Visions uses the engine's
+actual visible-object popup information, including native Disguise handling.
+View Earth/Air expose only their delivered map payload. Fogged Dimension Door
+coordinates are public-range attempts; hidden destination occupancy must never
+filter the action list. Flight/Water Walk use native movement layers over the
+player's knowledge, without exposing route costs. Battles remain automatic.
+
+New capability actions use the existing typed candidate encoder; model v6 has
+the same named parameter tensors as the v7 history model. Update92 requires an
+explicit migration preserving tensors, Adam slots, RNG and progress. Additional
+actions can change probabilities even when all tensors remain equal. The new
+both-seat baseline therefore belongs to a separate v8 cohort.
+
+The authorized next campaign is **one fresh local session of at most two hours**,
+with 365 days, 5120 total choices, Nullkiller Easy/BattleAI, complete four-game
+PPO batches, terminal-only rewards and both-seat held-out evaluation. Launch
+remains gated on all requested native feature checks, exact capture/replay,
+checkpoint migration and a separate deadline/watchdog. Preparation is not
+training; see [the migration preparation](docs/update92-v8-prelaunch.md). The old
+session is consumed and must never be restarted.
+
+The [PPO prefix benchmark](validation/ppo-prefix-performance-2026-10-25.json)
+reuses deterministic encodings within one current-weight minibatch and keeps
+every recurrent transition. On the archived long-trajectory benchmark it
+reduced prefix reconstruction from 88.81 to 7.29 seconds and the measured
+minibatches from 95.27 to 14.27 seconds, with bit-exact gradients, weights and
+Adam state after two steps. This is a numerical workload measurement, not a
+whole-game throughput claim. Claude's separate embedded-engine work remains
+experimental until its own real-game equivalence and timing checks pass.
 
 The [prelaunch evidence](validation/local365-prelaunch-2026-10-25.json),
 [local configuration](configs/builtin-local365-v1.json) and
