@@ -1,0 +1,63 @@
+{
+  "all_trace_frames_preserved": true,
+  "date": "2026-10-25",
+  "episode": "2",
+  "ffprobe": {
+    "codec": "h264",
+    "duration_seconds": 56.0,
+    "frames": 840,
+    "height": 1152,
+    "pixel_format": "yuv420p",
+    "width": 1600
+  },
+  "fresh_native_replay_verified": true,
+  "history_action_counts": {
+    "close": 3,
+    "end_turn": 1,
+    "move_to": 1,
+    "open_hero": 2,
+    "open_town": 1,
+    "split_stack": 4,
+    "swap_stacks": 1
+  },
+  "input_sha256": {
+    "contextual_capture": "9239e43c5fb1ec278142a1c4bd7da69858a484a4c72a060d0b1fcadb372e48b1",
+    "generation_receipt": "83e04c1036eb27e912241eb3bd1604ab2acd422bdfd54960bc253c4aa2052850",
+    "learner_history": "8c93c13bea835f62d2d077c9716f10cb9057320fb7a2b1c0967a492b63cc4a5d",
+    "manifest": "697e492cff0734a9bb45460e25260c6d4f2c90f148248b379730e046a833b997",
+    "map": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+    "native_report": "165976e6b00097f156a3f7208409beeed9bc2606e717de18e7e25a728360adb2",
+    "native_trace": "c0c5ff38f45269e01fb3150d0ac8da10837518a89d4c673d25638f86d5b79736",
+    "original_builtin_verification": "17b9151a57f03d749393a55f13711ddac2fe9826660629bb1b01e4c876bc82dd",
+    "plan": "d88366b615519679a83e6afabb1cd52f33ee8869c84071c459e9f7aa9ed88aca",
+    "renderer": "9c607665826f491e4b0587845358a7bae2843e46faf7379643d2b7d0967730cc",
+    "server_capture": "40fd536487b5979cf9b6c212896ab9129a950d6d313dd24248bfecca43b28458"
+  },
+  "learner": "blue Edric, Castle, frozen random v7",
+  "learner_choices": 13,
+  "limitations": [
+    "Window and army actions are not animated.",
+    "Automatic battles are map markers, not tactical battle footage.",
+    "Presentation time is slowed and does not measure simulation speed.",
+    "The fog panel is an engine map view, not the network's complete structured input."
+  ],
+  "local_video": "videos/edric-vs-nullkiller-episode-2.mp4",
+  "map": "Hero management: two castles",
+  "native_inputs": 84,
+  "new_gameplay_performed": false,
+  "opponent": "red Orrin, Castle, Nullkiller Easy",
+  "original_builtin_replay_verified": true,
+  "outcomes": {
+    "blue": "loss",
+    "red": "win"
+  },
+  "schema": "heroes-builtin-match-video-validation-v1",
+  "size": [
+    20,
+    20,
+    1
+  ],
+  "trace_frames": 85,
+  "training_performed": false,
+  "video_sha256": "7077729ff2fabe3c87bac25d66f417ec3dc1fafc7ebdf6bb20cda7482af13f83"
+}
