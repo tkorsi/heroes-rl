@@ -1,8 +1,8 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T16:09:43.636299+00:00",
+  "timestamp_utc": "2026-10-25T16:23:03.321275+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Independent ordinary repair PR27 ready; first real in-process A/B/A (three consecutive natural games, both learner seats) passes native contextual verification. Preparing repeated cold/reused measurements and resource audit.",
+  "current_activity": "18-game bounded cold/reused campaign verified; subsequent precise-timing repeat stopped at strict rejection of an unapplied post-terminal native marketplace request. Testing source admission cancellation after actual PlayerEndsGame, without weakening verifier.",
   "source_commit": "0ddf51dba3230ae394a661d4a823bb7bd8719084",
   "latest_pushed_commit": "bb98408",
   "latest_tested_commit": "23d87b6",
@@ -59,14 +59,28 @@
       "a_initial_state_matches_cold": true,
       "a_first_private_decision_hash_matches_cold": true,
       "later_native_packet_counts": "Different across fresh games from inherited RNG/thread behavior; not bit-identical trajectories"
+    },
+    "verified_bounded_campaign": {
+      "cold_games": 9,
+      "reused_games": 9,
+      "independent_native_replays": 18,
+      "declared_immutable_inputs_unchanged": true,
+      "outer_wall_measurement": "Timed wait polling has approximately 50ms granularity; native C++ phase timers remain precise."
+    },
+    "later_campaign": {
+      "verified_rows": 1,
+      "failed_verification_rows": 1,
+      "status": "stopped_without_replacement",
+      "error": "Client native request has no verified authoritative application or terminal boundary",
+      "tail_type": "TradeOnMarketplace after actual PlayerEndsGame before final barrier"
     }
   },
   "asset_transfer": {
     "access": "succeeded",
     "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
   },
-  "blocker": null,
-  "next_step": "Run repeated bounded cold/reused live workloads, verify every actual capture and examine post-cleanup memory/descriptors/threads. Keep experimental path opt-in.",
+  "blocker": "One additional fresh native game reached natural closure but its unapplied TradeOnMarketplace tail is not accepted by the strict existing verifier; retained unscored.",
+  "next_step": "Validate the narrow live request-admission guard with actual terminal packets and fresh ordinary/session captures; then resume measured A/B/A and reset/resource audit.",
   "training": false,
   "ready_to_pick_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
   "ready_to_pick_branch": "codex/linux-native-shutdown-fix",
