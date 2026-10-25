@@ -6,12 +6,19 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <stdexcept>
 #include <vector>
 
 VCMI_LIB_NAMESPACE_BEGIN
 namespace native_session
 {
 using Deadline = std::chrono::steady_clock::time_point;
+/// Only an explicit, failure-free channel close has cancellation semantics.
+class DLL_LINKAGE PolicyTransportCancelled : public std::runtime_error
+{
+public:
+	PolicyTransportCancelled() : std::runtime_error("Native policy channel closed") {}
+};
 struct WriteMetrics
 {
 	int64_t encodeMicros = 0;
@@ -59,6 +66,7 @@ public:
 	JsonNode receive(Deadline deadline) override;
 	void close() noexcept override;
 	bool cancelled() const noexcept override;
+	bool failed() const noexcept;
 	Boundary observe(Deadline deadline);
 	void submit(BoundaryToken token, const JsonNode & response);
 	void fail(const std::string & reason) noexcept;

@@ -1,6 +1,7 @@
 #include "StdInc.h"
 #include "EngineSession.h"
 #include "RuntimeEnvironment.h"
+#include "SessionHealth.h"
 #include "../client/CMT.h"
 #include "../client/Client.h"
 #include "../client/CServerHandler.h"
@@ -27,12 +28,10 @@ double elapsed(Clock::time_point start) { return std::chrono::duration<double>(C
 std::mutex ownerMutex;
 std::atomic<uint64_t> nextGeneration{1};
 std::atomic<bool> resourcesEverLoaded{false};
-struct Shutdown
+struct Shutdown : native_session_host::ShutdownStatus
 {
 	std::mutex mutex;
 	std::condition_variable changed;
-	std::optional<int> code;
-	bool stopping = false;
 	std::weak_ptr<native_session::InProcessPolicy> policy;
 };
 std::mutex activeMutex;
@@ -50,8 +49,7 @@ void requestHeadlessShutdown(int code)
 	if(auto value = currentShutdown())
 	{
 		std::lock_guard lock(value->mutex);
-		if(value->stopping) return; // intentional cleanup is not a new game outcome
-		if(!value->code || code != 0) value->code = code;
+		if(!value->record(code)) return;
 		value->changed.notify_all();
 		if(code != 0 && !value->stopping)
 			if(auto policy = value->policy.lock()) policy->fail("Native headless shutdown failed");
@@ -89,7 +87,7 @@ public:
 	int player = -1;
 	bool loaded = false;
 	bool awaitingInitialBoundary = false;
-	bool poisoned = false;
+	native_session_host::SessionHealth health;
 	Impl()
 	{
 		if(!owner.owns_lock() || LIBRARY || GAME || ENGINE)
@@ -109,7 +107,7 @@ EngineSession::~EngineSession()
 
 void EngineSession::load()
 {
-	if(impl->poisoned || impl->loaded || resourcesEverLoaded.exchange(true))
+	if(impl->health.failed() || impl->loaded || resourcesEverLoaded.exchange(true))
 		throw std::logic_error("Native load requires a fresh process; reuse reset() on the original loaded owner");
 	const auto start = Clock::now();
 	try
@@ -122,20 +120,20 @@ void EngineSession::load()
 		LIBRARY->initializeLibrary();
 		impl->loaded = true;
 	}
-	catch(...) { impl->timing.loadSeconds = elapsed(start); impl->poisoned = true; throw; }
+	catch(...) { impl->timing.loadSeconds = elapsed(start); impl->health.poison(); throw; }
 	impl->timing.loadSeconds = elapsed(start);
 }
 
 void EngineSession::reset(const EpisodeConfig & config)
 {
-	if(!impl->loaded || impl->poisoned) throw std::logic_error("Load resources first; failed native sessions require a fresh process");
+	impl->health.requireResetReady(impl->loaded);
 	if(config.episode.empty() || config.map.empty() || config.seed <= 0 || config.learner < 0 || config.learner > 1
 		|| config.policyTimeoutSeconds < 1 || config.policyTimeoutSeconds > 300 || impl->episodes.contains(config.episode))
 		throw std::invalid_argument("Invalid or reused native episode identity/configuration");
 	const std::filesystem::path capture(config.captureDirectory);
 	if(!capture.is_absolute() || std::filesystem::exists(capture))
 		throw std::invalid_argument("Native capture directory must be new and absolute");
-	closeEpisode();
+	impl->health.prepareReset(impl->loaded, [&] { closeEpisode(); });
 	const auto start = Clock::now();
 	try
 	{
@@ -196,7 +194,7 @@ void EngineSession::reset(const EpisodeConfig & config)
 		impl->awaitingInitialBoundary = true;
 		++impl->timing.episodes;
 	}
-	catch(...) { impl->poisoned = true; closeEpisode(); throw; }
+	catch(...) { impl->health.poison(); closeEpisode(); throw; }
 	impl->timing.resetSeconds += elapsed(start);
 }
 
@@ -238,40 +236,53 @@ void EngineSession::closeEpisode()
 {
 	if(!impl->policy && !GAME && !impl->environment) return;
 	const auto start = Clock::now();
-	if(impl->shutdown)
+	try
 	{
-		std::lock_guard lock(impl->shutdown->mutex);
-		impl->shutdown->stopping = true;
-		if(impl->shutdown->code && *impl->shutdown->code != 0) impl->poisoned = true;
+		if(impl->shutdown)
+		{
+			std::lock_guard lock(impl->shutdown->mutex);
+			impl->shutdown->stopping = true;
+			if(impl->shutdown->failed()) impl->health.poison();
+		}
+		if(impl->policy) impl->policy->close();
+		if(GAME)
+		{
+			std::cerr << "Native session cleanup: stop/join client network\n";
+			GAME->server().endNetwork();
+			std::cerr << "Native session cleanup: finish AI and game state\n";
+			if(GAME->server().client) GAME->server().endGameplay();
+			std::cerr << "Native session cleanup: destroy server runner\n";
+			// CServerHandler destruction shuts down and joins its server runner.
+			// Keep GAME non-null throughout destruction: endGame uses the global.
+			auto * game = GAME.get();
+			delete game;
+			GAME.release();
+		}
+		// All producers have joined. Preserve errors published before cancellation
+		// or during shutdown before discarding the channel and resetting evidence.
+		if(experimentHasFailed() || (impl->policy && impl->policy->failed()))
+			impl->health.poison();
+		if(impl->shutdown)
+		{
+			std::lock_guard lock(impl->shutdown->mutex);
+			if(impl->shutdown->failed()) impl->health.poison();
+		}
+		if(impl->player >= 0) removePolicy(impl->player);
+		impl->player = -1;
+		impl->policy.reset();
+		setExperimentFailureHandler({});
+		auto evidence = experimentEvidenceHooks();
+		setExperimentEvidenceHooks(nullptr);
+		std::cerr << "Native session cleanup: release contextual evidence\n";
+		if(evidence) evidence->finishNativeSession();
+		{
+			std::lock_guard lock(activeMutex);
+			active.reset();
+		}
+		impl->environment.reset();
+		impl->timing.cleanupSeconds += elapsed(start);
 	}
-	if(impl->policy) impl->policy->close();
-	if(GAME)
-	{
-		std::cerr << "Native session cleanup: stop/join client network\n";
-		GAME->server().endNetwork();
-		std::cerr << "Native session cleanup: finish AI and game state\n";
-		if(GAME->server().client) GAME->server().endGameplay();
-		std::cerr << "Native session cleanup: destroy server runner\n";
-		// CServerHandler destruction shuts down and joins its server runner.
-		// Keep GAME non-null throughout destruction: endGame uses the global.
-		auto * game = GAME.get();
-		delete game;
-		GAME.release();
-	}
-	if(impl->player >= 0) removePolicy(impl->player);
-	impl->player = -1;
-	impl->policy.reset();
-	setExperimentFailureHandler({});
-	auto evidence = experimentEvidenceHooks();
-	setExperimentEvidenceHooks(nullptr);
-	std::cerr << "Native session cleanup: release contextual evidence\n";
-	if(evidence) evidence->finishNativeSession();
-	{
-		std::lock_guard lock(activeMutex);
-		active.reset();
-	}
-	impl->environment.reset();
-	impl->timing.cleanupSeconds += elapsed(start);
+	catch(...) { impl->health.poison(); throw; }
 }
 SessionTimings EngineSession::timings() const { return impl->timing; }
 void EngineSession::waitForShutdown(Deadline deadline)

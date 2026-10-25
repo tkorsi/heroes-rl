@@ -46,6 +46,13 @@ second concurrent owner or attachment to an active client. Resources may be
 loaded only once in a process. Reuse happens through the original owner's
 `reset`, not by reconstructing `GameLibrary` or silently retrying a failed load.
 A native failure poisons reuse; fall back to a fresh ordinary process.
+Reset checks this condition again after closing and joining the prior episode,
+before changing settings, evidence counters or game objects. Cleanup retains
+nonzero native reports and channel failures, including reports arriving after
+cancellation begins. Only an explicit failure-free channel close is treated as
+intentional truncation. Endpoint publication uses the standard atomic shared-pointer
+free functions, which retain the same ordering on libc++ implementations without
+`atomic<shared_ptr>` support.
 
 `load` initializes the actual filesystem and game library once. `reset` creates
 a fresh `GameInstance`, client, authoritative server/handler, game state, AI
@@ -286,3 +293,12 @@ an explicit additional terminal-attempt accounting contract (`16085b1`). See
 the ordinary cold client is the fallback. Broader maps/mods, long games, retained
 AI randomness/caches, macOS execution and Teacher integration require their own
 gates. Portable execution does not promise cross-compiler bit identity.
+
+### Failure-reset regression
+
+`python3 -m unittest tests.test_native_session_failure -v` compiles the production
+session admission/late-shutdown helpers and, when libvcmi is available, the actual
+policy channel. It covers a failure discovered while closing an active episode,
+a late error after stop starts, cleanup exceptions, failure-before-close, timeout
+and overflow, and reusable clean truncation. These are asset-free lifecycle
+checks; they do not replace full native builds or gameplay replay gates.

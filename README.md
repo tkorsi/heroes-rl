@@ -3735,3 +3735,10 @@ consecutive reset prefixes and a real contextual movement sequence. Resource-loa
 amortization measured about 1.65× process-wall improvement on a tiny end-turn
 fixture with warm files; this is not a training-throughput claim. The ordinary
 cold client remains the fallback.
+
+The native-session review repair makes failed owners permanently non-reusable,
+including errors discovered during cleanup. Reset admission is repeated after
+joining the old episode, and typed clean channel cancellation cannot mask a
+recorded native error. Asset-free regression commands are documented in
+[EngineSession](docs/native-engine-session.md); no new games or training are
+part of this repair.

@@ -209,7 +209,7 @@ void ExplorerRL::finish()
 		stopping = true;
 	}
 	changed.notify_all();
-	if(const auto endpoint = policyTransport.load()) endpoint->close();
+	if(const auto endpoint = std::atomic_load(&policyTransport)) endpoint->close();
 	if(worker.joinable())
 		worker.join();
 	{
@@ -218,7 +218,7 @@ void ExplorerRL::finish()
 			std::fclose(observationLedger);
 		observationLedger = nullptr;
 	}
-	policyTransport.store(nullptr);
+	std::atomic_store(&policyTransport, std::shared_ptr<native_session::PolicyTransport>{});
 }
 
 void ExplorerRL::connectPolicy()
@@ -242,7 +242,7 @@ void ExplorerRL::connectPolicy()
 		endpoint->close();
 		throw std::runtime_error("Stopped while connecting to policy endpoint");
 	}
-	policyTransport.store(std::move(endpoint));
+	std::atomic_store(&policyTransport, std::move(endpoint));
 }
 
 JsonNode ExplorerRL::message(const std::string & type) const
@@ -280,7 +280,7 @@ void ExplorerRL::writeMessage(const JsonNode & message)
 		if(explorer_rl::ContextualEvidence::replaying())
 			return;
 	}
-	const auto endpoint = policyTransport.load();
+	const auto endpoint = std::atomic_load(&policyTransport);
 	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
 	const auto metrics = endpoint->send(message);
 	lastEncodeMicros = metrics.encodeMicros;
@@ -292,7 +292,7 @@ JsonNode ExplorerRL::receiveMessage()
 {
 	if(explorer_rl::ContextualEvidence::replaying())
 		return explorer_rl::ContextualEvidence::current()->replayResponse(playerID.getNum());
-	const auto endpoint = policyTransport.load();
+	const auto endpoint = std::atomic_load(&policyTransport);
 	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
 	auto response = endpoint->receive(std::chrono::steady_clock::now() + std::chrono::seconds(timeoutSeconds));
 	ExperimentEventGuard event(evidenceActor.c_str(), "receive");
@@ -373,12 +373,15 @@ void ExplorerRL::run() noexcept
 			return;
 		// Explicit native-session truncation closes the channel before joining
 		// the client network thread. It is not a failed game or a scored loss.
-		if(const auto endpoint = policyTransport.load(); endpoint && endpoint->cancelled())
+		if(dynamic_cast<const native_session::PolicyTransportCancelled *>(&error))
 			return;
+		const auto endpoint = std::atomic_load(&policyTransport);
 		bool report;
 		{
 			std::lock_guard lock(stateMutex);
-			report = !stopping && !terminal;
+			// A genuine error must survive a concurrent native-session close.
+			// Only the typed, failure-free channel cancellation above is benign.
+			report = !terminal && (!stopping || (endpoint && endpoint->cancelled()));
 			if(report)
 				failure = error.what();
 		}
@@ -407,7 +410,7 @@ void ExplorerRL::run() noexcept
 		// The error record is diagnostic; the client's failure exit is what
 		// makes an unattended run end as a technical failure.
 		reportExperimentFailure(std::string("ExplorerRL: ") + error.what());
-		if(const auto endpoint = policyTransport.load()) endpoint->close();
+		if(const auto endpoint = std::atomic_load(&policyTransport)) endpoint->close();
 	}
 }
 

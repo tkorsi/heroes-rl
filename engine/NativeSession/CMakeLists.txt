@@ -1,5 +1,5 @@
 # Opt-in live host; not linked into the ordinary client or Teacher runtime.
-add_library(native_engine_session STATIC EngineSession.cpp EngineSession.h RuntimeEnvironment.cpp RuntimeEnvironment.h)
+add_library(native_engine_session STATIC EngineSession.cpp EngineSession.h RuntimeEnvironment.cpp RuntimeEnvironment.h SessionHealth.h)
 target_link_libraries(native_engine_session PUBLIC vcmi vcmiclientcommon vcmiservercommon)
 target_include_directories(native_engine_session PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 add_executable(vcmisession SessionMain.cpp ResourceUsage.cpp ResourceUsage.h)

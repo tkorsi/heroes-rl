@@ -71,7 +71,8 @@ public:
 private:
 	std::shared_ptr<CCallback> callback;
 	std::thread worker;
-	std::atomic<std::shared_ptr<native_session::PolicyTransport>> policyTransport;
+	// Atomic shared_ptr free functions also work on libc++ without atomic<shared_ptr>.
+	std::shared_ptr<native_session::PolicyTransport> policyTransport;
 	std::mutex stateMutex;
 	std::mutex sendMutex;
 	std::condition_variable changed;
