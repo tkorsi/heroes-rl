@@ -1,11 +1,11 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T15:42:31.072866+00:00",
+  "timestamp_utc": "2026-10-25T15:46:51.776734+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Private user-provided assets are cloning outside public tree; native live-session benchmark source/build complete, merged Teacher correctness regression running.",
-  "source_commit": "1c6d848083b0133b69926fc680d7bb1b78ecbdd9",
-  "latest_pushed_commit": "f52b5df",
-  "latest_tested_commit": "d87ea64",
+  "current_activity": "Private assets reconstructed and hash-verified. First successful fresh Linux native-session prefix independently verified in both contextual and observation modes; preparing real cold/reused A/B/A.",
+  "source_commit": "2556dad2193d804415a3fc7a588fd58338eeaacf",
+  "latest_pushed_commit": "15534c0",
+  "latest_tested_commit": "1c6d848",
   "checks": {
     "native_transport_host_socket": {
       "passed": 3,
@@ -15,19 +15,30 @@
     },
     "merged_source_recipe": "passed",
     "merged_native_build": "passed",
-    "merged_focused_regressions": "running"
+    "merged_focused_regressions": {
+      "tests_run": 45,
+      "passed": 43,
+      "skipped": 2,
+      "failed": 0,
+      "scope": "Native regressions; two static-content tests were not configured with Data before this run"
+    }
   },
   "real_benchmarks": {
     "completed_games": 0,
-    "captured_native_replays": 0,
+    "fresh_linux_prefix_captures": 1,
+    "independently_verified_prefix_captures": 1,
+    "contextual_replay_verified": true,
+    "observation_replay_verified": true,
+    "native_steps_in_verified_prefix": 1,
     "speedup_established": false,
-    "full_live_reset_reuse_established": false
+    "full_live_reset_reuse_established": false,
+    "retained_failed_attempts": 1
   },
   "asset_transfer": {
     "access": "succeeded",
-    "state": "private Git clone in progress outside public source tree"
+    "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
   },
-  "blocker": "Awaiting completion of private asset transfer before fresh Linux gameplay validation.",
-  "next_step": "Reconstruct and verify private parts, configure isolated Linux profile, then run real cold/reused A/B/A and independent native capture replay.",
+  "blocker": null,
+  "next_step": "Run consecutive live A/B/A with matched cold processes; independently replay all captures and compare measured load/reset/advance/cleanup/memory.",
   "training": false
 }
