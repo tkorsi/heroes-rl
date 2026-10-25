@@ -1,11 +1,11 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T16:23:03.321275+00:00",
+  "timestamp_utc": "2026-10-25T16:40:14.367435+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "18-game bounded cold/reused campaign verified; subsequent precise-timing repeat stopped at strict rejection of an unapplied post-terminal native marketplace request. Testing source admission cancellation after actual PlayerEndsGame, without weakening verifier.",
-  "source_commit": "0ddf51dba3230ae394a661d4a823bb7bd8719084",
+  "current_activity": "Explicit marketplace terminal-attempt contract passes 460 tamper/codec checks, retained diagnostics and a fresh ordinary game; new 18-game precisely timed cold/reused cohort fully verified. 30-reset audit passes; longer RSS audit running.",
+  "source_commit": "612baeb37624e0246caf0565b78167c5829da317",
   "latest_pushed_commit": "bb98408",
-  "latest_tested_commit": "23d87b6",
+  "latest_tested_commit": "612baeb",
   "checks": {
     "native_transport_host_socket": {
       "passed": 3,
@@ -73,16 +73,41 @@
       "status": "stopped_without_replacement",
       "error": "Client native request has no verified authoritative application or terminal boundary",
       "tail_type": "TradeOnMarketplace after actual PlayerEndsGame before final barrier"
+    },
+    "current_contract_cohort": {
+      "cold_games": 9,
+      "reused_games": 9,
+      "independent_native_replays": 18,
+      "process_wall_timer": "Blocking reap with separate watchdog",
+      "declared_immutable_inputs_unchanged": true,
+      "no_unchecked_native_items": true
+    },
+    "reset_audit": {
+      "real_prefix_episodes": 30,
+      "independent_replays": 30,
+      "post_cleanup_descriptors": [
+        8
+      ],
+      "post_cleanup_threads": [
+        5
+      ],
+      "first_last_rss_mib": [
+        76.758,
+        82.867
+      ],
+      "memory_stability": "Longer audit in progress; no leak-free claim"
     }
   },
   "asset_transfer": {
     "access": "succeeded",
     "state": "66 parts reconstructed into 9 files with whole-file SHA-256 verification outside public source tree"
   },
-  "blocker": "One additional fresh native game reached natural closure but its unapplied TradeOnMarketplace tail is not accepted by the strict existing verifier; retained unscored.",
-  "next_step": "Validate the narrow live request-admission guard with actual terminal packets and fresh ordinary/session captures; then resume measured A/B/A and reset/resource audit.",
+  "blocker": null,
+  "next_step": "Finish longer resource audit, native contextual navigation fixture, final regressions and compact benchmark evidence; keep experimental live path opt-in.",
   "training": false,
   "ready_to_pick_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
   "ready_to_pick_branch": "codex/linux-native-shutdown-fix",
-  "minimal_fix_pr": "https://github.com/tkorsi/heroes-rl/pull/27"
+  "minimal_fix_pr": "https://github.com/tkorsi/heroes-rl/pull/27",
+  "additional_contract_pick_sha": "16085b145871bd358a35bcd430ac605d2dc68b90",
+  "additional_contract_scope": "One proven unapplied TradeOnMarketplace at the independently verified final terminal boundary; no game execution changes. Source admission candidate was discarded."
 }
