@@ -15,3 +15,10 @@ endif()
 target_include_directories(vcmireplay PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 vcmi_set_output_dir(vcmireplay "")
 enable_pch(vcmireplay)
+
+if(ENABLE_CLIENT)
+	# Asset-free regression using actual client/network shutdown and TBB tasks.
+	add_executable(native_headless_shutdown_order EXCLUDE_FROM_ALL tests/HeadlessShutdownOrder.cpp)
+	target_link_libraries(native_headless_shutdown_order PRIVATE vcmi vcmiclientcommon vcmiservercommon TBB::tbb)
+	vcmi_set_output_dir(native_headless_shutdown_order "")
+endif()
