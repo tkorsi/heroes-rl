@@ -268,6 +268,9 @@ repair; a separately labelled fresh Linux gate must pass before PPO continuation
 The runner also explicitly requires gate/evaluation completion within its shared
 budget. `reports/cloud/teacher-status.json` records the current compact status;
 status commits occur between batches to preserve frozen source identity.
+`tools/publish_teacher_snapshot.py` additionally restore-tests the independently
+copied pair in the private results checkout and publishes each completed raw run
+with exact hashes; no game Data symlink is followed.
 
 ### Fixed cloud stop window
 
