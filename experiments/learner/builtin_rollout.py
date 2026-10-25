@@ -178,9 +178,11 @@ class BuiltinCollector:
             and request.player == self.learner_player and request.color == COLORS[self.learner_player]
             and not request.past_horizon and request.reward == 0 and request.frames,
             "Only the current own decision can be sampled")
-        self.session.consume(request.frames)
-        last = c.decode_frame(request.frames[-1])
-        evidence.require(last.kind == "decision" and c.decode_frame(request.record) == last,
+        # consume decoded request.frames[-1] (or matched its exact accepted text); the
+        # record is normally that same object, and is decoded only when it is not.
+        last = self.session.consume(request.frames)
+        evidence.require(last.kind == "decision" and (request.record is request.frames[-1]
+                                                      or c.decode_frame(request.record) == last),
                          "Request record and actual own decision differ")
         return self.session.choose(last.seq).action
 

@@ -376,5 +376,103 @@ class InferenceExactnessTests(unittest.TestCase):
             self.assertTrue(torch.equal(m._bits(nan), m._bits(self.model._encode_tree(("number", float("nan")), {}))))
 
 
+    def test_internal_node_memo_reproduces_uncached_inference_exactly(self):
+        with torch.no_grad():
+            expected = [trace(unmemoized(self.model), frames) for frames in self.histories]
+            self.assertEqual([trace(self.model, frames) for frames in self.histories], expected)
+            nodes = entries(self.model)["node"]
+            self.assertTrue(nodes)
+            filled = len(nodes)
+            self.assertEqual([trace(self.model, frames) for frames in self.histories], expected)  # served from the memo
+            self.assertEqual(len(nodes), filled)
+        with torch.inference_mode():
+            self.assertEqual([trace(self.model, frames) for frames in self.histories], expected)
+
+    def test_internal_node_memo_is_discarded_after_tree_module_changes(self):
+        self.assertInvalidatedBy(lambda: self.model.tree[0].weight.data.mul_(-1.5))
+        self.assertInvalidatedBy(lambda: self.model.ordered.weight_hh_l0.data.mul_(-1.5))
+
+    def test_bounded_internal_node_memo_stays_exact(self):
+        limit = m._NODE_MEMO_LIMIT
+        try:
+            m._NODE_MEMO_LIMIT = 3
+            self.assertMatchesFresh(self.model)
+            self.assertLessEqual(len(entries(self.model)["node"]), 3)
+            self.assertMatchesFresh(self.model)
+        finally:
+            m._NODE_MEMO_LIMIT = limit
+
+    def roots(self, trees, *, memo):
+        """Encode top-level trees with one frame cache; the reference uses no memo at all."""
+        with torch.no_grad():
+            cache = {m._LEAF_MEMO: self.model._leaf_memo()} if memo else {}
+            encode = self.model._encode_root if memo else self.model._encode_tree
+            values = [m._bits(encode(tree, cache)).tolist() for tree in trees]
+            keys = sorted(repr(key) for key in cache if type(key) is tuple)
+            return values, keys, [m._bits(cache[key]).tolist() for key in sorted((k for k in cache if type(k) is tuple), key=repr)]
+
+    def test_inexact_roots_meet_the_reference_frame_cache(self):
+        number = lambda value: m._node("count", m._number(1), ("number", value))
+        exact = m._node("root", number(0.0), m._node("inner", number(2.0), m._text("a")))
+        signed = m._node("other", number(-0.0), m._node("inner", number(2.0), m._text("a")))
+        nan = m._node("nan", ("number", float("nan")), number(0.0))
+        integer = m._node("int", ("number", 0), number(0.0))
+        self.assertTrue(m._exact_tree(exact))
+        size = self.model.config.feature_size
+
+        class SignedLeaf(nn.Module):
+            """Keeps the input's signed zero (Linear accumulators do not), so a non-reference cache shows."""
+            def forward(self, value):
+                return value[:1].repeat(size)
+        self.model.number = SignedLeaf().eval()
+        with torch.no_grad():
+            self.assertFalse(torch.equal(m._bits(self.model._encode_tree(("number", 0.0), {})),
+                                         m._bits(self.model._encode_tree(("number", -0.0), {}))))
+        for tree in (signed, nan, integer, ("number", 1), ("text", 1), ("node", "x"), ("node", 1, ())):
+            self.assertFalse(m._exact_tree(tree), tree)
+        with torch.no_grad():
+            self.model._encode_root(exact, {m._LEAF_MEMO: self.model._leaf_memo()})  # an earlier frame fills the memo
+        self.assertTrue(entries(self.model)["node"])
+        for trees in ((exact, signed), (signed, exact), (exact, nan, signed), (integer, exact), (exact, integer, exact)):
+            with self.subTest(trees=[tree[1] for tree in trees]):
+                self.assertEqual(self.roots(trees, memo=True), self.roots(trees, memo=False))
+
+        class SignedOrdered(nn.Module):
+            def forward(self, sequence):  # the last element's encoding as the final hidden state
+                return sequence, sequence[:, -1:].transpose(0, 1)
+
+        class SignedTree(nn.Module):
+            def forward(self, joined):  # the pooled half, so a child's signed zero reaches the node value
+                return joined[size:]
+        # Linear and GRU accumulators drop signed zeros; these modules keep them, so an internal node whose memo
+        # entry came from an equal tree with the other zero would show in the root value itself.
+        self.model.ordered, self.model.tree = SignedOrdered().eval(), SignedTree().eval()
+        sequence = lambda value: ("ordered", "sequence", (("number", value),))
+        positive, negative = ("ordered", "first", (sequence(0.0),)), ("ordered", "second", (sequence(-0.0),))
+        with torch.no_grad():
+            self.assertFalse(torch.equal(m._bits(self.model._encode_tree(positive, {})),
+                                         m._bits(self.model._encode_tree(negative, {}))))
+            self.model._encode_root(positive, {m._LEAF_MEMO: self.model._leaf_memo()})
+        for trees in ((negative,), (negative, positive), (positive, negative)):
+            with self.subTest(trees=[tree[1] for tree in trees]):
+                self.assertEqual(self.roots(trees, memo=True), self.roots(trees, memo=False))
+
+    def test_a_revalidated_memo_never_seeds_entries_from_another_weight_version(self):
+        frames = self.histories[0]
+        with torch.no_grad():
+            trace(self.model, frames)
+            encoder = m.ContextualEncoder(frames[0].episode, frames[0].player, frames[0].schema)
+            state = self.model.initial_state()
+            for frame in frames:
+                output = self.model.forward_step(encoder.encode(frame), state)
+                state, decision = output.state, output.decision or locals().get("decision")
+            distribution = decision.distribution
+            self.model.tree[0].weight.data.mul_(-1)
+            distribution.sample(generator=torch.Generator().manual_seed(3))
+            self.assertIs(distribution.cache[m._EXACT_CACHE], False)
+            self.model.tree[0].weight.data.mul_(-1)
+            self.assertMatchesFresh(self.model)
+
+
 if __name__ == "__main__":
     unittest.main()
