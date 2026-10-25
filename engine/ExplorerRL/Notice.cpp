@@ -338,6 +338,7 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 {
 	if(tokens.empty()) return {};
 	std::vector<Token> shown;
+	auto displayedComponents = components;
 	bool supported = false;
 	// An abandoned mine's native victory continuation precedes flagMine.
 	if(mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
@@ -376,12 +377,22 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.115"))
 	{
 		const auto & component = components[0];
+		// Reward::loadComponents uses an explicit zero for a learnable spell.
+		// It is a native learnability marker, not a displayed numeric amount.
+		// Only Scholar115 permits this form; meeting spells still require no value.
+		if(component.type == ComponentType::SPELL)
+		{
+			if(!component.value || *component.value != 0)
+				unsupported("Invalid displayed Scholar spell marker");
+			displayedComponents[0].value.reset();
+		}
+		const auto & displayed = displayedComponents[0];
 		const bool selectedName = component.type == ComponentType::SPELL || component.type == ComponentType::SEC_SKILL;
 		const size_t latent = selectedName ? 2 : 1;
 		if(component.type != ComponentType::PRIM_SKILL && !selectedName) unsupported("Invalid Scholar reward component");
 		if(tokens.size() != latent + 3 || !nameToken(tokens[latent], "skill")
 			|| !nameToken(tokens[latent + 1], "spell") || tokens[latent + 2].operation != REPLACE_RAW
-			|| (selectedName && !exact(tokens[1], REPLACE_TEXT, shownContent(component)->getNameTextID())))
+			|| (selectedName && !exact(tokens[1], REPLACE_TEXT, shownContent(displayed)->getNameTextID())))
 			unsupported("Unsupported Scholar reward grammar");
 		if(selectedName && tokens[1].text != tokens[latent + (component.type == ComponentType::SPELL)].text)
 			unsupported("Scholar selected reward differs from its native variable");
@@ -457,7 +468,7 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 		result["text"].Vector().push_back(std::move(value));
 	}
 	result["components"].Vector();
-	for(const auto & component : components) result["components"].Vector().push_back(shownComponent(component));
+	for(const auto & component : displayedComponents) result["components"].Vector().push_back(shownComponent(component));
 	return result;
 }
 }

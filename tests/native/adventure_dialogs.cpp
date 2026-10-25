@@ -5,6 +5,7 @@
 #include "lib/GameLibrary.h"
 #include "lib/CSkillHandler.h"
 #include "lib/entities/artifact/CArtHandler.h"
+#include "lib/rewardable/Reward.h"
 #include "lib/spells/CSpellHandler.h"
 
 #include <cstdlib>
@@ -135,7 +136,19 @@ void staticNotices()
 	const auto artifact = ArtifactID(ArtifactID::decode("core:centaurAxe"));
 	const auto spell = SpellID(SpellID::decode("core:magicArrow"));
 	const auto secondary = SecondarySkill(SecondarySkill::SCHOLAR);
-	const std::vector<Component> rewards{skill(0, 1), Component(ComponentType::SEC_SKILL, secondary, 2), Component(ComponentType::SPELL, spell)};
+	// Use the actual producer: a Scholar spell has value=0, while meeting
+	// Scholar spells use the value-absent constructor. These are not interchangeable.
+	std::vector<Component> rewards;
+	for(int branch : {0, 1, 2})
+	{
+		Rewardable::Reward reward;
+		if(branch == 0) { reward.primary.assign(4, 0); reward.primary[0] = 1; }
+		if(branch == 1) reward.secondary[secondary] = 2;
+		if(branch == 2) reward.spells.push_back(spell);
+		reward.loadComponents(rewards, nullptr);
+	}
+	expect(rewards.size() == 3 && rewards.back().value && *rewards.back().value == 0,
+		"Native Scholar producer spell marker changed");
 	for(const auto & reward : rewards)
 	{
 		auto message = text(115);
@@ -152,6 +165,19 @@ void staticNotices()
 		{
 			auto changed = text(115); changed.replaceTextID("skill.core.logistics.name"); changed.replaceTextID("spell.core.haste.name"); changed.replaceRawString("different");
 			expect(notice(changed, {reward}) == parsed, "Unrendered Scholar variables affected learner payload");
+		}
+		if(reward.type == ComponentType::SPELL)
+		{
+			expect(parsed["components"][0]["amount"].isNull() && reward.value && *reward.value == 0,
+				"Scholar marker leaked or the delivered component mutated");
+			for(int invalid : {-1, 1, 2})
+			{
+				auto changed = reward; changed.value = invalid;
+				reject<explorer_rl::UnsupportedNotice>([&] { notice(message, {changed}); });
+			}
+			auto absent = reward; absent.value.reset();
+			reject<explorer_rl::UnsupportedNotice>([&] { notice(message, {absent}); });
+			reject<explorer_rl::UnsupportedNotice>([&] { notice(message, {reward}, EInfoWindowMode::MODAL); });
 		}
 	}
 	auto chest = text(145); chest.replaceName(artifact); chest.replaceRawString("Treasure Chest");
@@ -182,6 +208,8 @@ void staticNotices()
 		reject<explorer_rl::UnsupportedNotice>([&] { notice(meeting, components, EInfoWindowMode::MODAL, true, {"hero.core.orrin.name"}); });
 		auto wrong = components; wrong.back() = Component(ComponentType::SPELL, SpellID(30));
 		reject<explorer_rl::UnsupportedNotice>([&] { notice(meeting, wrong, EInfoWindowMode::MODAL); });
+		auto zero = components; zero.back().value = 0;
+		reject<explorer_rl::UnsupportedNotice>([&] { notice(meeting, zero, EInfoWindowMode::MODAL); });
 		auto extra = meeting; extra.appendRawString(", ");
 		reject<explorer_rl::UnsupportedNotice>([&] { notice(extra, components, EInfoWindowMode::MODAL); });
 	}
