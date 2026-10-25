@@ -24,7 +24,7 @@ class TerminalAttemptTests(fixtures.WireTests):
         self.renumber()
 
     def test_tail_is_preserved_and_separately_counted_for_both_learner_seats(self):
-        for player, pack_type in product((0, 1), (182, 185)):
+        for player, pack_type in product((0, 1), (180, 182, 185)):
             self.tail_fixture(player, pack_type)
             original = deepcopy(self.tape)
             wire = self.check()
@@ -39,7 +39,7 @@ class TerminalAttemptTests(fixtures.WireTests):
                 "request_id": 4, "pack_type": 91, "first_client_packet": 6, "last_client_packet": 10})
 
     def test_tail_never_excuses_an_omitted_or_changed_authoritative_request(self):
-        for player, pack_type in product((0, 1), (182, 185)):
+        for player, pack_type in product((0, 1), (180, 182, 185)):
             for change in (lambda t: t.pop(7), lambda t: t[7].update(pack="ccee"),
                            lambda t: t[7].update(request_id=5), lambda t: t[4].update(player=1-player)):
                 self.tail_fixture(player, pack_type); change(self.tape); self.renumber()
@@ -60,14 +60,14 @@ class TerminalAttemptTests(fixtures.WireTests):
                    lambda t: t[-4]["packet"].update(phase="applying"),
                    lambda t: t[-4]["packet"].update(type=False),
                    lambda t: t[-1].update(client_packets=9)]
-        for player, pack_type in product((0, 1), (182, 185)):
+        for player, pack_type in product((0, 1), (180, 182, 185)):
             for change in changes:
                 self.tail_fixture(player, pack_type); change(self.tape)
                 with self.subTest(player=player, pack_type=pack_type, change=change), self.assertRaises(ValueError):
                     self.check()
 
     def test_only_one_attempt_after_actual_complementary_natural_end(self):
-        for player, pack_type in product((0, 1), (182, 185)):
+        for player, pack_type in product((0, 1), (180, 182, 185)):
             for change in (lambda: self.server[-1].update(boundary="battle_end"),
                            lambda: self.server[-1].update(terminals=[]),
                            lambda: self.server[-1]["terminals"][0].update(victory=True),
@@ -81,7 +81,7 @@ class TerminalAttemptTests(fixtures.WireTests):
                     self.check()
 
     def test_later_learner_choice_is_not_a_terminal_tail(self):
-        for player, pack_type in product((0, 1), (182, 185)):
+        for player, pack_type in product((0, 1), (180, 182, 185)):
             self.tail_fixture(player, pack_type)
             self.tape[-1:-1] = [{"kind":"enter", "actor":f"player{player}", "operation":"worker", "packet":None},
                                {"kind":"response", "player":player, "response":{}},
@@ -105,12 +105,12 @@ class TerminalReportTests(fixtures.NativeReportTests):
         self.native["summary"]["request_accounting"] = deepcopy(accounting)
 
     def test_explicit_accounting_does_not_claim_tail_as_server_input(self):
-        for pack_type in (182, 185):
+        for pack_type in (180, 182, 185):
             self.setUp(); self.add_accounting(pack_type); self.check()
             self.assertEqual(self.native["summary"]["server"]["inputs"], 4)
 
     def test_nonzero_tail_needs_exact_native_accounting_and_origin(self):
-        for pack_type in (182, 185):
+        for pack_type in (180, 182, 185):
             for change in (lambda n:n["summary"].pop("request_accounting"),
                            lambda n:n["summary"]["request_accounting"]["terminal_unapplied"].clear(),
                            lambda n:n["summary"]["request_accounting"]["terminal_unapplied"][0].update(pack="aabb"),

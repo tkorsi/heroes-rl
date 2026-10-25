@@ -1,5 +1,5 @@
 {
-  "execution_wall_seconds": 243.78182174901303,
+  "execution_wall_seconds": 275.28411287401104,
   "limitations": [
     "Fixed repeated held-out seeds are not independent fresh evaluations.",
     "Recruitment, troop counts, transfer and town timing are diagnostics only, never rewards.",
@@ -19,7 +19,9 @@
       "natural_loss": 2
     },
     "training": {
-      "natural_loss": 20
+      "failed": 1,
+      "natural_loss": 22,
+      "not_started": 1
     }
   },
   "root": "/Users/orsi/Projects/Heroes-artifacts/runs",
@@ -1080,6 +1082,145 @@
         {
           "classification": "natural_loss",
           "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170010,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 12421,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-005/execution/episode-000001/training-metrics.json",
+            "sha256": "7057dab0d1decd24c355d5cf617b5489dbad6d18ad6628d82ac9f6e191e9d0b9"
+          },
+          "phase": "training",
+          "policy_seed": 270020,
+          "sampled_choices": 2,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 1.3737095830001635
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 13,
+              "split_stack": 18,
+              "swap_garrison": 8,
+              "swap_stacks": 18
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 39,
+            "observed_cross_army_units": 78,
+            "recruit_attempts": 1,
+            "recruit_units": 14,
+            "terminal_day": 10,
+            "town_loss_days": [
+              4
+            ]
+          },
+          "engine_seed": 170010,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 282951,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-005/execution/episode-000002/training-metrics.json",
+            "sha256": "c2b23c534098432043698d362961c11586f92516cc9f75c221e0dcc83d6a7d33"
+          },
+          "phase": "training",
+          "policy_seed": 270021,
+          "sampled_choices": 187,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 15.880522708001081
+        },
+        {
+          "classification": "failed",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 8,
+              "split_stack": 13,
+              "swap_garrison": 4,
+              "swap_stacks": 13
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 31,
+            "observed_cross_army_units": 26,
+            "recruit_attempts": 4,
+            "recruit_units": 12,
+            "terminal_day": 6,
+            "town_loss_days": [
+              6
+            ]
+          },
+          "engine_seed": 170011,
+          "episode": 3,
+          "error": "ValueError: Training requires exact-runtime native replay, never supplemental diagnostic compatibility",
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 187827,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-005/execution/episode-000003/training-metrics.json",
+            "sha256": "cae571e1c1d986eaada3d09f8e358e970c6ebf452afa9ff915cdf6ecda16b370"
+          },
+          "phase": "training",
+          "policy_seed": 270022,
+          "sampled_choices": 170,
+          "status": "failed",
+          "training_samples": 0,
+          "wall_seconds": 12.195962708006846
+        },
+        {
+          "classification": "not_started",
+          "engine_seed": 170011,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "phase": "training",
+          "policy_seed": 270023,
+          "sampled_choices": null,
+          "status": "not_started",
+          "training_samples": 0,
+          "wall_seconds": null
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": null,
+      "optimizer_steps": 0,
+      "optimizer_updates": 0,
+      "plan": {
+        "bytes": 47861,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-005/plan.json",
+        "sha256": "ca64e3ed8c418f826c73bc5aaeca71ccdadf255a71ae6517a44cec0b5210aded"
+      },
+      "ppo": null,
+      "report": {
+        "bytes": 7877,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-005/execution/report.json",
+        "sha256": "61b1cb9da4bafec0ea268a834a16591f00d265037dcf66346c18682feca783be"
+      },
+      "run": "continuation-2026-10-25-005",
+      "source_commit": "337fe4da270910152deb387fb7207380d02216a8",
+      "status": "stopped",
+      "stop_reason": "ValueError: Attempt failed; batch stopped without replacement",
+      "training_samples": 0,
+      "wall_seconds": 31.50229112499801
+    },
+    {
+      "after_checkpoint": null,
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
             "accepted_army_operations": {
               "merge_stacks": 4,
               "split_stack": 9,
@@ -1174,7 +1315,9 @@
   "schema": "heroes-builtin-continuation-summary-v1",
   "scope": "New recovery-002 lineage only; failed recovery-001 remains separately recorded and unscored.",
   "totals": {
-    "natural_loss": 26
+    "failed": 1,
+    "natural_loss": 28,
+    "not_started": 1
   },
   "training_samples": 651
 }

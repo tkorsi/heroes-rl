@@ -74,6 +74,34 @@ def _committed_source(source):
                 "Source hash is not committed at its declared revision: " + name)
 
 
+def transition_manifest():
+    path = ROOT / "configs/builtin-resume-transitions-v1.json"
+    if not path.exists():
+        return {"source_changes": {}, "runtime_changes": []}
+    saved = subprocess.check_output(["git", "show", "HEAD:configs/builtin-resume-transitions-v1.json"], cwd=ROOT)
+    require(saved == path.read_bytes(), "Resume transition manifest is not exactly committed")
+    value = strict_json(saved)
+    require(value.get("schema") == "heroes-reviewed-resume-transitions-v1", "Invalid resume transition manifest")
+    require(set(value["source_changes"]) <= {"experiments/learner/builtin_training_resume.py",
+            "experiments/learner/builtin_training.py"}, "Transition cannot change policy, features or PPO math")
+    return value
+
+
+def compatible_runtime(parent_runtime, parent_native, current_runtime, current_native):
+    if parent_runtime == current_runtime and parent_native == current_native:
+        return {"unchanged": True}
+    differences = {k for k in set(parent_runtime) | set(current_runtime)
+                   if parent_runtime.get(k) != current_runtime.get(k)}
+    require(differences == {"vcmireplay"} and
+            {k:v for k,v in parent_native.items() if k != "binary"} ==
+            {k:v for k,v in current_native.items() if k != "binary"},
+            "Only an exact reviewed verifier replacement and binary relocation may continue")
+    transition = {"from_runtime": parent_runtime, "to_runtime": current_runtime,
+                  "from_native": parent_native, "to_native": current_native}
+    require(transition in transition_manifest()["runtime_changes"], "Unreviewed native verifier transition")
+    return {"unchanged": False, "verified_transition": transition}
+
+
 def compatible_source(parent, current):
     """Every existing learner file stays exact; committed additive files may appear."""
     _committed_source(parent)
@@ -85,12 +113,17 @@ def compatible_source(parent, current):
     for key in ("torch", "python", "interface"):
         require(parent.get(key) == current.get(key), "Parent runtime/interface changed: " + key)
     require(current.get("interface") == INTERFACE, "Continuation requires the explicit v7 interface")
+    approved_changes = {}
     for name, digest in parent["source_sha256"].items():
-        require(current["source_sha256"].get(name) == digest, "Existing learner source changed: " + name)
+        actual = current["source_sha256"].get(name)
+        if actual != digest:
+            require(transition_manifest()["source_changes"].get(name) == {"from": digest, "to": actual},
+                    "Existing learner source changed without exact review: " + name)
+            approved_changes[name] = {"from": digest, "to": actual}
     for name, digest in current["source_sha256"].items():
         require(binding(ROOT / name)["sha256"] == digest, "Current source bytes changed: " + name)
     return {"parent_commit": parent["git_commit"], "current_commit": current["git_commit"],
-            "existing_sources_unchanged": True,
+            "existing_sources_unchanged": not approved_changes, "reviewed_source_changes": approved_changes,
             "added_sources": {name: digest for name, digest in current["source_sha256"].items()
                               if name not in parent["source_sha256"]}}
 
@@ -200,8 +233,7 @@ def load_parent(plan_path, report_path, current_source, *, current_runtime, curr
                 "Parent completion report belongs to another plan/output")
         progress, steps, sampler = _completion(plan, report)
         source_proof = compatible_source(plan["source"], current_source)
-        require(plan["runtime"] == current_runtime and plan["native"] == current_native,
-                "Native runtime or launch identity changed from the parent")
+        runtime_proof = compatible_runtime(plan["runtime"], plan["native"], current_runtime, current_native)
         require(runtime_identity(Path(current_native["binary"]).parent) == current_runtime
                 and binding(current_native["binary"])["sha256"] == current_native["binary_sha256"]
                 and binding(plan["game_map"])["sha256"] == current_native["map"]["sha256"],
@@ -242,7 +274,7 @@ def load_parent(plan_path, report_path, current_source, *, current_runtime, curr
             _bound(saved[kind])
         model.eval().requires_grad_(False)
         links = {"plan": plan_binding, "report": report_binding, "policy": saved["policy"], "resume": saved["resume"],
-                 "progress": vars(progress), "optimizer_steps": steps, "source_proof": source_proof}
+                 "progress": vars(progress), "optimizer_steps": steps, "source_proof": source_proof, "runtime_proof": runtime_proof}
         return ParentState(model, optimizer, generator, resumed.opponent_pool, progress, sampler,
                            metadata, resumed.checkpoint, saved["weights_sha256"], links, steps)
     except BaseException:

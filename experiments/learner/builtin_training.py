@@ -52,8 +52,16 @@ def prepare(args):
     parent_plan = json.loads(parent_path.read_text())
     report_path = Path(parent_plan['execution_output']) / 'report.json'
     source = source_identity(pilot.INTERFACE)
+    current_runtime, current_native = parent_plan['runtime'], deepcopy(parent_plan['native'])
+    runtime_bin = getattr(args, 'runtime_bin', None)
+    if runtime_bin is not None:
+        from experiments.headless.contextual_evidence import runtime_identity
+        runtime_bin = durable_path(runtime_bin)
+        current_runtime = runtime_identity(runtime_bin)
+        current_native['binary'] = str(runtime_bin / 'vcmiclient')
+        pilot.require(pilot.digest(current_native['binary']) == current_native['binary_sha256'], 'Client bytes changed')
     state = resume.load_parent(parent_path, report_path, source,
-        current_runtime=parent_plan['runtime'], current_native=parent_plan['native'],
+        current_runtime=current_runtime, current_native=current_native,
         expected_plan_sha256=pilot.digest(parent_path), expected_report_sha256=pilot.digest(report_path))
     pilot.require(not output.exists(), 'Use a new batch directory')
     # Require the independently restored second copy before any further game.
@@ -67,8 +75,21 @@ def prepare(args):
                       'Parent backup changed')
     plan = {key: deepcopy(parent_plan[key]) for key in
             ('runtime', 'native', 'map', 'binary', 'data', 'game_map', 'replay_binary', 'native_opponents')}
-    plan.update(schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
-        schedule=schedule(state.progress.updates, args.evaluate), execution_output=str(output/'execution'),
+    plan.update(runtime=current_runtime, native=current_native, binary=current_native['binary'],
+                replay_binary=resume.binding(Path(current_native['binary']).parent/'vcmireplay'))
+    sequence = getattr(args, 'sequence', None)
+    if args.evaluate: sequence = state.progress.updates
+    pilot.require(type(sequence) is int and sequence >= state.progress.updates, 'Choose an explicit unused batch sequence')
+    planned_schedule = schedule(sequence, args.evaluate)
+    if not args.evaluate:
+        keys = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in planned_schedule}
+        for prior_path in (DURABLE_ROOT/'runs').glob('*/plan.json'):
+            prior = json.loads(prior_path.read_text())
+            if prior.get('schema') == SCHEMA+'-plan':
+                used = {(r['engine_seed'], r['learner_player'], r['policy_seed']) for r in prior['schedule']}
+                pilot.require(not keys & used, 'Training seeds already scheduled; choose an unused sequence')
+    plan.update(batch_sequence=sequence, schema=(EVALUATION if args.evaluate else SCHEMA)+'-plan', configuration=configuration(),
+        schedule=planned_schedule, execution_output=str(output/'execution'),
         checkpoint=state.bindings['policy'], source=source, implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), authorization=pilot.AUTHORIZATION, parent=state.bindings,
         mode='evaluation' if args.evaluate else 'training',
@@ -92,7 +113,7 @@ def read_plan(path, sha):
     pilot.require(plan['schema'] == (EVALUATION if evaluation else SCHEMA)+'-plan'
         and plan['configuration'] == configuration() and plan['authorization'] == pilot.AUTHORIZATION
         and plan['execution_output'] == str(path.parent/'execution')
-        and plan['schedule'] == schedule(plan['parent']['progress']['updates'], evaluation), 'Batch scope changed')
+        and plan['schedule'] == schedule(plan['batch_sequence'], evaluation), 'Batch scope changed')
     return plan
 
 
@@ -169,7 +190,7 @@ def worker(args):
 def main():
     parser=argparse.ArgumentParser(description=__doc__); sub=parser.add_subparsers(dest='command',required=True)
     prep=sub.add_parser('prepare');prep.add_argument('--parent',type=Path,required=True)
-    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true')
+    prep.add_argument('--output',type=Path,required=True);prep.add_argument('--evaluate',action='store_true');prep.add_argument('--runtime-bin',type=Path);prep.add_argument('--sequence',type=int)
     for name in ('execute','worker'):
         entry=sub.add_parser(name);entry.add_argument('--plan',type=Path,required=True);entry.add_argument('--sha256',required=True)
         if name=='worker':

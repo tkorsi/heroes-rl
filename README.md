@@ -110,7 +110,7 @@ tests pass before the new batch. Required map/prerequisite files for new plans
 are copied into durable `Heroes-artifacts/inputs/` and bound there.
 
 `experiments.learner.builtin_training` provides the small continuation path:
-`prepare --parent <completed-plan> --output <new-durable-run>` and
+`prepare --parent <completed-plan> --output <new-durable-run> --sequence <unused-index>` and
 `execute --plan <new-plan> --sha256 <printed-hash>`. Each training batch restores
 exact model/Adam/RNG/progress/pool, collects four fresh games on alternating seats,
 performs at most one PPO update, and has a 600-second shared limit. No partial
@@ -119,9 +119,10 @@ both seats on the fixed held-out engine/policy seeds, with no optimizer update o
 training samples. The runner automatically creates and restore-tests the second
 durable checkpoint copy after successful training; it requires that receipt and
 unchanged backup hashes before the next batch. Fresh training seeds are disjoint
-from held-out seeds. All existing learner files must remain byte-identical between
-parent and child; additive committed modules are permitted. No source-drift gate
-is bypassed.
+from held-out seeds. Policy, feature and PPO files must remain byte-identical between parent and child.
+Additive modules are permitted. A versioned committed transition manifest can
+also pin an exact reviewed loader/runner-only change and verifier-only native
+replacement; arbitrary source or gameplay-runtime drift is rejected.
 
 Recovery-002 subsequently passed all eight natural games and independent native
 replays in **67.540 seconds**. It performed one fresh PPO update (106 transitions,
@@ -140,6 +141,27 @@ Continuation is active in coordinated bounded windows, with fixed evaluation eve
 five updates. Compact cumulative evidence is
 `validation/builtin-continuation-2026-10-25.json`; the raw durable run folders are
 linked from that evidence. No evaluation transitions enter PPO.
+
+The next batch, continuation-005, stopped before updating: two games passed,
+then episode 3's clean natural ending failed replay admission because Nullkiller
+sent a single terminal `EndTurn` (native type 180, request 194). The original
+attempt remains failed/unscored and all three captures supply zero training
+samples. The update-5 checkpoint is preserved unchanged. The narrow verifier
+extension accounts for this exact request class under the same single-tail,
+controller, contiguous-ID, verified final-packet-range and no-later-learner-response
+requirements as MoveHero/BuildStructure. It never applies the terminal tail to
+server state. A separate retained-capture diagnostic passes and preserves the
+original failed result; 346 native accounting checks and 44 focused tests pass.
+Evidence: `validation/terminal-endturn-repair-2026-10-25.json`.
+
+New continuation plans can bind the v3 verifier with the exact committed hashes
+in `configs/builtin-resume-transitions-v1.json`. All gameplay binary/library bytes,
+model, Adam, RNG, feature and PPO code remain unchanged. The transition pins only
+the two loader/runner source revisions and the old/new verifier inventories; it
+cannot permit changes to policy math or gameplay libraries. Fresh captures still
+require exact-current-runtime replay, never diagnostic admission. Training plans
+now require an explicit unused sequence and reject seeds already scheduled in
+any earlier continuation plan, including failed plans.
 
 ## Current authorized local PPO pilot
 

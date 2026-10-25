@@ -24,6 +24,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--donor-source', type=Path, required=True)
     parser.add_argument('--destination', type=Path, required=True)
+    parser.add_argument('--base-runtime', type=Path)
+    parser.add_argument('--verifier-only', action='store_true')
     args = parser.parse_args()
     source = ROOT / 'vcmi'; build = source / 'build'
     donor = args.donor_source.resolve(); destination = args.destination.resolve()
@@ -38,6 +40,9 @@ def main():
         ('ExplorerRL', 'AI/ExplorerRL/ContextualEvidence.cpp'),
         ('Nullkiller', 'AI/Nullkiller/AIGateway.cpp'),
     ]
+    if args.verifier_only:
+        if args.base_runtime is None: raise ValueError('Verifier-only recovery requires an immutable base runtime')
+        units = units[:1]
     compiled_commands = []
     for target, unit in units:
         command = next(c for c in commands if ' -c ' + str(donor / unit) in c
@@ -54,12 +59,13 @@ def main():
         cleaned += ['-include', str(header)]
         subprocess.run(cleaned, cwd=build, check=True)
         compiled_commands.append(cleaned)
-    shutil.copytree(build / 'bin', destination, symlinks=False)
+    shutil.copytree(args.base_runtime if args.verifier_only else build / 'bin', destination, symlinks=False)
     linked_commands = []
-    for output in ('bin/vcmireplay', 'bin/AI/libExplorerRL.dylib', 'bin/AI/libNullkiller.dylib'):
+    outputs = ('bin/vcmireplay',) if args.verifier_only else ('bin/vcmireplay', 'bin/AI/libExplorerRL.dylib', 'bin/AI/libNullkiller.dylib')
+    for output in outputs:
         link_line = next(c for c in commands if ' -o ' + output + ' ' in c)
         link = shlex.split(link_line.removeprefix(': && ').removesuffix(' && :'))
-        link = [v.replace(str(donor / 'build/bin'), str(destination)) for v in link]
+        link = [v.replace(str(donor / 'build/bin'), str(args.base_runtime if args.verifier_only else destination)) for v in link]
         link[link.index('-o') + 1] = str(destination / Path(output).relative_to('bin'))
         subprocess.run(link, cwd=build, check=True)
         linked_commands.append(link)
@@ -70,7 +76,8 @@ def main():
         info = run(['otool', '-l', str(path)])
         if str(donor / 'build/bin') in info:
             subprocess.run(['install_name_tool', '-rpath', str(donor / 'build/bin'), str(destination), str(path)], check=True)
-        subprocess.run(['codesign', '--force', '--sign', '-', str(path)], check=True)
+        if not args.verifier_only or path.name == 'vcmireplay':
+            subprocess.run(['codesign', '--force', '--sign', '-', str(path)], check=True)
         info = run(['otool', '-l', str(path)]) + run(['otool', '-L', str(path)])
         if str(donor) in info or '/.codex/worktrees/' in info:
             raise ValueError('Non-durable load dependency: ' + str(path))
@@ -78,6 +85,7 @@ def main():
                         'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     receipt = {'schema': 'heroes-runtime-recovery-v1', 'donor_source': str(donor),
                'source': str(source), 'source_recipe_check': True,
+               'base_runtime': str(args.base_runtime) if args.verifier_only else None,
                'rebuilt': units,
                'compile_commands': compiled_commands, 'link_commands': linked_commands, 'artifacts': patched,
                'load_commands_independent_of_donor_and_managed_worktrees': True}
