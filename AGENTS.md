@@ -11,8 +11,9 @@ of a recorder check, or describe built-in AI footage as a learned policy.
 This is one Git project. All authored code, engine patches, dependency locks and
 experiment configuration must be tracked in the Heroes root so SourceTree shows
 every change. `vcmi/` is an ignored generated dependency checkout, not a project
-submodule. The canonical engine modifications are `engine/patches/*.patch` and
-`engine/ExplorerRL/`. Never leave new work only in the dependency checkout: edit
+submodule. The canonical engine modifications are `engine/patches/*.patch`,
+`engine/ExplorerRL/`, `engine/ExperimentReplay/`, and `engine/NativeSession/`.
+Never leave new work only in the dependency checkout: edit
 the canonical files or export a changed source file to the corresponding patch,
 then run `python3 tools/prepare_vcmi.py --check` to verify exact agreement.
 Follow VCMI's own AGENTS.md when changing its source. Keep upstream source,
