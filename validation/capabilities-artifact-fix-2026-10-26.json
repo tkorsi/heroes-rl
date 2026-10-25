@@ -1,0 +1,5476 @@
+{
+  "all_declared_attempts_completed_without_failure": true,
+  "coverage": [
+    {
+      "attempts": 1,
+      "case": "marketplace",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "marketplace",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "purchases",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "purchases",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "artifacts",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "artifacts",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "artifact-transfer",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "artifact-transfer",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "adventure-spells",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "adventure-spells",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "level-up",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "level-up",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "neutral-overflow",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "neutral-overflow",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "stables",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "stables",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "eagle-eye",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "eagle-eye",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "fly-movement",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "fly-movement",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "water-walk-movement",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "water-walk-movement",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "visions",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "visions",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "dimension-door-clear",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "dimension-door-clear",
+      "passed": true,
+      "player": "blue"
+    },
+    {
+      "attempts": 1,
+      "case": "dimension-door-blocked",
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "attempts": 1,
+      "case": "dimension-door-blocked",
+      "passed": true,
+      "player": "blue"
+    }
+  ],
+  "dimension_door_hidden_state_comparisons": [
+    {
+      "matched_pairs": [
+        {
+          "blocked_result": "rejected",
+          "clear_result": "capability_applied",
+          "offered_spell_target_count": 224,
+          "repeat": 0,
+          "same_player_view_and_candidates": true,
+          "seed": 159537
+        }
+      ],
+      "passed": true,
+      "player": "red"
+    },
+    {
+      "matched_pairs": [
+        {
+          "blocked_result": "rejected",
+          "clear_result": "capability_applied",
+          "offered_spell_target_count": 224,
+          "repeat": 0,
+          "same_player_view_and_candidates": true,
+          "seed": 159538
+        }
+      ],
+      "passed": true,
+      "player": "blue"
+    }
+  ],
+  "failed_attempts": 0,
+  "historical_attempt_inventory": [
+    {
+      "excluded_from_final_acceptance": true,
+      "implementation_sha256": "899851bddb3b9b417724a50abdd635db4a2e8e062c31bda71f4066b84761335c",
+      "not_started": 23,
+      "plan_sha256": "f08d5b7cd6705ce9a6cc8b655d0366c76146f393546612e38bedb9ef58b96072",
+      "report_path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/report.json",
+      "report_sha256": "e2b95972644912dc4a0b9fcc385dec1e5cb047e19a9d4e5bf495f93742ef7d26",
+      "rows": [
+        {
+          "case": "marketplace",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "native_trade_resource",
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "native_trade_resource",
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "closed_market_choice_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.875,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/marketplace-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158001,
+          "status": "passed"
+        },
+        {
+          "case": "marketplace",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "native_trade_resource",
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "native_trade_resource",
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "closed_market_choice_rejected",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.994,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/marketplace-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158002,
+          "status": "passed"
+        },
+        {
+          "case": "purchases",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "status": "passed"
+            },
+            {
+              "check": "native_buy_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "purchase_exact_native_cost",
+              "status": "passed"
+            },
+            {
+              "check": "native_buy_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "purchase_exact_native_cost",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "purchases_visible_only_after_inventory_open",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.988,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/purchases-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158129,
+          "status": "passed"
+        },
+        {
+          "case": "purchases",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "status": "passed"
+            },
+            {
+              "check": "native_buy_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "purchase_exact_native_cost",
+              "status": "passed"
+            },
+            {
+              "check": "native_buy_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "purchase_exact_native_cost",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "purchases_visible_only_after_inventory_open",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.003,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/purchases-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158130,
+          "status": "passed"
+        },
+        {
+          "case": "artifacts",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "status": "passed"
+            },
+            {
+              "check": "single_backpack_invalid_append_absent",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_same_backpack_reorder",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_same_backpack_reorder",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_move_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_assemble_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_disassemble_artifact",
+              "status": "passed"
+            },
+            {
+              "check": "native_inventory_and_combination_roundtrip",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.853,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/artifacts-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": "ProbeFailure: Independent native replay rejected the capability capture: ReplayError: Native replay did not verify successfully",
+          "fixture": "artifacts",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": false,
+          "seed": 158257,
+          "status": "failed"
+        }
+      ],
+      "runtime_sha256": "bbd7defddefa31c76dd78cdb83e81fd0658a72e217fbc9d4b70fd422ebe5554e",
+      "source_commit": "8afbbb3d91757cb3fd49b47beb8d1a23a8c727d4",
+      "status": "failed"
+    }
+  ],
+  "interface": "adventure-capabilities-v1",
+  "native_coverage_complete": true,
+  "one_frozen_implementation_and_runtime": true,
+  "optimizer_steps": 0,
+  "qualification": "Native mechanics coverage only, not policy competence or campaign authorization. Random branches may be covered by any passed row in their predeclared retained cohort; every missed branch and failure remains listed. Older draft captures cannot be mixed with final sources.",
+  "reports": [
+    {
+      "implementation_sha256": "899851bddb3b9b417724a50abdd635db4a2e8e062c31bda71f4066b84761335c",
+      "not_started": 0,
+      "plan_sha256": "c5b839ba57af70ba4e9cb0c7d546ab087a26762affc184ee107b261dc22b92e7",
+      "report_path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/report.json",
+      "report_sha256": "1274a2bc96a3dc47a6b85aa393ab3f89e36c6cad712880bf178af7567d0a9bec",
+      "rows": [
+        {
+          "case": "marketplace",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "marketplace",
+              "parent": {
+                "kind": "town",
+                "panel": "overview",
+                "selection": null,
+                "subject": "object-1"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 20,
+              "check": "native_trade_resource",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": 1,
+                "kind": "trade_resource",
+                "max_count": 5,
+                "receive": 25,
+                "ref": "capability-0-choices-0",
+                "resource_from": 0,
+                "resource_to": 6,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-1",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": 2,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 21,
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "delta": [
+                -2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                50
+              ],
+              "lots": 2,
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "decision_seq": 22,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 28,
+              "check": "native_trade_resource",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": 1,
+                "kind": "trade_resource",
+                "max_count": 3,
+                "receive": 25,
+                "ref": "capability-0-choices-0",
+                "resource_from": 0,
+                "resource_to": 6,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-1",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 24,
+              "count": 2,
+              "decision_seq": 22,
+              "issued_seq": 25,
+              "native_rejection": false,
+              "result_seq": 29,
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "delta": [
+                -2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                50
+              ],
+              "lots": 2,
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "marketplace",
+              "status": "passed"
+            },
+            {
+              "check": "closed_market_choice_rejected",
+              "decision_seq": 36,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/marketplace-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.663,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/marketplace-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158001,
+          "status": "passed"
+        },
+        {
+          "case": "marketplace",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "marketplace",
+              "parent": {
+                "kind": "town",
+                "panel": "overview",
+                "selection": null,
+                "subject": "object-1"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 20,
+              "check": "native_trade_resource",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": 1,
+                "kind": "trade_resource",
+                "max_count": 5,
+                "receive": 25,
+                "ref": "capability-0-choices-0",
+                "resource_from": 0,
+                "resource_to": 6,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-1",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": 2,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 21,
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "delta": [
+                -2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                50
+              ],
+              "lots": 2,
+              "status": "passed"
+            },
+            {
+              "check": "trade_above_displayed_max_rejected",
+              "decision_seq": 22,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 28,
+              "check": "native_trade_resource",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": 1,
+                "kind": "trade_resource",
+                "max_count": 3,
+                "receive": 25,
+                "ref": "capability-0-choices-0",
+                "resource_from": 0,
+                "resource_to": 6,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-1",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 24,
+              "count": 2,
+              "decision_seq": 22,
+              "issued_seq": 25,
+              "native_rejection": false,
+              "result_seq": 29,
+              "status": "passed"
+            },
+            {
+              "check": "trade_exact_native_resources",
+              "delta": [
+                -2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                50
+              ],
+              "lots": 2,
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "marketplace",
+              "status": "passed"
+            },
+            {
+              "check": "closed_market_choice_rejected",
+              "decision_seq": 36,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/marketplace-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.933,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/marketplace-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158002,
+          "status": "passed"
+        },
+        {
+          "case": "purchases",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "purchases",
+              "parent": {
+                "kind": "town",
+                "panel": "overview",
+                "selection": null,
+                "subject": "object-1"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 20,
+              "check": "native_buy_artifact",
+              "choice": {
+                "artifact": 0,
+                "cost": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  500
+                ],
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "buy_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": null,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 21,
+              "status": "passed"
+            },
+            {
+              "artifact": 0,
+              "check": "purchase_exact_native_cost",
+              "delta": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -500
+              ],
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 28,
+              "check": "native_buy_artifact",
+              "choice": {
+                "artifact": 4,
+                "cost": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  2500
+                ],
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "buy_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 24,
+              "count": null,
+              "decision_seq": 22,
+              "issued_seq": 25,
+              "native_rejection": false,
+              "result_seq": 29,
+              "status": "passed"
+            },
+            {
+              "artifact": 4,
+              "check": "purchase_exact_native_cost",
+              "delta": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -2500
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "purchases",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "artifacts": [
+                0,
+                4
+              ],
+              "check": "purchases_visible_only_after_inventory_open",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/purchases-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.988,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/purchases-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158129,
+          "status": "passed"
+        },
+        {
+          "case": "purchases",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "purchases",
+              "parent": {
+                "kind": "town",
+                "panel": "overview",
+                "selection": null,
+                "subject": "object-1"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 20,
+              "check": "native_buy_artifact",
+              "choice": {
+                "artifact": 0,
+                "cost": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  500
+                ],
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "buy_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": null,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 21,
+              "status": "passed"
+            },
+            {
+              "artifact": 0,
+              "check": "purchase_exact_native_cost",
+              "delta": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -500
+              ],
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 28,
+              "check": "native_buy_artifact",
+              "choice": {
+                "artifact": 4,
+                "cost": [
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  2500
+                ],
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "buy_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 24,
+              "count": null,
+              "decision_seq": 22,
+              "issued_seq": 25,
+              "native_rejection": false,
+              "result_seq": 29,
+              "status": "passed"
+            },
+            {
+              "artifact": 4,
+              "check": "purchase_exact_native_cost",
+              "delta": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -2500
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "purchases",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "artifacts": [
+                0,
+                4
+              ],
+              "check": "purchases_visible_only_after_inventory_open",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/purchases-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.994,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/purchases-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "town_controls",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158130,
+          "status": "passed"
+        },
+        {
+          "case": "artifacts",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "backpack": [
+                7
+              ],
+              "check": "single_backpack_invalid_append_absent",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 19,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 20,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": null,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 20,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 26,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 33,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 21,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 2,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 23,
+              "count": null,
+              "decision_seq": 21,
+              "issued_seq": 24,
+              "native_rejection": false,
+              "result_seq": 27,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 33,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 21,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-22",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 30,
+              "count": null,
+              "decision_seq": 28,
+              "issued_seq": 31,
+              "native_rejection": false,
+              "result_seq": 34,
+              "status": "passed"
+            },
+            {
+              "after": [
+                36,
+                33,
+                7
+              ],
+              "before": [
+                7,
+                36,
+                33
+              ],
+              "check": "native_same_backpack_reorder",
+              "destination_slot": 21,
+              "source_slot": 19,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 40,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-29",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 21,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 37,
+              "count": null,
+              "decision_seq": 35,
+              "issued_seq": 38,
+              "native_rejection": false,
+              "result_seq": 41,
+              "status": "passed"
+            },
+            {
+              "after": [
+                7,
+                36,
+                33
+              ],
+              "before": [
+                36,
+                33,
+                7
+              ],
+              "check": "native_same_backpack_reorder",
+              "destination_slot": 19,
+              "source_slot": 21,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 47,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 33,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 2,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-27",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 21,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 44,
+              "count": null,
+              "decision_seq": 42,
+              "issued_seq": 45,
+              "native_rejection": false,
+              "result_seq": 48,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 54,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 0,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-22",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 20,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 51,
+              "count": null,
+              "decision_seq": 49,
+              "issued_seq": 52,
+              "native_rejection": false,
+              "result_seq": 55,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 61,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 3,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-18",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 58,
+              "count": null,
+              "decision_seq": 56,
+              "issued_seq": 59,
+              "native_rejection": false,
+              "result_seq": 62,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 68,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-6",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 3,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 65,
+              "count": null,
+              "decision_seq": 63,
+              "issued_seq": 66,
+              "native_rejection": false,
+              "result_seq": 69,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 75,
+              "check": "native_assemble_artifact",
+              "choice": {
+                "artifact": 129,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "assemble_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-3",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 72,
+              "count": null,
+              "decision_seq": 70,
+              "issued_seq": 73,
+              "native_rejection": false,
+              "result_seq": 76,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 82,
+              "check": "native_disassemble_artifact",
+              "choice": {
+                "artifact": 129,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "disassemble_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 79,
+              "count": null,
+              "decision_seq": 77,
+              "issued_seq": 80,
+              "native_rejection": false,
+              "result_seq": 83,
+              "status": "passed"
+            },
+            {
+              "check": "native_inventory_and_combination_roundtrip",
+              "owned_before": [
+                {
+                  "artifact": 7,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 31,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 32,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 33,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 34,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 35,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 36,
+                  "count": 1,
+                  "subject": "object-0"
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifacts-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.734,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifacts-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "artifacts",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158257,
+          "status": "passed"
+        },
+        {
+          "case": "artifacts",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 14,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "backpack": [
+                7
+              ],
+              "check": "single_backpack_invalid_append_absent",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 19,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 20,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 16,
+              "count": null,
+              "decision_seq": 14,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 20,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 26,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 33,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 21,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 2,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 23,
+              "count": null,
+              "decision_seq": 21,
+              "issued_seq": 24,
+              "native_rejection": false,
+              "result_seq": 27,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 33,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 21,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-22",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 30,
+              "count": null,
+              "decision_seq": 28,
+              "issued_seq": 31,
+              "native_rejection": false,
+              "result_seq": 34,
+              "status": "passed"
+            },
+            {
+              "after": [
+                36,
+                33,
+                7
+              ],
+              "before": [
+                7,
+                36,
+                33
+              ],
+              "check": "native_same_backpack_reorder",
+              "destination_slot": 21,
+              "source_slot": 19,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 40,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-29",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 21,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 37,
+              "count": null,
+              "decision_seq": 35,
+              "issued_seq": 38,
+              "native_rejection": false,
+              "result_seq": 41,
+              "status": "passed"
+            },
+            {
+              "after": [
+                7,
+                36,
+                33
+              ],
+              "before": [
+                36,
+                33,
+                7
+              ],
+              "check": "native_same_backpack_reorder",
+              "destination_slot": 19,
+              "source_slot": 21,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 47,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 33,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 2,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-27",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 21,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 44,
+              "count": null,
+              "decision_seq": 42,
+              "issued_seq": 45,
+              "native_rejection": false,
+              "result_seq": 48,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 54,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 0,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-22",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 20,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 51,
+              "count": null,
+              "decision_seq": 49,
+              "issued_seq": 52,
+              "native_rejection": false,
+              "result_seq": 55,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 61,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 3,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-18",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 58,
+              "count": null,
+              "decision_seq": 56,
+              "issued_seq": 59,
+              "native_rejection": false,
+              "result_seq": 62,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 68,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 7,
+                "cost": null,
+                "destination": "object-0",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-6",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 3,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 65,
+              "count": null,
+              "decision_seq": 63,
+              "issued_seq": 66,
+              "native_rejection": false,
+              "result_seq": 69,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 75,
+              "check": "native_assemble_artifact",
+              "choice": {
+                "artifact": 129,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "assemble_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-3",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 72,
+              "count": null,
+              "decision_seq": 70,
+              "issued_seq": 73,
+              "native_rejection": false,
+              "result_seq": 76,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 82,
+              "check": "native_disassemble_artifact",
+              "choice": {
+                "artifact": 129,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "disassemble_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 19,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 79,
+              "count": null,
+              "decision_seq": 77,
+              "issued_seq": 80,
+              "native_rejection": false,
+              "result_seq": 83,
+              "status": "passed"
+            },
+            {
+              "check": "native_inventory_and_combination_roundtrip",
+              "owned_before": [
+                {
+                  "artifact": 7,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 31,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 32,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 33,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 34,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 35,
+                  "count": 1,
+                  "subject": "object-0"
+                },
+                {
+                  "artifact": 36,
+                  "count": 1,
+                  "subject": "object-0"
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifacts-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.787,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifacts-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "artifacts",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158258,
+          "status": "passed"
+        },
+        {
+          "case": "artifact-transfer",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "exchange",
+                "panel": null,
+                "selection": "object-1",
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 30,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-1",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-3",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 28,
+              "native_rejection": false,
+              "result_seq": 31,
+              "status": "passed"
+            },
+            {
+              "artifact": 36,
+              "check": "native_artifact_transfer_exact_owners",
+              "destination": "object-1",
+              "source": "object-0",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifact-transfer-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.889,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifact-transfer-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "artifacts",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158385,
+          "status": "passed"
+        },
+        {
+          "case": "artifact-transfer",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "artifacts",
+              "parent": {
+                "kind": "exchange",
+                "panel": null,
+                "selection": "object-1",
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 30,
+              "check": "native_move_artifact",
+              "choice": {
+                "artifact": 36,
+                "cost": null,
+                "destination": "object-1",
+                "destination_slot": 19,
+                "give": null,
+                "kind": "move_artifact",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-4",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": 0,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 28,
+              "native_rejection": false,
+              "result_seq": 31,
+              "status": "passed"
+            },
+            {
+              "artifact": 36,
+              "check": "native_artifact_transfer_exact_owners",
+              "destination": "object-1",
+              "source": "object-0",
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "artifacts",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifact-transfer-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.933,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/artifact-transfer-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "artifacts",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158386,
+          "status": "passed"
+        },
+        {
+          "case": "adventure-spells",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 25,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 32,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 0,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 29,
+              "native_rejection": false,
+              "result_seq": 33,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 7,
+              "mana_after": 193,
+              "mana_before": 200,
+              "spell": 0,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 53,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-1-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 1,
+                "subject": "object-0",
+                "x": 5,
+                "y": 11
+              },
+              "consumed_seq": 48,
+              "count": null,
+              "decision_seq": 46,
+              "issued_seq": 50,
+              "native_rejection": false,
+              "result_seq": 54,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 6,
+              "mana_after": 187,
+              "mana_before": 193,
+              "spell": 1,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 73,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-2-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 2,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 69,
+              "count": null,
+              "decision_seq": 67,
+              "issued_seq": 71,
+              "native_rejection": false,
+              "result_seq": 74,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 2,
+              "mana_after": 185,
+              "mana_before": 187,
+              "spell": 2,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 94,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-3-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 3,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 89,
+              "count": null,
+              "decision_seq": 87,
+              "issued_seq": 91,
+              "native_rejection": false,
+              "result_seq": 95,
+              "status": "passed"
+            },
+            {
+              "check": "native_delivered_world_view",
+              "object_count": 0,
+              "spell": 3,
+              "status": "passed",
+              "terrain_count": 400
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "world_view",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 1,
+              "mana_after": 184,
+              "mana_before": 185,
+              "spell": 3,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 122,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-5-choices-3",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 4,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 118,
+              "count": null,
+              "decision_seq": 116,
+              "issued_seq": 120,
+              "native_rejection": false,
+              "result_seq": 123,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 2,
+              "mana_after": 182,
+              "mana_before": 184,
+              "spell": 4,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 143,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-6-choices-4",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 5,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 138,
+              "count": null,
+              "decision_seq": 136,
+              "issued_seq": 140,
+              "native_rejection": false,
+              "result_seq": 144,
+              "status": "passed"
+            },
+            {
+              "check": "native_delivered_world_view",
+              "object_count": 2,
+              "spell": 5,
+              "status": "passed",
+              "terrain_count": 0
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "world_view",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 1,
+              "mana_after": 181,
+              "mana_before": 182,
+              "spell": 5,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 171,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-8-choices-5",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 6,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 167,
+              "count": null,
+              "decision_seq": 165,
+              "issued_seq": 169,
+              "native_rejection": false,
+              "result_seq": 172,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 15,
+              "mana_after": 166,
+              "mana_before": 181,
+              "spell": 6,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 191,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-9-choices-6",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 7,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 187,
+              "count": null,
+              "decision_seq": 185,
+              "issued_seq": 189,
+              "native_rejection": false,
+              "result_seq": 192,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 8,
+              "mana_after": 158,
+              "mana_before": 166,
+              "spell": 7,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 213,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-10-choices-7",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 8,
+                "subject": "object-0",
+                "x": 0,
+                "y": 2
+              },
+              "consumed_seq": 207,
+              "count": null,
+              "decision_seq": 205,
+              "issued_seq": 209,
+              "native_rejection": false,
+              "result_seq": 214,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 20,
+              "mana_after": 138,
+              "mana_before": 158,
+              "spell": 8,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 234,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-11-choices-102",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 229,
+              "count": null,
+              "decision_seq": 227,
+              "issued_seq": 231,
+              "native_rejection": false,
+              "result_seq": 235,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_spell_target_close_rejected",
+              "decision_seq": 238,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 238,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 244,
+              "check": "native_cancel_spell_target",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cancel_spell_target",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-12-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 240,
+              "count": null,
+              "decision_seq": 238,
+              "issued_seq": 242,
+              "native_rejection": false,
+              "result_seq": 245,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_target_cancel",
+              "mana": 138,
+              "spell": 9,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 265,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-13-choices-102",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 260,
+              "count": null,
+              "decision_seq": 258,
+              "issued_seq": 262,
+              "native_rejection": false,
+              "result_seq": 266,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_spell_target_close_rejected",
+              "decision_seq": 269,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 269,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 278,
+              "check": "native_choose_spell_target",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": "object-1",
+                "destination_slot": null,
+                "give": null,
+                "kind": "choose_spell_target",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-14-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 271,
+              "count": null,
+              "decision_seq": 269,
+              "issued_seq": 273,
+              "native_rejection": false,
+              "result_seq": 279,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 12,
+              "mana_after": 126,
+              "mana_before": 138,
+              "spell": 9,
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "spellbook",
+              "status": "passed"
+            },
+            {
+              "check": "native_adventure_casts",
+              "initial_displayed_spell_ids": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "mana_after": 126,
+              "mana_before": 200,
+              "spell_ids": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/adventure-spells-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 12.712,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/adventure-spells-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "adventure_spells",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158513,
+          "status": "passed"
+        },
+        {
+          "case": "adventure-spells",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 25,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 32,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 0,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 29,
+              "native_rejection": false,
+              "result_seq": 33,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 7,
+              "mana_after": 193,
+              "mana_before": 200,
+              "spell": 0,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 53,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-1-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 1,
+                "subject": "object-0",
+                "x": 16,
+                "y": 11
+              },
+              "consumed_seq": 48,
+              "count": null,
+              "decision_seq": 46,
+              "issued_seq": 50,
+              "native_rejection": false,
+              "result_seq": 54,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 6,
+              "mana_after": 187,
+              "mana_before": 193,
+              "spell": 1,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 73,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-2-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 2,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 69,
+              "count": null,
+              "decision_seq": 67,
+              "issued_seq": 71,
+              "native_rejection": false,
+              "result_seq": 74,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 2,
+              "mana_after": 185,
+              "mana_before": 187,
+              "spell": 2,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 94,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-3-choices-2",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 3,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 89,
+              "count": null,
+              "decision_seq": 87,
+              "issued_seq": 91,
+              "native_rejection": false,
+              "result_seq": 95,
+              "status": "passed"
+            },
+            {
+              "check": "native_delivered_world_view",
+              "object_count": 0,
+              "spell": 3,
+              "status": "passed",
+              "terrain_count": 400
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "world_view",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 1,
+              "mana_after": 184,
+              "mana_before": 185,
+              "spell": 3,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 122,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-5-choices-3",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 4,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 118,
+              "count": null,
+              "decision_seq": 116,
+              "issued_seq": 120,
+              "native_rejection": false,
+              "result_seq": 123,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 2,
+              "mana_after": 182,
+              "mana_before": 184,
+              "spell": 4,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 143,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-6-choices-4",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 5,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 138,
+              "count": null,
+              "decision_seq": 136,
+              "issued_seq": 140,
+              "native_rejection": false,
+              "result_seq": 144,
+              "status": "passed"
+            },
+            {
+              "check": "native_delivered_world_view",
+              "object_count": 2,
+              "spell": 5,
+              "status": "passed",
+              "terrain_count": 0
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "world_view",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 1,
+              "mana_after": 181,
+              "mana_before": 182,
+              "spell": 5,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 171,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-8-choices-5",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 6,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 167,
+              "count": null,
+              "decision_seq": 165,
+              "issued_seq": 169,
+              "native_rejection": false,
+              "result_seq": 172,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 15,
+              "mana_after": 166,
+              "mana_before": 181,
+              "spell": 6,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 191,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-9-choices-6",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 7,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 187,
+              "count": null,
+              "decision_seq": 185,
+              "issued_seq": 189,
+              "native_rejection": false,
+              "result_seq": 192,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 8,
+              "mana_after": 158,
+              "mana_before": 166,
+              "spell": 7,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 213,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-10-choices-7",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 8,
+                "subject": "object-0",
+                "x": 6,
+                "y": 2
+              },
+              "consumed_seq": 207,
+              "count": null,
+              "decision_seq": 205,
+              "issued_seq": 209,
+              "native_rejection": false,
+              "result_seq": 214,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 20,
+              "mana_after": 138,
+              "mana_before": 158,
+              "spell": 8,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 234,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-11-choices-163",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 229,
+              "count": null,
+              "decision_seq": 227,
+              "issued_seq": 231,
+              "native_rejection": false,
+              "result_seq": 235,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_spell_target_close_rejected",
+              "decision_seq": 238,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 238,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 244,
+              "check": "native_cancel_spell_target",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cancel_spell_target",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-12-choices-1",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 240,
+              "count": null,
+              "decision_seq": 238,
+              "issued_seq": 242,
+              "native_rejection": false,
+              "result_seq": 245,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_target_cancel",
+              "mana": 138,
+              "spell": 9,
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 265,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-13-choices-163",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 260,
+              "count": null,
+              "decision_seq": 258,
+              "issued_seq": 262,
+              "native_rejection": false,
+              "result_seq": 266,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_spell_target_close_rejected",
+              "decision_seq": 269,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 269,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 278,
+              "check": "native_choose_spell_target",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": "object-1",
+                "destination_slot": null,
+                "give": null,
+                "kind": "choose_spell_target",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-14-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 9,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 271,
+              "count": null,
+              "decision_seq": 269,
+              "issued_seq": 273,
+              "native_rejection": false,
+              "result_seq": 279,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_spell_exact_mana",
+              "cost": 12,
+              "mana_after": 126,
+              "mana_before": 138,
+              "spell": 9,
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "spellbook",
+              "status": "passed"
+            },
+            {
+              "check": "native_adventure_casts",
+              "initial_displayed_spell_ids": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "mana_after": 126,
+              "mana_before": 200,
+              "spell_ids": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/adventure-spells-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 13.467,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/adventure-spells-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "adventure_spells",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158514,
+          "status": "passed"
+        },
+        {
+          "case": "level-up",
+          "checks": [
+            {
+              "check": "native_dialog_open_order",
+              "decision_seq": 28,
+              "dialog_ref": "dialog-0",
+              "family": "chest",
+              "opened_seq": 26,
+              "parent_result_seq": 25,
+              "request_seq": 23,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_levelup_close_rejected",
+              "decision_seq": 39,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 39,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 46,
+              "check": "native_choose_level_up",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "choose_level_up",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": 23,
+                "skill_level": 1,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 41,
+              "count": null,
+              "decision_seq": 39,
+              "issued_seq": 43,
+              "native_rejection": false,
+              "result_seq": 47,
+              "status": "passed"
+            },
+            {
+              "after": 2,
+              "before": 1,
+              "check": "native_levelup_skill_choice",
+              "choices": [
+                {
+                  "level": 1,
+                  "skill": 23
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/level-up-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 1.028,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/level-up-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "level_up",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158641,
+          "status": "passed"
+        },
+        {
+          "case": "level-up",
+          "checks": [
+            {
+              "check": "native_dialog_open_order",
+              "decision_seq": 28,
+              "dialog_ref": "dialog-0",
+              "family": "chest",
+              "opened_seq": 26,
+              "parent_result_seq": 25,
+              "request_seq": 23,
+              "status": "passed"
+            },
+            {
+              "check": "mandatory_levelup_close_rejected",
+              "decision_seq": 39,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 39,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 46,
+              "check": "native_choose_level_up",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "choose_level_up",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": 19,
+                "skill_level": 1,
+                "slot": null,
+                "spell": null,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 41,
+              "count": null,
+              "decision_seq": 39,
+              "issued_seq": 43,
+              "native_rejection": false,
+              "result_seq": 47,
+              "status": "passed"
+            },
+            {
+              "after": 2,
+              "before": 1,
+              "check": "native_levelup_skill_choice",
+              "choices": [
+                {
+                  "level": 1,
+                  "skill": 19
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/level-up-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.987,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/level-up-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "level_up",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158642,
+          "status": "passed"
+        },
+        {
+          "case": "neutral-overflow",
+          "checks": [
+            {
+              "check": "native_dialog_open_order",
+              "decision_seq": 28,
+              "dialog_ref": "dialog-0",
+              "family": "neutral_free_join",
+              "opened_seq": 26,
+              "parent_result_seq": 25,
+              "request_seq": 23,
+              "status": "passed"
+            },
+            {
+              "check": "native_full_army_join_resolved",
+              "count": 6,
+              "creature": 0,
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/neutral-overflow-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.919,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/neutral-overflow-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "neutral_overflow",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158769,
+          "status": "passed"
+        },
+        {
+          "case": "neutral-overflow",
+          "checks": [
+            {
+              "check": "native_dialog_open_order",
+              "decision_seq": 28,
+              "dialog_ref": "dialog-0",
+              "family": "neutral_free_join",
+              "opened_seq": 26,
+              "parent_result_seq": 25,
+              "request_seq": 23,
+              "status": "passed"
+            },
+            {
+              "check": "native_full_army_join_resolved",
+              "count": 6,
+              "creature": 0,
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/neutral-overflow-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.951,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/neutral-overflow-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "neutral_overflow",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158770,
+          "status": "passed"
+        },
+        {
+          "case": "stables",
+          "checks": [
+            {
+              "check": "native_castle_stables_notice",
+              "movement_max_after": 1960,
+              "movement_max_before": 1560,
+              "status": "passed",
+              "templates": [
+                "core.genrltxt.580"
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/stables-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.741,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/stables-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "stables",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158897,
+          "status": "passed"
+        },
+        {
+          "case": "stables",
+          "checks": [
+            {
+              "check": "native_castle_stables_notice",
+              "movement_max_after": 1960,
+              "movement_max_before": 1560,
+              "status": "passed",
+              "templates": [
+                "core.genrltxt.580"
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/stables-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.748,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/stables-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "stables",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 158898,
+          "status": "passed"
+        },
+        {
+          "case": "eagle-eye",
+          "checks": [
+            {
+              "check": "native_eagle_eye_notice",
+              "notices": [
+                {
+                  "components": [
+                    {
+                      "amount": null,
+                      "content_id": "core:magicArrow",
+                      "kind": "spell",
+                      "owner": null,
+                      "resource": null,
+                      "skill": null
+                    }
+                  ],
+                  "display_mode": "modal",
+                  "text": [
+                    {
+                      "number": null,
+                      "op": "append_text",
+                      "owner": null,
+                      "text_id": "core.genrltxt.221"
+                    },
+                    {
+                      "number": null,
+                      "op": "replace_text",
+                      "owner": null,
+                      "text_id": "hero.core.orrin.name"
+                    },
+                    {
+                      "number": null,
+                      "op": "replace_text",
+                      "owner": null,
+                      "text_id": "spell.core.magicArrow.name"
+                    },
+                    {
+                      "number": null,
+                      "op": "append_text",
+                      "owner": null,
+                      "text_id": "heroes.notice.period"
+                    }
+                  ]
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/eagle-eye-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.825,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/eagle-eye-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "eagle_eye",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159025,
+          "status": "passed"
+        },
+        {
+          "case": "eagle-eye",
+          "checks": [
+            {
+              "check": "native_eagle_eye_notice",
+              "notices": [
+                {
+                  "components": [
+                    {
+                      "amount": null,
+                      "content_id": "core:magicArrow",
+                      "kind": "spell",
+                      "owner": null,
+                      "resource": null,
+                      "skill": null
+                    }
+                  ],
+                  "display_mode": "modal",
+                  "text": [
+                    {
+                      "number": null,
+                      "op": "append_text",
+                      "owner": null,
+                      "text_id": "core.genrltxt.221"
+                    },
+                    {
+                      "number": null,
+                      "op": "replace_text",
+                      "owner": null,
+                      "text_id": "hero.core.edric.name"
+                    },
+                    {
+                      "number": null,
+                      "op": "replace_text",
+                      "owner": null,
+                      "text_id": "spell.core.magicArrow.name"
+                    },
+                    {
+                      "number": null,
+                      "op": "append_text",
+                      "owner": null,
+                      "text_id": "heroes.notice.period"
+                    }
+                  ]
+                }
+              ],
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/eagle-eye-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.845,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/eagle-eye-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "eagle_eye",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159026,
+          "status": "passed"
+        },
+        {
+          "case": "fly-movement",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 23,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 6,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 19,
+              "count": null,
+              "decision_seq": 17,
+              "issued_seq": 21,
+              "native_rejection": false,
+              "result_seq": 24,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_water_landing",
+              "destination": [
+                4,
+                11,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_unseen_destination",
+              "destination": [
+                0,
+                19,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_crossing",
+              "movement_after": 1160,
+              "movement_before": 1560,
+              "native_steps": 4,
+              "spell": 6,
+              "status": "passed",
+              "target": [
+                4,
+                14,
+                0
+              ],
+              "water_positions": [
+                [
+                  4,
+                  11,
+                  0
+                ],
+                [
+                  4,
+                  12,
+                  0
+                ],
+                [
+                  4,
+                  13,
+                  0
+                ]
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/fly-movement-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.914,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/fly-movement-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "fly_movement",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159153,
+          "status": "passed"
+        },
+        {
+          "case": "fly-movement",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 23,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 6,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 19,
+              "count": null,
+              "decision_seq": 17,
+              "issued_seq": 21,
+              "native_rejection": false,
+              "result_seq": 24,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_water_landing",
+              "destination": [
+                15,
+                11,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_unseen_destination",
+              "destination": [
+                0,
+                19,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_crossing",
+              "movement_after": 1160,
+              "movement_before": 1560,
+              "native_steps": 4,
+              "spell": 6,
+              "status": "passed",
+              "target": [
+                15,
+                14,
+                0
+              ],
+              "water_positions": [
+                [
+                  15,
+                  11,
+                  0
+                ],
+                [
+                  15,
+                  12,
+                  0
+                ],
+                [
+                  15,
+                  13,
+                  0
+                ]
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/fly-movement-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.916,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/fly-movement-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "fly_movement",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159154,
+          "status": "passed"
+        },
+        {
+          "case": "water-walk-movement",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 23,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 7,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 19,
+              "count": null,
+              "decision_seq": 17,
+              "issued_seq": 21,
+              "native_rejection": false,
+              "result_seq": 24,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_water_landing",
+              "destination": [
+                4,
+                11,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_unseen_destination",
+              "destination": [
+                0,
+                19,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_crossing",
+              "movement_after": 1160,
+              "movement_before": 1560,
+              "native_steps": 4,
+              "spell": 7,
+              "status": "passed",
+              "target": [
+                4,
+                14,
+                0
+              ],
+              "water_positions": [
+                [
+                  4,
+                  11,
+                  0
+                ],
+                [
+                  4,
+                  12,
+                  0
+                ],
+                [
+                  4,
+                  13,
+                  0
+                ]
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/water-walk-movement-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.864,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/water-walk-movement-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "water_walk_movement",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159281,
+          "status": "passed"
+        },
+        {
+          "case": "water-walk-movement",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 23,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 7,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 19,
+              "count": null,
+              "decision_seq": 17,
+              "issued_seq": 21,
+              "native_rejection": false,
+              "result_seq": 24,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_water_landing",
+              "destination": [
+                15,
+                11,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_rejects_unseen_destination",
+              "destination": [
+                0,
+                19,
+                0
+              ],
+              "native_issued": 0,
+              "status": "passed"
+            },
+            {
+              "check": "native_movement_spell_crossing",
+              "movement_after": 1160,
+              "movement_before": 1560,
+              "native_steps": 4,
+              "spell": 7,
+              "status": "passed",
+              "target": [
+                15,
+                14,
+                0
+              ],
+              "water_positions": [
+                [
+                  15,
+                  11,
+                  0
+                ],
+                [
+                  15,
+                  12,
+                  0
+                ],
+                [
+                  15,
+                  13,
+                  0
+                ]
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/water-walk-movement-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.898,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/water-walk-movement-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "water_walk_movement",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159282,
+          "status": "passed"
+        },
+        {
+          "case": "visions",
+          "checks": [
+            {
+              "check": "visions_inspection_unavailable_before_cast",
+              "decision_seq": 7,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 31,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 2,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 29,
+              "native_rejection": false,
+              "result_seq": 32,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 45,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "creature_exact",
+                "monster_intent"
+              ],
+              "native_issued": 0,
+              "object_kind": 54,
+              "status": "passed",
+              "subject": "object-4"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "creature_exact",
+                "hero_stat",
+                "primary_skill"
+              ],
+              "native_issued": 0,
+              "object_kind": 34,
+              "status": "passed",
+              "subject": "object-3"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "town_stat"
+              ],
+              "native_issued": 0,
+              "object_kind": 98,
+              "status": "passed",
+              "subject": "object-2"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/visions-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 2.283,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/visions-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "visions",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159409,
+          "status": "passed"
+        },
+        {
+          "case": "visions",
+          "checks": [
+            {
+              "check": "visions_inspection_unavailable_before_cast",
+              "decision_seq": 7,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 31,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-0",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 2,
+                "subject": "object-0",
+                "x": null,
+                "y": null
+              },
+              "consumed_seq": 27,
+              "count": null,
+              "decision_seq": 25,
+              "issued_seq": 29,
+              "native_rejection": false,
+              "result_seq": 32,
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "foreign_capability_choice_rejected_before_send",
+              "decision_seq": 45,
+              "error": "Action does not match the current contextual request",
+              "native_issued": 0,
+              "native_rejected_ack": false,
+              "rejection_layer": "python_pre_send",
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "creature_exact",
+                "monster_intent"
+              ],
+              "native_issued": 0,
+              "object_kind": 54,
+              "status": "passed",
+              "subject": "object-4"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "creature_exact",
+                "hero_stat",
+                "primary_skill"
+              ],
+              "native_issued": 0,
+              "object_kind": 34,
+              "status": "passed",
+              "subject": "object-3"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "native_visions_inspection",
+              "item_kinds": [
+                "town_stat"
+              ],
+              "native_issued": 0,
+              "object_kind": 98,
+              "status": "passed",
+              "subject": "object-2"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "explicit_capability_window",
+              "kind": "visions",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "check": "closed_capability_fields_absent",
+              "kind": "visions",
+              "status": "passed"
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/visions-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 2.358,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/visions-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "visions",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159410,
+          "status": "passed"
+        },
+        {
+          "case": "dimension-door-clear",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 21,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-214",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 8,
+                "subject": "object-0",
+                "x": 4,
+                "y": 18
+              },
+              "consumed_seq": 15,
+              "count": null,
+              "decision_seq": 13,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 22,
+              "status": "passed"
+            },
+            {
+              "blocked_fixture": false,
+              "check": "native_dimension_door_fog_attempt",
+              "mana_before": 200,
+              "native_rejected_ack": false,
+              "notices": [],
+              "offered_spell_target_count": 224,
+              "offered_spell_targets_sha256": "5055242e41d2ef5a7954cbe51f71e17b2429ca842cf1bdad2c966f06c6ba9454",
+              "player_view_before_sha256": "3f4e057d9c01ea4861e9aa5c214b5452a118e21b4fd063ee26712c245a7c6cdc",
+              "position_after": [
+                4,
+                18,
+                0
+              ],
+              "position_before": [
+                4,
+                10,
+                0
+              ],
+              "result_status": "capability_applied",
+              "status": "passed",
+              "target": [
+                4,
+                18
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-clear-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.954,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-clear-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "dimension_door_clear",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159537,
+          "status": "passed"
+        },
+        {
+          "case": "dimension-door-clear",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "acknowledged_seq": 21,
+              "check": "native_cast_adventure_spell",
+              "choice": {
+                "artifact": null,
+                "cost": null,
+                "destination": null,
+                "destination_slot": null,
+                "give": null,
+                "kind": "cast_adventure_spell",
+                "max_count": null,
+                "receive": null,
+                "ref": "capability-0-choices-219",
+                "resource_from": null,
+                "resource_to": null,
+                "skill": null,
+                "skill_level": null,
+                "slot": null,
+                "spell": 8,
+                "subject": "object-0",
+                "x": 15,
+                "y": 18
+              },
+              "consumed_seq": 15,
+              "count": null,
+              "decision_seq": 13,
+              "issued_seq": 17,
+              "native_rejection": false,
+              "result_seq": 22,
+              "status": "passed"
+            },
+            {
+              "blocked_fixture": false,
+              "check": "native_dimension_door_fog_attempt",
+              "mana_before": 200,
+              "native_rejected_ack": false,
+              "notices": [],
+              "offered_spell_target_count": 224,
+              "offered_spell_targets_sha256": "b1b65e1b16bc3247d075a48fabdf4d2f1230b07f8585890ef0a08c921bfbd750",
+              "player_view_before_sha256": "73dbd7e468c90a50e300b298b7b04a67b61081e6d6039a2588fd594fde51237c",
+              "position_after": [
+                15,
+                18,
+                0
+              ],
+              "position_before": [
+                15,
+                10,
+                0
+              ],
+              "result_status": "capability_applied",
+              "status": "passed",
+              "target": [
+                15,
+                18
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-clear-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.989,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-clear-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "dimension_door_clear",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159538,
+          "status": "passed"
+        },
+        {
+          "case": "dimension-door-blocked",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "blocked_fixture": true,
+              "check": "native_dimension_door_fog_attempt",
+              "mana_before": 200,
+              "native_rejected_ack": true,
+              "notices": [],
+              "offered_spell_target_count": 224,
+              "offered_spell_targets_sha256": "5055242e41d2ef5a7954cbe51f71e17b2429ca842cf1bdad2c966f06c6ba9454",
+              "player_view_before_sha256": "3f4e057d9c01ea4861e9aa5c214b5452a118e21b4fd063ee26712c245a7c6cdc",
+              "position_after": [
+                4,
+                10,
+                0
+              ],
+              "position_before": [
+                4,
+                10,
+                0
+              ],
+              "result_status": "rejected",
+              "status": "passed",
+              "target": [
+                4,
+                18
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-blocked-red-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.943,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-blocked-red-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "dimension_door_blocked",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "red",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159537,
+          "status": "passed"
+        },
+        {
+          "case": "dimension-door-blocked",
+          "checks": [
+            {
+              "check": "explicit_capability_window",
+              "kind": "spellbook",
+              "parent": {
+                "kind": "hero",
+                "panel": null,
+                "selection": null,
+                "subject": "object-0"
+              },
+              "status": "passed"
+            },
+            {
+              "blocked_fixture": true,
+              "check": "native_dimension_door_fog_attempt",
+              "mana_before": 200,
+              "native_rejected_ack": true,
+              "notices": [],
+              "offered_spell_target_count": 224,
+              "offered_spell_targets_sha256": "b1b65e1b16bc3247d075a48fabdf4d2f1230b07f8585890ef0a08c921bfbd750",
+              "player_view_before_sha256": "73dbd7e468c90a50e300b298b7b04a67b61081e6d6039a2588fd594fde51237c",
+              "position_after": [
+                15,
+                10,
+                0
+              ],
+              "position_before": [
+                15,
+                10,
+                0
+              ],
+              "result_status": "rejected",
+              "status": "passed",
+              "target": [
+                15,
+                18
+              ]
+            },
+            {
+              "check": "independent_history_manifest_audit",
+              "report": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-blocked-blue-00/history-audit.json",
+              "status": "passed"
+            },
+            {
+              "check": "independent_native_replay",
+              "status": "passed"
+            }
+          ],
+          "elapsed_seconds": 0.969,
+          "episode_directory": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/dimension-door-blocked-blue-00/episode-000001",
+          "episode_status": "truncated",
+          "error": null,
+          "fixture": "dimension_door_blocked",
+          "history_audit_passed": true,
+          "identity_error": null,
+          "player": "blue",
+          "repeat": 0,
+          "replay_verified": true,
+          "seed": 159538,
+          "status": "passed"
+        }
+      ],
+      "runtime_sha256": "a24d17dce7f21e639fd6c3c51cb00f587396f5eb455fef48161297fe311624ec",
+      "source_commit": "9c6b9a763fe6d28949e11d30de5a08c8651b2d12",
+      "status": "passed"
+    }
+  ],
+  "schema": "heroes-capability-native-summary-v1",
+  "started_attempts": 28,
+  "training_input": false,
+  "training_performed": false,
+  "unverified_attempts": 0
+}

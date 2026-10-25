@@ -1,0 +1,135 @@
+{
+  "actual_client_libvcmi_load": [
+    "dyld[21523]: <84BF346E-98A4-36B2-ACC4-ED9E885A0CD6> /Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/bin/libvcmi.dylib"
+  ],
+  "artifacts": [
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 11582880,
+      "donor_sha256": "cbed767f5cabcaf27e721c4de48d2c2a66db4d0b8d47d43c44720ed7f96dd021",
+      "frozen_sha256": "79e527665872bed791f2a3fed88e5087880964211dcbedebd0ba57917c541540",
+      "path": "vcmiclient",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1779728,
+      "donor_sha256": "a15f58b32d600cb5ab2f47b4cf7be1a87a0fc340b9209e40d2bba67256dd4ace",
+      "frozen_sha256": "1254dc45fed2c1ef7abc1b3c860adb33f77e009c8675600e08b66d3a90c55e81",
+      "path": "vcmiserver",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 12617824,
+      "donor_sha256": "3583a340621b3f2917ff163f2dda44aa2f105b5c471b381b100471ef56b04c85",
+      "frozen_sha256": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13",
+      "path": "vcmireplay",
+      "rpath_replacement": "@loader_path"
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 9958160,
+      "donor_sha256": "26815e7cc7da80700dd21d2d90ab0a0c746b3c70dd9ca912b576bf9b414b2b88",
+      "frozen_sha256": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+      "path": "libvcmi.dylib",
+      "rpath_replacement": null
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 501744,
+      "donor_sha256": "a7dddbfbeb96ef334ee82dd4bbe9a66e76f07b70c2f768f33f252ded171399f8",
+      "frozen_sha256": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+      "path": "AI/libBattleAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 81968,
+      "donor_sha256": "64984b44cfbc4078f749fe921ff9749f704b84ab99255c15df534d053a08608d",
+      "frozen_sha256": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+      "path": "AI/libEmptyAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 1092432,
+      "donor_sha256": "eb2575e5c82fdd53d69d2782b7b8a3ab97a41f4db186be41ff7f28fc49e57f45",
+      "frozen_sha256": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+      "path": "AI/libExplorerRL.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 2196656,
+      "donor_sha256": "efc04758c41e4f992beaa4459e525e81cda9090cefa134e0850d87e24278d786",
+      "frozen_sha256": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+      "path": "AI/libNullkiller.dylib",
+      "rpath_replacement": "@loader_path/.."
+    },
+    {
+      "ad_hoc_signature_verified": true,
+      "bytes": 152208,
+      "donor_sha256": "5b5f4ddcd8b2f08a1fabcb5eec13770b2b386668f1ef3a635a9113e6337ec227",
+      "frozen_sha256": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+      "path": "AI/libStupidAI.dylib",
+      "rpath_replacement": "@loader_path/.."
+    }
+  ],
+  "canonical_recipe_check_passed": true,
+  "controller_tests_passed": 32,
+  "external_dependencies_bundled": false,
+  "external_dependency_count": 74,
+  "fix_commit": "8afbbb3d91757cb3fd49b47beb8d1a23a8c727d4",
+  "focused_tests_passed": 6,
+  "freeze": {
+    "bytes": 130500,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/freeze-receipt.json",
+    "sha256": "3846aef3c80121b6bbbeed0674b6713ab0c84f80b1dfe169f3e41c79615ba7e9"
+  },
+  "independent_source_and_recovery_review_passed": true,
+  "native_acceptance": {
+    "checked_transactions": 3120,
+    "failed": 0,
+    "passed": 28,
+    "report": {
+      "bytes": 165238,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-02/report.json",
+      "sha256": "1274a2bc96a3dc47a6b85aa393ab3f89e36c6cad712880bf178af7567d0a9bec"
+    },
+    "summary": {
+      "bytes": 176590,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/summary.json",
+      "sha256": "8a3cb9ae0c40f72260044840abcc0f02600eb02549a49565a0d3cc3e05b2b9d4"
+    },
+    "unchecked_transactions": 0,
+    "unstarted": 0
+  },
+  "old_runtime_modified": false,
+  "preflight": {
+    "bytes": 1895,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/preflight.json",
+    "sha256": "70da23392345871049f6e70f1099d70fdf7642771dda0363af806f0e0b0de6e2"
+  },
+  "prior_failed_diagnostic": {
+    "bytes": 37306,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/validation/v8-artifact-fix-2026-10-25/capabilities-01/report.json",
+    "sha256": "e2b95972644912dc4a0b9fcc385dec1e5cb047e19a9d4e5bf495f93742ef7d26"
+  },
+  "resource_files": 592,
+  "runtime_directory": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2",
+  "runtime_identity": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  },
+  "schema": "heroes-local-v8-artifact-runtime-summary-v1",
+  "source_commit_at_freeze": "9c6b9a763fe6d28949e11d30de5a08c8651b2d12",
+  "status": "native_capture_and_replay_verified",
+  "training_started": false,
+  "updated_utc": "2026-10-25T22:18:48.206667+00:00"
+}

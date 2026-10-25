@@ -72,7 +72,10 @@ sample was admitted; three remaining games were not started. Update92 and all
 failed evidence are preserved, and owned-process cleanup passed. The source
 trace identifies an invalid same-backpack artifact insertion after source
 removal. The user requested the fix and another launch within the original
-window; regression and replay checks are required first. See the
+window. The reviewed repair now passes all 28 real capability checks, including
+both-seat backpack reorders and transfers; 3,120 native transactions replayed
+without unchecked operations. The initial stale-verifier packaging failure is
+retained separately. See the [new runtime evidence](validation/runtime-artifact-fix-2026-10-26.json). See the
 [dated failure analysis](validation/v8-artifact-crash-2026-10-26.json).
 
 The completed cloud session continued update 21 to **update 31**: 40 new
