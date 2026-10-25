@@ -17,7 +17,9 @@ import tempfile
 import torch
 
 SCHEMA = "heroes-context-checkpoint-v1"
-PROVENANCES = ("random_initialization", "synthetic_optimizer_test", "approved_gameplay")
+BUILTIN_GAMEPLAY_PROVENANCE = "approved_builtin_gameplay_v1"
+OPTIMIZER_PROVENANCES = ("synthetic_optimizer_test", "approved_gameplay", BUILTIN_GAMEPLAY_PROVENANCE)
+PROVENANCES = ("random_initialization", *OPTIMIZER_PROVENANCES)
 
 
 def _contracts(interface):
@@ -208,12 +210,39 @@ def _write(path, payload):
 
 
 def _check_gameplay_provenance(provenance, source_metadata, interface):
+    if provenance == BUILTIN_GAMEPLAY_PROVENANCE:
+        _check_builtin_gameplay_metadata(source_metadata, interface)
+        return
     if provenance != "approved_gameplay":
         return
     value = source_metadata.get("plan_sha256") if type(source_metadata) is dict else None
     if (interface != "adventure-armies-v1" or type(value) is not str or len(value) != 64
             or any(char not in "0123456789abcdef" for char in value)):
         raise ValueError("Gameplay checkpoint requires the exact approved v4 preparation-plan identity")
+
+
+def _sha256(value):
+    return type(value) is str and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
+
+
+def _check_builtin_gameplay_metadata(metadata, interface):
+    """A native opponent is identified explicitly, never by an archived model."""
+    if (interface != "adventure-dialogs-v1" or type(metadata) is not dict
+            or not _sha256(metadata.get("plan_sha256"))):
+        raise ValueError("Built-in gameplay checkpoint requires its exact v7 preparation-plan identity")
+    initial = metadata.get("initial_checkpoint")
+    if (type(initial) is not dict or set(initial) != {"path", "sha256", "bytes"}
+            or type(initial["path"]) is not str or not Path(initial["path"]).is_absolute()
+            or not _sha256(initial["sha256"]) or type(initial["bytes"]) is not int or initial["bytes"] <= 0):
+        raise ValueError("Built-in gameplay checkpoint requires its bound initial checkpoint")
+    opponent = metadata.get("native_opponent")
+    if (type(opponent) is not dict or set(opponent) != {"kind", "module", "difficulty", "binary_sha256"}
+            or opponent["kind"] != "builtin" or opponent["module"] != "Nullkiller"
+            or type(opponent["difficulty"]) is not int or opponent["difficulty"] != 0
+            or not _sha256(opponent["binary_sha256"])):
+        raise ValueError("Built-in gameplay checkpoint requires the actual Nullkiller Easy identity")
+    if metadata.get("archived_neural_pool_executed") is not False:
+        raise ValueError("The archived neural pool must not represent the executed native opponent")
 
 
 def _payload(model, checkpoint, provenance, source_metadata, generators, python_generators, pool, interface):
@@ -223,6 +252,9 @@ def _payload(model, checkpoint, provenance, source_metadata, generators, python_
     _check_gameplay_provenance(provenance, source_metadata, interface)
     if next(model.parameters()).device.type != "cpu":
         raise ValueError("Only the validated CPU checkpoint path is enabled")
+    if provenance == BUILTIN_GAMEPLAY_PROVENANCE and any(
+            value.dtype != torch.float32 or value.device.type != "cpu" for value in model.state_dict().values()):
+        raise ValueError("Built-in gameplay checkpoint requires CPU float32 model tensors")
     contracts = _contracts(interface)
     if model.config.schema != contracts["encoder_schema"] or pool is not None and any(
             pool.get(identity).model.config.schema != contracts["encoder_schema"] for identity, _ in pool.identities):
@@ -242,7 +274,7 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
                 "model_state", "source_metadata", "rng", "opponent_pool", "resume"}
     if type(payload) is not dict or set(payload) != expected or payload["schema"] != SCHEMA or payload["kind"] != kind:
         raise ValueError("Unsupported checkpoint schema or purpose")
-    if kind == "optimizer" and payload["provenance"] not in ("synthetic_optimizer_test", "approved_gameplay"):
+    if kind == "optimizer" and payload["provenance"] not in OPTIMIZER_PROVENANCES:
         raise ValueError("Optimizer checkpoints require optimizer provenance")
     if (type(allowed_provenance) is not tuple or not allowed_provenance
             or any(value not in PROVENANCES for value in allowed_provenance)):
@@ -261,6 +293,8 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface):
     _text(payload["checkpoint"])
     _json(payload["source_metadata"])
     _check_gameplay_provenance(payload["provenance"], payload["source_metadata"], interface)
+    if payload["provenance"] == BUILTIN_GAMEPLAY_PROVENANCE and expected_source_metadata is None:
+        raise ValueError("Built-in gameplay load requires explicit expected plan and opponent metadata")
     if expected_source_metadata is not None and payload["source_metadata"] != _json(expected_source_metadata):
         raise ValueError("Checkpoint source metadata differs")
     return payload
@@ -332,9 +366,33 @@ def _optimizer_layout(model, optimizer):
     return layout
 
 
-def _validate_adam_state(optimizer, state):
+def _validate_adam_state(optimizer, state, *, strict_serialized_dtypes=False):
     if not isinstance(state, dict) or set(state) != {"state", "param_groups"}:
         raise ValueError("Invalid Adam checkpoint state")
+    if strict_serialized_dtypes:
+        # Adam.load_state_dict casts moments to the parameter dtype. Validate
+        # their original bytes first for the explicit built-in resume contract.
+        groups = state["param_groups"]
+        if type(groups) is not list or len(groups) != len(optimizer.param_groups) or type(state["state"]) is not dict:
+            raise ValueError("Invalid serialized Adam parameter groups")
+        identifiers = []
+        for saved, live in zip(groups, optimizer.param_groups):
+            if (type(saved) is not dict or type(saved.get("params")) is not list
+                    or len(saved["params"]) != len(live["params"])):
+                raise ValueError("Serialized Adam parameters differ")
+            for identifier, parameter in zip(saved["params"], live["params"]):
+                if type(identifier) is not int or identifier < 0:
+                    raise ValueError("Invalid serialized Adam parameter identifier")
+                identifiers.append(identifier)
+                current = state["state"].get(identifier, {})
+                if type(current) is not dict:
+                    raise ValueError("Invalid serialized Adam parameter state")
+                for name, value in current.items():
+                    dtype = torch.float32 if name == "step" else parameter.dtype
+                    if type(value) is not torch.Tensor or value.device.type != "cpu" or value.dtype != dtype:
+                        raise ValueError("Serialized Adam tensor dtype/device differs")
+        if len(set(identifiers)) != len(identifiers) or set(state["state"]) - set(identifiers):
+            raise ValueError("Serialized Adam state has duplicate or unknown parameters")
     trial = deepcopy(optimizer)
     trial.load_state_dict(deepcopy(state))
     for group in trial.param_groups:
@@ -370,14 +428,15 @@ def _validate_adam_state(optimizer, state):
 def save_checkpoint(path, model, optimizer, *, checkpoint, ppo_config, progress, source_metadata,
                     opponent_pool, sampler_state, generators=None, python_generators=None,
                     at_rollout_boundary=False, interface="adventure-town-v1", provenance="synthetic_optimizer_test"):
-    if provenance not in ("synthetic_optimizer_test", "approved_gameplay"):
+    if provenance not in OPTIMIZER_PROVENANCES:
         raise ValueError("Optimizer checkpoints require optimizer provenance")
     if at_rollout_boundary is not True or type(progress) is not TrainingProgress or optimizer is None:
         raise ValueError("Optimizer checkpoint requires an explicit between-rollout boundary")
     if type(opponent_pool) is not FrozenOpponentPool or not opponent_pool.identities:
         raise ValueError("Resume requires its nonempty frozen opponent pool")
     layout = _optimizer_layout(model, optimizer)
-    _validate_adam_state(optimizer, optimizer.state_dict())
+    _validate_adam_state(optimizer, optimizer.state_dict(),
+                         strict_serialized_dtypes=provenance == BUILTIN_GAMEPLAY_PROVENANCE)
     payload = _payload(model, checkpoint, provenance, source_metadata,
                        generators or {}, python_generators or {}, opponent_pool, interface)
     payload["kind"] = "optimizer"
@@ -409,7 +468,8 @@ def load_checkpoint(path, model, optimizer, *, expected_ppo_config, expected_sou
     if not pool.identities: raise ValueError("Resume requires frozen opponent identities")
     _validate_rng(payload["rng"], generators or {}, python_generators or {})
     # Validate compatibility before modifying the caller's live objects.
-    _validate_adam_state(optimizer, resume["optimizer_state"])
+    _validate_adam_state(optimizer, resume["optimizer_state"],
+                         strict_serialized_dtypes=payload["provenance"] == BUILTIN_GAMEPLAY_PROVENANCE)
     model.load_state_dict(candidate.state_dict(), strict=True)
     optimizer.load_state_dict(resume["optimizer_state"])
     _restore_rng(payload["rng"], generators or {}, python_generators or {})

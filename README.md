@@ -37,6 +37,67 @@ Original game assets are required locally and are not included or downloaded.
 
 This is the canonical project document. Last agreement: **25 October 2026**.
 
+## Current authorized local PPO pilot
+
+After the four replay-verified natural defeats against Nullkiller Easy, the user
+authorized one small local training experiment and explicitly reaffirmed it after
+the cloud handoff. The natural-outcome prerequisite is satisfied; a self-play win
+or validation of unrelated unused mechanics is not required. This authorization
+is specific to Codex's learner pilot. Claude's separate performance work remains
+no-training, coordinated through issue #4. No paid infrastructure or PR merge is
+authorized. Cloud setup does not inherit this local training authorization.
+
+The new `configs/builtin-ppo-pilot-v1.json` and
+`experiments.learner.builtin_first_run` retain the existing random v7 checkpoint
+(`4043b58b…2232c1`), CPU/Torch runtime, ordinary map, automatic BattleAI, normal
+fog and terminal-only rewards. They schedule two before evaluations, up to four
+fresh training games and two matched after evaluations against fixed Nullkiller
+Easy. The learner seats alternate. Evaluation engine/policy seeds are paired
+before/after and distinct from training seeds; native-opponent randomness means
+the engine seed alone cannot guarantee the same game. Eight tiny samples cannot
+establish improved strategy.
+
+One shared 3,600-second execution budget includes initialization, collection,
+independent history/policy reconstruction, native replay, one PPO update,
+checkpoint verification and cleanup. Engineering/preflight is separately timed.
+Each attempt has at most 240 seconds and 256 learner choices: 248 ordinary choices
+plus at most eight real dialog-drain choices, with 30 game days. Absolute phase
+deadlines are 900 seconds for before evaluations, 2,100 for fresh collection,
+3,000 for update/checkpoint work and 3,540 for after evaluations. The remaining
+60 seconds are cleanup/reporting reserve. Any attempted-game correctness failure
+stops the pilot without replacements. If the collection phase ends before a new
+attempt, a nonempty verified contiguous prefix may supply the single update;
+the unstarted suffix remains explicit.
+
+The update uses Adam at 0.0003, gamma/lambda 1, one epoch, 16-decision recurrent
+windows, two windows per minibatch and at most 32 optimizer steps. Policy/value
+clip is 0.2, value coefficient 0.5, entropy coefficient 0, gradient norm cap 0.5,
+and advantages are normalized. Both policy and value learn only from the fresh
+learner history. Natural closures have zero bootstrap; verified cutoffs use the
+actual held own-decision value. Failures supply no samples or terminal targets.
+
+`builtin_gameplay.py` creates an explicitly separate single-learner trajectory;
+there is no invented neural opponent history or paired finalization. A fresh
+prelaunch plan/slot binding and in-memory verified receipt are required before
+optimization. Persisted diagnostic files cannot be loaded into this gate. The
+shared PPO numerical kernel reconstructs current-weight recurrent prefixes,
+retaining all intervening visible frames. A failed update restores model, Adam,
+gradient/mode flags and Torch/Python/minibatch RNGs; an unrecoverable interruption
+is reported as unknown, never falsely as zero updates.
+
+The additive `approved_builtin_gameplay_v1` checkpoint provenance binds the
+approved plan, original checkpoint and actual native opponent separately. The
+archived neural pool remains unchanged for serialization compatibility and is
+never executed. Before/after checkpoints are independently loaded and checked
+for exact model, Adam, RNG, progress and pool state. The after evaluations use the
+reloaded policy. The legacy v4 launcher and synthetic-only default PPO gate remain
+unchanged. Actual execution results will be recorded after the bounded run.
+
+The remaining rows of earlier untrained self-play schedules will not be resumed
+under this changed priority. Their original cutoff/failure/not-started reasons
+and evidence are immutable; the separate disposition is
+`validation/self-play-priority-disposition-2026-10-25.json`.
+
 ## Why this project exists
 
 Build an agent that learns adventure-map strategy in Heroes III through
