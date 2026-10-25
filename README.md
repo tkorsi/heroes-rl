@@ -3043,7 +3043,10 @@ observation, recorded selected-action log probabilities/value/support, and sourc
 archives including learner history, bridge, server/contextual tapes, rollout,
 verification and map trace. Resources, movement points, open-window context and
 seven army slots are summarized beside the maps. Click a map tile to inspect its
-coordinates and visible object IDs. No network inference or training runs in the app.
+coordinates, readable object names and visible object IDs. Map objects use distinct
+semantic icons (hero, town, mine, neutral army and resource subtype), with owner
+colors on their borders. Co-located heroes and towns are offset so both remain
+visible. These are schematic symbols, not original game sprites. No network inference or training runs in the app.
 
 Map snapshots advance only when the client reaches a completed native input's
 packet endpoint. Intermediate events retain the last completed snapshot. Army

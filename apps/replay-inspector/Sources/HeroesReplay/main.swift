@@ -57,6 +57,21 @@ let card = Color(red: 0.094, green: 0.137, blue: 0.196)
 let blue = Color(red: 0.39, green: 0.65, blue: 1)
 let red = Color(red: 1, green: 0.47, blue: 0.49)
 
+// Semantic map symbols remain local and require no original game assets.
+func objectAppearance(_ object: [Int]) -> (icon: String, name: String) {
+    switch object[4] {
+    case 34: return ("♞", object[5] == 2 ? "Герой Edric" : object[5] == 0 ? "Герой Orrin" : "Герой")
+    case 98: return ("🏰", "Город")
+    case 53: return ("⛏️", "Шахта")
+    case 54: return ("🛡️", object[5] == 0 ? "Нейтральные копейщики" : "Нейтральная армия")
+    case 79:
+        let icons = ["🪵", "🧪", "🪨", "🟡", "🔮", "💎", "💰"]
+        let names = ["Дерево", "Ртуть", "Руда", "Сера", "Кристаллы", "Самоцветы", "Золото"]
+        return (icons[safe: object[5]] ?? "📦", names[safe: object[5]] ?? "Ресурс")
+    default: return ("❓", "Объект типа \(object[4])")
+    }
+}
+
 struct MapView: View {
     let header: Header
     let frame: Frame
@@ -77,14 +92,17 @@ struct MapView: View {
                 }
                 for obj in frame.objects.sorted(by: { ($0[4] == 34 ? 1 : 0) < ($1[4] == 34 ? 1 : 0) }) {
                     if fog && !(frame.players["1"]?.objects.contains(obj[0]) ?? false) { continue }
-                    let x = (Double(obj[1])+0.5)*w, y = (Double(obj[2])+0.5)*h
-                    let r = min(w,h)*0.34
-                    let rect = CGRect(x:x-r,y:y-r,width:r*2,height:r*2)
-                    let color: Color = obj[6] == 1 ? blue : obj[6] == 0 ? red : .yellow
-                    let path = obj[4] == 34 ? Path(ellipseIn: rect) : Path(rect)
-                    context.fill(path, with: .color(color))
-                    context.stroke(path, with: .color(.white.opacity(0.8)), lineWidth: 1)
-                    if obj[4] == 98 { context.draw(Text("T").font(.system(size: max(9,r))).foregroundStyle(.black), at: CGPoint(x:x,y:y)) }
+                    let shared = frame.objects.contains { $0[0] != obj[0] && $0[1] == obj[1] && $0[2] == obj[2] && (!fog || frame.players["1"]!.objects.contains($0[0])) }
+                    let offset = shared ? (obj[4] == 34 ? 0.7 : -0.7) : 0.0
+                    let x = (Double(obj[1])+0.5+offset)*w, y = (Double(obj[2])+0.5)*h
+                    let side = min(w,h)*1.35
+                    let rect = CGRect(x:x-side/2,y:y-side/2,width:side,height:side)
+                    let color: Color = obj[6] == 1 ? blue : obj[6] == 0 ? red : .white.opacity(0.75)
+                    let path = Path(roundedRect:rect,cornerRadius:side*0.2)
+                    context.fill(path, with:.color(navy.opacity(0.92)))
+                    context.stroke(path, with:.color(color),lineWidth:1.5)
+                    let symbol = objectAppearance(obj).icon
+                    context.draw(Text(symbol).font(.system(size:side*0.78,weight:.bold)).foregroundStyle(color), at:CGPoint(x:x,y:y))
                 }
                 for battle in frame.battles where !fog || frame.players["1"]?.visible.dropFirst(battle[1]*header.width+battle[0]).first == "1" {
                     context.draw(Text("⚔").font(.system(size: w*1.3)).foregroundStyle(.yellow), at: CGPoint(x:(Double(battle[0])+0.5)*w,y:(Double(battle[1])+0.5)*h))
@@ -92,10 +110,18 @@ struct MapView: View {
             }
             .aspectRatio(CGFloat(header.width)/CGFloat(header.height), contentMode: .fit)
             .overlay { GeometryReader { geo in Color.clear.contentShape(Rectangle()).onTapGesture { p in
-                let x = min(header.width-1, Int(p.x/geo.size.width*Double(header.width)))
-                let y = min(header.height-1, Int(p.y/geo.size.height*Double(header.height)))
-                let objects = frame.objects.filter { $0[1] == x && $0[2] == y && (!fog || frame.players["1"]!.objects.contains($0[0])) }
-                tile = "(\(x), \(y)) · " + (objects.isEmpty ? "нет видимых объектов" : objects.map { "id \($0[0]) / type \($0[4]) / owner \($0[6])" }.joined(separator: "; "))
+                var x = min(header.width-1, Int(p.x/geo.size.width*Double(header.width)))
+                var y = min(header.height-1, Int(p.y/geo.size.height*Double(header.height)))
+                let shown = frame.objects.filter { !fog || frame.players["1"]!.objects.contains($0[0]) }
+                let w = geo.size.width / Double(header.width), h = geo.size.height / Double(header.height)
+                // Hit-test the displayed symbols, including co-located icon offsets.
+                if let hit = shown.sorted(by: { ($0[4] == 34 ? 1 : 0) > ($1[4] == 34 ? 1 : 0) }).first(where: { obj in
+                    let shared = shown.contains { $0[0] != obj[0] && $0[1] == obj[1] && $0[2] == obj[2] }
+                    let offset = shared ? (obj[4] == 34 ? 0.7 : -0.7) : 0.0
+                    return abs(p.x - (Double(obj[1])+0.5+offset)*w) <= min(w,h)*0.675 && abs(p.y - (Double(obj[2])+0.5)*h) <= min(w,h)*0.675
+                }) { x = hit[1]; y = hit[2] }
+                let objects = shown.filter { $0[1] == x && $0[2] == y }
+                tile = "(\(x), \(y)) · " + (objects.isEmpty ? "нет видимых объектов" : objects.map { "\(objectAppearance($0).icon) \(objectAppearance($0).name) · id \($0[0])" }.joined(separator: "; "))
             } } }
             Text(tile).font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(2).frame(height:28,alignment:.topLeading)
         }.padding(12).background(card).clipShape(RoundedRectangle(cornerRadius: 12))
@@ -118,7 +144,7 @@ struct ContentView: View {
                     ScrollView {
                         VStack(alignment:.leading,spacing:12) {
                             HStack { MapView(header:r.header,frame:r.frames[e.frame],fog:false); MapView(header:r.header,frame:r.frames[e.frame],fog:true) }
-                            Text("● герой   ■ объект   T город   ⚔ автобой · координаты от 0").font(.caption).foregroundStyle(.secondary)
+                            Text("♞ герой   🏰 город   ⛏️ шахта   🛡️ нейтралы   💰 золото   ⚔ автобой").font(.caption).foregroundStyle(.secondary)
                             army(e.army)
                             observationSummary(e.observation)
                             Text(e.title).font(.title2.bold()).foregroundStyle(e.actor.contains("Red") ? red : blue)
