@@ -1,0 +1,56 @@
+{
+  "reason": "Account for exactly one terminal native-opponent EndTurn using unchanged authoritative boundary checks; preserve saved model/Adam/RNG and start only fresh captures. Old failed captures remain unscored. Loader/runner glue permits this exact verifier-only change and unused fresh batch sequences; no policy, feature, PPO or gameplay binary changes.",
+  "runtime_changes": [
+    {
+      "from_native": {
+        "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/recovery-v2/bin/vcmiclient",
+        "binary_sha256": "b83bc7926bc015a9b008a03a2d3929e5d31b37709373707334130e57b220ee9b",
+        "explorer_rl_sha256": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "log_level": "info",
+        "map": {
+          "name": "hero-management-v1.vmap",
+          "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+        }
+      },
+      "from_runtime": {
+        "AI/libBattleAI.dylib": "9c7ec75c142eb6314e46ee57706650f88170c15990fa4a74a65624e39dee5e0b",
+        "AI/libEmptyAI.dylib": "39d1f09a1bb01030c13c292b328ce54b85f2f7ad73dccc8698030edc6da27b6d",
+        "AI/libExplorerRL.dylib": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "AI/libNullkiller.dylib": "592ed070181cf342a06a6e6ff8b417ac65e80c9a48e86fb04e332d2c0e828dea",
+        "AI/libStupidAI.dylib": "472bafe9dcbc8b91008343e9883f7525ac64438c982b8aeb8d25f31a07a042eb",
+        "libvcmi.dylib": "6430c77e12c854b6f9adabf8108bbe90a69836f29145959fb0866986e3a54155",
+        "vcmireplay": "1171fe315718bf579999ac8649b42e28ea6b15451ce11c7173861de1c6ac8fbd"
+      },
+      "to_native": {
+        "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/recovery-v3/bin/vcmiclient",
+        "binary_sha256": "b83bc7926bc015a9b008a03a2d3929e5d31b37709373707334130e57b220ee9b",
+        "explorer_rl_sha256": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "log_level": "info",
+        "map": {
+          "name": "hero-management-v1.vmap",
+          "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+        }
+      },
+      "to_runtime": {
+        "AI/libBattleAI.dylib": "9c7ec75c142eb6314e46ee57706650f88170c15990fa4a74a65624e39dee5e0b",
+        "AI/libEmptyAI.dylib": "39d1f09a1bb01030c13c292b328ce54b85f2f7ad73dccc8698030edc6da27b6d",
+        "AI/libExplorerRL.dylib": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "AI/libNullkiller.dylib": "592ed070181cf342a06a6e6ff8b417ac65e80c9a48e86fb04e332d2c0e828dea",
+        "AI/libStupidAI.dylib": "472bafe9dcbc8b91008343e9883f7525ac64438c982b8aeb8d25f31a07a042eb",
+        "libvcmi.dylib": "6430c77e12c854b6f9adabf8108bbe90a69836f29145959fb0866986e3a54155",
+        "vcmireplay": "9b85e8f91d53b966a05e7505c50e5cf1b540d8d32a3c8d14ae5883997d01f860"
+      }
+    }
+  ],
+  "schema": "heroes-reviewed-resume-transitions-v1",
+  "source_changes": {
+    "experiments/learner/builtin_training.py": {
+      "from": "c28b51220f127d74cd79124097371ed55371ceee93ce6d26f65da7141adf33eb",
+      "to": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7"
+    },
+    "experiments/learner/builtin_training_resume.py": {
+      "from": "87ece77b951646a89998e4f1ca359cdf24b3213b6a39e96b3c86d6d70bea75a4",
+      "to": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "heroes-capability-expansion-authorization-v1",
+  "date": "2026-10-25",
+  "source": {
+    "thread_id": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
+    "human_turn_id": "01a17049-1075-7201-a9ac-b1d1ff3a0a6a",
+    "human_message_id": "01a17049-108b-7ef3-a0d4-125168a7f266",
+    "human_message_started_at": 1792885198,
+    "verified_from_thread": true,
+    "approval_english": "Yes, do that, but keep automatic battles; do everything else discussed and send it to that chat."
+  },
+  "stages": [
+    "Town Tavern, displayed hero selection, native recruitment and multiple owned heroes; separately versioned Tavern-enabled scenario, preserve restricted baseline, native hero caps, retain level cap 1",
+    "Explicit town/visitor and eligible own hero army transfer, exact-count split, compatible merge, rearrange and swap, native available upgrades and costs, garrison/visitor hero entry/exit/swap",
+    "Enumerated typical adventure confirmations and choice dialogs with policy-selected options; explicit unsupported families"
+  ],
+  "required_validation": [
+    "Real VCMI both colors, native effects and relevant rejections, fresh contexts and receipts",
+    "Replacement after hero loss and bounded ordinary-map recovery sequence",
+    "Fixed-weight inference, exact probabilities, per-player history, native replay and semantic tamper",
+    "Retain every failed attempt and preserve earlier evidence"
+  ],
+  "constraints": {
+    "automatic_battles_unchanged": true,
+    "normal_fog": true,
+    "terminal_only_rewards": true,
+    "no_demonstration_training": true,
+    "no_strategic_heuristics_in_policy": true,
+    "no_gameplay_optimizer_updates": true,
+    "no_paid_compute": true,
+    "no_merge": true,
+    "coherent_commits_and_explicit_branch_pushes": true
+  },
+  "note": "Authorization evidence, not proof of implementation or validation. README is the single authoritative project document."
+}

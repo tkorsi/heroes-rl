@@ -1,0 +1,862 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -744,6 +744,7 @@ endif()
+ 
+ if(ENABLE_SERVER)
+ 	add_subdirectory(serverapp)
++	add_subdirectory(experimentreplay)
+ endif()
+ 
+ if(ENABLE_TEST)
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -28,6 +28,8 @@
+ #include "../lib/battle/CPlayerBattleCallback.h"
+ #include "../lib/callback/CCallback.h"
+ #include "../lib/callback/CDynLibHandler.h"
++#include "../lib/callback/ExperimentHooks.h"
++#include "../lib/serializer/CTypeList.h"
+ #include "../lib/callback/CGlobalAI.h"
+ #include "../lib/callback/IGameInfoCallback.h"
+ #include "../lib/filesystem/Filesystem.h"
+@@ -415,6 +417,7 @@ void CClient::handlePack(CPackForClient & pack)
+ 	{
+ 		std::unique_lock lock(CGameState::mutex);
+ 		gameState().apply(pack);
++		noteExperimentPackApplied(CTypeList::getInstance().getTypeID(&pack));
+ 	}
+ 	logNetwork->trace("\tApplied on gs: %s", typeid(pack).name());
+ 	pack.visit(afterVisitor);
+diff --git a/lib/CMakeLists.txt b/lib/CMakeLists.txt
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -496,6 +496,7 @@ set(lib_MAIN_HEADERS
+ 	callback/CBattleGameInterface.h
+ 	callback/CCallback.h
+ 	callback/CDynLibHandler.h
++	callback/ExperimentHooks.h
+ 	callback/CGameInfoCallback.h
+ 	callback/CGameInterface.h
+ 	callback/CGlobalAI.h
+diff --git a/lib/callback/CDynLibHandler.cpp b/lib/callback/CDynLibHandler.cpp
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -9,6 +9,7 @@
+  */
+ #include "StdInc.h"
+ #include "CDynLibHandler.h"
++#include "ExperimentHooks.h"
+ 
+ #include "CGlobalAI.h"
+ 
+@@ -53,6 +54,23 @@ void setExperimentFailureHandler(std::function<void(const std::string &)> handle
+ 	experimentFailureHandler = std::move(handler);
+ }
+ 
++namespace
++{
++std::atomic<uint64_t> experimentPackIndex{0};
++std::atomic<uint16_t> experimentPackType{0};
++}
++
++void noteExperimentPackApplied(uint16_t type)
++{
++	experimentPackType.store(type, std::memory_order_relaxed);
++	experimentPackIndex.fetch_add(1, std::memory_order_relaxed);
++}
++
++ExperimentPackPosition experimentPackPosition()
++{
++	return {experimentPackIndex.load(std::memory_order_relaxed), experimentPackType.load(std::memory_order_relaxed)};
++}
++
+ void reportExperimentFailure(const std::string & reason)
+ {
+ 	std::function<void(const std::string &)> handler;
+diff --git a/lib/callback/ExperimentHooks.h b/lib/callback/ExperimentHooks.h
+new file mode 100644
+--- /dev/null
++++ b/lib/callback/ExperimentHooks.h
+@@ -0,0 +1,28 @@
++/*
++ * ExperimentHooks.h, part of VCMI engine
++ *
++ * Authors: listed in file AUTHORS in main folder
++ *
++ * License: GNU General Public License v2.0 or later
++ * Full text of license available in license.txt file, in main folder
++ *
++ */
++#pragma once
++
++VCMI_LIB_NAMESPACE_BEGIN
++
++/// Where a client stands in the server's pack stream. Replay verification uses
++/// it to place an AI's captures in the replayed authoritative state. It counts
++/// opponent activity too, so it belongs only in engine-side evidence.
++struct ExperimentPackPosition
++{
++	uint64_t index = 0; ///< packs this client has applied to its game state
++	uint16_t type = 0; ///< type of the last of them
++};
++
++/// Called by the client under the exclusive game-state lock, after each pack is applied.
++DLL_LINKAGE void noteExperimentPackApplied(uint16_t type);
++/// Stable while the caller holds the game-state lock or runs on the packet thread.
++DLL_LINKAGE ExperimentPackPosition experimentPackPosition();
++
++VCMI_LIB_NAMESPACE_END
+diff --git a/lib/serializer/BinaryDeserializer.h b/lib/serializer/BinaryDeserializer.h
+--- a/lib/serializer/BinaryDeserializer.h
++++ b/lib/serializer/BinaryDeserializer.h
+@@ -260,7 +260,12 @@ private:
+ 			auto createdPtr = app->createPtr(*this, cb);
+ 			auto dataNonConst = dynamic_cast<ncpT *>(createdPtr);
+ 			assert(createdPtr);
+-			assert(dataNonConst);
++			if(dataNonConst == nullptr)
++			{
++				// A stream naming a registered type of another class must not reach loadPtr.
++				delete createdPtr;
++				throw std::runtime_error("Serialized type " + std::to_string(tid) + " is not the expected class");
++			}
+ 			data = dataNonConst;
+ 			ptrAllocated(data, pid);
+ 			app->loadPtr(*this, cb, dataNonConst);
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -89,6 +89,8 @@
+ 
+ #include <cstdlib>
+ 
++#include "ExperimentReplay.h"
++
+ namespace
+ {
+ const char * experimentDirectory()
+@@ -520,6 +522,11 @@ void CGameHandler::handleReceivedPack(GameConnectionID connection, CPackForServe
+ 		gameServer().sendPack(applied, connection);
+ 	};
+ 
++	if(replayRecorder)
++		replayRecorder->input(connection, pack);
++	lastPackBlocked = false;
++	lastPackResult = false;
++
+ 	PackageReceived received(
+ 		pack.player,
+ 		pack.requestID,
+@@ -529,6 +536,7 @@ void CGameHandler::handleReceivedPack(GameConnectionID connection, CPackForServe
+ 
+ 	if(isBlockedByQueries(&pack, pack.player))
+ 	{
++		lastPackBlocked = true;
+ 		sendPackageResponse(false);
+ 	}
+ 	else
+@@ -553,8 +561,11 @@ void CGameHandler::handleReceivedPack(GameConnectionID connection, CPackForServe
+ 
+ 		// Report the actual outcome, so that a requester can tell an executed
+ 		// action from a rejected one (upstream always reported success here).
++		lastPackResult = result;
+ 		sendPackageResponse(result);
+ 	}
++	if(replayRecorder)
++		replayRecorder->applied(*this, pack, lastPackBlocked, lastPackResult);
+ }
+ 
+ CGameHandler::CGameHandler(IGameServer & server, const std::shared_ptr<CGameState> & initialGamestate)
+@@ -599,6 +610,11 @@ void CGameHandler::reinitScripting()
+ 
+ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTracking)
+ {
++	// The replay records the StartInfo exactly as this function receives it.
++	replayRecorder = experiment_replay::Recorder::fromEnvironment();
++	if(replayRecorder)
++		replayRecorder->beforeInit(*si);
++
+ 	// Set the authoritative options before game-state construction and AI initialization.
+ 	// Normal games retain their configured options; only an explicit recorder request disables cheats.
+ 	if(const char * noCheats = std::getenv("VCMI_EXPERIMENT_NO_CHEATS"))
+@@ -636,6 +652,8 @@ void CGameHandler::init(StartInfo *si, Load::ProgressAccumulator & progressTrack
+ 		turnOrder->addPlayer(elem.first);
+ 
+ 	reinitScripting();
++	if(replayRecorder)
++		replayRecorder->afterInit(*this, requestedSeed, std::getenv("VCMI_EXPERIMENT_NO_CHEATS"));
+ }
+ 
+ void CGameHandler::setPortalDwelling(const CGTownInstance * town, bool forced=false, bool clear = false)
+@@ -839,6 +857,8 @@ void CGameHandler::start(bool resume)
+ 		events::GameResumed::defaultExecute(serverEventBus.get());
+ 
+ 	turnOrder->onGameStarted();
++	if(replayRecorder)
++		replayRecorder->afterStart(*this, gameServer());
+ }
+ 
+ void CGameHandler::tick(int millisecondsPassed)
+diff --git a/server/CGameHandler.h b/server/CGameHandler.h
+--- a/server/CGameHandler.h
++++ b/server/CGameHandler.h
+@@ -59,6 +59,7 @@ class QueriesProcessor;
+ class CObjectVisitQuery;
+ class NewTurnProcessor;
+ class IGameServer;
++namespace experiment_replay { class Recorder; }
+ 
+ class CGameHandler : public Environment, public IGameEventCallback
+ {
+@@ -88,6 +89,12 @@ public:
+ 
+ 	std::set<PlayerColor> uiReadyForDialogs;
+ 
++	/// Replay evidence of an experiment run, see ExperimentReplay.h; null otherwise.
++	std::unique_ptr<experiment_replay::Recorder> replayRecorder;
++	/// Outcome of the last pack passed to handleReceivedPack, for replay verification.
++	bool lastPackBlocked = false;
++	bool lastPackResult = false;
++
+ 	const Services * services() const override;
+ 	const BattleCb * battle(const BattleID & battleID) const override;
+ 	const GameCb * game() const override;
+diff --git a/server/CMakeLists.txt b/server/CMakeLists.txt
+--- a/server/CMakeLists.txt
++++ b/server/CMakeLists.txt
+@@ -18,6 +18,7 @@ set(vcmiservercommon_SRCS
+ 		processors/TurnOrderProcessor.cpp
+ 
+ 		CGameHandler.cpp
++		ExperimentReplay.cpp
+ 		GlobalLobbyProcessor.cpp
+ 		ServerSpellCastEnvironment.cpp
+ 		CVCMIServer.cpp
+@@ -46,6 +47,7 @@ set(vcmiservercommon_HEADERS
+ 		processors/TurnOrderProcessor.h
+ 
+ 		CGameHandler.h
++		ExperimentReplay.h
+ 		GlobalLobbyProcessor.h
+ 		IGameServer.h
+ 		ServerSpellCastEnvironment.h
+diff --git a/server/CVCMIServer.cpp b/server/CVCMIServer.cpp
+--- a/server/CVCMIServer.cpp
++++ b/server/CVCMIServer.cpp
+@@ -11,6 +11,7 @@
+ #include "CVCMIServer.h"
+ 
+ #include "CGameHandler.h"
++#include "ExperimentReplay.h"
+ #include "GlobalLobbyProcessor.h"
+ #include "LobbyNetPackVisitors.h"
+ #include "processors/PlayerMessageProcessor.h"
+@@ -1247,6 +1248,8 @@ bool CVCMIServer::hasBothPlayersAtSameConnection(PlayerColor left, PlayerColor r
+ 
+ void CVCMIServer::applyPack(CPackForClient & pack)
+ {
++	if(gh && gh->replayRecorder)
++		gh->replayRecorder->sent(pack, -1);
+ 	logNetwork->trace("\tSending to all clients: %s", typeid(pack).name());
+ 	for (const auto & c : activeConnections)
+ 		c->sendPack(pack);
+@@ -1256,6 +1259,8 @@ void CVCMIServer::applyPack(CPackForClient & pack)
+ 
+ void CVCMIServer::sendPack(CPackForClient & pack, GameConnectionID connectionID)
+ {
++	if(gh && gh->replayRecorder)
++		gh->replayRecorder->sent(pack, static_cast<int>(connectionID));
+ 	for (const auto & c : activeConnections)
+ 		if (c->connectionID == connectionID)
+ 			c->sendPack(pack);
+diff --git a/server/ExperimentReplay.cpp b/server/ExperimentReplay.cpp
+new file mode 100644
+--- /dev/null
++++ b/server/ExperimentReplay.cpp
+@@ -0,0 +1,482 @@
++/*
++ * ExperimentReplay.cpp, part of VCMI engine
++ *
++ * Authors: listed in file AUTHORS in main folder
++ *
++ * License: GNU General Public License v2.0 or later
++ * Full text of license available in license.txt file, in main folder
++ *
++ */
++#include "StdInc.h"
++#include "ExperimentReplay.h"
++
++#include "CGameHandler.h"
++#include "IGameServer.h"
++#include "TurnTimerHandler.h"
++#include "battles/BattleProcessor.h"
++#include "processors/HeroPoolProcessor.h"
++#include "processors/PlayerMessageProcessor.h"
++#include "processors/TurnOrderProcessor.h"
++
++#include "../lib/CPlayerState.h"
++#include "../lib/GameConstants.h"
++#include "../lib/GameSettings.h"
++#include "../lib/StartInfo.h"
++#include "../lib/battle/BattleInfo.h"
++#include "../lib/bonuses/BonusParameters.h"
++#include "../lib/bonuses/Limiters.h"
++#include "../lib/bonuses/Propagators.h"
++#include "../lib/bonuses/Updaters.h"
++#include "../lib/callback/GameRandomizer.h"
++#include "../lib/campaign/CampaignState.h"
++#include "../lib/gameState/CGameState.h"
++#include "../lib/gameState/CGameStateCampaign.h"
++#include "../lib/gameState/TavernHeroesPool.h"
++#include "../lib/mapObjects/CGHeroInstance.h"
++#include "../lib/mapObjects/CGTownInstance.h"
++#include "../lib/mapObjects/CQuest.h"
++#include "../lib/mapObjects/MiscObjects.h"
++#include "../lib/mapping/CMap.h"
++#include "../lib/mapping/CMapInfo.h"
++#include "../lib/networkPacks/PacksForClient.h"
++#include "../lib/networkPacks/PacksForClientBattle.h"
++#include "../lib/networkPacks/PacksForServer.h"
++#include "../lib/rmg/CMapGenOptions.h"
++#include "../lib/serializer/BinaryDeserializer.h"
++#include "../lib/serializer/BinarySerializer.h"
++#include "../lib/serializer/CTypeList.h"
++
++namespace experiment_replay
++{
++namespace
++{
++class BufferWriter final : public IBinaryWriter
++{
++public:
++	std::vector<std::byte> buffer;
++
++	int write(const std::byte * data, unsigned size) override
++	{
++		buffer.insert(buffer.end(), data, data + size);
++		return size;
++	}
++};
++
++class BufferReader final : public IBinaryReader
++{
++	const std::vector<std::byte> & buffer;
++	size_t position = 0;
++
++public:
++	explicit BufferReader(const std::vector<std::byte> & buffer)
++		: buffer(buffer)
++	{
++	}
++
++	int read(std::byte * data, unsigned size) override
++	{
++		if(position + size > buffer.size())
++			throw std::runtime_error("Recorded bytes end early");
++		std::copy_n(buffer.begin() + position, size, data);
++		position += size;
++		return size;
++	}
++
++	bool finished() const { return position == buffer.size(); }
++};
++
++class DigestWriter final : public IBinaryWriter
++{
++public:
++	uint64_t state = DIGEST_SEED;
++
++	int write(const std::byte * data, unsigned size) override
++	{
++		for(unsigned i = 0; i < size; ++i)
++		{
++			state ^= static_cast<uint8_t>(data[i]);
++			state *= 1099511628211ULL;
++		}
++		return size;
++	}
++};
++
++uint64_t digestValue(uint64_t state, int64_t value)
++{
++	auto bits = static_cast<uint64_t>(value);
++	for(int byte = 0; byte < 8; ++byte, bits >>= 8)
++	{
++		state ^= bits & 0xff;
++		state *= 1099511628211ULL;
++	}
++	return state;
++}
++
++/// Statistics entries carry wall-clock time, which no replay can reproduce.
++void clearTimestamps(StatisticDataSet & statistics)
++{
++	for(auto & entry : statistics.data)
++		entry.timestamp = 0;
++}
++
++/// The bytes that identify a sent pack, without wall-clock fields.
++std::vector<std::byte> canonicalPack(const CPackForClient & pack)
++{
++	if(const auto * ending = dynamic_cast<const PlayerEndsGame *>(&pack))
++	{
++		auto copy = *ending;
++		clearTimestamps(copy.statistic);
++		return encodePack(copy);
++	}
++	if(const auto * response = dynamic_cast<const ResponseStatistic *>(&pack))
++	{
++		auto copy = *response;
++		clearTimestamps(copy.statistic);
++		return encodePack(copy);
++	}
++	return encodePack(pack);
++}
++}
++
++std::string platform()
++{
++	std::string result;
++#if defined(__VERSION__)
++	result += __VERSION__;
++#endif
++#if defined(_LIBCPP_VERSION)
++	result += " libc++ " + std::to_string(_LIBCPP_VERSION);
++#elif defined(__GLIBCXX__)
++	result += " libstdc++ " + std::to_string(__GLIBCXX__);
++#endif
++#if defined(__aarch64__)
++	result += " arm64";
++#elif defined(__x86_64__)
++	result += " x86_64";
++#endif
++#if defined(__APPLE__)
++	result += " apple";
++#elif defined(__linux__)
++	result += " linux";
++#endif
++	return result;
++}
++
++namespace
++{
++std::string quoted(const std::string & text)
++{
++	std::string result = "\"";
++	for(const char c : text)
++	{
++		if(c == '"' || c == '\\')
++			result += '\\';
++		if(static_cast<unsigned char>(c) < 0x20)
++		{
++			char escape[8];
++			std::snprintf(escape, sizeof(escape), "\\u%04x", c);
++			result += escape;
++		}
++		else
++			result += c;
++	}
++	return result + "\"";
++}
++
++// PlayerColor::NEUTRAL is -1 in this VCMI; the host connection owns it, so neutral battle actions are its packs.
++constexpr int PLAYER_IDS[] = {0, 1, 2, 3, 4, 5, 6, 7, -1};
++}
++
++uint64_t digestBytes(const std::vector<std::byte> & bytes, uint64_t state)
++{
++	for(const auto byte : bytes)
++	{
++		state ^= static_cast<uint8_t>(byte);
++		state *= 1099511628211ULL;
++	}
++	return state;
++}
++
++std::vector<std::byte> encodePack(const CPack & pack)
++{
++	BufferWriter writer;
++	BinarySerializer serializer(&writer);
++	serializer & &pack;
++	return writer.buffer;
++}
++
++std::vector<std::byte> encodeStartInfo(const StartInfo & startInfo)
++{
++	BufferWriter writer;
++	BinarySerializer serializer(&writer);
++	serializer & startInfo;
++	return writer.buffer;
++}
++
++std::unique_ptr<CPack> decodePack(const std::vector<std::byte> & bytes, IGameInfoCallback * gameInfo)
++{
++	BufferReader reader(bytes);
++	BinaryDeserializer deserializer(&reader);
++	deserializer.version = ESerializationVersion::CURRENT;
++	deserializer.cb = gameInfo;
++	std::unique_ptr<CPack> pack;
++	deserializer & pack;
++	if(!pack || !reader.finished())
++		throw std::runtime_error("Recorded pack bytes do not hold exactly one pack");
++	return pack;
++}
++
++void decodeStartInfo(const std::vector<std::byte> & bytes, StartInfo & startInfo)
++{
++	BufferReader reader(bytes);
++	BinaryDeserializer deserializer(&reader);
++	deserializer.version = ESerializationVersion::CURRENT;
++	deserializer & startInfo;
++	if(!reader.finished())
++		throw std::runtime_error("Recorded StartInfo has trailing bytes");
++}
++
++std::string toHex(const std::vector<std::byte> & bytes)
++{
++	static constexpr char DIGITS[] = "0123456789abcdef";
++	std::string result;
++	result.reserve(bytes.size() * 2);
++	for(const auto byte : bytes)
++	{
++		result += DIGITS[static_cast<uint8_t>(byte) >> 4];
++		result += DIGITS[static_cast<uint8_t>(byte) & 15];
++	}
++	return result;
++}
++
++std::vector<std::byte> fromHex(const std::string & text)
++{
++	auto digit = [](char c) -> int
++	{
++		if(c >= '0' && c <= '9')
++			return c - '0';
++		if(c >= 'a' && c <= 'f')
++			return c - 'a' + 10;
++		throw std::runtime_error("Invalid hexadecimal digit in replay record");
++	};
++	if(text.size() % 2)
++		throw std::runtime_error("Odd-length hexadecimal field in replay record");
++	std::vector<std::byte> result;
++	result.reserve(text.size() / 2);
++	for(size_t i = 0; i < text.size(); i += 2)
++		result.push_back(static_cast<std::byte>(digit(text[i]) * 16 + digit(text[i + 1])));
++	return result;
++}
++
++std::string digestHex(uint64_t value)
++{
++	char buffer[17];
++	std::snprintf(buffer, sizeof(buffer), "%016llx", static_cast<unsigned long long>(value));
++	return buffer;
++}
++
++uint64_t stateDigest(CGameHandler & gameHandler)
++{
++	DigestWriter writer;
++	BinarySerializer serializer(&writer);
++	serializer & gameHandler.gameState();
++	serializer & gameHandler.QID;
++	serializer & gameHandler.uiReadyForDialogs;
++	serializer & *gameHandler.randomizer;
++	serializer & *gameHandler.battles;
++	serializer & *gameHandler.heroPool;
++	serializer & *gameHandler.playerMessages;
++	serializer & *gameHandler.turnOrder;
++	serializer & *gameHandler.turnTimerHandler;
++	return writer.state;
++}
++
++std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler)
++{
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	auto part = [&parts](const char * name, const auto & value)
++	{
++		DigestWriter writer;
++		BinarySerializer serializer(&writer);
++		serializer & value;
++		parts.emplace_back(name, writer.state);
++	};
++	part("game_state", gameHandler.gameState());
++	part("queries", gameHandler.QID);
++	part("ui_ready_for_dialogs", gameHandler.uiReadyForDialogs);
++	part("randomizer", *gameHandler.randomizer);
++	part("battles", *gameHandler.battles);
++	part("hero_pool", *gameHandler.heroPool);
++	part("player_messages", *gameHandler.playerMessages);
++	part("turn_order", *gameHandler.turnOrder);
++	part("turn_timers", *gameHandler.turnTimerHandler);
++	return parts;
++}
++
++void Outgoing::note(const CPackForClient & pack, int target, int clientConnection)
++{
++	const auto type = CTypeList::getInstance().getTypeID(&pack);
++	const auto bytes = canonicalPack(pack);
++	sent.emplace_back(type, digestBytes(bytes, digestValue(digestValue(DIGEST_SEED, target), type)));
++	chain = digestValue(chain, target);
++	chain = digestValue(chain, type);
++	chain = digestBytes(bytes, chain);
++	++count;
++	if(target == -1 || target == clientConnection)
++		++clientCount;
++	if(dynamic_cast<const BattleResultsApplied *>(&pack))
++		battleEnded = true;
++	if(const auto * ending = dynamic_cast<const PlayerEndsGame *>(&pack))
++		terminals.emplace_back(ending->player.getNum(), ending->victoryLossCheckResult.victory());
++}
++
++void Outgoing::clearFlags()
++{
++	battleEnded = false;
++	terminals.clear();
++	sent.clear();
++}
++
++namespace
++{
++std::string sentJson(const Outgoing & outgoing)
++{
++	std::string result = "[";
++	for(const auto & [type, digest] : outgoing.sent)
++		result += (result.size() > 1 ? ",[" : "[") + std::to_string(type) + ",\"" + digestHex(digest) + "\"]";
++	return result + "]";
++}
++
++std::string partsJson(CGameHandler & gameHandler)
++{
++	std::string result = "{";
++	for(const auto & [name, digest] : stateDigestParts(gameHandler))
++		result += (result.size() > 1 ? ",\"" : "\"") + std::string(name) + "\":\"" + digestHex(digest) + "\"";
++	return result + "}";
++}
++}
++
++const char * boundaryAfter(const CPackForServer & input, bool result, const Outgoing & outgoing)
++{
++	if(!outgoing.terminals.empty())
++		return "game_end";
++	if(outgoing.battleEnded)
++		return "battle_end";
++	if(result && dynamic_cast<const EndTurn *>(&input))
++		return "end_turn";
++	return nullptr;
++}
++
++Recorder::Recorder(const std::string & path)
++	: output(path, std::ios::out | std::ios::trunc)
++{
++	if(!output)
++		throw std::runtime_error("Cannot create the replay log " + path);
++}
++
++Recorder::~Recorder()
++{
++	output.flush();
++}
++
++std::unique_ptr<Recorder> Recorder::fromEnvironment()
++{
++	const char * enabled = std::getenv("VCMI_EXPERIMENT_REPLAY");
++	if(!enabled || std::string(enabled) != "1")
++		return nullptr;
++	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
++	if(!directory || !*directory)
++		throw std::runtime_error("VCMI_EXPERIMENT_REPLAY requires VCMI_EXPERIMENT_DIR");
++	return std::make_unique<Recorder>(std::string(directory) + "/replay.jsonl");
++}
++
++void Recorder::line(const std::string & json)
++{
++	// Flushed per record: the environment may stop the engine at any decision,
++	// and the inputs behind every observation a client sent must be on disk.
++	output << json << '\n' << std::flush;
++	if(!output)
++		throw std::runtime_error("Cannot write the replay log");
++}
++
++void Recorder::beforeInit(const StartInfo & original)
++{
++	startInfo = encodeStartInfo(original);
++}
++
++void Recorder::afterInit(CGameHandler & gameHandler, int seed, const char * noCheats)
++{
++	std::string connections = "[";
++	for(int connection = static_cast<int>(GameConnectionID::FIRST_CONNECTION); connection < 32; ++connection)
++	{
++		std::string players;
++		for(const int player : PLAYER_IDS)
++			if(gameHandler.gameServer().hasPlayerAt(PlayerColor(player), GameConnectionID(connection)))
++				players += (players.empty() ? "" : ",") + std::to_string(player);
++		if(players.empty())
++			continue;
++		if(clientConnection < 0)
++			clientConnection = connection;
++		connections += (connections.size() > 1 ? "," : "") + std::string("{\"id\":") + std::to_string(connection) + ",\"players\":[" + players + "]}";
++	}
++	connections += "]";
++	std::string hosts;
++	for(const int player : PLAYER_IDS)
++		if(gameHandler.gameServer().isPlayerHost(PlayerColor(player)))
++			hosts += (hosts.empty() ? "" : ",") + std::to_string(player);
++	const auto * start = gameHandler.gameState().getStartInfo();
++	// CVCMIServer greets two or more human players with packs sent outside the
++	// game handler; the replay refuses such games instead of missing them.
++	int humans = 0;
++	for(const auto & player : start->playerInfos)
++		humans += player.second.isControlledByHuman();
++	line(std::string("{\"kind\":\"init\",\"schema\":\"") + SCHEMA + "\",\"vcmi_version\":" + quoted(GameConstants::VCMI_VERSION)
++		+ ",\"serialization_version\":" + std::to_string(static_cast<int>(ESerializationVersion::CURRENT))
++		+ ",\"platform\":" + quoted(platform()) + ",\"seed\":" + std::to_string(seed)
++		+ ",\"no_cheats\":" + (noCheats ? quoted(noCheats) : std::string("null"))
++		+ ",\"turn_timers\":" + (start->turnTimerInfo.isEnabled() ? "true" : "false") + ",\"human_players\":" + std::to_string(humans)
++		+ ",\"map\":" + quoted(start->fileURI) + ",\"connections\":" + connections
++		+ ",\"client_connection\":" + std::to_string(clientConnection) + ",\"hosts\":[" + hosts + "]"
++		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
++		+ ",\"parts\":" + partsJson(gameHandler) + "}");
++}
++
++void Recorder::afterStart(CGameHandler & gameHandler, IGameServer &)
++{
++	line("{\"kind\":\"start\",\"out\":" + std::to_string(outgoing.count) + ",\"client_out\":" + std::to_string(outgoing.clientCount)
++		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
++		+ ",\"parts\":" + partsJson(gameHandler) + ",\"sent\":" + sentJson(outgoing) + "}");
++	outgoing.clearFlags();
++}
++
++void Recorder::input(GameConnectionID connection, const CPackForServer & pack)
++{
++	outgoing.clearFlags();
++	line("{\"kind\":\"input\",\"seq\":" + std::to_string(sequence) + ",\"connection\":" + std::to_string(static_cast<int>(connection))
++		+ ",\"player\":" + std::to_string(pack.player.getNum()) + ",\"request\":" + std::to_string(pack.requestID)
++		+ ",\"type\":" + std::to_string(CTypeList::getInstance().getTypeID(&pack)) + ",\"out\":" + std::to_string(outgoing.count)
++		+ ",\"pack\":\"" + toHex(encodePack(pack)) + "\"}");
++}
++
++void Recorder::applied(CGameHandler & gameHandler, const CPackForServer & pack, bool blocked, bool result)
++{
++	const char * boundary = boundaryAfter(pack, result, outgoing);
++	std::string terminals = "[";
++	for(const auto & [player, victory] : outgoing.terminals)
++		terminals += (terminals.size() > 1 ? "," : "") + std::string("{\"player\":") + std::to_string(player) + ",\"victory\":" + (victory ? "true" : "false") + "}";
++	terminals += "]";
++	line("{\"kind\":\"applied\",\"seq\":" + std::to_string(sequence) + ",\"blocked\":" + (blocked ? "true" : "false")
++		+ ",\"result\":" + (result ? "true" : "false") + ",\"out\":" + std::to_string(outgoing.count)
++		+ ",\"client_out\":" + std::to_string(outgoing.clientCount) + ",\"chain\":\"" + digestHex(outgoing.chain) + "\""
++		+ ",\"boundary\":" + (boundary ? quoted(boundary) : std::string("null"))
++		+ ",\"digest\":" + (boundary ? "\"" + digestHex(stateDigest(gameHandler)) + "\"" : std::string("null"))
++		+ ",\"parts\":" + (boundary ? partsJson(gameHandler) : std::string("null"))
++		+ ",\"sent\":" + sentJson(outgoing) + ",\"terminals\":" + terminals + "}");
++	++sequence;
++}
++
++void Recorder::sent(const CPackForClient & pack, int target)
++{
++	outgoing.note(pack, target, clientConnection);
++}
++}
+diff --git a/server/ExperimentReplay.h b/server/ExperimentReplay.h
+new file mode 100644
+--- /dev/null
++++ b/server/ExperimentReplay.h
+@@ -0,0 +1,97 @@
++/*
++ * ExperimentReplay.h, part of VCMI engine
++ *
++ * Authors: listed in file AUTHORS in main folder
++ *
++ * License: GNU General Public License v2.0 or later
++ * Full text of license available in license.txt file, in main folder
++ *
++ */
++#pragma once
++
++#include "../lib/serializer/GameConnectionID.h"
++
++VCMI_LIB_NAMESPACE_BEGIN
++struct CPack;
++struct CPackForClient;
++struct CPackForServer;
++struct StartInfo;
++class IGameInfoCallback;
++VCMI_LIB_NAMESPACE_END
++
++class CGameHandler;
++class IGameServer;
++
++/// Replay evidence for experiments. The server's logical state is a function
++/// of the build, mods, map, StartInfo, seed and the ordered packs its game
++/// handler receives. The recorder writes those inputs, a running digest of
++/// every pack the server sends and digests of its logical state at declared
++/// boundaries, so that a replay of the inputs can stop at the first divergence.
++namespace experiment_replay
++{
++constexpr uint64_t DIGEST_SEED = 1469598103934665603ULL;
++constexpr const char * SCHEMA = "heroes-replay-v1";
++
++uint64_t digestBytes(const std::vector<std::byte> & bytes, uint64_t state = DIGEST_SEED);
++/// A pack serialized on its own, independent of any connection's string table.
++std::vector<std::byte> encodePack(const CPack & pack);
++std::vector<std::byte> encodeStartInfo(const StartInfo & startInfo);
++/// Inverse of encodePack: throws unless the bytes hold exactly one pack.
++std::unique_ptr<CPack> decodePack(const std::vector<std::byte> & bytes, IGameInfoCallback * gameInfo);
++/// Inverse of encodeStartInfo: throws unless the bytes hold exactly one StartInfo.
++void decodeStartInfo(const std::vector<std::byte> & bytes, StartInfo & startInfo);
++std::string toHex(const std::vector<std::byte> & bytes);
++std::vector<std::byte> fromHex(const std::string & text);
++std::string digestHex(uint64_t value);
++/// Compiler, standard library, architecture and OS: replays are exact only on the recording platform.
++std::string platform();
++
++/// The game handler's logical state: the game state plus the handler's own
++/// serializable state. Statistics are left out because they hold wall-clock time.
++uint64_t stateDigest(CGameHandler & gameHandler);
++/// Digests of the same parts one by one, to name the part a divergence is in.
++std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler);
++
++/// What the server has sent since its game handler was created.
++struct Outgoing
++{
++	uint64_t count = 0; ///< packs sent to any connection
++	uint64_t clientCount = 0; ///< packs that reached the client connection hosting the players
++	uint64_t chain = DIGEST_SEED;
++	bool battleEnded = false; ///< since the last clearFlags()
++	std::vector<std::pair<uint16_t, uint64_t>> sent; ///< (type, digest) of each pack since the last clearFlags()
++	std::vector<std::pair<int, bool>> terminals; ///< (player, victory) since the last clearFlags()
++
++	/// target is a connection, or -1 for a pack sent to every connection.
++	void note(const CPackForClient & pack, int target, int clientConnection);
++	void clearFlags();
++};
++
++/// The declared boundary after an input, or nullptr: the end of a game, then
++/// of a battle, then an accepted end of turn.
++const char * boundaryAfter(const CPackForServer & input, bool result, const Outgoing & outgoing);
++
++class Recorder
++{
++	std::ofstream output;
++	Outgoing outgoing;
++	uint64_t sequence = 0;
++	int clientConnection = -1;
++	std::vector<std::byte> startInfo;
++
++	void line(const std::string & json);
++
++public:
++	explicit Recorder(const std::string & path);
++	~Recorder();
++	/// VCMI_EXPERIMENT_REPLAY=1 writes VCMI_EXPERIMENT_DIR/replay.jsonl; otherwise null.
++	static std::unique_ptr<Recorder> fromEnvironment();
++
++	void beforeInit(const StartInfo & startInfo);
++	void afterInit(CGameHandler & gameHandler, int seed, const char * noCheats);
++	void afterStart(CGameHandler & gameHandler, IGameServer & server);
++	void input(GameConnectionID connection, const CPackForServer & pack);
++	void applied(CGameHandler & gameHandler, const CPackForServer & pack, bool blocked, bool result);
++	void sent(const CPackForClient & pack, int target);
++};
++}

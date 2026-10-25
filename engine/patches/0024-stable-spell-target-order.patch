@@ -1,0 +1,97 @@
+--- a/lib/spells/effects/UnitEffect.cpp
++++ b/lib/spells/effects/UnitEffect.cpp
+@@ -113,7 +113,13 @@
+ 	if(!aimPoint.empty() && spellTarget.empty())
+ 		spellTargetCopy.insert(spellTargetCopy.begin(), Destination(aimPoint.front()));
+ 
+-	std::set<const battle::Unit *> targets;
++	// Heap addresses differ between the live engine and independent replay.
++	// Stable battle IDs preserve the selected unique targets and their effects.
++	const auto byUnitId = [](const battle::Unit * left, const battle::Unit * right)
++	{
++		return left->unitId() < right->unitId();
++	};
++	std::set<const battle::Unit *, decltype(byUnitId)> targets(byUnitId);
+ 
+ 	if(m->isMassive())
+ 	{
+@@ -168,7 +174,7 @@
+ 
+ 	auto predicate = std::bind(&UnitEffect::eraseByImmunityFilter, this, m, _1);
+ 
+-	vstd::erase_if(targets, predicate);
++	std::erase_if(targets, predicate);
+ 
+ 	if(m->alwaysHitFirstTarget())
+ 	{
+--- a/lib/spells/BattleSpellMechanics.cpp
++++ b/lib/spells/BattleSpellMechanics.cpp
+@@ -320,7 +320,11 @@
+ 		vstd::concatenate(all, one);
+ 	});
+ 
+-	std::set<const CStack *> stacks;
++	const auto byUnitId = [](const CStack * left, const CStack * right)
++	{
++		return left->unitId() < right->unitId();
++	};
++	std::set<const CStack *, decltype(byUnitId)> stacks(byUnitId);
+ 
+ 	for(const Destination & dest : all)
+ 	{
+@@ -488,7 +492,7 @@
+ 	//prepare targets
+ 	effectsToApply = effects->prepare(this, target, spellTarget);
+ 
+-	std::set<const battle::Unit *> unitTargets = collectTargets();
++	const auto unitTargets = collectTargets();
+ 
+ 	//process them
+ 	for(const auto * unit : unitTargets)
+@@ -560,7 +564,7 @@
+ 
+ 	effectsToApply = effects->prepare(this, target, spellTarget);
+ 
+-	std::set<const battle::Unit *> unitTargets = collectTargets();
++	const auto unitTargets = collectTargets();
+ 
+ 	auto selector = std::bind(&BattleSpellMechanics::counteringSelector, this, _1);
+ 
+@@ -571,9 +575,14 @@
+ 		p.first->apply(server, this, p.second);
+ }
+ 
+-std::set<const battle::Unit *> BattleSpellMechanics::collectTargets() const
+-{
+-	std::set<const battle::Unit *> result;
++battle::Units BattleSpellMechanics::collectTargets() const
++{
++	// Effect lists and emitted removal packets must not depend on allocation order.
++	const auto byUnitId = [](const battle::Unit * left, const battle::Unit * right)
++	{
++		return left->unitId() < right->unitId();
++	};
++	std::set<const battle::Unit *, decltype(byUnitId)> result(byUnitId);
+ 
+ 	for(const auto & p : effectsToApply)
+ 	{
+@@ -582,7 +591,7 @@
+ 				result.insert(d.unitValue);
+ 	}
+ 
+-	return result;
++	return battle::Units(result.begin(), result.end());
+ }
+ 
+ void BattleSpellMechanics::doRemoveEffects(ServerCallback * server, const battle::Units & targets, const CSelector & selector)
+--- a/lib/spells/BattleSpellMechanics.h
++++ b/lib/spells/BattleSpellMechanics.h
+@@ -84,7 +84,7 @@
+ 	void reflect(BattleSpellCast & sc, vstd::RNG & rng, const battle::Unit * unit);
+ 	const battle::Unit * getRandomUnit(vstd::RNG & rng, const BattleSide & side);
+ 
+-	std::set<const battle::Unit *> collectTargets() const;
++	battle::Units collectTargets() const;
+ 
+ 	void doRemoveEffects(ServerCallback * server, const battle::Units & targets, const CSelector & selector);
+ 

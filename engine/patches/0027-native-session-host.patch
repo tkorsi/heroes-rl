@@ -1,0 +1,56 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -747,6 +747,10 @@
+ 	add_subdirectory(experimentreplay)
+ endif()
+ 
++if(ENABLE_CLIENT AND ENABLE_SERVER AND ENABLE_EXPLORER_RL)
++	add_subdirectory(nativesession)
++endif()
++
+ if(ENABLE_TEST)
+ 	enable_testing()
+ 	add_subdirectory(test)
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -111,6 +111,18 @@
+ }
+ }
+ 
++void resetNativeSessionEvidence()
++{
++	std::lock_guard eventLock(experimentEventMutex);
++	std::lock_guard hooksLock(experimentHooksMutex);
++	if(eventDepth || evidenceHooks)
++		throw std::logic_error("Native evidence reset requires quiescent detached episode hooks");
++	experimentFailure.store(false, std::memory_order_release);
++	experimentPackIndex.store(0, std::memory_order_relaxed);
++	experimentPackType.store(0, std::memory_order_relaxed);
++	receiptPosition = {};
++}
++
+ bool contextualEvidenceEnabled()
+ {
+ 	const char * value = std::getenv("VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE");
+--- a/lib/callback/ExperimentHooks.h
++++ b/lib/callback/ExperimentHooks.h
+@@ -44,6 +44,9 @@
+ DLL_LINKAGE int experimentBuiltinLearner();
+ DLL_LINKAGE JsonNode experimentBuiltinControllers();
+ DLL_LINKAGE bool experimentHasFailed();
++/// Native-session host only, after joining all prior episode threads and
++/// destroying prior callbacks/state. Not safe during gameplay.
++DLL_LINKAGE void resetNativeSessionEvidence();
+ /// Neutral can end a game only through a successful battle action from the
+ /// recorded connection that actually owns the neutral battle callback.
+ DLL_LINKAGE bool supportedExperimentTerminalRequest(const CPackForServer & input, bool neutralAuthenticated);
+@@ -63,6 +66,9 @@
+ {
+ public:
+ 	virtual ~ExperimentEvidenceHooks() = default;
++	/// Native-session host only: called after all episode threads/objects are
++	/// gone and this hook has been detached from the registry.
++	virtual void finishNativeSession() {}
+ 	/// Replay scheduling runs before acquiring the event mutex.
+ 	virtual void beforeEvent(const std::string & actor, const std::string & operation) {}
+ 	virtual void eventEntered(const std::string & actor, const std::string & operation) {}

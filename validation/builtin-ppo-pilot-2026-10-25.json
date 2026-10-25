@@ -1,0 +1,1848 @@
+{
+  "archived_pool_weights_unchanged": true,
+  "attempts": [
+    {
+      "action_counts": {
+        "back": 16,
+        "close": 6,
+        "end_turn": 2,
+        "merge_stacks": 3,
+        "move_to": 3,
+        "open_hero": 4,
+        "open_panel": 7,
+        "open_stack": 9,
+        "open_town": 2,
+        "select_recruit": 2,
+        "split_stack": 3,
+        "swap_garrison": 6,
+        "swap_stacks": 9
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160101,
+      "episode": 1,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 0,
+      "movement": {
+        "attempts": 3,
+        "endpoint_changes": 0,
+        "known_targets": 0,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 3
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 3,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 88,
+      "native_checked": {
+        "client_packets": 521,
+        "messages": 146,
+        "native_opponent_requests": 60,
+        "requests": 89,
+        "responses": 72,
+        "transactions": 871
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "phase": "before",
+      "policy_seed": 160201,
+      "reconstruction": {
+        "actions_resampled": 72,
+        "conditionals_recomputed": 145,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 464,
+          "history_sha256": "21277588985044538fcb889b4e75ae4f863acfbedd97bc00f3e760d43e6e3e05",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 0,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 72,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "sampled_choices": 72,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 4.832174457988003,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "back": 19,
+        "close": 16,
+        "construct": 1,
+        "end_turn": 12,
+        "merge_stacks": 12,
+        "move_to": 12,
+        "open_building": 7,
+        "open_hero": 9,
+        "open_panel": 5,
+        "open_stack": 10,
+        "open_town": 7,
+        "recruit": 1,
+        "select_recruit": 5,
+        "split_stack": 20,
+        "swap_garrison": 4,
+        "swap_stacks": 14
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160101,
+      "episode": 2,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 13,
+      "learner_player": 1,
+      "movement": {
+        "attempts": 12,
+        "endpoint_changes": 2,
+        "known_targets": 3,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 10,
+          "reached": 2
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 9,
+        "while_opponent_town_visible": 5
+      },
+      "native_authoritative_inputs": 343,
+      "native_checked": {
+        "client_packets": 1882,
+        "messages": 310,
+        "native_opponent_requests": 234,
+        "requests": 344,
+        "responses": 154,
+        "transactions": 2785
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "phase": "before",
+      "policy_seed": 160202,
+      "reconstruction": {
+        "actions_resampled": 154,
+        "conditionals_recomputed": 389,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 1088,
+          "history_sha256": "0cb87cbe15307b6d73ae4f91eed17b079c3da3394d86aeabaf081caf17584c88",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 1,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 1,
+        "private_memory_reset": true,
+        "values_recomputed": 154,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "sampled_choices": 154,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 11.13464100001147,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "back": 10,
+        "close": 8,
+        "end_turn": 2,
+        "merge_stacks": 1,
+        "move_to": 1,
+        "open_hero": 6,
+        "open_panel": 2,
+        "open_stack": 8,
+        "open_town": 2,
+        "select_recruit": 1,
+        "split_stack": 7,
+        "swap_garrison": 2,
+        "swap_stacks": 6
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160111,
+      "episode": 3,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 0,
+      "movement": {
+        "attempts": 1,
+        "endpoint_changes": 0,
+        "known_targets": 1,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 1
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 0,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 133,
+      "native_checked": {
+        "client_packets": 881,
+        "messages": 114,
+        "native_opponent_requests": 80,
+        "requests": 134,
+        "responses": 56,
+        "transactions": 1159
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "phase": "training",
+      "policy_seed": 160211,
+      "reconstruction": {
+        "actions_resampled": 56,
+        "conditionals_recomputed": 129,
+        "maximum_absolute_difference": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 56,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "sampled_choices": 56,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 56,
+      "wall_seconds": 4.694843499994022,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "back": 7,
+        "close": 5,
+        "end_turn": 1,
+        "merge_stacks": 1,
+        "move_to": 2,
+        "open_hero": 4,
+        "open_stack": 7,
+        "open_town": 1,
+        "split_stack": 4,
+        "swap_garrison": 2,
+        "swap_stacks": 4
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160111,
+      "episode": 4,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 1,
+      "movement": {
+        "attempts": 2,
+        "endpoint_changes": 0,
+        "known_targets": 0,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 2
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 2,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 103,
+      "native_checked": {
+        "client_packets": 668,
+        "messages": 78,
+        "native_opponent_requests": 78,
+        "requests": 104,
+        "responses": 38,
+        "transactions": 872
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "phase": "training",
+      "policy_seed": 160212,
+      "reconstruction": {
+        "actions_resampled": 38,
+        "conditionals_recomputed": 82,
+        "maximum_absolute_difference": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 38,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "sampled_choices": 38,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 38,
+      "wall_seconds": 3.4696002090058755,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "close": 3,
+        "end_turn": 2,
+        "open_hero": 3,
+        "swap_stacks": 1
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160112,
+      "episode": 5,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 0,
+      "movement": {
+        "attempts": 0,
+        "endpoint_changes": 0,
+        "known_targets": 0,
+        "missing_endpoints": 0,
+        "results": {},
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 0,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 88,
+      "native_checked": {
+        "client_packets": 597,
+        "messages": 20,
+        "native_opponent_requests": 78,
+        "requests": 89,
+        "responses": 9,
+        "transactions": 672
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "phase": "training",
+      "policy_seed": 160213,
+      "reconstruction": {
+        "actions_resampled": 9,
+        "conditionals_recomputed": 14,
+        "maximum_absolute_difference": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 9,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "sampled_choices": 9,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 9,
+      "wall_seconds": 1.7066971250023926,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "end_turn": 1,
+        "move_to": 2
+      },
+      "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160112,
+      "episode": 6,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 1,
+      "movement": {
+        "attempts": 2,
+        "endpoint_changes": 1,
+        "known_targets": 1,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 1,
+          "reached": 1
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 1,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 67,
+      "native_checked": {
+        "client_packets": 389,
+        "messages": 8,
+        "native_opponent_requests": 54,
+        "requests": 68,
+        "responses": 3,
+        "transactions": 471
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "phase": "training",
+      "policy_seed": 160214,
+      "reconstruction": {
+        "actions_resampled": 3,
+        "conditionals_recomputed": 7,
+        "maximum_absolute_difference": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 3,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "sampled_choices": 3,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 3,
+      "wall_seconds": 1.6150088330032304,
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    {
+      "action_counts": {
+        "back": 32,
+        "close": 9,
+        "construct": 1,
+        "end_turn": 2,
+        "merge_stacks": 4,
+        "move_to": 2,
+        "open_building": 10,
+        "open_hero": 4,
+        "open_panel": 11,
+        "open_stack": 14,
+        "open_town": 5,
+        "recruit": 1,
+        "select_recruit": 3,
+        "split_stack": 14,
+        "swap_garrison": 7,
+        "swap_stacks": 13
+      },
+      "checkpoint": "builtin-pilot-after-e9681c51783c0ee6",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160101,
+      "episode": 7,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 2,
+      "learner_player": 0,
+      "movement": {
+        "attempts": 2,
+        "endpoint_changes": 0,
+        "known_targets": 0,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 2
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 2,
+        "while_opponent_town_visible": 0
+      },
+      "native_authoritative_inputs": 159,
+      "native_checked": {
+        "client_packets": 967,
+        "messages": 266,
+        "native_opponent_requests": 88,
+        "requests": 160,
+        "responses": 132,
+        "transactions": 1578
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "phase": "after",
+      "policy_seed": 160201,
+      "reconstruction": {
+        "actions_resampled": 132,
+        "conditionals_recomputed": 288,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 852,
+          "history_sha256": "f3706f13109a46be215b13340193e7aef2cffa40b40d46fb33c8a830ee7b9688",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 0,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 0,
+        "private_memory_reset": true,
+        "values_recomputed": 132,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "sampled_choices": 132,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 9.071221582998987,
+      "weights_sha256": "e9681c51783c0ee679d0c201d7c59e18a0dafcf1f1461fd3f9927b6c3051d8d0"
+    },
+    {
+      "action_counts": {
+        "back": 19,
+        "close": 16,
+        "construct": 1,
+        "end_turn": 12,
+        "merge_stacks": 12,
+        "move_to": 12,
+        "open_building": 7,
+        "open_hero": 9,
+        "open_panel": 5,
+        "open_stack": 10,
+        "open_town": 7,
+        "recruit": 1,
+        "select_recruit": 5,
+        "split_stack": 20,
+        "swap_garrison": 4,
+        "swap_stacks": 14
+      },
+      "checkpoint": "builtin-pilot-after-e9681c51783c0ee6",
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "engine_seed": 160101,
+      "episode": 8,
+      "episode_status": "completed",
+      "identity_verified": true,
+      "last_public_day": 13,
+      "learner_player": 1,
+      "movement": {
+        "attempts": 12,
+        "endpoint_changes": 2,
+        "known_targets": 3,
+        "missing_endpoints": 0,
+        "results": {
+          "no_route_known": 10,
+          "reached": 2
+        },
+        "targets_visible_opponent_town": 0,
+        "unknown_targets": 9,
+        "while_opponent_town_visible": 5
+      },
+      "native_authoritative_inputs": 343,
+      "native_checked": {
+        "client_packets": 1882,
+        "messages": 310,
+        "native_opponent_requests": 234,
+        "requests": 344,
+        "responses": 154,
+        "transactions": 2785
+      },
+      "native_replay_verified": true,
+      "native_terminal_unapplied": 1,
+      "native_unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "phase": "after",
+      "policy_seed": 160202,
+      "reconstruction": {
+        "actions_resampled": 154,
+        "conditionals_recomputed": 389,
+        "history_audit": {
+          "boundary": "natural",
+          "consistent": true,
+          "frames": 1088,
+          "history_sha256": "f75e0e98f27eb2047dadb4da1f61dcdd4b3669c05bb31bf1f5f74fef3a92f829",
+          "native_execution_verified": false,
+          "optimization_eligible": false,
+          "player": 1,
+          "training_samples": 0
+        },
+        "maximum_absolute_difference": 0,
+        "passed": true,
+        "player": 1,
+        "private_memory_reset": true,
+        "values_recomputed": 154,
+        "weights_unchanged": true
+      },
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "sampled_choices": 154,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 11.484308790997602,
+      "weights_sha256": "e9681c51783c0ee679d0c201d7c59e18a0dafcf1f1461fd3f9927b6c3051d8d0"
+    }
+  ],
+  "authorization": {
+    "human_message": "01a172f9-ad90-7521-9916-700ec8d31344",
+    "human_turn": "01a172f9-ad09-7db0-b4e1-90aea22fd9f1",
+    "resume_human_message": "01a1730e-601c-7080-b33d-acadcd16a0de",
+    "source_thread": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
+    "verified_direct_human_instruction": true
+  },
+  "bindings": {
+    "execution-console.log": {
+      "bytes": 217,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution-console.log",
+      "sha256": "c037155de8b940ea3d82e4c56e4e24a98214fec87be8f3cdc77251c60c8d02a2"
+    },
+    "execution/after-policy.pt": {
+      "bytes": 636531,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/after-policy.pt",
+      "sha256": "114e346f52ea815f0ee1c096de2cde1a208e0c33772e9bb9f77dfb1e41c5b698"
+    },
+    "execution/after-resume.pt": {
+      "bytes": 1264565,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/after-resume.pt",
+      "sha256": "7ed92d8346fa2d195a5b3270780ccff880c05cb7798e8623a3283c62d2c84583"
+    },
+    "execution/before-policy.pt": {
+      "bytes": 636531,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/before-policy.pt",
+      "sha256": "04b93943418cab47f5ee747fd1125ddb8f441b43f2ec3acc8dac470f464d27c8"
+    },
+    "execution/before-resume.pt": {
+      "bytes": 638707,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/before-resume.pt",
+      "sha256": "4dad9b8c3ffbb41315f6987251958703ef69f5ed11b8d6840d9fb6cd6add630d"
+    },
+    "execution/episode-000001/agents/red/history-v7.jsonl": {
+      "bytes": 1457741,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/agents/red/history-v7.jsonl",
+      "sha256": "21277588985044538fcb889b4e75ae4f863acfbedd97bc00f3e760d43e6e3e05"
+    },
+    "execution/episode-000001/agents/red/live-history-v7.jsonl": {
+      "bytes": 1457741,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/agents/red/live-history-v7.jsonl",
+      "sha256": "21277588985044538fcb889b4e75ae4f863acfbedd97bc00f3e760d43e6e3e05"
+    },
+    "execution/episode-000001/behavior.json": {
+      "bytes": 40754,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/behavior.json",
+      "sha256": "bc1587acab37797f4a19ff0fa9b1f925d753e824d189b5bde92d13bf7c65a9af"
+    },
+    "execution/episode-000001/builtin-finalization.json": {
+      "bytes": 14484,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/builtin-finalization.json",
+      "sha256": "b40f09b0c27125203d72ed5f27ac665675211b7f000cc25ab792dfacbf6e1b0c"
+    },
+    "execution/episode-000001/builtin-rollout.json": {
+      "bytes": 4264200,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/builtin-rollout.json",
+      "sha256": "5e2b39e6d4650aa90fff64e14419ac7e6ea4a502a5219273b6a87ce5c64bb646"
+    },
+    "execution/episode-000001/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 9468,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/builtin-verification/builtin-replay-verification.json",
+      "sha256": "f6bf40dab55f98d8fb5822804666b7c621a1ade511d387e55517700cff9cd762"
+    },
+    "execution/episode-000001/builtin-verification/native-report.json": {
+      "bytes": 2843,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/builtin-verification/native-report.json",
+      "sha256": "9320a0811c2743cbd62f2931c6d2de69928e3edbeab417248fec9f0b94e5cdbb"
+    },
+    "execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 2593249,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/engine/contextual-replay.jsonl",
+      "sha256": "48918b1c4fa8d3ff26777c6545b76e4955ba6565a29f554705d6f39fb0de0fb5"
+    },
+    "execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 41961,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/engine/replay.jsonl",
+      "sha256": "091e79a7c95be61950f8ab3b8a4f755747ace590384ca8aecfef4e775aa1a689"
+    },
+    "execution/episode-000001/engine/terminal-barrier-client.jsonl": {
+      "bytes": 591,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/engine/terminal-barrier-client.jsonl",
+      "sha256": "7b3da74826a0af3eaca8001fa5bf53414453531f5ee43890e75bd367902b99bd"
+    },
+    "execution/episode-000001/engine/terminal-barrier-server.jsonl": {
+      "bytes": 459,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/engine/terminal-barrier-server.jsonl",
+      "sha256": "3a7cf68388d704a78e5958d93f756e7a54e5a6629b67a6ff613d4e6359890b8d"
+    },
+    "execution/episode-000001/manifest.json": {
+      "bytes": 16904,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/manifest.json",
+      "sha256": "cbe3db0ea52e1bcf8e5f061e3b111b25ee751d2ba57fbf22f3fec8c5e0c53200"
+    },
+    "execution/episode-000001/policy-reconstruction.json": {
+      "bytes": 526,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000001/policy-reconstruction.json",
+      "sha256": "c4de15e63682781e68d49570f57b5ab8725bd6870253163b9654a002dd75f14e"
+    },
+    "execution/episode-000002/agents/blue/history-v7.jsonl": {
+      "bytes": 4582231,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/agents/blue/history-v7.jsonl",
+      "sha256": "0cb87cbe15307b6d73ae4f91eed17b079c3da3394d86aeabaf081caf17584c88"
+    },
+    "execution/episode-000002/agents/blue/live-history-v7.jsonl": {
+      "bytes": 4582231,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/agents/blue/live-history-v7.jsonl",
+      "sha256": "0cb87cbe15307b6d73ae4f91eed17b079c3da3394d86aeabaf081caf17584c88"
+    },
+    "execution/episode-000002/behavior.json": {
+      "bytes": 107872,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/behavior.json",
+      "sha256": "19ba5277943bcccc45b3a814af3e447d3b4f93f2a5ca19fc1cb8810559688dca"
+    },
+    "execution/episode-000002/builtin-finalization.json": {
+      "bytes": 14492,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/builtin-finalization.json",
+      "sha256": "628bbcaabe2288be81c43751b9bf0a52ce6631aa8d4f2dcf29d8740b8e853523"
+    },
+    "execution/episode-000002/builtin-rollout.json": {
+      "bytes": 13282128,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/builtin-rollout.json",
+      "sha256": "0fe136d1e0fd7b910b0bc510a7a11900fcbbecc51cdbdebd8256922db9a68b87"
+    },
+    "execution/episode-000002/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 9548,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/builtin-verification/builtin-replay-verification.json",
+      "sha256": "84af32f37861750a3775ba36218e6678737cf546b50d0db03c2f492b2970caab"
+    },
+    "execution/episode-000002/builtin-verification/native-report.json": {
+      "bytes": 2892,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/builtin-verification/native-report.json",
+      "sha256": "6a6030393fd5080665769d462c8bfc9ffefad5e3bf277f0d6f675f69151c9b80"
+    },
+    "execution/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 8453171,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/engine/contextual-replay.jsonl",
+      "sha256": "bcde2623d73dcc3199eb2d5e6acd57775aa876a272e6744fb05534916d0f2162"
+    },
+    "execution/episode-000002/engine/replay.jsonl": {
+      "bytes": 160521,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/engine/replay.jsonl",
+      "sha256": "0218c01b8283a5cbf107c6dcc2bd4c333cd242512e0b4ac3a57979185889d598"
+    },
+    "execution/episode-000002/engine/terminal-barrier-client.jsonl": {
+      "bytes": 594,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/engine/terminal-barrier-client.jsonl",
+      "sha256": "aa35a12ffa911422a36debe8bdddacf2715903f948d58bef220beec8205b99c0"
+    },
+    "execution/episode-000002/engine/terminal-barrier-server.jsonl": {
+      "bytes": 461,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/engine/terminal-barrier-server.jsonl",
+      "sha256": "2c10ff386d9c847d763eeeb7671e9e32b0ceb1c994199980d89720361565867d"
+    },
+    "execution/episode-000002/manifest.json": {
+      "bytes": 16910,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/manifest.json",
+      "sha256": "c9a29a6d144297417bd6c1233a9001cbaf465643125cd576c2467f2c1a2761ca"
+    },
+    "execution/episode-000002/policy-reconstruction.json": {
+      "bytes": 529,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000002/policy-reconstruction.json",
+      "sha256": "042c9b2b95f677d2db9550251b3d84917edafb46c5d6b3ae7d5417bf2cc292df"
+    },
+    "execution/episode-000003/agents/red/bridge.jsonl": {
+      "bytes": 1049916,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/agents/red/bridge.jsonl",
+      "sha256": "234820d09e24fa91882bd034a9ffe0bbba6b4fd5a9d32a14450654fc5e8f3f71"
+    },
+    "execution/episode-000003/agents/red/history-v7.jsonl": {
+      "bytes": 1167984,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/agents/red/history-v7.jsonl",
+      "sha256": "e71e5ba2571f3bb26b3b30e36ebd684f7c8df5e7fe87ed26050bc4048501b085"
+    },
+    "execution/episode-000003/agents/red/live-history-v7.jsonl": {
+      "bytes": 1167984,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/agents/red/live-history-v7.jsonl",
+      "sha256": "e71e5ba2571f3bb26b3b30e36ebd684f7c8df5e7fe87ed26050bc4048501b085"
+    },
+    "execution/episode-000003/behavior.json": {
+      "bytes": 35901,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/behavior.json",
+      "sha256": "4a44e7294d0f1c9588eb920fbc9a96fb786b784eb8456ba3d77b45f0c828db44"
+    },
+    "execution/episode-000003/builtin-finalization.json": {
+      "bytes": 14487,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/builtin-finalization.json",
+      "sha256": "5fa3222274ad08e26f436ace6f2d48a07a6da7c813e23181e382f12291e3f1f5"
+    },
+    "execution/episode-000003/builtin-training-rollout.json": {
+      "bytes": 1290473,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/builtin-training-rollout.json",
+      "sha256": "96119062d210277ecbdfd7ef968907e481988c59b88c8f2fe7484f8227ad9676"
+    },
+    "execution/episode-000003/engine/contextual-replay.jsonl": {
+      "bytes": 2265650,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/engine/contextual-replay.jsonl",
+      "sha256": "282952f3f845a893ac64930c0df162e9ff82bdd2c0c7ebf232739c0678d2ccf1"
+    },
+    "execution/episode-000003/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/engine/experiment-metadata.json",
+      "sha256": "a2076dbf8b190cf7110694f04b620092b424a82a660da624dfbced2b158473e1"
+    },
+    "execution/episode-000003/engine/replay.jsonl": {
+      "bytes": 64999,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/engine/replay.jsonl",
+      "sha256": "4dca9923eaa2f08d833e3c5960710bffc9ebeb56caee1132a5051eb26fb12417"
+    },
+    "execution/episode-000003/engine/terminal-barrier-client.jsonl": {
+      "bytes": 592,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/engine/terminal-barrier-client.jsonl",
+      "sha256": "0b76ef6ddc163500d818c6ab0bcba436f1cd5ca5ccc5cf600492b64b0c0589a2"
+    },
+    "execution/episode-000003/engine/terminal-barrier-server.jsonl": {
+      "bytes": 460,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/engine/terminal-barrier-server.jsonl",
+      "sha256": "40e097244494984761f886ad52c7cb3737178b458a17a564aa2ed6d77b3278ab"
+    },
+    "execution/episode-000003/logs/process.log": {
+      "bytes": 6220,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/logs/process.log",
+      "sha256": "c1209dc8e4f3a4ec7396701b8a68ebcebc9fd06393533ed575f687c058ce190f"
+    },
+    "execution/episode-000003/manifest.json": {
+      "bytes": 16907,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/manifest.json",
+      "sha256": "af49e2d18316470efce715b72d3934bf04eaa9b56d98ba67179a0cfb28757533"
+    },
+    "execution/episode-000003/training-history-reconstruction.json": {
+      "bytes": 796,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/training-history-reconstruction.json",
+      "sha256": "7b14cc51072a7ccc769c39ec36ed75350f3b4039e7c819e7b7477e7daa8f3c1d"
+    },
+    "execution/episode-000003/training-policy-reconstruction.json": {
+      "bytes": 163,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/training-policy-reconstruction.json",
+      "sha256": "606a2b7509cbae4a01a1c63674d3fc8dc383ac6dde5233c3d23d0eff6af0724c"
+    },
+    "execution/episode-000003/training-receipt.json": {
+      "bytes": 7691,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/training-receipt.json",
+      "sha256": "3fdb4df21ad7f1e5f0aed6b3abb1b8953ebc9f656a64c653d1833d87dafd6cc5"
+    },
+    "execution/episode-000003/training-verification/builtin-replay-verification.json": {
+      "bytes": 9487,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/training-verification/builtin-replay-verification.json",
+      "sha256": "add6735036b96a96b729db9a8957d7b87ff717a8b0e562497632916575c6e1e9"
+    },
+    "execution/episode-000003/training-verification/native-report.json": {
+      "bytes": 2854,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000003/training-verification/native-report.json",
+      "sha256": "dceda1021390fbd0b019685bd7703c342fb715a9a82f02632c91a0ccbf6f7732"
+    },
+    "execution/episode-000004/agents/blue/bridge.jsonl": {
+      "bytes": 739283,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/agents/blue/bridge.jsonl",
+      "sha256": "adde274e68d8f640764bbc1d99e1415214db03873048afc7ae181b149d58b7b7"
+    },
+    "execution/episode-000004/agents/blue/history-v7.jsonl": {
+      "bytes": 818638,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/agents/blue/history-v7.jsonl",
+      "sha256": "d98136acf8c8380bcc666bb580720d9dda0283977ebc8e1e2b08a0f5f8393462"
+    },
+    "execution/episode-000004/agents/blue/live-history-v7.jsonl": {
+      "bytes": 818638,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/agents/blue/live-history-v7.jsonl",
+      "sha256": "d98136acf8c8380bcc666bb580720d9dda0283977ebc8e1e2b08a0f5f8393462"
+    },
+    "execution/episode-000004/behavior.json": {
+      "bytes": 26718,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/behavior.json",
+      "sha256": "8026cda0e36731ad129c055039d37aec1fd34a8325991e7714eecbcbaf84d111"
+    },
+    "execution/episode-000004/builtin-finalization.json": {
+      "bytes": 14488,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/builtin-finalization.json",
+      "sha256": "3a67ed7dd336c6438c3296728d1c6d17cd16afacfb1ae99068023eb80c57a9b4"
+    },
+    "execution/episode-000004/builtin-training-rollout.json": {
+      "bytes": 905919,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/builtin-training-rollout.json",
+      "sha256": "6e5da90e89c51a98e2beb532c1f39344da9615ff19322b8ff933709bed3326ce"
+    },
+    "execution/episode-000004/engine/contextual-replay.jsonl": {
+      "bytes": 1608710,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/engine/contextual-replay.jsonl",
+      "sha256": "abaca4a21b3dc3e3fd089ed50c26e09796f3a812ce68634508d5afce36e5d8cd"
+    },
+    "execution/episode-000004/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/engine/experiment-metadata.json",
+      "sha256": "a2eed0ab964ff32c2c46c42d7eacc27cd0a6beab030d5be4f815b5a42cc748ab"
+    },
+    "execution/episode-000004/engine/replay.jsonl": {
+      "bytes": 50004,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/engine/replay.jsonl",
+      "sha256": "6c680d2c477c9b1a54b236d72db202527e3a5a8b1bf2a0011a5133ea9cd754aa"
+    },
+    "execution/episode-000004/engine/terminal-barrier-client.jsonl": {
+      "bytes": 592,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/engine/terminal-barrier-client.jsonl",
+      "sha256": "c1446f7c73af0dfcf8c8ce4895f3d2192ea5fdaf42ba1791a28b559b87fac617"
+    },
+    "execution/episode-000004/engine/terminal-barrier-server.jsonl": {
+      "bytes": 460,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/engine/terminal-barrier-server.jsonl",
+      "sha256": "e3d441f0f59c7e76bea5157d2e4318fa2892e6b0364c51e6a8d8e5198807885a"
+    },
+    "execution/episode-000004/logs/process.log": {
+      "bytes": 6216,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/logs/process.log",
+      "sha256": "c41780827637ac472ae5eaf607753ddaa78107f73fe1cfe11b141067e070dffd"
+    },
+    "execution/episode-000004/manifest.json": {
+      "bytes": 16908,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/manifest.json",
+      "sha256": "037be4f95f33cb3d617d9de9478564dd717b7c1fed26d83596dfaca5b18931d8"
+    },
+    "execution/episode-000004/training-history-reconstruction.json": {
+      "bytes": 792,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/training-history-reconstruction.json",
+      "sha256": "76b0d02f53b1e4c84381363ed69611d75b348343843d4be0900c83f77f39ea89"
+    },
+    "execution/episode-000004/training-policy-reconstruction.json": {
+      "bytes": 162,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/training-policy-reconstruction.json",
+      "sha256": "9e0bf846756512275d84eb857e08be5a5f9188bb67bbd76cc1f8c7a1ef1eb407"
+    },
+    "execution/episode-000004/training-receipt.json": {
+      "bytes": 7685,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/training-receipt.json",
+      "sha256": "4a4b7ff28f150543d8b58b71f8721f1d1fd1884a651397e1c2801629ecd3eae9"
+    },
+    "execution/episode-000004/training-verification/builtin-replay-verification.json": {
+      "bytes": 9477,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/training-verification/builtin-replay-verification.json",
+      "sha256": "b3eb719266769d9b8c5a538cf83475e03e1e49a753b164b858290b58c34e87d1"
+    },
+    "execution/episode-000004/training-verification/native-report.json": {
+      "bytes": 2850,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000004/training-verification/native-report.json",
+      "sha256": "216152b160533351a5a49d7f8d4e3130162c6151b5209a06d8b95c8be58d1611"
+    },
+    "execution/episode-000005/agents/red/bridge.jsonl": {
+      "bytes": 228373,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/agents/red/bridge.jsonl",
+      "sha256": "4bc5596c8485e8f616f90f3665e92ebb91f2b0840c6a03bd70488321dcf171ac"
+    },
+    "execution/episode-000005/agents/red/history-v7.jsonl": {
+      "bytes": 250382,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/agents/red/history-v7.jsonl",
+      "sha256": "bf01934a393f7e87cdf1971ed8f0b0ff699e865cfbf88678f021bc8fd0c7b3a9"
+    },
+    "execution/episode-000005/agents/red/live-history-v7.jsonl": {
+      "bytes": 250382,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/agents/red/live-history-v7.jsonl",
+      "sha256": "bf01934a393f7e87cdf1971ed8f0b0ff699e865cfbf88678f021bc8fd0c7b3a9"
+    },
+    "execution/episode-000005/behavior.json": {
+      "bytes": 9806,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/behavior.json",
+      "sha256": "fdc6e1a18e581f09580d37ae9784b1ac3843fa41ae090f03a9a41a0a204cef04"
+    },
+    "execution/episode-000005/builtin-finalization.json": {
+      "bytes": 14483,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/builtin-finalization.json",
+      "sha256": "3f97ed8d302914e260d6f988f93644483211efc18fbe9352821a439e4e4a1afe"
+    },
+    "execution/episode-000005/builtin-training-rollout.json": {
+      "bytes": 283320,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/builtin-training-rollout.json",
+      "sha256": "aa5f47625a0d2c3263093b060064afe209d0cf03cbc1b26e943fde899cf5d865"
+    },
+    "execution/episode-000005/engine/contextual-replay.jsonl": {
+      "bytes": 645836,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/engine/contextual-replay.jsonl",
+      "sha256": "2e30945061878c348a2cd2efc982d47ddfd515519097da0fe29fbd34f6e5d03e"
+    },
+    "execution/episode-000005/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/engine/experiment-metadata.json",
+      "sha256": "a2076dbf8b190cf7110694f04b620092b424a82a660da624dfbced2b158473e1"
+    },
+    "execution/episode-000005/engine/replay.jsonl": {
+      "bytes": 43992,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/engine/replay.jsonl",
+      "sha256": "5378e2338948167962901a51d06b1ff054760ed1bea06d3217f9be479a749768"
+    },
+    "execution/episode-000005/engine/terminal-barrier-client.jsonl": {
+      "bytes": 591,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/engine/terminal-barrier-client.jsonl",
+      "sha256": "cae2a8b850a4c87376e61f917c7198f8f404e5d024044e7e5d625c688246b4df"
+    },
+    "execution/episode-000005/engine/terminal-barrier-server.jsonl": {
+      "bytes": 459,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/engine/terminal-barrier-server.jsonl",
+      "sha256": "aaca7d865012335bb4f138e017a567ac92ac34c914ddc6b580974b9191d19ac9"
+    },
+    "execution/episode-000005/logs/process.log": {
+      "bytes": 6219,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/logs/process.log",
+      "sha256": "15ee460900119ee989e8a809e5fa10c0eea536143906949b69183f94c39f436c"
+    },
+    "execution/episode-000005/manifest.json": {
+      "bytes": 16898,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/manifest.json",
+      "sha256": "c84875b52512b92794f67f61dd9fef729aab61922b9fb5c6f496c3e6655c62a6"
+    },
+    "execution/episode-000005/training-history-reconstruction.json": {
+      "bytes": 780,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/training-history-reconstruction.json",
+      "sha256": "c44b257c6cbe6bcbf915691499901a72cfe097534c034796014556eeb8087d4c"
+    },
+    "execution/episode-000005/training-policy-reconstruction.json": {
+      "bytes": 160,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/training-policy-reconstruction.json",
+      "sha256": "1e01b461f0d2c6be898f489f51679f92a096a636a09eb24271111b023482576b"
+    },
+    "execution/episode-000005/training-receipt.json": {
+      "bytes": 7666,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/training-receipt.json",
+      "sha256": "99fd019424738a4470ca6509345e428dbf18ad162d8ded56611b77bb7471a25b"
+    },
+    "execution/episode-000005/training-verification/builtin-replay-verification.json": {
+      "bytes": 9448,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/training-verification/builtin-replay-verification.json",
+      "sha256": "ade7fef4fe328e34d5dcb4f646769dd946cb393140e9c81fd0e17a44cd0dad0c"
+    },
+    "execution/episode-000005/training-verification/native-report.json": {
+      "bytes": 2840,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000005/training-verification/native-report.json",
+      "sha256": "cb8ce7f90212864eb48355d4f6ffc980781b4bd4674bbf1bc03c83206c40d3f4"
+    },
+    "execution/episode-000006/agents/blue/bridge.jsonl": {
+      "bytes": 318937,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/agents/blue/bridge.jsonl",
+      "sha256": "8ac4bab1bd6fb28b41ced274a0c13d1c7dfd87a2f115fa369d2992c05356c92f"
+    },
+    "execution/episode-000006/agents/blue/history-v7.jsonl": {
+      "bytes": 336373,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/agents/blue/history-v7.jsonl",
+      "sha256": "76e30007a74ecfd31dd11712186146eb6ed3e0a4a0adfeee10281e650ca35971"
+    },
+    "execution/episode-000006/agents/blue/live-history-v7.jsonl": {
+      "bytes": 336373,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/agents/blue/live-history-v7.jsonl",
+      "sha256": "76e30007a74ecfd31dd11712186146eb6ed3e0a4a0adfeee10281e650ca35971"
+    },
+    "execution/episode-000006/behavior.json": {
+      "bytes": 11822,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/behavior.json",
+      "sha256": "26eb9d4176ca34d2b49eefecad528f4f282ee23a845f8e981ec76e0304827be5"
+    },
+    "execution/episode-000006/builtin-finalization.json": {
+      "bytes": 14484,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/builtin-finalization.json",
+      "sha256": "0845e4417efd9d0dd6330ddc5293f71e03ac834d1adc3a38eccd924c85d5a051"
+    },
+    "execution/episode-000006/builtin-training-rollout.json": {
+      "bytes": 359984,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/builtin-training-rollout.json",
+      "sha256": "f873282ecf557b49ee124aba4e8b2b7005d8b6d53eb2ffa8029d17ce15db04c8"
+    },
+    "execution/episode-000006/engine/contextual-replay.jsonl": {
+      "bytes": 733558,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/engine/contextual-replay.jsonl",
+      "sha256": "67678bec6b8569b4cabe8310cf5ce3966da46638106d6c29cca8815d8d9c7d72"
+    },
+    "execution/episode-000006/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/engine/experiment-metadata.json",
+      "sha256": "a2eed0ab964ff32c2c46c42d7eacc27cd0a6beab030d5be4f815b5a42cc748ab"
+    },
+    "execution/episode-000006/engine/replay.jsonl": {
+      "bytes": 31957,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/engine/replay.jsonl",
+      "sha256": "a02df5292682c451884de9bf7a7a5de80e87eeb47856901923522fe23757ac1b"
+    },
+    "execution/episode-000006/engine/terminal-barrier-client.jsonl": {
+      "bytes": 591,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/engine/terminal-barrier-client.jsonl",
+      "sha256": "482b692e6ee68a85edb926a0d07bbc336cda705fc099bc4edb8df8a26bdfedbc"
+    },
+    "execution/episode-000006/engine/terminal-barrier-server.jsonl": {
+      "bytes": 459,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/engine/terminal-barrier-server.jsonl",
+      "sha256": "046a4c22a0bd8f9382b8bc55f6eb1d3f46210425b77fc96ed5105c50a3ec33fd"
+    },
+    "execution/episode-000006/logs/process.log": {
+      "bytes": 6214,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/logs/process.log",
+      "sha256": "250e3c473a15ee3cc81ad9947b1f0429c1708bba614be04be6b76fae6c1475e9"
+    },
+    "execution/episode-000006/manifest.json": {
+      "bytes": 16901,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/manifest.json",
+      "sha256": "5e0800289b8944581930436b925d7d0e3cde3898e002a5537ac31f93fc26cc1a"
+    },
+    "execution/episode-000006/training-history-reconstruction.json": {
+      "bytes": 767,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/training-history-reconstruction.json",
+      "sha256": "d5484d072bedd713f701177e697589cf170f3bac1ee2894d898a8c6e3a9db7ce"
+    },
+    "execution/episode-000006/training-policy-reconstruction.json": {
+      "bytes": 159,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/training-policy-reconstruction.json",
+      "sha256": "8beb414d95dbbd859490f824e54c4081ed4af098611afc7faf73a78621f9325d"
+    },
+    "execution/episode-000006/training-receipt.json": {
+      "bytes": 7655,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/training-receipt.json",
+      "sha256": "e1b3c41d74bf66f23e6128f2258f9794f1326e459ee39d812f8c80f03f464dbc"
+    },
+    "execution/episode-000006/training-verification/builtin-replay-verification.json": {
+      "bytes": 9424,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/training-verification/builtin-replay-verification.json",
+      "sha256": "91842ceaab498830041c57d10ec94189d1d6935b42389daba2af5bf26661beb0"
+    },
+    "execution/episode-000006/training-verification/native-report.json": {
+      "bytes": 2838,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000006/training-verification/native-report.json",
+      "sha256": "b7b01939d4b8797e1d4213e4927b2976b930d5ad970280b0b2887baa84829685"
+    },
+    "execution/episode-000007/agents/red/history-v7.jsonl": {
+      "bytes": 2741697,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/agents/red/history-v7.jsonl",
+      "sha256": "f3706f13109a46be215b13340193e7aef2cffa40b40d46fb33c8a830ee7b9688"
+    },
+    "execution/episode-000007/agents/red/live-history-v7.jsonl": {
+      "bytes": 2741697,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/agents/red/live-history-v7.jsonl",
+      "sha256": "f3706f13109a46be215b13340193e7aef2cffa40b40d46fb33c8a830ee7b9688"
+    },
+    "execution/episode-000007/behavior.json": {
+      "bytes": 70171,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/behavior.json",
+      "sha256": "70e1d35929361aa442433e04afbdad10c9f4d9e60edef0aec2134470e84d517d"
+    },
+    "execution/episode-000007/builtin-finalization.json": {
+      "bytes": 14486,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/builtin-finalization.json",
+      "sha256": "77897750a57252b83c2c75ec8115b7a18aebf119b458d0e1fbf68940bae8d418"
+    },
+    "execution/episode-000007/builtin-rollout.json": {
+      "bytes": 7966589,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/builtin-rollout.json",
+      "sha256": "63acf6aa570b857bb2dcfd5d0b56ddb0842456f6f0e5aa6eef250b93068d9ecd"
+    },
+    "execution/episode-000007/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 9494,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/builtin-verification/builtin-replay-verification.json",
+      "sha256": "9a7c1fb29421c45d7d61f2e2327d74dae6f1af7ecf9ef47d123bb571db73485c"
+    },
+    "execution/episode-000007/builtin-verification/native-report.json": {
+      "bytes": 2855,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/builtin-verification/native-report.json",
+      "sha256": "8a6d57a503f29d802c9477e8bed1daa5f7961a97eb7e01624c43d8c5975f8650"
+    },
+    "execution/episode-000007/engine/contextual-replay.jsonl": {
+      "bytes": 4847070,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/engine/contextual-replay.jsonl",
+      "sha256": "df8f10d9b069516e7a37a0e915a14192c28f33148ebedfeba46cc1675d2ba430"
+    },
+    "execution/episode-000007/engine/replay.jsonl": {
+      "bytes": 74841,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/engine/replay.jsonl",
+      "sha256": "78796e4292e589a40ff4b87b6f66fb521a84969804a215adf77ea1dc4958cdca"
+    },
+    "execution/episode-000007/engine/terminal-barrier-client.jsonl": {
+      "bytes": 592,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/engine/terminal-barrier-client.jsonl",
+      "sha256": "71eaf3c3ea15bb51db2db4d463963364c8ff9ae3b7bf1d601935c816306195f2"
+    },
+    "execution/episode-000007/engine/terminal-barrier-server.jsonl": {
+      "bytes": 460,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/engine/terminal-barrier-server.jsonl",
+      "sha256": "73226f6803f10ba1f384677f76ff5b6fc4f6a12bcda34e39194c65e347d6eff3"
+    },
+    "execution/episode-000007/manifest.json": {
+      "bytes": 16907,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/manifest.json",
+      "sha256": "f753ae4dc5e246d7cfde7bc8d0648d0bbde08c1b432974df8a69722c1463d308"
+    },
+    "execution/episode-000007/policy-reconstruction.json": {
+      "bytes": 528,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000007/policy-reconstruction.json",
+      "sha256": "4c6a46239f1fd683d5bf05835be83f0748a3faabb88ddd4240e125453db84e84"
+    },
+    "execution/episode-000008/agents/blue/history-v7.jsonl": {
+      "bytes": 4582232,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/agents/blue/history-v7.jsonl",
+      "sha256": "f75e0e98f27eb2047dadb4da1f61dcdd4b3669c05bb31bf1f5f74fef3a92f829"
+    },
+    "execution/episode-000008/agents/blue/live-history-v7.jsonl": {
+      "bytes": 4582232,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/agents/blue/live-history-v7.jsonl",
+      "sha256": "f75e0e98f27eb2047dadb4da1f61dcdd4b3669c05bb31bf1f5f74fef3a92f829"
+    },
+    "execution/episode-000008/behavior.json": {
+      "bytes": 107871,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/behavior.json",
+      "sha256": "170c49748959c9074ec3c4ea9b3c615e18596c2287545f85c8e001569933b1a9"
+    },
+    "execution/episode-000008/builtin-finalization.json": {
+      "bytes": 14492,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/builtin-finalization.json",
+      "sha256": "cf1705d4e698e4c50200e49412798014df25cd498e35321fa119a230c2a25261"
+    },
+    "execution/episode-000008/builtin-rollout.json": {
+      "bytes": 13284536,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/builtin-rollout.json",
+      "sha256": "2cf35e90b624dc18f877554bd40de41398354580530be63a4e8ffd71ca9045a9"
+    },
+    "execution/episode-000008/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 9548,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/builtin-verification/builtin-replay-verification.json",
+      "sha256": "2411708105b340fab3501ae0840c080f4ad2b4f1c4e4d91d5e8ec79f2482622a"
+    },
+    "execution/episode-000008/builtin-verification/native-report.json": {
+      "bytes": 2892,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/builtin-verification/native-report.json",
+      "sha256": "539afc9568d60009c293281e9b5018e5e6104b788cae26cbc0eca62fbc0dbd97"
+    },
+    "execution/episode-000008/engine/contextual-replay.jsonl": {
+      "bytes": 8453173,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/engine/contextual-replay.jsonl",
+      "sha256": "8463145338d9832f9eecbd7741fb5a57d63e370154eef52cffd120c6c6e48e2b"
+    },
+    "execution/episode-000008/engine/replay.jsonl": {
+      "bytes": 160521,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/engine/replay.jsonl",
+      "sha256": "ac6c0727e2ad36cdb51c34dfbc01ce0415af7484928b4161d1f4c4f7de92541b"
+    },
+    "execution/episode-000008/engine/terminal-barrier-client.jsonl": {
+      "bytes": 594,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/engine/terminal-barrier-client.jsonl",
+      "sha256": "82b90a73edeebf1c96e4982b49e477058e3e98c3f0758df0c1630fdaf3c378e0"
+    },
+    "execution/episode-000008/engine/terminal-barrier-server.jsonl": {
+      "bytes": 461,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/engine/terminal-barrier-server.jsonl",
+      "sha256": "3e4d6525f4a8aa1a18b4a67caaf6cb97e467c054e032a8b4e8bc452ecda05817"
+    },
+    "execution/episode-000008/manifest.json": {
+      "bytes": 16909,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/manifest.json",
+      "sha256": "ae477708ff248fdff6461af5638309b94e8691714edd72cf184dc883317aa333"
+    },
+    "execution/episode-000008/policy-reconstruction.json": {
+      "bytes": 529,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/episode-000008/policy-reconstruction.json",
+      "sha256": "7d856d524ad0ea6034ac103ab52668c8b794bcab62b7d9130e64d5a61fd70d69"
+    },
+    "execution/native-deadline-01.jsonl": {
+      "bytes": 1861,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-01.jsonl",
+      "sha256": "874451c741c04ef5131a74a97b060e5a8f73f92ba9a5797efc87b685389f0e40"
+    },
+    "execution/native-deadline-02.jsonl": {
+      "bytes": 1868,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-02.jsonl",
+      "sha256": "01381df8c6f8f1a3763bfea2421e2f4d25234bcf1e36ee50bd8060f62f6af912"
+    },
+    "execution/native-deadline-03.jsonl": {
+      "bytes": 1868,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-03.jsonl",
+      "sha256": "1db84713284425e0a745040648751f9f1ac5a932f58b1a573435230e65eabdde"
+    },
+    "execution/native-deadline-04.jsonl": {
+      "bytes": 1864,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-04.jsonl",
+      "sha256": "ef0cbacaae3b0cca77654994aee37b2218ffbd6d0568d5d6f15773a9030ce0db"
+    },
+    "execution/native-deadline-05.jsonl": {
+      "bytes": 1858,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-05.jsonl",
+      "sha256": "07bdd418645b3812b98670b89dcf1b4b47df953965c63082302a668a8865a7cd"
+    },
+    "execution/native-deadline-06.jsonl": {
+      "bytes": 1860,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-06.jsonl",
+      "sha256": "581a93aee63e7c30c8e6f32cb666e1b963a53a33dcaa4ce400d2dd6433105cd0"
+    },
+    "execution/native-deadline-07.jsonl": {
+      "bytes": 1866,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-07.jsonl",
+      "sha256": "a2b1115f7e0b4051880d66fb65b80754abf931ab3b9c49046a1cfbcee5c8bca7"
+    },
+    "execution/native-deadline-08.jsonl": {
+      "bytes": 1864,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/native-deadline-08.jsonl",
+      "sha256": "f867f3c394a645bd0e00578674a059ebddcc22baaf9d2c7934c674217c3d8751"
+    },
+    "execution/report.json": {
+      "bytes": 19843,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/report.json",
+      "sha256": "76f8bc53f50f611e626851eb56f2937eb434b4c9de01d8e700f3affa057f961c"
+    },
+    "execution/worker-deadline.jsonl": {
+      "bytes": 1998,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/worker-deadline.jsonl",
+      "sha256": "ba7603242a0bb7e61c4b0c1b3d66a7206dc8f70628d2ddd04d166e2eb584061f"
+    },
+    "execution/worker-report.json": {
+      "bytes": 19598,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/worker-report.json",
+      "sha256": "07acca3cdbd5d290abb2c7289ddf05de8bec04ad06daab1e418e1a6a8231ba16"
+    },
+    "execution/worker.log": {
+      "bytes": 559,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/worker.log",
+      "sha256": "a7f2afd0bdb001ae172a0df56aad70852c1def3880c485206db1e996f0d13b4a"
+    },
+    "plan.json": {
+      "bytes": 44539,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/plan.json",
+      "sha256": "b254d122dfbd01a183f7fc7fd0076bc789d888fd31ba50dd74f2ca7cf091c08b"
+    }
+  },
+  "changed_parameter_tensors": {
+    "byte.weight": {
+      "changed_elements": 334,
+      "max_absolute_change": 0.0015047639608383179
+    },
+    "coordinate.0.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0005977600812911987
+    },
+    "coordinate.0.weight": {
+      "changed_elements": 3648,
+      "max_absolute_change": 0.000600254163146019
+    },
+    "coordinate.2.bias": {
+      "changed_elements": 1,
+      "max_absolute_change": 0.0002121180295944214
+    },
+    "coordinate.2.weight": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0005998462438583374
+    },
+    "gru.bias_hh": {
+      "changed_elements": 192,
+      "max_absolute_change": 0.0015053227543830872
+    },
+    "gru.bias_ih": {
+      "changed_elements": 192,
+      "max_absolute_change": 0.0015053227543830872
+    },
+    "gru.weight_hh": {
+      "changed_elements": 12288,
+      "max_absolute_change": 0.001506078988313675
+    },
+    "gru.weight_ih": {
+      "changed_elements": 18432,
+      "max_absolute_change": 0.0015066256746649742
+    },
+    "map_cnn.0.bias": {
+      "changed_elements": 16,
+      "max_absolute_change": 0.0015055686235427856
+    },
+    "map_cnn.0.weight": {
+      "changed_elements": 4752,
+      "max_absolute_change": 0.0015003308653831482
+    },
+    "map_cnn.2.bias": {
+      "changed_elements": 16,
+      "max_absolute_change": 0.0015060827136039734
+    },
+    "map_cnn.2.weight": {
+      "changed_elements": 2304,
+      "max_absolute_change": 0.0015033707022666931
+    },
+    "map_global.2.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0015054643154144287
+    },
+    "map_global.2.weight": {
+      "changed_elements": 8192,
+      "max_absolute_change": 0.0015059076249599457
+    },
+    "number.0.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0015037059783935547
+    },
+    "number.0.weight": {
+      "changed_elements": 64,
+      "max_absolute_change": 0.0015033483505249023
+    },
+    "object_encoder.0.bias": {
+      "changed_elements": 16,
+      "max_absolute_change": 0.0014281142503023148
+    },
+    "object_encoder.0.weight": {
+      "changed_elements": 192,
+      "max_absolute_change": 0.0014685392379760742
+    },
+    "ordered.bias_hh_l0": {
+      "changed_elements": 96,
+      "max_absolute_change": 0.0015029460191726685
+    },
+    "ordered.bias_ih_l0": {
+      "changed_elements": 96,
+      "max_absolute_change": 0.0015033185482025146
+    },
+    "ordered.weight_hh_l0": {
+      "changed_elements": 3072,
+      "max_absolute_change": 0.001503683626651764
+    },
+    "ordered.weight_ih_l0": {
+      "changed_elements": 3072,
+      "max_absolute_change": 0.001504797488451004
+    },
+    "policy_query.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.001385567942634225
+    },
+    "policy_query.weight": {
+      "changed_elements": 2048,
+      "max_absolute_change": 0.0014734640717506409
+    },
+    "quantity.0.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0008839145302772522
+    },
+    "quantity.0.weight": {
+      "changed_elements": 3200,
+      "max_absolute_change": 0.0010559223592281342
+    },
+    "quantity.2.bias": {
+      "changed_elements": 2,
+      "max_absolute_change": 0.0008824467658996582
+    },
+    "quantity.2.weight": {
+      "changed_elements": 64,
+      "max_absolute_change": 0.0009429603815078735
+    },
+    "road.weight": {
+      "changed_elements": 4,
+      "max_absolute_change": 0.0014536678791046143
+    },
+    "terrain.weight": {
+      "changed_elements": 8,
+      "max_absolute_change": 0.001470804214477539
+    },
+    "text_gru.bias_hh_l0": {
+      "changed_elements": 96,
+      "max_absolute_change": 0.0015049576759338379
+    },
+    "text_gru.bias_ih_l0": {
+      "changed_elements": 96,
+      "max_absolute_change": 0.0015049576759338379
+    },
+    "text_gru.weight_hh_l0": {
+      "changed_elements": 3072,
+      "max_absolute_change": 0.0015061348676681519
+    },
+    "text_gru.weight_ih_l0": {
+      "changed_elements": 768,
+      "max_absolute_change": 0.0015059895813465118
+    },
+    "tree.0.bias": {
+      "changed_elements": 32,
+      "max_absolute_change": 0.0015038847923278809
+    },
+    "tree.0.weight": {
+      "changed_elements": 2048,
+      "max_absolute_change": 0.0015061795711517334
+    },
+    "value.bias": {
+      "changed_elements": 1,
+      "max_absolute_change": 0.0015000700950622559
+    },
+    "value.weight": {
+      "changed_elements": 64,
+      "max_absolute_change": 0.001505572348833084
+    }
+  },
+  "checkpoint_source_extension": {
+    "experiments/learner/checkpoints.py": {
+      "current": "9abf3b84a180220a77548b4671129b51dccfcd92edb5a10b08375d49e8bd0000",
+      "original": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+      "reason": "Additive v7 native-opponent optimizer provenance; original policy/model path retained"
+    }
+  },
+  "comparison": {
+    "after": {
+      "cutoffs": 0,
+      "failures": 0,
+      "games": 2,
+      "natural_losses": 2,
+      "natural_wins": 0
+    },
+    "before": {
+      "cutoffs": 0,
+      "failures": 0,
+      "games": 2,
+      "natural_losses": 2,
+      "natural_wins": 0
+    },
+    "evaluation_seeds_disjoint_from_training": true,
+    "paired_engine_and_policy_seeds": true,
+    "strategic_improvement_established": false,
+    "training": {
+      "games": 4,
+      "natural_losses": 4,
+      "natural_wins": 0,
+      "training_samples": 106
+    }
+  },
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "allow_verified_training_prefix": true,
+    "attempt_wall_seconds": 240,
+    "cleanup_reserve_seconds": 30,
+    "evaluation_engine_seed": 160101,
+    "evaluation_policy_seeds": [
+      160201,
+      160202
+    ],
+    "hard_stop_reserve_seconds": 2,
+    "interface": "adventure-dialogs-v1",
+    "max_days": 30,
+    "max_optimizer_steps": 32,
+    "max_total_choices": 256,
+    "max_updates": 1,
+    "minibatch_seed": 160403,
+    "ordinary_choice_limit": 248,
+    "phase_deadlines_seconds": {
+      "after": 3540,
+      "before": 900,
+      "training": 2100,
+      "update": 3000
+    },
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "python_seed": 160402,
+    "reserved_dialog_choices": 8,
+    "schema": "heroes-builtin-ppo-pilot-config-v1",
+    "shared_wall_seconds": 3600,
+    "torch_seed": 160401,
+    "torch_threads": 1,
+    "training_engine_seeds": [
+      160111,
+      160112
+    ],
+    "training_policy_seeds": [
+      160211,
+      160212,
+      160213,
+      160214
+    ]
+  },
+  "coordination": {
+    "claim": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6397715689",
+    "execution": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6397862103",
+    "release": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6397882541"
+  },
+  "date": "2026-10-25",
+  "engineering_preflight": "validation/builtin-ppo-preflight-2026-10-25.json",
+  "execution": {
+    "after_checkpoint": {
+      "exact_model_adam_rng_progress_pool": true,
+      "policy": {
+        "bytes": 636531,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/after-policy.pt",
+        "sha256": "114e346f52ea815f0ee1c096de2cde1a208e0c33772e9bb9f77dfb1e41c5b698"
+      },
+      "resume": {
+        "bytes": 1264565,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/after-resume.pt",
+        "sha256": "7ed92d8346fa2d195a5b3270780ccff880c05cb7798e8623a3283c62d2c84583"
+      },
+      "weights_sha256": "e9681c51783c0ee679d0c201d7c59e18a0dafcf1f1461fd3f9927b6c3051d8d0"
+    },
+    "before_checkpoint": {
+      "exact_model_adam_rng_progress_pool": true,
+      "policy": {
+        "bytes": 636531,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/before-policy.pt",
+        "sha256": "04b93943418cab47f5ee747fd1125ddb8f441b43f2ec3acc8dac470f464d27c8"
+      },
+      "resume": {
+        "bytes": 638707,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-ppo-pilot-2026-10-25/execution/before-resume.pt",
+        "sha256": "4dad9b8c3ffbb41315f6987251958703ef69f5ed11b8d6840d9fb6cd6add630d"
+      },
+      "weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae"
+    },
+    "comparison_scope": "Two matched engine/policy-seed and seat pairs; separate training seeds. Nullkiller randomness is not fully seed-reproducible. This tiny sample cannot establish strategic improvement.",
+    "deadline_unix": 1792936264.561135,
+    "execution_wall_clock_seconds": 62.16107201576233,
+    "execution_wall_seconds": 62.161071833004826,
+    "native_groups_closed": [
+      34147,
+      34168,
+      34191,
+      34212,
+      34233,
+      34266,
+      34357,
+      34388
+    ],
+    "optimizer_steps": 5,
+    "optimizer_updates": 1,
+    "plan_sha256": "b254d122dfbd01a183f7fc7fd0076bc789d888fd31ba50dd74f2ca7cf091c08b",
+    "ppo": {
+      "approximate_kl": 0.00014205586160133898,
+      "clip_fraction": 0.0,
+      "entropy": null,
+      "optimizer_steps": 5,
+      "policy_loss": 0.0008435335080578642,
+      "purpose": "approved_builtin_gameplay_v1",
+      "samples": 106,
+      "value_loss": 0.37747152599523653
+    },
+    "schema": "heroes-builtin-ppo-pilot-v1-result",
+    "started_unix": 1792932664.561135,
+    "status": "finished",
+    "stop_reason": null,
+    "supervisor_cleanup_verified": true,
+    "training_performed": true,
+    "training_samples": 106,
+    "update_status": "checkpoint_verified",
+    "wall_scope": "One shared 3600-second clock includes initialization, all games, audits/replay, one update, checkpoint verification and cleanup. After evaluations have the final 600 seconds, with the last 60 seconds reserved for cleanup/reporting.",
+    "within_shared_budget": true,
+    "worker_complete": true
+  },
+  "extra_attempts_or_updates": 0,
+  "historical_diagnostics_used_for_optimization": false,
+  "initial_checkpoint": {
+    "bytes": 629494,
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+    "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+  },
+  "limitations": [
+    "One update and two matched evaluations per phase cannot establish a learning trend or improved strategy.",
+    "All eight outcomes were learner losses; no learner win was observed.",
+    "Native opponent decisions have additional randomness, so paired engine seeds do not promise identical opponent behavior.",
+    "Raw captures, checkpoints and original game assets remain ignored and local.",
+    "This offline evidence assembly only reads saved files and tensors; it launches no game, replay, model forward pass or optimizer."
+  ],
+  "map": {
+    "fixture": false,
+    "layout_seed": 0,
+    "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/hero-management-v1.vmap",
+    "scenario": "hero-management-v1",
+    "semantics_verified": true,
+    "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+  },
+  "native": {
+    "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+    "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+    "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+    "log_level": "info",
+    "map": {
+      "name": "hero-management-v1.vmap",
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    }
+  },
+  "native_checked_totals": {
+    "client_packets": 7787,
+    "messages": 1252,
+    "native_opponent_requests": 906,
+    "requests": 1332,
+    "responses": 618,
+    "transactions": 11193
+  },
+  "native_unchecked_totals": {
+    "client_packets": 0,
+    "messages": 0,
+    "native_opponent_requests": 0,
+    "requests": 0,
+    "responses": 0,
+    "transactions": 0
+  },
+  "offline_report_assembly_seconds": 0.10408320899296086,
+  "phase_action_counts": {
+    "after": {
+      "back": 51,
+      "close": 25,
+      "construct": 2,
+      "end_turn": 14,
+      "merge_stacks": 16,
+      "move_to": 14,
+      "open_building": 17,
+      "open_hero": 13,
+      "open_panel": 16,
+      "open_stack": 24,
+      "open_town": 12,
+      "recruit": 2,
+      "select_recruit": 8,
+      "split_stack": 34,
+      "swap_garrison": 11,
+      "swap_stacks": 27
+    },
+    "before": {
+      "back": 35,
+      "close": 22,
+      "construct": 1,
+      "end_turn": 14,
+      "merge_stacks": 15,
+      "move_to": 15,
+      "open_building": 7,
+      "open_hero": 13,
+      "open_panel": 12,
+      "open_stack": 19,
+      "open_town": 9,
+      "recruit": 1,
+      "select_recruit": 7,
+      "split_stack": 23,
+      "swap_garrison": 10,
+      "swap_stacks": 23
+    },
+    "training": {
+      "back": 17,
+      "close": 16,
+      "end_turn": 6,
+      "merge_stacks": 2,
+      "move_to": 5,
+      "open_hero": 13,
+      "open_panel": 2,
+      "open_stack": 15,
+      "open_town": 3,
+      "select_recruit": 1,
+      "split_stack": 11,
+      "swap_garrison": 4,
+      "swap_stacks": 11
+    }
+  },
+  "plan_sha256": "b254d122dfbd01a183f7fc7fd0076bc789d888fd31ba50dd74f2ca7cf091c08b",
+  "policy_reconstruction_totals": {
+    "actions_resampled": 618,
+    "conditionals_recomputed": 1443,
+    "values_recomputed": 618
+  },
+  "runtime": {
+    "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+    "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+    "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+    "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+    "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+    "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+    "vcmireplay": "13fffdda858b38f6868fba0a0819a89bcb26fd540a9d3f645924f83b912659f5"
+  },
+  "schema": "heroes-builtin-ppo-pilot-validation-v1",
+  "source_commit": "eecf4680d8fa0f6f8dfd7211c4c529c91c001593"
+}

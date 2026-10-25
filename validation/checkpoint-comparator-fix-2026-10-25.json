@@ -1,0 +1,63 @@
+{
+  "additional_gameplay_attempts": 0,
+  "additional_gameplay_optimizer_steps": 0,
+  "after_evaluation_performed": false,
+  "changed_implementation_files": {
+    "experiments/learner/gameplay.py": {
+      "execution": "bdad4dfb4ae61c7696606c59c88e587bca5082c29acc5309ddb3647b05325530",
+      "post_fix": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f"
+    },
+    "tests/test_gameplay_checkpoint.py": {
+      "execution": "340c137031524a7657a6c3507b0c53b4c2321b53dd94e6cda7842ef4aea3b96d",
+      "post_fix": "815da2d8eeb18876cdbdafe0f7ea40435dbcfe3e2be1fe4b13d73e9c6c528128"
+    }
+  },
+  "checkpoint": {
+    "bytes": 1267509,
+    "path": "runs/first-training-prepared-2026-10-25/approved-execution/resume.pt",
+    "sha256": "df8834bac83c7444ceff5396f06015ab9f14b7f90aea4dd62c1b7a6b3bb2f089"
+  },
+  "checks": {
+    "adam_state": true,
+    "altered_tensor_rejected": true,
+    "checkpoint_bytes_unchanged": true,
+    "frozen_opponent": true,
+    "global_and_sampler_rng": true,
+    "ordered_model_state": true,
+    "progress": true
+  },
+  "date": "2026-10-25",
+  "original_execution_evidence": {
+    "bytes": 130230,
+    "path": "validation/first-gameplay-2026-10-25.json",
+    "sha256": "2ebc629c03d6fc864ad878c63747d0235cd73689712bd319e37dca08ed28ab7b"
+  },
+  "original_plan_rejected_after_source_change": "Prepared learner source/runtime changed: source_sha256",
+  "regression_after": {
+    "artifact": {
+      "bytes": 2064,
+      "path": "runs/checkpoint-comparator-fix-2026-10-25/regression-after.log",
+      "sha256": "994318ecf016eed9e06ac0ab0cd6dd19749271205560568e1eb3555e0c793db4"
+    },
+    "result": "passed",
+    "tests": 9
+  },
+  "regression_before": {
+    "artifact": {
+      "bytes": 3417,
+      "path": "runs/checkpoint-comparator-fix-2026-10-25/regression-before.log",
+      "sha256": "0298dc29fd52ec15d7e0390379b166004da4af46e469daed7c88157e34f0652a"
+    },
+    "errors": 2,
+    "result": "failed",
+    "tests": 4
+  },
+  "schema": "heroes-checkpoint-comparator-fix-v1",
+  "scope": "Read-only load and comparison of the preserved checkpoint after a comparator-only repair. No game, PPO update, optimizer step, checkpoint rewrite or execution continuation.",
+  "status": "passed",
+  "verifier": {
+    "bytes": 6076,
+    "path": "validation/check_checkpoint_comparator_2026_10_25.py",
+    "sha256": "0a1a1ecb77a751973fd64dc85da0bce27bbe94ffb174c9e6cf4d8ec4e0981f84"
+  }
+}

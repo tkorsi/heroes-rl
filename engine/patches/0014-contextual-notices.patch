@@ -1,0 +1,134 @@
+diff --git a/lib/callback/IGameEventsReceiver.h b/lib/callback/IGameEventsReceiver.h
+--- a/lib/callback/IGameEventsReceiver.h
++++ b/lib/callback/IGameEventsReceiver.h
+@@ -12,6 +12,7 @@
+ #include "../constants/EntityIdentifiers.h"
+ #include "../gameState/GameStatistics.h"
+ #include "../int3.h"
++#include "../texts/MetaString.h"
+ 
+ VCMI_LIB_NAMESPACE_BEGIN
+ 
+@@ -67,6 +68,11 @@
+ 	virtual void heroVisitsTown(const CGHeroInstance* hero, const CGTownInstance * town){};
+ 	virtual void receivedResource(){};
+ 	virtual void showInfoDialog(EInfoWindowMode type, const std::string & text, const std::vector<Component> & components, int soundID){};
++	/// Preserve the delivered structured text before localization. Legacy interfaces keep their normal display.
++	virtual void showStructuredInfoDialog(EInfoWindowMode type, const MetaString & text, const std::vector<Component> & components, int soundID)
++	{
++		showInfoDialog(type, text.toString(), components, soundID);
++	}
+ 	virtual void showRecruitmentDialog(const CGDwelling *dwelling, const CArmedInstance *dst, int level, QueryID queryID){}
+ 	virtual void showShipyardDialog(const IShipyard *obj){} //obj may be town or shipyard; state: 0 - can build, 1 - lack of resources, 2 - dest tile is blocked, 3 - no water
+ 
+diff --git a/client/NetPacksClient.cpp b/client/NetPacksClient.cpp
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -357,8 +357,7 @@
+ 	{
+ 		const auto & newWeek = *pack.newWeekNotification;
+ 
+-		std::string str = newWeek.text.toString();
+-		callAllInterfaces(cl, &CGameInterface::showInfoDialog, newWeek.type, str, newWeek.components,(soundBase::soundID)newWeek.soundID);
++		callAllInterfaces(cl, &CGameInterface::showStructuredInfoDialog, newWeek.type, newWeek.text, newWeek.components,(soundBase::soundID)newWeek.soundID);
+ 	}
+ }
+ 
+@@ -677,9 +676,7 @@
+ 
+ void ApplyClientNetPackVisitor::visitInfoWindow(InfoWindow & pack)
+ {
+-	std::string str = pack.text.toString();
+-
+-	if(!callInterfaceIfPresent(cl, pack.player, &CGameInterface::showInfoDialog, pack.type, str, pack.components,(soundBase::soundID)pack.soundID))
++	if(!callInterfaceIfPresent(cl, pack.player, &CGameInterface::showStructuredInfoDialog, pack.type, pack.text, pack.components,(soundBase::soundID)pack.soundID))
+ 		logNetwork->warn("We received InfoWindow for not our player...");
+ }
+ 
+@@ -881,7 +878,7 @@
+ 	{
+ 		const auto * hero = cl.gameInfo().getHero(pack.learnedSpells.hid);
+ 		assert(hero);
+-		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showInfoDialog, EInfoWindowMode::MODAL,
++		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showStructuredInfoDialog, EInfoWindowMode::MODAL,
+ 			UIHelper::getEagleEyeInfoWindowText(*hero, pack.learnedSpells.spells), UIHelper::getSpellsComponents(pack.learnedSpells.spells), soundBase::soundID(0));
+ 	}
+ 
+@@ -895,7 +892,7 @@
+ 			auto packComponents = UIHelper::getArtifactsComponents(*artSet, artPack.artsPack0);
+ 			artComponents.insert(artComponents.end(), std::make_move_iterator(packComponents.begin()), std::make_move_iterator(packComponents.end()));
+ 		}
+-		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showInfoDialog, EInfoWindowMode::MODAL, UIHelper::getArtifactsInfoWindowText(),
++		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showStructuredInfoDialog, EInfoWindowMode::MODAL, UIHelper::getArtifactsInfoWindowText(),
+ 			artComponents, soundBase::soundID(0));
+ 	}
+ 
+@@ -903,7 +900,7 @@
+ 		visitBulkMoveArtifacts(artPack);
+ 
+ 	if(pack.raisedStack.getCreature())
+-		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showInfoDialog, EInfoWindowMode::AUTO,
++		callInterfaceIfPresent(cl, pack.victor, &CGameInterface::showStructuredInfoDialog, EInfoWindowMode::AUTO,
+ 			UIHelper::getNecromancyInfoWindowText(pack.raisedStack), std::vector<Component>{Component(ComponentType::CREATURE, pack.raisedStack.getId(),
+ 			pack.raisedStack.getCount())}, UIHelper::getNecromancyInfoWindowSound());
+ 
+diff --git a/client/UIHelper.h b/client/UIHelper.h
+--- a/client/UIHelper.h
++++ b/client/UIHelper.h
+@@ -29,7 +29,7 @@
+     std::vector<Component> getArtifactsComponents(const CArtifactSet & artSet, const std::vector<MoveArtifactInfo> & movedPack);
+     std::vector<Component> getSpellsComponents(const std::set<SpellID> & spells);
+     soundBase::soundID getNecromancyInfoWindowSound();
+-    std::string getNecromancyInfoWindowText(const CStackBasicDescriptor & stack);
+-    std::string getArtifactsInfoWindowText();
+-    std::string getEagleEyeInfoWindowText(const CGHeroInstance & hero, const std::set<SpellID> & spells);
++    MetaString getNecromancyInfoWindowText(const CStackBasicDescriptor & stack);
++    MetaString getArtifactsInfoWindowText();
++    MetaString getEagleEyeInfoWindowText(const CGHeroInstance & hero, const std::set<SpellID> & spells);
+ }
+diff --git a/client/UIHelper.cpp b/client/UIHelper.cpp
+--- a/client/UIHelper.cpp
++++ b/client/UIHelper.cpp
+@@ -46,7 +46,7 @@
+ 	return soundBase::soundID(soundBase::pickup01 + CRandomGenerator::getDefault().nextInt(6));
+ }
+ 
+-std::string UIHelper::getNecromancyInfoWindowText(const CStackBasicDescriptor & stack)
++MetaString UIHelper::getNecromancyInfoWindowText(const CStackBasicDescriptor & stack)
+ {
+ 	MetaString text;
+ 	if(stack.getCount() > 1) // Practicing the dark arts of necromancy, ... (plural)
+@@ -59,21 +59,21 @@
+ 		text.appendLocalString(EMetaText::GENERAL_TXT, 146);
+ 	}
+ 	text.replaceName(stack);
+-	return text.toString();
++	return text;
+ }
+ 
+-std::string UIHelper::getArtifactsInfoWindowText()
++MetaString UIHelper::getArtifactsInfoWindowText()
+ {
+ 	MetaString text;
+ 	text.appendLocalString(EMetaText::GENERAL_TXT, 30);
+-	return text.toString();
++	return text;
+ }
+ 
+-std::string UIHelper::getEagleEyeInfoWindowText(const CGHeroInstance & hero, const std::set<SpellID> & spells)
++MetaString UIHelper::getEagleEyeInfoWindowText(const CGHeroInstance & hero, const std::set<SpellID> & spells)
+ {
+ 	MetaString text;
+ 	text.appendLocalString(EMetaText::GENERAL_TXT, 221); // Through eagle-eyed observation, %s is able to learn %s
+-	text.replaceRawString(hero.getNameTranslated());
++	text.replaceTextID(hero.getNameTextID());
+ 
+ 	auto curSpell = spells.begin();
+ 	text.replaceName(*curSpell++);
+@@ -86,5 +86,5 @@
+ 		text.appendName(*curSpell);
+ 	}
+ 	text.appendRawString(".");
+-	return text.toString();
++	return text;
+ }

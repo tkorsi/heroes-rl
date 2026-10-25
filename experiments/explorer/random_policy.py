@@ -131,12 +131,12 @@ class RandomPolicy:
             if self.terminal:
                 raise ValueError("Message received after terminal")
             if kind == "ready":
-                if self.ready or message.get("protocol_version") != 2:
+                if self.ready or message.get("protocol_version") != 3:
                     raise ValueError("Unexpected or unsupported bridge handshake")
                 self.ready = True
                 return None
             if not self.ready:
-                raise ValueError("Bridge must send protocol-v2 ready before any game message")
+                raise ValueError("Bridge must send protocol-v3 ready before any game message")
             if kind == "observation":
                 action_id, day = message.get("action_id"), message.get("day")
                 if type(action_id) is not int or action_id != self.last_action_id + 1 or self.pending_action is not None or self.awaiting_turn_end:

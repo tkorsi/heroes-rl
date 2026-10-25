@@ -1,0 +1,175 @@
+{
+  "captured_tail": {
+    "name": "EndTurn",
+    "pack": "0000b40101c201",
+    "player": 1,
+    "request_id": 194,
+    "type": 180
+  },
+  "diagnostic": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/diagnostics/endturn-terminal-2026-10-25/builtin-replay-diagnostic.json",
+    "sha256": "31f20b169d0a9ec67ef228d9a6685a6a0ec922e1e03284589df6838428089fdb"
+  },
+  "diagnostic_verified": true,
+  "failed_episode": 3,
+  "failed_run": "continuation-2026-10-25-005",
+  "native": {
+    "divergence": null,
+    "log": "/Users/orsi/Projects/Heroes-artifacts/diagnostics/endturn-terminal-2026-10-25/replay.jsonl",
+    "returncode": 0,
+    "schema": "heroes-contextual-builtin-replay-verification-v1",
+    "seconds": 0.919,
+    "summary": {
+      "boundary": {
+        "barrier_id": 1,
+        "client_packets": 1146,
+        "kind": "natural"
+      },
+      "captured_prefix_only": false,
+      "checked": {
+        "client_packets": 1146,
+        "messages": 342,
+        "native_opponent_requests": 120,
+        "requests": 194,
+        "responses": 170,
+        "transactions": 1975
+      },
+      "controllers": {
+        "explorer_players": [
+          0
+        ],
+        "native_opponents": [
+          {
+            "module": "Nullkiller",
+            "player": 1
+          }
+        ],
+        "schema": "heroes-contextual-controllers-v1"
+      },
+      "final_client_position": {
+        "completed": 1146,
+        "index": 1146,
+        "phase": "callbacks_complete",
+        "type": 265
+      },
+      "loaded": {
+        "client_packets": 1146,
+        "messages": 342,
+        "native_opponent_requests": 120,
+        "requests": 194,
+        "responses": 170,
+        "transactions": 1975
+      },
+      "open_final_transaction": false,
+      "regenerated_server_packets_after_prefix": 0,
+      "request_accounting": {
+        "authoritative_inputs": 193,
+        "final_terminal_input": {
+          "first_client_packet": 1120,
+          "input_seq": 192,
+          "last_client_packet": 1146,
+          "pack_type": 198,
+          "player": 0,
+          "request_id": 193
+        },
+        "terminal_unapplied": [
+          {
+            "pack": "0000b40101c201",
+            "pack_type": 180,
+            "player": 1,
+            "receipt": {
+              "completed": 1140,
+              "index": 1140,
+              "phase": "callbacks_complete",
+              "type": 117
+            },
+            "request_id": 194,
+            "seq": 5781,
+            "source": "native_opponent"
+          }
+        ]
+      },
+      "server": {
+        "boundaries": {
+          "battle_end": 1,
+          "end_turn": 11,
+          "game_end": 1
+        },
+        "client_packs": 1146,
+        "inputs": 193,
+        "observations_after_prefix": 0,
+        "packs_sent": 1146,
+        "prefix": false,
+        "terminals": [
+          {
+            "player": 0,
+            "victory": false
+          },
+          {
+            "player": 1,
+            "victory": true
+          }
+        ]
+      },
+      "server_verified": true,
+      "terminal_barrier": {
+        "barrier_id": 1,
+        "callbacks_complete": true,
+        "client_packets": 1146,
+        "controllers": {
+          "explorer_players": [
+            0
+          ],
+          "native_opponents": [
+            {
+              "module": "Nullkiller",
+              "player": 1
+            }
+          ],
+          "schema": "heroes-contextual-controllers-v1"
+        },
+        "episode": "3",
+        "explorer_terminal_callbacks": [
+          0
+        ],
+        "interface": "adventure-dialogs-v1",
+        "kind": "client",
+        "native_terminal_callbacks": [
+          0,
+          1
+        ],
+        "observed_count": 1146,
+        "origin": "request",
+        "outcomes": [
+          "loss",
+          "win"
+        ],
+        "request": {
+          "id": 193,
+          "player": 0,
+          "type": 198
+        },
+        "schema": "heroes-contextual-terminal-barrier-v1"
+      },
+      "unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      }
+    },
+    "verified": true
+  },
+  "nonverifier_runtime_bytes_unchanged": true,
+  "original_attempt_stays_failed": true,
+  "original_cohort_result_unchanged": true,
+  "original_training_samples": 0,
+  "schema": "heroes-terminal-endturn-repair-v1",
+  "tests": {
+    "focused_tests": 44,
+    "native_accounting_checks": 346
+  },
+  "transition_manifest": "configs/builtin-resume-transitions-v1.json"
+}

@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "kind": "synthetic-learner-component-validation",
+  "base_commit": "34edd9b2d1fbe817512f4d38dac5f96b2a078d41",
+  "environment": {
+    "python": "3.13.5",
+    "system": "Darwin",
+    "machine": "arm64",
+    "torch": "2.9.1",
+    "device": "cpu"
+  },
+  "model": {
+    "initialization": "random; no pretrained weights",
+    "parameters": 92740,
+    "history_schema": "heroes-player-history-v1",
+    "action_schema": "heroes-action-candidates-v1",
+    "recurrent_hidden_size": 64
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -m unittest discover -s tests -v",
+      "result": "passed",
+      "tests": 129,
+      "learner_tests": 45,
+      "skipped": 0
+    },
+    {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "result": "passed; pinned upstream + root patches + owned source agree exactly"
+    },
+    {
+      "command": "uv pip sync --python .venv/bin/python --require-hashes dependencies/learner.lock",
+      "result": "passed"
+    }
+  ],
+  "covered": [
+    "strict typed history and candidate schemas",
+    "cross-player and sequence rejection",
+    "transient sighting influences later recurrent state",
+    "actor and value gradients through prior observations",
+    "independent per-player memory and episode reset",
+    "candidate permutation and routing-key invariance",
+    "parameter binding before pooling",
+    "exact movement support and behavior provenance",
+    "terminal races without fabricated actions/results",
+    "terminal-only undiscounted reference returns",
+    "verified-prefix cutoff versus excluded technical failure",
+    "state-dictionary roundtrip"
+  ],
+  "not_validated": [
+    "live engine adapter or visibility/event completeness",
+    "headless natural self-play outcomes and episode boundaries",
+    "offline replay fidelity",
+    "simulation throughput",
+    "policy learning or performance",
+    "economy/shop/HotA actions",
+    "resumable optimizer or training-loop checkpoint"
+  ],
+  "training_campaign_started": false,
+  "optimizer_updates": 0,
+  "paid_compute_used": false,
+  "notes": [
+    "Full views cover the declared structured fields; richer dialog/battle facts require schema extension and producer audit.",
+    "PyTorch emitted an optional missing-NumPy warning; no NumPy operation is used and all tests passed."
+  ],
+  "source_sha256": {
+    "dependencies/learner.in": "45dd60d5be8f6ddd2daf0a0c9abadd9580a14ac586a09f7517c00953b21aa9bb",
+    "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+    "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+    "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+    "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+    "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+    "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+    "tests/test_learner_actions.py": "0d6e5a5cd73fab3823a64fb49972b18f4a0d82d313502ebf6233c78a10321617",
+    "tests/test_learner_contract.py": "92ae127f3fbf8e63817d6f51f79db7bb9339f42dd168a32010d0e225564bcf55",
+    "tests/test_learner_model.py": "a2f0ae2b528cfafd0fb0b247a81e196d3ee5db79af5e62a01998527fdb89eb30",
+    "tests/test_learner_trajectory.py": "3522e5cf5b6c3bfd8cbc123051e2c0caa4f536e3b95a9a0ce199fbbac0abe590"
+  }
+}

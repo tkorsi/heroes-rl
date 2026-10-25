@@ -1,0 +1,8 @@
+--- a/lib/CMakeLists.txt
++++ b/lib/CMakeLists.txt
+@@ -1,4 +1,5 @@
+ set(lib_SRCS
++	../nativesession/PolicyTransport.cpp
+ 	StdInc.cpp
+ 
+ 	filesystem/AdapterLoaders.cpp

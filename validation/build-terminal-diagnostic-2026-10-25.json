@@ -1,0 +1,554 @@
+{
+  "bindings": {
+    "after.json": {
+      "bytes": 3164,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/after.json",
+      "sha256": "5eb85c2c11a61f274a778e0b6c76400ff2148cc9d08193fc58231766761b5a38"
+    },
+    "before.json": {
+      "bytes": 10480,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/before.json",
+      "sha256": "e41fc6b83acd0fccc5130619bf62b9a307a7f1b16bc83f855d4c9d80aa324097"
+    },
+    "build.log": {
+      "bytes": 207,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/build.log",
+      "sha256": "81e91017ab88ed350b48068f748abdb41622e38849757614a80f9403ea1527e1"
+    },
+    "coordination.json": {
+      "bytes": 821,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/coordination.json",
+      "sha256": "f3f0e2f177b1d4a2f0d5d32adb9e260329b32079fec5fae557f77f30858959e7"
+    },
+    "diagnostic.log": {
+      "bytes": 64,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/diagnostic.log",
+      "sha256": "bd0ee2d97b5742059eb870c34e8e6d1aca0cf865f49e4f5af3073f2f3a8762e6"
+    },
+    "diagnostic/builtin-replay-diagnostic.json": {
+      "bytes": 12144,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/diagnostic/builtin-replay-diagnostic.json",
+      "sha256": "b4a92acb515607924f4d0dec4a5aeb9b730741c0fe499f4b20830035e6e51530"
+    },
+    "diagnostic/native-report.json": {
+      "bytes": 2800,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/diagnostic/native-report.json",
+      "sha256": "c76202f663ae55ad2e8b386736e4aca39737fc28b1429fa9f095042d68b6084d"
+    },
+    "prepare-check.log": {
+      "bytes": 128,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/prepare-check.log",
+      "sha256": "ed2c4a653fddc51834261fcfc210037044508a8f657eca3786fdcea0636bc805"
+    },
+    "tests.log": {
+      "bytes": 133,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/tests.log",
+      "sha256": "c4735e3d64cac63aa20e2b888ffc78cd21aa02a1ef2e33334cedbc7f4d5014f4"
+    }
+  },
+  "captured_source_commit": "6abbfdbb15025d6b65fa692fe66ac0f9b1b58bcd",
+  "checkpoint": {
+    "bytes": 629494,
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+    "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+  },
+  "coordination": {
+    "build_parallelism": 1,
+    "clean_speed_claim_eligible": false,
+    "coordination": "Issue #4: notified overlap after requests for a short handoff; affected profiling interval excluded from clean comparisons.",
+    "finished_utc": "2026-10-25T12:07:52.733626+00:00",
+    "observed_foreign_profile": "21635 07:46 /Users/orsi/Projects/Heroes/.venv/bin/python -m experiments.perf.offline_profile --episode /Users/orsi/Projects/Heroes-perf/inputs/long-dialog-episode-000001 --output /Users/orsi/Projects/Heroes-perf/runs/offline-baseline-cprofile --checkpoint /Users/orsi/Projects/Heroes-perf/inputs/fixed-policy.pt --policy-seeds 120601 120602 --cprofile --steps reconstruction rollout_from_dict",
+    "performance_measurement": false,
+    "scientific_cohorts_finished": true,
+    "started_utc": "2026-10-25T12:06:41.726329+00:00"
+  },
+  "diagnostic": {
+    "diagnostic_verified": true,
+    "history": {
+      "boundary": "natural",
+      "bridge": {
+        "bytes": 226284,
+        "sha256": "59cdcb6a4b6498e293e76d73111a0d734dff8ce026b42eda037fb8bef8c41006"
+      },
+      "counts": {
+        "accepted": 4,
+        "acknowledged": 4,
+        "consumed": 9,
+        "context": 4,
+        "decision": 9,
+        "delivered_actions": 9,
+        "engine_messages": 20,
+        "event": 8,
+        "issued": 4,
+        "result": 9,
+        "rows": 29,
+        "submitted": 9,
+        "terminal": 1,
+        "view": 18
+      },
+      "cutoff_decision_seq": null,
+      "episode": "5",
+      "learner": {
+        "bytes": 250755,
+        "frames": 75,
+        "sha256": "ed980329a5f8a232c47e93723c62b42313619935ed89b5cbfbf47ec05610ad72"
+      },
+      "learner_player": 0,
+      "live": {
+        "bytes": 250755,
+        "frames": 75,
+        "sha256": "ed980329a5f8a232c47e93723c62b42313619935ed89b5cbfbf47ec05610ad72"
+      },
+      "native_replay_verified": false,
+      "opponent_history": null,
+      "schema": "heroes-builtin-history-reconstruction-v1",
+      "scope": "sole_learner_transport_to_history",
+      "verified": true
+    },
+    "identity_check": {
+      "adapter_sources_unchanged": true,
+      "client_unchanged": true,
+      "mode": "diagnostic_verifier_only",
+      "nonverifier_recipe_unchanged": true,
+      "nonverifier_runtime_unchanged": true,
+      "recipe_changes": {
+        "engine/ExperimentReplay/RequestAccounting.h": {
+          "captured": "53fca5a671ff8d85251b836bba3357a606fa279c36760d7f08d53ff7094f15f8",
+          "current": "f09aca2a52adf3bf82487f28c05f8cf527b33c35b2e732e96bc646607ed7a73c"
+        }
+      },
+      "runtime_changes": {
+        "vcmireplay": {
+          "captured": "ff0bdf81340a5638fa1b4c07f8ed67906d61a6275261807b20fcf3d6757481f4",
+          "current": "13fffdda858b38f6868fba0a0819a89bcb26fd540a9d3f645924f83b912659f5"
+        }
+      }
+    },
+    "native": {
+      "divergence": null,
+      "log": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/build-terminal-repair-2026-10-25/diagnostic/replay.jsonl",
+      "returncode": 0,
+      "schema": "heroes-contextual-builtin-replay-verification-v1",
+      "seconds": 0.701,
+      "summary": {
+        "boundary": {
+          "barrier_id": 1,
+          "client_packets": 595,
+          "kind": "natural"
+        },
+        "captured_prefix_only": false,
+        "checked": {
+          "client_packets": 595,
+          "messages": 20,
+          "native_opponent_requests": 78,
+          "requests": 90,
+          "responses": 9,
+          "transactions": 672
+        },
+        "controllers": {
+          "explorer_players": [
+            0
+          ],
+          "native_opponents": [
+            {
+              "module": "Nullkiller",
+              "player": 1
+            }
+          ],
+          "schema": "heroes-contextual-controllers-v1"
+        },
+        "final_client_position": {
+          "completed": 595,
+          "index": 595,
+          "phase": "callbacks_complete",
+          "type": 265
+        },
+        "loaded": {
+          "client_packets": 595,
+          "messages": 20,
+          "native_opponent_requests": 78,
+          "requests": 90,
+          "responses": 9,
+          "transactions": 672
+        },
+        "open_final_transaction": false,
+        "regenerated_server_packets_after_prefix": 0,
+        "request_accounting": {
+          "authoritative_inputs": 89,
+          "final_terminal_input": {
+            "first_client_packet": 565,
+            "input_seq": 88,
+            "last_client_packet": 595,
+            "pack_type": 198,
+            "player": 0,
+            "request_id": 89
+          },
+          "terminal_unapplied": [
+            {
+              "pack": "0000b90101da000005",
+              "pack_type": 185,
+              "player": 1,
+              "receipt": {
+                "completed": 589,
+                "index": 589,
+                "phase": "callbacks_complete",
+                "type": 117
+              },
+              "request_id": 90,
+              "seq": 2037,
+              "source": "native_opponent"
+            }
+          ]
+        },
+        "server": {
+          "boundaries": {
+            "end_turn": 3,
+            "game_end": 1
+          },
+          "client_packs": 595,
+          "inputs": 89,
+          "observations_after_prefix": 0,
+          "packs_sent": 595,
+          "prefix": false,
+          "terminals": [
+            {
+              "player": 0,
+              "victory": false
+            },
+            {
+              "player": 1,
+              "victory": true
+            }
+          ]
+        },
+        "server_verified": true,
+        "terminal_barrier": {
+          "barrier_id": 1,
+          "callbacks_complete": true,
+          "client_packets": 595,
+          "controllers": {
+            "explorer_players": [
+              0
+            ],
+            "native_opponents": [
+              {
+                "module": "Nullkiller",
+                "player": 1
+              }
+            ],
+            "schema": "heroes-contextual-controllers-v1"
+          },
+          "episode": "5",
+          "explorer_terminal_callbacks": [
+            0
+          ],
+          "interface": "adventure-dialogs-v1",
+          "kind": "client",
+          "native_terminal_callbacks": [
+            0,
+            1
+          ],
+          "observed_count": 595,
+          "origin": "request",
+          "outcomes": [
+            "loss",
+            "win"
+          ],
+          "request": {
+            "id": 89,
+            "player": 0,
+            "type": 198
+          },
+          "schema": "heroes-contextual-terminal-barrier-v1"
+        },
+        "unchecked": {
+          "client_packets": 0,
+          "messages": 0,
+          "native_opponent_requests": 0,
+          "requests": 0,
+          "responses": 0,
+          "transactions": 0
+        }
+      },
+      "verified": true
+    },
+    "opponent_policy_reexecuted": false,
+    "optimization_eligible": false,
+    "original_cohort_admission": false,
+    "original_cohort_result_unchanged": true,
+    "outcomes_by_player": {
+      "blue": null,
+      "red": null
+    },
+    "prefix": {
+      "contextual_partial_bytes": 0,
+      "server_partial_bytes": 0,
+      "server_unpaired_inputs": 0
+    },
+    "rewards_by_player": {
+      "blue": null,
+      "red": null
+    },
+    "verified": false,
+    "wire": {
+      "client_packets": 595,
+      "controllers": {
+        "explorer_players": [
+          0
+        ],
+        "native_opponents": [
+          {
+            "module": "Nullkiller",
+            "player": 1
+          }
+        ],
+        "schema": "heroes-contextual-controllers-v1"
+      },
+      "learner_player": 0,
+      "messages": 20,
+      "native_opponent_requests": 78,
+      "opponent_history": null,
+      "request_accounting": {
+        "authoritative_inputs": 89,
+        "final_terminal_input": {
+          "first_client_packet": 565,
+          "input_seq": 88,
+          "last_client_packet": 595,
+          "pack_type": 198,
+          "player": 0,
+          "request_id": 89
+        },
+        "terminal_unapplied": [
+          {
+            "pack": "0000b90101da000005",
+            "pack_type": 185,
+            "player": 1,
+            "receipt": {
+              "completed": 589,
+              "index": 589,
+              "phase": "callbacks_complete",
+              "type": 117
+            },
+            "request_id": 90,
+            "seq": 2037,
+            "source": "native_opponent"
+          }
+        ]
+      },
+      "request_order_verified": true,
+      "requests": 90,
+      "responses": 9,
+      "scope": "Authoritative command prefix and separately accounted terminal-unapplied attempt; engine effects and receipt positions require independent native replay.",
+      "submitted_without_receipt": 0,
+      "transactions": 672
+    }
+  },
+  "limitations": [
+    "The original failed cohort remains failed and unscored; its remaining scheduled games are not retried.",
+    "This fixes the observed typed terminal-unapplied BuildStructure case; other request families remain fail-closed.",
+    "The diagnostic replays recorded native commands, not the native opponent policy.",
+    "Rebirth and ordinary self-play natural-outcome frequency remain unverified.",
+    "Correctness checks overlapped instrumented profiling after scientific cohorts finished; no clean speed claim is made."
+  ],
+  "nonverifier_runtime_unchanged": true,
+  "optimizer_steps": 0,
+  "original_admission": {
+    "outcomes": {
+      "blue": null,
+      "red": null
+    },
+    "rewards": {
+      "blue": null,
+      "red": null
+    },
+    "status": "failed"
+  },
+  "original_artifacts": [
+    {
+      "bytes": 87341,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/plan.json",
+      "sha256": "d88366b615519679a83e6afabb1cd52f33ee8869c84071c459e9f7aa9ed88aca"
+    },
+    {
+      "bytes": 19341,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/report.json",
+      "sha256": "e0997e4198109ed9ffaa1bc5337fe5a190c6f248df0e10cbe5c9402fdd699dc9"
+    },
+    {
+      "bytes": 1478,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/attempt-05.json",
+      "sha256": "12e36bd8f1e69ddabf92ce0d9f9113b5132719374fa99c9252508e8182603326"
+    },
+    {
+      "bytes": 226284,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/agents/red/bridge.jsonl",
+      "sha256": "59cdcb6a4b6498e293e76d73111a0d734dff8ce026b42eda037fb8bef8c41006"
+    },
+    {
+      "bytes": 250755,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/agents/red/history-v7.jsonl",
+      "sha256": "ed980329a5f8a232c47e93723c62b42313619935ed89b5cbfbf47ec05610ad72"
+    },
+    {
+      "bytes": 250755,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/agents/red/live-history-v7.jsonl",
+      "sha256": "ed980329a5f8a232c47e93723c62b42313619935ed89b5cbfbf47ec05610ad72"
+    },
+    {
+      "bytes": 13021,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/behavior.json",
+      "sha256": "ab2b1686050ca2d739116550bd997e81a08471af978cca940d27e900dc4ba390"
+    },
+    {
+      "bytes": 14484,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/builtin-finalization.json",
+      "sha256": "6948dc28f0eed1abe51172299fd2cfbb8259033db688170873bfe24378450b22"
+    },
+    {
+      "bytes": 747438,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/builtin-rollout.json",
+      "sha256": "d16c2533d5b0d9e5b44a08fa66c2cd8156456045ad6cb7c2b17ffce98ca6c669"
+    },
+    {
+      "bytes": 3195,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/builtin-verification/builtin-replay-verification.json",
+      "sha256": "7019403f9f73e042c05c41b238b6bff8521e1864ad969c80c9409e18245657e8"
+    },
+    {
+      "bytes": 642927,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/contextual-replay.jsonl",
+      "sha256": "96a506246adde26f44488f09719ce48718e18f8448ae1e3ceded2ce16c079cac"
+    },
+    {
+      "bytes": 887,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/experiment-metadata.json",
+      "sha256": "a2076dbf8b190cf7110694f04b620092b424a82a660da624dfbced2b158473e1"
+    },
+    {
+      "bytes": 0,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/observations-p0.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 44237,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/replay.jsonl",
+      "sha256": "a7dd804057d7e5b2e267394789722aa7b46f508a73781743907cb1062ebdea47"
+    },
+    {
+      "bytes": 591,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/terminal-barrier-client.jsonl",
+      "sha256": "0ddbe080aeb3642272f636cbf21623666b74fa6de92bc26b65760ad144a5b818"
+    },
+    {
+      "bytes": 459,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/engine/terminal-barrier-server.jsonl",
+      "sha256": "4c35b8e0b9b230167b7d945f7fbf7b4b67704e02da71377c5030801599c33e8b"
+    },
+    {
+      "bytes": 28672,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/logs/VCMI_Client_log.txt",
+      "sha256": "89ba6ee1515a3a199cf2cbf36fe588eae17392c07f628c09157688ce8f1e28c3"
+    },
+    {
+      "bytes": 6233,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/logs/process.log",
+      "sha256": "88c4798e9da410f56c5ce000992f35b5f6fb2cc89b41a05a2560d8dcab03f9af"
+    },
+    {
+      "bytes": 16973,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/manifest.json",
+      "sha256": "4f4792f957dfc404c8606ad5081078a1b5be35440af5bc98214515b4168755ae"
+    },
+    {
+      "bytes": 725641,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/partial-policy-evidence.json",
+      "sha256": "e1c1cf16a55b4c079d20f60f8df0d2b1a4f8847c7eb20defdcafbcaa3b80b89e"
+    },
+    {
+      "bytes": 522,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/policy-reconstruction.json",
+      "sha256": "eb64f478168064cd6137fda90bb00cb23470b90278ed4c7493f0c2fdeb2b9a52"
+    },
+    {
+      "bytes": 2353,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/profile/Maps/headless.vmap",
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    {
+      "bytes": 10389,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/profile/config/keyBindingsConfig.json",
+      "sha256": "1fc1ff8ef7c4ed9cce81ce6ec41bc3dfbd9434a729c594ae4287190558070e91"
+    },
+    {
+      "bytes": 189,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/profile/config/modSettings.json",
+      "sha256": "9361a975cd4c0ed2a396c63d8055b24a6cab90a148dc357145303fd6a6dbd4a1"
+    },
+    {
+      "bytes": 3,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/profile/config/persistentStorage.json",
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    {
+      "bytes": 438,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/episode-000005/profile/config/settings.json",
+      "sha256": "8aff22eb8af01f2068d4c2836db6d9c23a480abd0a072575ac22034fe174f2d3"
+    }
+  ],
+  "original_files_unchanged": true,
+  "repair_base_commit": "b05abb6288704331e66cf4149d1c7459ad6fd32e",
+  "repair_source_bindings": {
+    "engine/ExperimentReplay/RequestAccounting.h": {
+      "bytes": 6674,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/RequestAccounting.h",
+      "sha256": "f09aca2a52adf3bf82487f28c05f8cf527b33c35b2e732e96bc646607ed7a73c"
+    },
+    "experiments/headless/builtin_replay.py": {
+      "bytes": 32060,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/builtin_replay.py",
+      "sha256": "e34194b754035c6e1bd4a35078071bc6d94c20a4d9b205604be0d5e4414aeb4d"
+    },
+    "tests/native/terminal_request_accounting.cpp": {
+      "bytes": 9511,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/terminal_request_accounting.cpp",
+      "sha256": "831b279e036e570e33b8b292b2953069cfa1a7436d7af8a4e72638461bd912c6"
+    },
+    "tests/test_builtin_terminal_replay.py": {
+      "bytes": 8000,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_terminal_replay.py",
+      "sha256": "9908199d036a6ab7781d79a27cc8e30a90a91c48e8acefb4ee91eb7fd4df27c5"
+    },
+    "tests/test_native_terminal_accounting.py": {
+      "bytes": 4326,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_terminal_accounting.py",
+      "sha256": "a579529846b496fd10999ecd785c5b118353380e1165746d6d2668cb75988b82"
+    }
+  },
+  "rewards_changed": false,
+  "rules_changed": false,
+  "runtime_changes": {
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay": {
+      "after": {
+        "bytes": 12575560,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay",
+        "sha256": "13fffdda858b38f6868fba0a0819a89bcb26fd540a9d3f645924f83b912659f5"
+      },
+      "before": {
+        "bytes": 12575480,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay",
+        "sha256": "ff0bdf81340a5638fa1b4c07f8ed67906d61a6275261807b20fcf3d6757481f4"
+      }
+    }
+  },
+  "schema": "heroes-build-terminal-diagnostic-v1",
+  "scope": "Separate repaired-verifier replay of the preserved failed B-v2 episode5; no new game or reclassification.",
+  "tests": {
+    "coverage": "MoveHero and BuildStructure, both seats, exact retained packet decode and strict rejection cases.",
+    "focused_tests": 34,
+    "native_codec_and_corruption_checks": 231,
+    "passed": true,
+    "skipped": 0
+  },
+  "training_performed": false,
+  "training_samples": 0
+}

@@ -1,0 +1,3536 @@
+{
+  "bindings": {
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/configs/builtin-opponent-evaluation-v1.json": {
+      "bytes": 932,
+      "sha256": "0b8717589439eb28a94dfe01f596492901573f296c268c7e0864e42bb6beddbe"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/configs/first-training-v1.json": {
+      "bytes": 724,
+      "sha256": "0c49fc9c20cb6a693152f86f65de6f060df1c20a5a8d43b818226b7a2112adea"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/dependencies/learner.in": {
+      "bytes": 96,
+      "sha256": "45dd60d5be8f6ddd2daf0a0c9abadd9580a14ac586a09f7517c00953b21aa9bb"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/dependencies/learner.lock": {
+      "bytes": 17102,
+      "sha256": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/dependencies/vcmi.json": {
+      "bytes": 777,
+      "sha256": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/CMakeLists.txt": {
+      "bytes": 1181,
+      "sha256": "135863b2f4a2f2cc3ac5e9e04632877064a04b7e40fc4d0cc19ec34933c21caa"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/ContextualReplay.cpp": {
+      "bytes": 12468,
+      "sha256": "0c985471a6203c9562f3f4dde79f1b37517c116ed674858a69b4f99ddb2cb32a"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/ContextualReplay.h": {
+      "bytes": 913,
+      "sha256": "76f9d5442925ad8f3da11560ad0c632143fb539c44ea9202e655c399f8bd33da"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/ReplayClientHost.cpp": {
+      "bytes": 794,
+      "sha256": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/ReplayMain.cpp": {
+      "bytes": 26450,
+      "sha256": "5123e27a9249ca66a13f768ae191c639c3ae264b97e00d69b11d88b3abcaa9d9"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/StdInc.cpp": {
+      "bytes": 278,
+      "sha256": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExperimentReplay/StdInc.h": {
+      "bytes": 285,
+      "sha256": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ArmyOperationRules.h": {
+      "bytes": 6148,
+      "sha256": "144d25798adeaab1d9846676da6829e6bf729eb2b83915a78b5272cd1b54b3bb"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ArmyOperations.cpp": {
+      "bytes": 27629,
+      "sha256": "3364bb2c8b843ac4510dd8858cb05fbed4bfe6f4d14403b9badca64766aaf091"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/CMakeLists.txt": {
+      "bytes": 703,
+      "sha256": "47583d6f9f99ef5008dec979ebd10fb485cc768aec961049ca5c0c4f0bb539f0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Contextual.cpp": {
+      "bytes": 35942,
+      "sha256": "d64193f740e5b1cfc1636550c63e890e0b16ff94c46c8d6ddf9dfb499359100b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Contextual.h": {
+      "bytes": 2119,
+      "sha256": "8a1f1e2900553dc420e0c775cf0fc363ec8e74afc654cd85ccb4bbeb42e3b091"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ContextualEvidence.cpp": {
+      "bytes": 19751,
+      "sha256": "dadcb5cfeb36bc610e233546b0839d00f4b9bced471fea629c125834315b421e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ContextualEvidence.h": {
+      "bytes": 3198,
+      "sha256": "8f7a5799c758f251c866b24fa1facb26daf8e6fd33e0595bf6979a1c60cb3a09"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Dialog.cpp": {
+      "bytes": 7440,
+      "sha256": "690c055053df0af7244d38b699c3207fc6961df5178123d04982121c406eda00"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Dialog.h": {
+      "bytes": 705,
+      "sha256": "52788c6ae95c7d7d9394ed23d86aeb7d117a6e85cb7883a8c2cc805e07bb2056"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/DialogContext.cpp": {
+      "bytes": 7219,
+      "sha256": "ffaa453de90c1ea3f786ba9921d1f96a6aece6e73f189ddc74936ea86c6c4e46"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Exchange.cpp": {
+      "bytes": 5667,
+      "sha256": "2b429e659e7e5ecbf8f77a914a1776f5ae7a00354ce1a9af06e91938a4823168"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ExplorerRL.cpp": {
+      "bytes": 49201,
+      "sha256": "843a931bf9536f21c935fa90c3bffed8cf99ba8ffc19db402e8ce3a7c9e2d64c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/ExplorerRL.h": {
+      "bytes": 10829,
+      "sha256": "9d2f5531a18b40280dac92e8f5387304f10eccfd2ee9f626dc5897dcf4abdffa"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/KnowledgeGrid.h": {
+      "bytes": 6286,
+      "sha256": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/KnowledgePlanner.cpp": {
+      "bytes": 19589,
+      "sha256": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/KnowledgePlanner.h": {
+      "bytes": 1368,
+      "sha256": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Notice.cpp": {
+      "bytes": 25204,
+      "sha256": "c64b8edfbc7a1d137336a3965872374cf27f15d543b207967c8a2943f9b11cbf"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Notice.h": {
+      "bytes": 1235,
+      "sha256": "b70c2300380ee1b822c395e374b3f9332d04bf2cd6ddfb74e495d1d1c1a3daae"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/StdInc.cpp": {
+      "bytes": 20,
+      "sha256": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/StdInc.h": {
+      "bytes": 64,
+      "sha256": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/Tavern.cpp": {
+      "bytes": 12875,
+      "sha256": "a463b2cc473a1634f275840245b66df1e647deb5720fb4b2ba603c0e8067a763"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/TownEconomy.cpp": {
+      "bytes": 11688,
+      "sha256": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/TownEconomy.h": {
+      "bytes": 2377,
+      "sha256": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/TownRecruitment.cpp": {
+      "bytes": 11082,
+      "sha256": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/TownTransfer.cpp": {
+      "bytes": 8292,
+      "sha256": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/TransferRules.h": {
+      "bytes": 2323,
+      "sha256": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/VisibleState.h": {
+      "bytes": 9477,
+      "sha256": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/VisibleWorld.h": {
+      "bytes": 3679,
+      "sha256": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/ExplorerRL/main.cpp": {
+      "bytes": 325,
+      "sha256": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0001-experiment-environment.patch": {
+      "bytes": 1803,
+      "sha256": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0002-gameplay-recorder-and-spectator.patch": {
+      "bytes": 13946,
+      "sha256": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0003-disable-map-cheats.patch": {
+      "bytes": 6171,
+      "sha256": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0004-recording-perspectives.patch": {
+      "bytes": 9171,
+      "sha256": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0005-paired-frame-capture.patch": {
+      "bytes": 8057,
+      "sha256": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0006-experiment-player-routing.patch": {
+      "bytes": 6448,
+      "sha256": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0007-effective-engine-seed-diagnostic.patch": {
+      "bytes": 1193,
+      "sha256": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0008-recording-natural-shutdown.patch": {
+      "bytes": 809,
+      "sha256": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0009-request-queue-shutdown-race.patch": {
+      "bytes": 1385,
+      "sha256": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0010-self-play-routing.patch": {
+      "bytes": 7821,
+      "sha256": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0011-multi-player-capture.patch": {
+      "bytes": 13111,
+      "sha256": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0012-headless-simulation.patch": {
+      "bytes": 29084,
+      "sha256": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0013-experiment-replay.patch": {
+      "bytes": 29638,
+      "sha256": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0014-contextual-notices.patch": {
+      "bytes": 6331,
+      "sha256": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0015-contextual-terminal-barrier.patch": {
+      "bytes": 27570,
+      "sha256": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0016-contextual-client-replay.patch": {
+      "bytes": 3981,
+      "sha256": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0017-town-army-profile.patch": {
+      "bytes": 1649,
+      "sha256": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0018-hero-recruitment-profile.patch": {
+      "bytes": 1843,
+      "sha256": "442d9bba9a4d477f01633df52f663b4fcb096a8652fa10f700ecbf9e271919c3"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0019-army-management-profile.patch": {
+      "bytes": 2055,
+      "sha256": "7354ccec36e3c1f73485eb1f6940517b1ed60cba7d8220e10a3be1285f790e61"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0020-structured-blocking-dialog.patch": {
+      "bytes": 1858,
+      "sha256": "0441c47d06149ebb7db92cb2f59f0d88add84e28f58effcabee9d1cba3c54362"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0021-structured-paid-join.patch": {
+      "bytes": 847,
+      "sha256": "c68da24a97090bb1a40036b79ce0024f1e2988eb6acf59c7ec05fe3feedd4037"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0022-adventure-dialog-profile.patch": {
+      "bytes": 2269,
+      "sha256": "7544c103eece630aa0da60846580716b9bfb2aa163487dd258508cf2d058280e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0023-builtin-opponent-evaluation.patch": {
+      "bytes": 13101,
+      "sha256": "e265789d2c35cc51d1eb479abbfdbc58e3b032b2a1ac2d12a0a5c6664d0a6293"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0024-stable-spell-target-order.patch": {
+      "bytes": 3170,
+      "sha256": "ed388cdcdec03eaef0cdf6a6a6d4ac65b0227ca3a5369a241360859366687267"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/engine/patches/0025-native-request-lock-order.patch": {
+      "bytes": 968,
+      "sha256": "c4d458095e37df5898c5e9858a2e240e30d5d8775b1ce0f554be49c4c62bd0ff"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/episodes/scoring.py": {
+      "bytes": 14503,
+      "sha256": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/create_hero_scenario.py": {
+      "bytes": 5169,
+      "sha256": "8bc9545bee9b48fbe0977c4126c880e70c6d766c720f8868f1642772e595a491"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/hero-management-v1.vmap": {
+      "bytes": 2353,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/agents.py": {
+      "bytes": 1631,
+      "sha256": "be0f3f09860087640db56781ceaa10d6476a815be21883b9cc340444daa42839"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/army_replay_mutations.py": {
+      "bytes": 5021,
+      "sha256": "c8534661bf1a57ae9a04b2ee1e53d407dcf770f32ab54d517784bf53256e7f56"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/benchmark.py": {
+      "bytes": 15105,
+      "sha256": "470b1689bf6957c3935f653ddce1f2935aeda5daca53740f822bcb0e4eacd451"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/bridge_protocol.py": {
+      "bytes": 14031,
+      "sha256": "88ea914f146bbc9de651a4859bc32f6ad12f101efe209f95190bf99420116c4f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/builtin_env.py": {
+      "bytes": 16227,
+      "sha256": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/builtin_evidence.py": {
+      "bytes": 13116,
+      "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/builtin_replay.py": {
+      "bytes": 20557,
+      "sha256": "c285806465d5251aeb4de15f9de00e244543b4fc93c04630dc4697c072c67236"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/builtin_replay_history.py": {
+      "bytes": 7533,
+      "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/compact_evidence.py": {
+      "bytes": 8748,
+      "sha256": "f7792f0382d73b8b0c618707659aa16f8659c5b0133b65851fc7c241dc81120a"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/contextual_env.py": {
+      "bytes": 36954,
+      "sha256": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/contextual_evidence.py": {
+      "bytes": 7785,
+      "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/contextual_protocol.py": {
+      "bytes": 8040,
+      "sha256": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/contextual_replay.py": {
+      "bytes": 37368,
+      "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/contextual_replay_history.py": {
+      "bytes": 17607,
+      "sha256": "a121299af2c73417c8d537e45b9d21622aadc17a523196681b3109db20d731de"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/cost_breakdown.py": {
+      "bytes": 8832,
+      "sha256": "74502aed63a9455d3ef56a2b296a68ca1aea75bc55cd6055a5d9ca6c4a21bd7b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/dialog_replay_mutations.py": {
+      "bytes": 9727,
+      "sha256": "2a8b38f2f16544c8d6c30db6d450068cee176ad7ad592c9fe71a3d11454ce656"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/env.py": {
+      "bytes": 53426,
+      "sha256": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/history_v1.py": {
+      "bytes": 6269,
+      "sha256": "3ca7837f3f821d91839acd7322bb2471ad5ca9559c5f373fb5350044d44aa050"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/player_history.py": {
+      "bytes": 18259,
+      "sha256": "e496821e9b3178bc37dc438f66c935714ed46f58f18a7b9a23508441c0ca2071"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/process_deadline.py": {
+      "bytes": 15308,
+      "sha256": "a2a2041327e7b60e74719dba661ce84d9598491b62cb0f9e318ba4717cceecab"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/render_replay.py": {
+      "bytes": 21366,
+      "sha256": "0f6e343917a48d2aad0515c72168e50804f1c980d34381bf0e89a89270737802"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/replay.py": {
+      "bytes": 43840,
+      "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/run_headless.py": {
+      "bytes": 19868,
+      "sha256": "5f57d88d58198fdad59f06c71b3b94876a76c9df6048f1a0878af9d695d5f912"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/headless/run_series.py": {
+      "bytes": 8023,
+      "sha256": "0752f1a6b3d5e0ed2ee7c75dfb9dd008d95300ad09e0b5365c33b26a93de13d0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/__init__.py": {
+      "bytes": 80,
+      "sha256": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/actions.py": {
+      "bytes": 3927,
+      "sha256": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/builtin_behavior.py": {
+      "bytes": 7082,
+      "sha256": "12938a41753c11e3cc62f498c3080200ddcf340d2a6d4e7fa5635955a300514b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/builtin_rollout.py": {
+      "bytes": 17113,
+      "sha256": "d0dae59e199cab6343d53cbd79db78f80e7b0ca13f2b009d37c143ee3caca66c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/checkpoints.py": {
+      "bytes": 21093,
+      "sha256": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/contextual.py": {
+      "bytes": 146467,
+      "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/contextual_model.py": {
+      "bytes": 38637,
+      "sha256": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/contextual_rollout.py": {
+      "bytes": 38033,
+      "sha256": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/contract.py": {
+      "bytes": 11746,
+      "sha256": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/evaluate_builtin_opponent.py": {
+      "bytes": 27627,
+      "sha256": "354b354a18ac7a6ab519a98f0039239130b7d1aec8925c9b1cf0c8a7121f4bb4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/evaluate_continuation.py": {
+      "bytes": 21005,
+      "sha256": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/evaluate_long_dialogs.py": {
+      "bytes": 26991,
+      "sha256": "3a7e891a0a0888c08120e112b4c05a934a7d2859746e5687baeea5ce50ee1695"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/evaluation_behavior.py": {
+      "bytes": 24249,
+      "sha256": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/first_run.py": {
+      "bytes": 15673,
+      "sha256": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/gameplay.py": {
+      "bytes": 26467,
+      "sha256": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/inference.py": {
+      "bytes": 21678,
+      "sha256": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/model.py": {
+      "bytes": 13988,
+      "sha256": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/ppo.py": {
+      "bytes": 17526,
+      "sha256": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/learner/trajectory.py": {
+      "bytes": 14572,
+      "sha256": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/attempt-01.json": {
+      "bytes": 1149,
+      "sha256": "f561c0c019f89c46c292374b1a2043c6aeff6cd10a703a3fc10b179c648f378c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/agents/red/bridge.jsonl": {
+      "bytes": 457980,
+      "sha256": "7135cbada31fb38961ee2f3569ff0cb6a3c9ada6ad0afbc2ce13c40fcc0c134d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/agents/red/history-v7.jsonl": {
+      "bytes": 506472,
+      "sha256": "3426f39581fcfde4a1a42443c0178fd6ad9642926f80045c2d838dd128e779a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/agents/red/live-history-v7.jsonl": {
+      "bytes": 506472,
+      "sha256": "3426f39581fcfde4a1a42443c0178fd6ad9642926f80045c2d838dd128e779a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/behavior.json": {
+      "bytes": 21783,
+      "sha256": "c786cc65ba952e82e3154fcb312d04fac20d49cf1a5135523fbd4f53df370355"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/builtin-finalization.json": {
+      "bytes": 14369,
+      "sha256": "877c9545b437b600abd863aaab79c1e07c7aeefd05ce9917facdbcb040ebf5a0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/builtin-rollout.json": {
+      "bytes": 1495689,
+      "sha256": "43494a65af04d12f969553bea7f435e85c8dbdaca0d30f4b1ecff83437d89e8c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/builtin-verification/builtin-replay-verification.json": {
+      "bytes": 2868,
+      "sha256": "7edd8b9ae3c765558ac48e516fe04bce18cb7ecb208d69ba70ebde79504a58b0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 1327131,
+      "sha256": "2b7c9d3279d4389e12d7d19d16fe112ff8fa63109b78b4532f6ad13d0b3280f2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/experiment-metadata.json": {
+      "bytes": 887,
+      "sha256": "a2076dbf8b190cf7110694f04b620092b424a82a660da624dfbced2b158473e1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 93855,
+      "sha256": "d4d9478981611c04633454ffebac305a6d00518311c0e62214f993ccab19575e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/terminal-barrier-client.jsonl": {
+      "bytes": 594,
+      "sha256": "02415abb5c45f6776c1fe4c30d174ca4279d33f817751a29d1ffda870577687a"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/terminal-barrier-server.jsonl": {
+      "bytes": 461,
+      "sha256": "9bfb7b5cc6c143bc4cfec4780f665c415ced95333dabf52765a2e30b1179b074"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/logs/VCMI_Client_log.txt": {
+      "bytes": 28664,
+      "sha256": "dbd2062cb7932b5931e9e40148de2c634d6e9f2bed30cd3d74256b751504f881"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/logs/process.log": {
+      "bytes": 6231,
+      "sha256": "032b3ad9cbfe7d1545826a2e0bd0f33c9bc81d988137460790c0f99f4dbbc134"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/manifest.json": {
+      "bytes": 16835,
+      "sha256": "68f17bbac6b25afd7cf4a817b3592a69b655ea061017f734354de1d26b7909a7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/partial-policy-evidence.json": {
+      "bytes": 1468207,
+      "sha256": "defbea8ed0993f86c1fca4d1da9a960b345bfd0eaf0ec2a6bca2124ee0ffe783"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/policy-reconstruction.json": {
+      "bytes": 525,
+      "sha256": "2b3874f4b1f361f91857f645f6bc161040de7deec65d3602d627c8b4e830e66f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/profile/Maps/headless.vmap": {
+      "bytes": 2353,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/profile/config/keyBindingsConfig.json": {
+      "bytes": 10389,
+      "sha256": "1fc1ff8ef7c4ed9cce81ce6ec41bc3dfbd9434a729c594ae4287190558070e91"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/profile/config/modSettings.json": {
+      "bytes": 189,
+      "sha256": "9361a975cd4c0ed2a396c63d8055b24a6cab90a148dc357145303fd6a6dbd4a1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/profile/config/persistentStorage.json": {
+      "bytes": 3,
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/profile/config/settings.json": {
+      "bytes": 438,
+      "sha256": "df97114c95edeae79cf0e9d82f9ef21186ce0760b19a0df5fb8ae7556e32e0ac"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/native-deadline-01.jsonl": {
+      "bytes": 1870,
+      "sha256": "c64d25bf9d162e26837be0de1fd7f72aaee0e13a3e5659476ad092483ec5355c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/report.json": {
+      "bytes": 8490,
+      "sha256": "90fcf69f37b1145d68380dc0a27bc135bbbbfe7218c71fd2f1c796747777a70e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/worker-01.log": {
+      "bytes": 439,
+      "sha256": "401f74d5a84ec70b95169e8091f172ac54ad1bc64d1ffd812019c1bf0fc308fd"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/worker-deadline-01.jsonl": {
+      "bytes": 2046,
+      "sha256": "d167ed0aa408beb8fd01197384153479686fe37f62e1392d32280a6ce04d98ca"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/plan.json": {
+      "bytes": 43110,
+      "sha256": "3c7963f549be7a6a00ea6dffb635ac606b06479ec7f815aad0749554059d5ad0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/adventure_dialogs.cpp": {
+      "bytes": 12737,
+      "sha256": "014776fd5251a4521203f1d565a07272631f3b35d8c16002c2d198e45ba8fb12"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/army_operation_rules.cpp": {
+      "bytes": 6580,
+      "sha256": "6dc228916396aef40b5196ded8a72b652fdadbcc5a7c693570ddba21b055fc90"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/contextual_evidence_lifetime.cpp": {
+      "bytes": 2358,
+      "sha256": "3f2597c991efa8bf3a5fc944b6f9b6481f5d85c0caf86c849182adb8b8d8fb5c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/knowledge_grid.cpp": {
+      "bytes": 9098,
+      "sha256": "eae0a8d20a4242c66e06e60cddc7736778be4ed49ff359b190be7948a291875f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/native_request_lock_order.cpp": {
+      "bytes": 6515,
+      "sha256": "73493e0167c27ceb4a0e4ed83474cb2fb4c470eae979568b184bbccb81125137"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/notices.cpp": {
+      "bytes": 13593,
+      "sha256": "48fa94bd99f54d3562098fe07e393d7c30f39e5964a254f9705d27c13aa83308"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/self_play_routing.cpp": {
+      "bytes": 7832,
+      "sha256": "923b8f16c4154e37f7b2e9069f084db279d61372effa13bccc8b056ccf14d667"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/spell_target_order.cpp": {
+      "bytes": 9878,
+      "sha256": "4fc16324046230a88ac9ef940d1a0403454e024b68fd81d15dd36d0bb9b1e027"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/terminal_barrier.cpp": {
+      "bytes": 5484,
+      "sha256": "3bfb6bb08bf3a28dd0ec71f626d4c9fe0c48d3673d0b2dfab8f472488ee1a999"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/threadsafevector_shutdown.cpp": {
+      "bytes": 3322,
+      "sha256": "14518696c773128c59e30e2a43a1e5c48767002d1413a27727aa87ead409ca39"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/transfer_rules.cpp": {
+      "bytes": 2619,
+      "sha256": "855d742bba517b7afc15110f6411b54b54615b0d79f526841ce6d2ef63cbf9ce"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/native/visible_state.cpp": {
+      "bytes": 14738,
+      "sha256": "b5f0854b5aef7e705e97dddeddc183964dc7725339cce01c6154b63244b12706"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_adventure_dialogs_probe.py": {
+      "bytes": 6247,
+      "sha256": "0a282f1c5a1b03cd3e3d8a15416bf3ebe2cacfb6571d96c3754014ec866fe365"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_analysis.py": {
+      "bytes": 24263,
+      "sha256": "d7375b142f772f07bc32774eae98d028e8f9173aa8d7661618a38a2bb33a1bef"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_army_management_probe.py": {
+      "bytes": 12807,
+      "sha256": "0fefd661494404a7a793b241a3a12e76adccce7b4f24495bc202d52d30ecaf2d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_army_policy_support.py": {
+      "bytes": 9615,
+      "sha256": "c7fc4b14c1a2b16161beeab0a11fbb9d9b51d206757746379ef6c212663aa969"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_army_replay_mutations.py": {
+      "bytes": 4102,
+      "sha256": "e5e19218134d43c12b9919cea2e67f6b11bcfb347fad19813d165ccbfd15df0d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_behavior.py": {
+      "bytes": 3433,
+      "sha256": "bfc23925bf1d39ea7c98c5cffbd364a03c1ad59d73adb66e4ff8037266d240a0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_boundaries_probe.py": {
+      "bytes": 4725,
+      "sha256": "390da888741df427a0a9eae6a958b002c6c519aae7e0b15f34e14137f645f5e4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_env.py": {
+      "bytes": 9545,
+      "sha256": "d04c170cb1f35840bfc30517b1100d24e3a6ed10f1dc3b6dec01afdfcff66174"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_evaluation.py": {
+      "bytes": 8623,
+      "sha256": "a49893c15118f1c2d440d5898f2e8207b1714ac5b25fa0b1b6fcbfd2fafe3076"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_native_contract.py": {
+      "bytes": 8129,
+      "sha256": "027a05da3b47d91acf20354fbe4df19b14a61d771836bb8f516a7c4573d62da7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_preflight_summary.py": {
+      "bytes": 10285,
+      "sha256": "281d201356ae3a9bcfc43f71851a60d65497c424ea7313c79c0cf7eedb7a359d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_replay.py": {
+      "bytes": 17664,
+      "sha256": "59bc33ab99731a4215348b15f98692513faeead3c06df315baf855d9b81b1f62"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_rollout.py": {
+      "bytes": 12377,
+      "sha256": "b6c4414de4d006fef57773eecf8e08413094ede55f09a56e91a7b82fdc07e0ff"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_builtin_summary.py": {
+      "bytes": 7253,
+      "sha256": "3d5fdb4b52aaf8bee51e6520dc007d5b429a867a93f5e71dcd29a1e027f99aa5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_adapter.py": {
+      "bytes": 22302,
+      "sha256": "52b3b60fc05d6e18d8c5a0ba89a90783270ef9d02e2986ec3586b371e78a509c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_armies.py": {
+      "bytes": 11054,
+      "sha256": "41a0c2ec9f51615b14dd7c8ef83ea5c5c2c202bc9e7022cf82cdbde393040db2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_armies_model.py": {
+      "bytes": 14271,
+      "sha256": "958a07db6d431348566423a803cca4f756b541beb8063a351d8748b759d88359"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_auditor.py": {
+      "bytes": 18606,
+      "sha256": "eb5c13aa2f11ea0d9c3acd98e2fc8c9c8c604b84c1a7787df0b6db822b59ca54"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_boundary_fixture.py": {
+      "bytes": 11214,
+      "sha256": "86232751c46099ac263dac725279a31165e87f189012d5b6eddf18263d7a70a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_casualty_fixture.py": {
+      "bytes": 3976,
+      "sha256": "0e79ed07aac32ccfb459d6c7e15eed027dccc03fa3dd48c864829a16e5947fb3"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_checkpoints.py": {
+      "bytes": 8332,
+      "sha256": "0dae4082e96bc2b0616055814a99d18f5c358cf2636355d8320bfc586b103b4d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_contract.py": {
+      "bytes": 33026,
+      "sha256": "983bddfe02cdee6e5af3658889f4d751a7e8437b883791151e3d36128bbd5740"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_dialogs.py": {
+      "bytes": 15102,
+      "sha256": "27e53d0bb4c611d1a1d27ff409d5a66ea0a9abb14f3bfec8895a55378ca3f61e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_dialogs_model.py": {
+      "bytes": 7805,
+      "sha256": "ee0dae2151fd2d0dd514a4a387561b59db7b79e7abc3b8b0fd0c4cdedae8556f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_dialogs_notices.py": {
+      "bytes": 5987,
+      "sha256": "bca9dda16e264b7ac7c79b35827229327e732ad2b773e53398c22b3f4ed7904b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_dialogs_replay.py": {
+      "bytes": 10724,
+      "sha256": "e24e368308771c2478ac2076b1ba7d4d684a25c79863fda9c8724f3827d69510"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_evidence.py": {
+      "bytes": 6599,
+      "sha256": "ca90c353ebb288a17fd946213674bc3efb7289c7ea72aa0a89501c905469ccf1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_fixtures.py": {
+      "bytes": 13363,
+      "sha256": "5996f8e98b43a8df0363afa5733d465413223c53b2866071784e27ab56ce15ce"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_gap_probes.py": {
+      "bytes": 12886,
+      "sha256": "f8a54e42ad8bfb22f69d55105303a30bb87b74b3446e457edcb3c81a77c4a82e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_heroes.py": {
+      "bytes": 13512,
+      "sha256": "8d2fa4e8c44814ccedf519e333ed89d757b10b4e29c4f1d70620b976f1d79cbc"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_heroes_model.py": {
+      "bytes": 10091,
+      "sha256": "e98fa074eb234f4a6c90620d895761313944d366c4d518f706c471cea9402624"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_heroes_replay.py": {
+      "bytes": 10760,
+      "sha256": "987288d469d345b4b076b8601d05a904141dd7421b3954044379daf9697dda48"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_inference.py": {
+      "bytes": 8129,
+      "sha256": "ee46ddf34b33582c5782fd98beea26cdf064fe27775bbed04c85dd3627af185f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_management.py": {
+      "bytes": 22478,
+      "sha256": "45bbf27e352615aac08dee73165298624b0f03d3e21a1c0f8c6fdf4b61ebaee4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_management_model.py": {
+      "bytes": 9208,
+      "sha256": "52975c7dfa590a94b0bda99b28601cba31a6c0e6673483d653708e3b22435316"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_model.py": {
+      "bytes": 17599,
+      "sha256": "932acc052526fda878f79bb84c7ac5423b4963ea13cca690ba55b5e61651cc56"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_native_probe.py": {
+      "bytes": 11507,
+      "sha256": "edf3b234e1dd643257f17e46dd8fbf41c13e603631b1c1ce9281f4316f718dc5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_notices.py": {
+      "bytes": 20083,
+      "sha256": "a614d3c1e689b23fd2920f93d021ff1b4f0f2a1ca56a0ca5f6be71d9a72545cf"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_ppo.py": {
+      "bytes": 11543,
+      "sha256": "1c34d809c382b4bde3b66dd0a1832c5e2c131086dc56093b09bf8afd63b171bd"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_random_probe.py": {
+      "bytes": 3035,
+      "sha256": "c33fefa5a7701e0cd5139dd86b7f3950e7a0057f8765f6e6701da7636089c9d8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_recruitment.py": {
+      "bytes": 16631,
+      "sha256": "3d15e61c4a700e15f00aee55612970c3160b598435f13a8a1f5c7759e7488236"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_replay.py": {
+      "bytes": 12457,
+      "sha256": "faa688ee63be4c48b159c8c93ab5034566ad284f3a204d847f80c0d62f50d45e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_replay_boundary.py": {
+      "bytes": 3866,
+      "sha256": "36d0889e460525317e79c8ecbe85f946c64ca11e5150e320a64d0689b30f56ef"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_replay_history.py": {
+      "bytes": 17216,
+      "sha256": "5fcad1c40830c1ecf656603f9ec9fbb8363498ed0d57c6f12d1ffef11a373e54"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_rollout.py": {
+      "bytes": 15496,
+      "sha256": "0475e0ee78dcda1fa973b18ea8537e4227fb9495712bcbc9adbaa64538677dec"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_tavern_cutoff_replay.py": {
+      "bytes": 5918,
+      "sha256": "faa6ebc219d752093746e72f0332a4c9a619ab2c7fd57d5fd56d186cc8c6480c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_terminal.py": {
+      "bytes": 8144,
+      "sha256": "35f688098175c4b1a654a1fa848eadbe3f3deda8a9344ad3e2f86efdb1afe557"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_town.py": {
+      "bytes": 19389,
+      "sha256": "0b7bd807369a14f59246759c2d228b039b0db29f826bb0d9987bac2dcc0ee81b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_contextual_transfer_replay.py": {
+      "bytes": 2193,
+      "sha256": "3a8c79bec1df3f360cc804b8fdf1fdb4d9d8546bd81bfd52b2fd8d8580f17d74"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_dialog_collector_cutoff.py": {
+      "bytes": 9468,
+      "sha256": "ab727552f98b181f269e0603e7a6a41ee6075b268579a928eec7091a99e54491"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_dialog_cutoff.py": {
+      "bytes": 7066,
+      "sha256": "d841438d6751a9a38b54816b097e354cf3b2f4dfb718743fca047f9c2441633d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_dialog_policy_context.py": {
+      "bytes": 9175,
+      "sha256": "8336aa9768a4390b4e5801761a06f511d26a8e38d512fa45002ecb8da933e208"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_dialog_scenarios.py": {
+      "bytes": 6463,
+      "sha256": "b62329812e9a6760d6da56d4638a6074e8c94c1fa6ed958d433e94c3ad374657"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_evaluation_behavior.py": {
+      "bytes": 14412,
+      "sha256": "632de96b0b753f4d28647fdf048e662af9a5366433edb2953702eba2eeaf219b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_evaluation_continuation.py": {
+      "bytes": 13035,
+      "sha256": "ae4adad6bd3c9bfd9c42db8ee7550e345039ceb9245caa40536f9aed6e5658de"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_first_run.py": {
+      "bytes": 8051,
+      "sha256": "4fe465d0c4479def5b9492f495de29fbefcabca45f796a43c048e3a48850dbdd"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_gameplay_checkpoint.py": {
+      "bytes": 7254,
+      "sha256": "815da2d8eeb18876cdbdafe0f7ea40435dbcfe3e2be1fe4b13d73e9c6c528128"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_gameplay_receipts.py": {
+      "bytes": 7087,
+      "sha256": "6ddf2e7cc4bcbeabba92f58ed26d9dd312403d50b9a4f14792b72954496e493f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_headless.py": {
+      "bytes": 70592,
+      "sha256": "195e8b2cc9c51a6495f68b200f4b4fb3ba01d560af099814549d428d2ae3c1a1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_headless_costs.py": {
+      "bytes": 6000,
+      "sha256": "23f7dd55a0d714a22dd88391976e4af2ecd4be0b05074dcdfd524946f5a921c5"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_headless_runner.py": {
+      "bytes": 21631,
+      "sha256": "926be4e041a565770cd5fda81dda234b11db654cccb9a5133c0460bf445e3317"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_cutoff.py": {
+      "bytes": 1534,
+      "sha256": "3e8c762cca2afae7571c1f36b39a60bc5dbbaa3f31c4eb32c4383b2a4fbee4a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_notice.py": {
+      "bytes": 7870,
+      "sha256": "91bf30c4f6a222dabcb812e659cd79def9e09d7016db8a1c51cba5ab05022217"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_policy.py": {
+      "bytes": 15976,
+      "sha256": "5059805f265baa55f21589211b3ed792888c7cdde1acd5d15ddefc8bd81339e2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_policy_context.py": {
+      "bytes": 9187,
+      "sha256": "d5fdb1f6d6491b1acea0156fc05f3a0c8753160e073210c1fd1b40e8992ffc3c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_recovery_probe.py": {
+      "bytes": 3937,
+      "sha256": "0db0baf0e792c20a8df24e19b5de348894f71a38297bc8a5ffd2ef725145caee"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_recruitment_probe.py": {
+      "bytes": 9307,
+      "sha256": "3f894b2ad3f5b197ae7adc5bffc1329df40bfa4dce9d07b5b3bb82596c0c2ae1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_hero_scenario.py": {
+      "bytes": 2287,
+      "sha256": "a09d0bc44afac48fc735f467eef9413cf159da5c7f29fb0909a171dccf8ec646"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_learner_actions.py": {
+      "bytes": 2183,
+      "sha256": "0d6e5a5cd73fab3823a64fb49972b18f4a0d82d313502ebf6233c78a10321617"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_learner_contract.py": {
+      "bytes": 4651,
+      "sha256": "92ae127f3fbf8e63817d6f51f79db7bb9339f42dd168a32010d0e225564bcf55"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_learner_model.py": {
+      "bytes": 15800,
+      "sha256": "a2f0ae2b528cfafd0fb0b247a81e196d3ee5db79af5e62a01998527fdb89eb30"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_learner_trajectory.py": {
+      "bytes": 14274,
+      "sha256": "3522e5cf5b6c3bfd8cbc123051e2c0caa4f536e3b95a9a0ce199fbbac0abe590"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_long_dialog_evaluation.py": {
+      "bytes": 8574,
+      "sha256": "f7eb9dbc19f55c885ff9d58f81ec3812c18de2a43c83e3646bbb1a15edf4660d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_long_dialog_summary.py": {
+      "bytes": 8153,
+      "sha256": "e2f7c5f2e48bab0645affc66404397fa21c4e4c67c1a6ab346077d59c2e34ba6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_adventure_dialogs.py": {
+      "bytes": 4333,
+      "sha256": "858a363aeb7dc3f8c4ef0a15482982a064822475e380df5ca9fc87f2c16e157e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_army_operations.py": {
+      "bytes": 1234,
+      "sha256": "17cf4661e737c1c1413ec032da69f43c8c15c5f421e22b6274411cb013c0e3fb"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_contextual_evidence.py": {
+      "bytes": 3410,
+      "sha256": "f5e276fe57b523ee5a98d96f51a5f251d7031e9939a54bb47de701c4f4ed5e92"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_knowledge.py": {
+      "bytes": 1400,
+      "sha256": "8caa6166a880c58590dc515832bd3cadcdd6464cd36b1b3a694d4465c0e68a4e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_notices.py": {
+      "bytes": 4416,
+      "sha256": "83e9da0f25d56e3bf99b05c424aea1d722245b939bce4003f8a5c8629f6dd959"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_request_lock_order.py": {
+      "bytes": 2450,
+      "sha256": "161c87238e6ed9baf9ada0a92bb79df6b07cfcbdeb0a83eb82a5ad98ae7a3de2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_self_play.py": {
+      "bytes": 2172,
+      "sha256": "7e2f516b446c52006052d3bc032732ad5bcc112ecac6b3427f9dc414492510ad"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_shutdown.py": {
+      "bytes": 1704,
+      "sha256": "247e0ff2abfdbcf7bfc4a8211f814679bdbaf4c369a8ec674ed5c5409ddaeec4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_terminal_barrier.py": {
+      "bytes": 2983,
+      "sha256": "cdcfcbfa6878eb56e6dfaced23e17a30402e80b8cb5692ff9ce1a0cb1866a025"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_transfer.py": {
+      "bytes": 1214,
+      "sha256": "6ddf0be4224421e41c014ba9e19edad99936c3b33fe9ae1f5abfd876da9427e0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_native_visible_state.py": {
+      "bytes": 3006,
+      "sha256": "7fed501a3d74eda63a8b979df0d595c912c7ea3e735d6230a49449b22933fca8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_neutral_terminal_fixture.py": {
+      "bytes": 9369,
+      "sha256": "675ae0c7b1b684fafc53b622eca9e25fdb05eaddce527a36e6be949f65bd958e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_ordinary_behavior_probe.py": {
+      "bytes": 6350,
+      "sha256": "24233b9b9cac10c65557eb5157010fb1304ccc812ac86bd516b4709c63f62804"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_process_deadline.py": {
+      "bytes": 13618,
+      "sha256": "a77f8d3cd5a4d1d20e681553f8ba10c82c675f1e24c18fc8ce52fcbd0e0204ce"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_random_policy.py": {
+      "bytes": 16201,
+      "sha256": "b33707499d7fc0f3f5d0b736920f5581f2ef885dbd047959a414e280fe9e515b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_record.py": {
+      "bytes": 14279,
+      "sha256": "c64e18a932e34cb83507207873f3c6336fb94d8d9fe9cf304ebfc671191c7712"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_render_replay.py": {
+      "bytes": 13551,
+      "sha256": "e52d1934a3cc21af7da98a61fece60fb6734729917fb589a69f5ef304449a7f8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_replay.py": {
+      "bytes": 35918,
+      "sha256": "be029e01327affd27862c8bcc31947cf247d4e8f3ec8a651f13515b97187573b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_scenario.py": {
+      "bytes": 5324,
+      "sha256": "cf83ba98a718ae97c90ed3f09b8b766da9c8645ec37cfa2df0aaa8faa4ad5698"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_self_play.py": {
+      "bytes": 18781,
+      "sha256": "3efe368209f8fde5eac5528a9b2152a2fbca60925192a65b197fee8b03f0458b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_spell_target_order.py": {
+      "bytes": 2308,
+      "sha256": "d99d68bd8cae122d44b86d35fbf042b414d867b62d0c664e8b729eac84787848"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_terminal_profile_scope.py": {
+      "bytes": 7555,
+      "sha256": "6b6030a1ab00422da99e32d28ac2b98b09bc1016b33dd586aa20b78ae66ae854"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_terminal_rollout.py": {
+      "bytes": 9293,
+      "sha256": "3ad9da0fe1ea3aba2d28871f4d278a907ac7feb4f8fd3b679421bcfff7f89d17"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_town_fixtures.py": {
+      "bytes": 11343,
+      "sha256": "be268b879e2b33aff098ca4ae637fecf58b6de8f4a30c3effaef5ee01dba8532"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_town_transfer_probe.py": {
+      "bytes": 5788,
+      "sha256": "4cbeae255b6a4c0234e9c0d6ac3110801d51b9de82f9fa551e40e24ae34ca669"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tests/test_video.py": {
+      "bytes": 23831,
+      "sha256": "1f7560250d97bbc7739025f1fcca9b70546e595280f22cd6d274d09b9480edad"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/tools/prepare_vcmi.py": {
+      "bytes": 12403,
+      "sha256": "3ef5f491dad5c47706543a3dd356f7afe9c0c6bf310b6beede88037e49f55131"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/audit_contextual_histories.py": {
+      "bytes": 21918,
+      "sha256": "3f657afe7586a94681f6d2291038921911bb854c9bbbad8feb1a99c958d6354f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/audit_headless_histories.py": {
+      "bytes": 17430,
+      "sha256": "967acf23641ee0f164f3410ab759ac52e5aee89d4741273af8fda410d348dff6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/audit_neural_rollout.py": {
+      "bytes": 11349,
+      "sha256": "eac6ee95e226e97b621cd020193430446163173d84ec3be2d28ffe0e447317e1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/audit_ordinary_behavior.py": {
+      "bytes": 15420,
+      "sha256": "6c5abcd45d56ca60afc1fc3a661d97383e3eff4942694ae65156886f0e9ea690"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/create_boundary_fixture.py": {
+      "bytes": 11843,
+      "sha256": "3551e85626d781b90881e6e24b549fb944e9a76669e6c955e84e7743d0280a6c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/create_casualty_fixture.py": {
+      "bytes": 6908,
+      "sha256": "e9c9ad9d31245d82f5271496c4a55955f464dbbade961148b12124924ba876c3"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/create_contextual_fixtures.py": {
+      "bytes": 16345,
+      "sha256": "6ec20a024177d762c5e06374d50274d8cd631cb88ecd7ae6c870764f970b8390"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/create_neutral_terminal_fixture.py": {
+      "bytes": 8580,
+      "sha256": "6f6f71117c0bb0c76a1bc6e158968c88acc6c23286d564959ff269388b3431b6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/create_town_fixtures.py": {
+      "bytes": 8772,
+      "sha256": "97577fa25114b309ad418e3fe22989bfb3acc09a01088d1384d5db8c41d2f3a4"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/recheck_headless_boundaries.py": {
+      "bytes": 9835,
+      "sha256": "f3675f5cb68c8e3abd7616010ddcfbdf6d16b202066ad9f62afdf38467e8db19"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/recheck_headless_history.py": {
+      "bytes": 8495,
+      "sha256": "c8de1774cd2d0ee097aaacc82edd75578c2e998e27eec149d0f1d0aa0475711d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/recheck_headless_render_binding.py": {
+      "bytes": 5882,
+      "sha256": "7ee156b53b732667445cff2a334d47741c2ec8679af35d2bdbbde02a03039ed1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/summarize_builtin_evaluation.py": {
+      "bytes": 11860,
+      "sha256": "80d088623f1551689cdddd2a2ab5147e7cd04b969423ecc8e6aa8fdd7a1a21f0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/summarize_builtin_preflight.py": {
+      "bytes": 13441,
+      "sha256": "9f48ced5a6d6291fd4da9646024f818279d4d5765e6de4815e234b7aed278db8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/summarize_long_dialog_evaluation.py": {
+      "bytes": 11333,
+      "sha256": "b752298a8bbbe5d6c75998ab89f998d3bbd5372d52dd0304d204840c67a09d59"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_adventure_dialogs.py": {
+      "bytes": 34513,
+      "sha256": "a18668a230b71c347a6e569b3c354f18e69972e983cc08977e8b069d5b1d2566"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_army_management.py": {
+      "bytes": 34108,
+      "sha256": "c66e73c11a15e470f502cf9857dc5a112b58e4b9481ef646a52ba637c6ef82d0"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_army_policy_support.py": {
+      "bytes": 18190,
+      "sha256": "72f02d7de523e065ede5b4cba86b094a227613089abf2b5f5aea5d4dcbda9aab"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_builtin_boundaries.py": {
+      "bytes": 14886,
+      "sha256": "4f863049f237bb101839d3412f595699405be741d90f560343c54ab8b2c12298"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_contextual_boundaries.py": {
+      "bytes": 10095,
+      "sha256": "12d20aaec7614591824f2b7de0fa15d67bc6b0704e5f83c91a802055eb6f00f6"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_contextual_encounters.py": {
+      "bytes": 17329,
+      "sha256": "7132a0fd728939c0c6b129f3c139291206df24d2f3ae92283d8a27541b07dc9b"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_contextual_native.py": {
+      "bytes": 62841,
+      "sha256": "30fc50765c67783c62d472fb39a27db23c3d198d0ab49942057420bd976431c8"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_contextual_random.py": {
+      "bytes": 8626,
+      "sha256": "6843b5add4e5be4c5c95c909abe774a362b1b69593ac9ed5c5841de71d1de729"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_dialog_policy_context.py": {
+      "bytes": 19834,
+      "sha256": "091345318bf440746d0bad2558c482656d3471eb63407a7bb0f419130d901116"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_headless_action_boundaries.py": {
+      "bytes": 19227,
+      "sha256": "5c315b15071ddf95c35cea869a0cf34486d95e574ad72c28831ddcc417ff6651"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_headless_history.py": {
+      "bytes": 11129,
+      "sha256": "7c7f45d673fe554d75a47d3d5d8d70cc63b3392bfa511bb3f316161d1eba6f0a"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_headless_native_boundaries.py": {
+      "bytes": 11417,
+      "sha256": "a6bcb920c39c701ae7d83d8b7380b5ecf467bfa6dbe0088aae23a62cc7d74c8e"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_headless_render_binding.py": {
+      "bytes": 7493,
+      "sha256": "f2220856e52431ca4e6be0a86249a5e097e2b723130e563674abf1a3a85794dd"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_hero_policy.py": {
+      "bytes": 23592,
+      "sha256": "6ad568f47f974b0504bd79ed4b966155723ea90bf35227a6048f1e38e632cea1"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_hero_policy_context.py": {
+      "bytes": 17479,
+      "sha256": "2a4d66edd4b3daa6e71183a491ee86bb7203f76655d614648e694ce846c9357f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_hero_recovery.py": {
+      "bytes": 15362,
+      "sha256": "e68127e0fa00c3447fc0062c01732ec780b32cd96b70ec8dfb593f84d65f8883"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_hero_recruitment.py": {
+      "bytes": 20660,
+      "sha256": "6418ef7739c6da687eaea21b69bbbcf3839bc0b6d58026c0598abdae7ec4bcbe"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_hero_terminal.py": {
+      "bytes": 4859,
+      "sha256": "d22c25b9d47db1587dbb982a91e0491035a20919d0e4334d40ee25d3487003e7"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_neural_failure.py": {
+      "bytes": 5135,
+      "sha256": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_neutral_terminal.py": {
+      "bytes": 9905,
+      "sha256": "466296afd2a33b06a2e2880ed99619edb82a9ab5eff7a9ff55a7bc1653de869c"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_preexisting_failures.py": {
+      "bytes": 8726,
+      "sha256": "1f856138ec3c6daf1ba81e503ed61b65b82a6928356c26db0ef8307b71429948"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_town_capture.py": {
+      "bytes": 12357,
+      "sha256": "9baf5d87fa99c2d5edcbf0165e4e12af1eaf382327d98635d92b16a1eed4b897"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_town_native.py": {
+      "bytes": 33130,
+      "sha256": "e3e7f670521ef35f56c27e384bd7fbe0112568054fc6a589bd51f60ad6099b1f"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/validate_town_transfer.py": {
+      "bytes": 17132,
+      "sha256": "ad78ed396df50e5127329062b7d909425a795ab7dc676089de83b188a665becf"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/AI/libBattleAI.dylib": {
+      "bytes": 486416,
+      "sha256": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/AI/libEmptyAI.dylib": {
+      "bytes": 64208,
+      "sha256": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/AI/libExplorerRL.dylib": {
+      "bytes": 979456,
+      "sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/AI/libNullkiller.dylib": {
+      "bytes": 2191136,
+      "sha256": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/AI/libStupidAI.dylib": {
+      "bytes": 134832,
+      "sha256": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/libvcmi.dylib": {
+      "bytes": 9975152,
+      "sha256": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient": {
+      "bytes": 11632312,
+      "sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2"
+    },
+    "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay": {
+      "bytes": 12552600,
+      "sha256": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt": {
+      "bytes": 629494,
+      "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/attempt-01.json": {
+      "bytes": 1978,
+      "sha256": "024847cb9fa988f86b17f01b18914010899645a4ee2d9c40bad03dc0338e078d"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/attempt-02.json": {
+      "bytes": 1976,
+      "sha256": "beda792949f7bdd9b52f8cf1c67fceadff00632c162b74a6dd6ac54cb744e7e5"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/attempt-03.json": {
+      "bytes": 1015,
+      "sha256": "435ae6382e92fdfb80f5ac24b87acf8b5fd26ace38846f71def98379ed993689"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/blue/bridge.jsonl": {
+      "bytes": 135014902,
+      "sha256": "fbe98cf8b39f9f62cdc0ae8522eb4f41370e15f6310aeb8d2e04a422a1ec3a76"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/blue/history-v7.jsonl": {
+      "bytes": 139814193,
+      "sha256": "23515cdfe5676acc25ba8c638dc54bb5e1259b5861a1ada39c509bd672c237ea"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/blue/live-history-v7.jsonl": {
+      "bytes": 139847723,
+      "sha256": "84530e9d7cb7ed358775bdf0d00badc44f8ed14d7739d1e1b4c10bbcb796a26b"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/red/bridge.jsonl": {
+      "bytes": 121663055,
+      "sha256": "91885008cc79ff629ec77bc5d7812763cd2dfac1c514286abeede1ce9ee60836"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/red/history-v7.jsonl": {
+      "bytes": 126173521,
+      "sha256": "ff2204d41875501ed6415a37ee24979ed7be5072cc63025beb7285eba57bdd76"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/agents/red/live-history-v7.jsonl": {
+      "bytes": 126172375,
+      "sha256": "bc5f73ea4c151283d7248e1ee55b82c227fbb7d3147288594de29be24e666cc2"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/behavior.json": {
+      "bytes": 2639504,
+      "sha256": "e55fda147979f1b0878a19a8cbcfa4773ff234f632ab723b6daae6ed5e4c12cf"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-finalization.json": {
+      "bytes": 11621,
+      "sha256": "bfe63648439713d66dab80f11e520d68d99a6a2be097ad2bb5aeffaa31525922"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 6349,
+      "sha256": "f09937b1104af998ff9fd538468dca555b177a44d8d0cd802daa968ab3ebad60"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-verification/contextual-replay.jsonl": {
+      "bytes": 264138856,
+      "sha256": "05b625f34afc352305266372bb42b2b6d5245fc58885265ba63f37791ff5d052"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-verification/native-report.json": {
+      "bytes": 1279,
+      "sha256": "8d91aa6a70f31071a84472cdb598432e7eb27c9baab7f5c5e562ab80706fe72c"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-verification/native-report.log": {
+      "bytes": 4761,
+      "sha256": "7df25610367a6ca2d4d0d58ba2346697d7c7eb2fde2bbbcd5306becf520b3420"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/contextual-verification/replay.jsonl": {
+      "bytes": 1066167,
+      "sha256": "32a539f0e695ea37c45e2c3fbf68a07da40bf831f215bc7e0db8cd3288ed08e4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/engine/contextual-replay.jsonl": {
+      "bytes": 467533311,
+      "sha256": "0feb3d499f9ae8383e6c44d706c6b80694e7cfc927c3e51548ed85543201e61e"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "63c5c56276159521e73f33cd538a33c36c7126dd067ce6b5f42ec90a5b13f1e4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/engine/replay.jsonl": {
+      "bytes": 1066167,
+      "sha256": "32a539f0e695ea37c45e2c3fbf68a07da40bf831f215bc7e0db8cd3288ed08e4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/logs/VCMI_Client_log.txt": {
+      "bytes": 26712,
+      "sha256": "a6c7f1b163f4729a4d3e543c665e7ce0ff77ac437a263ca6e9d7c7886eb8e65b"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/logs/process.log": {
+      "bytes": 5220,
+      "sha256": "a18f4d061d49ff866b8f68a56e4981458bd67a5947c376ffc8ade10978152588"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/manifest.json": {
+      "bytes": 16321,
+      "sha256": "6bde68ec7f4b0bf9319e0378c36e21cc1c4b0f6717b9861763c0acf8d9bf0f7a"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/neural-rollout.json": {
+      "bytes": 929091122,
+      "sha256": "71d6f9c67c8328ca10ea0f4d1ef8c55ba103094fb7a1950733e8e7064c4a51f2"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/policy-reconstruction.json": {
+      "bytes": 15484,
+      "sha256": "b27181aab9df87cad5422598135ad8a18b6f8a54a362dae951885c3d8bf16834"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/profile/Maps/headless.vmap": {
+      "bytes": 2353,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/profile/config/keyBindingsConfig.json": {
+      "bytes": 10389,
+      "sha256": "1fc1ff8ef7c4ed9cce81ce6ec41bc3dfbd9434a729c594ae4287190558070e91"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/profile/config/modSettings.json": {
+      "bytes": 189,
+      "sha256": "9361a975cd4c0ed2a396c63d8055b24a6cab90a148dc357145303fd6a6dbd4a1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/profile/config/persistentStorage.json": {
+      "bytes": 3,
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001/profile/config/settings.json": {
+      "bytes": 438,
+      "sha256": "df97114c95edeae79cf0e9d82f9ef21186ce0760b19a0df5fb8ae7556e32e0ac"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/blue/bridge.jsonl": {
+      "bytes": 106487363,
+      "sha256": "36652256fa7f4ef7308135c1e7846d34375eb055d492395e730d09a2a6401772"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/blue/history-v7.jsonl": {
+      "bytes": 110133044,
+      "sha256": "50258a87542810a0c8b472364aa551fe81872dd2813b93ef2b0f9997e6881328"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/blue/live-history-v7.jsonl": {
+      "bytes": 110232403,
+      "sha256": "3befb6657f0c0cf1fb92a33e0295be972ec5af73bec6223aa330980c7e328fb7"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/red/bridge.jsonl": {
+      "bytes": 150335618,
+      "sha256": "4bc3b4af4a150073461793b5e6598e87aca2398d53772741ce09723ecb526cff"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/red/history-v7.jsonl": {
+      "bytes": 155618325,
+      "sha256": "58a2d012891dc564faff0830273847ea74d71c446aecf7d9917e8435f0c54336"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/agents/red/live-history-v7.jsonl": {
+      "bytes": 155617179,
+      "sha256": "a7209da66b5d048c231ab4bf965abdd871e38aef437ca1d1ab00fdcde36874e7"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/behavior.json": {
+      "bytes": 2118998,
+      "sha256": "53ecdedddf4c175f23ed6848e638f92c6391e522e20ec2dbb1b369a43b958954"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-finalization.json": {
+      "bytes": 11620,
+      "sha256": "95c43ca734a3b8da911d2911243f212def73358bba8c079710d2d7e696512a3c"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 6338,
+      "sha256": "51620ba263df5436cd4cd5a7cccd8563d11040300c4b0c6aa9e9fc2058831b71"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-verification/contextual-replay.jsonl": {
+      "bytes": 263629047,
+      "sha256": "53371bdd992785b251cc76e5ce01291e6fab13ef306e94fd7b9b2912e7531671"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-verification/native-report.json": {
+      "bytes": 1272,
+      "sha256": "778e5f47798e739678e08d78f52fc15b72274c9a76218b172f796fa0d4738b69"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-verification/native-report.log": {
+      "bytes": 4754,
+      "sha256": "d5bd6db803e51490be57f3de959ffbc9aded21e40090291e529d70bfdfc8d89e"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/contextual-verification/replay.jsonl": {
+      "bytes": 932811,
+      "sha256": "cad1a9247991dbcb45510ac424531ad8f4d1ad33ecf64d36dcc6b0a05b0d2b40"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/engine/contextual-replay.jsonl": {
+      "bytes": 466994433,
+      "sha256": "53d143315dc4589990506b3cef80ba00ef13f73698254f8de51ca62d10c30d40"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "63c5c56276159521e73f33cd538a33c36c7126dd067ce6b5f42ec90a5b13f1e4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/engine/replay.jsonl": {
+      "bytes": 932811,
+      "sha256": "cad1a9247991dbcb45510ac424531ad8f4d1ad33ecf64d36dcc6b0a05b0d2b40"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/logs/VCMI_Client_log.txt": {
+      "bytes": 27157,
+      "sha256": "b64062096c8605b64263c38cf1e97b3611e5205796e4ba361ae0db2600683fa5"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/logs/process.log": {
+      "bytes": 5389,
+      "sha256": "ae93ce56d008493e9c9adee506b640eb41e99c590fe31c949860c3645629ed6a"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/manifest.json": {
+      "bytes": 16319,
+      "sha256": "72124d4b8c5988af3f31ab35be6e6df262c022067297ec0df1fc62e024d99c34"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/neural-rollout.json": {
+      "bytes": 928647202,
+      "sha256": "39b3b89b29a8edb2333ddb05fabe24eee4b7801589003e5c9cdaac5877919192"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/policy-reconstruction.json": {
+      "bytes": 14470,
+      "sha256": "b7cb57f8e0b234420b6f0ee1a0827583b549ec60d0c4c13a42ffe49e4c067b42"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/profile/Maps/headless.vmap": {
+      "bytes": 2353,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/profile/config/keyBindingsConfig.json": {
+      "bytes": 10389,
+      "sha256": "1fc1ff8ef7c4ed9cce81ce6ec41bc3dfbd9434a729c594ae4287190558070e91"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/profile/config/modSettings.json": {
+      "bytes": 189,
+      "sha256": "9361a975cd4c0ed2a396c63d8055b24a6cab90a148dc357145303fd6a6dbd4a1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/profile/config/persistentStorage.json": {
+      "bytes": 3,
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002/profile/config/settings.json": {
+      "bytes": 438,
+      "sha256": "df97114c95edeae79cf0e9d82f9ef21186ce0760b19a0df5fb8ae7556e32e0ac"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/blue/bridge.jsonl": {
+      "bytes": 70156426,
+      "sha256": "8800e7702ae0e883b38afad054c1433810a165d1e8f69b69d5efe18f62a6e809"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/blue/history-v7.jsonl": {
+      "bytes": 74168501,
+      "sha256": "7966ed2d20d54286e318594db30aba7c941260d7ff42023d3f7940854792e8dd"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/blue/live-history-v7.jsonl": {
+      "bytes": 74167355,
+      "sha256": "efc53af6eb42042c6ef1a7c17e8dd8f1ab64960c61913e29fec694ecb5bfe523"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/red/bridge.jsonl": {
+      "bytes": 131009935,
+      "sha256": "bea1b6424deb86d0dae898d91c8d585c8f5320f18fa5b742dff2698cd4236f93"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/red/history-v7.jsonl": {
+      "bytes": 136214567,
+      "sha256": "4ec98df9e650b3b7025278b3838f7dc0f722bd80203b5d74129d3e2aa2e5f919"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/agents/red/live-history-v7.jsonl": {
+      "bytes": 136215926,
+      "sha256": "638c270e0d498bad66ecb219d3b61b9338c4e7a05288847a5021c7a292eb10f5"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/behavior.json": {
+      "bytes": 2416236,
+      "sha256": "f29d95ca030e250a749f1e9ddea3f9794bf695b744727b0a854a3c3d24b0bf0c"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-finalization.json": {
+      "bytes": 11620,
+      "sha256": "3d1e10d260bcf89535f7ddabfe9263a505cef9f76a7b8545ce880054dc6b4511"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/contextual-replay-verification.json": {
+      "bytes": 5414,
+      "sha256": "c4d87fa314eeb9b4485927013cbdf1aaec5f0cf16d49257adaa75bc914409935"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/contextual-replay.jsonl": {
+      "bytes": 208842119,
+      "sha256": "92285da0b5f717148a8d95721055f97b28927ae9b7702fff2b7e0f799a9de8ed"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/native-report.json": {
+      "bytes": 458,
+      "sha256": "11e4d50e9a001ee5176043811c2fdf620cbeb73894bbce8c208db942df407260"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/native-report.log": {
+      "bytes": 3870,
+      "sha256": "03e755f272852b5d6ee47d4b2032ab848442acabdb04e7e3addc1f7b49ef9ffe"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/contextual-verification/replay.jsonl": {
+      "bytes": 1117483,
+      "sha256": "ea6fd62c983f4597542dedd9ab206b53365b59fccdb3ecc4d82135bd9daa4abf"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/contextual-replay.jsonl": {
+      "bytes": 368374807,
+      "sha256": "e74015fc194374212ad6ff33ec95ac0f294e6a644f90f3174eeef02555ea3c2f"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/experiment-metadata.json": {
+      "bytes": 703,
+      "sha256": "63c5c56276159521e73f33cd538a33c36c7126dd067ce6b5f42ec90a5b13f1e4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/observations-p0.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/observations-p1.jsonl": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/engine/replay.jsonl": {
+      "bytes": 1117483,
+      "sha256": "ea6fd62c983f4597542dedd9ab206b53365b59fccdb3ecc4d82135bd9daa4abf"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/logs/VCMI_Client_log.txt": {
+      "bytes": 27302,
+      "sha256": "08bf160997568ce5d3f315cf5b412862892d5db4904405ddc5d1d9dedda738a5"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/logs/process.log": {
+      "bytes": 5442,
+      "sha256": "9b3c37e1aa0611f7b02e7d387171454b39a3642d11daddef8bd9676d5a090e97"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/manifest.json": {
+      "bytes": 16318,
+      "sha256": "f13702544f24c67e8a6252e2c5392eaaf4e3378a63667798002162485021837d"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/neural-rollout.json": {
+      "bytes": 733774041,
+      "sha256": "35c446e3cd648957fc2d709b7f5dfa36ec775b85029992e0a24084a4bc01bf0f"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/partial-policy-evidence.json": {
+      "bytes": 730788241,
+      "sha256": "10ef0945cb12acd6597fce493cbcfde79874cdcb56f23088c51c5c7cf3702bd2"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/policy-reconstruction.json": {
+      "bytes": 17355,
+      "sha256": "0cb59a9d923d21ce76b45587fcd66efd24efac769bdcbd7f02bdef2381e3ac93"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/profile/Maps/headless.vmap": {
+      "bytes": 2353,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/profile/config/keyBindingsConfig.json": {
+      "bytes": 10389,
+      "sha256": "1fc1ff8ef7c4ed9cce81ce6ec41bc3dfbd9434a729c594ae4287190558070e91"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/profile/config/modSettings.json": {
+      "bytes": 189,
+      "sha256": "9361a975cd4c0ed2a396c63d8055b24a6cab90a148dc357145303fd6a6dbd4a1"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/profile/config/persistentStorage.json": {
+      "bytes": 3,
+      "sha256": "8eb95bcbc154530931e15fc418c8b1fe991095671409552099ea1aa596999ede"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003/profile/config/settings.json": {
+      "bytes": 438,
+      "sha256": "e418e2fdf4e7b1e4bcb8d8b319c2128570f128589255d2f6a6cead30b0bba7a4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/native-deadline-01.jsonl": {
+      "bytes": 1860,
+      "sha256": "ce86fd731b3e9fa55bba3d320c49238f0f694d87baf67ff4895ec1caa61eb250"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/native-deadline-02.jsonl": {
+      "bytes": 1856,
+      "sha256": "f5a99c27e5c851c8ff772deaaa262e1f126b25064571a59f69074f0a58b4729e"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/native-deadline-03.jsonl": {
+      "bytes": 1858,
+      "sha256": "2dcf1dee9e2fef4b62bc58a3776e9d26fec4c4a2432ceb8cffa2f871a1bf2714"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/report.json": {
+      "bytes": 13199,
+      "sha256": "ade74b69de0648b5ebab66687a9530c2324526e9a537d8153957de02dd29fdf4"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-01.log": {
+      "bytes": 439,
+      "sha256": "7b1a30c4313ae397263dc62625885a513982e3c0708316097c4aa26c38f4da20"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-02.log": {
+      "bytes": 439,
+      "sha256": "7b1a30c4313ae397263dc62625885a513982e3c0708316097c4aa26c38f4da20"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-03.log": {
+      "bytes": 439,
+      "sha256": "401f74d5a84ec70b95169e8091f172ac54ad1bc64d1ffd812019c1bf0fc308fd"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-deadline-01.jsonl": {
+      "bytes": 2043,
+      "sha256": "7de869ac3a1f234cdf05483db66812e11a8c744f7142ee19404cbfa9c65c77a7"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-deadline-02.jsonl": {
+      "bytes": 2043,
+      "sha256": "586fb97a804fcce08c5043a886bb80d09d9055ee08afef50cfba27040a8bcd44"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/worker-deadline-03.jsonl": {
+      "bytes": 2041,
+      "sha256": "8d9b405ed9657d2f29c36c332f4fd1e1c2cbbc2129620cd93d72b75fbad06f70"
+    },
+    "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/plan.json": {
+      "bytes": 37716,
+      "sha256": "cc636557a16d5bb0865c174a4139aa7d1a574fdb6da88f5cd35fb27430ff502f"
+    }
+  },
+  "cohorts": {
+    "builtin_nullkiller_easy": {
+      "attempts": [
+        {
+          "category": "failed",
+          "cleanup_verified": true,
+          "engine_seed": 120501,
+          "environment_limits": {
+            "bridge_timeout": 30,
+            "max_actions": 2048,
+            "max_days": 200,
+            "shutdown_seconds": 20,
+            "startup_seconds": 30,
+            "watchdog_seconds": 30
+          },
+          "episode": 1,
+          "episode_directory": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001",
+          "episode_status": "completed",
+          "episode_throughput": {
+            "manifest_wall_seconds": 1.2039434999896912,
+            "observed_learner_choices_per_second": 19.103886519755235,
+            "scope": "One learner's captured episode choices per wall second; no native-opponent choice equivalent."
+          },
+          "error": "ValueError: Independent native replay failed",
+          "external_player_histories": 1,
+          "identity_verified": true,
+          "latest_sampled_day": 2,
+          "learner_behavior": {
+            "coverage": {
+              "complete": true,
+              "hash_verified": true,
+              "issues": []
+            },
+            "metrics": {
+              "action_counts": {
+                "back": 1,
+                "close": 5,
+                "end_turn": 2,
+                "move_to": 2,
+                "open_hero": 4,
+                "open_stack": 1,
+                "open_town": 1,
+                "split_stack": 6,
+                "swap_stacks": 1
+              },
+              "army_operations": {
+                "across_armies": 0,
+                "displayed_comparisons": 7,
+                "observed_cross_army_net_count_redistribution": 0,
+                "unavailable_comparisons": 0,
+                "within_army": 7
+              },
+              "army_rearrangement": 7,
+              "battles": {
+                "completions": 1,
+                "starts": 1
+              },
+              "choices": 23,
+              "counts": {
+                "cutoffs": 0,
+                "dialog_answers": 0,
+                "own_hero_roster_changes": 1,
+                "own_position_changes": 0,
+                "own_town_roster_changes": 1,
+                "terminal_messages": 1,
+                "town_capture_evidence": 0,
+                "visible_town_owner_changes": 1,
+                "visible_town_visits": 2
+              },
+              "decision_context_counts": {
+                "hero": 11,
+                "map": 9,
+                "stack": 1,
+                "town": 2
+              },
+              "decision_frames": 23,
+              "event_counts": {
+                "battle_complete": 1,
+                "battle_start": 1,
+                "hero_lost": 1,
+                "notice": 1,
+                "turn_end": 2,
+                "visit": 2
+              },
+              "first_public_day": 1,
+              "frames": 162,
+              "hiring": {
+                "attempts": 0,
+                "completed": 0
+              },
+              "known_tiles": {
+                "first": 92,
+                "last": 92,
+                "new_after_first_observation": 0,
+                "observed_union": 92
+              },
+              "last_public_day": 2,
+              "missing_results": 0,
+              "movement": {
+                "attempts": 2,
+                "endpoint_changes": 0,
+                "known_targets": 0,
+                "missing_endpoints": 0,
+                "results": {
+                  "no_route_known": 2
+                },
+                "targets_visible_opponent_town": 0,
+                "unknown_targets": 2,
+                "while_opponent_town_visible": 0
+              },
+              "native_acknowledgements": {
+                "accepted": 9
+              },
+              "navigation_and_selection": 12,
+              "owned_heroes_first_last": [
+                1,
+                0
+              ],
+              "owned_towns_first_last": [
+                1,
+                0
+              ],
+              "recruitment": {
+                "attempts": 0,
+                "completed": 0
+              },
+              "result_counts": {
+                "closed": 6,
+                "no_route_known": 2,
+                "opened": 6,
+                "split": 6,
+                "swapped": 1,
+                "turn_ended": 2
+              },
+              "upgrading": {
+                "attempts": 0,
+                "completed": 0
+              }
+            }
+          },
+          "learner_player": 0,
+          "opponent_identity": {
+            "binary_sha256": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+            "difficulty": 0,
+            "kind": "builtin",
+            "module": "Nullkiller",
+            "player": 1
+          },
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase": "finished",
+          "policy_seed": 120601,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 23,
+          "status": "failed",
+          "supervisor_native_groups_closed": [
+            87505
+          ],
+          "termination_reason": "natural_terminal",
+          "training_samples": 0,
+          "wall_seconds": 2.22309800000221
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120501,
+          "episode": 2,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120601,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120502,
+          "episode": 3,
+          "learner_behavior": null,
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120603,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120603,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120503,
+          "episode": 5,
+          "learner_behavior": null,
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120605,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120605,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_behavior": null,
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120607,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120607,
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        }
+      ],
+      "attempts_with_native_request_counts": 0,
+      "available_learner_histories": 1,
+      "categories": {
+        "failed": 1,
+        "not_started": 7
+      },
+      "execution_status": "stopped",
+      "execution_wall_seconds": 2.9380146659968887,
+      "learner_behavior": {
+        "action_counts": {
+          "back": 1,
+          "close": 5,
+          "end_turn": 2,
+          "move_to": 2,
+          "open_hero": 4,
+          "open_stack": 1,
+          "open_town": 1,
+          "split_stack": 6,
+          "swap_stacks": 1
+        },
+        "army_effects": 7,
+        "army_operations": {
+          "across_armies": 0,
+          "displayed_comparisons": 7,
+          "observed_cross_army_net_count_redistribution": 0,
+          "unavailable_comparisons": 0,
+          "within_army": 7
+        },
+        "army_rearrangement": 7,
+        "available_player_histories": 1,
+        "choices": 23,
+        "complete_player_histories": 1,
+        "decision_context_counts": {
+          "hero": 11,
+          "map": 9,
+          "stack": 1,
+          "town": 2
+        },
+        "decision_frames": 23,
+        "dialog_answers": 0,
+        "event_counts": {
+          "battle_complete": 1,
+          "battle_start": 1,
+          "hero_lost": 1,
+          "notice": 1,
+          "turn_end": 2,
+          "visit": 2
+        },
+        "expected_player_histories": 1,
+        "first_public_day_min": 1,
+        "frames": 162,
+        "hiring": {
+          "attempts": 0,
+          "completed": 0
+        },
+        "last_public_day_max": 2,
+        "missing_results": 0,
+        "movement": {
+          "attempts": 2,
+          "endpoint_changes": 0,
+          "known_targets": 0,
+          "missing_endpoints": 0,
+          "results": {
+            "no_route_known": 2
+          },
+          "targets_visible_opponent_town": 0,
+          "unknown_targets": 2,
+          "while_opponent_town_visible": 0
+        },
+        "native_acknowledgements": {
+          "accepted": 9
+        },
+        "navigation_and_selection": 12,
+        "new_known_tiles_across_player_perspectives": 0,
+        "own_hero_roster_changes": 1,
+        "own_town_roster_changes": 1,
+        "player_visible_battle_completions": 1,
+        "player_visible_battle_starts": 1,
+        "recruitment": {
+          "attempts": 0,
+          "completed": 0
+        },
+        "result_counts": {
+          "closed": 6,
+          "no_route_known": 2,
+          "opened": 6,
+          "split": 6,
+          "swapped": 1,
+          "turn_ended": 2
+        },
+        "town_capture_evidence": 0,
+        "upgrading": {
+          "attempts": 0,
+          "completed": 0
+        }
+      },
+      "native_opponent_requests": 0,
+      "native_request_count_scope": "Audited attempts with replay counts only; missing counts are unavailable.",
+      "planned": 8,
+      "started": 1,
+      "stop_reason": "attempt_requires_investigation"
+    },
+    "frozen_neural_opponent": {
+      "attempts": [
+        {
+          "category": "verified_cutoff",
+          "cleanup_verified": true,
+          "engine_seed": 120501,
+          "environment_limits": {
+            "bridge_timeout": 30,
+            "max_actions": 4097,
+            "max_days": 200,
+            "shutdown_seconds": 20,
+            "startup_seconds": 30,
+            "watchdog_seconds": 30
+          },
+          "episode": 1,
+          "episode_directory": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000001",
+          "episode_status": "truncated",
+          "episode_throughput": {
+            "manifest_wall_seconds": 207.63674445801007,
+            "observed_choices_per_second": 19.688230089865947,
+            "scope": "Captured episode wall time; excludes replay, checkpoint setup and offline analysis."
+          },
+          "identity_verified": true,
+          "latest_sampled_day": 104,
+          "learner_behavior": {
+            "coverage": {
+              "complete": true,
+              "hash_verified": true,
+              "issues": []
+            },
+            "metrics": {
+              "action_counts": {
+                "back": 306,
+                "close": 221,
+                "construct": 5,
+                "end_turn": 104,
+                "hire_hero": 3,
+                "merge_stacks": 136,
+                "move_to": 101,
+                "open_building": 35,
+                "open_hero": 113,
+                "open_panel": 93,
+                "open_stack": 217,
+                "open_town": 108,
+                "recruit": 23,
+                "select_hero": 8,
+                "select_recruit": 19,
+                "select_upgrade": 7,
+                "split_stack": 217,
+                "swap_garrison": 28,
+                "swap_stacks": 210,
+                "upgrade_stack": 5
+              },
+              "army_operations": {
+                "across_armies": 30,
+                "displayed_comparisons": 591,
+                "observed_cross_army_net_count_redistribution": 450,
+                "unavailable_comparisons": 31,
+                "within_army": 533
+              },
+              "army_rearrangement": 591,
+              "battles": {
+                "completions": 0,
+                "starts": 0
+              },
+              "choices": 1959,
+              "counts": {
+                "cutoffs": 1,
+                "dialog_answers": 0,
+                "own_hero_roster_changes": 3,
+                "own_position_changes": 441,
+                "own_town_roster_changes": 0,
+                "terminal_messages": 0,
+                "town_capture_evidence": 0,
+                "visible_town_owner_changes": 0,
+                "visible_town_visits": 42
+              },
+              "decision_context_counts": {
+                "hero": 562,
+                "map": 427,
+                "stack": 226,
+                "town": 745
+              },
+              "decision_frames": 1960,
+              "event_counts": {
+                "notice": 14,
+                "turn_end": 104,
+                "visit": 42
+              },
+              "first_public_day": 1,
+              "frames": 14248,
+              "hiring": {
+                "attempts": 3,
+                "completed": 3
+              },
+              "known_tiles": {
+                "first": 92,
+                "last": 400,
+                "new_after_first_observation": 308,
+                "observed_union": 400
+              },
+              "last_public_day": 105,
+              "missing_results": 0,
+              "movement": {
+                "attempts": 101,
+                "endpoint_changes": 68,
+                "known_targets": 80,
+                "missing_endpoints": 0,
+                "results": {
+                  "interaction": 1,
+                  "movement_limit": 14,
+                  "no_route_known": 29,
+                  "reached": 57
+                },
+                "targets_visible_opponent_town": 0,
+                "unknown_targets": 21,
+                "while_opponent_town_visible": 75
+              },
+              "native_acknowledgements": {
+                "accepted": 1172
+              },
+              "navigation_and_selection": 1127,
+              "owned_heroes_first_last": [
+                1,
+                4
+              ],
+              "owned_towns_first_last": [
+                1,
+                1
+              ],
+              "recruitment": {
+                "attempts": 23,
+                "completed": 23
+              },
+              "result_counts": {
+                "built": 5,
+                "closed": 527,
+                "garrison_swapped": 28,
+                "hired": 3,
+                "interaction": 1,
+                "merged": 136,
+                "movement_limit": 14,
+                "no_route_known": 29,
+                "opened": 566,
+                "reached": 57,
+                "recruited": 23,
+                "selected": 34,
+                "split": 217,
+                "swapped": 210,
+                "turn_ended": 104,
+                "upgraded": 5
+              },
+              "upgrading": {
+                "attempts": 5,
+                "completed": 5
+              }
+            }
+          },
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase": "finished",
+          "policy_seeds": [
+            120601,
+            120602
+          ],
+          "private_player_memories": true,
+          "reconstruction": [
+            {
+              "actions_resampled": 1959,
+              "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+              "conditionals_recomputed": 4751,
+              "maximum_absolute_difference": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "private_memory_reset": true,
+              "values_recomputed": 1960,
+              "weights_unchanged": true
+            },
+            {
+              "actions_resampled": 2129,
+              "checkpoint": "hero-opponent-7176f1a2e81393cb",
+              "conditionals_recomputed": 5584,
+              "maximum_absolute_difference": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "private_memory_reset": true,
+              "values_recomputed": 2130,
+              "weights_unchanged": true
+            }
+          ],
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_by_player": [
+            1959,
+            2129
+          ],
+          "sampled_choices": 4088,
+          "status": "passed",
+          "supervisor_native_groups_closed": [
+            66493
+          ],
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "wall_seconds": 751.6165307920019,
+          "weights_unchanged": true
+        },
+        {
+          "category": "verified_cutoff",
+          "cleanup_verified": true,
+          "engine_seed": 120501,
+          "environment_limits": {
+            "bridge_timeout": 30,
+            "max_actions": 4097,
+            "max_days": 200,
+            "shutdown_seconds": 20,
+            "startup_seconds": 30,
+            "watchdog_seconds": 30
+          },
+          "episode": 2,
+          "episode_directory": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000002",
+          "episode_status": "truncated",
+          "episode_throughput": {
+            "manifest_wall_seconds": 204.39108470898645,
+            "observed_choices_per_second": 20.000872375722867,
+            "scope": "Captured episode wall time; excludes replay, checkpoint setup and offline analysis."
+          },
+          "identity_verified": true,
+          "latest_sampled_day": 140,
+          "learner_behavior": {
+            "coverage": {
+              "complete": true,
+              "hash_verified": true,
+              "issues": []
+            },
+            "metrics": {
+              "action_counts": {
+                "back": 272,
+                "close": 186,
+                "construct": 8,
+                "end_turn": 139,
+                "merge_stacks": 118,
+                "move_to": 40,
+                "open_building": 37,
+                "open_hero": 40,
+                "open_panel": 126,
+                "open_stack": 156,
+                "open_town": 147,
+                "recruit": 36,
+                "select_recruit": 39,
+                "select_upgrade": 7,
+                "split_stack": 171,
+                "swap_stacks": 159,
+                "upgrade_stack": 1
+              },
+              "army_operations": {
+                "across_armies": 0,
+                "displayed_comparisons": 448,
+                "observed_cross_army_net_count_redistribution": 0,
+                "unavailable_comparisons": 37,
+                "within_army": 448
+              },
+              "army_rearrangement": 448,
+              "battles": {
+                "completions": 3,
+                "starts": 3
+              },
+              "choices": 1682,
+              "counts": {
+                "cutoffs": 1,
+                "dialog_answers": 0,
+                "own_hero_roster_changes": 1,
+                "own_position_changes": 162,
+                "own_town_roster_changes": 0,
+                "terminal_messages": 0,
+                "town_capture_evidence": 0,
+                "visible_town_owner_changes": 0,
+                "visible_town_visits": 1
+              },
+              "decision_context_counts": {
+                "hero": 157,
+                "map": 366,
+                "stack": 169,
+                "town": 991
+              },
+              "decision_frames": 1683,
+              "event_counts": {
+                "battle_complete": 3,
+                "battle_start": 3,
+                "hero_lost": 1,
+                "notice": 21,
+                "turn_end": 139,
+                "visit": 3
+              },
+              "first_public_day": 1,
+              "frames": 11662,
+              "hiring": {
+                "attempts": 0,
+                "completed": 0
+              },
+              "known_tiles": {
+                "first": 92,
+                "last": 399,
+                "new_after_first_observation": 307,
+                "observed_union": 399
+              },
+              "last_public_day": 140,
+              "missing_results": 0,
+              "movement": {
+                "attempts": 40,
+                "endpoint_changes": 26,
+                "known_targets": 27,
+                "missing_endpoints": 0,
+                "results": {
+                  "interaction": 2,
+                  "movement_limit": 6,
+                  "no_route_known": 13,
+                  "reached": 19
+                },
+                "targets_visible_opponent_town": 0,
+                "unknown_targets": 13,
+                "while_opponent_town_visible": 13
+              },
+              "native_acknowledgements": {
+                "accepted": 794
+              },
+              "navigation_and_selection": 1010,
+              "owned_heroes_first_last": [
+                1,
+                0
+              ],
+              "owned_towns_first_last": [
+                1,
+                1
+              ],
+              "recruitment": {
+                "attempts": 36,
+                "completed": 36
+              },
+              "result_counts": {
+                "built": 8,
+                "closed": 458,
+                "interaction": 2,
+                "merged": 118,
+                "movement_limit": 6,
+                "no_route_known": 13,
+                "opened": 506,
+                "reached": 19,
+                "recruited": 36,
+                "selected": 46,
+                "split": 171,
+                "swapped": 159,
+                "turn_ended": 139,
+                "upgraded": 1
+              },
+              "upgrading": {
+                "attempts": 1,
+                "completed": 1
+              }
+            }
+          },
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase": "finished",
+          "policy_seeds": [
+            120602,
+            120601
+          ],
+          "private_player_memories": true,
+          "reconstruction": [
+            {
+              "actions_resampled": 2406,
+              "checkpoint": "hero-opponent-7176f1a2e81393cb",
+              "conditionals_recomputed": 6050,
+              "maximum_absolute_difference": 0,
+              "optimization_eligible": false,
+              "player": 0,
+              "private_memory_reset": true,
+              "values_recomputed": 2407,
+              "weights_unchanged": true
+            },
+            {
+              "actions_resampled": 1682,
+              "checkpoint": "hero-policy-1c290bcb1ca37cb8",
+              "conditionals_recomputed": 4180,
+              "maximum_absolute_difference": 0,
+              "optimization_eligible": false,
+              "player": 1,
+              "private_memory_reset": true,
+              "values_recomputed": 1683,
+              "weights_unchanged": true
+            }
+          ],
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_by_player": [
+            2406,
+            1682
+          ],
+          "sampled_choices": 4088,
+          "status": "passed",
+          "supervisor_native_groups_closed": [
+            68792
+          ],
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "wall_seconds": 738.87973624999,
+          "weights_unchanged": true
+        },
+        {
+          "category": "failed",
+          "cleanup_verified": true,
+          "engine_seed": 120502,
+          "environment_limits": {
+            "bridge_timeout": 30,
+            "max_actions": 4097,
+            "max_days": 200,
+            "shutdown_seconds": 20,
+            "startup_seconds": 30,
+            "watchdog_seconds": 30
+          },
+          "episode": 3,
+          "episode_directory": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/episode-000003",
+          "episode_status": "truncated",
+          "episode_throughput": {
+            "manifest_wall_seconds": 185.7966320419946,
+            "observed_choices_per_second": 22.002551688213657,
+            "scope": "Captured episode wall time; excludes replay, checkpoint setup and offline analysis."
+          },
+          "error": "ValueError: Independent native replay failed",
+          "identity_verified": true,
+          "latest_sampled_day": 132,
+          "learner_behavior": {
+            "coverage": {
+              "complete": true,
+              "hash_verified": true,
+              "issues": []
+            },
+            "metrics": {
+              "action_counts": {
+                "back": 394,
+                "close": 225,
+                "construct": 3,
+                "end_turn": 132,
+                "merge_stacks": 163,
+                "move_to": 106,
+                "open_building": 45,
+                "open_hero": 101,
+                "open_panel": 129,
+                "open_stack": 269,
+                "open_town": 124,
+                "recruit": 45,
+                "select_recruit": 32,
+                "select_upgrade": 16,
+                "split_stack": 247,
+                "swap_garrison": 28,
+                "swap_stacks": 235,
+                "upgrade_stack": 7
+              },
+              "army_operations": {
+                "across_armies": 14,
+                "displayed_comparisons": 671,
+                "observed_cross_army_net_count_redistribution": 140,
+                "unavailable_comparisons": 54,
+                "within_army": 631
+              },
+              "army_rearrangement": 673,
+              "battles": {
+                "completions": 3,
+                "starts": 3
+              },
+              "choices": 2301,
+              "counts": {
+                "cutoffs": 1,
+                "dialog_answers": 0,
+                "own_hero_roster_changes": 1,
+                "own_position_changes": 415,
+                "own_town_roster_changes": 0,
+                "terminal_messages": 0,
+                "town_capture_evidence": 0,
+                "visible_town_owner_changes": 0,
+                "visible_town_visits": 15
+              },
+              "decision_context_counts": {
+                "hero": 485,
+                "map": 464,
+                "stack": 294,
+                "town": 1059
+              },
+              "decision_frames": 2302,
+              "event_counts": {
+                "battle_complete": 3,
+                "battle_start": 3,
+                "hero_lost": 1,
+                "notice": 20,
+                "turn_end": 132,
+                "visit": 18
+              },
+              "first_public_day": 1,
+              "frames": 16329,
+              "hiring": {
+                "attempts": 0,
+                "completed": 0
+              },
+              "known_tiles": {
+                "first": 92,
+                "last": 386,
+                "new_after_first_observation": 294,
+                "observed_union": 386
+              },
+              "last_public_day": 133,
+              "missing_results": 0,
+              "movement": {
+                "attempts": 106,
+                "endpoint_changes": 57,
+                "known_targets": 73,
+                "missing_endpoints": 1,
+                "results": {
+                  "hero_unavailable": 1,
+                  "interaction": 2,
+                  "movement_limit": 22,
+                  "no_route_known": 40,
+                  "reached": 41
+                },
+                "targets_visible_opponent_town": 0,
+                "unknown_targets": 33,
+                "while_opponent_town_visible": 65
+              },
+              "native_acknowledgements": {
+                "accepted": 1276
+              },
+              "navigation_and_selection": 1335,
+              "owned_heroes_first_last": [
+                1,
+                0
+              ],
+              "owned_towns_first_last": [
+                1,
+                1
+              ],
+              "recruitment": {
+                "attempts": 45,
+                "completed": 45
+              },
+              "result_counts": {
+                "built": 3,
+                "closed": 619,
+                "garrison_swapped": 28,
+                "hero_unavailable": 1,
+                "interaction": 2,
+                "merged": 163,
+                "movement_limit": 22,
+                "no_route_known": 40,
+                "opened": 668,
+                "reached": 41,
+                "recruited": 45,
+                "selected": 48,
+                "split": 247,
+                "swapped": 235,
+                "turn_ended": 132,
+                "upgraded": 7
+              },
+              "upgrading": {
+                "attempts": 7,
+                "completed": 7
+              }
+            }
+          },
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase": "finished",
+          "policy_seeds": [
+            120603,
+            120604
+          ],
+          "private_player_memories": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_by_player": [
+            2301,
+            1787
+          ],
+          "sampled_choices": 4088,
+          "status": "failed",
+          "supervisor_native_groups_closed": [
+            75586
+          ],
+          "termination_reason": "collection_window",
+          "training_samples": 0,
+          "wall_seconds": 620.7537036669964
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120604,
+            120603
+          ],
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120503,
+          "episode": 5,
+          "learner_behavior": null,
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120605,
+            120606
+          ],
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120606,
+            120605
+          ],
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_behavior": null,
+          "learner_player": 0,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120607,
+            120608
+          ],
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        },
+        {
+          "category": "not_started",
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_behavior": null,
+          "learner_player": 1,
+          "optimizer_steps": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120608,
+            120607
+          ],
+          "reason": "attempt_requires_investigation",
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started",
+          "training_samples": 0
+        }
+      ],
+      "attempts_with_native_request_counts": 0,
+      "available_learner_histories": 3,
+      "categories": {
+        "failed": 1,
+        "not_started": 5,
+        "verified_cutoff": 2
+      },
+      "execution_status": "stopped",
+      "execution_wall_seconds": 2114.500099416997,
+      "learner_behavior": {
+        "action_counts": {
+          "back": 972,
+          "close": 632,
+          "construct": 16,
+          "end_turn": 375,
+          "hire_hero": 3,
+          "merge_stacks": 417,
+          "move_to": 247,
+          "open_building": 117,
+          "open_hero": 254,
+          "open_panel": 348,
+          "open_stack": 642,
+          "open_town": 379,
+          "recruit": 104,
+          "select_hero": 8,
+          "select_recruit": 90,
+          "select_upgrade": 30,
+          "split_stack": 635,
+          "swap_garrison": 56,
+          "swap_stacks": 604,
+          "upgrade_stack": 13
+        },
+        "army_effects": 1832,
+        "army_operations": {
+          "across_armies": 44,
+          "displayed_comparisons": 1710,
+          "observed_cross_army_net_count_redistribution": 590,
+          "unavailable_comparisons": 122,
+          "within_army": 1612
+        },
+        "army_rearrangement": 1712,
+        "available_player_histories": 3,
+        "choices": 5942,
+        "complete_player_histories": 3,
+        "decision_context_counts": {
+          "hero": 1204,
+          "map": 1257,
+          "stack": 689,
+          "town": 2795
+        },
+        "decision_frames": 5945,
+        "dialog_answers": 0,
+        "event_counts": {
+          "battle_complete": 6,
+          "battle_start": 6,
+          "hero_lost": 2,
+          "notice": 55,
+          "turn_end": 375,
+          "visit": 63
+        },
+        "expected_player_histories": 3,
+        "first_public_day_min": 1,
+        "frames": 42239,
+        "hiring": {
+          "attempts": 3,
+          "completed": 3
+        },
+        "last_public_day_max": 140,
+        "missing_results": 0,
+        "movement": {
+          "attempts": 247,
+          "endpoint_changes": 151,
+          "known_targets": 180,
+          "missing_endpoints": 1,
+          "results": {
+            "hero_unavailable": 1,
+            "interaction": 5,
+            "movement_limit": 42,
+            "no_route_known": 82,
+            "reached": 117
+          },
+          "targets_visible_opponent_town": 0,
+          "unknown_targets": 67,
+          "while_opponent_town_visible": 153
+        },
+        "native_acknowledgements": {
+          "accepted": 3242
+        },
+        "navigation_and_selection": 3472,
+        "new_known_tiles_across_player_perspectives": 909,
+        "own_hero_roster_changes": 5,
+        "own_town_roster_changes": 0,
+        "player_visible_battle_completions": 6,
+        "player_visible_battle_starts": 6,
+        "recruitment": {
+          "attempts": 104,
+          "completed": 104
+        },
+        "result_counts": {
+          "built": 16,
+          "closed": 1604,
+          "garrison_swapped": 56,
+          "hero_unavailable": 1,
+          "hired": 3,
+          "interaction": 5,
+          "merged": 417,
+          "movement_limit": 42,
+          "no_route_known": 82,
+          "opened": 1740,
+          "reached": 117,
+          "recruited": 104,
+          "selected": 128,
+          "split": 635,
+          "swapped": 604,
+          "turn_ended": 375,
+          "upgraded": 13
+        },
+        "town_capture_evidence": 0,
+        "upgrading": {
+          "attempts": 13,
+          "completed": 13
+        }
+      },
+      "native_opponent_requests": null,
+      "native_request_count_scope": "Audited attempts with replay counts only; missing counts are unavailable.",
+      "planned": 8,
+      "started": 3,
+      "stop_reason": "attempt_requires_investigation"
+    }
+  },
+  "coverage": {
+    "all_planned_games_verified": false,
+    "issues": []
+  },
+  "limitations": [
+    "2040 ordinary learner choices plus at most 8 reserved real dialog choices, never more than 2048. This approximate half-budget is not identical exposure to 4096 shared neural choices. Native opponent requests are counted separately, never interpreted as policy choices. No technical cutoff continuation is sent.",
+    "Independent native replay consumes captured native-opponent requests, verifies their player and order, and regenerates rules/packets/state. It does not regenerate Nullkiller decisions from an engine seed.",
+    "Only the designated learner perspective contributes to behavior comparisons; no native-opponent trajectory is invented.",
+    "Available failed prefixes are descriptive and remain unscored. Unstarted games are retained.",
+    "Same engine and learner sampling seeds do not imply identical game trajectories or reproduce native AI randomness.",
+    "This small diagnostic sample cannot establish learning, superiority or a causal opponent effect.",
+    "This offline assembly checks bindings and structure; it does not rerun native replay or policy reconstruction."
+  ],
+  "matched_pairs": [
+    {
+      "builtin_category": "failed",
+      "engine_seed": 120501,
+      "episode": 1,
+      "learner_player": 0,
+      "neural_category": "verified_cutoff",
+      "policy_seed": 120601
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120501,
+      "episode": 2,
+      "learner_player": 1,
+      "neural_category": "verified_cutoff",
+      "policy_seed": 120601
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120502,
+      "episode": 3,
+      "learner_player": 0,
+      "neural_category": "failed",
+      "policy_seed": 120603
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120502,
+      "episode": 4,
+      "learner_player": 1,
+      "neural_category": "not_started",
+      "policy_seed": 120603
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120503,
+      "episode": 5,
+      "learner_player": 0,
+      "neural_category": "not_started",
+      "policy_seed": 120605
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120503,
+      "episode": 6,
+      "learner_player": 1,
+      "neural_category": "not_started",
+      "policy_seed": 120605
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120504,
+      "episode": 7,
+      "learner_player": 0,
+      "neural_category": "not_started",
+      "policy_seed": 120607
+    },
+    {
+      "builtin_category": "not_started",
+      "engine_seed": 120504,
+      "episode": 8,
+      "learner_player": 1,
+      "neural_category": "not_started",
+      "policy_seed": 120607
+    }
+  ],
+  "optimizer_steps": 0,
+  "plan": {
+    "authorization": {
+      "confirmed_before_preparation": true,
+      "human_message": "01a170d5-0cbf-70e1-a497-919c39b80e4c",
+      "human_turn": "01a170d5-0c38-74d3-8102-ff4d461ca20d",
+      "source_thread": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4"
+    },
+    "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+    "checkpoint": {
+      "bytes": 629494,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+      "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+    },
+    "checkpoint_provenance": "random_initialization",
+    "checkpoint_source": {
+      "git_commit": "7917bfe197cda438a8302c0c32684177c266364a",
+      "interface": "adventure-dialogs-v1",
+      "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+      "source_sha256": {
+        "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+        "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+        "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+        "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+        "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+        "experiments/learner/contextual_model.py": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+        "experiments/learner/contextual_rollout.py": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+        "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+        "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+        "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+        "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+        "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+        "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+        "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+        "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+      },
+      "torch": "2.9.1",
+      "tracked_worktree_dirty": false
+    },
+    "choice_scope": "2040 ordinary learner choices plus at most 8 reserved real dialog choices, never more than 2048. This approximate half-budget is not identical exposure to 4096 shared neural choices. Native opponent requests are counted separately, never interpreted as policy choices. No technical cutoff continuation is sent.",
+    "configuration": {
+      "checkpoint_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+      "cleanup_reserve_seconds": 30,
+      "engine_seeds": [
+        120501,
+        120502,
+        120503,
+        120504
+      ],
+      "hard_stop_reserve_seconds": 2,
+      "interface": "adventure-dialogs-v1",
+      "learner_policy_seeds": [
+        120601,
+        120603,
+        120605,
+        120607
+      ],
+      "learner_weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae",
+      "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+      "max_days": 200,
+      "max_total_choices": 2048,
+      "opponent": {
+        "difficulty": 0,
+        "kind": "builtin",
+        "module": "Nullkiller"
+      },
+      "optimizer_steps": 0,
+      "optimizer_updates": 0,
+      "ordinary_choice_limit": 2040,
+      "purpose": "evaluation_only",
+      "reserved_dialog_choices": 8,
+      "schema": "heroes-builtin-opponent-evaluation-config-v1",
+      "shared_wall_seconds": 3600,
+      "torch_threads": 1
+    },
+    "data": "/Users/orsi/Library/Application Support/vcmi",
+    "execution_output": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution",
+    "failure_policy": "No retries/replacements. Preserved isolated native failures may advance; global deadline, unknown invariants, identity drift, cleanup or evidence errors abort remaining rows.",
+    "frozen": {
+      "checkpoint_file_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+      "learner_weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae",
+      "opponents": [
+        [
+          "hero-opponent-7176f1a2e81393cb",
+          "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82"
+        ]
+      ]
+    },
+    "game_map": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/hero-management-v1.vmap",
+    "implementation": {
+      "configs/builtin-opponent-evaluation-v1.json": "0b8717589439eb28a94dfe01f596492901573f296c268c7e0864e42bb6beddbe",
+      "configs/first-training-v1.json": "0c49fc9c20cb6a693152f86f65de6f060df1c20a5a8d43b818226b7a2112adea",
+      "dependencies/learner.in": "45dd60d5be8f6ddd2daf0a0c9abadd9580a14ac586a09f7517c00953b21aa9bb",
+      "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+      "dependencies/vcmi.json": "791fb5c033cffc81e3d83c6b20eaa41abe8cae09694b83b6d21cdfbe55864b6e",
+      "engine/ExperimentReplay/CMakeLists.txt": "135863b2f4a2f2cc3ac5e9e04632877064a04b7e40fc4d0cc19ec34933c21caa",
+      "engine/ExperimentReplay/ContextualReplay.cpp": "0c985471a6203c9562f3f4dde79f1b37517c116ed674858a69b4f99ddb2cb32a",
+      "engine/ExperimentReplay/ContextualReplay.h": "76f9d5442925ad8f3da11560ad0c632143fb539c44ea9202e655c399f8bd33da",
+      "engine/ExperimentReplay/ReplayClientHost.cpp": "d0b5fa84c737b804b275f81583d18c508f6795efe37c8ad5c7903858a695d010",
+      "engine/ExperimentReplay/ReplayMain.cpp": "5123e27a9249ca66a13f768ae191c639c3ae264b97e00d69b11d88b3abcaa9d9",
+      "engine/ExperimentReplay/StdInc.cpp": "d6e64aaae0347dd9b36f8fc7c98b93d8215f5fcd721858c4223a82f8154476e5",
+      "engine/ExperimentReplay/StdInc.h": "3426fea99a9c70efd9664c816ed94b950295ef4de60b066918bfa7749c4451e9",
+      "engine/ExplorerRL/ArmyOperationRules.h": "144d25798adeaab1d9846676da6829e6bf729eb2b83915a78b5272cd1b54b3bb",
+      "engine/ExplorerRL/ArmyOperations.cpp": "3364bb2c8b843ac4510dd8858cb05fbed4bfe6f4d14403b9badca64766aaf091",
+      "engine/ExplorerRL/CMakeLists.txt": "47583d6f9f99ef5008dec979ebd10fb485cc768aec961049ca5c0c4f0bb539f0",
+      "engine/ExplorerRL/Contextual.cpp": "d64193f740e5b1cfc1636550c63e890e0b16ff94c46c8d6ddf9dfb499359100b",
+      "engine/ExplorerRL/Contextual.h": "8a1f1e2900553dc420e0c775cf0fc363ec8e74afc654cd85ccb4bbeb42e3b091",
+      "engine/ExplorerRL/ContextualEvidence.cpp": "dadcb5cfeb36bc610e233546b0839d00f4b9bced471fea629c125834315b421e",
+      "engine/ExplorerRL/ContextualEvidence.h": "8f7a5799c758f251c866b24fa1facb26daf8e6fd33e0595bf6979a1c60cb3a09",
+      "engine/ExplorerRL/Dialog.cpp": "690c055053df0af7244d38b699c3207fc6961df5178123d04982121c406eda00",
+      "engine/ExplorerRL/Dialog.h": "52788c6ae95c7d7d9394ed23d86aeb7d117a6e85cb7883a8c2cc805e07bb2056",
+      "engine/ExplorerRL/DialogContext.cpp": "ffaa453de90c1ea3f786ba9921d1f96a6aece6e73f189ddc74936ea86c6c4e46",
+      "engine/ExplorerRL/Exchange.cpp": "2b429e659e7e5ecbf8f77a914a1776f5ae7a00354ce1a9af06e91938a4823168",
+      "engine/ExplorerRL/ExplorerRL.cpp": "843a931bf9536f21c935fa90c3bffed8cf99ba8ffc19db402e8ce3a7c9e2d64c",
+      "engine/ExplorerRL/ExplorerRL.h": "9d2f5531a18b40280dac92e8f5387304f10eccfd2ee9f626dc5897dcf4abdffa",
+      "engine/ExplorerRL/KnowledgeGrid.h": "c3e42cf9ff44a79fc35c87b0584a5d4bb2a39f3880fee118a8bd9dfcc8c407ec",
+      "engine/ExplorerRL/KnowledgePlanner.cpp": "3b2dd9b57a0a79df17c47556a9c07c2f5ac3e65208b10b456120f43fe5f900e1",
+      "engine/ExplorerRL/KnowledgePlanner.h": "399b416bbf52e973a01da66c135cc925379f1ef72d871acf2f896f81cd3582a1",
+      "engine/ExplorerRL/Notice.cpp": "c64b8edfbc7a1d137336a3965872374cf27f15d543b207967c8a2943f9b11cbf",
+      "engine/ExplorerRL/Notice.h": "b70c2300380ee1b822c395e374b3f9332d04bf2cd6ddfb74e495d1d1c1a3daae",
+      "engine/ExplorerRL/StdInc.cpp": "7c88e4d8f214cf1e73280ba7cd22a55862f4ed08d0071784d6098790d691735d",
+      "engine/ExplorerRL/StdInc.h": "350a3ce63f014cda56352934f7bea0089bd51455f988c841d8656e586da20b12",
+      "engine/ExplorerRL/Tavern.cpp": "a463b2cc473a1634f275840245b66df1e647deb5720fb4b2ba603c0e8067a763",
+      "engine/ExplorerRL/TownEconomy.cpp": "8ac64d4ebe7990b251b1ef9564ad7832e3d5cc54495b386455c9d2adfaf71ca5",
+      "engine/ExplorerRL/TownEconomy.h": "6c14946a4f83408c4b700cd7371e05ed857407e5a6c741beeb6f1b832655e7a4",
+      "engine/ExplorerRL/TownRecruitment.cpp": "71cdbf26bb86896fabf206635b2756545134dbc83d196a629903c4a52ba4a687",
+      "engine/ExplorerRL/TownTransfer.cpp": "56b6e48b31ea817ccbff84b1499350c587cf36d49c6b113f6d3f48468579848d",
+      "engine/ExplorerRL/TransferRules.h": "4f3f6f70fe79d764930fba619f8d4368d2320640bd5ae016c3390dbea562b293",
+      "engine/ExplorerRL/VisibleState.h": "5aa71dd1e7fe48258c2eeebafd7e1cdf466199462c2c7d4d894733698b60a464",
+      "engine/ExplorerRL/VisibleWorld.h": "5517d400587834fab61196bd7f24db9b15e72141f46109079ff793cb1aaddaa1",
+      "engine/ExplorerRL/main.cpp": "a0dce274e2488d433c15b2beebb56e845eba92bb1765fe88ff73f29be2893bcf",
+      "engine/patches/0001-experiment-environment.patch": "4b5df0a89f293d09c708b7664fd43b312e7d9e9ffc4b1ffce5b5abe4b711412d",
+      "engine/patches/0002-gameplay-recorder-and-spectator.patch": "dd5465da9a1c0d7034c52ef0a6140a7176f8b7227e09c741ea3099d44daea1a6",
+      "engine/patches/0003-disable-map-cheats.patch": "b57bcc795b2df42d4e86ed11fff1c7e6b397ffd932d62e66988cfbb5eb20dadc",
+      "engine/patches/0004-recording-perspectives.patch": "d54ff4c42ec6b56c93c4abe2c14cf8a371e455bc5d193465cc3dfba5824e0983",
+      "engine/patches/0005-paired-frame-capture.patch": "f794f52cadcc0995f54b3e87f1682a88a4d0d8c99f9e12071e8db86337b6a98b",
+      "engine/patches/0006-experiment-player-routing.patch": "55821ac84a54c5329361544c45f60d5744e36b66a8ee281b67b0bbd28dbfd149",
+      "engine/patches/0007-effective-engine-seed-diagnostic.patch": "7473fa1b72f7deda9029f42d85a0f8df881df1c46426a172f2d6bb241e454809",
+      "engine/patches/0008-recording-natural-shutdown.patch": "e2f86900f15349b8a4cc845ee38bbfd2e235717f105681635b8b486aea02ddd5",
+      "engine/patches/0009-request-queue-shutdown-race.patch": "3ead5e40bc4ec22d1a8de817cc5e8a038739a99dfc612bb8e94d5ac21fb34c0f",
+      "engine/patches/0010-self-play-routing.patch": "048dbdd90237445801f36c66d1b7ac4e9e094b7a5af0d23d34b402f4f1d6a176",
+      "engine/patches/0011-multi-player-capture.patch": "755ea057217dbf8874cad55ca5f800887a41032c1ecdde4f0159e61125339738",
+      "engine/patches/0012-headless-simulation.patch": "3b9692cffa6f6f9ccd78b63c3fc66726169ace74d3adb8a97719fd98f8566301",
+      "engine/patches/0013-experiment-replay.patch": "9a34bed7d6f34aebd14ad233e68a2d1b06656f6c06a690fb706b56b76b255ea2",
+      "engine/patches/0014-contextual-notices.patch": "8e9a0940058bad5896c4299d8a13676b4ad5648d5253e0862f39930a4fe2b101",
+      "engine/patches/0015-contextual-terminal-barrier.patch": "e276f2371d2a649b2f11b5e13452e1149c2c287f85132c81b018ff625b6b99b2",
+      "engine/patches/0016-contextual-client-replay.patch": "5e92073c10ece6aafa82c42565e51cbcba1d7bd4415d281fc2f4a4c89f89204d",
+      "engine/patches/0017-town-army-profile.patch": "34a7f48ecb82ccf06d7266b2c18d27c0500d46a1815258c6f27617a5e51c81ef",
+      "engine/patches/0018-hero-recruitment-profile.patch": "442d9bba9a4d477f01633df52f663b4fcb096a8652fa10f700ecbf9e271919c3",
+      "engine/patches/0019-army-management-profile.patch": "7354ccec36e3c1f73485eb1f6940517b1ed60cba7d8220e10a3be1285f790e61",
+      "engine/patches/0020-structured-blocking-dialog.patch": "0441c47d06149ebb7db92cb2f59f0d88add84e28f58effcabee9d1cba3c54362",
+      "engine/patches/0021-structured-paid-join.patch": "c68da24a97090bb1a40036b79ce0024f1e2988eb6acf59c7ec05fe3feedd4037",
+      "engine/patches/0022-adventure-dialog-profile.patch": "7544c103eece630aa0da60846580716b9bfb2aa163487dd258508cf2d058280e",
+      "engine/patches/0023-builtin-opponent-evaluation.patch": "e265789d2c35cc51d1eb479abbfdbc58e3b032b2a1ac2d12a0a5c6664d0a6293",
+      "engine/patches/0024-stable-spell-target-order.patch": "ed388cdcdec03eaef0cdf6a6a6d4ac65b0227ca3a5369a241360859366687267",
+      "engine/patches/0025-native-request-lock-order.patch": "c4d458095e37df5898c5e9858a2e240e30d5d8775b1ce0f554be49c4c62bd0ff",
+      "experiments/episodes/scoring.py": "b25b28d1d61ba0e38b49391bf2e4020f0a682597774019ecf849779cf58b1a73",
+      "experiments/explorer/create_hero_scenario.py": "8bc9545bee9b48fbe0977c4126c880e70c6d766c720f8868f1642772e595a491",
+      "experiments/headless/agents.py": "be0f3f09860087640db56781ceaa10d6476a815be21883b9cc340444daa42839",
+      "experiments/headless/army_replay_mutations.py": "c8534661bf1a57ae9a04b2ee1e53d407dcf770f32ab54d517784bf53256e7f56",
+      "experiments/headless/benchmark.py": "470b1689bf6957c3935f653ddce1f2935aeda5daca53740f822bcb0e4eacd451",
+      "experiments/headless/bridge_protocol.py": "88ea914f146bbc9de651a4859bc32f6ad12f101efe209f95190bf99420116c4f",
+      "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+      "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+      "experiments/headless/builtin_replay.py": "c285806465d5251aeb4de15f9de00e244543b4fc93c04630dc4697c072c67236",
+      "experiments/headless/builtin_replay_history.py": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6",
+      "experiments/headless/compact_evidence.py": "f7792f0382d73b8b0c618707659aa16f8659c5b0133b65851fc7c241dc81120a",
+      "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+      "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+      "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+      "experiments/headless/contextual_replay.py": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb",
+      "experiments/headless/contextual_replay_history.py": "a121299af2c73417c8d537e45b9d21622aadc17a523196681b3109db20d731de",
+      "experiments/headless/cost_breakdown.py": "74502aed63a9455d3ef56a2b296a68ca1aea75bc55cd6055a5d9ca6c4a21bd7b",
+      "experiments/headless/dialog_replay_mutations.py": "2a8b38f2f16544c8d6c30db6d450068cee176ad7ad592c9fe71a3d11454ce656",
+      "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+      "experiments/headless/history_v1.py": "3ca7837f3f821d91839acd7322bb2471ad5ca9559c5f373fb5350044d44aa050",
+      "experiments/headless/player_history.py": "e496821e9b3178bc37dc438f66c935714ed46f58f18a7b9a23508441c0ca2071",
+      "experiments/headless/process_deadline.py": "a2a2041327e7b60e74719dba661ce84d9598491b62cb0f9e318ba4717cceecab",
+      "experiments/headless/render_replay.py": "0f6e343917a48d2aad0515c72168e50804f1c980d34381bf0e89a89270737802",
+      "experiments/headless/replay.py": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3",
+      "experiments/headless/run_headless.py": "5f57d88d58198fdad59f06c71b3b94876a76c9df6048f1a0878af9d695d5f912",
+      "experiments/headless/run_series.py": "0752f1a6b3d5e0ed2ee7c75dfb9dd008d95300ad09e0b5365c33b26a93de13d0",
+      "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+      "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+      "experiments/learner/builtin_behavior.py": "12938a41753c11e3cc62f498c3080200ddcf340d2a6d4e7fa5635955a300514b",
+      "experiments/learner/builtin_rollout.py": "d0dae59e199cab6343d53cbd79db78f80e7b0ca13f2b009d37c143ee3caca66c",
+      "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+      "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+      "experiments/learner/contextual_model.py": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+      "experiments/learner/contextual_rollout.py": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+      "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+      "experiments/learner/evaluate_builtin_opponent.py": "354b354a18ac7a6ab519a98f0039239130b7d1aec8925c9b1cf0c8a7121f4bb4",
+      "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+      "experiments/learner/evaluate_long_dialogs.py": "3a7e891a0a0888c08120e112b4c05a934a7d2859746e5687baeea5ce50ee1695",
+      "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+      "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+      "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+      "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+      "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+      "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+      "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+      "tests/native/adventure_dialogs.cpp": "014776fd5251a4521203f1d565a07272631f3b35d8c16002c2d198e45ba8fb12",
+      "tests/native/army_operation_rules.cpp": "6dc228916396aef40b5196ded8a72b652fdadbcc5a7c693570ddba21b055fc90",
+      "tests/native/contextual_evidence_lifetime.cpp": "3f2597c991efa8bf3a5fc944b6f9b6481f5d85c0caf86c849182adb8b8d8fb5c",
+      "tests/native/knowledge_grid.cpp": "eae0a8d20a4242c66e06e60cddc7736778be4ed49ff359b190be7948a291875f",
+      "tests/native/native_request_lock_order.cpp": "73493e0167c27ceb4a0e4ed83474cb2fb4c470eae979568b184bbccb81125137",
+      "tests/native/notices.cpp": "48fa94bd99f54d3562098fe07e393d7c30f39e5964a254f9705d27c13aa83308",
+      "tests/native/self_play_routing.cpp": "923b8f16c4154e37f7b2e9069f084db279d61372effa13bccc8b056ccf14d667",
+      "tests/native/spell_target_order.cpp": "4fc16324046230a88ac9ef940d1a0403454e024b68fd81d15dd36d0bb9b1e027",
+      "tests/native/terminal_barrier.cpp": "3bfb6bb08bf3a28dd0ec71f626d4c9fe0c48d3673d0b2dfab8f472488ee1a999",
+      "tests/native/threadsafevector_shutdown.cpp": "14518696c773128c59e30e2a43a1e5c48767002d1413a27727aa87ead409ca39",
+      "tests/native/transfer_rules.cpp": "855d742bba517b7afc15110f6411b54b54615b0d79f526841ce6d2ef63cbf9ce",
+      "tests/native/visible_state.cpp": "b5f0854b5aef7e705e97dddeddc183964dc7725339cce01c6154b63244b12706",
+      "tests/test_adventure_dialogs_probe.py": "0a282f1c5a1b03cd3e3d8a15416bf3ebe2cacfb6571d96c3754014ec866fe365",
+      "tests/test_analysis.py": "d7375b142f772f07bc32774eae98d028e8f9173aa8d7661618a38a2bb33a1bef",
+      "tests/test_army_management_probe.py": "0fefd661494404a7a793b241a3a12e76adccce7b4f24495bc202d52d30ecaf2d",
+      "tests/test_army_policy_support.py": "c7fc4b14c1a2b16161beeab0a11fbb9d9b51d206757746379ef6c212663aa969",
+      "tests/test_army_replay_mutations.py": "e5e19218134d43c12b9919cea2e67f6b11bcfb347fad19813d165ccbfd15df0d",
+      "tests/test_builtin_behavior.py": "bfc23925bf1d39ea7c98c5cffbd364a03c1ad59d73adb66e4ff8037266d240a0",
+      "tests/test_builtin_boundaries_probe.py": "390da888741df427a0a9eae6a958b002c6c519aae7e0b15f34e14137f645f5e4",
+      "tests/test_builtin_env.py": "d04c170cb1f35840bfc30517b1100d24e3a6ed10f1dc3b6dec01afdfcff66174",
+      "tests/test_builtin_evaluation.py": "a49893c15118f1c2d440d5898f2e8207b1714ac5b25fa0b1b6fcbfd2fafe3076",
+      "tests/test_builtin_native_contract.py": "027a05da3b47d91acf20354fbe4df19b14a61d771836bb8f516a7c4573d62da7",
+      "tests/test_builtin_preflight_summary.py": "281d201356ae3a9bcfc43f71851a60d65497c424ea7313c79c0cf7eedb7a359d",
+      "tests/test_builtin_replay.py": "59bc33ab99731a4215348b15f98692513faeead3c06df315baf855d9b81b1f62",
+      "tests/test_builtin_rollout.py": "b6c4414de4d006fef57773eecf8e08413094ede55f09a56e91a7b82fdc07e0ff",
+      "tests/test_builtin_summary.py": "3d5fdb4b52aaf8bee51e6520dc007d5b429a867a93f5e71dcd29a1e027f99aa5",
+      "tests/test_contextual_adapter.py": "52b3b60fc05d6e18d8c5a0ba89a90783270ef9d02e2986ec3586b371e78a509c",
+      "tests/test_contextual_armies.py": "41a0c2ec9f51615b14dd7c8ef83ea5c5c2c202bc9e7022cf82cdbde393040db2",
+      "tests/test_contextual_armies_model.py": "958a07db6d431348566423a803cca4f756b541beb8063a351d8748b759d88359",
+      "tests/test_contextual_auditor.py": "eb5c13aa2f11ea0d9c3acd98e2fc8c9c8c604b84c1a7787df0b6db822b59ca54",
+      "tests/test_contextual_boundary_fixture.py": "86232751c46099ac263dac725279a31165e87f189012d5b6eddf18263d7a70a4",
+      "tests/test_contextual_casualty_fixture.py": "0e79ed07aac32ccfb459d6c7e15eed027dccc03fa3dd48c864829a16e5947fb3",
+      "tests/test_contextual_checkpoints.py": "0dae4082e96bc2b0616055814a99d18f5c358cf2636355d8320bfc586b103b4d",
+      "tests/test_contextual_contract.py": "983bddfe02cdee6e5af3658889f4d751a7e8437b883791151e3d36128bbd5740",
+      "tests/test_contextual_dialogs.py": "27e53d0bb4c611d1a1d27ff409d5a66ea0a9abb14f3bfec8895a55378ca3f61e",
+      "tests/test_contextual_dialogs_model.py": "ee0dae2151fd2d0dd514a4a387561b59db7b79e7abc3b8b0fd0c4cdedae8556f",
+      "tests/test_contextual_dialogs_notices.py": "bca9dda16e264b7ac7c79b35827229327e732ad2b773e53398c22b3f4ed7904b",
+      "tests/test_contextual_dialogs_replay.py": "e24e368308771c2478ac2076b1ba7d4d684a25c79863fda9c8724f3827d69510",
+      "tests/test_contextual_evidence.py": "ca90c353ebb288a17fd946213674bc3efb7289c7ea72aa0a89501c905469ccf1",
+      "tests/test_contextual_fixtures.py": "5996f8e98b43a8df0363afa5733d465413223c53b2866071784e27ab56ce15ce",
+      "tests/test_contextual_gap_probes.py": "f8a54e42ad8bfb22f69d55105303a30bb87b74b3446e457edcb3c81a77c4a82e",
+      "tests/test_contextual_heroes.py": "8d2fa4e8c44814ccedf519e333ed89d757b10b4e29c4f1d70620b976f1d79cbc",
+      "tests/test_contextual_heroes_model.py": "e98fa074eb234f4a6c90620d895761313944d366c4d518f706c471cea9402624",
+      "tests/test_contextual_heroes_replay.py": "987288d469d345b4b076b8601d05a904141dd7421b3954044379daf9697dda48",
+      "tests/test_contextual_inference.py": "ee46ddf34b33582c5782fd98beea26cdf064fe27775bbed04c85dd3627af185f",
+      "tests/test_contextual_management.py": "45bbf27e352615aac08dee73165298624b0f03d3e21a1c0f8c6fdf4b61ebaee4",
+      "tests/test_contextual_management_model.py": "52975c7dfa590a94b0bda99b28601cba31a6c0e6673483d653708e3b22435316",
+      "tests/test_contextual_model.py": "932acc052526fda878f79bb84c7ac5423b4963ea13cca690ba55b5e61651cc56",
+      "tests/test_contextual_native_probe.py": "edf3b234e1dd643257f17e46dd8fbf41c13e603631b1c1ce9281f4316f718dc5",
+      "tests/test_contextual_notices.py": "a614d3c1e689b23fd2920f93d021ff1b4f0f2a1ca56a0ca5f6be71d9a72545cf",
+      "tests/test_contextual_ppo.py": "1c34d809c382b4bde3b66dd0a1832c5e2c131086dc56093b09bf8afd63b171bd",
+      "tests/test_contextual_random_probe.py": "c33fefa5a7701e0cd5139dd86b7f3950e7a0057f8765f6e6701da7636089c9d8",
+      "tests/test_contextual_recruitment.py": "3d15e61c4a700e15f00aee55612970c3160b598435f13a8a1f5c7759e7488236",
+      "tests/test_contextual_replay.py": "faa688ee63be4c48b159c8c93ab5034566ad284f3a204d847f80c0d62f50d45e",
+      "tests/test_contextual_replay_boundary.py": "36d0889e460525317e79c8ecbe85f946c64ca11e5150e320a64d0689b30f56ef",
+      "tests/test_contextual_replay_history.py": "5fcad1c40830c1ecf656603f9ec9fbb8363498ed0d57c6f12d1ffef11a373e54",
+      "tests/test_contextual_rollout.py": "0475e0ee78dcda1fa973b18ea8537e4227fb9495712bcbc9adbaa64538677dec",
+      "tests/test_contextual_tavern_cutoff_replay.py": "faa6ebc219d752093746e72f0332a4c9a619ab2c7fd57d5fd56d186cc8c6480c",
+      "tests/test_contextual_terminal.py": "35f688098175c4b1a654a1fa848eadbe3f3deda8a9344ad3e2f86efdb1afe557",
+      "tests/test_contextual_town.py": "0b7bd807369a14f59246759c2d228b039b0db29f826bb0d9987bac2dcc0ee81b",
+      "tests/test_contextual_transfer_replay.py": "3a8c79bec1df3f360cc804b8fdf1fdb4d9d8546bd81bfd52b2fd8d8580f17d74",
+      "tests/test_dialog_collector_cutoff.py": "ab727552f98b181f269e0603e7a6a41ee6075b268579a928eec7091a99e54491",
+      "tests/test_dialog_cutoff.py": "d841438d6751a9a38b54816b097e354cf3b2f4dfb718743fca047f9c2441633d",
+      "tests/test_dialog_policy_context.py": "8336aa9768a4390b4e5801761a06f511d26a8e38d512fa45002ecb8da933e208",
+      "tests/test_dialog_scenarios.py": "b62329812e9a6760d6da56d4638a6074e8c94c1fa6ed958d433e94c3ad374657",
+      "tests/test_evaluation_behavior.py": "632de96b0b753f4d28647fdf048e662af9a5366433edb2953702eba2eeaf219b",
+      "tests/test_evaluation_continuation.py": "ae4adad6bd3c9bfd9c42db8ee7550e345039ceb9245caa40536f9aed6e5658de",
+      "tests/test_first_run.py": "4fe465d0c4479def5b9492f495de29fbefcabca45f796a43c048e3a48850dbdd",
+      "tests/test_gameplay_checkpoint.py": "815da2d8eeb18876cdbdafe0f7ea40435dbcfe3e2be1fe4b13d73e9c6c528128",
+      "tests/test_gameplay_receipts.py": "6ddf2e7cc4bcbeabba92f58ed26d9dd312403d50b9a4f14792b72954496e493f",
+      "tests/test_headless.py": "195e8b2cc9c51a6495f68b200f4b4fb3ba01d560af099814549d428d2ae3c1a1",
+      "tests/test_headless_costs.py": "23f7dd55a0d714a22dd88391976e4af2ecd4be0b05074dcdfd524946f5a921c5",
+      "tests/test_headless_runner.py": "926be4e041a565770cd5fda81dda234b11db654cccb9a5133c0460bf445e3317",
+      "tests/test_hero_cutoff.py": "3e8c762cca2afae7571c1f36b39a60bc5dbbaa3f31c4eb32c4383b2a4fbee4a4",
+      "tests/test_hero_notice.py": "91bf30c4f6a222dabcb812e659cd79def9e09d7016db8a1c51cba5ab05022217",
+      "tests/test_hero_policy.py": "5059805f265baa55f21589211b3ed792888c7cdde1acd5d15ddefc8bd81339e2",
+      "tests/test_hero_policy_context.py": "d5fdb1f6d6491b1acea0156fc05f3a0c8753160e073210c1fd1b40e8992ffc3c",
+      "tests/test_hero_recovery_probe.py": "0db0baf0e792c20a8df24e19b5de348894f71a38297bc8a5ffd2ef725145caee",
+      "tests/test_hero_recruitment_probe.py": "3f894b2ad3f5b197ae7adc5bffc1329df40bfa4dce9d07b5b3bb82596c0c2ae1",
+      "tests/test_hero_scenario.py": "a09d0bc44afac48fc735f467eef9413cf159da5c7f29fb0909a171dccf8ec646",
+      "tests/test_learner_actions.py": "0d6e5a5cd73fab3823a64fb49972b18f4a0d82d313502ebf6233c78a10321617",
+      "tests/test_learner_contract.py": "92ae127f3fbf8e63817d6f51f79db7bb9339f42dd168a32010d0e225564bcf55",
+      "tests/test_learner_model.py": "a2f0ae2b528cfafd0fb0b247a81e196d3ee5db79af5e62a01998527fdb89eb30",
+      "tests/test_learner_trajectory.py": "3522e5cf5b6c3bfd8cbc123051e2c0caa4f536e3b95a9a0ce199fbbac0abe590",
+      "tests/test_long_dialog_evaluation.py": "f7eb9dbc19f55c885ff9d58f81ec3812c18de2a43c83e3646bbb1a15edf4660d",
+      "tests/test_long_dialog_summary.py": "e2f7c5f2e48bab0645affc66404397fa21c4e4c67c1a6ab346077d59c2e34ba6",
+      "tests/test_native_adventure_dialogs.py": "858a363aeb7dc3f8c4ef0a15482982a064822475e380df5ca9fc87f2c16e157e",
+      "tests/test_native_army_operations.py": "17cf4661e737c1c1413ec032da69f43c8c15c5f421e22b6274411cb013c0e3fb",
+      "tests/test_native_contextual_evidence.py": "f5e276fe57b523ee5a98d96f51a5f251d7031e9939a54bb47de701c4f4ed5e92",
+      "tests/test_native_knowledge.py": "8caa6166a880c58590dc515832bd3cadcdd6464cd36b1b3a694d4465c0e68a4e",
+      "tests/test_native_notices.py": "83e9da0f25d56e3bf99b05c424aea1d722245b939bce4003f8a5c8629f6dd959",
+      "tests/test_native_request_lock_order.py": "161c87238e6ed9baf9ada0a92bb79df6b07cfcbdeb0a83eb82a5ad98ae7a3de2",
+      "tests/test_native_self_play.py": "7e2f516b446c52006052d3bc032732ad5bcc112ecac6b3427f9dc414492510ad",
+      "tests/test_native_shutdown.py": "247e0ff2abfdbcf7bfc4a8211f814679bdbaf4c369a8ec674ed5c5409ddaeec4",
+      "tests/test_native_terminal_barrier.py": "cdcfcbfa6878eb56e6dfaced23e17a30402e80b8cb5692ff9ce1a0cb1866a025",
+      "tests/test_native_transfer.py": "6ddf0be4224421e41c014ba9e19edad99936c3b33fe9ae1f5abfd876da9427e0",
+      "tests/test_native_visible_state.py": "7fed501a3d74eda63a8b979df0d595c912c7ea3e735d6230a49449b22933fca8",
+      "tests/test_neutral_terminal_fixture.py": "675ae0c7b1b684fafc53b622eca9e25fdb05eaddce527a36e6be949f65bd958e",
+      "tests/test_ordinary_behavior_probe.py": "24233b9b9cac10c65557eb5157010fb1304ccc812ac86bd516b4709c63f62804",
+      "tests/test_process_deadline.py": "a77f8d3cd5a4d1d20e681553f8ba10c82c675f1e24c18fc8ce52fcbd0e0204ce",
+      "tests/test_random_policy.py": "b33707499d7fc0f3f5d0b736920f5581f2ef885dbd047959a414e280fe9e515b",
+      "tests/test_record.py": "c64e18a932e34cb83507207873f3c6336fb94d8d9fe9cf304ebfc671191c7712",
+      "tests/test_render_replay.py": "e52d1934a3cc21af7da98a61fece60fb6734729917fb589a69f5ef304449a7f8",
+      "tests/test_replay.py": "be029e01327affd27862c8bcc31947cf247d4e8f3ec8a651f13515b97187573b",
+      "tests/test_scenario.py": "cf83ba98a718ae97c90ed3f09b8b766da9c8645ec37cfa2df0aaa8faa4ad5698",
+      "tests/test_self_play.py": "3efe368209f8fde5eac5528a9b2152a2fbca60925192a65b197fee8b03f0458b",
+      "tests/test_spell_target_order.py": "d99d68bd8cae122d44b86d35fbf042b414d867b62d0c664e8b729eac84787848",
+      "tests/test_terminal_profile_scope.py": "6b6030a1ab00422da99e32d28ac2b98b09bc1016b33dd586aa20b78ae66ae854",
+      "tests/test_terminal_rollout.py": "3ad9da0fe1ea3aba2d28871f4d278a907ac7feb4f8fd3b679421bcfff7f89d17",
+      "tests/test_town_fixtures.py": "be268b879e2b33aff098ca4ae637fecf58b6de8f4a30c3effaef5ee01dba8532",
+      "tests/test_town_transfer_probe.py": "4cbeae255b6a4c0234e9c0d6ac3110801d51b9de82f9fa551e40e24ae34ca669",
+      "tests/test_video.py": "1f7560250d97bbc7739025f1fcca9b70546e595280f22cd6d274d09b9480edad",
+      "tools/prepare_vcmi.py": "3ef5f491dad5c47706543a3dd356f7afe9c0c6bf310b6beede88037e49f55131",
+      "validation/probes/audit_contextual_histories.py": "3f657afe7586a94681f6d2291038921911bb854c9bbbad8feb1a99c958d6354f",
+      "validation/probes/audit_headless_histories.py": "967acf23641ee0f164f3410ab759ac52e5aee89d4741273af8fda410d348dff6",
+      "validation/probes/audit_neural_rollout.py": "eac6ee95e226e97b621cd020193430446163173d84ec3be2d28ffe0e447317e1",
+      "validation/probes/audit_ordinary_behavior.py": "6c5abcd45d56ca60afc1fc3a661d97383e3eff4942694ae65156886f0e9ea690",
+      "validation/probes/create_boundary_fixture.py": "3551e85626d781b90881e6e24b549fb944e9a76669e6c955e84e7743d0280a6c",
+      "validation/probes/create_casualty_fixture.py": "e9c9ad9d31245d82f5271496c4a55955f464dbbade961148b12124924ba876c3",
+      "validation/probes/create_contextual_fixtures.py": "6ec20a024177d762c5e06374d50274d8cd631cb88ecd7ae6c870764f970b8390",
+      "validation/probes/create_neutral_terminal_fixture.py": "6f6f71117c0bb0c76a1bc6e158968c88acc6c23286d564959ff269388b3431b6",
+      "validation/probes/create_town_fixtures.py": "97577fa25114b309ad418e3fe22989bfb3acc09a01088d1384d5db8c41d2f3a4",
+      "validation/probes/recheck_headless_boundaries.py": "f3675f5cb68c8e3abd7616010ddcfbdf6d16b202066ad9f62afdf38467e8db19",
+      "validation/probes/recheck_headless_history.py": "c8de1774cd2d0ee097aaacc82edd75578c2e998e27eec149d0f1d0aa0475711d",
+      "validation/probes/recheck_headless_render_binding.py": "7ee156b53b732667445cff2a334d47741c2ec8679af35d2bdbbde02a03039ed1",
+      "validation/probes/summarize_builtin_evaluation.py": "80d088623f1551689cdddd2a2ab5147e7cd04b969423ecc8e6aa8fdd7a1a21f0",
+      "validation/probes/summarize_builtin_preflight.py": "9f48ced5a6d6291fd4da9646024f818279d4d5765e6de4815e234b7aed278db8",
+      "validation/probes/summarize_long_dialog_evaluation.py": "b752298a8bbbe5d6c75998ab89f998d3bbd5372d52dd0304d204840c67a09d59",
+      "validation/probes/validate_adventure_dialogs.py": "a18668a230b71c347a6e569b3c354f18e69972e983cc08977e8b069d5b1d2566",
+      "validation/probes/validate_army_management.py": "c66e73c11a15e470f502cf9857dc5a112b58e4b9481ef646a52ba637c6ef82d0",
+      "validation/probes/validate_army_policy_support.py": "72f02d7de523e065ede5b4cba86b094a227613089abf2b5f5aea5d4dcbda9aab",
+      "validation/probes/validate_builtin_boundaries.py": "4f863049f237bb101839d3412f595699405be741d90f560343c54ab8b2c12298",
+      "validation/probes/validate_contextual_boundaries.py": "12d20aaec7614591824f2b7de0fa15d67bc6b0704e5f83c91a802055eb6f00f6",
+      "validation/probes/validate_contextual_encounters.py": "7132a0fd728939c0c6b129f3c139291206df24d2f3ae92283d8a27541b07dc9b",
+      "validation/probes/validate_contextual_native.py": "30fc50765c67783c62d472fb39a27db23c3d198d0ab49942057420bd976431c8",
+      "validation/probes/validate_contextual_random.py": "6843b5add4e5be4c5c95c909abe774a362b1b69593ac9ed5c5841de71d1de729",
+      "validation/probes/validate_dialog_policy_context.py": "091345318bf440746d0bad2558c482656d3471eb63407a7bb0f419130d901116",
+      "validation/probes/validate_headless_action_boundaries.py": "5c315b15071ddf95c35cea869a0cf34486d95e574ad72c28831ddcc417ff6651",
+      "validation/probes/validate_headless_history.py": "7c7f45d673fe554d75a47d3d5d8d70cc63b3392bfa511bb3f316161d1eba6f0a",
+      "validation/probes/validate_headless_native_boundaries.py": "a6bcb920c39c701ae7d83d8b7380b5ecf467bfa6dbe0088aae23a62cc7d74c8e",
+      "validation/probes/validate_headless_render_binding.py": "f2220856e52431ca4e6be0a86249a5e097e2b723130e563674abf1a3a85794dd",
+      "validation/probes/validate_hero_policy.py": "6ad568f47f974b0504bd79ed4b966155723ea90bf35227a6048f1e38e632cea1",
+      "validation/probes/validate_hero_policy_context.py": "2a4d66edd4b3daa6e71183a491ee86bb7203f76655d614648e694ce846c9357f",
+      "validation/probes/validate_hero_recovery.py": "e68127e0fa00c3447fc0062c01732ec780b32cd96b70ec8dfb593f84d65f8883",
+      "validation/probes/validate_hero_recruitment.py": "6418ef7739c6da687eaea21b69bbbcf3839bc0b6d58026c0598abdae7ec4bcbe",
+      "validation/probes/validate_hero_terminal.py": "d22c25b9d47db1587dbb982a91e0491035a20919d0e4334d40ee25d3487003e7",
+      "validation/probes/validate_neural_failure.py": "6883482682726ff7049e785542dffacc31f96f94137b4dd214551f7e44952802",
+      "validation/probes/validate_neutral_terminal.py": "466296afd2a33b06a2e2880ed99619edb82a9ab5eff7a9ff55a7bc1653de869c",
+      "validation/probes/validate_preexisting_failures.py": "1f856138ec3c6daf1ba81e503ed61b65b82a6928356c26db0ef8307b71429948",
+      "validation/probes/validate_town_capture.py": "9baf5d87fa99c2d5edcbf0165e4e12af1eaf382327d98635d92b16a1eed4b897",
+      "validation/probes/validate_town_native.py": "e3e7f670521ef35f56c27e384bd7fbe0112568054fc6a589bd51f60ad6099b1f",
+      "validation/probes/validate_town_transfer.py": "ad78ed396df50e5127329062b7d909425a795ab7dc676089de83b188a665becf"
+    },
+    "map": {
+      "fixture": false,
+      "layout_seed": 0,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/experiments/explorer/maps/hero-management-v1.vmap",
+      "scenario": "hero-management-v1",
+      "semantics_verified": true,
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    },
+    "native": {
+      "binary": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmiclient",
+      "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+      "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+      "log_level": "info",
+      "map": {
+        "name": "hero-management-v1.vmap",
+        "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+      }
+    },
+    "native_opponents": [
+      {
+        "binary_sha256": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+        "difficulty": 0,
+        "kind": "builtin",
+        "module": "Nullkiller",
+        "player": 1
+      },
+      {
+        "binary_sha256": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+        "difficulty": 0,
+        "kind": "builtin",
+        "module": "Nullkiller",
+        "player": 0
+      }
+    ],
+    "prepared_check": "Verified /Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi: pinned upstream + root patches + owned source match exactly.",
+    "reference": {
+      "checkpoint_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+      "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+      "plan": {
+        "bytes": 37716,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/plan.json",
+        "sha256": "cc636557a16d5bb0865c174a4139aa7d1a574fdb6da88f5cd35fb27430ff502f"
+      },
+      "report": {
+        "bytes": 13199,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/report.json",
+        "sha256": "ade74b69de0648b5ebab66687a9530c2324526e9a537d8153957de02dd29fdf4"
+      },
+      "schedule": [
+        {
+          "engine_seed": 120501,
+          "episode": 1,
+          "learner_player": 0,
+          "policy_seeds": [
+            120601,
+            120602
+          ]
+        },
+        {
+          "engine_seed": 120501,
+          "episode": 2,
+          "learner_player": 1,
+          "policy_seeds": [
+            120602,
+            120601
+          ]
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 3,
+          "learner_player": 0,
+          "policy_seeds": [
+            120603,
+            120604
+          ]
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_player": 1,
+          "policy_seeds": [
+            120604,
+            120603
+          ]
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 5,
+          "learner_player": 0,
+          "policy_seeds": [
+            120605,
+            120606
+          ]
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_player": 1,
+          "policy_seeds": [
+            120606,
+            120605
+          ]
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_player": 0,
+          "policy_seeds": [
+            120607,
+            120608
+          ]
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_player": 1,
+          "policy_seeds": [
+            120608,
+            120607
+          ]
+        }
+      ],
+      "shared_wall_seconds": 3600,
+      "status": "stopped"
+    },
+    "replay_binary": {
+      "bytes": 12552600,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/vcmi/build/bin/vcmireplay",
+      "sha256": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+    },
+    "replay_scope": "Independent native replay consumes captured native-opponent requests, verifies their player and order, and regenerates rules/packets/state. It does not regenerate Nullkiller decisions from an engine seed.",
+    "runtime": {
+      "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+      "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+      "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+      "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+      "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+      "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+      "vcmireplay": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+    },
+    "schedule": [
+      {
+        "engine_seed": 120501,
+        "episode": 1,
+        "learner_player": 0,
+        "policy_seed": 120601
+      },
+      {
+        "engine_seed": 120501,
+        "episode": 2,
+        "learner_player": 1,
+        "policy_seed": 120601
+      },
+      {
+        "engine_seed": 120502,
+        "episode": 3,
+        "learner_player": 0,
+        "policy_seed": 120603
+      },
+      {
+        "engine_seed": 120502,
+        "episode": 4,
+        "learner_player": 1,
+        "policy_seed": 120603
+      },
+      {
+        "engine_seed": 120503,
+        "episode": 5,
+        "learner_player": 0,
+        "policy_seed": 120605
+      },
+      {
+        "engine_seed": 120503,
+        "episode": 6,
+        "learner_player": 1,
+        "policy_seed": 120605
+      },
+      {
+        "engine_seed": 120504,
+        "episode": 7,
+        "learner_player": 0,
+        "policy_seed": 120607
+      },
+      {
+        "engine_seed": 120504,
+        "episode": 8,
+        "learner_player": 1,
+        "policy_seed": 120607
+      }
+    ],
+    "schema": "heroes-builtin-opponent-evaluation-v1-plan",
+    "source": {
+      "git_commit": "52076a98df50a445f336fc954e4c4f5443591ba2",
+      "interface": "adventure-dialogs-v1",
+      "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+      "source_sha256": {
+        "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+        "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+        "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+        "experiments/learner/builtin_behavior.py": "12938a41753c11e3cc62f498c3080200ddcf340d2a6d4e7fa5635955a300514b",
+        "experiments/learner/builtin_rollout.py": "d0dae59e199cab6343d53cbd79db78f80e7b0ca13f2b009d37c143ee3caca66c",
+        "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+        "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+        "experiments/learner/contextual_model.py": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+        "experiments/learner/contextual_rollout.py": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+        "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+        "experiments/learner/evaluate_builtin_opponent.py": "354b354a18ac7a6ab519a98f0039239130b7d1aec8925c9b1cf0c8a7121f4bb4",
+        "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+        "experiments/learner/evaluate_long_dialogs.py": "3a7e891a0a0888c08120e112b4c05a934a7d2859746e5687baeea5ce50ee1695",
+        "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+        "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+        "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+        "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+        "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+        "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+        "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+      },
+      "torch": "2.9.1",
+      "tracked_worktree_dirty": false
+    },
+    "training_performed": false,
+    "wall_scope": "One shared 3600-second execution clock includes all launches, collection, reconstruction, native replay and cleanup. Final offline report assembly has a separate measured duration; it cannot launch games or replay."
+  },
+  "policy_input": false,
+  "reward_input": false,
+  "schema": "heroes-builtin-opponent-comparison-evidence-v1",
+  "training_performed": false,
+  "training_samples": 0
+}

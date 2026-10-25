@@ -1,0 +1,86 @@
+{
+  "additional_optimizer_steps": 0,
+  "additional_ppo_updates": 0,
+  "allowed_episodes": [
+    7,
+    8,
+    9,
+    10
+  ],
+  "approved": true,
+  "attempt_schedule": [
+    {
+      "engine_seed": 99201,
+      "episode": 7,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101003,
+        101004
+      ]
+    },
+    {
+      "engine_seed": 99201,
+      "episode": 8,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101005,
+        101006
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "episode": 9,
+      "learner_player": 0,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101007,
+        101008
+      ]
+    },
+    {
+      "engine_seed": 99202,
+      "episode": 10,
+      "learner_player": 1,
+      "optimizer_eligible": false,
+      "phase": "after",
+      "policy_seeds": [
+        101009,
+        101010
+      ]
+    }
+  ],
+  "authorization": "granted_once_for_four_missing_evaluation_attempts",
+  "checkpoint_sha256": "df8834bac83c7444ceff5396f06015ab9f14b7f90aea4dd62c1b7a6b3bb2f089",
+  "checkpoint_weights_sha256": "f4af57d1e47702200b576d0110b2ede13be1db25fc60976af8f82fc114d7b48c",
+  "date": "2026-10-25",
+  "human_message_english_translation": "Send to the English chat: run the four remaining evaluation games from the saved checkpoint without new PPO updates and compare the before and after results. Commit and push everything.",
+  "limits": {
+    "max_attempts": 4,
+    "max_choices_per_game": 256,
+    "max_game_days": 30,
+    "torch_cpu_threads": 1
+  },
+  "original_elapsed_seconds": 164.8517872090015,
+  "original_plan_sha256": "ff22a542eb881b913e34772dd124b34802a36fe55f625e248984d331c23512e6",
+  "original_stopped_report_sha256": "bf6ceac81894310b6a364d6dcc755087b16a21409133398d83db42586f3007b5",
+  "remaining_wall_seconds": 3435.1482127909985,
+  "schema": "heroes-after-evaluation-authorization-v1",
+  "scope": "Evaluation only from exact saved post-update model and frozen opponent. Keep original map/interface/fog/rules/rewards. No optimizer, replacement, retry, additional cohort, paid compute or merge.",
+  "source_thread_id": "01a16d9e-5f8d-7cb0-a939-3ff005a741e4",
+  "source_turn_started_at_utc": "2026-10-24T23:21:34+00:00",
+  "source_user_message_id": "01a17038-372b-7ce0-b773-236f4951bf38",
+  "source_user_turn_id": "01a17038-3713-7673-98d6-f35a60579c9d",
+  "stop_rules": [
+    "Stop on history, native, replay, probability, checkpoint or source-identity failure.",
+    "Retain all attempted games including failures; never replace them.",
+    "Keep both policies fixed; evaluation is never optimizer-eligible.",
+    "Do not bypass the old plan identity rejection; bind current implementation in a new evaluation-only plan.",
+    "Preserve the original stopped-run evidence unchanged."
+  ],
+  "verification": "Direct human instruction read from the source chat; the relayed scope matches the original four missing evaluation slots."
+}

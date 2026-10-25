@@ -1,0 +1,124 @@
+{
+  "schema": "heroes-optimizer-runtime-inventory-validation-v1",
+  "date": "2026-10-25",
+  "branch": "codex/optimizer-native-lifecycle",
+  "implementation_commit": "5c3844eeb02dd79cc63a173106e8455e7ce66998",
+  "draft_pr": "https://github.com/tkorsi/heroes-rl/pull/25",
+  "coordination_scope": "https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6399082723",
+  "checks": {
+    "focused_tests": {
+      "command": "source /workspace/cloud-setup/activate.sh; python3 -m unittest tests.test_optimizer_lifecycle tests.test_optimizer_benchmark tests.test_optimizer_inventory -v",
+      "tests_run": 24,
+      "passed": 24,
+      "skipped": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 8.522
+    },
+    "canonical_recipe": {
+      "command": "python3 tools/prepare_vcmi.py --check",
+      "exit_code": 0,
+      "exact_match": true
+    },
+    "native_build": {
+      "command": "cmake --build vcmi/build --target vcmireplay --parallel 2",
+      "exit_code": 0,
+      "repeat": "ninja: no work to do.",
+      "generated_overlay": "Before sync, three generated files exactly matched 35e0097; synchronized the already-published canonical ExperimentReplay overlay. No native source authored by this milestone."
+    },
+    "diff_check": "passed",
+    "missing_runtime_inventory_cli": {
+      "exit_code": 2,
+      "retained_report": true,
+      "scope": "Explicit nonexistent Data-path placeholder with actual engine configuration root; missing-input reporting only, not a real runtime inventory."
+    },
+    "actual_native_resource_probe": {
+      "exit_code": 3,
+      "ready_receipt": false,
+      "stdout_bytes": 0,
+      "cwd": "vcmi/build/bin",
+      "profile": "isolated writable XDG data/config/cache directories",
+      "error": "Resource with name DATA/VCDESC and type TEXT wasn't found.",
+      "scope": "Real native initialization prerequisite probe; no job dispatched."
+    }
+  },
+  "binary": {
+    "path": "vcmi/build/bin/vcmireplay",
+    "sha256": "8884d45fa2281f58626fe04c77df4d8d5dfd6b34de8c4808e193619c876f4b72"
+  },
+  "coverage": [
+    "All declared missing roots reported; noncanonical roots, directory symlinks, special files and empty declared trees rejected",
+    "Temporary-file same-size content drift, directory membership changes, missing files, file-symlink target changes and selected environment-path drift",
+    "Durable failed summary for absent captures and mismatched reviewed runtime manifest, before any native replay launch",
+    "Cold pre-dispatch hook refuses changed inputs before process launch",
+    "Production native worker protocol preserves first completed receipt and undispatched suffix when runtime drift blocks second dispatch",
+    "Post-measurement drift rejected before comparison acceptance; boundary-only test emits no fabricated native report",
+    "Existing real process/protocol tests remain passing"
+  ],
+  "identity_boundary": {
+    "included": "Declared Data/configuration/mod/additional-library bytes, paths and tree membership, file-symlink targets, selected path environment, cwd; existing binary/capture/observation/direct-linked-library bindings retained",
+    "checkpoints": [
+      "preflight",
+      "before mode launch",
+      "before each cold/worker job",
+      "before each comparison acceptance",
+      "final acceptance"
+    ],
+    "not_established": [
+      "complete resource/search-root selection",
+      "logical archive resource availability before launch",
+      "measured dlopen coverage",
+      "undeclared inputs or full host environment",
+      "concurrent changes restored between boundary samples",
+      "preemptible filesystem hashing",
+      "native Heroes replay/reset equivalence",
+      "any speedup"
+    ],
+    "timing": "Wall time includes synchronous inventory/admission I/O; native phase timers unchanged"
+  },
+  "bounded_input_search": {
+    "roots": [
+      "/workspace/heroes-rl",
+      "/workspace/shared",
+      "/workspace/library-files",
+      "/workspace/scratch"
+    ],
+    "candidate_names": [
+      "replay.jsonl",
+      "native-replay.jsonl",
+      "*.lod",
+      "VCDESC.TXT",
+      "vcdesc.txt"
+    ],
+    "candidate_capture_files": 0,
+    "candidate_data_archives_or_descriptors": 0,
+    "scope": "Filename search only, not proof of all host contents"
+  },
+  "remaining_prerequisites": [
+    "Legally supplied usable original game Data",
+    "Complete declared selected VCMI resources/config/mods/plugins and isolated immutable profile",
+    "Real A/B/A native/contextual/observation captures spanning seeds/maps/seats, natural and prefix outcomes, controller mode where available"
+  ],
+  "real_games": 0,
+  "captured_native_replays": 0,
+  "training": false,
+  "mac_jobs": false,
+  "environment_changes": false,
+  "pr_merges": 0,
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+  "local_logs": {
+    "optimizer-inventory-build.log": {
+      "sha256": "d5b6d30a081d8d74d6909404c8a634294485b0b3994a224dafeb9093ba68955c"
+    },
+    "optimizer-inventory-recipe.log": {
+      "sha256": "aa967b542abccc2d2eabdd5f6a221152efbe837a16624c3927c8261cbfdac6c8"
+    },
+    "optimizer-inventory-repeat-build.log": {
+      "sha256": "8c35b1682f73592d30612d7b0fabdb384fcfff35cb5a076cb48b85b1368aa794"
+    },
+    "optimizer-inventory-tests.log": {
+      "sha256": "e1c88a3f1f50d68b5c66ae8b81d480c06c9b888c4fa25c06475e6e4ad811431c"
+    }
+  },
+  "reproduction": "docs/native-lifecycle-optimizer.md#explicit-runtime-inventory-and-admission"
+}

@@ -278,7 +278,7 @@ class IndependentPolicyTests(unittest.TestCase):
 
     def test_interleaved_agents_keep_rng_observations_and_ledgers_separate(self):
         for player in (0, 1):
-            self.peers.send(player, "ready", protocol_version=2)
+            self.peers.send(player, "ready", protocol_version=3)
         expected = {player: random.Random(17 + player) for player in (0, 1)}
         counts = {0: 0, 1: 0}
         for player in (0, 0, 1, 0, 1, 1):
@@ -296,10 +296,10 @@ class IndependentPolicyTests(unittest.TestCase):
 
     def test_wrong_player_message_fails_only_its_connection(self):
         self.peers.sockets[0].sendall((json.dumps({"type": "ready", "episode": "synthetic-self-play",
-                                                  "player": 1, "protocol_version": 2}) + "\n").encode())
+                                                  "player": 1, "protocol_version": 3}) + "\n").encode())
         red = self.peers.wait(0, lambda state: state["error"] is not None)
         self.assertIn("identity", red["error"])
-        self.peers.send(1, "ready", protocol_version=2)
+        self.peers.send(1, "ready", protocol_version=3)
         self.peers.action(1, 0)
         self.peers.send(1, "terminal", outcome="loss")
         blue = self.peers.wait(1, lambda state: state["terminal"] is not None)
@@ -310,7 +310,7 @@ class IndependentPolicyTests(unittest.TestCase):
     def test_freezing_evidence_stops_delayed_writer_before_hashing(self):
         policy = self.peers.policies[0]
         policy.step_delay = 2.5
-        self.peers.send(0, "ready", protocol_version=2)
+        self.peers.send(0, "ready", protocol_version=3)
         self.peers.send(0, "observation", action_id=0, day=1, tiles=[],
                         action_mask=[False] * 8 + [True], x=0, y=0, z=0)
         self.peers.wait(0, lambda state: state["actions_chosen"] == 1)
@@ -329,7 +329,7 @@ class IndependentPolicyTests(unittest.TestCase):
         self.assertTrue(all(entry["direction"] == "engine" for entry in entries))
 
     def test_freezing_evidence_drains_delivered_natural_terminal(self):
-        self.peers.send(1, "ready", protocol_version=2)
+        self.peers.send(1, "ready", protocol_version=3)
         self.peers.action(1, 0)
         self.peers.send(1, "terminal", outcome="win", state={"own_heroes": 1})
         self.peers.sockets[1].shutdown(socket.SHUT_WR)

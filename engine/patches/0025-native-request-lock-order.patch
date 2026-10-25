@@ -1,0 +1,20 @@
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -565,7 +565,17 @@
+ {
+ 	int requestID;
+ 	{
++		// Nullkiller's synchronous adventure callbacks own the shared GS lock.
++		// Packet application takes event -> GS; do not wait for event in GS ->
++		// event order. These pinned requests own IDs/values, not object borrows.
++		// Restore GS before capture/send and retain the existing ACK wait below.
++		std::optional<vstd::unlock_shared_guard> releaseBeforeEvent;
++		const int builtinLearner = experimentBuiltinLearner();
++		if(waitTillRealize && builtinLearner >= 0 && player == PlayerColor(1 - builtinLearner)
++			&& experimentEventActor().empty())
++			releaseBeforeEvent.emplace(CGameState::mutex);
+ 		ExperimentEventGuard transaction("client", "request");
++		releaseBeforeEvent.reset();
+ 		requestID = requestCounter.fetch_add(1, std::memory_order_relaxed);
+ 		logNetwork->trace("Sending a request \"%s\". It'll have an ID=%d.", typeid(request).name(), requestID);
+ 

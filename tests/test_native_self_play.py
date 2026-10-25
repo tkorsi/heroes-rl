@@ -18,18 +18,23 @@ class NativeSelfPlayTests(unittest.TestCase):
         source = implementation.read_text()
         begin = source.index("std::optional<PlayerColor> CClient::configuredExplorerPlayer() const")
         end = source.index("\nstd::string CClient::aiNameForPlayer", begin)
+        hooks = (ROOT / "vcmi/lib/callback/CDynLibHandler.cpp").read_text()
+        mixed_begin = hooks.index("int experimentBuiltinLearner()")
+        mixed_end = hooks.index("\nJsonNode experimentBuiltinControllers()", mixed_begin)
         with tempfile.TemporaryDirectory(prefix="heroes-self-play-test-") as directory:
             path = Path(directory)
             # Compile the exact production methods. The fixture supplies only a
             # player value type and logging, not replacement routing logic.
-            (path / "self_play_under_test.h").write_text(source[begin:end])
+            (path / "self_play_under_test.h").write_text(hooks[mixed_begin:mixed_end] + "\n" + source[begin:end])
             executable = path / "self-play-regression"
-            subprocess.run([compiler, "-std=c++20", "-O2", "-DNDEBUG", "-I", str(path),
+            compiled = subprocess.run([compiler, "-std=c++20", "-O2", "-DNDEBUG", "-I", str(path),
                             str(ROOT / "tests/native/self_play_routing.cpp"), "-o", str(executable)],
-                           check=True, capture_output=True, text=True, timeout=30)
+                           capture_output=True, text=True, timeout=30)
+            self.assertEqual(compiled.returncode, 0, compiled.stderr)
             result = subprocess.run([str(executable)], check=True, capture_output=True,
                                     text=True, timeout=5)
             self.assertIn("both terminal orders", result.stdout)
+            self.assertIn("mixed controllers", result.stdout)
 
 
 if __name__ == "__main__":
