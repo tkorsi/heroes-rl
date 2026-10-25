@@ -2415,6 +2415,24 @@ wins/losses, cutoffs, failures, available behavior prefixes and execution cost.
 This small diagnostic comparison cannot establish learning or superiority.
 Native integration and execution results remain pending until verified below.
 
+## Stable spell target ordering
+
+The failed longer-cohort Frost Ring replay exposed pointer-address ordering in
+three native spell target collections. Patch `0024-stable-spell-target-order`
+orders the same unique units by their stable battle IDs before processing.
+Range, immunity, forced-first membership, damage formulas and core Chain
+Lightning routing are unchanged. This removes allocation-dependent ordering;
+it does not repair or certify the original failed recording. Its packet hashes
+cannot establish whether that mismatch was only ordering or also affected state.
+
+A focused C++ regression compiles the production range-selection, target
+collection and `Damage::apply` functions and checks emitted injury target IDs,
+order and damage over 576 independent allocation/input permutations. Geometry,
+unit-state and RNG collaborators are explicit test fakes; this is not native
+packet-serialization or rebirth-RNG validation. The production engine rebuild
+and exact generated-source check pass. Real mixed-controller validation remains
+a separate gate before the ordinary comparison.
+
 ## Headless self-play environment (issue #4, in progress)
 
 Status: the legacy `movement-v1` environment has passed bounded real-game,
