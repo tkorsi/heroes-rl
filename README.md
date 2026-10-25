@@ -13,9 +13,11 @@ attempt remains unscored; it is not replaced. The separate comparison against
 Nullkiller Easy also stopped: its first game delivered a day-2 Red defeat/Blue
 victory, but a native request-accounting precheck failed, so the original row
 remains unscored and seven games were not started. Neither stopped evaluation
-performed optimizer updates. Automatic BattleAI combat, normal fog and
-terminal-only rewards remain fixed; observed terminal arrival alone does not
-establish independent replay verification.
+performed optimizer updates. A separate replay with the repaired verifier now
+regenerates that ordinary game's natural ending exactly, including its explicitly
+accounted terminal-unapplied movement attempt. This establishes reachability,
+not retrospective admission or an outcome rate. Automatic BattleAI combat, normal
+fog and terminal-only rewards remain fixed.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2455,8 +2457,9 @@ The native process exited cleanly and delivered Red's defeat and Blue's victory,
 with native terminal callback/barrier records. However, the independent replay
 precheck found **196 captured client requests but only 195 authoritative server
 inputs** and rejected the episode before native replay execution. The unmatched
-last request is native-opponent request 196, type 182; its accounting is an open
-validation gap. No request is discarded to make this original result pass.
+last request is native-opponent request 196, type 182. The separately recorded
+verifier repair below resolves its accounting; no request is discarded and the
+original failed admission remains unchanged.
 
 The original report therefore contains **one failed, unscored attempt and seven
 not-started rows**, with null outcomes and rewards for every row. The local
@@ -2492,8 +2495,55 @@ These unequal observed prefixes, changed native runtime, unverified new result
 and seven unstarted matched rows cannot establish opponent superiority or a
 causal opponent effect. Native requests are evidence, not equivalent policy
 choices; no native-opponent probability, value or trajectory is fabricated.
-The original comparison remains stopped while request-tail accounting is
-investigated, and its result will not be overwritten by a later repair.
+The original comparison remains stopped, and its result is not overwritten by
+the separate verifier diagnostic below.
+
+## Terminal request accounting and separate natural diagnostics
+
+The preserved ordinary game contains 195 applied server inputs and one further
+client attempt. The last applied input, automatic battle request 195, emits
+packets 1,242–1,280 and the natural Red-defeat/Blue-victory barrier. Native Blue
+resumes a movement after packet 1,274, before terminal callbacks finish. Its
+request 196 is captured but has no authoritative application. The server has
+already sealed the terminal boundary. Evidence does not establish whether that
+attempt reached the server or remained queued; it must not be called an applied
+move or an explicitly rejected request.
+
+The verifier now accounts for exactly one such trailing native-opponent
+`MoveHero`, requiring contiguous request identity, decoded bytes/controller,
+receipt within the final input's independently regenerated packet range, no
+later learner response, and matching natural callbacks, state and terminal
+barrier. Cutoffs, missing earlier requests, extra tails and different request
+families still fail. Every captured attempt is replayed and checked; the
+unapplied attempt never enters server game-state application. Rules, rewards,
+client, learner adapter and AI binaries are unchanged by this verifier repair.
+
+A separate explicit verifier-only diagnostic on the saved ordinary capture
+passes: **195 applied inputs, 1,280 packets, 196 client attempts, 23 learner
+responses and 162 learner-history frames**, with zero unchecked records. It
+regenerates the natural day-2 ending. Only the verifier executable and its owned
+source differ from capture; all client/rules/AI runtime hashes remain exact.
+The diagnostic uses a distinct report schema, keeps `verified=false` and
+`original_cohort_admission=false`, and leaves cohort rewards/outcomes null.
+Original artifacts are hash-checked before and after. Thus ordinary natural
+outcomes are reachable, while the original stopped comparison remains one
+failed/unscored row plus seven not-started rows.
+
+The repaired verifier builds successfully; exact dependency preparation passes.
+The full suite runs 906 tests successfully with one retained-capture skip.
+Focused native accounting tests include 65 checks using the actual packet codec;
+fixture orchestration tests cover failure retention, cleanup and fixed limits.
+
+The next bounded validation is separately declared by
+`validation/probes/validate_builtin_natural.py`: two fixed cases, learner Red
+then Blue, using the existing townless boundary fixture and unchanged v7 frozen
+policy. Every action is sampled by that policy; the fixture's historical action
+script is unused. Each case allows 120 seconds including cleanup/replay,
+256 nominal choices plus eight real-dialog reserve choices and at most 12 game
+days. Engine seed 121902 and policy seed 121903 are fixed for both seats. A
+failure is retained and stops subsequent cases. These checks cannot replace
+ordinary rows, establish ordinary outcome rates or authorize training. No
+optimizer updates or training samples are produced.
 
 ## Stable spell target ordering
 

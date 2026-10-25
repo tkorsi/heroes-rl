@@ -118,12 +118,13 @@ class BuiltinNativeSourceTests(unittest.TestCase):
         self.assertNotIn("learner", allowed)
         self.assertNotIn("MoveHero", allowed)
         run = function(source, "JsonNode ContextualReplay::run(")
+        accounting = (ROOT / "engine/ExperimentReplay/RequestAccounting.h").read_text()
         for guard in ('source == "native_opponent"', "request->player != PlayerColor(1 - learner)",
                       'transaction->first != "client"', "requestIndex != inputs.size()",
                       'item["pack"].String() != expected["pack"].String()',
-                      'expected["request"].Integer() != request->requestID',
-                      "return std::make_shared<PassiveOpponent>()"):
-            self.assertIn(guard, run)
+                      'expected["request"].Integer() != request->requestID'):
+            self.assertIn(guard, accounting)
+        self.assertIn("return std::make_shared<PassiveOpponent>()", run)
         passive = source[source.index("class PassiveOpponent"):source.index("/// Automatic requests")]
         self.assertNotIn("selectionMade", passive)
         self.assertNotIn("endTurn", passive)
