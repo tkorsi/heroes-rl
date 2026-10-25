@@ -65,6 +65,16 @@ exactly and 2,693 native transactions replayed with none unchecked. These
 diagnostics supplied no PPO samples. The repaired runtime also passed the full
 28-case capability suite; the original failed startup remains unscored.
 
+The subsequent repair2 campaign completed two verified baseline games (both
+natural losses, 274 decisions), then stopped on a native heap-corruption crash
+after 39 choices on day2 of its first training game. No PPO update or training
+sample was admitted; three remaining games were not started. Update92 and all
+failed evidence are preserved, and owned-process cleanup passed. The source
+trace identifies an invalid same-backpack artifact insertion after source
+removal. The user requested the fix and another launch within the original
+window; regression and replay checks are required first. See the
+[dated failure analysis](validation/v8-artifact-crash-2026-10-26.json).
+
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
 games produced **zero wins, 47 natural losses and one day-limit cutoff**. The
