@@ -2009,7 +2009,8 @@ gold debit, hero identity, initial army and visitor creation. Closed windows sto
 refreshing; old observations remain immutable. All owned heroes share the
 player's recurrent history but are selected individually by opaque references.
 
-Stage 1 is implemented and locally validated, with compact source-bound evidence
+Stage 1 is implemented and locally validated in draft
+[PR #15](https://github.com/tkorsi/heroes-rl/pull/15), stacked on #14, with compact source-bound evidence
 in `validation/hero-recruitment-2026-10-25.json`. Source evolved through `e2d8761`,
 `b7a479f`, `8c26cc7` and `3c3f7fc`; each capture retains its exact source/runtime
 identity. The complete current test suite passes **660 tests, zero skips**; the
