@@ -477,6 +477,47 @@ def codec(args):
     return result
 
 
+ROW_FIELDS = ("episode", "learner_player", "engine_seed", "controller", "status", "episode_status", "termination_reason",
+              "outcomes", "error", "reset_seconds", "collection_seconds", "row_seconds", "replay_seconds", "audit_seconds",
+              "replay_verified", "replay_error", "policy_audit", "returncode", "poisoned_after", "dialog_answers")
+
+
+def compact_row(row):
+    result = {key: row[key] for key in ROW_FIELDS if key in row}
+    history = row.get("history", {})
+    result.update(submitted=history.get("submitted"), last_day=history.get("last_day"),
+                  action_mix=history.get("action_mix"), results_rejected=history.get("results_rejected"),
+                  step_seconds=row.get("step", {}).get("seconds"), controller_seconds=row.get("controller_time", {}).get("seconds"),
+                  finalize_seconds=row.get("finalize", {}).get("seconds"), engine_wait_seconds=row.get("engine_wait_seconds"),
+                  native_timings=row.get("native_timings"),
+                  close_clean=(row.get("native_close") or {}).get("close_clean"),
+                  resources_after={key: row.get("resources_after", {}).get(key) for key in
+                                   ("resident_bytes", "threads", "open_descriptors", "python_threads", "peak_children_bytes")})
+    return result
+
+
+def collect(args):
+    """One compact, path-free JSON of several run reports for the repository record."""
+    runs = []
+    for folder in args.runs:
+        folder = Path(folder).expanduser().resolve()
+        report, plan = (strict_json((folder / name).read_bytes()) for name in ("report.json", "plan.json"))
+        runs.append({"name": folder.name, "backend": plan["backend"], "controller": plan["controller"],
+                     "map_sha256": plan["map"]["sha256"], "checkpoint_sha256": (plan.get("checkpoint") or {}).get("sha256"),
+                     "limits": plan["limits"], "platform": plan["platform"], "rows_planned": len(plan["rows"]),
+                     "status": report["status"], "engine_load_seconds": report.get("engine_load_seconds"),
+                     "process_seconds": report.get("process_seconds"), "poisoned": report.get("poisoned"),
+                     "resources_start": report.get("resources_start"), "resources_end": report.get("resources_end"),
+                     "summary": report.get("summary"), "rows": [compact_row(row) for row in report["rows"]]})
+    extra = {}
+    for path in args.attach or ():
+        path = Path(path).expanduser().resolve()
+        extra[path.name] = strict_json(path.read_bytes())
+    result = {"schema": SCHEMA + "-compact", "runs": runs, "attached": extra, "scope": SCOPE}
+    write(args.output, result)
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -511,8 +552,12 @@ def main(argv=None):
     measure.add_argument("--episode", type=Path, required=True)
     measure.add_argument("--repeat", type=int, default=20)
     measure.add_argument("--output", type=Path)
+    gather = commands.add_parser("collect")
+    gather.add_argument("--runs", type=Path, nargs="+", required=True)
+    gather.add_argument("--attach", type=Path, nargs="*", help="Extra small JSON results (comparisons, codec, benchmark)")
+    gather.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
-    {"run": run, "compare": compare, "codec": codec}[args.command](args)
+    {"run": run, "compare": compare, "codec": codec, "collect": collect}[args.command](args)
 
 
 if __name__ == "__main__":

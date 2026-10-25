@@ -75,6 +75,21 @@ class ProbeHelperTests(unittest.TestCase):
             self.assertEqual(summary["decisions_per_second"], 2.0)
             self.assertEqual(summary["action_mix"], {"end_turn": 1})
 
+    def test_collect_writes_compact_path_free_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp) / "run-a"
+            run.mkdir()
+            plan = {"backend": "embedded", "controller": "end_turn", "map": {"sha256": "a" * 64}, "checkpoint": None,
+                    "limits": {"choices": 4}, "platform": {"system": "Linux"}, "rows": [{}]}
+            row = {"episode": 1, "status": "passed", "episode_directory": "/private/x", "history": {"submitted": 3},
+                   "resources_after": {"threads": 5}, "native_close": {"close_clean": True}}
+            (run / "plan.json").write_text(json.dumps(plan))
+            (run / "report.json").write_text(json.dumps({"status": "finished", "rows": [row], "summary": {"rows": 1}}))
+            result = probe.collect(type("Args", (), {"runs": [run], "attach": [], "output": Path(tmp) / "c.json"}))
+            compact = result["runs"][0]["rows"][0]
+            self.assertEqual((compact["submitted"], compact["close_clean"], compact["resources_after"]["threads"]), (3, True, 5))
+            self.assertNotIn("/private", json.dumps(result))
+
     def test_schedule_alternates_seats_with_fixed_seed_bases(self):
         rows = probe.schedule(3, [0, 1], 100, 200)
         self.assertEqual([(r["episode"], r["learner_player"], r["engine_seed"], r["policy_seed"]) for r in rows],
