@@ -140,6 +140,32 @@ def army_contents(army):
     return tuple((slot.slot, slot.creature, slot.count) for slot in army.slots)
 
 
+def exact_exchange_stack_roundtrip(before, opened, after, source_ref, opening, closing):
+    """Opening details must preserve the active query and its hidden parent."""
+    source_army, source = slots(rows(before))[source_ref]
+    panel = opened.observation.window.stack_panel
+    base.ensure(before.observation.context.kind == "exchange" and panel is not None
+                and panel.parent_context == before.observation.context and panel.source == source
+                and opened.observation.context == c.Context("stack", source_army.subject, "overview", source_ref)
+                and not opened.observation.window.armies,
+                "Exchange stack details lost the parent query or refreshed hidden army rows")
+    base.ensure(after.observation.context == before.observation.context and rows(after) == rows(before)
+                and all(frame.observation.resources == before.observation.resources
+                        and frame.observation.heroes == before.observation.heroes
+                        and frame.observation.towns == before.observation.towns for frame in (opened, after)),
+                "Exchange stack roundtrip changed an army, query context or owned state")
+    for request, (additions, result), status in ((before, opening, "opened"), (opened, closing, "closed")):
+        consumed = [item for item in additions if item.kind == "consumed" and item.decision_seq == request.seq]
+        completed = [item for item in additions if item.kind == "result" and item.decision_seq == request.seq]
+        base.ensure(result is not None and result.accepted and result.status == status
+                    and len(consumed) == len(completed) == 1 and consumed[0].consumer == "adapter"
+                    and completed[0].result == result and consumed[0].seq < completed[0].seq
+                    and not any(item.kind in ("issued", "acknowledged") for item in additions),
+                    "Stack navigation issued a native query reply or lacks its adapter receipt")
+    return {"source": source_ref, "parent_context": asdict(before.observation.context),
+            "native_issued": 0, "army_rows_unchanged": True}
+
+
 def expected_simple_garrison_merge(town_army, visitor):
     """Exact native getSlotFor order for probes with a matching or free slot."""
     expected = [list(item) for item in army_contents(visitor)]
@@ -391,6 +417,20 @@ def exchange_case(run):
     source = next(slot for slot in first.slots if slot.count > 1)
     target = next((slot for slot in other.slots if not slot.count), None)
     base.ensure(target is not None, "Native recruited hero lacks the declared free exchange slot")
+    parent = run.inspect_request()
+    _, opened_additions, opened_result = run.call(
+        run.action("open_stack", subject=parent.observation.context.subject, selection=source.ref),
+        "explicit_open_stack_inside_native_exchange")
+    opened = run.inspect_request()
+    _, closed_additions, closed_result = run.call(
+        run.action("back", subject=opened.observation.context.subject), "explicit_back_to_native_exchange")
+    run.check("native_exchange_stack_roundtrip", "passed", **exact_exchange_stack_roundtrip(
+        parent, opened, run.inspect_request(), source.ref,
+        (opened_additions, opened_result), (closed_additions, closed_result)))
+    relocation = next((slot for slot in first.slots if not slot.count), None)
+    base.ensure(relocation is not None, "Original hero lacks the declared free relocation slot")
+    run.manipulate("split_stack", source.ref, relocation.ref, source.count)
+    run.manipulate("split_stack", relocation.ref, source.ref, source.count)
     run.manipulate("split_stack", source.ref, target.ref, 1)
     run.manipulate("merge_stacks", target.ref, source.ref)
     before, additions, result = run.call(run.action("close"), "explicit_close_native_hero_exchange_query")

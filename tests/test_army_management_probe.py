@@ -167,5 +167,28 @@ class ArmyManagementProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(p.base.ProbeFailure, "unrelated owned state"):
             p.exact_garrison(before, after, additions, result)
 
+    def test_exchange_stack_roundtrip_preserves_query_and_hides_parent_rows(self):
+        first = replace(self.hero, role="hero")
+        second = army("second", "hero", {0: (2, 9)})
+        context = c.Context("exchange", "hero", None, "second")
+        before = frame((first, second), context=context)
+        panel = c.StackPanel(context, first.slots[0], (), None, None, None)
+        opened = frame((), context=c.Context("stack", "hero", "overview", first.slots[0].ref), stack_panel=panel)
+        opened.seq = 20
+        after = frame((first, second), context=context)
+        def adapter_receipt(request, status):
+            result = c.Result(status, True)
+            return ((NS(kind="consumed", seq=request.seq + 1, decision_seq=request.seq, consumer="adapter"),
+                     NS(kind="result", seq=request.seq + 3, decision_seq=request.seq, result=result)), result)
+        opening, closing = adapter_receipt(before, "opened"), adapter_receipt(opened, "closed")
+        p.exact_exchange_stack_roundtrip(before, opened, after, first.slots[0].ref, opening, closing)
+        opened.observation.window.armies = (first, second)
+        with self.assertRaisesRegex(p.base.ProbeFailure, "hidden army rows"):
+            p.exact_exchange_stack_roundtrip(before, opened, after, first.slots[0].ref, opening, closing)
+        opened.observation.window.armies = ()
+        premature_close = (closing[0] + (NS(kind="issued"),), closing[1])
+        with self.assertRaisesRegex(p.base.ProbeFailure, "native query reply"):
+            p.exact_exchange_stack_roundtrip(before, opened, after, first.slots[0].ref, opening, premature_close)
+
 
 if __name__ == "__main__": unittest.main()
