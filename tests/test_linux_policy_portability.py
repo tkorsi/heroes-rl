@@ -2,6 +2,7 @@
 from copy import deepcopy
 import json
 import platform
+import stat
 import sys
 from pathlib import Path
 import tempfile
@@ -56,6 +57,9 @@ class LinuxPortabilityTests(unittest.TestCase):
         self.assertTrue(torch.equal(rng_before, torch.get_rng_state()))
         self.assertEqual(before, self.original.read_bytes())
         converted = self.output / 'fixed-policy-linux.pt'
+        self.assertEqual(stat.S_IMODE(self.output.stat().st_mode), 0o700)
+        for path in (converted, self.output / 'portability.json'):
+            self.assertEqual(stat.S_IMODE(path.stat().st_mode), 0o600)
         loaded = load_policy_checkpoint(converted, interface=c.DIALOGS_ENVIRONMENT)
         self.assertEqual(loaded.checkpoint, 'synthetic-original-linux-cpu-v1')
         self.assertEqual(loaded.source_metadata['portability']['original_source_metadata'], self.payload['source_metadata'])
@@ -71,6 +75,19 @@ class LinuxPortabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'size or SHA-256'):
             p.convert(self.original, self.output)
         self.assertFalse(self.output.exists())
+
+    def test_private_conversion_inside_checkout_refused_before_loading(self):
+        with self.assertRaisesRegex(ValueError, 'outside the Git checkout'):
+            p._convert(self.original, p.ROOT / 'private-conversion-test', **self.expected)
+
+    def test_exact_comparison_checks_dtype_shape_and_signed_zero(self):
+        for other in (torch.tensor([0.], dtype=torch.float64), torch.tensor([-0.]),
+                      torch.tensor([[0.]]), torch.tensor([1.])):
+            with self.subTest(other=other), self.assertRaisesRegex(ValueError, 'tensor'):
+                p.assert_exact_state(torch.tensor([0.]), other)
+        for tensor in (torch.tensor(1.), torch.empty(0), torch.tensor([True]),
+                       torch.arange(12).reshape(3, 4).t(), torch.tensor([1.], dtype=torch.bfloat16)):
+            p.assert_exact_state(tensor, tensor.clone())
 
     def test_hash_change_is_rejected_before_loading(self):
         self.original.write_bytes(self.original.read_bytes() + b'changed')

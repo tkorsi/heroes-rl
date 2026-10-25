@@ -7,9 +7,11 @@ This produces a separately bound artifact, not a resumption of a Mac plan.
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 from copy import deepcopy
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import sys
@@ -35,14 +37,41 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def assert_exact_state(left, right):
+    """Compare tensor metadata and bits, including signed zero, without NumPy.
+
+    ``torch.equal`` alone accepts equal values across different dtypes and treats
+    the two floating zero representations as equal. Portability promises exact
+    tensors, so compare a contiguous byte view as well as the original shape.
+    """
+    import torch
+    if isinstance(left, torch.Tensor):
+        require(isinstance(right, torch.Tensor) and left.dtype == right.dtype
+                and left.shape == right.shape and left.layout == right.layout == torch.strided,
+                'Portability tensor metadata differs')
+        require(torch.equal(left.detach().cpu().contiguous().reshape(-1).view(torch.uint8),
+                            right.detach().cpu().contiguous().reshape(-1).view(torch.uint8)),
+                'Portability tensor bits differ')
+    elif isinstance(left, Mapping):
+        require(type(right) is type(left) and left.keys() == right.keys(), 'Portability mapping differs')
+        for key in left:
+            assert_exact_state(left[key], right[key])
+    elif type(left) in (tuple, list):
+        require(type(right) is type(left) and len(left) == len(right), 'Portability sequence differs')
+        for a, b in zip(left, right):
+            assert_exact_state(a, b)
+    else:
+        require(type(left) is type(right) and left == right, 'Portability scalar differs')
+
+
 def _convert(source, output, *, expected_sha256, expected_bytes, expected_learner, expected_opponents):
     """Internal conversion also exercised with synthetic, explicitly bound fixtures."""
     import torch
     from experiments.learner.checkpoints import load_policy_checkpoint
-    from experiments.learner.gameplay import assert_same_state
     from experiments.learner.inference import source_identity
 
     source, output = Path(source).resolve(), Path(output).resolve()
+    require(not output.is_relative_to(ROOT), 'Store converted private artifacts outside the Git checkout')
     require(not output.exists(), 'Output already exists; never overwrite a migration')
     require(platform.system() == 'Linux' and platform.machine() == 'x86_64'
             and sys.version_info[:2] == (3, 12), 'Linux x86_64 with CPython 3.12 required')
@@ -78,7 +107,7 @@ def _convert(source, output, *, expected_sha256, expected_bytes, expected_learne
         'optimizer_updates': 0, 'cross_platform_behavior_equivalence': 'not_established'}}
     # The only permitted changes are the new artifact identity and explicit runtime provenance.
     for key in original.keys() - {'checkpoint', 'torch_version', 'source_metadata'}:
-        assert_same_state(original[key], migrated[key])
+        assert_exact_state(original[key], migrated[key])
     with tempfile.TemporaryDirectory(prefix='heroes-policy-port-') as temp:
         candidate = Path(temp) / 'fixed-policy-linux.pt'
         torch.save(migrated, candidate)
@@ -86,11 +115,11 @@ def _convert(source, output, *, expected_sha256, expected_bytes, expected_learne
         # provenance and local runtime guards. There is no permissive loader flag.
         loaded = load_policy_checkpoint(candidate, expected_source_metadata=migrated['source_metadata'],
                                         interface=INTERFACE, allowed_provenance=('random_initialization',))
-        assert_same_state(original['model_state'], dict(loaded.model.state_dict()))
+        assert_exact_state(original['model_state'], dict(loaded.model.state_dict()))
         require(loaded.opponent_pool is not None, 'Frozen opponent pool missing')
         for entry in pool:
             opponent = loaded.opponent_pool.get(entry['checkpoint'])
-            assert_same_state(entry['model_state'], dict(opponent.model.state_dict()))
+            assert_exact_state(entry['model_state'], dict(opponent.model.state_dict()))
         loaded.opponent_pool.assert_unchanged()
         require(digest(source) == expected_sha256, 'Original changed during conversion')
         report = {'schema': SCHEMA, 'purpose': 'frozen_inference_only',
@@ -104,10 +133,12 @@ def _convert(source, output, *, expected_sha256, expected_bytes, expected_learne
             'original_preserved': True, 'optimizer_updates': 0, 'gameplay_performed': False,
             'cross_platform_behavior_equivalence': 'not_established',
             'linux_gameplay_and_native_replay': 'not_run'}
-        output.mkdir(parents=True, exist_ok=False)
-        with (output / candidate.name).open('xb') as stream:
+        output.mkdir(mode=0o700, parents=True, exist_ok=False)
+        descriptor = os.open(output / candidate.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'wb') as stream:
             stream.write(candidate.read_bytes())
-        with (output / 'portability.json').open('x') as stream:
+        descriptor = os.open(output / 'portability.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, 'w') as stream:
             stream.write(json.dumps(report, indent=2, sort_keys=True) + '\n')
     return report
 
