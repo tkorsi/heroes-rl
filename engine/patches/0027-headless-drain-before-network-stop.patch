@@ -1,0 +1,24 @@
+--- a/client/CServerHandler.cpp
++++ b/client/CServerHandler.cpp
+@@ -180,7 +180,21 @@
+ void CServerHandler::endNetwork()
+ {
+ 	if (client)
++	{
+ 		client->endNetwork();
++		if(!ENGINE)
++		{
++			// Stop admitting callbacks, then drain AI tasks while their submitting
++			// network thread still exists. oneTBB deferred tasks retain a
++			// thread-reference wait vertex; joining the producer first can leave
++			// task completion releasing freed thread-local scheduler storage.
++			{
++				std::scoped_lock interfaceLock(clientInterfaceMutex());
++				setState(EClientState::DISCONNECTING);
++			}
++			client->finishGameplay();
++		}
++	}
+ 	networkHandler->stop();
+ 
+ 	if (threadNetwork.joinable())
