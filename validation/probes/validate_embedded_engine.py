@@ -538,7 +538,7 @@ def main(argv=None):
     runner.add_argument("--max-days", type=int, default=12)
     runner.add_argument("--choices", type=int, default=256)
     runner.add_argument("--watchdog", type=float, default=60)
-    runner.add_argument("--bridge-timeout", type=float, default=30)
+    runner.add_argument("--bridge-timeout", type=int, default=30, help="whole seconds, as EXPLORER_RL_TIMEOUT requires")
     runner.add_argument("--row-seconds", type=float, default=300)
     runner.add_argument("--visit-kind", type=int)
     runner.add_argument("--stall-seconds", type=float, default=0.0)
