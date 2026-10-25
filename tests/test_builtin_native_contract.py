@@ -67,23 +67,42 @@ int main() {
     def test_only_two_explicit_single_learner_mappings_are_accepted(self):
         base = {"EXPLORER_RL_BUILTIN_OPPONENT": "Nullkiller", "EXPLORER_RL_INTERFACE": "adventure-dialogs-v1",
                 "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1", "EXPLORER_RL_PLAYERS": "0"}
-        for seat in ("0", "1"):
-            with self.subTest(seat=seat):
-                result = self.parse({**base, "EXPLORER_RL_PLAYERS": seat})
-                self.assertEqual((result.returncode, result.stdout), (0, seat))
+        for interface in ("adventure-dialogs-v1", "adventure-capabilities-v1"):
+            for seat in ("0", "1"):
+                with self.subTest(interface=interface, seat=seat):
+                    result = self.parse({**base, "EXPLORER_RL_PLAYERS": seat,
+                                         "EXPLORER_RL_INTERFACE": interface})
+                    self.assertEqual((result.returncode, result.stdout), (0, seat))
         invalid = {"EXPLORER_RL_BUILTIN_OPPONENT": ("", "Nullkiller2", "ExplorerRL"),
-                   "EXPLORER_RL_INTERFACE": (None, "movement-v1", "adventure-army-management-v1"),
+                   "EXPLORER_RL_INTERFACE": (None, "movement-v1", "adventure-army-management-v1",
+                                             "adventure-capabilities-v2", "adventure-capabilities-v1 "),
                    "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": (None, "0", "true"),
                    "EXPLORER_RL_PLAYERS": (None, "", "0,1", "1,0", "2", "00", " 0", "0 "),
                    "EXPLORER_RL_PLAYER": ("0", "1")}
-        for key, values in invalid.items():
-            for value in values:
-                with self.subTest(key=key, value=value):
-                    self.assertEqual(self.parse({**base, key: value}).returncode, 3)
+        for interface in ("adventure-dialogs-v1", "adventure-capabilities-v1"):
+            for key, values in invalid.items():
+                for value in values:
+                    with self.subTest(interface=interface, key=key, value=value):
+                        self.assertEqual(self.parse({**base, "EXPLORER_RL_INTERFACE": interface,
+                                                     key: value}).returncode, 3)
 
 
 @unittest.skipUnless((ENGINE / "client/Client.cpp").is_file(), "Prepared pinned source required")
 class BuiltinNativeSourceTests(unittest.TestCase):
+    def test_expanded_interface_reaches_both_terminal_barrier_endpoints(self):
+        # Match the production allow-list expressions rather than accepting an
+        # unrelated mention elsewhere in the source. Live natural outcomes are
+        # validated separately by the both-seat built-in integration probe.
+        cases = (("client/Client.cpp", "void CClient::completeExperimentTerminalBarrier",
+                  "barrier.interface"),
+                 ("server/CGameHandler.cpp", "void CGameHandler::maybeSendExperimentTerminalBarrier",
+                  "std::string(interface)"))
+        for path, signature, value in cases:
+            with self.subTest(path=path):
+                native = function((ENGINE / path).read_text(), signature)
+                self.assertIn(f'{value} != "adventure-dialogs-v1" && {value} != "adventure-capabilities-v1"', native)
+                self.assertIn("experimentHasFailed()", native)
+
     def test_startup_records_before_first_native_request_and_pins_real_rules(self):
         source = (ENGINE / "client/Client.cpp").read_text()
         init = function(source, "void CClient::initPlayerInterfaces()")

@@ -1,0 +1,41 @@
+diff --git a/lib/callback/CDynLibHandler.cpp b/lib/callback/CDynLibHandler.cpp
+--- a/lib/callback/CDynLibHandler.cpp
++++ b/lib/callback/CDynLibHandler.cpp
+@@ -137,10 +137,11 @@
+ 	const char * players = std::getenv("EXPLORER_RL_PLAYERS");
+ 	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
+ 	if(std::string(opponent) != "Nullkiller" || !contextualEvidenceEnabled()
+-		|| !interface || std::string(interface) != "adventure-dialogs-v1"
++		|| !interface || (std::string(interface) != "adventure-dialogs-v1"
++			&& std::string(interface) != "adventure-capabilities-v1")
+ 		|| std::getenv("EXPLORER_RL_PLAYER") || !players
+ 		|| (std::string(players) != "0" && std::string(players) != "1"))
+-		throw std::runtime_error("Built-in evaluation requires one explicit v7 ExplorerRL seat and Nullkiller");
++		throw std::runtime_error("Built-in evaluation requires one explicit v7/v8 ExplorerRL seat and Nullkiller");
+ 	return players[0] - '0';
+ }
+ 
+diff --git a/client/Client.cpp b/client/Client.cpp
+--- a/client/Client.cpp
++++ b/client/Client.cpp
+@@ -539,7 +539,7 @@
+ 			&& explorerTerminalOutcomes.at(PlayerColor(1)) != barrier.redWon;
+ 	if(experimentHasFailed() || !episode || !interface || barrier.version != 1 || barrier.barrierId != 1
+ 		|| barrier.episode != episode || barrier.interface != interface
+-		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1" && barrier.interface != "adventure-armies-v1" && barrier.interface != "adventure-heroes-v1" && barrier.interface != "adventure-army-management-v1" && barrier.interface != "adventure-dialogs-v1")
++		|| (barrier.interface != "adventure-windows-v1" && barrier.interface != "adventure-town-v1" && barrier.interface != "adventure-armies-v1" && barrier.interface != "adventure-heroes-v1" && barrier.interface != "adventure-army-management-v1" && barrier.interface != "adventure-dialogs-v1" && barrier.interface != "adventure-capabilities-v1")
+ 		|| !controllersComplete
+ 		|| barrier.clientPackets != position.index || position.index != position.completed
+ 		|| position.phase != ExperimentPacketPhase::CallbacksComplete
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -602,7 +602,7 @@
+ 	const char * interface = std::getenv("EXPLORER_RL_INTERFACE");
+ 	const auto connection = gameServer().experimentClientConnection();
+ 	if(!episode || !*episode || !interface
+-		|| (std::string(interface) != "adventure-windows-v1" && std::string(interface) != "adventure-town-v1" && std::string(interface) != "adventure-armies-v1" && std::string(interface) != "adventure-heroes-v1" && std::string(interface) != "adventure-army-management-v1" && std::string(interface) != "adventure-dialogs-v1")
++		|| (std::string(interface) != "adventure-windows-v1" && std::string(interface) != "adventure-town-v1" && std::string(interface) != "adventure-armies-v1" && std::string(interface) != "adventure-heroes-v1" && std::string(interface) != "adventure-army-management-v1" && std::string(interface) != "adventure-dialogs-v1" && std::string(interface) != "adventure-capabilities-v1")
+ 		|| !gameServer().hasPlayerAt(PlayerColor(0), connection) || !gameServer().hasPlayerAt(PlayerColor(1), connection)
+ 		|| requestConnection != connection
+ 		|| !supportedExperimentTerminalRequest(input, lastPackResult && !lastPackBlocked
