@@ -119,8 +119,16 @@ per-job replay latency, not learned-policy step latency or full-game throughput.
 Do not accept the optimization for training until real repeated-reset equivalence
 and the corresponding live observation/fog/action/terminal contracts pass.
 
-GitHub API access from this runtime returned `Forbidden` for issue/PR operations;
-read-only GitHub pages supplied coordination context. If posting remains blocked,
-the branch and this document are the reviewable handoff, and issue #4 / a draft
-PR still need publication once write access is available. Do not message or
-redirect Claude, or launch anything on the user's Mac.
+GitHub API publication was restored after the user published the exact
+`api.github.com` allowlist addition. Restricted networking and the package preset
+remain in place; no new credential was introduced. Authenticated issue reads,
+REST draft-PR creation and issue-comment creation succeeded. Draft
+[PR #25](https://github.com/tkorsi/heroes-rl/pull/25) targets
+`codex/builtin-ppo-pilot`; the scope and validation limitations are posted in
+[issue #4](https://github.com/tkorsi/heroes-rl/issues/4#issuecomment-6398668855).
+The CLI's GraphQL operation returned 503; REST worked after a duplicate check.
+The original validation record preserves its historical access failures; the
+[publication record](../validation/optimizer-publication-2026-10-25.json)
+records the subsequent successful operations. No native validation was rerun or
+new game evidence obtained during the access repair. Do not message or redirect
+Claude, or launch anything on the user's Mac.
