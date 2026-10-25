@@ -4,8 +4,9 @@
 
 The user requested the entire engineering loop in the cloud: code changes,
 tests and real headless VCMI games, continuing while the Mac is offline.
-Gameplay training is still disabled. This document and the CPU bootstrap are
-preparation, not evidence of a working cloud environment or Linux game.
+Gameplay training is still disabled. The Debian development build and source/
+native regression tests are now validated as recorded below; real Linux games
+remain blocked on private inputs. Setup success is not gameplay evidence.
 
 The migration branch is `codex/cloud-environment`, including published
 builtin-opponent commit `19ea34f54b65bdad2e1d19c5580aecc11ba9d6c2`. Do not start
@@ -59,11 +60,11 @@ Unit tests may exercise synthetic optimizer updates; that is separate from
 gameplay training. Setup must report its actual Python, PyTorch and platform
 identity and preserve the resolved package inventory.
 
-This is an initial Linux bootstrap, not a validated hashed Linux dependency
-lock. The existing `dependencies/learner.lock` targets macOS arm64. Do not claim
-that it locks the Linux runtime, silently loosen checkpoint checks, or use a
-successful shell syntax check as proof of native compilation. Save a dedicated
-Linux dependency lock and compact validation record once Linux setup succeeds.
+The original `setup_cloud_cpu.sh` Python stage resolves host-specific packages.
+Use the tested `setup_cloud_locked.sh` path below on the current Debian cloud
+host. Its separate hashed Linux wheel lock does not replace the macOS arm64
+`dependencies/learner.lock`. Preserve checkpoint compatibility checks and keep
+native build, source tests and real-game validation as separate evidence gates.
 
 From Git alone, a task can inspect/edit authored sources, apply the pinned VCMI
 recipe, build the engine and run source/contract tests. Real games additionally
@@ -250,3 +251,53 @@ Private Data, the original checkpoint and any raw games must remain outside
 Git and shared snapshots. Until those inputs are supplied and checked, native
 startup, both-color diagnostics and the two maximum-one-hour cohorts are blocked.
 Neither installing dependencies nor compiling replay establishes a working game.
+
+### Verified development state and continuation
+
+[The compact cloud record](../validation/cloud-cpu-2026-10-25.json) binds the
+implementation, dependency locks, seven native artifacts and retained local
+logs. It records a 4-core CPU quota (five CPUs in affinity), a 32 GiB memory
+limit, GCC 14.2.0, CMake 3.31.6, Ninja 1.12.1, CPython 3.12.14 and CPU Torch
+2.9.1+cpu. Installation uses two compiler jobs and one Torch thread.
+
+All six requested build targets pass. The final suite discovers 925 tests:
+922 pass, two static-content tests skip because Data is absent, and one retained
+Mac-capture regression skips. The real-library subset runs 13 tests with only
+the two Data-related skips, including 65 native packet/request-accounting
+checks. The complete locked installer exits zero and repeats with `ninja: no
+work to do.` Four CLI checks and four dynamic library loads pass without a game.
+
+The original sudo-based package stage failed on this host. A relocated-library
+configure failure and cached static-SDL2 link failure were also preserved and
+resolved by the local dependency installer and explicit shared-SDL2 selection.
+No engine recipe or game rule was changed. Local logs are retained under
+`/workspace/cloud-setup`; hashes, failures and compiler warnings are in the
+compact record. A successful `vcmireplay` usage check is not a game replay.
+
+The remaining external gate is a user-approved private location containing
+Data and the exact original checkpoint. The supported input directories are
+empty and no location has been supplied. After those arrive:
+
+1. Run the private inventory and actual checkpoint conversion above. Preserve
+   the original and both new manifests; verify exact tensors and unchanged
+   original bytes on the supplied artifact, not just synthetic fixtures.
+2. Integrate the separately bound Linux checkpoint/report into fresh Linux
+   diagnostic and evaluation plans. The existing Mac evaluators deliberately
+   retain their exact original file/runtime guards. Do not replace their digest
+   constants, monkeypatch loaders or claim a Mac plan is Linux-compatible.
+3. Run explicitly bounded both-color native checks, with fresh provenance:
+   player-private histories, intervening visible events and memory reset,
+   natural terminals, unscored cutoffs, cleanup and independent native replay.
+   Retain every request, including accounted terminal-unapplied attempts.
+4. Only after those gates pass, predeclare and run at most one frozen-neural
+   cohort and one Nullkiller Easy cohort. Each has its own shared 3,600-second
+   ceiling including collection, verification and cleanup. Retain the existing
+   choice/day limits, both colors, explicit seeds and every failed/cutoff/
+   not-started row. Do not restart or relabel the stopped Mac schedules.
+
+No Linux game, actual checkpoint conversion, new cohort or gameplay optimizer
+update has run. These are outstanding gates, not passed checks. The environment
+configuration draft contains installation/startup instructions; publication and
+restoration in a fresh task still require separate verification. Keep this PR
+draft and unmerged. The cloud setup is independent of an online Mac, but it
+cannot reconstruct private inputs that have never been transferred.

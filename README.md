@@ -36,14 +36,23 @@ This is the canonical project document. Last agreement: **25 October 2026**.
 ## Cloud Linux engineering status
 
 The `codex/cloud-environment` branch incorporates the terminal-accounting and
-Mac diagnostic evidence through `9193db3`. A Debian 13 amd64 CPU setup and a
-separate hash-pinned Python 3.12 Linux lock are being validated; see
-[the operational handoff](docs/cloud-environment.md#debian-13-cloud-implementation).
-The frozen-policy portability procedure has synthetic exact-tensor and
-compatibility-rejection tests. The original private checkpoint and game Data
-are not present in the cloud instance, so actual checkpoint conversion and
-Linux games remain unvalidated. Historical Mac outcomes are unchanged. No
-gameplay training is authorized or performed by this cloud setup.
+Mac diagnostic evidence through `9193db3`. Debian 13 amd64 now builds the real
+pinned VCMI client, server, ExplorerRL, BattleAI, Nullkiller and vcmireplay.
+The full cloud suite runs **925 tests: 922 passed, three skipped, no failures**.
+Two skips need proprietary game content and one needs retained Mac captures.
+Native request accounting, terminal barriers and evidence teardown pass against
+the actual built library. The locked setup repeats with no native rebuild;
+CLI startup and AI-library loading also pass. Compact hash-bound evidence:
+[validation/cloud-cpu-2026-10-25.json](validation/cloud-cpu-2026-10-25.json).
+
+The separate Linux CPU Python lock leaves the macOS lock unchanged. An explicit
+frozen-policy portability procedure and private input inventory have nine
+synthetic tests. The original private checkpoint and game Data are still absent,
+so actual conversion, Linux games and game replays remain **unvalidated**. No
+new evaluation cohort was started and no gameplay training occurred; existing
+synthetic optimizer unit tests ran. Historical Mac outcomes remain unchanged.
+See [the operational handoff](docs/cloud-environment.md#debian-13-cloud-implementation)
+for installation, private-input checks and the remaining Linux plan integration.
 
 ## Why this project exists
 
