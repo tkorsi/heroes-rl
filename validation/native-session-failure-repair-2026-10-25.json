@@ -1,0 +1,38 @@
+{
+  "schema": "heroes-native-session-failure-repair-v1",
+  "base_commit": "4ca27f9ba9995ce4a351089efc9ca1a15f18adf3",
+  "scope": "Fail-closed reset after joined cleanup, persistent native/channel errors and typed clean cancellation; portable atomic endpoint publication",
+  "platform": "macOS arm64, Apple clang 17.0.0",
+  "checks": {
+    "canonical_recipe": "python3 tools/prepare_vcmi.py --check passed against an isolated prepared dependency",
+    "native_unit_tests": {
+      "command": "python3 -m unittest tests.test_native_session_failure -v",
+      "passed": 2,
+      "skipped": 0,
+      "failed": 0,
+      "lifecycle_iterations": 100,
+      "channel_error_before_close_iterations": 100,
+      "additional_cases": [
+        "cleanup exception",
+        "clean truncation remains reusable",
+        "timeout survives close",
+        "overflow survives close"
+      ]
+    },
+    "negative_controls": {
+      "missing_post_cleanup_recheck": "rejected with exit 1",
+      "discard_late_nonzero_report": "rejected with exit 1"
+    },
+    "translation_units": [
+      "EngineSession.cpp: Apple clang C++20 syntax check passed",
+      "ExplorerRL.cpp: Apple clang C++20 syntax check passed"
+    ],
+    "source_whitespace": "git diff --check passed"
+  },
+  "limitations": [
+    "No full native rebuild or new real games; runtime/replay acceptance remains a separate gate",
+    "Channel fixture compiles the exact production channel and uses the existing local libvcmi only for its unchanged JSON implementation",
+    "Existing ordinary and experimental runtimes were not modified"
+  ],
+  "training_performed": false
+}

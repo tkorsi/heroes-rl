@@ -29,7 +29,7 @@ public:
 	void check() const
 	{
 		if(!failure.empty()) throw std::runtime_error(failure);
-		if(closed) throw std::runtime_error("Native policy channel closed");
+		if(closed) throw PolicyTransportCancelled();
 	}
 };
 
@@ -137,6 +137,11 @@ bool InProcessPolicy::cancelled() const noexcept
 {
 	std::lock_guard lock(impl->mutex);
 	return impl->closed;
+}
+bool InProcessPolicy::failed() const noexcept
+{
+	std::lock_guard lock(impl->mutex);
+	return !impl->failure.empty();
 }
 void InProcessPolicy::fail(const std::string & reason) noexcept
 {
