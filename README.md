@@ -82,7 +82,11 @@ The [bounded repair3 continuation](validation/local-v8-repair3-launch-2026-10-26
 started at **22:20:31 UTC on 25 October** (00:20:31 Kyiv on 26 October),
 using pinned source `fe62a80` and a separately frozen artifact-fix runtime.
 Its two baseline games passed native replay and policy reconstruction. It then
-started fresh training sequence95 from unchanged update92. This inherits the
+started fresh training sequence95 from unchanged update92. That complete four-game
+batch passed all checks and produced update93 (238 admitted decisions and nine
+Adam steps), privately preserved after exact checkpoint restoration. All four
+games ended in natural losses; this does not demonstrate strategic improvement.
+The campaign inherits the
 original **23:44:09 UTC compute cutoff and 23:49:09 UTC hard stop**; no new
 two-hour budget was granted. Activity and progress in this paragraph are dated
 launch evidence, not a guarantee that the campaign remains running.

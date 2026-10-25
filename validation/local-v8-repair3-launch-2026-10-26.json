@@ -37,6 +37,20 @@
     "stale_verifier_diagnostic": true,
     "startup_attempt1": true
   },
+  "first_verified_update": {
+    "adam_steps": 9,
+    "admitted_decisions": 238,
+    "checkpoint_exact_restore_verified": true,
+    "from_update": 92,
+    "natural_losses": 4,
+    "natural_wins": 0,
+    "policy_sha256": "384b864f5cb52bbce4ad6dcc4c06bd567096b81b20fb1a6c0d0db5b7423aaa8d",
+    "private_commit": "c7394e47c81bdb9948c8c7ad4725b759aeb4395f",
+    "report_sha256": "4fec81fdae68be25388faef4ecd190593152f9a14aebf5e00983b62460894d08",
+    "resume_sha256": "cd978669cc8709b3ec0c8897019e90a9b10fd6c456a6d22178db8f1ea2ad3fc0",
+    "to_update": 93,
+    "training_games": 4
+  },
   "hard_stop_kyiv": "2026-10-26T01:49:09.568623+02:00",
   "hard_stop_utc": "2026-10-25T23:49:09.568623+00:00",
   "latest_verified_progress_at_observation": {
