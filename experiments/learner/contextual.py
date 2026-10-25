@@ -1737,7 +1737,7 @@ class PlayerHistory:
     def digest(self):
         digest = hashlib.sha256()
         for frame in self._frames:
-            digest.update(json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":")).encode())
+            digest.update(canonical_frame(frame).encode())
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -2508,12 +2508,22 @@ def decode_notice(raw, *, schema=SCHEMA):
         raise ValueError("Incomplete informational notice") from exc
 
 
+_FIELD_NAMES = {}
+
+
+def _field_names(cls):
+    names = _FIELD_NAMES.get(cls)
+    if names is None:
+        names = _FIELD_NAMES[cls] = tuple(field.name for field in fields(cls))
+    return names
+
+
 def _wire(value):
     """Detached canonical JSON, omitting additive fields from their older schema."""
     if isinstance(value, tuple):
         return [_wire(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
-        data = {field.name: _wire(getattr(value, field.name)) for field in fields(value)}
+        data = {name: _wire(getattr(value, name)) for name in _field_names(type(value))}
         if type(value) is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
         elif type(value) is Action and value.schema == ACTION_SCHEMA:
@@ -2574,10 +2584,27 @@ def encode_offers(offers):
 def encode_frame(frame):
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
-    data = _wire(frame)
+    # The observation is encoded once, by its schema-aware encoder below.
+    data = {name: None if name == "observation" else _wire(getattr(frame, name)) for name in _field_names(Frame)}
     if frame.observation is not None:
         data["observation"] = encode_observation(frame.observation, schema=frame.schema)
     return data
+
+
+def canonical_frame(frame):
+    """Canonical JSON text of one frame, encoded at most once per frame object.
+
+    Frames are frozen trees of tuples, strings, integers and frozen records, so
+    the text cannot change after the first encoding. The cache is per object
+    and is never a dataclass field: equality, replace() and decoding ignore it.
+    """
+    if type(frame) is not Frame:
+        raise ValueError("Expected typed contextual frame")
+    text = frame.__dict__.get("_canonical_json")
+    if text is None:
+        text = json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        object.__setattr__(frame, "_canonical_json", text)
+    return text
 
 
 def decode_frame(raw):

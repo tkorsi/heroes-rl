@@ -49,7 +49,31 @@ def _canonical(value):
 
 
 def _frame_bytes(frame):
-    return (_canonical(c.encode_frame(frame)) + "\n").encode()
+    return (c.canonical_frame(frame) + "\n").encode()
+
+
+def _wire_text(raw):
+    try:
+        return json.dumps(raw, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (TypeError, ValueError):
+        return None
+
+
+def _repeats(raw, known, verbatim):
+    """True only for a byte-identical redelivery of an accepted record.
+
+    verbatim holds positions whose accepted record had exactly the canonical
+    text of the frame decoded from it. A later record with that same text and
+    the same JSON value decodes to that same frame, so the strict decoder is
+    skipped. Anything else, valid or not, takes the original path.
+    """
+    seq = raw.get("seq") if type(raw) is dict else None
+    if type(seq) is not int or seq not in verbatim:
+        return False
+    text = c.canonical_frame(known[seq])
+    # Text alone conflates tuples with lists and equality alone conflates
+    # booleans with integers; JSON-decoded records satisfy both exactly.
+    return _wire_text(raw) == text and json.loads(text) == raw
 
 
 def _support_dict(support):
@@ -310,7 +334,7 @@ class ContextualRollout:
 
     def to_dict(self):
         result = {"episode": self.episode, "player": self.player, "role": self.role,
-            "history": [c.encode_frame(frame) for frame in self.history], "decisions": [item.to_dict() for item in self.decisions],
+            "history": [json.loads(c.canonical_frame(frame)) for frame in self.history], "decisions": [item.to_dict() for item in self.decisions],
             "samples": [item.to_dict(schema=self.trajectory_schema) for item in self.samples], "boundary": self.boundary,
             "history_sha256": self.history_sha256, "evidence_ref": self.evidence_ref,
             "behavior_checkpoint": self.behavior_checkpoint, "opponent_checkpoint": self.opponent_checkpoint,
@@ -362,6 +386,7 @@ class ContextualSession:
         self._state = model.initial_state().detach().clone()
         self._digest = hashlib.sha256()
         self._values, self._prefixes, self._policies, self._choices = {}, {}, {}, {}
+        self._verbatim = set()
         c._integer(seed, high=2**63 - 1)
         self.generator = torch.Generator(device=self._state.device).manual_seed(seed)
         self.finished = False
@@ -388,14 +413,20 @@ class ContextualSession:
         self._check_weights()
 
     def _consume(self, frames):
+        known = list(self.history.frames)
         for raw in frames:
+            if type(raw) is not c.Frame and _repeats(raw, known, self._verbatim):
+                continue
             frame = raw if type(raw) is c.Frame else c.decode_frame(raw)
-            if frame.seq < len(self.history.frames):
-                if self.history.frames[frame.seq] != frame: raise ValueError("Previously delivered history prefix changed")
+            if frame.seq < len(known):
+                if known[frame.seq] != frame: raise ValueError("Previously delivered history prefix changed")
                 continue
             # Contract/encoder failures abort collection; a failed episode is
             # never recoverable as an eligible partial rollout.
             self.history.append(frame)
+            known.append(frame)
+            if type(raw) is dict and _wire_text(raw) == c.canonical_frame(frame):
+                self._verbatim.add(frame.seq)
             encoded = self.encoder.encode(frame)
             with torch.no_grad(): output = self.model.forward_step(encoded, self._state)
             self._state = output.state.detach().clone()
