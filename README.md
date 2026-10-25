@@ -109,8 +109,15 @@ at two hours from actual launch, with five minutes reserved for cleanup and
 publication. The entire controller has an independent deadline guardian; each
 native game and optimizer batch retains its existing guards. The local config,
 controller, parity checker and new authorization are bound into the session.
-The expired cloud defaults and historical plans remain unchanged. Preparation
-has not launched the PPO campaign; coordinator review/merge is still required.
+The expired cloud defaults and historical plans remain unchanged.
+
+The reviewed campaign **launched locally at 20:27:13 Kyiv on 25 October** from
+update 31, pinned to `aebe2fb`. Compute stops by **22:22:13 Kyiv**, with a hard
+stop at **22:27:13 Kyiv** including checkpoint publication and cleanup.
+[Launch evidence](validation/local365-launch-2026-10-25.json) is a dated snapshot;
+read the durable campaign report for later progress. A separate follow-up will
+verify shutdown and analyze results after the deadline. Do not restart this
+session or extend its two-hour authorization.
 
 ## Source layout
 

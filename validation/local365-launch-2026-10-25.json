@@ -1,0 +1,38 @@
+{
+  "schema": "heroes-local365-launch-v1",
+  "observed_utc": "2026-10-25T18:28:34.053619+00:00",
+  "status": "launched",
+  "pinned_source_commit": "aebe2fb28ed89d2cd446dc6e1606f60a40aae67b",
+  "teacher_thread": "01a17348-5d09-7162-bc74-f18846441c89",
+  "host": "local",
+  "baseline": {
+    "updates": 31,
+    "rollouts": 124,
+    "decisions": 6776,
+    "adam_steps": 253
+  },
+  "limits": {
+    "max_days": 365,
+    "max_total_choices": 5120,
+    "campaign_seconds": 7200,
+    "complete_training_games_per_update": 4
+  },
+  "session_path": "/Users/orsi/Projects/Heroes-artifacts/local365/campaign-session.json",
+  "started_utc": "2026-10-25T18:27:13.092387+00:00",
+  "compute_stop_utc": "2026-10-25T20:22:13.092387+00:00",
+  "hard_stop_utc": "2026-10-25T20:27:13.092387+00:00",
+  "first_batch": "local365-continuation-032",
+  "processes_at_launch": {
+    "supervisor": 16236,
+    "controller": 16256
+  },
+  "prelaunch_evidence": "validation/local365-prelaunch-2026-10-25.json",
+  "additional_independent_checks": {
+    "resume_profile_deadline_tests": 51,
+    "controller_flow_tests": 2,
+    "failures": 0,
+    "controller_flow_log": "/Users/orsi/Projects/Heroes-artifacts/local365/controller-review/results.log"
+  },
+  "private_publication_branch": "codex/local365-teacher-results",
+  "limitation": "Launch evidence is a dated snapshot, not a guarantee that the campaign remains active; consult durable campaign/controller reports for later results."
+}
