@@ -2576,6 +2576,54 @@ native-opponent replay establishes reachability without changing victory rules,
 map rules or rewards. Natural self-play outcome frequency and broader unsupported
 mechanics remain unmeasured, and training remains off.
 
+## Local comparison revalidation — 25 October 2026
+
+The user has resumed this work on the Mac. Cloud preparation remains preserved
+on `codex/cloud-environment` and draft PR #20; it is not required for these local
+runs. The new integration branch is `codex/local-evaluation-v2`, based on
+`9193db3`. The preceding stopped Mac cohorts and separate terminal diagnostics
+remain unchanged.
+
+The next two cohorts use explicitly versioned revalidation plans. Each retains
+the original eight-row schedule, four engine seeds 120501–120504 and both learner
+colors, the same frozen v7 checkpoint, ordinary Tavern-enabled map, model-owned
+policy RNGs, automatic battles and normal fog. These are **reused seeds for
+repaired-runtime revalidation**, not newly held-out seeds. The original plan,
+report and admission decisions are hash-bound as historical provenance, not
+resumed or replaced. Preparation cites the user's new local continuation.
+
+The frozen-neural cohort retains 4,096 total policy choices across both players
+(4,088 nominal plus eight real-dialog reserve choices); the Nullkiller Easy
+cohort retains 2,048 learner choices (2,040 plus eight). Both retain a 200-day
+limit and their own shared 3,600-second execution deadline covering loading,
+collection, policy reconstruction, native replay and cleanup. Final pure offline
+report assembly is separately timed. Deadline exhaustion leaves incomplete or
+not-started rows visible; it cannot justify extending the clock or reporting a
+loss/draw. Each attempt is made once in its declared cohort.
+
+The neural cohort runs first. The new native-opponent plan then requires that
+cohort's finished/stopped report and the same source, native runtime, map,
+checkpoint and frozen weights. Neither cohort can change implementation during
+execution. Phase timings distinguish collection, policy reconstruction, native
+replay, behavior analysis and cleanup without changing actions or numerical
+contracts. CPU inference remains sequential with one Torch thread; no MPS or
+parallel gameplay is implied by the Mac's available hardware.
+
+Claude separately owns performance profiling and behavior-preserving optimization
+in its own branch/worktree, coordinated through issue #4. Codex owns these
+evaluators, evidence summaries, current integration and learner/PPO/checkpoint
+contracts. Heavy scientific runs and clean performance benchmarks/builds use
+separate windows; any overlap must be recorded and excluded from clean speed
+claims. Performance attempts cannot replace scientific evaluation rows or alter
+their budgets. No training, paid infrastructure or PR merge is authorized here.
+
+Even a successful v7 comparison does not make the existing training launcher
+v7-ready: `first_run.py`, gameplay admission and approved-gameplay checkpoint
+provenance currently target `adventure-armies-v1` (v4). A future small v7 update
+needs a separately versioned admission/checkpoint path and v7 numerical,
+resume and rollback tests, plus explicit training authorization. Diagnostic
+rollouts remain optimizer-ineligible.
+
 ## Stable spell target ordering
 
 The failed longer-cohort Frost Ring replay exposed pointer-address ordering in

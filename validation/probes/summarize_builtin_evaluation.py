@@ -11,7 +11,9 @@ from experiments.learner import evaluate_builtin_opponent as evaluation
 from experiments.learner import evaluate_long_dialogs as neural_evaluation
 from experiments.learner.builtin_behavior import analyze_episode as builtin_behavior
 from experiments.learner.evaluation_behavior import analyze_episode as neural_behavior, _aggregate
-from validation.probes.summarize_long_dialog_evaluation import compact_behavior, equal, STATUSES
+from validation.probes.summarize_long_dialog_evaluation import (
+    bind_revalidation, compact_behavior, equal, evidence_schema, STATUSES,
+)
 
 SCHEMA = "heroes-builtin-opponent-comparison-evidence-v1"
 COLORS = ("red", "blue")
@@ -46,14 +48,17 @@ def category(row):
 def summarize(plan_path, report_path, *, output_path=None):
     plan_path, report_path = Path(plan_path).resolve(), Path(report_path).resolve()
     report = strict_json(report_path.read_bytes())
-    require(report.get("schema") == evaluation.SCHEMA + "-result", "Unexpected comparison report")
     plan = evaluation.read_plan(plan_path, report["plan_sha256"])
+    version = evaluation.plan_version(plan)
+    require(report.get("schema") == evaluation.result_schema(plan), "Unexpected comparison report")
     require(report.get("status") in ("finished", "stopped"), "Comparison is still executing")
     reference = plan["reference"]
     require(evaluation.reference(reference["plan"]["path"], reference["report"]["path"]) == reference,
             "Neural reference identity changed")
     neural_report = strict_json(Path(reference["report"]["path"]).read_bytes())
     neural_plan = neural_evaluation.read_plan(reference["plan"]["path"], neural_report["plan_sha256"])
+    require(neural_report.get("schema") == neural_evaluation.result_schema(neural_plan),
+            "Unexpected neural reference report")
     require(equal(report.get("frozen_before"), plan["frozen"])
             and report.get("frozen_after_file_sha256") == plan["checkpoint"]["sha256"], "Frozen checkpoint changed")
     bindings, issues = {}, []
@@ -74,6 +79,9 @@ def summarize(plan_path, report_path, *, output_path=None):
     bind(report_path)
     for item in (plan["checkpoint"], plan["replay_binary"], reference["plan"], reference["report"]):
         bind(item["path"], item)
+    if version == 2:
+        bind_revalidation(plan, bind)
+        bind_revalidation(neural_plan, bind)
     for name, sha in plan["implementation"].items():
         bind(evaluation.ROOT / name, sha)
     for name, sha in plan["source"]["source_sha256"].items():
@@ -153,6 +161,10 @@ def summarize(plan_path, report_path, *, output_path=None):
             "native_request_count_scope": "Audited attempts with replay counts only; missing counts are unavailable.",
             "attempts_with_native_request_counts": sum("native_opponent_requests" in r for r in rows)
                 if label == "builtin_nullkiller_easy" else 0}
+        if version == 2:
+            cohorts[label].update(configuration=cohort_plan["configuration"],
+                revalidation=cohort_plan["revalidation"],
+                offline_report_seconds=cohort_report.get("offline_report_seconds"))
     pairs = []
     for neural, builtin in zip(selected["frozen_neural_opponent"], selected["builtin_nullkiller_easy"]):
         require(all(neural[k] == builtin[k] for k in ("episode", "engine_seed", "learner_player"))
@@ -161,7 +173,7 @@ def summarize(plan_path, report_path, *, output_path=None):
         pairs.append({"episode": builtin["episode"], "engine_seed": builtin["engine_seed"],
             "learner_player": builtin["learner_player"], "policy_seed": builtin["policy_seed"],
             "neural_category": neural["category"], "builtin_category": builtin["category"]})
-    return {"schema": SCHEMA, "plan": plan, "bindings": bindings, "coverage": {"issues": issues,
+    return {"schema": evidence_schema(SCHEMA, version), "plan": plan, "bindings": bindings, "coverage": {"issues": issues,
         "all_planned_games_verified": not issues and all(r["status"] == "passed" for rows in selected.values() for r in rows)},
         "cohorts": cohorts, "matched_pairs": pairs, "training_performed": False, "optimizer_steps": 0,
         "training_samples": 0, "policy_input": False, "reward_input": False,
