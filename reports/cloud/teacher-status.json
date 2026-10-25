@@ -1,6 +1,6 @@
 {
-  "activity": "Fetching exact private handoff c7257a047373a55901e04bd9fa024dbb6df964d3; initial checkpoint pair is already hash-verified and restored.",
-  "blocker": "Full private Git pack download is in progress; no missing or corrupted part has been diagnosed.",
+  "activity": "All 66 private parts and nine original files reconstructed with exact hashes; historical archive safely extracted without changing JSON.",
+  "blocker": null,
   "checkpoint_pair_restore_exact": true,
   "experimental_replay_worker_enabled": false,
   "latest_complete": {
@@ -17,14 +17,15 @@
     "cleanup": "pending",
     "focused_tests": "passed",
     "fresh_capture": "pending",
-    "historical_plan_report": "pending_full_transfer",
+    "historical_plan_report": "completion_structure_and_checkpoint_hashes_passed_full_restore_next",
     "native_build": "passed",
     "same_runtime_replay": "pending"
   },
-  "next_step": "Verify all parts and originals, safely extract history, restore full parent/backup, then run fresh Linux evaluation and authorized four-game training.",
+  "next_step": "Restore the complete bound parent and independent backup, then execute the fresh both-seat Linux capture/replay gate.",
   "private_git_read_access": true,
+  "private_transfer_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
   "schema": "heroes-cloud-teacher-status-v1",
-  "state": "transferring_private_artifacts",
+  "state": "preparing_fresh_linux_validation",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T15:41:44.005447+00:00"
+  "updated_utc": "2026-10-25T15:42:50.730371+00:00"
 }
