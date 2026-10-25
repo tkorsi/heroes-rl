@@ -237,6 +237,67 @@ def artifacts_case(run):
     panel = run.open_hero_capability("artifacts")
     run.reject_foreign_choice("move_artifact")
     before_counts = inventory_counts(panel.items)
+    actor = run.inspect_request().observation.context.subject
+
+    def backpack():
+        return tuple(item.id for item in sorted(run.capability().items, key=lambda item: item.slot)
+                     if item.kind == "artifact" and item.subject == actor and item.slot >= 19 and not item.locked)
+
+    def assert_safe_destinations():
+        size = len(backpack())
+        for offered in run.capability().choices:
+            if (offered.kind == "move_artifact" and offered.subject == actor == offered.destination
+                    and offered.slot >= 19 and offered.destination_slot >= 19):
+                base.ensure(offered.destination_slot < 19 + size,
+                            "Same-backpack move targets an index beyond the post-removal inventory")
+
+    # The failed campaign offered slot19 -> slot20 for a one-item backpack.
+    # Native BulkMoveArtifacts removes first, so index1 would exceed the empty
+    # vector. Its sole final slot is slot19 (already excluded as a no-op).
+    base.ensure(len(backpack()) == 1, "Regression fixture must start with one backpack artifact")
+    assert_safe_destinations()
+    base.ensure(not any(choice.kind == "move_artifact" and choice.subject == actor == choice.destination
+                        and choice.slot >= 19 and choice.destination_slot >= 19 for choice in panel.choices),
+                "One-item backpack exposes a self-reorder or invalid append")
+    run.check("single_backpack_invalid_append_absent", "passed", backpack=backpack())
+
+    # Populate the same backpack through a real equipment move, then exercise
+    # both ordering directions. Final slots, identities and total ownership must
+    # match; merely avoiding a crash is insufficient.
+    additions = []
+    for target_slot in (20, 21):
+        add = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                    and choice.subject == actor == choice.destination and choice.slot < 19
+                    and choice.destination_slot == target_slot), None)
+        base.ensure(add is not None, "Fixture lacks an equipped artifact that fits the backpack")
+        run.choose(add)
+        additions.append(add)
+    original_order = backpack()
+    base.ensure(len(original_order) == 3, "Native equipment moves did not append exactly two artifacts")
+    assert_safe_destinations()
+    for source_slot, destination_slot in ((19, 21), (21, 19)):
+        previous = backpack()
+        reorder = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                        and choice.subject == actor == choice.destination and choice.slot == source_slot
+                        and choice.destination_slot == destination_slot), None)
+        base.ensure(reorder is not None, "Valid same-backpack final-slot reorder is missing")
+        run.choose(reorder)
+        expected = list(previous)
+        artifact = expected.pop(source_slot - 19)
+        expected.insert(destination_slot - 19, artifact)
+        base.ensure(backpack() == tuple(expected) and inventory_counts(run.capability().items) == before_counts,
+                    "Native backpack reorder differs from the requested final order or changes ownership")
+        assert_safe_destinations()
+        run.check("native_same_backpack_reorder", "passed", source_slot=source_slot,
+                  destination_slot=destination_slot, before=previous, after=backpack())
+    base.ensure(backpack() == original_order, "Two inverse reorders failed to restore the inventory")
+    for add in reversed(additions):
+        restore = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                        and choice.subject == actor == choice.destination and choice.artifact == add.artifact
+                        and choice.destination_slot == add.slot), None)
+        base.ensure(restore is not None, "Temporary equipment move cannot be restored")
+        run.choose(restore)
+    panel = run.capability()
     backpack_move = next((choice for choice in panel.choices if choice.kind == "move_artifact"
                           and choice.slot is not None and choice.slot >= 19 and choice.destination_slot < 19), None)
     base.ensure(backpack_move is not None, "Fixture lacks a displayed backpack-to-equipment move")
