@@ -45,10 +45,12 @@ CASES = {
     "school-magic": ("school_magic", None), "school-war": ("school_war", None),
     "scholar": ("scholar", None), "scholar-exchange": ("scholar_exchange", None),
     "free-decline-attack": ("neutral_free_attack", "decline_attack"),
+    "paid-unaffordable": ("neutral_paid_unaffordable", "accept"),
 }
 OBJECT_KINDS = {"guarded_mine": 53, "abandoned_mine": 53, "neutral_free": 54,
                 "neutral_flee": 54, "neutral_paid": 54, "chest": 101, "arena": 4,
-                "school_magic": 47, "school_war": 107, "scholar": 81, "neutral_free_attack": 54}
+                "school_magic": 47, "school_war": 107, "scholar": 81, "neutral_free_attack": 54,
+                "neutral_paid_unaffordable": 54}
 
 
 def dialog_open_proof(parent, after, additions, result):
@@ -99,6 +101,32 @@ def army_counts(window):
     for stack in window.army:
         result[stack.creature] = result.get(stack.creature, 0) + stack.count
     return result
+
+
+def joined_army_proof(previous, current, added_pikemen):
+    # Authored count is an effect oracle only; the action uses no hidden count.
+    expected = army_counts(previous)
+    expected[0] = expected.get(0, 0) + added_pikemen
+    base.ensure(army_counts(current) == expected, "Native joining differs from the declared fixture army effect")
+
+
+def unaffordable_paid_proof(before, after, additions):
+    panel = before.observation.window.dialog_panel
+    base.ensure(panel.family == "neutral_paid_join", "Unaffordable control requires an actual paid offer")
+    price = next(component.amount for component in panel.components if component.kind == "resource")
+    base.ensure(price > before.observation.resources[6], "Displayed paid offer was affordable")
+    exact_resource_delta(before.observation.resources, after.observation.resources, 0)
+    base.ensure(after.observation.context.kind == "dialog"
+                and after.observation.window.dialog_panel.family == "neutral_flee",
+                "Unaffordable acceptance did not produce its native refusal-to-flee query")
+    notices = [frame.seq for frame in additions if frame.event is not None and frame.event.kind == "notice"
+               and any(token.text_id == "core.genrltxt.29" for token in frame.event.notice.text)]
+    requests = [frame.seq for frame in additions if frame.event is not None and frame.event.kind == "dialog_requested"
+                and frame.event.dialog == after.observation.window.dialog_panel]
+    base.ensure(len(notices) == len(requests) == 1 and notices[0] < requests[0],
+                "Unaffordable acceptance lacks its ordered GENERAL29 notice and fresh flee query")
+    return {"displayed_price": price, "available_gold": before.observation.resources[6],
+            "notice_seq": notices[0], "flee_request_seq": requests[0]}
 
 
 def refusal_attack_proof(additions):
@@ -230,6 +258,7 @@ def neutral_case(run, fixture, strategy):
     target = run.targets(54)[0]
     run.visit(target)
     expected = {"neutral_free": "neutral_free_join", "neutral_free_attack": "neutral_free_join", "neutral_paid": "neutral_paid_join",
+                "neutral_paid_unaffordable": "neutral_paid_join",
                 "neutral_flee": "neutral_flee"}[fixture]
     initial = run.family()
     if initial != expected:
@@ -238,6 +267,8 @@ def neutral_case(run, fixture, strategy):
     additions = []
     families = []
     selected = None
+    unaffordable = None
+    added_pikemen = 180 if fixture == "neutral_paid_unaffordable" else 6
     for _ in range(3):
         family = run.family()
         if family is None:
@@ -248,6 +279,10 @@ def neutral_case(run, fixture, strategy):
         else:
             base.ensure(family in ("neutral_free_join", "neutral_paid_join"), "Unexpected neutral query family")
             choice = "accept" if strategy == "accept" else "decline"
+        if fixture == "neutral_paid_unaffordable" and family == "neutral_paid_join":
+            current = run.inspect_request().observation
+            price = next(component.amount for component in current.window.dialog_panel.components if component.kind == "resource")
+            base.ensure(price > current.resources[6], "Declared diagnostic paid offer was affordable")
         before, after, more, selected = run.answer(choice)
         additions.extend(more)
         if choice == "accept" and family in ("neutral_free_join", "neutral_paid_join"):
@@ -256,15 +291,15 @@ def neutral_case(run, fixture, strategy):
             if before.observation.resources[6] >= cost:
                 exact_resource_delta(before.observation.resources, after.observation.resources, -cost)
                 current = run.hero_window()
-                old, new = army_counts(previous), army_counts(current)
-                # Fixture count is an oracle only; no hidden count enters the
-                # choice or the dialog/model observation for free joining.
-                expected_army = dict(old); expected_army[0] = expected_army.get(0, 0) + 6
-                base.ensure(new == expected_army, "Native joining did not add the fixture's six Pikemen exactly")
+                joined_army_proof(previous, current, added_pikemen)
                 run.check("native_join_exact_effect", "passed", family=family, gold_debit=cost,
-                          added_pikemen=6, hidden_fixture_count_used_for_choice=False)
+                          added_pikemen=added_pikemen, hidden_fixture_count_used_for_choice=False)
             else:
                 base.ensure("core.genrltxt.29" in notice_templates(more), "Unaffordable native reply omitted its visible notice")
+                if fixture == "neutral_paid_unaffordable":
+                    unaffordable = before.observation.resources
+                    run.check("native_unaffordable_acceptance_query", "passed",
+                              **unaffordable_paid_proof(before, after, more))
     base.ensure(run.family() is None, "Neutral query chain exceeded three explicit answers")
     if fixture == "neutral_free" and strategy in ("pursue", "let_flee"):
         base.ensure(families == ["neutral_free_join", "neutral_flee"],
@@ -278,6 +313,19 @@ def neutral_case(run, fixture, strategy):
     if strategy in ("pursue", "let_flee"):
         battle = any(f.event is not None and f.event.kind == "battle_start" for f in additions)
         base.ensure(battle == (strategy == "pursue"), "Neutral flee answer produced the wrong battle branch")
+    if unaffordable is not None:
+        base.ensure(families == ["neutral_paid_join", "neutral_flee"]
+                    and not any(f.event is not None and f.event.kind == "battle_start" for f in additions),
+                    "Unaffordable acceptance did not finish through the explicit let-flee branch")
+        current = run.hero_window()
+        base.ensure(current.army == previous.army, "Unaffordable join changed the native hero army")
+        after = run.inspect_request().observation
+        exact_resource_delta(unaffordable, after.resources, 0)
+        base.ensure(not any(obj.handle == target.handle for obj in after.objects),
+                    "Explicit native let-flee left the neutral target visible")
+        run.check("native_unaffordable_join_exact_effect", "passed", seven_resources_unchanged=True,
+                  own_army_unchanged=True, explicit_let_flee=True, target_absent=True,
+                  accepted_native_reply=True, native_rejected_ack=False)
     run.check("native_neutral_branch_summary", "passed", initial_family=initial,
               delivered_families=families,
               observed_battle=any(f.event is not None and f.event.kind == "battle_start" for f in additions),

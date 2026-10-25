@@ -32,7 +32,7 @@ class DialogScenarioTests(unittest.TestCase):
                         self.assertNotIn("joinOnlyForMoney", obj["options"])
 
     def test_native_hero_defaults_without_fabricated_skills_or_books(self):
-        for fixture, names in (("neutral_paid", {"core:adela"}), ("scholar", {"core:thane"}),
+        for fixture, names in (("neutral_paid", {"core:adela"}), ("neutral_paid_unaffordable", {"core:adela"}), ("scholar", {"core:thane"}),
                                ("scholar_exchange", {"core:thane", "core:josephine"})):
             value = p.dialog_scenario_payloads(fixture, "blue")
             heroes = [obj for obj in value["objects.json"] if obj["type"] == "hero" and obj["options"]["owner"] == "blue"]
@@ -49,6 +49,19 @@ class DialogScenarioTests(unittest.TestCase):
         self.assertFalse(monster["options"]["neverFlees"])
         monster["options"]["neverFlees"] = True
         self.assertEqual(ordinary, attack)
+
+    def test_unaffordable_fixture_changes_only_declared_initial_army_counts(self):
+        for color in p.COLORS:
+            ordinary = p.dialog_scenario_payloads("neutral_paid", color)
+            unaffordable = p.dialog_scenario_payloads("neutral_paid_unaffordable", color)
+            ordinary["header.json"]["name"] = unaffordable["header.json"]["name"]
+            hero = next(obj for obj in ordinary["objects.json"] if obj["type"] == "hero" and obj["options"]["owner"] == color)
+            monster = next(obj for obj in ordinary["objects.json"] if obj["type"] == "monster")
+            self.assertEqual(hero["options"]["army"], [{"type":"core:pikeman", "amount":25}])
+            self.assertEqual(monster["options"]["amount"], 6)
+            hero["options"]["army"][0]["amount"] = 1500
+            monster["options"]["amount"] = 180
+            self.assertEqual(ordinary, unaffordable)
 
     def test_deterministic_archive_and_exact_declared_delta(self):
         previous = {path: path.read_bytes() for path in (p.BASELINE, p.HERO_MAP)}

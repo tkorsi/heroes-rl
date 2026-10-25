@@ -44,6 +44,36 @@ class AdventureDialogProbeTests(unittest.TestCase):
         with self.assertRaisesRegex(p.base.ProbeFailure, "beyond"):
             p.exact_resource_delta(before,(9,2,10,2,2,2,4000),-1000)
 
+    def test_join_effect_uses_declared_fixture_count_only_in_oracle(self):
+        before=NS(army=(NS(creature=0,count=1500), NS(creature=2,count=7)))
+        after=NS(army=(NS(creature=0,count=1680), NS(creature=2,count=7)))
+        p.joined_army_proof(before,after,180)
+        with self.assertRaisesRegex(p.base.ProbeFailure,"fixture army effect"):
+            p.joined_army_proof(before,after,6)
+        after.army=(NS(creature=0,count=1680), NS(creature=2,count=8))
+        with self.assertRaises(p.base.ProbeFailure): p.joined_army_proof(before,after,180)
+
+    def test_unaffordable_acceptance_requires_real_price_notice_and_chained_query(self):
+        paid=NS(family="neutral_paid_join",components=(NS(kind="resource",amount=10800),))
+        flee=NS(family="neutral_flee",ref="dialog-1")
+        resources=(5,2,5,2,2,2,5900)
+        before=NS(observation=NS(resources=resources,window=NS(dialog_panel=paid)))
+        after=NS(observation=NS(resources=resources,context=NS(kind="dialog"),window=NS(dialog_panel=flee)))
+        notice=NS(seq=20,event=NS(kind="notice",notice=NS(text=(c.NoticeToken("append_text",text_id="core.genrltxt.29"),))))
+        request=NS(seq=21,event=NS(kind="dialog_requested",dialog=flee))
+        self.assertEqual(p.unaffordable_paid_proof(before,after,(notice,request))["available_gold"],5900)
+        with self.assertRaisesRegex(p.base.ProbeFailure,"GENERAL29"):
+            p.unaffordable_paid_proof(before,after,(request,))
+        request.seq=19
+        with self.assertRaisesRegex(p.base.ProbeFailure,"ordered"):
+            p.unaffordable_paid_proof(before,after,(notice,request))
+        request.seq=21;after.observation.resources=(4,2,5,2,2,2,5900)
+        with self.assertRaisesRegex(p.base.ProbeFailure,"beyond"):
+            p.unaffordable_paid_proof(before,after,(notice,request))
+        after.observation.resources=resources;paid.components[0].amount=360
+        with self.assertRaisesRegex(p.base.ProbeFailure,"affordable"):
+            p.unaffordable_paid_proof(before,after,(notice,request))
+
     def test_refusal_attack_requires_actual_notice_and_completed_battle_order(self):
         notice=NS(seq=20,event=NS(kind="notice",notice=NS(text=(c.NoticeToken("append_text",text_id="core.advevent.87"),))))
         start=NS(seq=21,event=NS(kind="battle_start"))

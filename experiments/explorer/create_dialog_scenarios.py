@@ -21,7 +21,8 @@ MAPS = ROOT / "experiments/explorer/maps"
 HERO_MAP = MAPS / "hero-management-v1.vmap"
 HERO_SHA256 = "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
 FIXTURES = ("guarded_mine", "abandoned_mine", "neutral_free", "neutral_flee", "neutral_paid",
-            "chest", "arena", "school_magic", "school_war", "scholar", "scholar_exchange", "neutral_free_attack")
+            "chest", "arena", "school_magic", "school_war", "scholar", "scholar_exchange", "neutral_free_attack",
+            "neutral_paid_unaffordable")
 COLORS = ("red", "blue")
 
 
@@ -78,12 +79,14 @@ def dialog_scenario_payloads(fixture, player, seed=0):
     index = COLORS.index(player)
     hero = next(obj for obj in objects if obj["instanceName"] == f"hero_{index}")
     x = 4 if player == "red" else 15
-    if fixture in ("neutral_paid", "scholar"):
-        hero_type, hero_class = ("adela", "cleric") if fixture == "neutral_paid" else ("thane", "alchemist")
+    if fixture in ("neutral_paid", "neutral_paid_unaffordable", "scholar"):
+        hero_type, hero_class = ("thane", "alchemist") if fixture == "scholar" else ("adela", "cleric")
         _native_hero(hero, hero_type, hero_class)
         header["players"][player]["heroes"][hero["instanceName"]]["type"] = "core:" + hero_type
     if fixture in ("neutral_flee", "abandoned_mine"):
         hero["options"]["army"] = [{"type": "core:pikeman", "amount": 250}]
+    if fixture == "neutral_paid_unaffordable":
+        hero["options"]["army"] = [{"type": "core:pikeman", "amount": 1500}]
     if fixture == "scholar_exchange":
         _native_hero(hero, "thane", "alchemist")
         partner = deepcopy(hero)
@@ -103,9 +106,9 @@ def dialog_scenario_payloads(fixture, player, seed=0):
         return payloads
     if fixture.startswith("neutral_"):
         character = {"neutral_free": "compliant", "neutral_free_attack": "compliant",
-                     "neutral_flee": "hostile", "neutral_paid": "friendly"}[fixture]
+                     "neutral_flee": "hostile", "neutral_paid": "friendly", "neutral_paid_unaffordable": "friendly"}[fixture]
         objects.append(_object("diagnostic_target_0", "monster", "pikeman", (x, 10), "AvWPike.def",
-            ["VV", "VA"], {"amount": 6, "character": character,
+            ["VV", "VA"], {"amount": 180 if fixture == "neutral_paid_unaffordable" else 6, "character": character,
                             "neverFlees": fixture == "neutral_free_attack", "noGrowing": True}))
         return payloads
     kind = {"chest": "treasureChest", "arena": "arena", "school_magic": "schoolOfMagic",
