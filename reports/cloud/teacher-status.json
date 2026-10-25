@@ -1,12 +1,12 @@
 {
-  "activity": "cloud-continuation-2026-10-25-025 completed and verified; independent backup and private snapshot complete.",
+  "activity": "cloud-heldout-update-025 fixed held-out pair completed; zero training samples.",
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 454,
-    "cross_army_operations": 52,
+    "cross_army_net_count_redistribution": 604,
+    "cross_army_operations": 66,
     "moves_toward_visible_opponent_town": 0,
-    "recruitment_completed": 21,
+    "recruitment_completed": 25,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 20
+    "visible_battle_starts": 22
   },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
@@ -23,6 +23,38 @@
   },
   "experimental_replay_worker_enabled": false,
   "heldout_checks": [
+    {
+      "at_update": 25,
+      "rows": [
+        {
+          "choices": 132,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 11,
+            "cross_army_operations": 1,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-025"
+    },
     {
       "at_update": 21,
       "rows": [
@@ -160,15 +192,15 @@
     "verified_training_games_per_reported_batch_second": 0.016687439051736277
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T16:37:11.596008+00:00",
+  "updated_utc": "2026-10-25T16:38:17.088933+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 39,
-    "evaluation_games": 2,
-    "loss": 18,
+    "evaluation_games": 4,
+    "loss": 20,
     "training_games": 16,
     "training_samples": 1070,
     "training_wall_milliseconds": 958805,
     "updates": 4,
-    "verified_games": 18
+    "verified_games": 20
   }
 }
