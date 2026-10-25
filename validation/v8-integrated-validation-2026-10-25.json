@@ -43,5 +43,21 @@
   "limits": [
     "Unit tests use synthetic game evidence where indicated; native acceptance is separate",
     "No claim of learned strategy or full-game speedup from these tests"
-  ]
+  ],
+  "startup_repair_validation": {
+    "native_patch": "engine/patches/0029-expanded-builtin-terminal-profile.patch",
+    "native_commit": "a38bd9c",
+    "controller_commit": "16d44da",
+    "focused_native_tests_passed": 10,
+    "focused_repair_migration_release_tests_passed": 27,
+    "repair_elapsed_seconds": 1.192,
+    "native_build": "passed",
+    "canonical_recipe_check": "passed",
+    "native_mechanics_cases_passed": 28,
+    "mixed_policy_nullkiller_natural_terminal_cases_passed": 2,
+    "policy_reconstruction_difference": 0,
+    "failed_original_startup_retained": true,
+    "training_samples": 0,
+    "optimizer_steps": 0
+  }
 }

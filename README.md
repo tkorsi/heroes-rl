@@ -58,6 +58,13 @@ reviewed release, repaired native acceptance and exact privately preserved
 migration are required before repair gameplay. See
 [repair preparation](docs/update92-v8-prelaunch.md#original-window-startup-repair).
 
+The [mixed-opponent repair check](validation/builtin-v8-repair1-2026-10-25.json)
+then completed two real v8/Nullkiller games with the fixed update92 policy: both
+were natural losses, on days 9 and 2. All 211 sampled decisions reconstructed
+exactly and 2,693 native transactions replayed with none unchecked. These
+diagnostics supplied no PPO samples. The repaired runtime also passed the full
+28-case capability suite; the original failed startup remains unscored.
+
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
 games produced **zero wins, 47 natural losses and one day-limit cutoff**. The
@@ -180,11 +187,11 @@ and full-army neutral joining are part of the same acceptance work. This is
 `adventure-capabilities-v1`, history/actions v8, protocol 10. The ordinary v7
 interface and historical observations retain their original serialized forms.
 
-The [final native acceptance](validation/capabilities-durable-runtime-2026-10-25.json)
+The [final native acceptance](validation/capabilities-repair1-2026-10-25.json)
 passed all **28 cases** (14 mechanics in both seats) against one frozen
 implementation/runtime. Every case passed independent history and native replay;
 3,036 transactions were checked with none skipped. The independently frozen
-[macOS runtime](validation/runtime-freeze-v8-2026-10-25.json) removes donor-build
+[macOS runtime](validation/runtime-freeze-v8-repair1-2026-10-25.json) removes donor-build
 loader references and copies its resources; the complete suite was repeated
 against those exact signed bytes. Matched Dimension Door cases
 showed identical visible observations and 224 target candidates with/without an
