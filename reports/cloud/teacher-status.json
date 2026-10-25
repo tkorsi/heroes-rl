@@ -1,8 +1,18 @@
 {
-  "activity": "All 66 private parts and nine original files reconstructed with exact hashes; historical archive safely extracted without changing JSON.",
-  "blocker": null,
+  "activity": "Fresh Linux evaluation stopped after first game native SIGSEGV; failure preserved unscored; second seat not started.",
+  "blocker": "VCMI exited -11 (SIGSEGV) during shutdown after terminal callbacks/barrier and Ending network thread; same-runtime replay gate was not reached.",
   "checkpoint_pair_restore_exact": true,
   "experimental_replay_worker_enabled": false,
+  "last_attempt": {
+    "choices": 72,
+    "kind": "evaluation",
+    "native_returncode": -11,
+    "optimizer_steps": 0,
+    "run": "linux-update21-gate-001",
+    "scored": false,
+    "second_seat": "not_started",
+    "training_samples": 0
+  },
   "latest_complete": {
     "adam_steps": 149,
     "decisions": 3944,
@@ -14,18 +24,26 @@
   },
   "linux_gates": {
     "canonical_source": "passed",
-    "cleanup": "pending",
+    "cleanup": "passed",
     "focused_tests": "passed",
-    "fresh_capture": "pending",
-    "historical_plan_report": "completion_structure_and_checkpoint_hashes_passed_full_restore_next",
+    "fresh_capture": "failed_native_sigsegv",
+    "historical_plan_report": "passed_complete_parent_and_backup_restore",
     "native_build": "passed",
-    "same_runtime_replay": "pending"
+    "same_runtime_replay": "not_reached"
   },
-  "next_step": "Restore the complete bound parent and independent backup, then execute the fresh both-seat Linux capture/replay gate.",
+  "next_step": "Optimizer native lifecycle diagnosis/repair, exact recipe rebuild and separately labelled fresh Linux gate; no training until that gate passes.",
+  "next_unused_training_sequence": 22,
+  "private_failure_evidence": {
+    "branch": "codex/cloud-teacher-results",
+    "commit": "0c31105",
+    "path": "results/linux-update21-gate-001.tar.gz",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "sha256": "66deeda69b1e71d822a3a8b8dc802fa70c4b3017d6176adb58ce8f47e817848a"
+  },
   "private_git_read_access": true,
   "private_transfer_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
   "schema": "heroes-cloud-teacher-status-v1",
-  "state": "preparing_fresh_linux_validation",
+  "state": "blocked_native_shutdown",
   "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T15:42:50.730371+00:00"
+  "updated_utc": "2026-10-25T15:46:45.773403+00:00"
 }

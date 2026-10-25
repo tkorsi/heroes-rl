@@ -15,7 +15,7 @@
     },
     "experiments/learner/builtin_training.py": {
       "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
-      "to": "7af8d74a3a18327c9446443a8c7ca044d7735df718a5bb0fa7b11e9d4a8ecb0b"
+      "to": "072230f4ebd258d2586abf96c170137de689ff5ac6de6a0ded069241f7ca616e"
     },
     "experiments/learner/builtin_training_resume.py": {
       "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
@@ -27,6 +27,7 @@
     }
   },
   "fresh_linux_native_validation": false,
+  "historical_full_restore_and_backup": "passed; see cloud-linux-gate-001-2026-10-25.json",
   "integrated_pilot_commit": "875841a0aad235b8934ae1ccdef60ea060031d17",
   "native_source_recipe_exact": true,
   "native_targets_built": [
@@ -39,10 +40,8 @@
   "policy_feature_ppo_sources_unchanged": true,
   "private_transfer_commit": "0b03c34",
   "remaining_gates": [
-    "Full historical artifact and original game-data reconstruction with hashes",
-    "Completed historical plan/report validation and independent backup restoration",
-    "Committed exact migration manifest",
-    "Fresh both-seat Linux capture, same-runtime replay and cleanup"
+    "Native shutdown SIGSEGV repair in Optimizer workstream",
+    "Separately labelled fresh Linux capture, same-runtime replay and cleanup"
   ],
   "restoration": {
     "current_torch": "2.9.1+cpu",
@@ -73,6 +72,10 @@
   "schema": "heroes-cloud-portability-validation-v1",
   "teacher_commit": "65a4f487d19957ad8346d7a1332a78d4fd0e172d",
   "tests": {
+    "additional_budget_guard_tests": {
+      "command": "python -m unittest tests.test_builtin_portable tests.test_builtin_training -q",
+      "passed": 12
+    },
     "additional_client_parent_gate_tests": {
       "command": "python -m unittest tests.test_builtin_portable tests.test_builtin_training -q",
       "passed": 12

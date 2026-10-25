@@ -1,0 +1,161 @@
+{
+  "complete_parent_and_independent_backup_restored_exactly": true,
+  "date": "2026-10-25",
+  "gate": {
+    "choices": 72,
+    "cleanup_verified": true,
+    "learner_player": 0,
+    "native_processes_remaining": [],
+    "native_returncode": -11,
+    "replay_verified": false,
+    "second_seat": "not_started",
+    "status": "failed_unscored",
+    "termination_reason": "process_exit_without_verified_terminal",
+    "wall_seconds": 10.538251547000073,
+    "within_shared_budget": true
+  },
+  "latest_complete_update": 21,
+  "next_step": "Optimizer native lifecycle diagnosis/repair, exact recipe rebuild and separately labelled fresh Linux gate; no training until that gate passes.",
+  "observed_log_tail": [
+    "Experiment player 0 lost. Terminal received.",
+    "Experiment native player 0 lost. Terminal callbacks complete.",
+    "Experiment native player 1 won. Terminal callbacks complete.",
+    "Experiment built-in evaluation complete. Ending game.",
+    "Contextual terminal barrier received after all callbacks: heroes-contextual-terminal-barrier-v1",
+    "Ending network thread"
+  ],
+  "optimizer_steps": 0,
+  "optimizer_updates": 0,
+  "parent": {
+    "optimizer_steps": 149,
+    "plan": {
+      "bytes": 48094,
+      "path": "/workspace/Heroes-artifacts/history/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/plan.json",
+      "sha256": "b763f97314a17b406d06878e4a8ea2aba8c845fbb89b1f389184911a2f90e1e3"
+    },
+    "policy": {
+      "bytes": 637299,
+      "path": "/workspace/Heroes-artifacts/history/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/after-policy.pt",
+      "sha256": "de004381422cedf9f1fe0c36eef0a5b99754a9c86bbbcf955cffa7f8043139f8"
+    },
+    "progress": {
+      "decisions": 3944,
+      "rollouts": 84,
+      "updates": 21
+    },
+    "report": {
+      "bytes": 10466,
+      "path": "/workspace/Heroes-artifacts/history/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/report.json",
+      "sha256": "9039fe5167c731d1f0f24ed7d0e002c46069c281485bc30dffde14aaee90b3ac"
+    },
+    "resume": {
+      "bytes": 1265333,
+      "path": "/workspace/Heroes-artifacts/history/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/after-resume.pt",
+      "sha256": "e70481c8296514999ba21f47819d91882d82d7cbc81cc524a8934cd4940aca7f"
+    },
+    "runtime_proof": {
+      "from_native": {
+        "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/recovery-v3/bin/vcmiclient",
+        "binary_sha256": "b83bc7926bc015a9b008a03a2d3929e5d31b37709373707334130e57b220ee9b",
+        "explorer_rl_sha256": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "log_level": "info",
+        "map": {
+          "name": "hero-management-v1.vmap",
+          "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+        }
+      },
+      "from_runtime": {
+        "AI/libBattleAI.dylib": "9c7ec75c142eb6314e46ee57706650f88170c15990fa4a74a65624e39dee5e0b",
+        "AI/libEmptyAI.dylib": "39d1f09a1bb01030c13c292b328ce54b85f2f7ad73dccc8698030edc6da27b6d",
+        "AI/libExplorerRL.dylib": "6603754f4c627086e3dc36c77afa39f52a0aa0ea1b76413f407786e68e2ccebb",
+        "AI/libNullkiller.dylib": "592ed070181cf342a06a6e6ff8b417ac65e80c9a48e86fb04e332d2c0e828dea",
+        "AI/libStupidAI.dylib": "472bafe9dcbc8b91008343e9883f7525ac64438c982b8aeb8d25f31a07a042eb",
+        "libvcmi.dylib": "6430c77e12c854b6f9adabf8108bbe90a69836f29145959fb0866986e3a54155",
+        "vcmireplay": "9b85e8f91d53b966a05e7505c50e5cf1b540d8d32a3c8d14ae5883997d01f860"
+      },
+      "portable_migration": {
+        "bytes": 4624,
+        "path": "/workspace/heroes-rl/configs/builtin-cloud-migration-evaluation-v1.json",
+        "sha256": "6f23abbaa0664915a08bf585d2d93f25b29d9544606ffc9d2273d49abf95aacc"
+      },
+      "to_native": {
+        "binary": "/workspace/Heroes-artifacts/runtime/linux-v1/bin/vcmiclient",
+        "binary_sha256": "52af7d699a2dcf108c4a9d4e9fab27468fec0d73ea08be47ba286906abd910e3",
+        "explorer_rl_sha256": "30729e0e66bcd9e3287a81fb74e6943e927cc9b6ae65bc2439da8f5cfcc6aeb2",
+        "log_level": "info",
+        "map": {
+          "name": "hero-management-v1.vmap",
+          "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+        }
+      },
+      "to_runtime": {
+        "AI/libBattleAI.so": "0f3fe88b6887a512827e11eea90a4877ca3323adea3381986d8b7ca78a6ed719",
+        "AI/libEmptyAI.so": "0f635310480191193b6b5f0efe88d736820cbd3dd888c573a66bd76d2e509139",
+        "AI/libExplorerRL.so": "30729e0e66bcd9e3287a81fb74e6943e927cc9b6ae65bc2439da8f5cfcc6aeb2",
+        "AI/libNullkiller.so": "84250e151d3e39fb43f9ee97dd053573e8377a1c842c32fbfa219942ce3a64f0",
+        "libvcmi.so": "b598c556a84a87f2faec62bbfc570c9b263230c14883f08b1dba517b939efbdf",
+        "vcmireplay": "1003e2a71f2312dbbfee280ae13922b7640261efb389ace3a1e0c4601bfd2c44"
+      },
+      "unchanged": false
+    },
+    "source_proof": {
+      "added_sources": {
+        "experiments/learner/builtin_portable.py": "5fd26e83735a1ccc645abe8f126844627604691bd5f5e0a7aaf05ccc697d6bc3"
+      },
+      "current_commit": "092394820743d674d4307e1ed87886e0b3347448",
+      "existing_sources_unchanged": false,
+      "parent_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "reviewed_source_changes": {
+        "experiments/learner/builtin_gameplay.py": {
+          "from": "5d36eafaeb3bce3c6a813197524038cd7da8e07ae34c1801e01b5bc96e8436ba",
+          "to": "df01492aef99d555f35251bb4a30738564decdf41308b85220f549e9acf16670"
+        },
+        "experiments/learner/builtin_preservation.py": {
+          "from": "0133eb5a4c0b3e050b70a3fb134a24d65577b7df254eabd4a0f90391328ed204",
+          "to": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e"
+        },
+        "experiments/learner/builtin_training.py": {
+          "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
+          "to": "7af8d74a3a18327c9446443a8c7ca044d7735df718a5bb0fa7b11e9d4a8ecb0b"
+        },
+        "experiments/learner/builtin_training_resume.py": {
+          "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
+          "to": "8dd7c97802c8002712ce0183832f4ad5d3dacbd5f19ef6c1c707943fee334a30"
+        },
+        "experiments/learner/checkpoints.py": {
+          "from": "9abf3b84a180220a77548b4671129b51dccfcd92edb5a10b08375d49e8bd0000",
+          "to": "bb853a0040366d11030de70cc2a617dc0fd627ded279228c6905d1af05c66abb"
+        }
+      }
+    }
+  },
+  "plan": {
+    "bytes": 53620,
+    "path": "/workspace/Heroes-artifacts/runs/linux-update21-gate-001/plan.json",
+    "sha256": "df8464faa88697119a875a1e17e30865b0f6379cae0a68694dd849097c31db2c"
+  },
+  "private_failure_evidence": {
+    "branch": "codex/cloud-teacher-results",
+    "commit": "0c31105",
+    "path": "results/linux-update21-gate-001.tar.gz",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "sha256": "66deeda69b1e71d822a3a8b8dc802fa70c4b3017d6176adb58ce8f47e817848a"
+  },
+  "private_input_commit": "c7257a047373a55901e04bd9fa024dbb6df964d3",
+  "report": {
+    "bytes": 8379,
+    "path": "/workspace/Heroes-artifacts/runs/linux-update21-gate-001/execution/report.json",
+    "sha256": "fac9fc263103b918196257630507a8f550b93f270876cd4fe6dd9f84fb50e1b0"
+  },
+  "schema": "heroes-cloud-linux-gate-v1",
+  "scoring": "The terminal log does not override the native crash; outcomes and rewards remain null.",
+  "source_commit": "092394820743d674d4307e1ed87886e0b3347448",
+  "training_samples": 0,
+  "transfer": {
+    "archive_sha256": "ceae0d94b20315cd21af3d7fc5818b4d46d22a50f4bcf812f9dfe6e4c351b9f7",
+    "manifest_sha256": "66c1291c5ff79c1967d64f304c52527c155ce5daadf586566424d195cc105130",
+    "original_bytes": 1031548189,
+    "original_files_verified": 9,
+    "parts_verified": 66
+  }
+}

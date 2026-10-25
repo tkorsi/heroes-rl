@@ -84,6 +84,7 @@ def require_heldout(state, runtime, native):
         report = json.loads(report_path.read_text())
         if (report.get('plan_sha256') == pilot.digest(path) and report.get('status') == 'finished'
                 and report.get('worker_complete') is True and report.get('supervisor_cleanup_verified') is True
+                and report.get('within_shared_budget') is True
                 and report.get('training_performed') is False
                 and report.get('optimizer_updates') == report.get('optimizer_steps') == 0
                 and len(report.get('attempts', [])) == 2

@@ -96,6 +96,7 @@ class Migration:
                 and report['plan_sha256'] == gate['plan']['sha256']
                 and report['status'] == 'finished' and report['worker_complete'] is True
                 and report['supervisor_cleanup_verified'] is True
+                and report.get('within_shared_budget') is True
                 and report['optimizer_updates'] == report['optimizer_steps'] == 0
                 and report['training_performed'] is False
                 and len(report['attempts']) == len(plan['schedule']) == 2,

@@ -251,9 +251,23 @@ second checkpoint pair before another batch. Neither code changes nor synthetic
 tests establish successful restoration of the real update-21 state. Transfer uses
 the user-owned **private** training-state Git repository; proprietary assets,
 checkpoints and full evidence must never enter this public code repository.
-Private transfer revision `0b03c34` supplied the checkpoint pair; its original
-file hashes and model/Adam/RNG/progress/pool restoration pass on Linux. Historical
-plan/report restoration and fresh native gates remain pending the remaining parts.
+Private transfer revision `c7257a0` supplied all 66 parts. All nine original files
+and the unchanged archive passed their hashes. The complete historical plan/report,
+checkpoint pair and independent backup restore exactly on Linux at update 21,
+84 rollouts, 3,944 decisions and 149 Adam steps.
+
+The first fresh Linux gate, `linux-update21-gate-001`, stopped after 72 Red choices:
+the native client exited with SIGSEGV (-11) during shutdown after terminal callbacks,
+the terminal barrier and `Ending network thread` were logged. The result remains
+failed/unscored; Blue was not started, independent replay was not reached, and
+zero training samples or optimizer steps were admitted. Cleanup passed and no
+native process remains. Update 21 is unchanged. Full failure evidence is preserved
+privately on `codex/cloud-teacher-results`; compact evidence is
+`validation/cloud-linux-gate-001-2026-10-25.json`. Optimizer owns native lifecycle
+repair; a separately labelled fresh Linux gate must pass before PPO continuation.
+The runner also explicitly requires gate/evaluation completion within its shared
+budget. `reports/cloud/teacher-status.json` records the current compact status;
+status commits occur between batches to preserve frozen source identity.
 
 ## Current authorized local PPO pilot
 

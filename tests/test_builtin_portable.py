@@ -102,11 +102,16 @@ class PortableTests(unittest.TestCase):
                  'cleanup_verified':True,'identity_verified':True,'replay_verified':True}
                 for row in plan['schedule']]
         report = {'schema':runner.EVALUATION+'-result','plan_sha256':resume.binding(plan_path)['sha256'],
-                  'status':'finished','worker_complete':True,'supervisor_cleanup_verified':True,
+                  'status':'finished','worker_complete':True,'supervisor_cleanup_verified':True,'within_shared_budget':True,
                   'optimizer_updates':0,'optimizer_steps':0,'training_performed':False,'attempts':rows}
         write(report_path,report)
         self.value['linux_gate']={'plan':resume.binding(plan_path),'report':resume.binding(report_path)}
         migration=self.commit_manifest();migration.training_gate(f.runtime)
+        report['within_shared_budget']=False;write(report_path,report)
+        self.value['linux_gate']['report']=resume.binding(report_path)
+        migration=self.commit_manifest()
+        with self.assertRaisesRegex(ValueError,'clean current-runtime'): migration.training_gate(f.runtime)
+        report['within_shared_budget']=True
         plan['native']={**f.native,'binary_sha256':'changed-client'};write(plan_path,plan)
         report['plan_sha256']=resume.binding(plan_path)['sha256'];write(report_path,report)
         self.value['linux_gate']={'plan':resume.binding(plan_path),'report':resume.binding(report_path)}
@@ -202,7 +207,7 @@ class HeldoutTests(unittest.TestCase):
                          'cleanup_verified':True,'identity_verified':True,'replay_verified':True}
                         for row in plan['schedule']]
                 report = {'plan_sha256':runner.pilot.digest(run/'plan.json'),'status':'finished',
-                    'worker_complete':True,'supervisor_cleanup_verified':True,'training_performed':False,
+                    'worker_complete':True,'supervisor_cleanup_verified':True,'within_shared_budget':True,'training_performed':False,
                     'optimizer_updates':0,'optimizer_steps':0,'attempts':rows}
                 write(run/'execution/report.json',report)
                 runner.require_heldout(state,runtime,{})
