@@ -35,6 +35,7 @@ The ordinary map is the authored **hero-management-v1** scenario; see its
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Completed local365 Teacher analysis](validation/local365-final-analysis-2026-10-25.json).
 - [Teacher status](reports/cloud/teacher-status.json) and
   [continuation evidence](validation/cloud-continuation-2026-10-25.json).
 - [Optimizer status](reports/cloud/optimizer-status.json) and
@@ -70,54 +71,60 @@ Changed weights or occasional recruitment do not establish improved strategy.
 - Gameplay training needs its explicit experiment scope and budget. Unit tests
   may exercise synthetic PPO; they do not start a gameplay campaign.
 
-### Current local continuation
+### Completed local365 continuation
 
-The user authorized a new **local Mac session lasting at most two hours**, then
-shutdown and analysis. New episodes use **365 game days** and **5120 total
-choices** (4960 ordinary plus 160 reserve), whichever limit is reached first.
-Use complete four-game PPO batches and both-seat fixed evaluation. The training
-clock starts when the prepared campaign launches; allow time within the bound
-for safe shutdown and checkpoint preservation.
+The authorized local session ran from **18:27:13 to 20:07:24 UTC on 25 October
+2026** (20:27:13–22:07:24 Kyiv), stopping after 100.2 minutes on a genuine
+unsupported-interface failure, before its two-hour hard deadline. It used the
+ordinary cold runtime, Nullkiller Easy/BattleAI, complete four-game PPO batches,
+**365 days and 5120 total choices**, and the existing terminal-only rewards.
+The active source stayed pinned at `aebe2fb`; no cloud or experimental worker
+was started. See [launch evidence](validation/local365-launch-2026-10-25.json)
+and the [final analysis](validation/local365-final-analysis-2026-10-25.json).
 
-Continue the preserved **cloud update 31**, including Adam, RNG, progress and
-pool; never resume the stale local update 21. Preparation must first validate an
-explicit, exactly bound Linux-to-Mac and source transition, then fresh native
-capture/replay in both seats. The current ordinary cold-process backend remains
-the training runtime. Claude's in-process engine work is separate and
-experimental. Preparation is not training; dated local evidence must confirm
-that the campaign actually launched.
+The exact cloud update-31 state advanced to **update 92**: **61 new PPO updates,
+244 admitted training games, 14,286 transitions and 530 Adam steps**. Cumulative
+state is 368 rollouts, 21,062 decisions and 783 Adam steps. Every completed batch
+was independently restored and privately published. Final canonical, backup
+and private copies restore the exact model, Adam, RNG, progress and pool.
 
-The earlier cloud session is complete. Its compute cutoff was **2026-10-25
-17:50 UTC** and final stop **17:53 UTC (19:53 Kyiv)**. Its dated tools remain
-expired and its original 30-day configurations/results remain immutable. The
-new local authorization does not restart cloud work or rewrite historical
-metadata. Weights and full optimizer state remain in private storage.
+All **244 training games**, **24 scheduled evaluation games** and the **two
+initial frozen gate games** were verified natural losses: zero wins and zero
+cutoffs. No town capture was observed. The fixed Red check improved from a
+day-2 loss at update31 to days8–9 at updates70–90, with recruitment; Blue
+remained a day-2 loss except for a transient day-8 result at update50. These
+repeated seeds demonstrate limited behavior changes, not general strategic
+improvement. The last held-out checkpoint is update90, two updates before the
+final preserved checkpoint; no games ran after the correctness stop.
 
-Local365 preparation is recorded in
-[prelaunch evidence](validation/local365-prelaunch-2026-10-25.json). The exact
-cloud update-31 model, Adam, RNG, progress and pool restore on macOS. The three
-reviewed performance modules are accepted only at their exact historical and
-consolidated hashes, with a trained-policy parity proof; the generic portable
-guard still rejects arbitrary policy changes. A fresh frozen two-seat gate
-passed native replay and cleanup in 8.432 seconds (two losses, zero updates).
+Three admitted training games exceeded the old 30-day horizon, ending naturally
+on days65,66 and107. Longer trajectories were expensive: the largest batch took
+1,283 seconds, compared with a 35.7-second median. The new horizon supplied
+additional terminal feedback but did not produce a verified learner victory.
 
-The [local configuration](configs/builtin-local365-v1.json) explicitly assigns
-`max_days=365`; the [training migration](configs/builtin-local365-migration-training-v1.json)
-binds the exact update-31 state and fresh native gate. A single durable
-`local365/campaign-session.json` and exclusive controller lock cap the campaign
-at two hours from actual launch, with five minutes reserved for cleanup and
-publication. The entire controller has an independent deadline guardian; each
-native game and optimizer batch retains its existing guards. The local config,
-controller, parity checker and new authorization are bound into the session.
-The expired cloud defaults and historical plans remain unchanged.
+Batch93 stopped in its first game on day62 after 1,337 choices with
+`unsupported_interaction: informational notice`, raised by the structured
+informational-notice handler. The exact rejected notice grammar remains
+unidentified. A preceding visible battle-win event is not a verified game win.
+The failed attempt is unscored and supplies **zero samples**; three remaining
+games were not started. Its raw capture is privately preserved. No retry,
+repair campaign or restart was performed. Native and controller cleanup passed,
+and no owned native/training processes remained. The Mac window was released.
 
-The reviewed campaign **launched locally at 20:27:13 Kyiv on 25 October** from
-update 31, pinned to `aebe2fb`. Compute stops by **22:22:13 Kyiv**, with a hard
-stop at **22:27:13 Kyiv** including checkpoint publication and cleanup.
-[Launch evidence](validation/local365-launch-2026-10-25.json) is a dated snapshot;
-read the durable campaign report for later progress. A separate follow-up will
-verify shutdown and analyze results after the deadline. Do not restart this
-session or extend its two-hour authorization.
+The final parent is
+`/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/plan.json`,
+with a second copy under `Heroes-artifacts/checkpoints/local365-continuation-092/`.
+Private checkpoint commit `58b7826` and final raw-evidence commit `d610424` are on
+`codex/local365-teacher-results` in the private training-state repository.
+The consumed campaign lock/session remain in place; this authorization is
+complete and does not permit a restart.
+
+The [prelaunch evidence](validation/local365-prelaunch-2026-10-25.json),
+[local configuration](configs/builtin-local365-v1.json) and
+[exact training migration](configs/builtin-local365-migration-training-v1.json)
+retain the reviewed source/runtime transition, trained-policy parity proof and
+fresh two-seat replay gate. The earlier cloud session remains stopped; its
+expired deadlines, original 30-day plans and historical metadata are unchanged.
 
 ## Source layout
 
