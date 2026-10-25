@@ -5,13 +5,13 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** the user has authorized a staged capability expansion and
-bounded real-game validation, with no new gameplay optimizer updates. Stage 1
-adds an explicit town Tavern and native hero recruitment; stage 2 adds the
-specified army operations; stage 3 adds enumerated adventure choice dialogs.
+**Current milestone:** stages 1–3 of the capability expansion have passed their
+bounded native checks. The user has now authorized exactly eight longer
+ordinary games with frozen v7 weights, four fresh engine seeds and both learner
+colors, under one shared hour on this Mac. Each game allows at most 4,096 total
+policy choices and 200 days. There are no new PPO or optimizer updates.
 Automatic BattleAI combat, normal fog and terminal-only rewards remain fixed.
-Implementation and validation status are recorded below; source changes alone
-are not evidence that a mechanic works in the real engine.
+Source changes alone are not evidence that a mechanic works in the real engine.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2254,6 +2254,48 @@ finish games; they do not establish how often ordinary self-play will do so.
 Different interfaces, checkpoints and budgets prevent an improvement or
 regression claim. No movement heuristic, scripted strategy, shaped reward or
 forced outcome has been added to the ordinary policy.
+
+## Longer ordinary dialog evaluation — authorized scope
+
+The separately versioned `configs/long-dialog-evaluation-v1.json` and
+`experiments/learner/evaluate_long_dialogs.py` define exactly eight planned games:
+engine seeds 120501–120504, each with the learner on Red and Blue. Policy RNGs
+120601–120608 follow their model when colors swap. The unchanged ordinary
+`hero-management-v1` map includes its Tavern; diagnostic fixtures are excluded.
+
+This reuses the previously validated v7 random-initialization checkpoint
+`hero-policy-1c290bcb1ca37cb8` and its fixed opponent
+`hero-opponent-7176f1a2e81393cb`. Both models stay frozen on CPU with independent
+player memories. The old trained v4 checkpoint is incompatible and is neither
+loaded nor migrated. The checkpoint's original source metadata is preserved;
+all its learner/dependency hashes must still match. A new immutable plan binds
+the current evaluator, configuration, adapter, native runtime and map separately.
+
+The 4,096-choice cap counts both players together. Ordinary collection stops at
+4,088 choices, reserving at most eight actual policy answers for an already-open
+strategic dialog. An unresolved query at the hard choice/day boundary fails
+unscored. Safe technical cutoff continuation stays outside the learner prefix.
+A game stops earlier on a verified natural ending, native failure or day limit.
+Unsupported mechanics, including full-army neutral joining, remain explicit
+unscored failures; they are not automatically answered or silently skipped.
+
+One absolute 3,600-second execution deadline covers the entire schedule,
+checkpoint loading, native launches, collection, history/behavior reconstruction,
+independent native replay and cleanup. An independent process watchdog also
+protects each worker and its separate native process group. Thirty seconds are
+reserved for failure finalization and cleanup; a hard stop occurs two seconds
+before the deadline. The deadline never resets for a later game. Final offline
+report assembly is separately timed and cannot launch gameplay or replay.
+
+Every scheduled row is retained, including failed, incomplete and not-started
+rows. There are no retries or replacements. Isolated native failures may advance
+to the next fixed row only after evidence preservation, verified process cleanup
+and identity checks. Identity drift, uncertain cleanup, evidence errors, unknown
+invariants or the shared deadline stop the schedule. A verifier failure does not
+rewrite a native manifest or become a loss/draw. Reports distinguish observed
+prefix behavior from complete verified games and label comparisons across
+interfaces or budgets as descriptive. These rollouts are diagnostic and cannot
+enter an optimizer. Execution results will be recorded here after the run.
 
 ## Headless self-play environment (issue #4, in progress)
 

@@ -203,13 +203,24 @@ class VcmiLauncher:
         launch_env = {**profile_env, "VCMI_EXPERIMENT_DIR": str(engine), "VCMI_EXPERIMENT_NO_CHEATS": "1", **environment}
         inherited = {key: value for key, value in os.environ.items()
                      if not key.startswith(("EXPLORER_RL_", "VCMI_RECORD_", "VCMI_EXPERIMENT_", "VCMI_USER_DATA_DIR", "XDG_"))}
-        process = subprocess.Popen(command, cwd=self.binary.parent, env={**inherited, **launch_env},
-                                   stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        process = self._spawn_process(command, {**inherited, **launch_env}, log)
         return process, {"command": command, "environment": launch_env, "requested_settings": settings}
+
+    def _spawn_process(self, command, launch_env, log):
+        """Optional supervision belongs to a launcher, not to game semantics."""
+        return subprocess.Popen(command, cwd=self.binary.parent, env=launch_env,
+                                stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                                start_new_session=True)
 
 
 def stop_process_group(process: subprocess.Popen) -> None:
     """Stop the private process group this environment started, stragglers included."""
+    if getattr(process, "_deadline_guarded", False) is True:
+        # Only the live guardian may signal its anchored private group. An
+        # external caller closes ownership and verifies cleanup instead.
+        from experiments.headless.process_deadline import close_owned_process
+        close_owned_process(process, timeout=8)
+        return
     group = process.pid  # started with start_new_session, so the leader's PID names the group
     # macOS refuses with EPERM, not ESRCH, while the group's only member is an unreaped zombie.
     gone = (ProcessLookupError, PermissionError)

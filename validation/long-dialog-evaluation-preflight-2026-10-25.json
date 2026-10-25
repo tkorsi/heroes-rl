@@ -1,0 +1,57 @@
+{
+  "base_commit": "3afa3bda2432652009a548e14358c6a7893d3ea3",
+  "final_targeted_suite": {
+    "passed": true,
+    "tests": 45
+  },
+  "full_suite": {
+    "passed": true,
+    "tests": 810
+  },
+  "logs": {
+    "final-targeted-tests.log": {
+      "bytes": 98,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-preflight-2026-10-25/final-targeted-tests.log",
+      "sha256": "9459038f4b4f3922771d1fde4555f3f3cd12cd6b60819a6ffab8ce15bc063628",
+      "tail": [
+        "----------------------------------------------------------------------",
+        "Ran 45 tests in 4.747s",
+        "",
+        "OK"
+      ]
+    },
+    "full-tests.log": {
+      "bytes": 1254,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-preflight-2026-10-25/full-tests.log",
+      "sha256": "4cfba9d7989dc53b318a4204102099999fc7d8aeea95b573d9ce6e3ad3be5775",
+      "tail": [
+        "..........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................",
+        "----------------------------------------------------------------------",
+        "Ran 810 tests in 99.718s",
+        "",
+        "OK"
+      ]
+    },
+    "prepared-check.log": {
+      "bytes": 127,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-preflight-2026-10-25/prepared-check.log",
+      "sha256": "a7eb4332ed5e9eefa07436d939ecb45b91b1769ed3b25d5a3e752df93c15c98e",
+      "tail": [
+        "Verified /Users/orsi/.codex/worktrees/troop-transfer/Heroes/vcmi: pinned upstream + root patches + owned source match exactly."
+      ]
+    }
+  },
+  "new_games_launched": 0,
+  "optimizer_steps": 0,
+  "review": "Independent runner/contract, analyzer and POSIX lifecycle reviews completed; identified failure-classification, cleanup ownership and completeness issues fixed before execution.",
+  "root_patch_agreement": true,
+  "schema": "heroes-long-dialog-evaluation-preflight-v1",
+  "seed_freshness": {
+    "candidate_seeds_absent": true,
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-preflight-2026-10-25/seed-freshness.json",
+    "prior_bound_files": 64,
+    "prior_unique_seeds": 290,
+    "sha256": "f4c62fed2f141749130d3fd0220585c2a9f864c178842ce23ae877b0a8a7a280"
+  },
+  "training_performed": false
+}
