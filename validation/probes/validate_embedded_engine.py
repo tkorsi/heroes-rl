@@ -25,10 +25,12 @@ that ends inside step() or reset() finalizes inside that call; the nested
 finalization is reported next to the totals instead of being subtracted.
 
 A row passes only when its game ended naturally or by a declared cutoff, its
-replay (where requested) verified and its policy audit held; the stall row
-passes only when its game failed and, in-process, the next native reset was
-refused. Rows reuse one environment per seat and controller, as consecutive
-BuiltinCollector games do, unless --env-per-row is given.
+replay (where requested) verified and, for policy rows, its policy audit
+(unless --audit none) held. The stall row passes only when the controller
+actually withheld its answer, the game failed and, in-process, the engine was
+poisoned; the run then also requires the next reset to be refused in Python
+and natively. Rows reuse one environment per seat and controller, as
+consecutive BuiltinCollector games do, unless --env-per-row is given.
 """
 from __future__ import annotations
 
@@ -61,8 +63,9 @@ SCOPE = ("Bounded evaluation-only rows; no training, rewards, demonstrations or 
          "Controllers other than policy are explicit test workloads, never learner inputs.")
 ENDED = ("completed", "truncated")  # manifest statuses of a game that did not fail
 # Plan fields two runs must share before their rows count as matched.
-MATCHED_PLAN = ("controller", "rows", "limits", "visit_kind", "stall_seconds", "random_policy_seed")
+MATCHED_PLAN = ("controller", "rows", "limits", "visit_kind", "stall_seconds", "random_policy_seed", "interface")
 POLICY_PLAN = ("controller", "random_policy_seed")  # exempt when one run resubmits the other's actions
+PLAN_DEFAULTS = {"interface": c.DIALOGS_ENVIRONMENT}  # plans written before the field existed
 ABSOLUTE_PATH = re.compile(r"(?<![\w.~-])(?:/[^\s'\"<>|:;,()\[\]{}]+){2,}")
 
 
@@ -162,8 +165,10 @@ class Phases:
 class ScriptedRunner:
     """BuiltinCollector.run_episode semantics for explicit test controllers."""
 
-    def __init__(self, kind, *, learner_player, visit_kind=None, stall_seconds=0.0, recorded=None):
+    def __init__(self, kind, *, learner_player, visit_kind=None, stall_seconds=0.0, recorded=None,
+                 interface=c.DIALOGS_ENVIRONMENT):
         self.kind, self.learner_player = kind, learner_player
+        self.schema = c.profile_for(interface).action_schema
         self.visit_kind, self.stall_seconds = visit_kind, stall_seconds
         self.recorded = deque(recorded or ())
         self.session = None  # retain_failed_builtin_evidence keeps no policy evidence for scripts
@@ -176,6 +181,7 @@ class ScriptedRunner:
         kind = observation.context.kind
         if self.kind == "recorded":
             require(self.recorded, "Recorded actions ran out before the game ended: the replayed game diverged")
+            # The recorded schema is kept: offers of another interface refuse it.
             return c.Action(**self.recorded.popleft())
         if self.kind == "stall" and not self.stalled:
             self.stalled = True
@@ -184,7 +190,13 @@ class ScriptedRunner:
             choice = offers.dialog_panel.choices[0]
             self.dialog_answers.append({"day": frame.day, "selection": choice.ref})
             return c.Action("choose_dialog", subject=offers.context.subject, selection=choice.ref,
-                            schema=c.DIALOGS_ACTION_SCHEMA)
+                            schema=self.schema)
+        panel = offers.capability_panel
+        if kind == "capability" and panel is not None and panel.mandatory:
+            # v8 skill or spell-target query: the first displayed choice, as for dialogs.
+            choice = panel.choices[0]
+            self.dialog_answers.append({"day": frame.day, "selection": choice.ref, "capability": panel.kind})
+            return c.Action(choice.kind, subject=choice.subject, selection=choice.ref, schema=self.schema)
         require(kind == "map", "Scripted workload reached an unsupported window; no fabricated action")
         if self.kind == "visit" and not self.dialog_answers and self.visit_moves < 2 * frame.day:
             targets = [obj for obj in observation.objects if obj.kind == self.visit_kind and obj.owner != "self"]
@@ -193,14 +205,14 @@ class ScriptedRunner:
                 target = targets[0].position
                 hero = min(heroes, key=lambda h: max(abs(h.position[0] - target[0]), abs(h.position[1] - target[1])))
                 self.visit_moves += 1
-                return c.Action("move_to", subject=hero.handle, x=target[0], y=target[1], schema=c.DIALOGS_ACTION_SCHEMA)
-        return c.Action("end_turn", schema=c.DIALOGS_ACTION_SCHEMA)
+                return c.Action("move_to", subject=hero.handle, x=target[0], y=target[1], schema=self.schema)
+        return c.Action("end_turn", schema=self.schema)
 
     def run_episode(self, env, *, episode, seed, max_requests):
         request, choices = env.reset(episode=episode, seed=seed), 0
         while not request.done:
             if choices >= max_requests:
-                if c.decode_frame(request.frames[-1]).observation.context.kind == "dialog":
+                if env.sides[env.learner_player].validator.live.requires_choice:
                     env.defer_dialog_cutoff("collection_window")
                     request = env.step(self.act(request))
                     choices += 1
@@ -220,6 +232,7 @@ def recorded_actions(run, row):
             "Recorded row differs in seat or engine seed")
     color = ("red", "blue")[row["learner_player"]]
     actions = []
+    # The schema travels with each line; run() requires the source run's interface.
     for line in (folder / "agents" / color / "bridge.jsonl").read_text().splitlines():
         entry = json.loads(line)
         if entry["direction"] == "policy":
@@ -229,10 +242,14 @@ def recorded_actions(run, row):
     return actions
 
 
+def history_declaration(manifest):
+    from experiments.headless.builtin_evidence import manifest_profile
+    return manifest["players"][COLORS[manifest["learner_player"]]][manifest_profile(manifest).history_key]
+
+
 def history_summary(folder, manifest):
     """Action mix, results and visible events from the persisted own history."""
-    color = COLORS[manifest["learner_player"]]
-    declaration = manifest["players"][color]["history_v7"]
+    declaration = history_declaration(manifest)
     frames = [c.decode_frame(json.loads(line)) for line in (folder / declaration["path"]).read_text().splitlines() if line]
     submitted = Counter(f.action.kind for f in frames if f.kind == "submitted")
     results = Counter(f.result.status for f in frames if f.kind == "result")
@@ -248,16 +265,15 @@ def history_summary(folder, manifest):
 
 
 def canonical_history(folder, manifest):
-    color = COLORS[manifest["learner_player"]]
-    return (folder / manifest["players"][color]["history_v7"]["path"]).read_bytes().splitlines()
+    return (folder / history_declaration(manifest)["path"]).read_bytes().splitlines()
 
 
 def delta(before, after):
     return {key: after[key] - before[key] for key in after if isinstance(after[key], (int, float))}
 
 
-def random_policy(seed):
-    """A labelled, freshly initialized v7 model: never a trained or the frozen checkpoint.
+def random_policy(seed, interface=c.DIALOGS_ENVIRONMENT):
+    """A labelled, freshly initialized model: never a trained or the frozen checkpoint.
 
     Used where the frozen checkpoint cannot load (its exact Torch release is
     bound); it exercises the same model, sampling and engine paths.
@@ -266,10 +282,11 @@ def random_policy(seed):
     import torch
     from experiments.learner import contextual_model as m
     torch.manual_seed(seed)
-    model = m.ContextualActorCritic(m.ModelConfig(schema=m.DIALOGS_MODEL_SCHEMA))
+    profile = c.profile_for(interface)
+    model = m.ContextualActorCritic(m.ModelConfig(schema=m.model_schema_for(profile.history_schema)))
     model.eval().requires_grad_(False)
     from experiments.learner.builtin_rollout import weights_sha256
-    label = f"random-initialization-v7-seed-{seed}-not-a-trained-or-frozen-checkpoint"
+    label = f"random-initialization-v{profile.version}-seed-{seed}-not-a-trained-or-frozen-checkpoint"
     return SimpleNamespace(model=model, checkpoint=label), {"label": label, "weights_sha256": weights_sha256(model),
                                                              "model_config": model.config.to_dict()}
 
@@ -305,26 +322,33 @@ def run(args):
             "The stall controller must withhold its first answer beyond --bridge-timeout")
     seats = [int(seat) for seat in args.seats.split(",")]
     require(seats and all(seat in (0, 1) for seat in seats), "Seats are 0 and/or 1")
+    require(args.episodes >= 1, "--episodes must be at least 1")
     rows = schedule(args.episodes, seats, args.engine_seed, args.policy_seed, args.seed_step)
+    require(all(1 <= row["engine_seed"] <= 2147483647 for row in rows), "Engine seeds must be signed 32-bit and positive")
     if args.recorded is not None:
         args.recorded = args.recorded.expanduser().resolve()
-        source = strict_json((args.recorded / "plan.json").read_bytes())["rows"]
+        source_plan = strict_json((args.recorded / "plan.json").read_bytes())
+        source = source_plan["rows"]
         require(all(any(all(row[key] == other[key] for key in ("episode", "learner_player", "engine_seed")) for other in source)
                     for row in rows), "The recorded run used a different episode, seat or engine-seed schedule")
+        require(plan_value(source_plan, "interface") == args.interface, "The recorded run used another interface")
     runtime = runtime_identity(args.binary.parent)
     loaded = fixed = None
     if args.controller == "policy":
-        loaded, fixed = load_fixed(args.checkpoint) if args.checkpoint else random_policy(args.random_policy_seed)
+        loaded, fixed = (load_fixed(args.checkpoint) if args.checkpoint
+                         else random_policy(args.random_policy_seed, args.interface))
     output.mkdir(parents=True)
     limits = Limits(max_days=args.max_days, max_actions=args.choices + 8, startup_seconds=60,
                     watchdog_seconds=args.watchdog, shutdown_seconds=15, bridge_timeout=args.bridge_timeout)
     plan = {"schema": SCHEMA, "backend": args.backend, "controller": args.controller, "rows": rows,
+            "interface": args.interface,
             "map": binding(args.map), "binary": str(args.binary), "replay_binary": str(args.replay_binary),
             "data": str(args.data), "runtime": runtime, "checkpoint": binding(args.checkpoint) if args.checkpoint else None,
             "random_policy_seed": args.random_policy_seed,
             "frozen": fixed, "limits": {"max_days": args.max_days, "choices": args.choices, "hard_choices": args.choices + 8,
             "watchdog_seconds": args.watchdog, "bridge_timeout": args.bridge_timeout, "row_seconds": args.row_seconds},
             "visit_kind": args.visit_kind, "stall_seconds": args.stall_seconds, "replay": args.replay,
+            "audit": args.audit,
             "reuse_environment": not args.env_per_row,
             "recorded": {"run": args.recorded.name, "report_sha256": file_identity(args.recorded / "report.json")["sha256"]}
                         if args.recorded is not None else None,
@@ -348,7 +372,7 @@ def run(args):
         key = (seat, controller)
         if key not in environments or args.env_per_row:
             agents = {COLORS[seat]: {"kind": f"embedded-validation-{controller}", "evaluation_only": True}}
-            options = dict(learner_player=seat, limits=limits, agents=agents)
+            options = dict(learner_player=seat, limits=limits, agents=agents, interface=args.interface)
             if args.backend == "embedded":
                 from experiments.headless.embedded_env import EmbeddedBuiltinEnv
                 env = EmbeddedBuiltinEnv(launcher, output, engine=engine, **options)
@@ -371,13 +395,14 @@ def run(args):
         stall = args.controller == "stall" and row["index"] == 0
         controller = args.controller if args.controller != "stall" or stall else "end_turn"
         result = {**row, "controller": controller, "status": "failed"}
-        env = runner = phases = None
+        env = runner = phases = previous = None
         policy = Timed()
         native_before = engine.timings() if engine else None
         row_started = time.perf_counter()
         try:
             with until(time.monotonic() + args.row_seconds, time.time() + args.row_seconds, 0):
                 env, phases = environment(seat, controller)
+                previous = env.episode_dir
                 result["environment_game"] = phases.games
                 if controller == "policy":
                     opponent = native_opponent(runtime, seat)
@@ -385,18 +410,22 @@ def run(args):
                     class TimedCollector(BuiltinCollector):
                         act = policy.wrap(BuiltinCollector.act)
                     runner = TimedCollector(loaded.model, loaded.checkpoint, learner_player=seat,
-                                            opponent_identity=opponent, policy_seed=row["policy_seed"])
+                                            opponent_identity=opponent, policy_seed=row["policy_seed"],
+                                            interface=args.interface)
                     collected = runner.run_episode(env, episode=row["episode"], seed=row["engine_seed"],
                                                    max_requests=args.choices)
                     write(env.episode_dir / "builtin-rollout.json", collected.to_dict())
                     manifest = collected.manifest
                 else:
                     runner = ScriptedRunner(controller, learner_player=seat, visit_kind=args.visit_kind,
-                                            stall_seconds=args.stall_seconds,
+                                            stall_seconds=args.stall_seconds, interface=args.interface,
                                             recorded=recorded_actions(args.recorded, row) if args.recorded else None)
                     runner.act = policy.wrap(runner.act)
-                    end = runner.run_episode(env, episode=row["episode"], seed=row["engine_seed"],
-                                             max_requests=args.choices)
+                    try:
+                        end = runner.run_episode(env, episode=row["episode"], seed=row["engine_seed"],
+                                                 max_requests=args.choices)
+                    finally:
+                        result["stalled"] = runner.stalled
                     manifest = end.manifest
                     result["dialog_answers"] = runner.dialog_answers
                 result.update(status="collected", episode_status=manifest["status"],
@@ -415,10 +444,16 @@ def run(args):
             samples = timing.pop("reset_samples")
             result.update(timing, reset_seconds=samples[0] if samples else None)
         if env is not None:
-            result.update(engine_wait_seconds=env.engine_wait, agent_wait_seconds=env.agent_wait,
-                          adapter_seconds=dict(env.costs), step_latency=percentiles(env.step_latencies))
             folder = env.episode_dir
-            if folder is not None and folder.name == f"episode-{row['episode']:06d}":
+            # Only a game this row started owns the environment's metrics and episode directory; a reset that
+            # failed earlier leaves the previous row's (retain_failed_builtin_evidence would name its folder).
+            started = folder is not None and folder != previous and folder.name == f"episode-{row['episode']:06d}"
+            if not started:
+                for key in ("episode_directory", "episode_status", "termination_reason", "failure_finalization"):
+                    result.pop(key, None)
+            if started:
+                result.update(engine_wait_seconds=env.engine_wait, agent_wait_seconds=env.agent_wait,
+                              adapter_seconds=dict(env.costs), step_latency=percentiles(env.step_latencies))
                 result["episode_directory"] = str(folder)
                 if (folder / "manifest.json").is_file():
                     manifest = strict_json((folder / "manifest.json").read_bytes())
@@ -451,23 +486,25 @@ def run(args):
             result["replay_error"] = replay.get("error")
             if replay.get("embedded_backend") or replay.get("identity_check", {}).get("embedded_backend"):
                 result["replay_embedded_identity"] = True
-            if controller == "policy" and result["replay_verified"]:
-                begun = time.perf_counter()
-                try:
-                    rebuilt, _ = (load_fixed(args.checkpoint) if args.checkpoint
-                                  else random_policy(args.random_policy_seed))
-                    audit = audit_persisted_builtin_policy(Path(result["episode_directory"]), rebuilt.model,
-                        rebuilt.checkpoint, row["policy_seed"], native_opponent(runtime, seat))
-                    result["policy_audit"] = audit.get("passed") is True
-                except Exception as error:
-                    result["policy_audit"] = False
-                    result["policy_audit_error"] = f"{type(error).__name__}: {error}"
-                result["audit_seconds"] = time.perf_counter() - begun
+        # The audit reads only the persisted rollout, manifest and history; it does not depend on the replay.
+        audit = controller == "policy" and ended and args.audit == "every"
+        if result["status"] == "collected" and audit:
+            begun = time.perf_counter()
+            try:
+                rebuilt, _ = (load_fixed(args.checkpoint) if args.checkpoint
+                              else random_policy(args.random_policy_seed, args.interface))
+                audited = audit_persisted_builtin_policy(Path(result["episode_directory"]), rebuilt.model,
+                    rebuilt.checkpoint, row["policy_seed"], native_opponent(runtime, seat))
+                result["policy_audit"] = audited.get("passed") is True
+            except Exception as error:
+                result["policy_audit"] = False
+                result["policy_audit_error"] = f"{type(error).__name__}: {error}"
+            result["audit_seconds"] = time.perf_counter() - begun
         if stall:
             result["expected"] = "failed"
-        result["status"] = row_status(result, stall=stall, verify=verify, embedded=engine is not None)
+        result["status"] = row_status(result, stall=stall, verify=verify, audit=audit, embedded=engine is not None)
         result["natural"] = result.get("episode_status") == "completed"
-        result["replay_requested"] = verify
+        result["replay_requested"], result["audit_requested"] = verify, audit
         result["row_seconds"] = time.perf_counter() - row_started
         result["resources_after"] = host_resources(engine)
         report["rows"].append(result)
@@ -492,15 +529,16 @@ def run(args):
     return report
 
 
-def row_status(result, *, stall, verify, embedded):
+def row_status(result, *, stall, verify, audit, embedded):
     """Passed only for a game that ended as intended and whose requested evidence held."""
     if stall:
-        # The withheld answer must fail the game; in-process it must also poison the engine.
-        return ("passed" if result.get("episode_status") == "failed"
+        # The answer must actually have been withheld and must fail the game; in-process it must poison the engine.
+        return ("passed" if result.get("stalled") is True and result.get("episode_status") == "failed"
                 and (not embedded or result.get("poisoned_after") is True) else "failed")
     if result["status"] != "collected" or result.get("episode_status") not in ENDED:
         return "failed"
-    return "passed" if (not verify or result.get("replay_verified") is True) and result.get("policy_audit", True) else "failed"
+    return ("passed" if (not verify or result.get("replay_verified") is True)
+            and (not audit or result.get("policy_audit") is True) else "failed")
 
 
 def refusal_check(engine, launcher, output, row, limits):
@@ -534,7 +572,7 @@ def run_checks(args, report, engine):
     rows = report["rows"]
     checks = {"all_rows_ran": len(rows) == len(report_plan_rows(args)) or args.controller == "stall"}
     if args.controller == "stall":
-        checks["stall_row_failed"] = bool(rows) and rows[0].get("episode_status") == "failed"
+        checks["stall_row_failed"] = bool(rows) and rows[0].get("stalled") is True and rows[0].get("episode_status") == "failed"
         if engine is not None:
             checks["poisoned_and_refused"] = (report.get("poisoned") or {}).get("next_reset_refused") is True
             checks["stopped_after_poisoning"] = len(rows) == 1
@@ -591,6 +629,10 @@ def summarize(rows, backend):
             "descriptor_trajectory": [row["resources_collected"].get("open_descriptors") for row in rows]}
 
 
+def plan_value(plan, key):
+    return plan.get(key, PLAN_DEFAULTS.get(key))
+
+
 def run_identity(folder):
     """A run by name and content, never by its absolute location."""
     return {"run": folder.name, "report_sha256": file_identity(folder / "report.json")["sha256"],
@@ -609,7 +651,7 @@ def compare(args):
     recorded = any((plan.get("recorded") or {}) == {"run": other["run"], "report_sha256": other["report_sha256"]}
                    for plan, other in ((plans[1], identities[0]), (plans[0], identities[1])))
     keys = [key for key in MATCHED_PLAN if not (recorded and key in POLICY_PLAN)]
-    differing = [key for key in keys if plans[0].get(key) != plans[1].get(key)]
+    differing = [key for key in keys if plan_value(plans[0], key) != plan_value(plans[1], key)]
     differing += [] if plans[0]["map"]["sha256"] == plans[1]["map"]["sha256"] else ["map"]
     if not recorded and (plans[0].get("checkpoint") or {}).get("sha256") != (plans[1].get("checkpoint") or {}).get("sha256"):
         differing.append("checkpoint")
@@ -636,7 +678,7 @@ def compare(args):
             if prefix < min(map(len, histories)):
                 entry["first_difference"] = [json.loads(h[prefix]).get("kind") for h in histories]
         except Exception as error:
-            entry["error"] = scrub(f"{type(error).__name__}: {error}")
+            entry["error"] = scrub(f"{type(error).__name__}: {error}", local_roots(*folders))
         rows.append(entry)
     matched = min(len(left["rows"]), len(right["rows"]))
     result = {"schema": SCHEMA + "-comparison", "left": identities[0], "right": identities[1],
@@ -692,19 +734,31 @@ def codec(args):
 ROW_FIELDS = ("episode", "learner_player", "engine_seed", "controller", "status", "expected", "episode_status",
               "termination_reason", "outcomes", "error", "reset_seconds", "collection_seconds", "row_seconds",
               "replay_seconds", "audit_seconds", "replay_requested", "replay_verified", "replay_error", "policy_audit",
-              "returncode", "poisoned_after", "dialog_answers", "environment_game")
+              "audit_requested", "returncode", "poisoned_after", "dialog_answers", "environment_game", "stalled")
 RESOURCE_FIELDS = ("resident_bytes", "threads", "open_descriptors", "python_threads", "peak_self_bytes",
                    "peak_children_bytes")
 
 
-def scrub(value):
+def local_roots(*paths):
+    """Known machine locations, longest first; they may contain spaces the path pattern stops at."""
+    roots = {str(Path.home()), str(ROOT)}
+    for path in paths:
+        if path:
+            path = Path(path)
+            roots.update(str(part) for part in (path, *path.parents) if len(part.parts) > 2)
+    return tuple(sorted(roots, key=len, reverse=True))
+
+
+def scrub(value, roots=()):
     """Replace absolute paths in free text; the record names runs, never machine locations."""
     if isinstance(value, str):
+        for root in roots:
+            value = value.replace(root, "<path>")
         return ABSOLUTE_PATH.sub("<path>", value)
     if isinstance(value, list):
-        return [scrub(item) for item in value]
+        return [scrub(item, roots) for item in value]
     if isinstance(value, dict):
-        return {scrub(key): scrub(item) for key, item in value.items()}
+        return {scrub(key, roots): scrub(item, roots) for key, item in value.items()}
     return value
 
 
@@ -726,13 +780,15 @@ def compact_row(row):
 
 def collect(args):
     """One compact, path-free JSON of several run reports for the repository record."""
-    runs = []
+    runs, locations = [], []
     for folder in args.runs:
         folder = Path(folder).expanduser().resolve()
         report, plan = (strict_json((folder / name).read_bytes()) for name in ("report.json", "plan.json"))
+        locations += [folder, *(plan.get(key) for key in ("binary", "replay_binary", "data"))]
         runs.append({**run_identity(folder), "backend": plan["backend"], "controller": plan["controller"],
                      "map_sha256": plan["map"]["sha256"], "checkpoint_sha256": (plan.get("checkpoint") or {}).get("sha256"),
                      "random_policy_seed": plan.get("random_policy_seed"), "frozen": plan.get("frozen"),
+                     "interface": plan_value(plan, "interface"),
                      "limits": plan["limits"], "platform": plan["platform"], "rows_planned": len(plan["rows"]),
                      "reuse_environment": plan.get("reuse_environment"), "recorded": plan.get("recorded"),
                      "status": report["status"], "verdict": report.get("verdict"), "checks": report.get("checks"),
@@ -743,10 +799,13 @@ def collect(args):
     extra = {}
     for path in args.attach or ():
         path = Path(path).expanduser().resolve()
+        locations.append(path)
         extra[path.name] = strict_json(path.read_bytes())
-    result = scrub({"schema": SCHEMA + "-compact", "runs": runs, "attached": extra, "scope": SCOPE})
+    roots = local_roots(*locations)
+    result = scrub({"schema": SCHEMA + "-compact", "runs": runs, "attached": extra, "scope": SCOPE}, roots)
     text = json.dumps(result)
-    require(not ABSOLUTE_PATH.search(text) and str(Path.home()) not in text, "Compact record still names a local path")
+    require(not ABSOLUTE_PATH.search(text) and not any(root in text for root in roots),
+            "Compact record still names a local path")
     write(args.output, result)
     return result
 
@@ -777,7 +836,11 @@ def main(argv=None):
     runner.add_argument("--visit-kind", type=int)
     runner.add_argument("--stall-seconds", type=float, default=0.0)
     runner.add_argument("--replay", choices=("every", "first", "none"), default="every")
+    runner.add_argument("--audit", choices=("every", "none"), default="every",
+                        help="reconstruct the frozen policy's choices of every ended policy row")
     runner.add_argument("--env-per-row", action="store_true", help="a new environment per game instead of one per seat")
+    runner.add_argument("--interface", default=c.DIALOGS_ENVIRONMENT,
+                        choices=(c.DIALOGS_ENVIRONMENT, *((c.EXPANDED_ENVIRONMENT,) if hasattr(c, "EXPANDED_ENVIRONMENT") else ())))
     runner.add_argument("--recorded", type=Path, help="earlier run directory whose delivered actions the recorded controller resubmits")
     matched = commands.add_parser("compare")
     matched.add_argument("--left", type=Path, required=True)

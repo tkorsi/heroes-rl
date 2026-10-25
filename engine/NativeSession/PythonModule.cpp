@@ -422,14 +422,16 @@ PyObject * engineLoad(EngineObject * self, PyObject *)
 
 PyObject * engineReset(EngineObject * self, PyObject * args, PyObject * kwargs)
 {
-	static const char * keywords[] = {"episode", "map", "capture_directory", "seed", "learner", "policy_timeout", "log_path", nullptr};
+	static const char * keywords[] = {"episode", "map", "capture_directory", "seed", "learner", "policy_timeout", "log_path",
+		"interface", nullptr};
 	const char * episode = nullptr;
 	const char * map = nullptr;
 	const char * capture = nullptr;
 	const char * log = "";
+	const char * interface = "adventure-dialogs-v1";
 	int seed = 0, learner = -1, timeout = 30;
-	if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|$sssiiis", const_cast<char **>(keywords),
-		&episode, &map, &capture, &seed, &learner, &timeout, &log)) return nullptr;
+	if(!PyArg_ParseTupleAndKeywords(args, kwargs, "|$sssiiiss", const_cast<char **>(keywords),
+		&episode, &map, &capture, &seed, &learner, &timeout, &log, &interface)) return nullptr;
 	if(!episode || !map || !capture)
 	{
 		PyErr_SetString(PyExc_TypeError, "reset() requires episode, map, capture_directory, seed and learner");
@@ -449,6 +451,7 @@ PyObject * engineReset(EngineObject * self, PyObject * args, PyObject * kwargs)
 	config.learner = learner;
 	config.policyTimeoutSeconds = timeout;
 	config.logPath = log;
+	config.interface = interface;
 	if(!withoutGil([&] { session->reset(config); })) return nullptr;
 	Py_RETURN_NONE;
 }
@@ -795,6 +798,6 @@ PyMODINIT_FUNC PyInit_heroes_embedded_engine()
 	engineError = PyErr_NewException("heroes_embedded_engine.EngineError", PyExc_RuntimeError, nullptr);
 	if(!engineError || PyModule_AddObjectRef(module.get(), "EngineError", engineError) < 0) return nullptr;
 	if(PyModule_AddObjectRef(module.get(), "Engine", reinterpret_cast<PyObject *>(&engineType)) < 0) return nullptr;
-	if(PyModule_AddStringConstant(module.get(), "PROTOCOL", "heroes-embedded-engine-v1") < 0) return nullptr;
+	if(PyModule_AddStringConstant(module.get(), "PROTOCOL", "heroes-embedded-engine-v2") < 0) return nullptr;
 	return module.release();
 }

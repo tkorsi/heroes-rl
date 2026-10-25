@@ -22,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[2]
 IMPORTED_SOURCE_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 BACKEND = "embedded-in-process-v1"
-PROTOCOL = "heroes-embedded-engine-v1"
+PROTOCOL = "heroes-embedded-engine-v2"
 CLOSE_SCHEMA = "heroes-embedded-close-v1"
 MODULE_NAME = "heroes_embedded_engine"
 NATIVE_SESSION = "engine/NativeSession"

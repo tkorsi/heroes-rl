@@ -109,12 +109,21 @@ class ProbeHelperTests(unittest.TestCase):
             root = Path(tmp)
             left, right = self.matched_runs(root)
             for field, value in (("limits", {"choices": 8, "max_days": 12}), ("map", {"sha256": "d" * 64}),
-                                 ("checkpoint", {"sha256": "e" * 64}), ("random_policy_seed", 3), ("visit_kind", 101)):
+                                 ("checkpoint", {"sha256": "e" * 64}), ("random_policy_seed", 3), ("visit_kind", 101),
+                                 ("interface", "adventure-capabilities-v1")):
                 with self.subTest(field=field):
                     self.write_run(root / "left", [left])
                     self.write_run(root / "right", [right], **{field: value})
                     with self.assertRaisesRegex(ValueError, "not equally configured"):
                         self.compare(root)
+
+    def test_plan_without_interface_compares_as_v7(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            left, right = self.matched_runs(root)
+            self.write_run(root / "left", [left])  # written before plans recorded the interface
+            self.write_run(root / "right", [right], interface=probe.c.DIALOGS_ENVIRONMENT)
+            self.assertTrue(self.compare(root)["all_identical"])
 
     def test_comparison_reports_unmatched_rows_and_unequal_endings(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -143,7 +152,8 @@ class ProbeHelperTests(unittest.TestCase):
                 self.compare(root)
 
     def test_row_status_needs_an_intended_ending_and_its_evidence(self):
-        status = lambda result, **k: probe.row_status(result, **{"stall": False, "verify": False, "embedded": True, **k})
+        status = lambda result, **k: probe.row_status(result, **{"stall": False, "verify": False, "audit": False,
+                                                                  "embedded": True, **k})
         collected = {"status": "collected", "episode_status": "completed"}
         self.assertEqual(status(collected), "passed")
         self.assertEqual(status({**collected, "episode_status": "truncated"}), "passed")
@@ -151,9 +161,15 @@ class ProbeHelperTests(unittest.TestCase):
         self.assertEqual(status({"status": "failed", "episode_status": "completed"}), "failed")
         self.assertEqual(status(collected, verify=True), "failed")
         self.assertEqual(status({**collected, "replay_verified": True}, verify=True), "passed")
-        self.assertEqual(status({**collected, "replay_verified": True, "policy_audit": False}, verify=True), "failed")
-        stalled = {"status": "collected", "episode_status": "failed", "poisoned_after": True}
+        self.assertEqual(status({**collected, "replay_verified": True, "policy_audit": False}, verify=True, audit=True),
+                         "failed")
+        # The policy audit is required whenever requested, independently of the replay.
+        self.assertEqual(status(collected, audit=True), "failed")
+        self.assertEqual(status({**collected, "policy_audit": True}, audit=True), "passed")
+        stalled = {"status": "collected", "episode_status": "failed", "poisoned_after": True, "stalled": True}
         self.assertEqual(status(stalled, stall=True), "passed")
+        # A game that failed before the controller withheld anything is no stall evidence.
+        self.assertEqual(status({**stalled, "stalled": False}, stall=True), "failed")
         self.assertEqual(status({**stalled, "poisoned_after": False}, stall=True), "failed")
         self.assertEqual(status({**stalled, "poisoned_after": False}, stall=True, embedded=False), "passed")
         self.assertEqual(status({**stalled, "episode_status": "completed"}, stall=True), "failed")
@@ -183,10 +199,10 @@ class ProbeHelperTests(unittest.TestCase):
 
     def test_collect_writes_compact_path_free_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
-            run = Path(tmp) / "run-a"
+            run = Path(tmp) / "My Drive" / "run-a"  # a location with a space the path pattern stops at
             row = {"episode": 1, "learner_player": 0, "engine_seed": 11, "status": "passed",
                    "episode_directory": "/private/x", "history": {"submitted": 3},
-                   "error": f"FileExistsError: [Errno 17] File exists: '{tmp}/run-a/episode-000001'",
+                   "error": f"FileExistsError: [Errno 17] File exists: '{run}/episode-000001'",
                    "replay_error": "TimeoutExpired: /home/someone/vcmi/build/bin/vcmireplay timed out",
                    "resources_collected": {"threads": 5}, "native_close": {"close_clean": True}}
             self.write_run(run, [row])
@@ -200,7 +216,7 @@ class ProbeHelperTests(unittest.TestCase):
             self.assertEqual((compact["submitted"], compact["close_clean"], compact["resources_collected"]["threads"]),
                              (3, True, 5))
             text = json.dumps(result)
-            for leaked in ("/private", tmp, "/home/someone", "/Users/someone"):
+            for leaked in ("/private", tmp, "/home/someone", "/Users/someone", "Drive/run-a"):
                 self.assertNotIn(leaked, text)
             self.assertIn("completed/natural_terminal", text)
             self.assertEqual(result["attached"]["comparison.json"]["relative"], "Maps/a.vmap")

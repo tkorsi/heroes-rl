@@ -135,6 +135,7 @@ class EmbeddedEngine:
         # module, ExplorerRL/Nullkiller/BattleAI at the first game (never closed),
         # the worker map copy. Identity is hashed once, from these files, and every
         # later reset and finish requires them unchanged on disk.
+        self.launcher = launcher
         self.files = runtime_files(launcher, self.module_path)
         self.fingerprint = fingerprint(self.files)
         launcher.preflight()
@@ -144,7 +145,7 @@ class EmbeddedEngine:
         self.map_sha256 = self.loaded_identity["map"]["sha256"]
         self.module_sha256 = self.loaded_identity["backend"]["module_sha256"]
         self.require_unchanged("while loading")
-        self.contextual_preflight = False
+        self.contextual_preflight = set()  # interfaces whose ExplorerRL markers were checked
         self.workspace = workspace
         workspace.mkdir(parents=True)
         self.profile = workspace / "profile"
@@ -179,7 +180,9 @@ class EmbeddedEngine:
         self.games = 0
 
     def require_unchanged(self, when="since this process loaded it"):
-        if fingerprint(self.files) != self.fingerprint:
+        # Listed again: an added library or a retargeted alias changes the inventory, not any old stat.
+        current = runtime_files(self.launcher, self.module_path)
+        if current != self.files or fingerprint(current) != self.fingerprint:
             raise ValueError(f"Native runtime, module or map changed on disk {when}; restart Python")
 
     def require_compatible(self, launcher):
@@ -405,10 +408,12 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
 
     def _preflight_contextual(self):
         # The engine's files are fingerprinted at load and checked on every reset,
-        # so their contents are read once per process, not once per game.
-        if not getattr(self.engine, "contextual_preflight", False):
+        # so their contents are read once per process and interface, not once per game.
+        checked = getattr(self.engine, "contextual_preflight", None)
+        if checked is None or self.interface not in checked:
             super()._preflight_contextual()
-            self.engine.contextual_preflight = True
+            if checked is not None:
+                checked.add(self.interface)
 
     def _runtime_identity(self, directory):
         loaded = getattr(self.engine, "runtime_sha256", None)
@@ -469,48 +474,20 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
             self.engine.reset(episode=str(episode), map="Maps/headless" + self.launcher.game_map.suffix.lower(),
                               capture_directory=str(capture), seed=seed, learner=player,
                               policy_timeout=self.limits.bridge_timeout,
-                              log_path=str(self.episode_dir / "logs/process.log"))
+                              log_path=str(self.episode_dir / "logs/process.log"), interface=self.interface)
         except BaseException:
             self.close()
             raise
         return self._advance()
 
     def _send_current(self, action, *, continuation=False):
-        """ContextualMixin._send_current, delivering through the engine instead of a socket."""
         if continuation:
             raise ValueError("Single-player cutoff never sends technical or strategic continuation")
-        if self.request is None:
-            raise ValueError("No current contextual request")
-        side = self.sides[self.request.player]
-        producer = side.validator
-        response = producer.response(action)  # validation before send or mutation
-        drain = self.dialog_cutoff_drain
-        if drain is not None:
-            if action.kind != "choose_dialog":
-                raise ValueError("Deferred dialog cutoff accepts only a real dialog choice")
-            if len(drain["choices"]) >= 8:
-                self._note_problem("cutoff_boundary_unavailable", "Strategic dialog chain exceeded its real-policy answer bound")
-                self.request = None
-                return
-            drain_choice = {"player": side.player, "decision_seq": producer.live.decision.seq}
-        self.agent_wait += time.monotonic() - self.request_time
-        started = time.perf_counter()
-        refused = self.events.submit(response)
-        delivered = refused is None
-        if not delivered:
-            side.write_error = refused
-            side.responses_undelivered += 1
-        self.costs["respond"] += time.perf_counter() - started
-        self._write_ledger(side, "policy", {**response, "delivered": delivered, "outside_learner_prefix": False})
-        if delivered:
-            producer.submitted(action)
-            side.actions_sent += 1
-            if drain is not None:
-                drain["choices"].append(drain_choice)
-        else:
-            self._note_problem("action_delivery_failed", f"{side.color}: {side.write_error}")
-        self.env_step += 1
-        self.request = None
+        return super()._send_current(action)
+
+    def _write_response(self, side, response):
+        """Through the engine instead of a socket: a refusal text, or None once admitted."""
+        return self.events.submit(response)
 
     def close(self):
         self.request = None
@@ -607,14 +584,15 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
             outcomes = dict.fromkeys(COLORS)
         rewards = {color: 1 if o == "win" else -1 if o == "loss" else None for color, o in outcomes.items()}
         folder = self.episode_dir / "agents" / side.color
-        path, live = folder / "history-v7.jsonl", folder / "live-history-v7.jsonl"
+        profile = evidence.profile_for(self.interface)
+        path, live = folder / profile.history_filename, folder / ("live-" + profile.history_filename)
         sha, live_sha = persist_history(path, history), persist_history(live, side.validator.live)
         boundary = {"completed": "natural", "truncated": "cutoff", "failed": "failure"}[status]
         declaration = {"ready": side.validator.ready, "actions_sent": side.actions_sent, "error": side.error,
             "terminal": {"outcome": side.validator.terminal} if side.validator.terminal else None,
             "actions_accepted": side.accepted, "actions_rejected": side.rejected,
             "responses_undelivered": side.responses_undelivered,
-            "history_v7": {"path": str(path.relative_to(self.episode_dir)), "sha256": sha,
+            profile.history_key: {"path": str(path.relative_to(self.episode_dir)), "sha256": sha,
                 "canonical_sha256": sha, "prefix_sha256": sha, "boundary": boundary, "complete": complete},
             "live_evidence": {"path": str(live.relative_to(self.episode_dir)), "sha256": live_sha,
                               "continuation_steps": 0, "learner_input": False}}
@@ -630,7 +608,7 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
         proof_path = self.episode_dir / "builtin-finalization.json"
         scoring.write_json(proof_path, final)
         manifest = {"schema_version": 1, "kind": evidence.MANIFEST_KIND, "episode": str(self.episode),
-            "environment": self.interface, "history_schema": c.DIALOGS_SCHEMA, "action_schema": c.DIALOGS_ACTION_SCHEMA,
+            "environment": self.interface, "history_schema": profile.history_schema, "action_schema": profile.action_schema,
             "learner_player": self.learner_player, "controllers": evidence.controllers(self.learner_player),
             "opponent_identity": self.opponent_identity, "seed": self.seed, "created_at": self.created_at,
             "status": status, "termination_reason": termination, "failure_detail": self.detail,

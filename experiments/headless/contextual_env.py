@@ -243,13 +243,11 @@ class ContextualMixin:
             drain_choice = {"player": side.player, "decision_seq": producer.live.decision.seq}
         self.agent_wait += time.monotonic() - self.request_time
         started = time.perf_counter()
-        try:
-            side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
-            delivered = True
-        except OSError as error:
-            side.write_error = f"{type(error).__name__}: {error}"
+        refused = self._write_response(side, response)
+        delivered = refused is None
+        if not delivered:
+            side.write_error = refused
             side.responses_undelivered += 1
-            delivered = False
         self.costs["respond"] += time.perf_counter() - started
         self._write_ledger(side, "policy", {**response, "delivered": delivered,
                                             "outside_learner_prefix": continuation})
@@ -264,6 +262,14 @@ class ContextualMixin:
             self._note_problem("action_delivery_failed", f"{side.color}: {side.write_error}")
         self.env_step += 1
         self.request = None
+
+    def _write_response(self, side, response):
+        """Deliver one response line; a refusal text, or None once it was written."""
+        try:
+            side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
+        except OSError as error:
+            return f"{type(error).__name__}: {error}"
+        return None
 
     def step(self, action):
         if self.request is None:

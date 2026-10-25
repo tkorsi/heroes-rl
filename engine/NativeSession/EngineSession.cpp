@@ -225,7 +225,9 @@ void EngineSession::reset(const EpisodeConfig & config)
 {
 	impl->health.requireResetReady(impl->loaded);
 	if(config.episode.empty() || config.map.empty() || config.seed <= 0 || config.learner < 0 || config.learner > 1
-		|| config.policyTimeoutSeconds < 1 || config.policyTimeoutSeconds > 300)
+		|| config.policyTimeoutSeconds < 1 || config.policyTimeoutSeconds > 300 || config.interface.empty()
+		|| config.interface.size() > 64
+		|| config.interface.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789-") != std::string::npos)
 		throw std::invalid_argument("Invalid native episode identity/configuration");
 	const std::filesystem::path capture(config.captureDirectory);
 	if(!capture.is_absolute() || std::filesystem::exists(capture))
@@ -249,7 +251,7 @@ void EngineSession::reset(const EpisodeConfig & config)
 		env.set("EXPLORER_RL_PLAYER", std::nullopt);
 		env.set("EXPLORER_RL_PLAYERS", std::to_string(config.learner));
 		env.set("EXPLORER_RL_BUILTIN_OPPONENT", native_session_host::NullkillerOpponent::MODULE);
-		env.set("EXPLORER_RL_INTERFACE", "adventure-dialogs-v1");
+		env.set("EXPLORER_RL_INTERFACE", config.interface);
 		env.set("EXPLORER_RL_TRANSPORT", "in-process");
 		env.set("EXPLORER_RL_EPISODE", config.episode);
 		env.set("EXPLORER_RL_TIMEOUT", std::to_string(config.policyTimeoutSeconds));
@@ -328,15 +330,20 @@ Boundary EngineSession::step(BoundaryToken token, const JsonNode & response, Dea
 {
 	if(!impl->policy) throw std::logic_error("No active native episode");
 	const auto start = Clock::now();
-	impl->policy->submit(token, response);
-	++impl->timing.steps;
+	// A response superseded by the player's own terminal was never applied: no step, no advance time.
+	const bool applied = impl->policy->submit(token, response);
+	if(applied) ++impl->timing.steps;
 	try
 	{
 		auto result = observe(deadline);
-		impl->timing.advanceSeconds += elapsed(start);
+		if(applied) impl->timing.advanceSeconds += elapsed(start);
 		return result;
 	}
-	catch(...) { impl->timing.advanceSeconds += elapsed(start); throw; }
+	catch(...)
+	{
+		if(applied) impl->timing.advanceSeconds += elapsed(start);
+		throw;
+	}
 }
 Delivery EngineSession::take(Deadline deadline, bool untilBoundary)
 {

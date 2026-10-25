@@ -56,8 +56,8 @@ class FakeEngine:
 
     profile_environment = {"XDG_DATA_HOME": "/synthetic"}
 
-    def __init__(self, boundary):
-        self.boundary = boundary
+    def __init__(self, boundary, profile=c.DIALOGS_PROFILE):
+        self.boundary, self.profile = boundary, profile
         self.active = self.poisoned = False
         self.generation, self.responses, self.resets, self.finishes = 0, [], [], []
 
@@ -73,12 +73,12 @@ class FakeEngine:
         self.folder = Path(kwargs["capture_directory"]).parent
         player, episode = kwargs["learner"], kwargs["episode"]
         self.player = player
-        self.base = {"protocol_version": 9, "episode": episode, "player": player}
-        observation = c.encode_frame(initial(player).frames[0])["observation"]
+        self.base = {"protocol_version": self.profile.protocol, "episode": episode, "player": player}
+        observation = c.encode_frame(initial(player, self.profile).frames[0])["observation"]
         self.decision = lambda index: {"kind": "decision", "day": 1, "decision_id": index, "revision": index,
                                        "observation": observation}
-        ready = {**self.base, "type": "ready", "interface": c.DIALOGS_ENVIRONMENT,
-                 "history_schema": c.DIALOGS_SCHEMA, "action_schema": c.DIALOGS_ACTION_SCHEMA}
+        ready = {**self.base, "type": "ready", "interface": self.profile.environment,
+                 "history_schema": self.profile.history_schema, "action_schema": self.profile.action_schema}
         if self.boundary == "startup_failure":
             self.script = deque([delivery(self.generation, 0, failure="Headless game start failed")])
         elif self.boundary == "decode_error":
@@ -112,6 +112,7 @@ class FakeEngine:
         if self.boundary == "natural":
             for name, record in zip(e.native.FILES, boundaries.BuiltinReceiptTests().records(self.player)):
                 record["episode"] = self.base["episode"]
+                record["interface"] = self.profile.environment
                 (self.folder / name).write_text(json.dumps(record) + "\n")
             self.script.append(delivery(self.generation, 2, [result, self.batch(
                 {"kind": "terminal", "day": 1, "outcome": ("win", "loss")[self.player]})], terminal=True))
@@ -139,13 +140,13 @@ class FakeEngine:
 
 
 class SyntheticEmbeddedLauncher(ee.EmbeddedLauncher):
-    def __init__(self, root):
+    def __init__(self, root, profile=c.DIALOGS_PROFILE):
         suffix = ".dylib" if sys.platform == "darwin" else ".so"
         binary = root / "bin/vcmiclient"
         library = root / ("bin/AI/libExplorerRL" + suffix)
         library.parent.mkdir(parents=True)
         binary.write_bytes(b"heroes-contextual-terminal-barrier-v1")
-        library.write_bytes(" ".join((c.DIALOGS_ENVIRONMENT, c.DIALOGS_SCHEMA, c.DIALOGS_ACTION_SCHEMA)).encode())
+        library.write_bytes(" ".join((profile.environment, profile.history_schema, profile.action_schema)).encode())
         for name in ("vcmireplay", "libvcmi" + suffix, "AI/libBattleAI" + suffix, "AI/libNullkiller" + suffix):
             (binary.parent / name).write_bytes(b"EXPLORER_RL_BUILTIN_OPPONENT")
         (root / "assets/Data").mkdir(parents=True)
@@ -158,6 +159,8 @@ class SyntheticEmbeddedLauncher(ee.EmbeddedLauncher):
 
 
 class EmbeddedCollectorTests(unittest.TestCase):
+    interface = c.DIALOGS_ENVIRONMENT
+
     @classmethod
     def setUpClass(cls):
         cls.threads = torch.get_num_threads()
@@ -167,19 +170,22 @@ class EmbeddedCollectorTests(unittest.TestCase):
     def tearDownClass(cls): torch.set_num_threads(cls.threads)
 
     def run_case(self, root, player, boundary, engine=None, episode=1):
-        launcher = SyntheticEmbeddedLauncher(root) if not (root / "bin").exists() else self.launcher
+        profile = e.profile_for(self.interface)
+        launcher = SyntheticEmbeddedLauncher(root, profile) if not (root / "bin").exists() else self.launcher
         self.launcher = launcher
-        engine = engine or FakeEngine(boundary)
+        engine = engine or FakeEngine(boundary, profile)
         engine.boundary = boundary
         identity = {"engine_revision": "synthetic-not-native", "map_sha256": "b"*64,
                     "native_runtime_sha256": launcher.runtime,
                     "backend": {"kind": ev.BACKEND, "protocol": ev.PROTOCOL}}
         opponent = e.opponent_identity(player, next(v for k, v in launcher.runtime.items() if "libNullkiller" in k))
         torch.manual_seed(172)
-        model = m.ContextualActorCritic(m.ModelConfig(schema=m.DIALOGS_MODEL_SCHEMA, hidden_size=8, feature_size=4))
+        model = m.ContextualActorCritic(m.ModelConfig(schema=m.model_schema_for(profile.history_schema),
+                                                      hidden_size=8, feature_size=4))
         collector = BuiltinCollector(model, "synthetic-frozen-checkpoint", learner_player=player,
-                                     opponent_identity=opponent, policy_seed=17)
-        env = ee.EmbeddedBuiltinEnv(launcher, root / "episodes", learner_player=player, engine=engine)
+                                     opponent_identity=opponent, policy_seed=17, interface=self.interface)
+        env = ee.EmbeddedBuiltinEnv(launcher, root / "episodes", learner_player=player, engine=engine,
+                                    interface=self.interface)
         with ExitStack() as stack:
             stack.enter_context(patch.object(env, "_identity", return_value=identity))
             stack.enter_context(patch.object(env, "_engine_evidence", return_value=({"synthetic": True}, None)))
@@ -203,6 +209,9 @@ class EmbeddedCollectorTests(unittest.TestCase):
                     self.assertEqual(engine.resets[0]["learner"], player)
                     self.assertEqual(engine.resets[0]["map"], "Maps/headless.vmap")
                     self.assertEqual(engine.resets[0]["policy_timeout"], env.limits.bridge_timeout)
+                    self.assertEqual(engine.resets[0]["interface"], self.interface)
+                    self.assertEqual(manifest_profile := e.manifest_profile(got.manifest), e.profile_for(self.interface))
+                    self.assertTrue((folder / "agents" / e.COLORS[player] / manifest_profile.history_filename).is_file())
                     self.assertEqual([natural for natural, _ in engine.finishes], [boundary == "natural"])
                     manifest = got.manifest
                     self.assertEqual(manifest["launch"]["backend"], ev.BACKEND)
@@ -229,7 +238,7 @@ class EmbeddedCollectorTests(unittest.TestCase):
 
     def test_one_engine_serves_consecutive_games(self):
         with tempfile.TemporaryDirectory() as tmp:
-            engine = FakeEngine("cutoff")
+            engine = FakeEngine("cutoff", e.profile_for(self.interface))
             statuses = []
             for episode, (player, boundary) in enumerate([(0, "cutoff"), (1, "natural"), (0, "natural"), (1, "cutoff")], 1):
                 got, *_ = self.run_case(Path(tmp), player, boundary, engine=engine, episode=episode)
@@ -263,6 +272,11 @@ class EmbeddedCollectorTests(unittest.TestCase):
                 ee.EmbeddedBuiltinEnv(object(), Path(tmp) / "out", learner_player=0)
             with self.assertRaisesRegex(ValueError, "never launches"):
                 launcher.launch(Path(tmp), 1, {}, None)
+
+
+@unittest.skipUnless(hasattr(c, "EXPANDED_PROFILE"), "Requires the explicit v8 contract")
+class ExpandedEmbeddedCollectorTests(EmbeddedCollectorTests):
+    interface = c.EXPANDED_ENVIRONMENT
 
 
 class EventOrderTests(unittest.TestCase):
@@ -430,15 +444,38 @@ class EvidenceRuleTests(unittest.TestCase):
             module.parent.mkdir()
             module.write_bytes(b"module")
             engine = object.__new__(ee.EmbeddedEngine)
+            engine.launcher, engine.module_path = launcher, module
             engine.files = ee.runtime_files(launcher, module)
             self.assertIn(launcher.game_map.resolve(), engine.files)
             engine.fingerprint = ee.fingerprint(engine.files)
             engine.require_unchanged()
-            library = launcher.binary.parent / ("AI/libNullkiller" + (".dylib" if sys.platform == "darwin" else ".so"))
+            suffix = ".dylib" if sys.platform == "darwin" else ".so"
+            library = launcher.binary.parent / ("AI/libNullkiller" + suffix)
+            added = launcher.binary.parent / ("AI/libAdded" + suffix)
+            added.write_bytes(b"new")  # an added library changes the inventory, not any listed stat
+            with self.assertRaisesRegex(ValueError, "restart Python"):
+                engine.require_unchanged()
+            added.unlink()
+            engine.require_unchanged()
             for change in (lambda: library.write_bytes(b"rebuilt"), lambda: module.unlink()):
                 change()
                 with self.subTest(change=change), self.assertRaisesRegex(ValueError, "restart Python"):
                     engine.require_unchanged()
+
+
+    def test_contextual_preflight_is_cached_per_interface(self):
+        from experiments.headless.contextual_env import ContextualMixin
+        with tempfile.TemporaryDirectory() as tmp:
+            launcher = SyntheticEmbeddedLauncher(Path(tmp))
+            engine = FakeEngine("natural")
+            engine.contextual_preflight = set()
+            checked = []
+            with patch.object(ContextualMixin, "_preflight_contextual", lambda env: checked.append(env.interface)):
+                for interface in (c.DIALOGS_ENVIRONMENT, c.DIALOGS_ENVIRONMENT, c.EXPANDED_ENVIRONMENT):
+                    env = ee.EmbeddedBuiltinEnv(launcher, Path(tmp) / "episodes", learner_player=0, engine=engine,
+                                                interface=interface)
+                    env._preflight_contextual()
+            self.assertEqual(checked, [c.DIALOGS_ENVIRONMENT, c.EXPANDED_ENVIRONMENT])
 
 
 class EmbeddedIdentityTests(unittest.TestCase):

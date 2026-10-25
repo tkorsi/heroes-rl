@@ -23,6 +23,7 @@ struct EpisodeConfig
 	int learner = 0; ///< other side is the unchanged Nullkiller Easy
 	int policyTimeoutSeconds = 30;
 	std::string logPath; ///< optional new, absolute per-game engine log in console format
+	std::string interface = "adventure-dialogs-v1"; ///< ExplorerRL player interface; ExplorerRL validates the name
 };
 struct SessionTimings
 {
