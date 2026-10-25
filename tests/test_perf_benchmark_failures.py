@@ -101,6 +101,44 @@ def row(index=0):
             "policy_seeds": [140101, 140102]}
 
 
+def worker_args(folder):
+    return argparse.Namespace(plan=str(Path(folder) / "plan.json"), plan_sha256=bench.digest(Path(folder) / "plan.json"),
+                              worker=0, deadline=time.monotonic() + 1000, wall_deadline=time.time() + 1000, cprofile=False)
+
+
+def worker_operations(drift):
+    ops, _ = operations()
+    loaded = SimpleNamespace(model=None, checkpoint="learner",
+                             opponent_pool={bench.config()["opponent"][0]: SimpleNamespace(model=None)})
+    ops.update(instrument_modules=False, identity_drift=drift, launcher_factory=lambda plan, args, output: FakeLauncher(),
+               source_compatibility=lambda loaded, interface: {"compatible": True},
+               load_fixed=lambda path, cfg, interface: (loaded, {"fixed": True}))
+    return ops
+
+
+def write_worker_plan(folder, rows=3):
+    folder = Path(folder)
+    (folder / "attempts").mkdir(exist_ok=True)
+    plan = {"configuration": bench.config(), "output": str(folder), "row_count": rows, "frozen": {"fixed": True},
+            "assignment": {"0": list(range(rows))}, "choice_limit": 4, "checkpoint": {"path": "checkpoint.pt"},
+            "replay_binary": {"path": "vcmireplay"}, "data": "data"}
+    bench.write(folder / "plan.json", plan)
+    return plan
+
+
+def kill_during_final_identity_check(folder):
+    """Run a real worker that is SIGKILLed inside its post-row identity check."""
+    checks = []
+
+    def drift(plan, sha, path):
+        checks.append(sha)
+        if len(checks) == 2:
+            os.kill(os.getpid(), signal.SIGKILL)
+        return []
+    with mock.patch.object(bench, "wrapper_overhead_seconds", return_value=0.0):
+        bench.worker(worker_args(folder), worker_operations(drift))
+
+
 def kill_during_collection(folder):
     """Run one real attempt whose collection is ended by SIGKILL."""
     FakeCollector.on_run = lambda self=None: os.kill(os.getpid(), signal.SIGKILL)
@@ -122,11 +160,16 @@ class AttemptFailureTests(unittest.TestCase):
         self.assertEqual(persisted, result)
         return result, launcher.calls
 
-    def test_fully_checked_attempt_passes_and_continues(self):
+    def test_fully_checked_attempt_passes_only_after_identity_finalization(self):
         ops, calls = operations()
         result, cleanup = self.attempt(ops)
-        self.assertEqual(result["status"], "passed")
+        self.assertEqual((result["status"], result["verified_status"]), ("pending_verification", "passed"))
         self.assertFalse(result["stop_worker"])
+        final = bench.finalize_attempt(result, [], "p" * 64, self.folder)
+        self.assertEqual(final["status"], "passed")
+        self.assertEqual(final["completion_receipt"]["plan_sha256"], "p" * 64)
+        self.assertEqual(json.loads((self.folder / "attempts" / "row-000.json").read_text()), final)
+        self.assertEqual(bench.collect_attempts([row()], self.folder, [{}], False)[0]["status"], "passed")
         self.assertEqual(calls, ["replay", "behavior"])
         self.assertEqual(cleanup, ["env.close", "close_owned_groups"])
         self.assertTrue(result["cleanup_verified"])
@@ -164,10 +207,30 @@ class AttemptFailureTests(unittest.TestCase):
         self.assertEqual(len(result["cleanup_errors"]), 2)
         self.assertEqual(result["outcomes"], {"red": None, "blue": None})
 
+    def test_drift_at_finalization_fails_a_verified_attempt(self):
+        ops, _ = operations()
+        result, _ = self.attempt(ops)
+        final = bench.finalize_attempt(result, ["native_runtime"], "p" * 64, self.folder)
+        self.assertEqual(final["status"], "failed")
+        self.assertTrue(final["stop_worker"])
+        self.assertNotIn("completion_receipt", final)
+        self.assertEqual(final["outcomes"], {"red": None, "blue": None})
+
+    def test_scored_records_without_a_receipt_are_incomplete(self):
+        (self.folder / "attempts").mkdir()
+        for status in ("passed", "native_failure", "pending_verification"):
+            bench.write(self.folder / "attempts" / "row-000.json", {**row(), "status": status, "outcomes": {"red": "win", "blue": "loss"}})
+            attempt = bench.collect_attempts([row()], self.folder, [{}], False)[0]
+            self.assertEqual(attempt["status"], "incomplete")
+            self.assertEqual(attempt["outcomes"], {"red": None, "blue": None})
+
     def test_native_failure_is_retained_unscored_and_continuable(self):
         FakeEnv.status = "failed"
         ops, calls = operations()
         result, cleanup = self.attempt(ops)
+        self.assertEqual(result["verified_status"], "native_failure")
+        self.assertFalse(result["stop_worker"])
+        result = bench.finalize_attempt(result, [], "p" * 64, self.folder)
         self.assertEqual(result["status"], "native_failure")
         self.assertFalse(result["stop_worker"])
         self.assertNotIn("replay", calls)
@@ -187,6 +250,23 @@ class AttemptFailureTests(unittest.TestCase):
         summary = bench.summarize_attempts(attempts, 1.0)
         self.assertEqual((summary["incomplete"], summary["failures"], summary["not_started"]), (1, 1, 1))
 
+    def test_a_kill_during_the_final_identity_check_leaves_the_row_incomplete_and_the_campaign_excluded(self):
+        write_worker_plan(self.folder)
+        code = ("import sys; from tests.test_perf_benchmark_failures import kill_during_final_identity_check; "
+                "kill_during_final_identity_check(sys.argv[1])")
+        done = subprocess.run([sys.executable, "-c", code, str(self.folder)], cwd=ROOT, capture_output=True, timeout=120)
+        self.assertEqual(done.returncode, -signal.SIGKILL, done.stderr.decode())
+        record = json.loads((self.folder / "attempts" / "row-000.json").read_text())
+        self.assertEqual(record["status"], "pending_verification")
+        worker_report = json.loads((self.folder / "worker-00.json").read_text())
+        self.assertNotIn("status", worker_report)
+        attempts = bench.collect_attempts([row(i) for i in range(3)], self.folder, [worker_report], signalled=False)
+        self.assertEqual([a["status"] for a in attempts], ["incomplete", "not_started", "not_started"])
+        self.assertEqual(attempts[0]["outcomes"], {"red": None, "blue": None})
+        report = {"inspection_failed": False, "supervisor_errors": [], "cleanup_bound_overshoot_seconds": 0.0,
+                  "worker_reports": [worker_report], "summary": bench.summarize_attempts(attempts, 1.0)}
+        self.assertEqual(bench.exclusion_reasons(report), ["worker_reports_incomplete", "incomplete_or_failed_rows"])
+
     def test_unreadable_record_is_incomplete_and_skip_reasons_are_kept(self):
         (self.folder / "attempts").mkdir()
         (self.folder / "attempts" / "row-000.json").write_text("{")
@@ -205,38 +285,31 @@ class WorkerTests(unittest.TestCase):
             self.skipTest("Optional torch is not installed")
         self.folder = Path(tempfile.mkdtemp())
         self.addCleanup(lambda: subprocess.run(["rm", "-rf", str(self.folder)]))
-        (self.folder / "attempts").mkdir()
-        cfg = bench.config()
-        self.plan = {"configuration": cfg, "output": str(self.folder), "row_count": 3, "frozen": {"fixed": True},
-                     "assignment": {"0": [0, 1, 2]}, "choice_limit": 4, "checkpoint": {"path": "checkpoint.pt"},
-                     "replay_binary": {"path": "vcmireplay"}, "data": "data"}
-        bench.write(self.folder / "plan.json", self.plan)
+        self.plan = write_worker_plan(self.folder)
         self.threads = __import__("torch").get_num_threads()
 
     def tearDown(self):
         __import__("torch").set_num_threads(self.threads)
 
     def run_worker(self, drift_after=None, **overrides):
-        ops, calls = operations(**overrides)
         checks = []
 
         def drift(plan, sha, path):
             checks.append(sha)
             return ["source:experiments/learner/contextual.py"] if drift_after is not None and len(checks) > drift_after else []
-        loaded = SimpleNamespace(model=None, checkpoint="learner", opponent_pool={bench.config()["opponent"][0]: SimpleNamespace(model=None)})
-        ops.update(instrument_modules=False, identity_drift=drift, launcher_factory=lambda plan, args, output: FakeLauncher(),
-                   source_compatibility=lambda loaded, interface: {"compatible": True},
-                   load_fixed=lambda path, cfg, interface: (loaded, {"fixed": True}))
-        args = argparse.Namespace(plan=str(self.folder / "plan.json"), plan_sha256=bench.digest(self.folder / "plan.json"),
-                                  worker=0, deadline=time.monotonic() + 1000, wall_deadline=time.time() + 1000, cprofile=False)
+        ops = worker_operations(drift)
+        ops.update(overrides)
         with mock.patch.object(bench, "wrapper_overhead_seconds", return_value=0.0):
-            report = bench.worker(args, ops)
-        return report, calls
+            report = bench.worker(worker_args(self.folder), ops)
+        return report, None
 
     def test_all_rows_run_when_nothing_fails(self):
         report, _ = self.run_worker()
         self.assertEqual([a["status"] for a in report["attempts"]], ["passed"] * 3)
         self.assertEqual(report["status"], "finished")
+        attempts = bench.collect_attempts([row(i) for i in range(3)], self.folder, [report], False)
+        self.assertEqual([a["status"] for a in attempts], ["passed"] * 3)
+        self.assertTrue(all(a["completion_receipt"]["identity_checked"] for a in attempts))
 
     def test_failed_attempt_stops_the_worker_and_records_the_rest(self):
         def broken(folder):
@@ -389,20 +462,45 @@ class SupervisorTests(unittest.TestCase):
         self.assertFalse(report["clean_timing_sample"])
         self.assertIn("supervisor_errors", bench.exclusion_reasons(report))
 
-    def test_cleanup_waits_share_one_budget_that_ends_at_the_grace_deadline(self):
+    def test_no_wait_starts_after_the_shared_cleanup_bound(self):
         clock, pids = FakeClock(step=0.5), iter(range(10, 20))
         ops = self.operations(clock, lambda command, **kw: FakeProcess(next(pids)), close_cost=4.0)
+        calls = []
+        close = ops["close_process"]
+        ops["close_process"] = lambda process, timeout: calls.append(clock.now) or close(process, timeout)
         report = bench.supervise(self.plan, self.output, ops)
         self.assertTrue((self.output / "campaign.json").exists())
         self.assertTrue(report["deadline_signalled"])
-        waits = [t[2] for t in self.timeouts]
-        self.assertEqual(len(waits), 6)
-        start = 1000.5  # the first monotonic reading
-        cleanup_end = start + self.plan["campaign_seconds"] + self.plan["cleanup_grace_seconds"]
-        self.assertLessEqual(waits[0], self.plan["cleanup_grace_seconds"] + 1)
-        self.assertTrue(all(wait == 0.01 for wait in waits[2:]), waits)
-        self.assertGreater(clock.now, cleanup_end)
+        cleanup_end = 1000.5 + self.plan["campaign_seconds"] + self.plan["cleanup_grace_seconds"]
+        # Every wait fits in what remained of the one bound, and none starts after it.
+        for started, (_, _, timeout) in zip(calls, self.timeouts):
+            self.assertGreater(timeout, 0)
+            self.assertLessEqual(started + timeout, cleanup_end + 1e-9)
+        self.assertLess(len(self.timeouts), 6)
+        unverified = [e for e in report["supervisor_errors"] if "cleanup bound reached" in e]
+        self.assertEqual(len(self.timeouts) + len(unverified), 6)
+        self.assertGreater(report["cleanup_bound_overshoot_seconds"], 0)
+        self.assertFalse(report["monitor_joined"])
+        self.assertTrue(report["inspection_failed"])
+        self.assertFalse(report["clean_timing_sample"])
+        self.assertIn("cleanup_bound_overshoot", report["exclusion_reasons"])
         self.assertEqual([w["status"] for w in report["worker_reports"]], ["missing"] * 3)
+
+    def test_an_orderly_campaign_ends_within_the_bound(self):
+        clock, pids = FakeClock(), iter(range(10, 20))
+
+        def spawn(command, **kwargs):
+            process = FakeProcess(next(pids), finished=True)
+            index = int(command[command.index("--worker") + 1])
+            bench.write(self.output / f"worker-{index:02d}.json", {"worker": index, "status": "finished", "attempts": []})
+            return process
+        report = bench.supervise(self.plan, self.output, self.operations(clock, spawn))
+        self.assertEqual(report["cleanup_bound_overshoot_seconds"], 0.0)
+        self.assertTrue(report["monitor_joined"])
+        self.assertEqual(report["supervisor_errors"], [])
+        self.assertEqual(len(self.timeouts), 6)
+        # Rows were never run, so the campaign is still not a clean sample.
+        self.assertEqual(report["exclusion_reasons"], ["incomplete_or_failed_rows"])
 
 
 class SummaryTests(unittest.TestCase):
@@ -417,13 +515,20 @@ class SummaryTests(unittest.TestCase):
                      "histories": {"red": {"history_sha256": "h0"}}}]
         summary = bench.summarize_attempts(attempts, wall)
         report = {"label": "bench", "workers": 1, "cprofile": False, "concurrent_load_detected": False,
-                  "inspection_failed": False, "supervisor_errors": [], "attempts": attempts, "summary": summary}
+                  "inspection_failed": False, "supervisor_errors": [], "cleanup_bound_overshoot_seconds": 0.0,
+                  "worker_reports": [{"worker": 0, "status": "finished"}], "attempts": attempts, "summary": summary}
+        plan_overrides = report_overrides.pop("plan", {})
         report.update(report_overrides)
         plan = {"declared_source": {"implementation": implementation}, "source": {"tracked_sha256": source},
                 "row_count": 1, "choice_limit": 4, "campaign_seconds": 60.0, "cprofile": report["cprofile"],
-                "configuration": {"a": 1}, "native_snapshot": {"binary": {"sha256": "b"}}, "checkpoint": {"sha256": "k"}}
-        bench.write(path / "campaign.json", report)
+                "configuration": {"a": 1}, "native": {"client": "c"}, "runtime": {"libs": "l"},
+                "native_snapshot": {"binary": {"sha256": "b"}, "replay_binary": {"sha256": "r"}},
+                "checkpoint": {"sha256": "k"}, "frozen": {"fixed": True}, "map_binding": {"sha256": "m"},
+                "host": {"machine": "arm64", "cpu_count": 10}, "torch": "2.9.1", "harness_sha256": "h"}
+        plan.update(plan_overrides)
         bench.write(path / "plan.json", plan)
+        report["plan_sha256"] = bench.digest(path / "plan.json")
+        bench.write(path / "campaign.json", report)
         return str(path)
 
     def test_only_clean_matching_campaigns_enter_metrics(self):
@@ -444,9 +549,29 @@ class SummaryTests(unittest.TestCase):
 
     def test_failed_or_unstarted_rows_exclude_a_campaign(self):
         attempts = [{"row": 0, "status": "incomplete"}, {"row": 1, "status": "not_started"}]
-        report = {"cprofile": True, "inspection_failed": False, "summary": bench.summarize_attempts(attempts, 1.0)}
+        report = {"cprofile": True, "inspection_failed": False, "cleanup_bound_overshoot_seconds": 0.0,
+                  "worker_reports": [{"status": "finished"}], "summary": bench.summarize_attempts(attempts, 1.0)}
         self.assertEqual(bench.exclusion_reasons(report), ["profiled", "incomplete_or_failed_rows"])
-        self.assertIn("load_inspection_unknown", bench.exclusion_reasons({"summary": {}}))
+        self.assertEqual(bench.exclusion_reasons({"summary": {}}),
+                         ["load_inspection_unknown", "cleanup_bound_overshoot", "worker_reports_incomplete"])
+
+    def test_a_plan_that_is_not_the_campaigns_plan_is_refused(self):
+        path = Path(self.campaign("a"))
+        (path / "plan.json").write_text((path / "plan.json").read_text().replace('"m"', '"other"'))
+        with mock.patch("builtins.print"), self.assertRaises(ValueError):
+            bench.summarize(argparse.Namespace(campaigns=[str(path)], output=None))
+
+    def test_any_native_runtime_or_host_difference_separates_groups(self):
+        base = self.campaign("base")
+        variants = {"replay": {"native_snapshot": {"binary": {"sha256": "b"}, "replay_binary": {"sha256": "r2"}}},
+                    "runtime": {"runtime": {"libs": "l2"}}, "host": {"host": {"machine": "x86_64", "cpu_count": 10}},
+                    "torch": {"torch": "2.9.0"}, "harness": {"harness_sha256": "h2"}, "native": {"native": {"client": "c2"}}}
+        for name, change in variants.items():
+            with self.subTest(name=name):
+                other = self.campaign(name, plan=change)
+                with mock.patch("builtins.print"):
+                    groups = bench.summarize(argparse.Namespace(campaigns=[base, other], output=None))
+                self.assertEqual(len(groups), 2)
 
 
 if __name__ == "__main__":

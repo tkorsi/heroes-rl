@@ -344,11 +344,13 @@ CONTINUABLE = ("passed", "native_failure")
 
 
 def run_row(context, row, output):
-    """One attempt. It is passed only after every check and both cleanups.
+    """One attempt. It ends pending_verification only after every check and both cleanups.
 
     A start marker is persisted before any native work and updated at every
     phase, so a hard-killed attempt stays visibly incomplete. Any exception or
     cleanup error makes the attempt failed and unscored, and stops the worker.
+    Only the worker's post-row identity check (finalize_attempt) turns a
+    pending attempt into passed or native_failure, with a completion receipt.
     """
     ops = context["ops"]
     cfg, plan, launcher = context["cfg"], context["plan"], context["launcher"]
@@ -479,10 +481,10 @@ def run_row(context, row, output):
         if verified is None or cleanup_errors:
             attempt.update(status="failed", outcomes=dict.fromkeys(COLORS))
         else:
-            attempt["status"] = verified
+            attempt.update(status="pending_verification", verified_status=verified)
             if verified == "passed":
                 attempt["outcomes"] = manifest["outcomes_by_player"]
-        attempt["stop_worker"] = attempt["status"] not in CONTINUABLE
+        attempt["stop_worker"] = attempt["status"] == "failed"
         attempt["phases"] = phases.result
         wrapped_calls = sum(stage["calls"] for data in phases.result.values() for stage in data["stages"].values())
         attempt["timing_wrapper_calls"] = wrapped_calls
@@ -493,6 +495,24 @@ def run_row(context, row, output):
         attempt["children_peak_rss_bytes"] = peak_rss_bytes(resource.RUSAGE_CHILDREN)
         attempt["finished_unix"] = time.time()
         write(attempt_path, attempt)
+    return attempt
+
+
+def finalize_attempt(attempt, drift, plan_sha256, output):
+    """Bind a pending attempt to the post-row identity check, durably.
+
+    passed/native_failure are written only here, together with a completion
+    receipt; a kill before this write leaves the row pending (incomplete).
+    """
+    if drift:
+        attempt.update(status="failed", outcomes=dict.fromkeys(COLORS), stop_worker=True,
+                       error=attempt.get("error") or "Identity drift during the attempt: " + "; ".join(drift),
+                       identity_drift=drift)
+    elif attempt["status"] == "pending_verification":
+        attempt["status"] = attempt["verified_status"]
+        attempt["completion_receipt"] = {"identity_checked": True, "plan_sha256": plan_sha256, "unix": time.time()}
+    attempt["stop_worker"] = attempt["status"] not in CONTINUABLE
+    write(output / "attempts" / f"row-{attempt['row']:03d}.json", attempt)
     return attempt
 
 
@@ -609,10 +629,8 @@ def worker(args, ops=None):
                 cprofile = None
             drift = check(plan, args.plan_sha256, plan_path)
             if drift:
-                attempt.update(status="failed", outcomes=dict.fromkeys(COLORS), stop_worker=True,
-                               error="Identity drift during the attempt: " + "; ".join(drift))
-                write(output / "attempts" / f"row-{row['row']:03d}.json", attempt)
                 report["identity_drift"] = drift
+            attempt = finalize_attempt(attempt, drift, args.plan_sha256, output)
             report["attempts"].append({key: attempt.get(key) for key in ("row", "status", "attempt_wall_seconds")})
             write(report_path, report)
             if attempt["stop_worker"]:
@@ -779,9 +797,11 @@ def run(args):
 def supervise(plan, output, ops):
     """Launch, bound and clean up every worker, then always write the report.
 
-    The whole campaign, including cleanup verification, ends by
-    campaign_seconds + cleanup_grace_seconds. Cleanup shares one absolute
-    budget; each wait gets only what remains of it.
+    Cleanup verification and the monitor join share one absolute bound,
+    campaign_seconds + cleanup_grace_seconds: each wait gets only what
+    remains, and no wait starts after it. Work left unverified at the bound
+    is a supervisor error. Any overshoot (an in-progress helper's own poll
+    granularity) is measured and reported, and excludes the campaign.
     """
     plan_sha256 = digest(output / "plan.json")
     started, wall_started = ops["monotonic"](), ops["wall"]()
@@ -827,30 +847,42 @@ def supervise(plan, output, ops):
     except BaseException as error:
         supervisor_errors.append(f"supervisor: {type(error).__name__}: {error}")
     finally:
-        def budget():
-            return max(0.01, cleanup_end - ops["monotonic"]())
+        def remaining():
+            return cleanup_end - ops["monotonic"]()
         for worker_index, (process, log) in processes.items():
-            try:
-                ops["close_process"](process, timeout=budget())
-            except Exception as error:
-                supervisor_errors.append(f"worker {worker_index}: {type(error).__name__}: {error}")
+            left = remaining()
+            if left <= 0:
+                # The worker's own guardian still stops it at its deadline.
+                supervisor_errors.append(f"worker {worker_index}: cleanup bound reached before verification")
+            else:
+                try:
+                    ops["close_process"](process, timeout=left)
+                except Exception as error:
+                    supervisor_errors.append(f"worker {worker_index}: {type(error).__name__}: {error}")
             log.close()
         for worker_index in processes:
+            left = remaining()
+            if left <= 0:
+                supervisor_errors.append(f"native cleanup {worker_index}: cleanup bound reached before verification")
+                continue
             try:
-                ops["cleanup_evidence"](output / f"native-deadline-worker-{worker_index:02d}.jsonl", timeout=budget())
+                ops["cleanup_evidence"](output / f"native-deadline-worker-{worker_index:02d}.jsonl", timeout=left)
             except Exception as error:
                 supervisor_errors.append(f"native cleanup {worker_index}: {type(error).__name__}: {error}")
-        campaign_wall = ops["monotonic"]() - started
         monitor.halt.set()
-        monitor.join(timeout=10)
+        left = remaining()
+        if left > 0:
+            monitor.join(timeout=left)
+        monitor_joined = not monitor.is_alive()
+        campaign_wall = ops["monotonic"]() - started
+        overshoot = max(0.0, -remaining())
         workers = []
         for worker_index in range(plan["workers"]):
             path = output / f"worker-{worker_index:02d}.json"
             workers.append(read_json(path) or {"worker": worker_index, "status": "missing" if worker_index in processes else "not_launched"})
         attempts = collect_attempts(plan["rows"], output, workers, signalled)
-        inspection_failed = initial_foreign is None or monitor.failed_samples > 0
+        inspection_failed = initial_foreign is None or monitor.failed_samples > 0 or not monitor_joined
         concurrent = bool(initial_foreign) or bool(monitor.foreign)
-        clean = not concurrent and not inspection_failed and not plan["cprofile"] and not supervisor_errors
         for attempt in attempts:
             attempt["concurrent_load_free"] = None if inspection_failed else not concurrent
         report = {"schema": SCHEMA + "-result", "label": plan["label"], "plan_sha256": plan_sha256,
@@ -863,9 +895,12 @@ def supervise(plan, output, ops):
                   "foreign_processes_at_start": initial_foreign, "foreign_processes_during": list(monitor.foreign.values()),
                   "inspection_samples": monitor.samples, "inspection_failed_samples": monitor.failed_samples,
                   "inspection_failed": inspection_failed, "concurrent_load_detected": concurrent,
-                  "clean_timing_sample": clean, "cprofile": plan["cprofile"],
+                  "monitor_joined": monitor_joined, "cleanup_bound_overshoot_seconds": round(overshoot, 6),
+                  "cprofile": plan["cprofile"],
                   "attempts": attempts, "worker_reports": workers, "summary": summarize_attempts(attempts, campaign_wall),
                   "training_performed": False, "optimizer_updates": 0}
+        report["exclusion_reasons"] = exclusion_reasons(report)
+        report["clean_timing_sample"] = not report["exclusion_reasons"]
         write(output / "campaign.json", report)
     return report
 
@@ -894,8 +929,11 @@ def collect_attempts(plan_rows, output, workers, signalled):
         elif data is None:
             reason = skipped.get(row["row"]) or ("campaign_deadline" if signalled else "worker_failure")
             attempts.append({**row, "status": "not_started", "reason": reason})
-        elif data.get("status") in ("started", "running"):
+        elif data.get("status") in ("started", "running", "pending_verification"):
             attempts.append({**data, "status": "incomplete", "reason": "attempt_not_finished",
+                             "outcomes": dict.fromkeys(COLORS)})
+        elif data.get("status") in CONTINUABLE and not (data.get("completion_receipt") or {}).get("identity_checked"):
+            attempts.append({**data, "status": "incomplete", "reason": "missing_completion_receipt",
                              "outcomes": dict.fromkeys(COLORS)})
         else:
             attempts.append(data)
@@ -948,12 +986,28 @@ def summarize_attempts(attempts, campaign_wall):
             "totals_seconds": {key: round(value, 6) for key, value in sorted(totals.items())}}
 
 
+def environment_identity(plan):
+    """Everything besides the declared source that must match for a comparison."""
+    bound = {"configuration": plan["configuration"], "native": plan["native"], "native_snapshot": plan["native_snapshot"],
+             "runtime": plan["runtime"], "checkpoint": plan["checkpoint"]["sha256"], "frozen": plan.get("frozen"),
+             "map": plan["map_binding"]["sha256"], "host": plan["host"], "torch": plan.get("torch"),
+             "harness_sha256": plan["harness_sha256"]}
+    return hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def campaign_group(report, plan):
-    """Campaigns are comparable only with identical workload and implementation."""
-    cfg_sha = hashlib.sha256(json.dumps(plan["configuration"], sort_keys=True).encode()).hexdigest()
+    """Campaigns are comparable only with identical workload, implementation and environment."""
     return (report["label"], report["workers"], plan["declared_source"]["implementation"], plan["source"]["tracked_sha256"],
-            plan["row_count"], plan["choice_limit"], plan["campaign_seconds"], plan["cprofile"], cfg_sha,
-            plan["native_snapshot"]["binary"]["sha256"], plan["checkpoint"]["sha256"])
+            plan["row_count"], plan["choice_limit"], plan["campaign_seconds"], plan["cprofile"], environment_identity(plan))
+
+
+def load_campaign(path):
+    """The campaign report with the exact plan it was run from, or ValueError."""
+    path = Path(path)
+    report = json.loads((path / "campaign.json").read_text())
+    if digest(path / "plan.json") != report.get("plan_sha256"):
+        raise ValueError(f"{path}: plan.json is not the plan this campaign ran from")
+    return report, json.loads((path / "plan.json").read_text())
 
 
 def exclusion_reasons(report):
@@ -966,6 +1020,11 @@ def exclusion_reasons(report):
         reasons.append("load_inspection_unknown")
     if report.get("supervisor_errors"):
         reasons.append("supervisor_errors")
+    if report.get("cleanup_bound_overshoot_seconds", 1):
+        reasons.append("cleanup_bound_overshoot")
+    workers = report.get("worker_reports")
+    if not workers or any(worker.get("status") != "finished" for worker in workers):
+        reasons.append("worker_reports_incomplete")
     if report["summary"].get("failures") or report["summary"].get("not_started"):
         reasons.append("incomplete_or_failed_rows")
     return reasons
@@ -975,15 +1034,15 @@ def summarize(args):
     """Median and spread per comparable group, over clean campaigns only."""
     groups = defaultdict(list)
     for path in args.campaigns:
-        report = json.loads((Path(path) / "campaign.json").read_text())
-        plan = json.loads((Path(path) / "plan.json").read_text())
+        report, plan = load_campaign(path)
         groups[campaign_group(report, plan)].append((str(path), report))
     result = []
     for key, members in sorted(groups.items(), key=lambda item: json.dumps(item[0], default=str)):
-        label, workers, implementation, source_sha, row_count, choice_limit, seconds, profiled = key[:8]
+        label, workers, implementation, source_sha, row_count, choice_limit, seconds, profiled, environment = key
         clean = [(path, report) for path, report in members if not exclusion_reasons(report)]
         entry = {"label": label, "workers": workers, "implementation": implementation, "source_tracked_sha256": source_sha,
                  "rows": row_count, "choice_limit": choice_limit, "campaign_seconds": seconds, "cprofile": profiled,
+                 "environment_identity": environment,
                  "campaigns": [path for path, _ in members], "clean_campaigns": [path for path, _ in clean],
                  "excluded": {path: exclusion_reasons(report) for path, report in members if exclusion_reasons(report)}}
         metrics = defaultdict(list)
