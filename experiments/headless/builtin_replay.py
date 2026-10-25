@@ -1,4 +1,4 @@
-"""Verify captured Nullkiller commands and the one learner's native v7 stream.
+"""Verify captured Nullkiller commands and the one learner's native v7/v8 stream.
 
 The native verifier regenerates engine effects from the recorded server inputs,
 then runs ExplorerRL for the learner and a passive opponent. This is exact
@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import time
 
+from experiments.headless import builtin_evidence as builtin
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import contextual_replay as paired
 from experiments.headless import replay as legacy
@@ -51,13 +52,13 @@ def cross_check_wire(episode, manifest, tape, server):
     player = manifest["learner_player"]
     expected_controllers = controllers(player)
     require(equal(manifest.get("controllers"), expected_controllers), "Manifest controllers differ")
-    profile = contract.DIALOGS_PROFILE
+    profile = builtin.manifest_profile(manifest)
     header = {"kind": "init", "schema": SCHEMA, "episode": manifest["episode"],
         "interface": profile.environment, "protocol_version": profile.protocol,
         "history_schema": profile.history_schema, "action_schema": profile.action_schema,
         "controllers": expected_controllers}
     require(tape and equal(tape[0], header), "Mixed capture header differs from manifest/controllers")
-    require(manifest["environment"] == profile.environment, "Built-in replay requires v7")
+    require(manifest["environment"] == profile.environment, "Built-in replay interface mismatch")
     requests, request_contexts, messages, responses, counts = [], [], [], [], Counter()
     transaction, closed = None, False
     receipt, close_record = None, None
@@ -361,8 +362,9 @@ def diagnostic_inputs(episode, manifest):
             and equal(result.get("inputs", {}).get("manifest"), evidence.file_identity(episode / "manifest.json")),
             "Supplemental diagnosis requires the preserved failed original admission")
     color = COLORS[manifest["learner_player"]]
+    profile = builtin.manifest_profile(manifest)
     names = {"manifest.json", "builtin-finalization.json", original, "logs/process.log", "engine/experiment-metadata.json",
-             f"agents/{color}/bridge.jsonl", f"agents/{color}/history-v7.jsonl", f"agents/{color}/live-history-v7.jsonl",
+             f"agents/{color}/bridge.jsonl", f"agents/{color}/{profile.history_filename}", f"agents/{color}/live-{profile.history_filename}",
              *manifest["replay"]["files"]}
     return {name: evidence.file_identity(evidence.inside(episode, name)) for name in sorted(names)}
 

@@ -1,0 +1,1472 @@
+{
+  "archived_pool": [
+    {
+      "checkpoint": "hero-opponent-7176f1a2e81393cb",
+      "model_config": {
+        "feature_size": 32,
+        "hidden_size": 64,
+        "max_map_side": 256,
+        "schema": "heroes-context-model-v5"
+      },
+      "weights_sha256": "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82"
+    }
+  ],
+  "consumed_old_session": {
+    "campaign-session.json": {
+      "bytes": 1550,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local365/campaign-session.json",
+      "sha256": "07aeb3a9a03c06fddffc8d3fe966d2a30df17afafd45e0e81dc60be7908b03e0"
+    },
+    "campaign-session.lock": {
+      "bytes": 6,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local365/campaign-session.lock",
+      "sha256": "31200c46fbcaa9fcd045828e9d1f4e7a80da15acd658158263eac2abc580686a"
+    },
+    "controller-result.json": {
+      "bytes": 330,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local365/controller-result.json",
+      "sha256": "5e9b96f6f596ce75600256e440a4938bacf0429afa266003e63244d984f08890"
+    }
+  },
+  "contracts": {
+    "action_schema": "heroes-context-actions-v7",
+    "distribution_schema": "heroes-context-policy-v5",
+    "encoder_schema": "heroes-context-model-v5",
+    "environment": "adventure-dialogs-v1",
+    "history_schema": "heroes-player-history-v7"
+  },
+  "fingerprints": {
+    "adam": "378c213e66ad1b0d2302ea3dc31b911541fcf2cb88c3064692a21c4dec2c268b",
+    "model": "d5f433140bf0f1ddea1082e4bea2f3e875335925b9e3d9c5d580e0174728d2f3",
+    "pool": "42a7891dd3f9eede896b3f71dd75ea22c65eee7ec538ea6623d09c52c1d6cc58",
+    "rng": "7889a1a68a7d6cecb608d3e2ebd0b117f1b0a23083f5dd7bd57d5b8ba4fa2eb2"
+  },
+  "gameplay_started": false,
+  "launch_ready": false,
+  "migrated_checkpoint_written": false,
+  "migration_ready": false,
+  "model_config": {
+    "feature_size": 32,
+    "hidden_size": 64,
+    "max_map_side": 256,
+    "schema": "heroes-context-model-v5"
+  },
+  "optimizer_class": "torch.optim.adam.Adam",
+  "optimizer_groups_without_ids": [
+    {
+      "amsgrad": false,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "capturable": false,
+      "decoupled_weight_decay": false,
+      "differentiable": false,
+      "eps": 1e-08,
+      "foreach": null,
+      "fused": null,
+      "lr": 0.0003,
+      "maximize": false,
+      "weight_decay": 0
+    }
+  ],
+  "optimizer_run": false,
+  "parameter_names": [
+    [
+      "byte.weight",
+      "text_gru.weight_ih_l0",
+      "text_gru.weight_hh_l0",
+      "text_gru.bias_ih_l0",
+      "text_gru.bias_hh_l0",
+      "number.0.weight",
+      "number.0.bias",
+      "tree.0.weight",
+      "tree.0.bias",
+      "ordered.weight_ih_l0",
+      "ordered.weight_hh_l0",
+      "ordered.bias_ih_l0",
+      "ordered.bias_hh_l0",
+      "terrain.weight",
+      "road.weight",
+      "object_encoder.0.weight",
+      "object_encoder.0.bias",
+      "map_cnn.0.weight",
+      "map_cnn.0.bias",
+      "map_cnn.2.weight",
+      "map_cnn.2.bias",
+      "map_global.2.weight",
+      "map_global.2.bias",
+      "gru.weight_ih",
+      "gru.weight_hh",
+      "gru.bias_ih",
+      "gru.bias_hh",
+      "policy_query.weight",
+      "policy_query.bias",
+      "value.weight",
+      "value.bias",
+      "coordinate.0.weight",
+      "coordinate.0.bias",
+      "coordinate.2.weight",
+      "coordinate.2.bias",
+      "quantity.0.weight",
+      "quantity.0.bias",
+      "quantity.2.weight",
+      "quantity.2.bias"
+    ]
+  ],
+  "parameters": [
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "a2bceb41e731686319723c9921034f012905bd1abb37647261ec3f4ffb7dffac",
+          "shape": [
+            257,
+            8
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "a50e4c18f984311ecc56380e86e664e1330e96097fea8d4811c4ab46d41658fe",
+          "shape": [
+            257,
+            8
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "byte.weight",
+      "optimizer_id": 0,
+      "shape": [
+        257,
+        8
+      ],
+      "tensor_fingerprint": "42d6506c73d2e9082dd09267a5886bcce075e1314d79ac464c37df4f58868dcc"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "b21b12991fb7ed7a4ea4d058f5e6e4367f99d3caa15a6fe798c94bbfb27dce8a",
+          "shape": [
+            96,
+            8
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "efc05c16bbfb02fd9651015aad2bd82830694472fce7f0cae4eea1de510790df",
+          "shape": [
+            96,
+            8
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "text_gru.weight_ih_l0",
+      "optimizer_id": 1,
+      "shape": [
+        96,
+        8
+      ],
+      "tensor_fingerprint": "ebc44b158d5d84d3fd4817304d5a57ad5a3c7300caa906211e818e973ae23882"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "19521e9c41e4492defd731e7037fa448369c1bc1c86e0e55b3d5d638bca723c0",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "ca9ef7d2ef0711b20c164117fb0953deab4edd07ef6c2c4aa0580f6c3ed99425",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "text_gru.weight_hh_l0",
+      "optimizer_id": 2,
+      "shape": [
+        96,
+        32
+      ],
+      "tensor_fingerprint": "641b72d58ffc48ea2b660cf286feecc5484624db8193086e48ad47463b592372"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "767ccf98de7492275799d8ab805197510f7bba470088437d6fc5824856a690ae",
+          "shape": [
+            96
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "d13198cc250e6d967f16380fc1ff1b047cdfb7b0e049de4e31adaa55917cdc24",
+          "shape": [
+            96
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "text_gru.bias_ih_l0",
+      "optimizer_id": 3,
+      "shape": [
+        96
+      ],
+      "tensor_fingerprint": "3c64a58a9f235940883d33dc28a59234d0dcc85fd26a75acf3bf7aad893f85ab"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "73f2328163bb8fd90fa210d2c07b328278726d4dac8d5f5237ecfdbdd90219c6",
+          "shape": [
+            96
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "eac0afb134cffcfaa7e5bfdbc735ad365f876e9da19965c1e3505b0b87610467",
+          "shape": [
+            96
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "text_gru.bias_hh_l0",
+      "optimizer_id": 4,
+      "shape": [
+        96
+      ],
+      "tensor_fingerprint": "60d567c8209d1c00617748f3b63c3cda4e8a535fcd92d404237a10f8efb816de"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "5fcba0417966354f75a0a86700553ec6c130d6906f6d965d5139ed9b64d52991",
+          "shape": [
+            32,
+            2
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "d25afa9b2556f6292f1c4e5e84656df070119b9e1fd557035a055901a394f469",
+          "shape": [
+            32,
+            2
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "number.0.weight",
+      "optimizer_id": 5,
+      "shape": [
+        32,
+        2
+      ],
+      "tensor_fingerprint": "bd7f63667219c7be8e425dbed9d65621a0fff4211283796a1361708f35efedef"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "ae27e1e34cdbcca400275a87a7e43885dabde98e8d9a0ab07316e5869920ae00",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "78a110b05f2e25b534d54d088225e946381ed8bfd890b67c2e909484e7fe8935",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "number.0.bias",
+      "optimizer_id": 6,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "433f1673f2fb9e3b4edeb890050988ad69eae6491965e2eb3b6da4b13cce0451"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "27f4c9d595cff7cdac33aec8b9a55fe131091ab04e4298e089792bdfd75670f5",
+          "shape": [
+            32,
+            64
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "a2ed27ea5b19291d2a53fb558d5ca37906ff15d46566578c453f522d9d47df0d",
+          "shape": [
+            32,
+            64
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "tree.0.weight",
+      "optimizer_id": 7,
+      "shape": [
+        32,
+        64
+      ],
+      "tensor_fingerprint": "463aff8bd3b7ece9bf3bddb3dd828d27f2429a40f4129eb8c6d32d5306dcdcec"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "4906cc8b97f4e10af922e268dcbd0aabe79141b9fd433c044125feabac650841",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "58a2ffb6d236036851cab088069330671da444505e992a67e4782af44af79991",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "tree.0.bias",
+      "optimizer_id": 8,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "d96840e59dd379e05af41f23b9db56da45102494b19a6ab11ea55b7de1f9cdf1"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "b9fec94e186997e80d5ebfa97cc5f91e712b4d25f96b40ccf49c714a642f8fb3",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "468786b23dbd263ff9b934b236698e72c31debfcbc416fe4f2644fe70696643f",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "ordered.weight_ih_l0",
+      "optimizer_id": 9,
+      "shape": [
+        96,
+        32
+      ],
+      "tensor_fingerprint": "89f0c3074ce60dcf090f60cde4f4af79bd39cb040fbf45cb9e3cfc94b897f87b"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "d76b404e24623e0322338b3ae61ad3bd1e4aae3aab9dcd8d102c4e7b2d52a04a",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "1c4371f4d47c9df372cb93a863a843522fd4978a354c44faf32dde6ab5442fb6",
+          "shape": [
+            96,
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "ordered.weight_hh_l0",
+      "optimizer_id": 10,
+      "shape": [
+        96,
+        32
+      ],
+      "tensor_fingerprint": "f968a8155229069728acdd5ea0c551c3632f8805e3d02e0685565e90b30604c0"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "30bc9988111778de2444cdef365bbfd1569bd080fbc0a4d0a0672feba36ae48c",
+          "shape": [
+            96
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "c4d691a8e3069add81b71d7f2cd06b440274ab0cceb1a48af31d30ed49d39fca",
+          "shape": [
+            96
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "ordered.bias_ih_l0",
+      "optimizer_id": 11,
+      "shape": [
+        96
+      ],
+      "tensor_fingerprint": "358e9049319d037215929dcca79664d13041f89291516553961062e83bc664be"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "e926b5c2536b01a2abb8ba6c59768ad3cb8f2f0c25a8e78102e94821e33b99df",
+          "shape": [
+            96
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "d5dafcfffd6d87cbe633b66d9ba224e87fcc24715848dc2e411501e218c52123",
+          "shape": [
+            96
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "ordered.bias_hh_l0",
+      "optimizer_id": 12,
+      "shape": [
+        96
+      ],
+      "tensor_fingerprint": "20015c80c302adbf3b7c543d563e114558266b4fd0af510e162934b8a150acea"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "3efb286e368a636db430b0d5ea531ef9823a219b4b5e8cff87827c9faa25c495",
+          "shape": [
+            257,
+            8
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "0ee9062e1821517d384c66aea27ceee96ea80941a87e562c35a34d860c77893e",
+          "shape": [
+            257,
+            8
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "terrain.weight",
+      "optimizer_id": 13,
+      "shape": [
+        257,
+        8
+      ],
+      "tensor_fingerprint": "8553c8687f7f5ddbc861fd48e64bc2a68fe508983df728750cb448fe700f6225"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "50e3102ba1bdeb26b5ab0bdd00c2b22c812d0bc6478dcc91e765a00130777d33",
+          "shape": [
+            257,
+            4
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "f70ca7a1b3520b96b4d954c145d0fcf6236a878fa188c1e5e78b922c6e3d1dc5",
+          "shape": [
+            257,
+            4
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "road.weight",
+      "optimizer_id": 14,
+      "shape": [
+        257,
+        4
+      ],
+      "tensor_fingerprint": "966a255a0589e42214fff0693368925233edf67839973d2c80b10b65d3dfc9f1"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "3cf06c6b62c24d1c73aec28cb1d56931d79c374a838e3091c3885375c0c63d38",
+          "shape": [
+            16,
+            67
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "4d7bdfee46db47abedf0d7cbf1842c4400fe172b89ebcb0c3fa9cb82b8bb7fc6",
+          "shape": [
+            16,
+            67
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "object_encoder.0.weight",
+      "optimizer_id": 15,
+      "shape": [
+        16,
+        67
+      ],
+      "tensor_fingerprint": "44cb3c01d6465dc79dac561cb32822fbe854c37436904a0e9ce93887639463c2"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "bca3cb747dd8f63dd7f6cd0b4c160945c0532b33b8c4c1c876774ba1b642a980",
+          "shape": [
+            16
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "e18c95697b8224bb2abcb0e9df56b88424280fa97a4708b2fd03549ca5754035",
+          "shape": [
+            16
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "object_encoder.0.bias",
+      "optimizer_id": 16,
+      "shape": [
+        16
+      ],
+      "tensor_fingerprint": "500030537c9d36907f5f41f31dd93da4ffe2357455fff9e963db210e74a14538"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "3ddf691b70441e5b1cb295efd7e64aacc7450ea6f20bbe85b1c3e867174d5a9c",
+          "shape": [
+            16,
+            33,
+            3,
+            3
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "80389b25f271c6eb7cc639f9527c38cd82dbfbef5beafb3981dcb73e8c1f63bd",
+          "shape": [
+            16,
+            33,
+            3,
+            3
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_cnn.0.weight",
+      "optimizer_id": 17,
+      "shape": [
+        16,
+        33,
+        3,
+        3
+      ],
+      "tensor_fingerprint": "2488539ae9943f4f2832d5982a83785a4c8af4f6f413a77a9efbde0c33c5cd16"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "d3fb948fb590875dd4f095bcf37900f7abad00dc9431cf42fd03a340d6e6ba47",
+          "shape": [
+            16
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "c30bbf9e7be5499c0227338bdceb65fa32e90d831c7d48294a423c93e9da69b0",
+          "shape": [
+            16
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_cnn.0.bias",
+      "optimizer_id": 18,
+      "shape": [
+        16
+      ],
+      "tensor_fingerprint": "3ee8fc9b4f144e80789bfcf7c193290f0b389ce8f82a22b6050098162eaaf60a"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "5869bbc7135aac8ce01fafb7eccdac3877d50243fca0a63a43a32356285b4112",
+          "shape": [
+            16,
+            16,
+            3,
+            3
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "34c9d14a5b29fb7fc307d4eb0cab1abd3b43279e78559c58c2c15e314c276185",
+          "shape": [
+            16,
+            16,
+            3,
+            3
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_cnn.2.weight",
+      "optimizer_id": 19,
+      "shape": [
+        16,
+        16,
+        3,
+        3
+      ],
+      "tensor_fingerprint": "2a7dd5ac955e708e510c11f8a94cfca76e68d499821a85797b66f5d4d0d312c9"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "f76b13e8157fb00210b2e50ab43d6630acd8d2a23c5125251e7f9e42d1c14e15",
+          "shape": [
+            16
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "cd61bdc1e559e69be406b26ccd243d47be91e4b49ab21be5088ba0bbb8f49874",
+          "shape": [
+            16
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_cnn.2.bias",
+      "optimizer_id": 20,
+      "shape": [
+        16
+      ],
+      "tensor_fingerprint": "8651ab8627cf4f9e55421d1252e8a9d1cabee849bdac5c14dd1f009c202cc399"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "bb43e778d462bebe425c1a80770c1e0c5e811d66400b916129baf233ec4f97e7",
+          "shape": [
+            32,
+            256
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "cc67ede938cd2415a82e1140f29699d8ca3b98428c178fcdb83f1b52b83b8eaa",
+          "shape": [
+            32,
+            256
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_global.2.weight",
+      "optimizer_id": 21,
+      "shape": [
+        32,
+        256
+      ],
+      "tensor_fingerprint": "fa44c21370b642a686b4508aa706d2011c6258e96375a7ae3d67e68c947315cd"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "a1115b9365b76e7e8303923a6f7f34dccdfd9ee2e19107a1c6e772d17cc02069",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "88ab8931fe5758fab7f70227dfdca0eb776ff2246908c60598220ef424d1643d",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "map_global.2.bias",
+      "optimizer_id": 22,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "afcee4053d09128f7a6eebc1f3cfadebfaefec191a1c094a30897bfedeb46dd1"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "8219cc13f77721095ee2dee0cdcab232f5eda2bd2f7d968842126dfedac79379",
+          "shape": [
+            192,
+            96
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "fe9f419422b0c1eb467c70872b35e03927cb0fd3464aa46350c8707e1b82b36f",
+          "shape": [
+            192,
+            96
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "gru.weight_ih",
+      "optimizer_id": 23,
+      "shape": [
+        192,
+        96
+      ],
+      "tensor_fingerprint": "78685a2eb9302372ac0668327b9c10761f01c2c2814effb88dca640bcc4bff1c"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "3d03a320162cd7b751cc2929fdc58b7ddf4a6c8fc734ab5ca40ae2b353ba37d6",
+          "shape": [
+            192,
+            64
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "f94bf3268061c7922acc1306b2fda4b855476251bff98dde36b13bc5433d37c4",
+          "shape": [
+            192,
+            64
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "gru.weight_hh",
+      "optimizer_id": 24,
+      "shape": [
+        192,
+        64
+      ],
+      "tensor_fingerprint": "55810ddb8a93ff49d16c63bddbd70035a25bf522bd50b747798c2cfcbfe3f1ff"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "59832510ad4248eb2b574b4f5357506765996cdd15125baa4e5d7699da265096",
+          "shape": [
+            192
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "1340d40637f810b98f6bfba3568bef544c69df3bd5ed7114aa3f6ac69c953c28",
+          "shape": [
+            192
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "gru.bias_ih",
+      "optimizer_id": 25,
+      "shape": [
+        192
+      ],
+      "tensor_fingerprint": "0fed6c1c1d03bb28d3aee80679254f71d8e2f497967fae40ad0bea9916f2c33c"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "805081cd802f0514e4bed88f2d72e7e1d3df9af0bbd6a48d0f6ab9c8be5fcd6f",
+          "shape": [
+            192
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "31058c58d3801e19ffd4d6de5b0a15ff490a64b86438e157fb2589724fa4fcc2",
+          "shape": [
+            192
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "gru.bias_hh",
+      "optimizer_id": 26,
+      "shape": [
+        192
+      ],
+      "tensor_fingerprint": "ec6dff31b233e6433b580524322c448f44b9682afa3f596a74d41a787616d8cc"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "037d387354d19564340e2d930ca0f5183616f36eea50ed0d845ee89991f0faa4",
+          "shape": [
+            32,
+            64
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "b143c6bdffcbd7b05e9b05b7f93511f47eb39d335b4017e3ba1fc98057f76b5d",
+          "shape": [
+            32,
+            64
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "policy_query.weight",
+      "optimizer_id": 27,
+      "shape": [
+        32,
+        64
+      ],
+      "tensor_fingerprint": "c72414bb6ba55de71ca300460d0e37be711aff3b76adb1674b198cc553957d5c"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "3736006f57bfc951b3894774cfaaed837627b681a5a42424dcaf1676c6a523af",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "080a0d05d896e4e8911f3ad955ba40097fe89ef9dccaf6bda0375956995f5549",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "policy_query.bias",
+      "optimizer_id": 28,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "46f9a500d08cc3cf731dcf7283ae1cc22ad2e0bed28b53a682db13e304c432e5"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "08398c61a657155c8cee4e41c635e23c286a0d3698a4e12ad56fda9ceaa93425",
+          "shape": [
+            1,
+            64
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "8af9c0c0418f2a095f0995da91d620bb792aa0c86fa994ff2f8991234bdff135",
+          "shape": [
+            1,
+            64
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "value.weight",
+      "optimizer_id": 29,
+      "shape": [
+        1,
+        64
+      ],
+      "tensor_fingerprint": "6d8b171787915410af09e598be4b7aa354070c53d0197728c6160dc7d3e5a213"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "80f2cede82acbacac7f4f00fc9e8da0c8d96159d2ae722e072eec39894eed306",
+          "shape": [
+            1
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "cb3e634f6f033a8a81afa50623f0a4d94b00563a59808beb7d5ae00519618793",
+          "shape": [
+            1
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "36bdd1fce812cb43b28778585e0d37d854ac6fc184d1eb7117caabd352d9f52c",
+          "shape": []
+        }
+      },
+      "adam_step": 783.0,
+      "dtype": "torch.float32",
+      "name": "value.bias",
+      "optimizer_id": 30,
+      "shape": [
+        1
+      ],
+      "tensor_fingerprint": "050a820f15eeb47438e62e72303d0e87085e8602404b5aa84c6a5fe9fd068e4a"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "6e893f0333dfd0de912c21d1695b4ad00621fb33b4b69435d4317e4876670a43",
+          "shape": [
+            32,
+            114
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "c8645b1889a0fdef6634d3da8b059edaff0858d63fa76b7b2e62f0225e74e245",
+          "shape": [
+            32,
+            114
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "3af374994fdc2949fc281a487c651ced6c94c0db530a0428bf89717c4772804b",
+          "shape": []
+        }
+      },
+      "adam_step": 388.0,
+      "dtype": "torch.float32",
+      "name": "coordinate.0.weight",
+      "optimizer_id": 31,
+      "shape": [
+        32,
+        114
+      ],
+      "tensor_fingerprint": "a9c80bbce2bcd9b0b6aeddcd5ea97b9d56f5ff311df980e25449292641d0cd6b"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "1a4da1993df3cfd6eae5095327b0a154ec8d813359eb3f93c19a6f0d525cb469",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "672e17608fdc1679949877b187db3ab5ba41ab89a32a0d28b594561e19afa495",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "3af374994fdc2949fc281a487c651ced6c94c0db530a0428bf89717c4772804b",
+          "shape": []
+        }
+      },
+      "adam_step": 388.0,
+      "dtype": "torch.float32",
+      "name": "coordinate.0.bias",
+      "optimizer_id": 32,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "9263f5430aed011d4833b2f9398f05e6ccf1b80f8f3a4f3a1a2914abb4632a93"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "f864c4ed4e52d3c74ca256fefb9a5da817a3584ecacaf4f2e0e2dda30e6a2495",
+          "shape": [
+            1,
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "c00971b57cd88f3bcbb1989a5a3e2e5e402ee52e686b6ae055f153513072dc84",
+          "shape": [
+            1,
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "3af374994fdc2949fc281a487c651ced6c94c0db530a0428bf89717c4772804b",
+          "shape": []
+        }
+      },
+      "adam_step": 388.0,
+      "dtype": "torch.float32",
+      "name": "coordinate.2.weight",
+      "optimizer_id": 33,
+      "shape": [
+        1,
+        32
+      ],
+      "tensor_fingerprint": "acad87bc632d2205b95a3fc94f7e4294ce25d15d5c12d5d2e61146ef39a9a760"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "cbcfbe060f7d903d74c574f2990f9245dd0bcc1f90770f665e7d2d5c0c856b64",
+          "shape": [
+            1
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "64c3455a214447abf02a7945de65a0d6164461e2dc87b5a78a74c866e10d3067",
+          "shape": [
+            1
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "3af374994fdc2949fc281a487c651ced6c94c0db530a0428bf89717c4772804b",
+          "shape": []
+        }
+      },
+      "adam_step": 388.0,
+      "dtype": "torch.float32",
+      "name": "coordinate.2.bias",
+      "optimizer_id": 34,
+      "shape": [
+        1
+      ],
+      "tensor_fingerprint": "fc01034a05022bb6bc6f39923fee641839e06e2f186e8e6cd3eb0f84e214f78d"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "ce5cebdb1946fbeb70f0ad2178c9a79a23fccde8db551dc57e68835cfd99154b",
+          "shape": [
+            32,
+            100
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "fd0695886fc0da83310afc039f5bf315129d50686d62de7f77b20b9b7b5dde1b",
+          "shape": [
+            32,
+            100
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "b202b98c9fbac5141615a1e8c91aa90b3f31ab6ab90699cbbdc8b1af9d00c3f9",
+          "shape": []
+        }
+      },
+      "adam_step": 707.0,
+      "dtype": "torch.float32",
+      "name": "quantity.0.weight",
+      "optimizer_id": 35,
+      "shape": [
+        32,
+        100
+      ],
+      "tensor_fingerprint": "301b779cf4acd7939c283198b602ab55745d586349a8d0b91e64fe8ade0c02a7"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "6f3b39693c0246c838cd3e7db2a77d6f3d6b9011d4268e4c67211b1599628980",
+          "shape": [
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "18be0282e130a2daf569ed756977436dfa03b864cf5755e8c9de469058604230",
+          "shape": [
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "b202b98c9fbac5141615a1e8c91aa90b3f31ab6ab90699cbbdc8b1af9d00c3f9",
+          "shape": []
+        }
+      },
+      "adam_step": 707.0,
+      "dtype": "torch.float32",
+      "name": "quantity.0.bias",
+      "optimizer_id": 36,
+      "shape": [
+        32
+      ],
+      "tensor_fingerprint": "3ab23f256caeecf8efd868ffea3bc1d09c41ad2c21170ea93e8071d337bbd378"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "11fa1c1d980842ca913c22f143824fc72ab4e12c30a6045aade426982f02f296",
+          "shape": [
+            2,
+            32
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "cf469ef25967e4a087fb04577f576ae7075bdc2a0a5c96523a5df0a785440a19",
+          "shape": [
+            2,
+            32
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "b202b98c9fbac5141615a1e8c91aa90b3f31ab6ab90699cbbdc8b1af9d00c3f9",
+          "shape": []
+        }
+      },
+      "adam_step": 707.0,
+      "dtype": "torch.float32",
+      "name": "quantity.2.weight",
+      "optimizer_id": 37,
+      "shape": [
+        2,
+        32
+      ],
+      "tensor_fingerprint": "9b7bc05e6128889634e1fd606a32a8c5449621fe132fc1d4f17804696bf414cf"
+    },
+    {
+      "adam_slots": {
+        "exp_avg": {
+          "dtype": "torch.float32",
+          "fingerprint": "dcbcebe93280f9dca8862e859d5049bc7ff61dfe8a3486a9c527375a018ca777",
+          "shape": [
+            2
+          ]
+        },
+        "exp_avg_sq": {
+          "dtype": "torch.float32",
+          "fingerprint": "6aef8164c18fa22018f73c914bbc367a78600449782a83841beb2bd1ec981720",
+          "shape": [
+            2
+          ]
+        },
+        "step": {
+          "dtype": "torch.float32",
+          "fingerprint": "b202b98c9fbac5141615a1e8c91aa90b3f31ab6ab90699cbbdc8b1af9d00c3f9",
+          "shape": []
+        }
+      },
+      "adam_step": 707.0,
+      "dtype": "torch.float32",
+      "name": "quantity.2.bias",
+      "optimizer_id": 38,
+      "shape": [
+        2
+      ],
+      "tensor_fingerprint": "f954336ce27a4696a28d6f84c5b2e224914aeb298f8fd5ac2f9786c9d0b073f3"
+    }
+  ],
+  "parent": {
+    "after-policy.pt": {
+      "bytes": 637555,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/after-policy.pt",
+      "sha256": "1d6f9a68b61fd60d6c6e49155b2c8b479c0324b2d3c5bd89ddda3e97fbaab344"
+    },
+    "after-resume.pt": {
+      "bytes": 1265589,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/after-resume.pt",
+      "sha256": "1c21b70deaf35de410501cf1b6e1b37768dfc054cbcd23bfe86df6c05f483ce4"
+    },
+    "plan.json": {
+      "bytes": 53287,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/plan.json",
+      "sha256": "aa65d37019dc62252fee9d6269719c31d48b9df011fc9886abf59c314835517e"
+    },
+    "report.json": {
+      "bytes": 10429,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/local365-continuation-092/execution/report.json",
+      "sha256": "a76c8e1ec41e7ce4196a1f54c4bb343ee1a1a92a25e2913bf6b94402e05c353a"
+    }
+  },
+  "progress": {
+    "decisions": 21062,
+    "rollouts": 368,
+    "updates": 92
+  },
+  "restoration": {
+    "backup": {
+      "checkpoint": "builtin-pilot-after-48932fc292c031e2",
+      "exact_model_adam_rng_progress_pool": true,
+      "progress": {
+        "decisions": 21062,
+        "rollouts": 368,
+        "updates": 92
+      },
+      "weights_sha256": "48932fc292c031e21129c596ab866883b54e8929bfb8fbe6ff434063999fe5d2"
+    },
+    "canonical": {
+      "checkpoint": "builtin-pilot-after-48932fc292c031e2",
+      "exact_model_adam_rng_progress_pool": true,
+      "progress": {
+        "decisions": 21062,
+        "rollouts": 368,
+        "updates": 92
+      },
+      "weights_sha256": "48932fc292c031e21129c596ab866883b54e8929bfb8fbe6ff434063999fe5d2"
+    },
+    "private_snapshot": {
+      "checkpoint": "builtin-pilot-after-48932fc292c031e2",
+      "exact_model_adam_rng_progress_pool": true,
+      "progress": {
+        "decisions": 21062,
+        "rollouts": 368,
+        "updates": 92
+      },
+      "weights_sha256": "48932fc292c031e21129c596ab866883b54e8929bfb8fbe6ff434063999fe5d2"
+    }
+  },
+  "sampler_state": {
+    "batch_optimizer_steps": 5,
+    "next_schedule_index": 4,
+    "optimizer_steps": 783
+  },
+  "schema": "heroes-update92-v8-resume-audit-v1",
+  "status": "parent_verified_target_pending",
+  "target_v8_contract": null,
+  "target_v8_source_commit": null,
+  "torch_version": "2.9.1"
+}

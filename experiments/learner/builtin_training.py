@@ -122,7 +122,9 @@ def prepare(args):
         if session:
             pilot.require(migration.binding == session['migration'], 'Session migration differs')
     report_path = (migration.resolve(parent_plan['execution_output']) if migration else Path(parent_plan['execution_output'])) / 'report.json'
-    source = source_identity(pilot.INTERFACE)
+    from experiments.headless.builtin_evidence import profile_for
+    interface = profile_for(parent_plan["source"]["interface"]).environment
+    source = source_identity(interface)
     current_runtime, current_native = parent_plan['runtime'], deepcopy(parent_plan['native'])
     runtime_bin = getattr(args, 'runtime_bin', None)
     pilot.require(migration is None or runtime_bin is not None, 'Migration requires an explicit current runtime')

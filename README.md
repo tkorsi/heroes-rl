@@ -126,6 +126,17 @@ retain the reviewed source/runtime transition, trained-policy parity proof and
 fresh two-seat replay gate. The earlier cloud session remains stopped; its
 expired deadlines, original 30-day plans and historical metadata are unchanged.
 
+### Gated v8 preparation
+
+A new local two-hour authorization is gated on all requested v8 capabilities,
+full native validation and coordinator release. The [prelaunch checklist](docs/update92-v8-prelaunch.md)
+binds the exact update92 parent, explicit checkpoint/Adam migration requirements,
+fresh session and watchdog, both-seat baseline and burned sequence93. The
+[parent audit](validation/update92-v8-resume-audit-2026-10-25.json) verifies all
+three preserved copies. Built-in collection/replay now selects explicit v7/v8
+profiles; ordinary resume still refuses a schema transition. No new campaign,
+probe gameplay, migrated checkpoint or training update has started.
+
 ## Source layout
 
 | Path | Responsibility |

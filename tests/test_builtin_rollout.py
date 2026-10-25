@@ -54,13 +54,14 @@ class SyntheticProcess:
 
 
 class SyntheticLauncher:
-    def __init__(self, root, boundary):
+    def __init__(self, root, boundary, profile=c.DIALOGS_PROFILE):
+        self.profile = profile
         self.boundary = boundary
         self.binary = root / "bin/vcmiclient"
         self.ai_library = root / "bin/AI/libExplorerRL.dylib"
         self.ai_library.parent.mkdir(parents=True)
         self.binary.write_bytes(b"heroes-contextual-terminal-barrier-v1")
-        self.ai_library.write_bytes(" ".join((c.DIALOGS_ENVIRONMENT, c.DIALOGS_SCHEMA, c.DIALOGS_ACTION_SCHEMA)).encode())
+        self.ai_library.write_bytes(" ".join((profile.environment, profile.history_schema, profile.action_schema)).encode())
         for name in ("vcmireplay", "libvcmi.dylib", "AI/libBattleAI.dylib", "AI/libNullkiller.dylib"):
             (self.binary.parent / name).write_bytes(b"EXPLORER_RL_BUILTIN_OPPONENT")
         self.runtime = e.native.runtime_identity(self.binary.parent)
@@ -81,19 +82,19 @@ class SyntheticLauncher:
             self.process.end(2)
             return
         player, episode = int(env["EXPLORER_RL_PLAYERS"]), env["EXPLORER_RL_EPISODE"]
-        base = {"protocol_version": 9, "episode": episode, "player": player}
+        base = {"protocol_version": self.profile.protocol, "episode": episode, "player": player}
         try:
             with socket.create_connection(("127.0.0.1", int(env[f"EXPLORER_RL_PORT_{player}"])), timeout=5) as sock:
                 self.process.connection = sock
                 stream = sock.makefile("rb")
                 def send(message): sock.sendall((json.dumps(message) + "\n").encode())
                 def batch(*records): send({**base, "type": "contextual", "records": records})
-                observation = c.encode_frame(initial(player).frames[0])["observation"]
+                observation = c.encode_frame(initial(player, self.profile).frames[0])["observation"]
                 def decision(index):
                     return {"kind": "decision", "day": 1, "decision_id": index,
                             "revision": index, "observation": observation}
-                send({**base, "type": "ready", "interface": c.DIALOGS_ENVIRONMENT,
-                      "history_schema": c.DIALOGS_SCHEMA, "action_schema": c.DIALOGS_ACTION_SCHEMA})
+                send({**base, "type": "ready", "interface": self.profile.environment,
+                      "history_schema": self.profile.history_schema, "action_schema": self.profile.action_schema})
                 batch(decision(0))
                 reply = json.loads(stream.readline())
                 self.responses.append(reply)
@@ -108,6 +109,7 @@ class SyntheticLauncher:
                     (folder / "engine").mkdir()
                     for name, record in zip(e.native.FILES, boundaries.BuiltinReceiptTests().records(player)):
                         record["episode"] = episode
+                        record["interface"] = self.profile.environment
                         (folder / name).write_text(json.dumps(record) + "\n")
                     batch({"kind": "terminal", "day": 1, "outcome": ("win", "loss")[player]})
                 else:
@@ -122,6 +124,8 @@ class SyntheticLauncher:
 
 
 class BuiltinCollectorIntegrationTests(unittest.TestCase):
+    interface = c.DIALOGS_ENVIRONMENT
+
     @classmethod
     def setUpClass(cls):
         cls.threads = torch.get_num_threads()
@@ -131,15 +135,16 @@ class BuiltinCollectorIntegrationTests(unittest.TestCase):
     def tearDownClass(cls): torch.set_num_threads(cls.threads)
 
     def run_case(self, root, player, boundary):
-        launcher = SyntheticLauncher(root, boundary)
+        profile = e.profile_for(self.interface)
+        launcher = SyntheticLauncher(root, boundary, profile)
         identity = {"engine_revision": "synthetic-not-native", "map_sha256": "b"*64,
                     "native_runtime_sha256": launcher.runtime}
         opponent = e.opponent_identity(player, launcher.runtime["AI/libNullkiller.dylib"])
         torch.manual_seed(172)
-        model = m.ContextualActorCritic(m.ModelConfig(schema=m.DIALOGS_MODEL_SCHEMA, hidden_size=8, feature_size=4))
+        model = m.ContextualActorCritic(m.ModelConfig(schema=m.model_schema_for(profile.history_schema), hidden_size=8, feature_size=4))
         collector = BuiltinCollector(model, "synthetic-frozen-checkpoint", learner_player=player,
-                                     opponent_identity=opponent, policy_seed=17)
-        env = be.BuiltinHeadlessEnv(launcher, root / "episodes", learner_player=player)
+                                     opponent_identity=opponent, policy_seed=17, interface=self.interface)
+        env = be.BuiltinHeadlessEnv(launcher, root / "episodes", learner_player=player, interface=self.interface)
         with ExitStack() as stack:
             stack.enter_context(patch.object(env, "_identity", return_value=identity))
             stack.enter_context(patch.object(env, "_engine_evidence", return_value=({"synthetic": True}, None)))
@@ -192,7 +197,7 @@ class BuiltinCollectorIntegrationTests(unittest.TestCase):
                 got,folder,model,opponent,launcher,_=self.run_case(Path(tmp),player,"startup_failure")
                 self.assertEqual(got.manifest["status"],"failed")
                 self.assertEqual(got.manifest["outcomes_by_player"],dict.fromkeys(e.COLORS))
-                self.assertFalse(got.manifest["players"][e.COLORS[player]]["history_v7"]["complete"])
+                self.assertFalse(got.manifest["players"][e.COLORS[player]][e.profile_for(self.interface).history_key]["complete"])
                 self.assertEqual([f.kind for f in got.history],["failure"])
                 self.assertEqual(got.decisions,())
                 self.assertEqual(got.estimates,())
@@ -211,7 +216,7 @@ class BuiltinCollectorIntegrationTests(unittest.TestCase):
                            lambda r:r["decisions"].clear()):
                 raw=got.to_dict();mutate(raw)
                 with self.assertRaises(ValueError):load_builtin_episode(raw)
-            path=folder/got.manifest["players"]["red"]["history_v7"]["path"]
+            path=folder/got.manifest["players"]["red"][e.profile_for(self.interface).history_key]["path"]
             path.write_bytes(path.read_bytes()+b"\n")
             with self.assertRaises(ValueError):audit_persisted_builtin_policy(folder,model,got.checkpoint,17,opponent)
 
