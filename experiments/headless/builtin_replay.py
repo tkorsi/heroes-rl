@@ -173,8 +173,8 @@ def request_accounting(manifest, tape, server, requests, contexts, close):
         row = tail[0]
         transaction, receipt = contexts[-1]
         require(row["source"] == "native_opponent" and row["player"] == 1 - manifest["learner_player"]
-                and row["pack_type"] == 182 and transaction == ("client", "request"),
-                "Only the terminal native-opponent MoveHero attempt is supported")
+                and row["pack_type"] in (182, 185) and transaction == ("client", "request"),
+                "Only terminal native-opponent MoveHero or BuildStructure attempts are supported")
         require(inputs[-1]["request"] < 0xffffffff and row["request_id"] == inputs[-1]["request"] + 1,
                 "Terminal-unapplied request ID is not contiguous")
         require(type(receipt) is dict and set(receipt) == {"index", "completed", "phase", "type"}

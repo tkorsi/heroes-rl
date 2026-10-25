@@ -1,0 +1,579 @@
+{
+  "cohorts": {
+    "builtin_nullkiller_easy": {
+      "all_started_cleanup_and_identity_verified": true,
+      "checkpoint": {
+        "bytes": 629494,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+        "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+      },
+      "counts": {
+        "failed": 1,
+        "not_started": 3,
+        "passed": 4
+      },
+      "execution_budget_seconds": 3600,
+      "execution_wall_seconds": 15.850222875000327,
+      "natural_outcomes_verified": 4,
+      "offline_report_seconds": 0.2064927909959806,
+      "plan": {
+        "bytes": 87341,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/plan.json",
+        "sha256": "d88366b615519679a83e6afabb1cd52f33ee8869c84071c459e9f7aa9ed88aca"
+      },
+      "report": {
+        "bytes": 19341,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-builtin-revalidation-v2-2026-10-25/execution/report.json",
+        "sha256": "e0997e4198109ed9ffaa1bc5337fe5a190c6f248df0e10cbe5c9402fdd699dc9"
+      },
+      "rows": [
+        {
+          "engine_seed": 120501,
+          "episode": 1,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.1038072090013884,
+            "collection": 1.5602107500017155,
+            "identity_check": 0.10422125000332016,
+            "initialization": 9.208000847138464e-06,
+            "native_replay": 0.5522722080058884,
+            "offline_behavior": 0.046841582996421494,
+            "policy_reconstruction": 0.4618082919914741
+          },
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 23,
+          "status": "passed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120501,
+          "episode": 2,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": "loss",
+            "red": "win"
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.10556854199967347,
+            "collection": 0.9820037500030594,
+            "identity_check": 0.10647312499349937,
+            "initialization": 9.082999895326793e-06,
+            "native_replay": 0.4389622079906985,
+            "offline_behavior": 0.04078225001285318,
+            "policy_reconstruction": 0.3138847920054104
+          },
+          "rewards": {
+            "blue": -1,
+            "red": 1
+          },
+          "sampled_choices": 13,
+          "status": "passed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 3,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.10061529101221822,
+            "collection": 1.5645054999913555,
+            "identity_check": 0.10573658300563693,
+            "initialization": 1.0832998668774962e-05,
+            "native_replay": 0.5633390000002692,
+            "offline_behavior": 0.05780904198763892,
+            "policy_reconstruction": 0.6095085420092801
+          },
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 28,
+          "status": "passed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": "loss",
+            "red": "win"
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.10274291700625326,
+            "collection": 1.5317005419929046,
+            "identity_check": 0.10881541699927766,
+            "initialization": 1.1124997399747372e-05,
+            "native_replay": 0.5598531249997905,
+            "offline_behavior": 0.058534083000267856,
+            "policy_reconstruction": 0.597722332997364
+          },
+          "rewards": {
+            "blue": -1,
+            "red": 1
+          },
+          "sampled_choices": 27,
+          "status": "passed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 5,
+          "error": "ValueError: Independent native replay failed",
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.09922612500668038,
+            "collection": 0.8496402919990942,
+            "failure_retention": 0.00941012499970384,
+            "identity_check": 0.107513957991614,
+            "initialization": 8.83299799170345e-06,
+            "native_replay": 0.053112958994461223,
+            "policy_reconstruction": 0.24744508300500456
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 9,
+          "status": "failed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        }
+      ],
+      "scheduled": 8,
+      "source": {
+        "git_commit": "6abbfdbb15025d6b65fa692fe66ac0f9b1b58bcd",
+        "interface": "adventure-dialogs-v1",
+        "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+        "source_sha256": {
+          "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+          "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+          "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+          "experiments/learner/builtin_behavior.py": "12938a41753c11e3cc62f498c3080200ddcf340d2a6d4e7fa5635955a300514b",
+          "experiments/learner/builtin_rollout.py": "d0dae59e199cab6343d53cbd79db78f80e7b0ca13f2b009d37c143ee3caca66c",
+          "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+          "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+          "experiments/learner/contextual_model.py": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+          "experiments/learner/contextual_rollout.py": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+          "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+          "experiments/learner/evaluate_builtin_opponent.py": "3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0",
+          "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+          "experiments/learner/evaluate_long_dialogs.py": "405b190f8034e7ce4a0dd40c8286a8e17859f4f78bc7054a2821f7a10a6493b8",
+          "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+          "experiments/learner/evaluation_revalidation.py": "c997549616a76a7901d6dda3b8ce4292b516f073728a1d4e4afdb4b869046f5f",
+          "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+          "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+          "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+          "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+          "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+          "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+        },
+        "torch": "2.9.1",
+        "tracked_worktree_dirty": false
+      },
+      "verified_cutoffs": 0
+    },
+    "frozen_neural_opponent": {
+      "all_started_cleanup_and_identity_verified": true,
+      "checkpoint": {
+        "bytes": 629494,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+        "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+      },
+      "counts": {
+        "budget_exhausted": 1,
+        "not_started": 3,
+        "passed": 4
+      },
+      "execution_budget_seconds": 3600,
+      "execution_wall_seconds": 3585.1630905839993,
+      "natural_outcomes_verified": 0,
+      "offline_report_seconds": 51.637966166003025,
+      "plan": {
+        "bytes": 44987,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/plan.json",
+        "sha256": "e9998224a391f2d8ec468612ddb334080b9095d82c095e0c4df4727eac95fba8"
+      },
+      "report": {
+        "bytes": 18826,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-neural-revalidation-v2-2026-10-25/execution/report.json",
+        "sha256": "360f9b639fddda0553ceef90264bdc2582b270fb3ee74c4bc344a246adce254e"
+      },
+      "rows": [
+        {
+          "engine_seed": 120501,
+          "episode": 1,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.20254695900075603,
+            "collection": 426.1523876669962,
+            "identity_check": 0.11198245800915174,
+            "initialization": 7.70798942539841e-06,
+            "native_replay": 99.64284183400741,
+            "offline_behavior": 11.050045165990014,
+            "policy_reconstruction": 243.24926158299786
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120501,
+          "episode": 2,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.2000593749980908,
+            "collection": 420.7911026669899,
+            "identity_check": 0.11201925000932533,
+            "initialization": 1.666699245106429e-05,
+            "native_replay": 99.11086445799447,
+            "offline_behavior": 11.016540875003557,
+            "policy_reconstruction": 236.0906505830062
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 3,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.165574957994977,
+            "collection": 357.73758049999014,
+            "identity_check": 0.10997420900093857,
+            "initialization": 8.83299799170345e-06,
+            "native_replay": 76.98953158299264,
+            "offline_behavior": 8.760210209002253,
+            "policy_reconstruction": 202.5400205830083
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.1966504579904722,
+            "collection": 409.0308970000042,
+            "identity_check": 0.1061338750005234,
+            "initialization": 8.999995770864189e-06,
+            "native_replay": 95.57127975000185,
+            "offline_behavior": 10.826733875001082,
+            "policy_reconstruction": 234.88492404199496
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 5,
+          "error": "ExecutionBudgetExpired: Shared evaluation execution hour is ending",
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "phase_wall_seconds": {
+            "cleanup": 0.19706191700242925,
+            "collection": 433.45921737499884,
+            "failure_retention": 14.277984749991447,
+            "identity_check": 0.10830029199132696,
+            "initialization": 7.708003977313638e-06,
+            "policy_reconstruction": 186.72666458300955
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "budget_exhausted",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        }
+      ],
+      "scheduled": 8,
+      "source": {
+        "git_commit": "6abbfdbb15025d6b65fa692fe66ac0f9b1b58bcd",
+        "interface": "adventure-dialogs-v1",
+        "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+        "source_sha256": {
+          "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932",
+          "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+          "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+          "experiments/learner/builtin_behavior.py": "12938a41753c11e3cc62f498c3080200ddcf340d2a6d4e7fa5635955a300514b",
+          "experiments/learner/builtin_rollout.py": "d0dae59e199cab6343d53cbd79db78f80e7b0ca13f2b009d37c143ee3caca66c",
+          "experiments/learner/checkpoints.py": "2824f41f7ea8db8bb3e52dc22074fa4496e4b0fa51b73211fe129712d42f3633",
+          "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee",
+          "experiments/learner/contextual_model.py": "86a1990c9727eb2284ba397612cc822c62041cc23cc78ff9dfd3c233feb647a7",
+          "experiments/learner/contextual_rollout.py": "2c434930c50798d302d845b6ca0f26848e90681d9a810b77d29e7868305363af",
+          "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+          "experiments/learner/evaluate_builtin_opponent.py": "3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0",
+          "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+          "experiments/learner/evaluate_long_dialogs.py": "405b190f8034e7ce4a0dd40c8286a8e17859f4f78bc7054a2821f7a10a6493b8",
+          "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+          "experiments/learner/evaluation_revalidation.py": "c997549616a76a7901d6dda3b8ce4292b516f073728a1d4e4afdb4b869046f5f",
+          "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+          "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+          "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+          "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+          "experiments/learner/ppo.py": "495b04c802240aab3b5d4f805b39d143ec8c0bbff4cdded73548e629369b9c7c",
+          "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e"
+        },
+        "torch": "2.9.1",
+        "tracked_worktree_dirty": false
+      },
+      "verified_cutoffs": 4
+    }
+  },
+  "evidence": {
+    "frost-ring-native-witness-2026-10-25.json": {
+      "bytes": 8442,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/frost-ring-native-witness-2026-10-25.json",
+      "sha256": "60c3ef2e9de1e257708196a15abd6ab6c9e9e63cb45fb55b6356a68d042bf4d7"
+    },
+    "local-builtin-revalidation-v2-2026-10-25.json": {
+      "bytes": 323356,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/local-builtin-revalidation-v2-2026-10-25.json",
+      "sha256": "3515928087fdbafc4c3e3686ae370ed1be992fbd50faaed70475255c7113a09f"
+    },
+    "local-neural-revalidation-v2-2026-10-25.json": {
+      "bytes": 264126,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/local-neural-revalidation-v2-2026-10-25.json",
+      "sha256": "c4fbef5ef61779ae06606c10df472c8d4b0300dd7d451ada8f9171f4e622f928"
+    }
+  },
+  "failed_rows_reclassified": false,
+  "interpretation": [
+    "Ordinary games can reach verified natural outcomes against Nullkiller Easy with the same frozen learner/map/runtime; all four verified outcomes here are learner defeats.",
+    "Four verified neural games remain collection-window cutoffs without town captures; frequent control navigation and army rearrangement describe limited progress, not a causal proof.",
+    "The full summaries include available failed prefixes in descriptive aggregates; verified behavior claims use only passed rows.",
+    "The Easy fifth attempt failed before native replay because the verifier supports only MoveHero as a terminal-unapplied native request; its BuildStructure request remains unscored.",
+    "Real Frost Ring native replay passes in the fresh captured prefix; Rebirth remains unverified.",
+    "The stopped original cohorts and these stopped v2 cohorts remain immutable; any later repaired-verifier diagnostic is separate."
+  ],
+  "optimizer_steps": 0,
+  "optimizer_updates": 0,
+  "process_monitor": {
+    "binding": {
+      "bytes": 33468,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-evaluation-v2-preflight-2026-10-25/process-samples-v2.jsonl",
+      "sha256": "a989a0a5bc715bfaf04562eb5543218dbacd5831b49535d3b1a1dd448bcad882"
+    },
+    "declared_foreign_performance_worktree_entries": [
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 16991,
+        "utc": "2026-10-25T11:29:48.494530+00:00"
+      },
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 17073,
+        "utc": "2026-10-25T11:29:48.494530+00:00"
+      },
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 17390,
+        "utc": "2026-10-25T11:29:58.569466+00:00"
+      },
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 17573,
+        "utc": "2026-10-25T11:30:08.639396+00:00"
+      },
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/bin/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 17707,
+        "utc": "2026-10-25T11:30:18.713558+00:00"
+      },
+      {
+        "executable": "/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core/git",
+        "known_foreign_perf_worktree": true,
+        "pid": 17742,
+        "utc": "2026-10-25T11:30:18.713558+00:00"
+      },
+      {
+        "executable": "cp",
+        "known_foreign_perf_worktree": true,
+        "pid": 18080,
+        "utc": "2026-10-25T11:30:38.862669+00:00"
+      }
+    ],
+    "first_utc": "2026-10-25T10:42:59.225240+00:00",
+    "last_utc": "2026-10-25T11:42:13.732887+00:00",
+    "limitations": [
+      "Only sampled process identities and known performance worktrees were checked; absence is not proof of zero external machine load.",
+      "Earlier v1 monitor truncated command names and is not used as absence evidence."
+    ],
+    "observed_foreign_heavy_jobs": 0,
+    "sample_interval_seconds": 10,
+    "samples": 354,
+    "stopped": true
+  },
+  "rewards_changed": false,
+  "rules_changed": false,
+  "schema": "heroes-local-revalidation-summary-v2",
+  "seeds_held_out": false,
+  "source_commit": "6abbfdbb15025d6b65fa692fe66ac0f9b1b58bcd",
+  "tests": [
+    {
+      "binding": {
+        "bytes": 1392,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-evaluation-v2-preflight-2026-10-25/tests-full.log",
+        "sha256": "20dacd7b822ac5f7bdf643b2a73aec18c2f569b20cd0a661cfac763af18c50cf"
+      },
+      "passed": true,
+      "skipped": 1,
+      "tests_run": 935
+    },
+    {
+      "binding": {
+        "bytes": 482,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/local-evaluation-v2-preflight-2026-10-25/tests-final-focused.log",
+        "sha256": "4d58b3dfd13fa0ffe4249f3dd9557474b0748aa38ae255eeef73980abfdd71a7"
+      },
+      "passed": true,
+      "skipped": 0,
+      "tests_run": 40
+    }
+  ],
+  "training_performed": false,
+  "training_samples": 0
+}

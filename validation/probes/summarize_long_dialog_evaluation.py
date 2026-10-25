@@ -34,6 +34,18 @@ def equal(left, right):
     return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(right, sort_keys=True, allow_nan=False)
 
 
+def evidence_schema(legacy_schema, version):
+    require(version in (1, 2), "Unknown evaluation evidence version")
+    return legacy_schema if version == 1 else legacy_schema.removesuffix("-v1") + "-v2"
+
+
+def bind_revalidation(plan, bind):
+    """Bind historical declarations without checking their old runtime at HEAD."""
+    for key in ("plan", "report"):
+        item = plan["revalidation"]["prior"][key]
+        bind(item["path"], item)
+
+
 def compact_behavior(value):
     """Keep denominators and counts, without coordinate or per-action arrays."""
     result = {key: value[key] for key in ("schema", "episode_directory", "status", "bindings", "coverage", "aggregate")}
@@ -55,8 +67,9 @@ def summarize(plan_path, report_path, *, reference_episodes=REFERENCES, output_p
     """Return evidence without writing. Declared hash corruption always raises."""
     plan_path, report_path = Path(plan_path).resolve(), Path(report_path).resolve()
     report = strict_json(report_path.read_bytes())
-    require(report.get("schema") == evaluation.SCHEMA + "-result", "Unexpected execution report schema")
     plan = evaluation.read_plan(plan_path, report["plan_sha256"])
+    version = evaluation.plan_version(plan)
+    require(report.get("schema") == evaluation.result_schema(plan), "Unexpected execution report schema")
     execution = Path(plan["execution_output"]).resolve()
     require(report_path == execution / "report.json", "Report is outside the prepared execution output")
     require(report.get("status") in ("running", "finished", "stopped"), "Unknown report status")
@@ -85,12 +98,14 @@ def summarize(plan_path, report_path, *, reference_episodes=REFERENCES, output_p
     bind(plan_path, report["plan_sha256"])
     bind(report_path)
     bind(evaluation.CONFIG)
-    for key in ("checkpoint", "replay_binary", "seed_freshness"):
+    for key in ("checkpoint", "replay_binary") + (("seed_freshness",) if version == 1 else ()):
         item = plan.get(key)
         if item:
             bind(item["path"], item)
         else:
             issues.append({"issue": "plan_binding_missing", "field": key})
+    if version == 2:
+        bind_revalidation(plan, bind)
     for name, sha in plan.get("implementation", {}).items():
         bind(ROOT / name, sha)
     for name, sha in plan.get("source", {}).get("source_sha256", {}).items():
@@ -146,7 +161,7 @@ def summarize(plan_path, report_path, *, reference_episodes=REFERENCES, output_p
         for name, identity in value["bindings"].items():
             bind(Path(folder) / name, identity)
         references.append(value)
-    return {"schema": SCHEMA, "plan": plan, "plan_binding": evaluation.binding(plan_path),
+    return {"schema": evidence_schema(SCHEMA, version), "plan": plan, "plan_binding": evaluation.binding(plan_path),
         "report_binding": evaluation.binding(report_path), "bindings": bindings,
         "coverage": {"complete": not issues and report["status"] == "finished"
                      and len(behaviors) == 8 and all(row["status"] == "passed" for row in rows)

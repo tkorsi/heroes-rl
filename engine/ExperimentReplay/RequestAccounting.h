@@ -96,8 +96,8 @@ inline JsonNode contextualRequestAccounting(const std::vector<JsonNode> & tape,
 			continue;
 		}
 
-		// Only a single opposite-seat MoveHero sent while the final native
-		// outcome packets were being consumed may have no server application.
+		// Only a single opposite-seat MoveHero or BuildStructure sent while the
+		// final native outcome packets were consumed may have no server application.
 		// The sealed server cannot accept it after the terminal input finishes.
 		if(prefix || learner < 0 || inputs.empty() || !unapplied.empty() || terminalInput.isNull()
 			|| terminalInput["input_seq"].Integer() != static_cast<int64_t>(inputs.size() - 1)
@@ -105,7 +105,8 @@ inline JsonNode contextualRequestAccounting(const std::vector<JsonNode> & tape,
 			|| terminalInput["player"] != inputs.back()["player"]
 			|| terminalInput["pack_type"] != inputs.back()["type"]
 			|| source != "native_opponent" || transaction->first != "client" || transaction->second != "request"
-			|| request->player != PlayerColor(1 - learner) || !dynamic_cast<const MoveHero *>(request)
+			|| request->player != PlayerColor(1 - learner)
+			|| (!dynamic_cast<const MoveHero *>(request) && !dynamic_cast<const BuildStructure *>(request))
 			|| terminalInput["request_id"].Integer() == std::numeric_limits<uint32_t>::max()
 			|| item["request_id"].Integer() != terminalInput["request_id"].Integer() + 1
 			|| receipt["index"].getType() != JsonNode::JsonType::DATA_INTEGER

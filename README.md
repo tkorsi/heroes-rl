@@ -5,21 +5,25 @@ reinforcement learning, using the real [VCMI engine](https://github.com/vcmi/vcm
 It connects an external Python agent to the game and records synchronized
 omniscient and player-fog videos.
 
-**Current milestone:** stages 1–3 of the capability expansion have passed their
-bounded native checks. The authorized longer ordinary v7 evaluation stopped on
-its third game: **two verified cutoffs, one failed native replay and five games
-not started**. No natural game outcome or optimizer update occurred. The failed
-attempt remains unscored; it is not replaced. The separate comparison against
-Nullkiller Easy also stopped: its first game delivered a day-2 Red defeat/Blue
-victory, but a native request-accounting precheck failed, so the original row
-remains unscored and seven games were not started. Neither stopped evaluation
-performed optimizer updates. A separate replay with the repaired verifier now
-regenerates that ordinary game's natural ending exactly, including its explicitly
-accounted terminal-unapplied movement attempt. This establishes reachability,
-not retrospective admission or an outcome rate. Two separate frozen-policy
-fixture cases also pass natural-ending replay, with learner defeats from both
-colors. Automatic BattleAI combat, normal fog and terminal-only rewards remain
-fixed. No training was performed during this validation work.
+**Current milestone:** local v2 revalidation on frozen source `6abbfdb` produced
+**four verified frozen-neural cutoffs and four verified natural learner defeats
+against Nullkiller Easy**, covering both learner colors. The neural cohort hit
+its shared one-hour limit during validation of game five; that attempt remains
+unscored and three games were not started. The Easy comparison stopped on game
+five because terminal request accounting did not accept a client-only town
+building command. The narrow repair now passes a separate retained-capture native
+diagnostic; that original row stays unscored and three games were not started. Neither
+cohort performed optimizer updates. Both retain their original eight-row
+schedules and reused seeds; this is repaired-runtime validation, not evidence of
+learning or a new held-out evaluation. The specific real Frost Ring replay that
+previously diverged now passes in a fresh capture. Rebirth remains unverified.
+
+The earlier stopped cohorts remain unchanged: two verified neural cutoffs, one
+failed replay and five unstarted games; one failed/unscored Easy game and seven
+unstarted games. Separate repaired-verifier diagnostics establish natural-ending
+reachability without retrospectively admitting those failed rows. Automatic
+BattleAI combat, normal fog and terminal-only rewards remain fixed. No training
+was performed during this validation work.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2602,6 +2606,120 @@ native-opponent replay establishes reachability without changing victory rules,
 map rules or rewards. Natural self-play outcome frequency and broader unsupported
 mechanics remain unmeasured, and training remains off.
 
+## Local comparison revalidation — 25 October 2026
+
+The user has resumed this work on the Mac. Cloud preparation remains preserved
+on `codex/cloud-environment` and draft PR #20; it is not required for these local
+runs. The new integration branch is `codex/local-evaluation-v2`, based on
+`9193db3`. The preceding stopped Mac cohorts and separate terminal diagnostics
+remain unchanged.
+
+The two cohorts use explicitly versioned revalidation plans. Each retains
+the original eight-row schedule, four engine seeds 120501–120504 and both learner
+colors, the same frozen v7 checkpoint, ordinary Tavern-enabled map, model-owned
+policy RNGs, automatic battles and normal fog. These are **reused seeds for
+repaired-runtime revalidation**, not newly held-out seeds. The original plan,
+report and admission decisions are hash-bound as historical provenance, not
+resumed or replaced. Preparation cites the user's new local continuation.
+
+The frozen-neural cohort retains 4,096 total policy choices across both players
+(4,088 nominal plus eight real-dialog reserve choices); the Nullkiller Easy
+cohort retains 2,048 learner choices (2,040 plus eight). Both retain a 200-day
+limit and their own shared 3,600-second execution deadline covering loading,
+collection, policy reconstruction, native replay and cleanup. Final pure offline
+report assembly is separately timed. Deadline exhaustion leaves incomplete or
+not-started rows visible; it cannot justify extending the clock or reporting a
+loss/draw. Each attempt is made once in its declared cohort.
+
+The neural cohort runs first. The new native-opponent plan then requires that
+cohort's finished/stopped report and the same source, native runtime, map,
+checkpoint and frozen weights. Neither cohort can change implementation during
+execution. Phase timings distinguish collection, policy reconstruction, native
+replay, behavior analysis and cleanup without changing actions or numerical
+contracts. CPU inference remains sequential with one Torch thread; no MPS or
+parallel gameplay is implied by the Mac's available hardware.
+
+Both cohorts have now stopped on frozen source `6abbfdb`. Their complete schedules,
+artifact bindings and available player-visible histories are retained in
+`validation/local-neural-revalidation-v2-2026-10-25.json` and
+`validation/local-builtin-revalidation-v2-2026-10-25.json`.
+
+| Cohort | Verified results | Unverified attempts | Not started | Execution time |
+| --- | --- | --- | --- | --- |
+| Frozen neural opponent | 4 collection-window cutoffs | 1 shared-budget stop | 3 | 3,585.16 s |
+| Nullkiller Easy | 4 natural learner defeats | 1 replay-precheck failure | 3 | 15.85 s |
+
+The fifth neural game captured 4,088 policy choices but ran out of time during
+policy reconstruction. Its histories remain descriptive and unscored; no replay
+admission is inferred. Cleanup and identity checks completed before the deadline.
+Pure offline report assembly took a separately measured 51.64 seconds for that
+cohort. The four verified games reconstructed 16,352 actions, 16,360 values and
+40,427 conditional probabilities with zero difference, separate player memories
+and unchanged weights.
+
+In those four verified games, 87.4% of both players' choices navigated controls or
+rearranged armies (14,296 of 16,352). They advanced through public days 1–141,
+completed recruitment, hired heroes and fought, but captured no towns. The
+designated learner histories show the same broad pattern: 87.0% of 7,920 choices
+were navigation/selection or army rearrangement. This describes limited progress
+by the frozen untrained policies; it does not isolate a single cause for missing
+self-play endings. Four verified games cover two reused engine seeds with both
+learner colors, not four independent scenarios. Battle counts are player
+perspectives; movement endpoint changes are not a measure of strategic progress.
+
+The Easy comparison establishes that ordinary games can end naturally under the
+same map, fog, rules, rewards and frozen learner. Its first four games ended in
+verified defeats after 23, 13, 28 and 27 learner choices. The fifth reached a local
+natural terminal but failed before independent replay: a native `BuildStructure`
+request was emitted during the final callbacks and never became an authoritative
+server input. The frozen verifier recognized only `MoveHero` in this exact
+terminal-unapplied position. This was an accounting coverage gap, not evidence of
+a native replay divergence; the original fifth row remains failed and unscored.
+No retry or replacement game is included in either cohort.
+
+The subsequent repair admits a typed `BuildStructure` under the same strict
+single-request, opposite-seat, contiguous-ID, final receipt-range and terminal
+barrier checks. The command remains unapplied; no gameplay or scoring rule changes.
+Thirty-four focused tests pass, including 231 real native codec/corruption checks
+over both packet types and both learner seats. Only `vcmireplay` was rebuilt.
+A separate diagnostic of the retained fifth capture now regenerates all 89
+authoritative inputs and 595 packets, checks all 90 client request attempts,
+9 responses, 20 messages and 672 transactions, and records zero unchecked items
+or divergence. All 26 bound original files, the checkpoint and nonverifier runtime
+binaries remain unchanged. The diagnostic is explicitly optimizer-ineligible,
+has null scores and cannot admit the original failed row. Evidence is in
+`validation/build-terminal-diagnostic-2026-10-25.json`.
+
+The repair's correctness checks overlapped Claude's instrumented offline profiling
+from 12:06:41 to 12:07:52 UTC, after both scientific cohorts had finished. That
+overlap is recorded and excluded from clean performance comparisons; it does not
+alter the cohorts or establish a speed result.
+
+Phase measurements also separate gameplay from validation overhead. In the first
+neural game, the manifest's collection interval was 220.38 seconds, the evaluator's
+collection/finalization phase 426.15 seconds, policy reconstruction 243.25 seconds,
+and native-replay validation 99.64 seconds. The latter includes Python evidence
+checks around 11.14 seconds of native replay. These are attributed timings from
+one run, not a controlled optimization benchmark. Ten-second process samples found
+Git/copy activity, but no native builds or profiling/gameplay processes, in Claude's
+declared performance worktrees during the sampled interval. This is limited
+process evidence, not proof of zero external machine load.
+
+Claude separately owns performance profiling and behavior-preserving optimization
+in its own branch/worktree, coordinated through issue #4. Codex owns these
+evaluators, evidence summaries, current integration and learner/PPO/checkpoint
+contracts. Heavy scientific runs and clean performance benchmarks/builds use
+separate windows; any overlap must be recorded and excluded from clean speed
+claims. Performance attempts cannot replace scientific evaluation rows or alter
+their budgets. No training, paid infrastructure or PR merge is authorized here.
+
+Even a successful v7 comparison does not make the existing training launcher
+v7-ready: `first_run.py`, gameplay admission and approved-gameplay checkpoint
+provenance currently target `adventure-armies-v1` (v4). A future small v7 update
+needs a separately versioned admission/checkpoint path and v7 numerical,
+resume and rollback tests, plus explicit training authorization. Diagnostic
+rollouts remain optimizer-ineligible.
+
 ## Stable spell target ordering
 
 The failed longer-cohort Frost Ring replay exposed pointer-address ordering in
@@ -2620,6 +2738,17 @@ packet-serialization or rebirth-RNG validation. The production engine rebuild
 and exact generated-source check pass. Mixed-controller cutoff replay passes,
 and the separate terminal diagnostics above pass. Wider spell/combat coverage,
 including real rebirth-RNG behavior, remains unverified.
+
+The fresh v2 neural game three now closes the specific Frost Ring native-replay
+gap. Input 2029 / request 2030 and its applied record exactly match the original
+capture, including the previously diverging `StacksInjured` packet hash. Native
+replay independently regenerates all 2,469 authoritative inputs, 10,967 packets,
+4,089 responses, 8,181 messages and 30,988 transactions, with zero unchecked
+records or divergence. Reconstruction is exact and this captured collection-window
+prefix remains unscored. The compact hash-bound witness is
+`validation/frost-ring-native-witness-2026-10-25.json`. The original failed
+attempt is unchanged; this witness neither demonstrates Rebirth nor a natural
+self-play ending.
 
 ## Headless self-play environment (issue #4, in progress)
 

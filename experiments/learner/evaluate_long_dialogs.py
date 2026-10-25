@@ -23,6 +23,7 @@ CONFIG = ROOT / "configs/long-dialog-evaluation-v1.json"
 INTERFACE = "adventure-dialogs-v1"
 COLORS = ("red", "blue")
 SCHEMA = "heroes-long-dialog-evaluation-v1"
+V2_SCHEMA = "heroes-long-dialog-evaluation-v2"
 CHECKPOINT_SHA = "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
 # Only these native, episode-local failures may advance to the next fixed row.
 LOCAL_FAILURES = frozenset(("unsupported_interface", "engine_error", "engine_crash",
@@ -79,12 +80,26 @@ def schedule(cfg):
             for seat in (0, 1)]
 
 
-def implementation():
+def implementation(version=1):
     from experiments.learner.first_run import implementation_identity
     result = implementation_identity()
     for path in (CONFIG, ROOT / "experiments/explorer/create_hero_scenario.py"):
         result[str(path.relative_to(ROOT))] = digest(path)
+    if version == 2:
+        path = ROOT / "configs/builtin-opponent-evaluation-v1.json"
+        result[str(path.relative_to(ROOT))] = digest(path)
     return result
+
+
+def plan_version(plan):
+    from experiments.learner.evaluation_revalidation import version
+    return version(plan, SCHEMA)
+
+
+def result_schema(plan):
+    if "schema" not in plan:  # Legacy in-process supervisor callers; read_plan always requires it.
+        return SCHEMA + "-result"
+    return (SCHEMA if plan_version(plan) == 1 else V2_SCHEMA) + "-result"
 
 
 def load_fixed(path, metadata=None):
@@ -115,18 +130,23 @@ def prepare(args):
     from experiments.headless.env import VcmiLauncher
     from experiments.learner.inference import source_identity
     from validation.probes.validate_hero_policy import hero_map_identity
+    from experiments.learner.evaluation_revalidation import AUTHORIZATION, prepare_provenance
     cfg = config()
     output = args.output.expanduser().resolve()
     require(not output.exists(), "Preparation output exists; never replace or retry an earlier cohort")
+    revalidation = prepare_provenance(args, reader=read_plan, legacy_schema=SCHEMA,
+        configuration=cfg, wanted_schedule=schedule(cfg))
+    version = 2 if revalidation is not None else 1
     torch.set_num_threads(1)
     checkpoint = binding(args.checkpoint)
     loaded, fixed = load_fixed(checkpoint["path"])
-    freshness_path = ROOT / "runs/long-dialog-evaluation-preflight-2026-10-25/seed-freshness.json"
-    freshness = json.loads(freshness_path.read_text())
-    require(freshness["status"] == "passed" and freshness["candidate_seeds_are_absent"] is True
-            and freshness["candidate_engine_seeds"] == cfg["engine_seeds"]
-            and freshness["candidate_policy_seeds"] == [v for pair in cfg["model_policy_seeds"] for v in pair]
-            and not freshness["parse_errors"], "Fresh seed preflight is missing or inconsistent")
+    if version == 1:
+        freshness_path = ROOT / "runs/long-dialog-evaluation-preflight-2026-10-25/seed-freshness.json"
+        freshness = json.loads(freshness_path.read_text())
+        require(freshness["status"] == "passed" and freshness["candidate_seeds_are_absent"] is True
+                and freshness["candidate_engine_seeds"] == cfg["engine_seeds"]
+                and freshness["candidate_policy_seeds"] == [v for pair in cfg["model_policy_seeds"] for v in pair]
+                and not freshness["parse_errors"], "Fresh seed preflight is missing or inconsistent")
     current = source_identity(INTERFACE)
     compatible_sources(loaded.source_metadata, current)
     launcher = VcmiLauncher(args.binary.resolve(), args.data.resolve(), args.map.resolve())
@@ -135,11 +155,10 @@ def prepare(args):
     require(scenario["sha256"] == cfg["map_sha256"], "Ordinary Tavern-enabled scenario changed")
     checked = subprocess.run([sys.executable, str(ROOT / "tools/prepare_vcmi.py"), "--check"],
                              cwd=ROOT, capture_output=True, text=True, timeout=60, check=True)
-    plan = {"schema": SCHEMA + "-plan", "configuration": cfg, "schedule": schedule(cfg),
+    plan = {"schema": (SCHEMA if version == 1 else V2_SCHEMA) + "-plan", "configuration": cfg, "schedule": schedule(cfg),
         "execution_output": str(output / "execution"), "checkpoint": checkpoint,
-        "seed_freshness": binding(freshness_path),
         "checkpoint_source": loaded.source_metadata, "checkpoint_provenance": loaded.provenance,
-        "source": current, "implementation": implementation(), "frozen": fixed,
+        "source": current, "implementation": implementation(version), "frozen": fixed,
         "binary": str(args.binary.resolve()), "data": str(args.data.resolve()),
         "game_map": str(args.map.resolve()), "replay_binary": binding(args.replay_binary),
         "native": launcher.identity(), "runtime": runtime_identity(args.binary.resolve().parent), "map": scenario,
@@ -150,6 +169,11 @@ def prepare(args):
         "wall_scope": "One shared 3600-second execution clock includes all launches, collection, reconstruction, native replay and cleanup. Final offline report assembly has a separate measured duration; it cannot launch games or replay.",
         "choice_scope": "4088 ordinary policy choices total across both players, plus at most 8 reserved real dialog choices, never more than 4096. Technical cutoff continuation is excluded from the learner prefix.",
         "failure_policy": "No retries/replacements. Preserved isolated native failures may advance; global deadline, unknown invariants, identity drift, cleanup or evidence errors abort remaining rows."}
+    if version == 1:
+        plan["seed_freshness"] = binding(freshness_path)
+    else:
+        require(current["tracked_worktree_dirty"] is False, "Revalidation source must be committed and clean")
+        plan.update(revalidation=revalidation, authorization=dict(AUTHORIZATION))
     output.mkdir(parents=True)
     write(output / "plan.json", plan)
     return {"plan": str(output / "plan.json"), "sha256": digest(output / "plan.json")}
@@ -160,9 +184,20 @@ def read_plan(path, sha):
     require(digest(path) == sha, "Prepared plan SHA-256 changed")
     plan = json.loads(path.read_text())
     cfg = config()
-    require(plan["schema"] == SCHEMA + "-plan" and plan["configuration"] == cfg
-            and plan["schedule"] == schedule(cfg) and plan["execution_output"] == str(path.parent / "execution"),
-            "Prepared plan scope or output changed")
+    version = plan_version(plan)
+    if version == 1:
+        require(plan["configuration"] == cfg
+                and plan["schedule"] == schedule(cfg) and plan["execution_output"] == str(path.parent / "execution"),
+                "Prepared plan scope or output changed")
+    else:
+        from experiments.learner.evaluation_revalidation import equal
+        require(equal(plan["configuration"], cfg) and equal(plan["schedule"], schedule(cfg))
+                and plan["execution_output"] == str(path.parent / "execution"), "Prepared plan scope or output changed")
+    if version == 2:
+        from experiments.learner.evaluation_revalidation import validate_provenance
+        validate_provenance(plan, reader=read_plan, legacy_schema=SCHEMA)
+        require(plan["source"].get("tracked_worktree_dirty") is False,
+                "Revalidation source must be committed and clean")
     return plan
 
 
@@ -171,9 +206,14 @@ def check_identity(plan):
     from experiments.headless.env import VcmiLauncher
     from experiments.learner.inference import source_identity
     from validation.probes.validate_hero_policy import hero_map_identity
-    require(implementation() == plan["implementation"] and source_identity(INTERFACE) == plan["source"],
+    version = plan_version(plan)
+    require(implementation(version) == plan["implementation"] and source_identity(INTERFACE) == plan["source"],
             "Authored source changed after preparation")
-    require(binding(plan["seed_freshness"]["path"]) == plan["seed_freshness"], "Seed preflight changed")
+    if version == 1:
+        require(binding(plan["seed_freshness"]["path"]) == plan["seed_freshness"], "Seed preflight changed")
+    else:
+        from experiments.learner.evaluation_revalidation import validate_provenance
+        validate_provenance(plan, reader=read_plan, legacy_schema=SCHEMA)
     require(binding(plan["checkpoint"]["path"]) == plan["checkpoint"]
             and binding(plan["replay_binary"]["path"]) == plan["replay_binary"], "Bound artifact changed")
     launcher = VcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["game_map"]))
@@ -223,8 +263,13 @@ def worker(args):
     attempt = {**empty_attempt(row), "status": "running", "phase": "initialization"}
     attempt.pop("reason")
     started, env, collector, launcher = time.monotonic(), None, None, None
+    from experiments.learner.evaluation_revalidation import PhaseTimings, record_progress_safely
+    timings = PhaseTimings(started)
     def save(phase):
-        attempt.update(phase=phase, wall_seconds=time.monotonic() - started)
+        durations, now = timings.advance(phase)
+        attempt.update(phase=phase, wall_seconds=now - started)
+        if plan_version(plan) == 2:
+            attempt["phase_wall_seconds"] = durations
         write(result_path, attempt)
     def budget_signal(signum, frame):
         raise ExecutionBudgetExpired("Shared evaluation execution hour is ending")
@@ -309,6 +354,8 @@ def worker(args):
     except Exception as error:
         attempt.update(status="budget_exhausted" if isinstance(error, ExecutionBudgetExpired) else "failed",
                        error=f"{type(error).__name__}: {error}", outcomes=dict.fromkeys(COLORS), rewards=dict.fromkeys(COLORS))
+        if plan_version(plan) == 2:
+            record_progress_safely(save, attempt, "failure_retention")
         # A signal is sent only once. Cleanup consumes remaining shared time,
         # never the old short probe's fresh post-case thirty-second allowance.
         seconds = remaining(args.deadline, args.wall_deadline) - 2
@@ -321,6 +368,8 @@ def worker(args):
                 manifest = json.loads(manifest_path.read_text())
                 attempt.update(episode_status=manifest["status"], termination_reason=manifest["termination_reason"])
     finally:
+        if plan_version(plan) == 2:
+            record_progress_safely(save, attempt, "cleanup")
         try:
             if env is not None:
                 env.close()
@@ -354,7 +403,7 @@ def execute(args):
     wall_deadline = wall_started + cfg["shared_wall_seconds"]
     hard_deadline = deadline - cfg["hard_stop_reserve_seconds"]
     hard_wall = wall_deadline - cfg["hard_stop_reserve_seconds"]
-    report = {"schema": SCHEMA + "-result", "plan_sha256": args.sha256, "status": "running",
+    report = {"schema": result_schema(plan), "plan_sha256": args.sha256, "status": "running",
         "attempts": [empty_attempt(row) for row in plan["schedule"]], "training_performed": False,
         "optimizer_updates": 0, "optimizer_steps": 0, "training_samples": 0,
         "started_unix": wall_started, "deadline_unix": wall_deadline, "shared_wall_seconds": cfg["shared_wall_seconds"],
@@ -459,6 +508,9 @@ def main():
     for name in ("output", "checkpoint", "binary", "data", "replay-binary"):
         prep.add_argument("--" + name, type=Path, required=True)
     prep.add_argument("--map", type=Path, default=ROOT / "experiments/explorer/maps/hero-management-v1.vmap")
+    prep.add_argument("--revalidation-v2", action="store_true")
+    prep.add_argument("--prior-plan", type=Path)
+    prep.add_argument("--prior-report", type=Path)
     for mode in ("execute", "worker"):
         command = sub.add_parser(mode)
         command.add_argument("--plan", type=Path, required=True)
