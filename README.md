@@ -65,7 +65,12 @@ improving play. Terminal-only rewards may produce no learning for a long time.
 
 ## Agreed constraints
 
-- Use the actual VCMI engine locally on the Mac. No paid cloud compute.
+- Use the actual VCMI engine. On 25 October the user authorized preparing
+  cloud execution for development, verification and real headless games while
+  the Mac is offline. The existing Mac evidence remains platform-bound. Cloud
+  provisioning and fresh Linux gameplay are not yet validated; see
+  [the cloud handoff](docs/cloud-environment.md). No separately billed compute
+  purchase, paid service or new gameplay training is authorized.
 - The learner chooses adventure actions. Combat is a fixed automatic subsystem;
   tactical battle skill is outside the first experiments.
 - Start without demonstrations, scripted strategies, coordinate heuristics, or
