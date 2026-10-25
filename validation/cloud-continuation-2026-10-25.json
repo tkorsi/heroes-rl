@@ -608,9 +608,9 @@
     "cross_army_net_count_redistribution": 1037,
     "cross_army_operations": 98,
     "moves_toward_visible_opponent_town": 0,
-    "recruitment_completed": 39,
+    "recruitment_completed": 40,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 41
+    "visible_battle_starts": 43
   },
   "heldout_checks": [
     {
@@ -647,6 +647,41 @@
       ],
       "run": "cloud-heldout-update-025",
       "wall_seconds": 57.726374163999935
+    },
+    {
+      "at_update": 30,
+      "plan_sha256": "574548e96bf0e4e9c1824229a1e415b6b919286700c21d01655e80e004f4b066",
+      "report_sha256": "634c8018553e6aed26cc5964173b3adc65876e06c5a97e00025d8d323b1a82d9",
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 53,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-030",
+      "wall_seconds": 27.8486729440001
     },
     {
       "at_update": 21,
@@ -731,13 +766,13 @@
   },
   "totals": {
     "adam_steps": 81,
-    "evaluation_games": 4,
-    "loss": 40,
+    "evaluation_games": 6,
+    "loss": 42,
     "training_games": 36,
     "training_samples": 2152,
     "training_wall_milliseconds": 2169213,
     "updates": 9,
-    "verified_games": 40
+    "verified_games": 42
   },
-  "updated_utc": "2026-10-25T16:59:47.612276+00:00"
+  "updated_utc": "2026-10-25T17:00:23.291457+00:00"
 }

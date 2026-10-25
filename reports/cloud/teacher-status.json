@@ -1,12 +1,12 @@
 {
-  "activity": "cloud-continuation-2026-10-25-030 completed and verified; independent backup and private snapshot complete.",
+  "activity": "cloud-heldout-update-030 fixed held-out pair completed; zero training samples.",
   "behavior_diagnostics": {
     "cross_army_net_count_redistribution": 1037,
     "cross_army_operations": 98,
     "moves_toward_visible_opponent_town": 0,
-    "recruitment_completed": 39,
+    "recruitment_completed": 40,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 41
+    "visible_battle_starts": 43
   },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
@@ -54,6 +54,38 @@
         }
       ],
       "run": "cloud-heldout-update-025"
+    },
+    {
+      "at_update": 30,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 53,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 1,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-heldout-update-030"
     },
     {
       "at_update": 21,
@@ -192,15 +224,15 @@
     "verified_training_games_per_reported_batch_second": 0.01659588062583066
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T16:59:47.613161+00:00",
+  "updated_utc": "2026-10-25T17:00:23.292373+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 81,
-    "evaluation_games": 4,
-    "loss": 40,
+    "evaluation_games": 6,
+    "loss": 42,
     "training_games": 36,
     "training_samples": 2152,
     "training_wall_milliseconds": 2169213,
     "updates": 9,
-    "verified_games": 40
+    "verified_games": 42
   }
 }
