@@ -8,12 +8,13 @@ Gameplay training is still disabled. The Debian development build and source/
 native regression tests are now validated as recorded below; real Linux games
 remain blocked on private inputs. Setup success is not gameplay evidence.
 
-The migration branch is `codex/cloud-environment`, including published
-builtin-opponent commit `19ea34f54b65bdad2e1d19c5580aecc11ba9d6c2`. Do not start
-from the older `main` branch. Work on fresh terminal diagnostics was still in
-progress on `codex/builtin-opponent-evaluation` at handoff. Inspect its later
-commits and incorporate the relevant reviewed fixes before attempting the full
-comparison; do not overwrite or interrupt the active Mac checkout.
+The migration base is `codex/cloud-environment`. The dedicated continuation
+branch is `codex/linux-validation-integration`, based on cloud commit `cf42471`
+and incorporating reviewed `codex/local-evaluation-v2` through `c29e96e`.
+Do not start from the older `main`, overwrite the cloud branch, or interrupt a
+Mac checkout. Issue #4 assigns simulation/performance/offline replay to Claude;
+this continuation integrates published correctness fixes and Linux execution,
+without importing the separate PPO or performance proposals.
 
 At this base, the long frozen-neural cohort stopped after two replay-verified
 cutoffs and one replay failure; five games were not started. The builtin cohort
@@ -124,9 +125,11 @@ After private inputs and native setup are available:
 Keep automatic battles, normal fog, explicit structured interactions and
 terminal-only rewards. No scripted strategy, reward shaping, silent retries,
 training campaign or extra paid infrastructure follows from environment setup.
-The previously agreed comparison limit is one shared hour per evaluation cohort;
-the migration request does not authorize unlimited games overnight. Development
-can continue while a bounded experiment is stopped or awaiting a missing input.
+The latest cloud continuation supersedes the earlier per-cohort allowance:
+**one shared 3,600-second maximum for all new native diagnostics, policy
+reconstruction, replay and cleanup in this task**. It authorizes no additional
+self-play cohort or training. Development can continue after this clock is
+exhausted or while private inputs are missing.
 
 ## Setup prompt
 
@@ -242,14 +245,15 @@ Synthetic portability tests cover success, immutable original/output behavior,
 wrong file identity, source/runtime drift, contract corruption, frozen-opponent
 identity drift and tensor corruption. Those tests do not validate the absent
 original checkpoint. The original Mac evaluators intentionally continue to
-reject the converted file's different digest. Before any new cohort, implement
-and validate a separately identified Linux plan binding the portability report,
-new file digest, actual native runtime and the original exact model weights.
-Do not patch the old Mac plans or overwrite their identities.
+reject the converted file's different digest. The separate Linux plan below binds the portability report, converted digest,
+actual native runtime and original exact model weights. It independently
+compares original and loaded learner/opponent tensors, including dtype, shape
+and bits. Do not patch the old Mac plans or overwrite their identities.
 
 Private Data, the original checkpoint and any raw games must remain outside
-Git and shared snapshots. Until those inputs are supplied and checked, native
-startup, both-color diagnostics and the two maximum-one-hour cohorts are blocked.
+Git and shared snapshots. Until those inputs are supplied and checked, real games and their native replay
+remain blocked. Asset-free CLI/library checks are separately available with
+`tools/check_cloud_runtime.py`.
 Neither installing dependencies nor compiling replay establishes a working game.
 
 ### Verified development state and continuation
@@ -260,12 +264,16 @@ logs. It records a 4-core CPU quota (five CPUs in affinity), a 32 GiB memory
 limit, GCC 14.2.0, CMake 3.31.6, Ninja 1.12.1, CPython 3.12.14 and CPU Torch
 2.9.1+cpu. Installation uses two compiler jobs and one Torch thread.
 
-All six requested build targets pass. The final suite discovers 925 tests:
-922 pass, two static-content tests skip because Data is absent, and one retained
-Mac-capture regression skips. The real-library subset runs 13 tests with only
-the two Data-related skips, including 65 native packet/request-accounting
-checks. The complete locked installer exits zero and repeats with `ninja: no
-work to do.` Four CLI checks and four dynamic library loads pass without a game.
+The original setup record reports all six requested targets built, 925 tests
+(922 passed, three skipped), and 65 native packet/request-accounting checks.
+The locked installer also repeated with `ninja: no work to do.` This historical
+record remains intact. The current continuation rebuilt the replay target for
+`c29e96e`, restored the locked environment and passed **989 tests: 986 passed,
+three skipped, zero failures**, including 231 native codec/accounting checks.
+The same three external-input skips remain: two need original Data and one
+needs retained Mac captures. Four isolated CLI checks and four dynamic library
+loads pass without a game. See the new
+[hash-bound continuation record](../validation/cloud-linux-integration-2026-10-25.json).
 
 The original sudo-based package stage failed on this host. A relocated-library
 configure failure and cached static-SDL2 link failure were also preserved and
@@ -275,29 +283,94 @@ No engine recipe or game rule was changed. Local logs are retained under
 compact record. A successful `vcmireplay` usage check is not a game replay.
 
 The remaining external gate is a user-approved private location containing
-Data and the exact original checkpoint. The supported input directories are
-empty and no location has been supplied. After those arrive:
+Data and the exact original checkpoint. The supported input directories were
+rechecked during this continuation and remain empty. No actual checkpoint
+conversion or Linux game/replay has run. The environment configuration is a
+draft; publication and restoration in a fresh cloud task remain separate checks.
+The existing Debian package layer and locked Python environment have been
+restored in this task, independently of the Mac.
 
-1. Run the private inventory and actual checkpoint conversion above. Preserve
-   the original and both new manifests; verify exact tensors and unchanged
-   original bytes on the supplied artifact, not just synthetic fixtures.
-2. Integrate the separately bound Linux checkpoint/report into fresh Linux
-   diagnostic and evaluation plans. The existing Mac evaluators deliberately
-   retain their exact original file/runtime guards. Do not replace their digest
-   constants, monkeypatch loaders or claim a Mac plan is Linux-compatible.
-3. Run explicitly bounded both-color native checks, with fresh provenance:
-   player-private histories, intervening visible events and memory reset,
-   natural terminals, unscored cutoffs, cleanup and independent native replay.
-   Retain every request, including accounted terminal-unapplied attempts.
-4. Only after those gates pass, predeclare and run at most one frozen-neural
-   cohort and one Nullkiller Easy cohort. Each has its own shared 3,600-second
-   ceiling including collection, verification and cleanup. Retain the existing
-   choice/day limits, both colors, explicit seeds and every failed/cutoff/
-   not-started row. Do not restart or relabel the stopped Mac schedules.
+### Fresh Linux diagnostic execution
 
-No Linux game, actual checkpoint conversion, new cohort or gameplay optimizer
-update has run. These are outstanding gates, not passed checks. The environment
-configuration draft contains installation/startup instructions; publication and
-restoration in a fresh task still require separate verification. Keep this PR
-draft and unmerged. The cloud setup is independent of an online Mac, but it
-cannot reconstruct private inputs that have never been transferred.
+`tools/linux_validation_plan.py` and
+`validation/probes/validate_cloud_linux.py` provide preparation, execution and
+receipt-checked reporting. They keep all private artifacts outside the checkout.
+Preparation does not launch the engine and refuses uncommitted implementation
+changes, wrong checkpoint identity, source/runtime drift, mismatched Data
+inventory, changed maps or missing native targets. Bindings include the Python
+executable, Torch binaries/inference flags, resolved shared libraries and the
+actual native config/Mods resources; canonical recipe agreement is rechecked. The public path has no
+synthetic-checkpoint override. Synthetic unit tests use an internal fixture
+entry point and are not gameplay evidence.
+
+The fixed schedule declares both seats in each separate scope:
+
+| Scope | Episodes / learner colors | Engine / policy seeds | Ordinary / hard choices | Day limit | Row ceiling |
+| --- | --- | --- | --- | --- | --- |
+| Townless diagnostic fixture | 1 Red, 2 Blue | 251025301 / 251025302 | 256 / 264 | 12 | 180 s each |
+| Ordinary Tavern-enabled map | 3 Red, 4 Blue | 251025401 / 251025402 | 2040 / 2048 | 200 | 1200 s each |
+
+All four rows also share one 3,600-second maximum, including identity checks,
+collection, reconstruction, native replay and cleanup. The existing ordinary
+choice/day limits are retained. Each row reserves 30 seconds for cleanup and
+final identity checks; an independent guardian stops its worker two seconds
+before its ceiling, leaving parent cleanup time within the same bound. These
+are maximums, not permission to retry or fill unused time with other games.
+The first failed or incomplete row stops the remaining schedule; verified
+cutoffs may continue. OS scheduling and filesystem latency are measured, not
+claimed to be hard real-time. A deadline overrun cannot admit outcomes.
+
+Every action is sampled from the unchanged frozen model. The fixture generator's
+historical scripted evaluator declaration is not executed. Nullkiller Easy and
+automatic BattleAI are fixed. The native opponent has no fabricated neural
+history. A fresh learner collector and recurrent state are created for each
+case. Independent reconstruction folds the complete permitted history; coverage
+reports distinguish actually observed intervening/transient sightings from
+source-level support. A diagnostic with no such sighting cannot prove it occurred.
+
+A natural outcome receives +1/-1 only after independent policy reconstruction,
+full native request verification (including terminal-unapplied attempts), final
+identity checks and process cleanup. Verified cutoffs and technical failures
+remain unscored. Worker results stay pending until those checks finish and a
+hash-bound completion receipt is durable. A separate campaign receipt is required
+to read admitted results; a worker/campaign crash never upgrades a pending row.
+Failures, partial evidence and not-started rows remain in the original directory.
+Nothing is eligible for gameplay optimization. A finished schedule containing
+only cutoffs does not establish a natural outcome. Missing or modified retained
+captures invalidate report admission even when completion receipts remain.
+
+After private inputs arrive, use a new private output directory. These commands
+are a continuation recipe; the paths are placeholders for approved private
+storage and the real-input steps have not run here:
+
+```sh
+source /workspace/cloud-setup/activate.sh
+cd /workspace/heroes-rl
+python tools/check_cloud_runtime.py --output /private-inputs/runtime-check.json
+python tools/inventory_cloud_inputs.py --data /private-inputs/game \
+  --checkpoint /private-inputs/fixed-policy.pt \
+  --output /private-inputs/input-manifest.json
+python tools/port_fixed_policy_linux.py \
+  --checkpoint /private-inputs/fixed-policy.pt --output /private-inputs/linux-policy-v1
+python -m validation.probes.create_boundary_fixture --kind natural-townless \
+  --output /private-inputs/cloud-fixture-v1
+python tools/linux_validation_plan.py \
+  --original-checkpoint /private-inputs/fixed-policy.pt \
+  --checkpoint /private-inputs/linux-policy-v1/fixed-policy-linux.pt \
+  --portability /private-inputs/linux-policy-v1/portability.json \
+  --input-manifest /private-inputs/input-manifest.json --data /private-inputs/game \
+  --binary vcmi/build/bin/vcmiclient --replay-binary vcmi/build/bin/vcmireplay \
+  --map experiments/explorer/maps/hero-management-v1.vmap \
+  --fixture-map /private-inputs/cloud-fixture-v1/natural-townless.vmap \
+  --output /private-inputs/cloud-diagnostic-v1
+# Use the exact plan SHA-256 printed by preparation, not a saved Mac plan hash.
+python -m validation.probes.validate_cloud_linux execute \
+  --plan /private-inputs/cloud-diagnostic-v1/plan.json --sha256 PRINTED_PLAN_SHA256
+python -m validation.probes.validate_cloud_linux report \
+  --plan /private-inputs/cloud-diagnostic-v1/plan.json --sha256 PRINTED_PLAN_SHA256
+```
+
+Do not run installation or publish an environment snapshot with these private
+inputs bundled into it. The reusable runtime check uses a disposable XDG profile:
+direct VCMI version checks can otherwise fail while creating a profile under the
+cloud user's read-only home. A replay usage check is still not a game replay.

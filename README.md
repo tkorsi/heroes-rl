@@ -39,24 +39,53 @@ This is the canonical project document. Last agreement: **25 October 2026**.
 
 ## Cloud Linux engineering status
 
-The `codex/cloud-environment` branch incorporates the terminal-accounting and
-Mac diagnostic evidence through `9193db3`. Debian 13 amd64 now builds the real
-pinned VCMI client, server, ExplorerRL, BattleAI, Nullkiller and vcmireplay.
-The full cloud suite runs **925 tests: 922 passed, three skipped, no failures**.
-Two skips need proprietary game content and one needs retained Mac captures.
-Native request accounting, terminal barriers and evidence teardown pass against
-the actual built library. The locked setup repeats with no native rebuild;
-CLI startup and AI-library loading also pass. Compact hash-bound evidence:
-[validation/cloud-cpu-2026-10-25.json](validation/cloud-cpu-2026-10-25.json).
+The dedicated `codex/linux-validation-integration` continuation starts from
+`codex/cloud-environment` at `cf42471` and incorporates the reviewed local
+validation commits through `c29e96e`. Cloud setup and historical Mac evidence
+remain intact. In particular, the originally failed B5 capture stays failed and
+unscored; its repaired-verifier diagnostic is separate. Claude's issue #4
+performance proposals and the separate PPO work were not imported.
 
-The separate Linux CPU Python lock leaves the macOS lock unchanged. An explicit
-frozen-policy portability procedure and private input inventory have nine
-synthetic tests. The original private checkpoint and game Data are still absent,
-so actual conversion, Linux games and game replays remain **unvalidated**. No
-new evaluation cohort was started and no gameplay training occurred; existing
-synthetic optimizer unit tests ran. Historical Mac outcomes remain unchanged.
-See [the operational handoff](docs/cloud-environment.md#debian-13-cloud-implementation)
-for installation, private-input checks and the remaining Linux plan integration.
+The Debian 13 amd64 CPU environment restores through the existing hashed locks.
+The real pinned VCMI client, server, ExplorerRL, BattleAI, Nullkiller and replay
+targets build, and `prepare_vcmi.py --check` confirms exact canonical source
+agreement. The earlier setup record remains at
+[validation/cloud-cpu-2026-10-25.json](validation/cloud-cpu-2026-10-25.json).
+The continuation suite runs **989 tests: 986 passed, three skipped, zero failures**.
+Two skips require private game Data and one requires retained Mac captures. The
+actual native codec suite covers 231 packet/accounting corruption checks.
+[The continuation evidence](validation/cloud-linux-integration-2026-10-25.json)
+binds the code, runtime, tests, resolved failures and all four not-started rows.
+CLI checks need a writable isolated XDG profile on this read-only-home host;
+`tools/check_cloud_runtime.py` now performs and records those checks. CLI/library
+startup establishes neither usable game assets nor successful game replay.
+
+The new Linux plan/runner binds the original and explicitly converted checkpoint,
+exact learner and archived-opponent tensor bits, Data inventory, source, maps,
+Python/Torch binaries, resolved native libraries and rule/mod resources. It
+predeclares four diagnostics: both learner colors on the townless fixture and
+both on the ordinary Tavern-enabled map, against fixed Nullkiller Easy and
+automatic BattleAI. Fixture and ordinary evidence stay separate. Every choice
+comes from the frozen model; no fixture action script is used.
+
+The latest task authorization is **one shared 3,600-second maximum for all new
+native diagnostics, reconstruction, replay and cleanup combined**. It supersedes
+the older allowance of one hour per cohort. The runner preserves every failed,
+cutoff and not-started row, stops after a failed/incomplete attempt, and requires
+durable worker and campaign completion receipts before admitting outcomes.
+Cleanup never grants renewed waits after its deadline. Natural results require
+independent policy reconstruction and complete native request accounting;
+cutoffs and technical failures remain unscored. Private-history coverage reports
+only events actually present in that learner's history, with fresh recurrent
+memory per case. These diagnostics cannot establish an outcome rate or strategic
+improvement.
+
+The private Data and exact original checkpoint were rechecked and remain absent.
+Actual conversion, an input-bound executable Linux plan, Linux games and game
+replays are therefore **unvalidated**. No new game attempt or gameplay optimizer
+update has run in this cloud continuation. Synthetic optimizer unit tests remain
+permitted. See [the operational handoff](docs/cloud-environment.md#fresh-linux-diagnostic-execution)
+for the concrete private-input, preparation, execution and reporting commands.
 
 ## Why this project exists
 
@@ -97,7 +126,7 @@ improving play. Terminal-only rewards may produce no learning for a long time.
 - Use the actual VCMI engine. On 25 October the user authorized preparing
   cloud execution for development, verification and real headless games while
   the Mac is offline. The existing Mac evidence remains platform-bound. Cloud
-  provisioning and fresh Linux gameplay are not yet validated; see
+  development setup is verified; fresh Linux gameplay remains unvalidated. See
   [the cloud handoff](docs/cloud-environment.md). No separately billed compute
   purchase, paid service or new gameplay training is authorized.
 - The learner chooses adventure actions. Combat is a fixed automatic subsystem;
