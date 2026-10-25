@@ -1,5 +1,5 @@
 # Replays an experiment's recorded server inputs and verifies its digests.
-add_executable(vcmireplay StdInc.cpp StdInc.h ReplayMain.cpp ReplayWorker.cpp ReplayWorker.h ForkEpisode.h)
+add_executable(vcmireplay StdInc.cpp StdInc.h ReplayMain.cpp ReplayWorker.cpp ReplayWorker.h ForkEpisode.h WorkerProtocol.cpp WorkerProtocol.h)
 target_link_libraries(vcmireplay PRIVATE vcmi vcmiservercommon)
 if(ENABLE_CLIENT)
 	# Compile the exact adapter implementation into the offline verifier; no

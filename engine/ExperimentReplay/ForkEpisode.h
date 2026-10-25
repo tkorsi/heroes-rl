@@ -65,7 +65,16 @@ inline std::map<int, off_t> descriptorPositions()
 	return positions;
 }
 
-inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::milliseconds limit)
+// Reserved in episode callbacks. Ordinary descendants inherit this handler and
+// remain in the episode group; callbacks must not block/replace it or escape groups.
+inline void parentDisappeared(int)
+{
+	kill(-getpgrp(), SIGKILL);
+	_exit(125);
+}
+
+inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::milliseconds limit,
+	const std::function<void(pid_t)> & started = [](pid_t) {})
 {
 	if(limit.count() <= 0)
 		throw std::runtime_error("Episode deadline must be positive");
@@ -81,10 +90,19 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 		throw std::runtime_error("Cannot fork episode");
 	if(child == 0)
 	{
-		if(prctl(PR_SET_PDEATHSIG, SIGKILL) != 0 || getppid() != parent)
-			_exit(125);
 		if(setpgid(0, 0) != 0)
 			_exit(125);
+		struct sigaction action{};
+		action.sa_handler = parentDisappeared;
+		sigemptyset(&action.sa_mask);
+		sigset_t unblock;
+		sigemptyset(&unblock);
+		sigaddset(&unblock, SIGUSR2);
+		if(sigaction(SIGUSR2, &action, nullptr) != 0 || sigprocmask(SIG_UNBLOCK, &unblock, nullptr) != 0
+			|| prctl(PR_SET_PDEATHSIG, SIGUSR2) != 0)
+			_exit(125);
+		if(getppid() != parent)
+			parentDisappeared(SIGUSR2);
 		int code = 125;
 		try { code = run(); }
 		catch(...) { code = 125; }
@@ -98,33 +116,59 @@ inline EpisodeResult forkEpisode(const std::function<int()> & run, std::chrono::
 	setpgid(child, child);
 	int status = 0;
 	bool timedOut = false;
-	for(;;)
+	try
 	{
-		siginfo_t info{};
-		const auto waited = waitid(P_PID, child, &info, WEXITED | WNOHANG | WNOWAIT);
-		if(waited == 0 && info.si_pid == child)
+		started(child);
+		for(;;)
 		{
-			// Keep the leader unreaped until group cleanup: its PID cannot be
-			// recycled into an unrelated process group between wait and kill.
-			kill(-child, SIGKILL);
-			while(waitpid(child, &status, 0) < 0)
-				if(errno != EINTR)
-					throw std::runtime_error("Cannot reap episode");
-			break;
+			siginfo_t info{};
+			const auto waited = waitid(P_PID, child, &info, WEXITED | WNOHANG | WNOWAIT);
+			if(waited == 0 && info.si_pid == child)
+			{
+				// Keep the leader unreaped until group cleanup: its PID cannot be
+				// recycled into an unrelated process group between wait and kill.
+				kill(-child, SIGKILL);
+				while(waitpid(child, &status, 0) < 0)
+					if(errno != EINTR)
+						throw std::runtime_error("Cannot reap episode");
+				break;
+			}
+			if(waited < 0 && errno != EINTR)
+				throw std::runtime_error("Cannot observe episode exit");
+			if(std::chrono::steady_clock::now() - start >= limit)
+			{
+				timedOut = true;
+				kill(-child, SIGKILL);
+				kill(child, SIGKILL);
+				while(waitpid(child, &status, 0) < 0)
+					if(errno != EINTR)
+						throw std::runtime_error("Cannot reap expired episode");
+				break;
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-		if(waited < 0 && errno != EINTR)
-			throw std::runtime_error("Cannot observe episode exit");
-		if(std::chrono::steady_clock::now() - start >= limit)
+		// The service is a subreaper: ordinary orphaned descendants are ours.
+		// Reap this episode's group only, with a fixed additional cleanup bound.
+		const auto cleanupEnd = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+		for(;;)
 		{
-			timedOut = true;
-			kill(-child, SIGKILL);
-			kill(child, SIGKILL);
-			while(waitpid(child, &status, 0) < 0)
-				if(errno != EINTR)
-					throw std::runtime_error("Cannot reap expired episode");
-			break;
+			int descendantStatus;
+			const auto descendant = waitpid(-child, &descendantStatus, WNOHANG);
+			if(descendant > 0 || (descendant < 0 && errno == EINTR)) continue;
+			if(descendant < 0 && errno == ECHILD) break;
+			if(descendant < 0 || std::chrono::steady_clock::now() >= cleanupEnd)
+				throw std::runtime_error("Episode group cleanup incomplete");
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	}
+	catch(...)
+	{
+		kill(-child, SIGKILL);
+		kill(child, SIGKILL);
+		while(waitpid(child, &status, 0) < 0 && errno == EINTR) {}
+		for(const auto & [fd, offset] : positions)
+			lseek(fd, offset, SEEK_SET);
+		throw;
 	}
 	for(const auto & [fd, offset] : positions)
 		if(lseek(fd, offset, SEEK_SET) != offset)

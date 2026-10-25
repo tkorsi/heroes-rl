@@ -46,14 +46,37 @@ state, visibility, contextual-action and terminal verification stays intact.
 
 ## Small structural prototype
 
-`vcmireplay --experimental-worker 120000` loads VCMI rules/resources once, then
-accepts one JSON argument array per stdin line. It replies with one JSON ready
-receipt and one completion receipt per job on stdout. Diagnostics use stderr.
-An example job (paths are placeholders):
+`vcmireplay --experimental-worker 120000` loads VCMI rules/resources once,
+then serves the **incompatible v2 experimental protocol** on newline-delimited
+UTF-8 JSON. The sole client is updated together. `WorkerProtocol.cpp` owns the
+production parser, validation, wire writes and process-reset calls; `ReplayWorker.cpp`
+supplies only real VCMI initialization and the existing replay callback. Native
+integration tests compile that same helper with transport/process callbacks,
+without initializing or imitating game rules.
+
+All messages carry `schema: "heroes-replay-worker-v2"`. The service first emits
+`ready` with finite nonnegative `load_seconds`. Requests have exactly four fields:
 
 ```json
-["--log", "/private/capture/engine/replay.jsonl", "--contextual", "/private/capture/contextual.jsonl", "--report", "/private/new-output/report.json"]
+{"schema":"heroes-replay-worker-v2","kind":"replay","job_id":0,"args":["--log","/private/capture/engine/replay.jsonl","--contextual","/private/capture/contextual.jsonl","--report","/private/new-output/report.json"]}
 ```
+
+IDs are integers starting at zero and increasing by one; missing, duplicate,
+out-of-order IDs, extra fields and old versions are fatal. Each accepted request
+emits `started` (`job_id`, episode process-group leader `pid`), then `completed`
+(`job_id`, `exit_code`, `signal`, `timed_out`, `seconds`, `cleanup_complete: true`).
+A completion means process cleanup, not verified Heroes replay. A nonzero result,
+crash or timeout is explicit; the service can accept a new independent next job,
+but the benchmark stops without retry/replacement. EOF between requests emits
+`closed` with the exact completed-job count and exits zero.
+
+Requests are bounded to 65,536 bytes **during** byte reading. Invalid JSON,
+duplicate fields, empty records, partial records at EOF, invalid arguments or
+existing/colliding output files end the service nonzero, with diagnostics on
+stderr and no successful `closed` receipt. No request fragment executes. Broken
+output pipes fail nonzero; writes are nonblocking with a one-second bound. Idle
+input and initialization are bounded by the supervising client, not an internal
+service idle timer. Only one request is outstanding in the supported client.
 
 The worker is a Linux-only, sequential fork template. It checks
 `/proc/self/task` for exactly one thread before and after library loading and
@@ -63,8 +86,13 @@ observation accounting and recorded seed/StartInfo. All episode mutations,
 including mutations to library caches and process RNG state, are copy-on-write.
 Each child exits without inherited global destructors or settings saves.
 Child exit, crash and deadline expiry all lead to reaping; remaining members of
-the child's process group are killed. A Linux parent-death signal kills the
-episode leader if the template disappears.
+the child's process group are killed. The service is a Linux subreaper and
+reaps ordinary adopted descendants from that group, with at most one additional
+second of native cleanup before failing closed. The template reserves SIGTERM
+for supervising-parent loss. The episode reserves an unblocked SIGUSR2 handler
+that kills its entire process group when the template disappears. These handlers
+also cover the tested SIGINT/SIGTERM/SIGKILL disappearance of the Python supervisor
+while a callback and ordinary descendants are running.
 
 Fork also shares open-file descriptions. After every job the parent restores
 the positions of inherited read-only regular files, including archives. It does
@@ -73,6 +101,32 @@ not copy-on-write. Use a dedicated isolated VCMI profile, immutable Data/config,
 unique report paths and no concurrent writer to that profile or asset tree.
 Changing assets/config requires restarting the template. The prototype does not
 establish VCMI thread safety, reentrancy or live gameplay-worker safety.
+
+The cleanup boundary is ordinary descendants that remain in the episode process
+group and preserve the reserved signal disposition/mask. Callbacks that call
+`setsid`/`setpgid`, block/replace SIGUSR2, or interfere with supervision are
+unsupported. There is no universal containment claim: simultaneous external
+killing of the template and episode leader, or template death after leader death
+before its group cleanup, can prevent the signal cascade. After template death,
+remaining zombies belong to the system reaper; tests check that no covered process
+remains running, rather than claiming the vanished service can reap them. An
+uninterruptible kernel task can also exceed wall-clock bounds. The supervisor
+only targets a reported live group after checking its direct-parent relationship
+and `/proc` birth time; it does not kill arbitrary or recycled PIDs.
+
+`benchmark_native_lifecycle.py` now reads readiness and receipts incrementally.
+Startup, each dispatch/completion and the overall campaign have separate absolute
+deadlines, followed by one shared cleanup allowance. It persists all planned job
+IDs and statuses before dispatch, raw wire bytes as they arrive, and each accepted
+receipt before proceeding. `service.json`, `wire.jsonl` and `native.log` survive
+failures; active work becomes `incomplete`, and undispatched jobs stay
+`not_started`. SIGINT/SIGTERM record interruption and clean up; SIGKILL leaves the
+already-durable incomplete state and receipts, and native parent-death handling
+covers an active ordinary group. Cold runs also keep per-job attribution and use
+the remaining overall bound. Protocol closure, worker exit and cleanup must all
+succeed before reports are read and independently compared. Only fully verified,
+matching native reports may receive `verified_report_equivalence`; transport
+completion alone never does. There is no silent retry.
 
 The ordinary one-shot CLI remains the default. There is no learner integration,
 automatic opt-in, modified game rule, new observation cache, reduced verifier or
@@ -89,10 +143,16 @@ python3 tools/prepare_vcmi.py --check
 python3 -m unittest tests.test_optimizer_lifecycle -v
 ```
 
-The lifecycle test compiles the actual process-reset header and checks 100 fresh
+The lifecycle tests compile the process-reset header and the actual production
+protocol helper linked to the prepared native JSON library. They cover 100 fresh
 memory/RNG/read-position resets, nonzero exit, exception, crash, deadline,
-post-failure reuse, multithread rejection and no unreaped direct children.
-These are process-primitive checks, not simulated Heroes gameplay evidence.
+post-failure reuse, thread rejection, malformed/oversized/partial input, ordered
+correlation, EOF/broken pipes, ordinary descendant cleanup and reaping, parent
+loss, supervisor SIGINT/SIGTERM/SIGKILL, durable partial receipts, and corrupt
+response rejection. Fixed corrupt transcripts are negative admission fixtures,
+not a second successful protocol implementation. Harness callbacks exercise only
+transport/process behavior and produce no fabricated verified game reports.
+These tests do not establish native Heroes reset equivalence or throughput.
 
 With legally supplied Data and **existing** native captures, create a JSON list
 of argument arrays. Include A/B/A (different maps/seeds and both seats), at least
@@ -104,7 +164,7 @@ Then run under the same isolated profile used by the normal replay binary:
 ```sh
 python3 tools/benchmark_native_lifecycle.py \
   --binary vcmi/build/bin/vcmireplay --jobs /private/jobs.json \
-  --output runs/native-lifecycle-ab --repeats 3
+  --output runs/native-lifecycle-ab --repeats 3 --overall-seconds 3600 --cleanup-seconds 2
 ```
 
 The tool alternates cold/worker ordering, requires every native report to verify,
