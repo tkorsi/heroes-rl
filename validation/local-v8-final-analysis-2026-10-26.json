@@ -1,0 +1,431 @@
+{
+  "all_240_games_passed_native_replay_and_policy_reconstruction": true,
+  "assessment": "No sustained improvement in the fixed evaluation: Red recruitment1\u21920, endpoint changes3\u21920, survival day7\u21922; Blue remains0 recruits,0 endpoint changes,day2 loss. Training contains occasional recruitment and neutral attacks but no verified wins, enemy-town target moves or town captures.",
+  "authorization": {
+    "additional_gameplay_started_by_final_audit": false,
+    "compute_cutoff_utc": "2026-10-25T23:44:09.568623+00:00",
+    "hard_stop_utc": "2026-10-25T23:49:09.568623+00:00",
+    "original_start_utc": "2026-10-25T21:49:09.568623+00:00",
+    "repair3_start_utc": "2026-10-25T22:20:31.049299+00:00",
+    "restart_authorized": false
+  },
+  "baseline": {
+    "adam_steps": 783,
+    "decisions": 21062,
+    "training_rollouts": 368,
+    "updates": 92
+  },
+  "behavior": {
+    "evaluation": {
+      "accepted_recruit_requested_creatures": 61,
+      "across_army_operations": 13,
+      "army_rearrangement": 515,
+      "choices": 1708,
+      "defensive_battles": 25,
+      "enemy_town_target_moves": 0,
+      "games": 24,
+      "games_initiating_battle": 1,
+      "games_recruiting": 4,
+      "games_with_actual_movement": 6,
+      "initiated_battles": 1,
+      "initiated_neutral_monster_battles": 1,
+      "initiated_unknown_target_battles": 0,
+      "losses": 24,
+      "max_last_public_day": 11,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 76,
+      "movement_endpoint_changes": 11,
+      "navigation_and_selection": 863,
+      "observed_cross_army_net_count_redistribution": 182,
+      "recruit_completed": 7,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "first20_training": {
+      "accepted_recruit_requested_creatures": 51,
+      "across_army_operations": 10,
+      "army_rearrangement": 241,
+      "choices": 915,
+      "defensive_battles": 24,
+      "enemy_town_target_moves": 0,
+      "games": 20,
+      "games_initiating_battle": 1,
+      "games_recruiting": 6,
+      "games_with_actual_movement": 7,
+      "initiated_battles": 1,
+      "initiated_neutral_monster_battles": 1,
+      "initiated_unknown_target_battles": 0,
+      "losses": 20,
+      "max_last_public_day": 8,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 38,
+      "movement_endpoint_changes": 17,
+      "navigation_and_selection": 450,
+      "observed_cross_army_net_count_redistribution": 159,
+      "recruit_completed": 9,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "first_half_training": {
+      "accepted_recruit_requested_creatures": 442,
+      "across_army_operations": 141,
+      "army_rearrangement": 2048,
+      "choices": 7714,
+      "defensive_battles": 118,
+      "enemy_town_target_moves": 0,
+      "games": 108,
+      "games_initiating_battle": 5,
+      "games_recruiting": 32,
+      "games_with_actual_movement": 29,
+      "initiated_battles": 5,
+      "initiated_neutral_monster_battles": 5,
+      "initiated_unknown_target_battles": 0,
+      "losses": 108,
+      "max_last_public_day": 18,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 260,
+      "movement_endpoint_changes": 64,
+      "navigation_and_selection": 3748,
+      "observed_cross_army_net_count_redistribution": 2380,
+      "recruit_completed": 68,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "last20_training": {
+      "accepted_recruit_requested_creatures": 369,
+      "across_army_operations": 100,
+      "army_rearrangement": 1027,
+      "choices": 4030,
+      "defensive_battles": 23,
+      "enemy_town_target_moves": 0,
+      "games": 20,
+      "games_initiating_battle": 2,
+      "games_recruiting": 9,
+      "games_with_actual_movement": 5,
+      "initiated_battles": 2,
+      "initiated_neutral_monster_battles": 2,
+      "initiated_unknown_target_battles": 0,
+      "losses": 20,
+      "max_last_public_day": 65,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 76,
+      "movement_endpoint_changes": 8,
+      "navigation_and_selection": 2170,
+      "observed_cross_army_net_count_redistribution": 3051,
+      "recruit_completed": 35,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "second_half_training": {
+      "accepted_recruit_requested_creatures": 1193,
+      "across_army_operations": 242,
+      "army_rearrangement": 3032,
+      "choices": 11865,
+      "defensive_battles": 121,
+      "enemy_town_target_moves": 0,
+      "games": 108,
+      "games_initiating_battle": 5,
+      "games_recruiting": 35,
+      "games_with_actual_movement": 30,
+      "initiated_battles": 5,
+      "initiated_neutral_monster_battles": 5,
+      "initiated_unknown_target_battles": 0,
+      "losses": 108,
+      "max_last_public_day": 85,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 332,
+      "movement_endpoint_changes": 80,
+      "navigation_and_selection": 6245,
+      "observed_cross_army_net_count_redistribution": 5451,
+      "recruit_completed": 126,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "training": {
+      "accepted_recruit_requested_creatures": 1635,
+      "across_army_operations": 383,
+      "army_rearrangement": 5080,
+      "choices": 19579,
+      "defensive_battles": 239,
+      "enemy_town_target_moves": 0,
+      "games": 216,
+      "games_initiating_battle": 10,
+      "games_recruiting": 67,
+      "games_with_actual_movement": 59,
+      "initiated_battles": 10,
+      "initiated_neutral_monster_battles": 10,
+      "initiated_unknown_target_battles": 0,
+      "losses": 216,
+      "max_last_public_day": 85,
+      "median_last_public_day": 2.0,
+      "movement_attempts": 592,
+      "movement_endpoint_changes": 144,
+      "navigation_and_selection": 9993,
+      "observed_cross_army_net_count_redistribution": 7831,
+      "recruit_completed": 194,
+      "town_capture_evidence": 0,
+      "wins": 0
+    },
+    "window_navigation_plus_army_rearrangement_fraction": 0.7698554573778027
+  },
+  "binding_checks": 396,
+  "checkpoint": {
+    "identifier": "builtin-pilot-after-97c2b2f265b1949c",
+    "policy_sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023",
+    "preservation_receipt_sha256": "cc0a8084c5c0db4749861dbb4361d34c5951fc37781cf6b2be14d41895d5bfaf",
+    "private_archive_sha256": "ef63152d366316240770b2fcaa51eabea4a4cbfdb343bce51a8a4267b479f5e1",
+    "private_commit": "ce61fb66c73adef250e780ec205b9196f288f9e5",
+    "private_remote_branch_head_at_checkpoint_audit": "ce61fb66c73adef250e780ec205b9196f288f9e5",
+    "resume_sha256": "50252db8da1a505ab5174cadef2489707783b44c4811d373581f7beec87b94e9",
+    "source_backup_private_blobs_and_archive_verified": true,
+    "weights_sha256": "97c2b2f265b1949c5fe25d3d7bc4c81255c3aa56a5d3e62ab9320bf77e2c187a"
+  },
+  "checkpoint_audited_at_utc": "2026-10-25T23:53:22.727163+00:00",
+  "completed_batches": 66,
+  "completed_games": 240,
+  "configuration": {
+    "combat": "BattleAI",
+    "complete_training_games_per_update": 4,
+    "difficulty": "Easy",
+    "interface": "adventure-capabilities-v1",
+    "max_days": 365,
+    "max_total_choices": 5120,
+    "opponent": "Nullkiller",
+    "ordinary_choices": 4960,
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "reserved_dialog_choices": 160,
+    "reward": "Terminal-only: natural win +1, loss -1, otherwise 0. No shaping or scripted training choices."
+  },
+  "counts": {
+    "evaluation": {
+      "cutoffs": 0,
+      "decisions": 1708,
+      "failures": 0,
+      "games": 24,
+      "learner_loss": 24,
+      "learner_win": 0,
+      "status_passed": 24,
+      "termination_natural_terminal": 24,
+      "verified_games": 24
+    },
+    "training": {
+      "cutoffs": 0,
+      "decisions": 19579,
+      "failures": 0,
+      "games": 216,
+      "learner_loss": 216,
+      "learner_win": 0,
+      "status_passed": 216,
+      "termination_natural_terminal": 216,
+      "verified_games": 216
+    }
+  },
+  "created_at_utc": "2026-10-25T23:56:04.007950+00:00",
+  "earlier_attempts": {
+    "attempt1": {
+      "admitted_samples": 0,
+      "ppo_updates": 0,
+      "result": "Stopped during startup before any policy choice"
+    },
+    "attempt2": {
+      "admitted_samples": 0,
+      "baseline_natural_losses": 2,
+      "completed_baseline_games": 2,
+      "failure": "Native same-backpack artifact insertion after removal; corrected before repair3",
+      "first_training_game_failed_after_choices": 39,
+      "ppo_updates": 0,
+      "unstarted_training_games": 3
+    }
+  },
+  "evidence": {
+    "campaign-report.json": {
+      "bytes": 211673,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/campaign-report.json",
+      "sha256": "a49862c193a3be6527dbf8af77dcf992236478240566994aef7f506a438822ed"
+    },
+    "campaign-session.json": {
+      "bytes": 8308,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/campaign-session.json",
+      "sha256": "d534edeb9bb88f69bddda56f4543832b7ef5f0c928a49411d0d0c9fe106c0163"
+    },
+    "controller-deadline.jsonl": {
+      "bytes": 1738,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/controller-deadline.jsonl",
+      "sha256": "9307e7d5cd73387473af1bd82dea97ea6321c657e63cd2d7f402b351a2c6063f"
+    },
+    "controller-result.json": {
+      "bytes": 430,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/controller-result.json",
+      "sha256": "067e40e8fd59994b1655132a06b4ae970d3834402038670cb896583a6706ee86"
+    },
+    "final-behavior-audit.json": {
+      "bytes": 271288,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/final-behavior-audit.json",
+      "sha256": "b194a70842554546929462ae8bb5131ba7ef8318aa9093f9d2b3e10c186af327"
+    },
+    "final-count-audit.json": {
+      "bytes": 2934,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/final-count-audit.json",
+      "sha256": "9166bb2a03a099ceba7225a32aa84e9e4dd9399cc647f6a8bd02f55238331db3"
+    },
+    "final-shutdown-audit.json": {
+      "bytes": 488,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/final-shutdown-audit.json",
+      "sha256": "ed166f7d9b6def6070ce7ca97c8c8defb363c8f88aad8ee7017d23f4139236fc"
+    }
+  },
+  "final_checkpoint_evaluated": false,
+  "final_cumulative": {
+    "adam_steps": 1475,
+    "decisions": 40641,
+    "rollouts": 584,
+    "updates": 146
+  },
+  "fixed_evaluation": {
+    "145": [
+      {
+        "accepted_recruit_requested_creatures": 0,
+        "across_army_operations": 0,
+        "army_rearrangement": 22,
+        "at_update": 145,
+        "choices": 62,
+        "enemy_town_target_moves": 0,
+        "initiated_battles": 0,
+        "initiated_neutral_monster_battles": 0,
+        "last_public_day": 2,
+        "movement_attempts": 2,
+        "movement_endpoint_changes": 0,
+        "outcome": "loss",
+        "player": "red",
+        "recruit_completed": 0,
+        "town_capture_evidence": 0
+      },
+      {
+        "accepted_recruit_requested_creatures": 0,
+        "across_army_operations": 0,
+        "army_rearrangement": 4,
+        "at_update": 145,
+        "choices": 17,
+        "enemy_town_target_moves": 0,
+        "initiated_battles": 0,
+        "initiated_neutral_monster_battles": 0,
+        "last_public_day": 2,
+        "movement_attempts": 2,
+        "movement_endpoint_changes": 0,
+        "outcome": "loss",
+        "player": "blue",
+        "recruit_completed": 0,
+        "town_capture_evidence": 0
+      }
+    ],
+    "92": [
+      {
+        "accepted_recruit_requested_creatures": 12,
+        "across_army_operations": 5,
+        "army_rearrangement": 69,
+        "at_update": 92,
+        "choices": 257,
+        "enemy_town_target_moves": 0,
+        "initiated_battles": 0,
+        "initiated_neutral_monster_battles": 0,
+        "last_public_day": 7,
+        "movement_attempts": 12,
+        "movement_endpoint_changes": 3,
+        "outcome": "loss",
+        "player": "red",
+        "recruit_completed": 1,
+        "town_capture_evidence": 0
+      },
+      {
+        "accepted_recruit_requested_creatures": 0,
+        "across_army_operations": 0,
+        "army_rearrangement": 4,
+        "at_update": 92,
+        "choices": 17,
+        "enemy_town_target_moves": 0,
+        "initiated_battles": 0,
+        "initiated_neutral_monster_battles": 0,
+        "last_public_day": 2,
+        "movement_attempts": 2,
+        "movement_endpoint_changes": 0,
+        "outcome": "loss",
+        "player": "blue",
+        "recruit_completed": 0,
+        "town_capture_evidence": 0
+      }
+    ]
+  },
+  "follow_up": "Do not resume automatically. Review exploration and the all-loss terminal reward signal before authorizing another experiment; no learning improvement is inferred from changed weights.",
+  "latest_fixed_evaluation_update": 145,
+  "limitations": [
+    "The latest actual held-out evaluation is update145, one update before final checkpoint146; no post-stop evaluation was run.",
+    "Same fixed engine and policy seeds do not eliminate all native built-in opponent randomness.",
+    "Recruit completed means the native result was recruited; the creature-count sum is the requested quantity on those accepted operations, not a reconstructed whole-army inventory balance.",
+    "Cross-army redistribution is a displayed-state diagnostic and can count repeated back-and-forth movement of the same units.",
+    "Attacker target classification requires an immediately preceding same-day visit to a neutral MONSTER object(kind54); ambiguous cases remain unknown.",
+    "All-loss outcomes and changed weights alone do not establish strategic improvement.",
+    "These are results from the successful repair3 continuation; the earlier startup and heap-corruption failures remain separately preserved and excluded from training.",
+    "The independently scripted recruit-and-rush diagnostic proved a Red winning path, but its six games supplied no training samples and are not learner victories."
+  ],
+  "new_admitted": {
+    "adam_steps": 692,
+    "decisions": 19579,
+    "ppo_updates": 54,
+    "training_rollouts": 216
+  },
+  "schema": "heroes-local-v8-final-analysis-v1",
+  "scope": "Repair3 only; previous failed startup/heap-corruption attempts remain excluded from training and separate from these counts. Scripted rush diagnostics are not included.",
+  "separate_diagnostic_report": "validation/recruit-rush-2026-10-26.json",
+  "session_preservation": {
+    "archive": {
+      "bytes": 80562,
+      "path": "results/local-v8-update92/repair3-campaign-session-final.tar.gz",
+      "sha256": "59b69ce19c7a5b7cae348d7c90167dda3e60d823a6662bdb280597d4db7fc3b2"
+    },
+    "files_verified": 143,
+    "game_data_symlinks_followed": false,
+    "per_batch_game_and_checkpoint_archives_published": true,
+    "private_commit": "ac201617c289cc263bd944ae12104b7aa0f14835",
+    "receipt": {
+      "bytes": 24962,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-v8-update92/repair3-campaign-session-final.tar.json",
+      "sha256": "2e93cd073ee02a6af5bcac0e3d8308c5fd68170ebcfd7a7b8c0e91aee3d33565"
+    }
+  },
+  "shutdown": {
+    "before_compute_cutoff": true,
+    "before_hard_deadline": true,
+    "checked_at_utc": "2026-10-25T23:54:27.473322+00:00",
+    "controller_cleanup_verified": true,
+    "controller_result_sha256": "067e40e8fd59994b1655132a06b4ae970d3834402038670cb896583a6706ee86",
+    "controller_stopped_at_utc": "2026-10-25T23:43:28.520727+00:00",
+    "other_workstreams_untouched": true,
+    "owned_active_commands": [],
+    "processes_stopped_by_audit": 0,
+    "schema": "heroes-owned-campaign-shutdown-audit-v1"
+  },
+  "source": {
+    "commit": "fe62a8096ef5dc445ebc5769794c94447b447421",
+    "map": "hero-management-v2",
+    "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+    "release": {
+      "bytes": 27131,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/release.json",
+      "sha256": "01f0f8cb7093978207f276c324b9a964fcf3c8f60b97063c61516120183cb627"
+    },
+    "runtime_name": "local-v8-update92-artifact-fix2"
+  },
+  "status": "stopped_and_verified"
+}

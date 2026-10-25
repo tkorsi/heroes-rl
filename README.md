@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**25 October 2026**. Earlier stages are preserved in
+**26 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -35,13 +35,15 @@ also passed. Native gameplay acceptance is recorded separately below.
 | Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
 
 The fixed opponent is **Nullkiller on Easy**, with BattleAI resolving battles.
-Completed campaigns used the authored **hero-management-v1** scenario. The
-expanded interface uses **hero-management-v2**, which removes only the native
+Earlier campaigns used the authored **hero-management-v1** scenario. The
+completed v8 continuation uses **hero-management-v2**, which removes only the native
 level-one cap; see its [configuration](configs/hero-management-v2.json). Historical
 map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Completed v8 Teacher analysis](validation/local-v8-final-analysis-2026-10-26.json)
+  and [local Teacher status](reports/local/teacher-status.json).
 - [Completed local365 Teacher analysis](validation/local365-final-analysis-2026-10-25.json).
 - [Teacher status](reports/cloud/teacher-status.json) and
   [continuation evidence](validation/cloud-continuation-2026-10-25.json).
@@ -78,18 +80,28 @@ without unchecked operations. The initial stale-verifier packaging failure is
 retained separately. See the [new runtime evidence](validation/runtime-artifact-fix-2026-10-26.json). See the
 [dated failure analysis](validation/v8-artifact-crash-2026-10-26.json).
 
-The [bounded repair3 continuation](validation/local-v8-repair3-launch-2026-10-26.json)
-started at **22:20:31 UTC on 25 October** (00:20:31 Kyiv on 26 October),
-using pinned source `fe62a80` and a separately frozen artifact-fix runtime.
-Its two baseline games passed native replay and policy reconstruction. It then
-started fresh training sequence95 from unchanged update92. That complete four-game
-batch passed all checks and produced update93 (238 admitted decisions and nine
-Adam steps), privately preserved after exact checkpoint restoration. All four
-games ended in natural losses; this does not demonstrate strategic improvement.
-The campaign inherits the
-original **23:44:09 UTC compute cutoff and 23:49:09 UTC hard stop**; no new
-two-hour budget was granted. Activity and progress in this paragraph are dated
-launch evidence, not a guarantee that the campaign remains running.
+The [completed repair3 continuation](validation/local-v8-final-analysis-2026-10-26.json)
+ran from **22:20:31 to 23:43:28 UTC on 25 October** (00:20:31–01:43:28 Kyiv on
+26 October), using pinned source `fe62a80` and the frozen artifact-fix runtime.
+It stopped cleanly before the original **23:44:09 UTC compute cutoff and
+23:49:09 UTC hard stop**. No owned processes remain, and no restart is authorized.
+It admitted **216 training games and 54 PPO updates**, advancing update 92 to
+**146**, plus 24 evaluation games. All 240 games passed their replay and
+reconstruction checks and ended in natural losses; repair3 had no cutoffs or
+technical failures. The final model, Adam state, RNG, progress and opponent pool
+are privately preserved; the cumulative state is 584 training rollouts, 40,641
+decisions and 1,475 Adam steps.
+
+This run did not demonstrate strategic improvement. Recruitment occurred in
+67 of 216 training games, but all 10 initiated battles targeted neutral monsters;
+there were no enemy-town target moves or town captures. About 77% of choices
+were window navigation/selection or army rearrangement. The last fixed evaluation
+was **update 145**, not final update 146: Red changed from a day-7 loss with one
+recruitment operation and three completed movements to a day-2 loss with neither;
+Blue retained its day-2, 17-choice loss. This small fixed comparison does not
+establish a general regression, but it provides no evidence of improvement.
+No further evaluation or training was started after shutdown. Initial launch
+evidence remains in the [dated launch report](validation/local-v8-repair3-launch-2026-10-26.json).
 
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
