@@ -23,7 +23,8 @@ MAPS = ROOT / "experiments/explorer/maps"
 ORDINARY_ID = "hero-management-v2"
 COLORS = ("red", "blue")
 FIXTURES = ("town_controls", "stables", "neutral_overflow", "artifacts",
-            "adventure_spells", "level_up", "eagle_eye", "visions", "fly_movement", "water_walk_movement")
+            "adventure_spells", "level_up", "eagle_eye", "visions", "fly_movement", "water_walk_movement",
+            "dimension_door_clear", "dimension_door_blocked")
 FULL_ARMY = ("halberdier", "archer", "marksman", "griffin", "royalGriffin", "swordsman", "crusader")
 COMBINATION = {
     "head": "helmOfHeavenlyEnlightenment", "neck": "celestialNecklaceOfBliss",
@@ -124,6 +125,17 @@ def capability_payloads(fixture, player, seed=0):
         for row in (11, 12, 13):
             for column in range(20):
                 result["surface_terrain.json"][row][column] = "wt0_"
+    elif fixture in ("dimension_door_clear", "dimension_door_blocked"):
+        actor.update(x=x + 1, y=10)
+        actor["options"].update(artifacts={"spellbook": "core:spellBook"}, spellBook=["core:dimensionDoor"],
+                                secondarySkills=[{"skill": "core:airMagic", "level": "expert"}])
+        actor["options"]["primarySkills"]["knowledge"] = 20
+        if fixture == "dimension_door_blocked":
+            # Identical public state and spell range; only the unseen landing
+            # occupancy differs. Candidate lists must not disclose this object.
+            objects.append(_object("diagnostic_hidden_blocker", "monster", "pikeman", (x, 18),
+                                   "AvWPike.def", ["VV", "VA"],
+                                   {"amount": 6, "character": "compliant", "neverFlees": True, "noGrowing": True}))
     elif fixture == "visions":
         # Native scouting reveals both ordinary towns from the central actor;
         # expert Water Magic permits all three Visions inspection categories.

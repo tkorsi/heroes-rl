@@ -50,6 +50,16 @@ class CapabilityScenarioTests(unittest.TestCase):
                     self.assertEqual(value["surface_terrain.json"][row], ["wt0_"] * 20)
                 self.assertTrue(all(tile != "wt0_" for tile in value["surface_terrain.json"][14]))
 
+    def test_dimension_door_pair_differs_only_by_unseen_landing_occupancy(self):
+        for player in scenarios.COLORS:
+            clear = scenarios.capability_payloads("dimension_door_clear", player)
+            blocked = scenarios.capability_payloads("dimension_door_blocked", player)
+            blocked["header.json"]["name"] = clear["header.json"]["name"]
+            blocker = blocked["objects.json"].pop()
+            self.assertEqual(blocker["instanceName"], "diagnostic_hidden_blocker")
+            self.assertEqual(blocker["y"], 18)
+            self.assertEqual(clear, blocked)
+
     def test_initial_full_army_cannot_silently_merge_joining_creature(self):
         for player in scenarios.COLORS:
             value = scenarios.capability_payloads("neutral_overflow", player)

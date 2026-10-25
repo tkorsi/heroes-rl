@@ -1,0 +1,329 @@
+{
+  "automatic_battles": true,
+  "changed_header_fields": {
+    "description": {
+      "after": "Isolated native capability diagnostic; excluded from training. All authored initial-state differences are recorded in its manifest. Normal fog, VCMI mechanics, automatic battles and native leveling remain enabled.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "heroLevelLimit": {
+      "after": 0,
+      "before": 1
+    },
+    "name": {
+      "after": "capability-dimension-door-blocked-red-v1",
+      "before": "Hero management: two castles"
+    }
+  },
+  "diagnostic_only": true,
+  "engine_verified": false,
+  "fixture": "dimension_door_blocked",
+  "fog": "normal native team fog",
+  "layout_seed": 0,
+  "map_sha256": "a3f4268cfcaf3945f3df0354fcca48b248ab8e4553c6ae3c33b614784d8137ce",
+  "native_hero_level_limit": 0,
+  "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
+  "object_changes": [
+    {
+      "after": {
+        "instanceName": "diagnostic_hidden_blocker",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "compliant",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 4,
+        "y": 18
+      },
+      "before": null,
+      "instance": "diagnostic_hidden_blocker"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_0",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 4,
+        "y": 10
+      },
+      "instance": "gold_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_1",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 15,
+        "y": 10
+      },
+      "instance": "gold_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 6,
+        "y": 12
+      },
+      "instance": "guard_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_1",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 13,
+        "y": 12
+      },
+      "instance": "guard_1"
+    },
+    {
+      "after": {
+        "instanceName": "hero_0",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {
+            "spellbook": "core:spellBook"
+          },
+          "experience": 0,
+          "formation": "loose",
+          "owner": "red",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 20,
+            "spellpower": 1
+          },
+          "secondarySkills": [
+            {
+              "level": "expert",
+              "skill": "core:airMagic"
+            }
+          ],
+          "spellBook": [
+            "core:dimensionDoor"
+          ],
+          "type": "core:orrin"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 5,
+        "y": 10
+      },
+      "before": {
+        "instanceName": "hero_0",
+        "l": 0,
+        "options": {
+          "army": [
+            {
+              "amount": 25,
+              "type": "core:pikeman"
+            }
+          ],
+          "artifacts": {},
+          "experience": 0,
+          "formation": "loose",
+          "owner": "red",
+          "primarySkills": {
+            "attack": 1,
+            "defence": 1,
+            "knowledge": 1,
+            "spellpower": 1
+          },
+          "secondarySkills": [],
+          "spellBook": [],
+          "type": "core:orrin"
+        },
+        "subtype": "knight",
+        "template": {
+          "animation": "AH00_",
+          "mask": [
+            "VVV",
+            "VAV"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "hero",
+        "x": 5,
+        "y": 7
+      },
+      "instance": "hero_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_0",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 6,
+        "y": 16
+      },
+      "instance": "mine_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_1",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 15,
+        "y": 16
+      },
+      "instance": "mine_1"
+    }
+  ],
+  "parent_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "player": "red",
+  "rules_and_rewards_unchanged": true,
+  "runtime_state_grants": false,
+  "scenario_id": "capability-dimension-door-blocked-red-v1",
+  "schema": "heroes-capability-scenario-v1",
+  "terrain_changes": [],
+  "training_performed": false
+}

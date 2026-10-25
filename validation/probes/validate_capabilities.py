@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import asdict
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -42,6 +43,7 @@ CASES = {
     "neutral-overflow": "neutral_overflow", "stables": "stables", "eagle-eye": "eagle_eye",
     "fly-movement": "fly_movement", "water-walk-movement": "water_walk_movement",
     "visions": "visions",
+    "dimension-door-clear": "dimension_door_clear", "dimension-door-blocked": "dimension_door_blocked",
 }
 
 
@@ -68,9 +70,14 @@ def inventory_counts(items):
     return Counter((item.subject, item.id) for item in items if item.kind == "artifact" and not item.locked)
 
 
+def value_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+
+
 def schedule(cases, colors, seed, repeats):
     return [{"case": case, "fixture": CASES[case], "player": color, "repeat": repeat,
-             "seed": seed + 128 * tuple(CASES).index(case) + 2 * repeat + fixtures.COLORS.index(color)}
+             "seed": seed + 128 * tuple(CASES).index("dimension-door-clear" if case == "dimension-door-blocked" else case)
+                     + 2 * repeat + fixtures.COLORS.index(color)}
             for case in cases for repeat in range(repeats) for color in colors]
 
 
@@ -405,6 +412,18 @@ def movement_spell_case(run):
     choice = next(candidate for candidate in panel.choices if candidate.kind == "cast_adventure_spell")
     run.choose(choice)
     base.ensure(run.inspect_request().observation.context.kind == "map", "Movement spell did not close its window")
+    unknown = next(((column, row, 0) for row in range(before.size[1] - 1, -1, -1)
+                    for column in range(before.size[0]) if (column, row, 0) not in tiles), None)
+    for label, forbidden in (("water_landing", (actor.position[0], actor.position[1] + 1, actor.position[2])),
+                             ("unseen_destination", unknown)):
+        if forbidden is None:
+            raise base.ProbeFailure("Movement fixture needs an unseen destination for its visibility rejection")
+        _, rejected_frames, rejected = run.call(run.action("move_to", subject=actor.handle, x=forbidden[0], y=forbidden[1]),
+                                               "explicit_reject_" + label)
+        base.ensure(rejected is not None and rejected.status == "no_route_known" and rejected.position == actor.position
+                    and not any(frame.kind == "issued" for frame in rejected_frames),
+                    "Movement spell accepted an unsafe final landing or consulted unknown terrain")
+        run.check("native_movement_spell_rejects_" + label, "passed", destination=list(forbidden), native_issued=0)
     _, additions, result = run.call(run.action("move_to", subject=actor.handle, x=target[0], y=target[1]),
                                     "explicit_native_crossing_after_spell")
     base.ensure(result is not None and result.destination_reached and result.position == target,
@@ -465,6 +484,45 @@ def visions_case(run):
     run.close_to_map()
 
 
+def dimension_door_case(run):
+    actor = next(hero for hero in run.inspect_request().observation.heroes if hero.handle == run.own_hero())
+    destination = (actor.position[0], actor.position[1] + 8)
+    before = run.inspect_request().observation
+    base.ensure((*destination, 0) not in {tile.position for tile in before.tiles},
+                "Dimension Door comparison destination is not hidden")
+    panel = run.open_hero_capability("spellbook")
+    targets = sorted((choice.spell, choice.x, choice.y) for choice in panel.choices if choice.kind == "cast_adventure_spell")
+    choice = next((choice for choice in panel.choices if choice.kind == "cast_adventure_spell"
+                   and (choice.x, choice.y) == destination), None)
+    base.ensure(choice is not None and choice.spell == 8, "Native public-range Dimension Door fog target is not offered")
+    mana_before = run.inspect_request().observation.window.mana
+    blocked = run.name.startswith("dimension-door-blocked-")
+    if blocked:
+        decision, additions, result = run.call(run.action("cast_adventure_spell", subject=actor.handle,
+                                                         selection=choice.ref), "explicit_native_blocked_fog_attempt")
+        records = {kind: [frame for frame in additions if frame.kind == kind and frame.decision_seq == decision.seq]
+                   for kind in ("consumed", "issued", "acknowledged", "result")}
+        base.ensure(result is not None and result.status == "rejected" and result.accepted is False
+                    and all(len(values) == 1 for values in records.values()),
+                    "Blocked fog target lacks one native rejected attempt")
+        consumed, issued, ack, end = (records[kind][0] for kind in records)
+        base.ensure(consumed.consumer == "engine" and ack.accepted is False and issued.command_index == ack.command_index
+                    and consumed.seq < issued.seq < ack.seq < end.seq and end.result == result,
+                    "Blocked fog rejection lacks native issue/ack/result chronology")
+    else:
+        _, additions, result = run.choose(choice)
+    base.ensure(not run.state.done, "Native blocked fog cast became a technical failure")
+    after = next(hero for hero in run.inspect_request().observation.heroes if hero.handle == actor.handle)
+    base.ensure(after.position == (actor.position if blocked else (*destination, 0)),
+                "Native fog landing outcome differs from the authored isolated occupancy")
+    templates = notice_templates(additions)
+    run.check("native_dimension_door_fog_attempt", "passed", blocked_fixture=blocked,
+              target=list(destination), position_before=list(actor.position), position_after=list(after.position),
+              offered_spell_targets_sha256=value_digest(targets), offered_spell_target_count=len(targets),
+              player_view_before_sha256=value_digest(asdict(before)), notices=templates,
+              mana_before=mana_before, result_status=result.status, native_rejected_ack=blocked)
+
+
 def neutral_overflow_case(run):
     target = next(iter(run.targets(54)), None)
     base.ensure(target is not None, "Compliant diagnostic neutral is not visible")
@@ -500,22 +558,29 @@ def neutral_overflow_case(run):
 
 def stables_case(run):
     before = run.inspect_request()
+    hero_before = next(hero for hero in before.observation.heroes if hero.handle == run.own_hero())
     town = before.observation.towns[0]
     _, additions, _ = run.call(run.action("move_to", subject=run.own_hero(), x=town.position[0], y=town.position[1]),
                               "explicit_enter_castle_stables")
     templates = notice_templates(additions)
     base.ensure("core.genrltxt.580" in templates, "Castle Stables bonus did not emit its native informational notice")
-    run.check("native_castle_stables_notice", "passed", templates=templates)
+    hero_after = next(hero for hero in run.inspect_request().observation.heroes if hero.handle == run.own_hero())
+    base.ensure(hero_after.movement_max == hero_before.movement_max + 400,
+                "Native Stables notice did not accompany its real weekly movement bonus")
+    run.check("native_castle_stables_notice", "passed", templates=templates,
+              movement_max_before=hero_before.movement_max, movement_max_after=hero_after.movement_max)
     if run.inspect_request().observation.context.kind != "map":
         run.close_to_map()
 
 
 def eagle_eye_case(run):
     observation = run.inspect_request().observation
-    enemy = next((obj for obj in observation.objects if obj.kind == 34), None)
+    enemy = next((obj for obj in observation.objects if obj.kind == 34 and obj.owner == "opponent"), None)
     base.ensure(enemy is not None, "Prepared spellcasting enemy is not currently visible")
     _, additions, _ = run.call(run.action("move_to", subject=run.own_hero(), x=enemy.position[0], y=enemy.position[1]),
                               "explicit_fight_visible_spellcaster")
+    base.ensure(any(frame.event is not None and frame.event.kind == "battle_complete" for frame in additions),
+                "Eagle Eye diagnostic did not actually fight its visible spellcaster")
     learned = [frame.event.notice for frame in additions if frame.event is not None and frame.event.kind == "notice"
                and any(token.text_id == "core.genrltxt.221" for token in frame.event.notice.text)]
     if learned:
@@ -530,7 +595,8 @@ RUN_CASE = {"marketplace": marketplace_case, "purchases": purchases_case, "artif
             "level-up": level_up_case, "neutral-overflow": neutral_overflow_case,
             "stables": stables_case, "eagle-eye": eagle_eye_case,
             "fly-movement": movement_spell_case, "water-walk-movement": movement_spell_case,
-            "visions": visions_case}
+            "visions": visions_case, "dimension-door-clear": dimension_door_case,
+            "dimension-door-blocked": dimension_door_case}
 
 
 def fixture_identity(fixture, player, maps):

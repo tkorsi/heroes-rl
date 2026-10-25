@@ -37,7 +37,10 @@ class CapabilityProbeTests(unittest.TestCase):
     def test_fixed_schedule_never_replaces_failed_or_randomly_missing_branches(self):
         rows = probe.schedule(tuple(probe.CASES), probe.fixtures.COLORS, 158001, 16)
         self.assertEqual(len(rows), len(probe.CASES) * 2 * 16)
-        self.assertEqual(len({row["seed"] for row in rows}), len(rows))
+        # The fog-layout pair intentionally shares native RNG: only its hidden
+        # landing occupancy may differ, never its candidate-observation seed.
+        self.assertEqual(len({row["seed"] for row in rows}), len(rows) - 2 * 16)
+        self.assertEqual(len({(row["seed"], row["case"]) for row in rows}), len(rows))
         self.assertEqual(rows, probe.schedule(tuple(probe.CASES), probe.fixtures.COLORS, 158001, 16))
         for row in rows:
             self.assertEqual(row["fixture"], probe.CASES[row["case"]])
