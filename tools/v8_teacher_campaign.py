@@ -97,8 +97,35 @@ def journal(value):
     os.replace(temporary, path)
 
 
-def publish_failure(plan_path, repo, deadline, error, schedule):
-    """Preserve partial/absent plans without claiming successful checkpoint admission."""
+def verify_local_update(plan_path, report):
+    """Keep locally admitted/restored state distinct from private publication."""
+    from experiments.learner.builtin_training_resume import _completion
+    plan = json.loads(plan_path.read_text())
+    require(report == json.loads((Path(plan['execution_output'])/'report.json').read_text())
+            and report['plan_sha256'] == binding(plan_path)['sha256'], 'Completed report binding differs')
+    progress, _, _ = _completion(plan, report)
+    saved = report['after_checkpoint']
+    for kind in ('policy', 'resume'):
+        require(binding(saved[kind]['path']) == saved[kind], 'Verified checkpoint bytes changed')
+    canonical = verify_pair(saved['resume']['path'], saved['policy']['path'], plan, report)
+    backup = DURABLE_ROOT/'checkpoints'/plan_path.parent.name
+    receipt_path = backup/'preservation-receipt.json'
+    receipt = json.loads(receipt_path.read_text())
+    require(receipt['sources']['plan.json'] == binding(plan_path)
+            and receipt['sources']['report.json'] == binding(Path(plan['execution_output'])/'report.json'),
+            'Independent preservation receipt belongs to another completed update')
+    for kind in ('policy','resume'):
+        require(receipt['sources']['after-'+kind+'.pt'] == saved[kind]
+                and binding(backup/('after-'+kind+'.pt'))['sha256'] == saved[kind]['sha256'],
+                'Independent checkpoint copy differs')
+    restored = verify_pair(backup/'after-resume.pt', backup/'after-policy.pt', plan, report)
+    require(canonical == restored == receipt['restore'], 'Independent local restore differs')
+    return {'plan': binding(plan_path), 'policy': saved['policy'], 'resume': saved['resume'],
+            'progress': vars(progress), 'restore': canonical, 'preservation_receipt': binding(receipt_path)}
+
+
+def publish_failure(plan_path, repo, deadline, error, schedule, *, verified_checkpoint=None):
+    """Retain failed attempts or publication failures with their actual admission state."""
     folder = plan_path.parent
     folder.mkdir(parents=True, exist_ok=True)
     report_path = folder/'execution/report.json'
@@ -109,7 +136,8 @@ def publish_failure(plan_path, repo, deadline, error, schedule):
         'report': binding(report_path) if report else None,
         'attempts': report.get('attempts', []) if report else
             [dict(row, status='not_started', reason='controller_failure_before_report') for row in (plan or {}).get('schedule', schedule)],
-        'checkpoint_admitted': False, 'preservation_status': 'failed_or_incomplete'}
+        'checkpoint_admitted': verified_checkpoint is not None, 'verified_checkpoint': verified_checkpoint,
+        'preservation_status': 'private_publication_failed' if verified_checkpoint is not None else 'failed_or_incomplete'}
     failure_path = folder/'controller-failure.json'
     migration.write_new(failure_path, failure)
     def git(*args):
@@ -123,7 +151,8 @@ def publish_failure(plan_path, repo, deadline, error, schedule):
         for log in (scope.SESSION.parent/'logs').glob(folder.name+'-*.log'):
             output.add(log, arcname=folder.name+'/controller-logs/'+log.name)
     receipt = archive.with_suffix('.json')
-    migration.write_new(receipt, {'failure': binding(failure_path), 'archive': binding(archive), 'checkpoint_admitted': False})
+    migration.write_new(receipt, {'failure': binding(failure_path), 'archive': binding(archive),
+        'checkpoint_admitted': verified_checkpoint is not None, 'verified_checkpoint': verified_checkpoint})
     git('add','--',str(archive.relative_to(repo)),str(receipt.relative_to(repo)))
     git('commit','-m','Preserve failed v8 Teacher attempt '+folder.name)
     git('push','origin','HEAD:refs/heads/codex/local365-teacher-results')
@@ -141,6 +170,8 @@ def campaign(args):
     result = {'schema': scope.SCOPE+'-campaign', 'session': binding(scope.SESSION), 'status': 'running', 'batches': []}
     durations, sequence, update, evaluated = [300.0], 94, 92, set()
     pending = None
+    result.update(latest_verified_parent=binding(parent), latest_private_parent=binding(parent),
+                  latest_verified_progress={'updates':92,'rollouts':368,'decisions':21062})
     journal(result)
     try:
         while True:
@@ -171,16 +202,25 @@ def campaign(args):
                 report=binding(pending.parent/'execution/report.json'),
                 training_samples=report['training_samples'], optimizer_steps=report['optimizer_steps'],
                 outcomes=[attempt.get('outcomes') for attempt in report['attempts']])
-            journal(result)
-            row['private_commit'] = publish_run(pending, args.private_repo, session['absolute_deadline_unix']-30)
-            journal(result)
             require(report['status'] == 'finished' and report['worker_complete'] is True
                 and report['supervisor_cleanup_verified'] is True and report['within_shared_budget'] is True,
                 'Batch failed; no replacement or further gameplay')
-            row['status'] = 'passed'
+            row.update(checkpoint_admitted=False, publication_status='not_started')
+            if not evaluate:
+                verified = verify_local_update(pending, report)
+                parent = pending
+                update = verified['progress']['updates']
+                row.update(checkpoint_admitted=True, verified_checkpoint=verified)
+                result.update(latest_parent=binding(parent), latest_verified_parent=binding(parent),
+                              latest_verified_progress=verified['progress'])
+            row['publication_status'] = 'pending'
+            journal(result)  # A subsequent push failure must not erase verified local progress.
+            row['private_commit'] = publish_run(pending, args.private_repo, session['absolute_deadline_unix']-30)
+            row.update(publication_status='published', status='passed')
             if evaluate: evaluated.add(update)
             else:
-                parent = pending; sequence += 1; update = report['cumulative_progress']['updates']
+                result['latest_private_parent'] = binding(parent)
+                sequence += 1
                 durations.append(report['execution_wall_seconds'])
             pending = None
             result['latest_parent'] = binding(parent)
@@ -190,12 +230,15 @@ def campaign(args):
         result.update(status='stopped_failure', error=f'{type(error).__name__}: {error}')
         if pending is not None:
             row = result['batches'][-1]
-            row.update(status='failed', preservation_error=result['error'])
+            row.update(status='publication_failed' if row.get('checkpoint_admitted') else 'failed',
+                       preservation_error=result['error'])
+            if row.get('publication_status') == 'pending': row['publication_status'] = 'failed'
             journal(result)
             if row.get('private_commit') is None:
                 try:
                     row['failure_private_commit'] = publish_failure(pending, args.private_repo,
-                        session['absolute_deadline_unix']-30, result['error'], row['schedule'])
+                        session['absolute_deadline_unix']-30, result['error'], row['schedule'],
+                        verified_checkpoint=row.get('verified_checkpoint'))
                 except Exception as preservation_error:
                     row['failure_preservation_error'] = f'{type(preservation_error).__name__}: {preservation_error}'
         raise
