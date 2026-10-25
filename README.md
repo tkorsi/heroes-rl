@@ -2985,6 +2985,17 @@ or winner that the replay did not check.
 python3 experiments/headless/render_replay.py runs/headless-smoke/episodes/episode-000001 --output videos/episode-000001.mp4
 ```
 
+For the v7 built-in-opponent interface, `experiments/recording/render_builtin_match.py`
+provides a separate schematic match viewer. It draws the full map and the learner's
+fog view from a fresh native `vcmireplay --contextual ... --trace ...` pass over an
+already verified capture. This is a map reconstruction, not footage of the game
+window; window interactions and army changes are listed rather than animated.
+The viewer checks the original verification, the fresh native report, and the
+trace-generation receipt's file hashes. It keeps raw traces, video and provenance
+under ignored local `runs/` and `videos/` directories. It does not start games or
+update policy weights. Its optional Pillow dependency is pinned separately in
+`dependencies/video-viewer.lock`; the gameplay learner dependencies are unchanged.
+
 ### Series, benchmark and costs
 
 ```bash
