@@ -169,7 +169,7 @@ def campaign(args):
     parent = Path(receipt['plan']['path'])
     result = {'schema': scope.SCOPE+'-campaign', 'session': binding(scope.SESSION), 'status': 'running', 'batches': []}
     if scope.REPAIR:
-        result.update(attempt=2, repair=session['repair'])
+        result.update(attempt=session['attempt'], repair=session['repair'])
     durations, sequence, update, evaluated = [300.0], 94, 92, set()
     pending = None
     result.update(latest_verified_parent=binding(parent), latest_private_parent=binding(parent),

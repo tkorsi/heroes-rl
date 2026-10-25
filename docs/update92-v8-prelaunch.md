@@ -240,3 +240,29 @@ attempt2; original attempt1 remains visible with no scored result. Training
 still scans every existing plan and rejects consumed seed tuples, including
 failed/partial training attempts. No source edits, runtime edits, cloud run or
 budget extension are authorized by selecting repair mode.
+
+## Artifact-crash repair within the same window
+
+Attempt2 completed the two-seat baseline (two natural losses, 274 choices), then
+its first training game crashed after 39 choices. Batch94 contributed no samples
+or PPO steps; three scheduled games were not started. The parent remains exact
+update92. All attempt2 evidence and cleanup receipts remain immutable.
+
+The user's renewed instruction to finish repairs and launch Teacher allows one
+explicit `HEROES_V8_REPAIR=attempt3` continuation after the artifact-memory defect
+is fixed and verified. This selects the fresh
+`local-v8-update92-repair3/campaign-session.json` and `v8-update92-repair3` run
+prefix. It inherits the original start and both original clocks: compute stops
+at **23:44:09 UTC**, and the hard deadline is **23:49:09 UTC on 25 October 2026**.
+There is no fresh two-hour budget.
+
+The new release retains the startup-repair bindings above, sets `repair.attempt`
+to `3`, and adds `repair.previous_attempt`. This contains complete bindings for
+the attempt2 `session`, `failure` (batch94 execution report), `controller_result`
+and `campaign_report`. Their exact paths and hashes are pinned in
+`ATTEMPT2_PINS`. Validation requires zero admitted samples/updates, the unchanged
+update92 parent, recorded failed/unstarted rows and confirmed cleanup. Attempt3
+still requires a fresh exact migration, private preservation, repaired native
+acceptance and its own both-seat baseline before training. The consumed batch94
+seed tuples remain unavailable; the controller advances to sequence95 or the
+next unused schedule. This preparation alone launches no gameplay.
