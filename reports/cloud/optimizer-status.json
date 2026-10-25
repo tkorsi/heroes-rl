@@ -1,10 +1,10 @@
 {
   "schema": "heroes-cloud-optimizer-status-v1",
-  "timestamp_utc": "2026-10-25T17:01:03.787466+00:00",
+  "timestamp_utc": "2026-10-25T17:02:59.422652+00:00",
   "branch": "codex/portable-engine-session",
-  "current_activity": "Packaging completed bounded live EngineSession evidence for review; ordinary shutdown repair independently available in PR27",
+  "current_activity": "Completed bounded live-session milestone; PR26 and independent ordinary correctness PR27 ready for review",
   "latest_tested_commit": "1345111b32b08c9a75e476ca4659ea5c6123af3f",
-  "latest_pushed_commit": "1345111",
+  "latest_pushed_commit": "a17dedc",
   "tests": {
     "passed": 46,
     "failed": 0,
@@ -47,5 +47,11 @@
     "100-prefix RSS growth is not proof of leak freedom; unsupported scenarios require separate gates",
     "Original Teacher failure and failed admission/precision trials remain unscored; no replacement within failed cohorts"
   ],
-  "training": false
+  "training": false,
+  "additional_checks": {
+    "post_packaging_native_session_tests": 3,
+    "passed": 3,
+    "source_recipe": "passed",
+    "native_targets": "built"
+  }
 }
