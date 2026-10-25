@@ -1,5 +1,13 @@
 {
-  "activity": "Repaired Linux both-seat evaluation passed with2 natural losses,0 samples/updates; freezing first fresh four-game5120-choice continuation from exact update21.",
+  "activity": "Update22 complete, restore-tested and privately snapshotted; preparing sequence23.",
+  "behavior_diagnostics": {
+    "cross_army_net_count_redistribution": 250,
+    "cross_army_operations": 28,
+    "moves_toward_visible_opponent_town": 0,
+    "recruitment_completed": 6,
+    "town_capture_evidence": 0,
+    "visible_battle_starts": 7
+  },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
   "deadline": {
@@ -14,6 +22,40 @@
     "worker_and_native_absolute_guardians": true
   },
   "experimental_replay_worker_enabled": false,
+  "heldout_checks": [
+    {
+      "at_update": 21,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 150,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 139,
+            "cross_army_operations": 13,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 3,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "linux-update21-gate-002"
+    }
+  ],
   "last_attempt": {
     "choices": 72,
     "kind": "evaluation",
@@ -34,13 +76,29 @@
     "wall_seconds": 46.31009501900007
   },
   "latest_complete": {
-    "adam_steps": 149,
-    "decisions": 3944,
-    "policy_sha256": "de004381422cedf9f1fe0c36eef0a5b99754a9c86bbbcf955cffa7f8043139f8",
-    "resume_sha256": "e70481c8296514999ba21f47819d91882d82d7cbc81cc524a8934cd4940aca7f",
-    "rollouts": 84,
-    "updates": 21,
-    "weights_sha256": "0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb"
+    "adam_steps": 156,
+    "decisions": 4136,
+    "plan": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-022/plan.json",
+    "policy_sha256": "4966dfc8f4efe824a0bff8455b6eb97b7313c5a3c6375fc0755acd535e76cb56",
+    "resume_sha256": "59d5acb5230314eaf331542daf0b34e52242e38f2789c625c5d304212ce373f0",
+    "rollouts": 88,
+    "updates": 22,
+    "weights_sha256": "81922d29eee229926c502c4bcf33dbf8df9c9eb80e797e3ea7f0f7b4ba72b3f5"
+  },
+  "latest_private_snapshot": {
+    "manifest": "results/cloud/cloud-continuation-2026-10-25-022.tar.json",
+    "private_commit": "91d9a0c1b4bb02f5ada8993be535a71e2165eefc",
+    "raw_archive_sha256": "d58cccb9086244ea91ae3442bff4c80db0ed7ffa699c7f7a7fb6ddc928e5469e",
+    "restore": {
+      "checkpoint": "builtin-pilot-after-81922d29eee22992",
+      "exact_model_adam_rng_progress_pool": true,
+      "progress": {
+        "decisions": 4136,
+        "rollouts": 88,
+        "updates": 22
+      },
+      "weights_sha256": "81922d29eee229926c502c4bcf33dbf8df9c9eb80e797e3ea7f0f7b4ba72b3f5"
+    }
   },
   "linux_gates": {
     "canonical_source": "passed_after_minimal_repair",
@@ -51,7 +109,7 @@
     "native_build": "passed_linux_v2",
     "same_runtime_replay": "passed_both_seats"
   },
-  "next_step": "Launch sequence22, preserve and restore-test both checkpoint copies, then publish private snapshot before continuing.",
+  "next_step": "Continue fresh complete batches and required fixed held-out pairs only while sufficient absolute deadline reserve remains.",
   "next_unused_training_sequence": 22,
   "optimizer_status_observed": {
     "branch": "codex/portable-engine-session",
@@ -88,14 +146,29 @@
     "target_mapping": "anonymous non-executable rw-p heap",
     "training_admission": false
   },
-  "state": "preparing_update22",
-  "training_performed_in_cloud": false,
-  "updated_utc": "2026-10-25T16:11:42.557028+00:00",
+  "since_update21": {
+    "adam_steps": 7,
+    "admitted_decisions": 192,
+    "admitted_rollouts": 4,
+    "updates": 1
+  },
+  "state": "ready_to_continue",
+  "throughput": {
+    "admitted_decisions_per_reported_batch_second": 1.3244576277032387,
+    "reported_training_batch_wall_seconds": 144.965,
+    "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
+    "verified_training_games_per_reported_batch_second": 0.027592867243817473
+  },
+  "training_performed_in_cloud": true,
+  "updated_utc": "2026-10-25T16:21:23.943097+00:00",
   "validated_cloud_outcomes": {
-    "cutoffs": 0,
-    "diagnostic_reproductions": 2,
-    "failed_gate_games": 1,
-    "natural_losses": 2,
-    "natural_wins": 0
+    "adam_steps": 7,
+    "evaluation_games": 2,
+    "loss": 6,
+    "training_games": 4,
+    "training_samples": 192,
+    "training_wall_milliseconds": 144965,
+    "updates": 1,
+    "verified_games": 6
   }
 }
