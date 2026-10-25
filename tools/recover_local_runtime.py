@@ -54,7 +54,7 @@ def main():
         cleaned += ['-include', str(header)]
         subprocess.run(cleaned, cwd=build, check=True)
         compiled_commands.append(cleaned)
-    shutil.copytree(build / 'bin', destination, symlinks=True)
+    shutil.copytree(build / 'bin', destination, symlinks=False)
     linked_commands = []
     for output in ('bin/vcmireplay', 'bin/AI/libExplorerRL.dylib', 'bin/AI/libNullkiller.dylib'):
         link_line = next(c for c in commands if ' -o ' + output + ' ' in c)
