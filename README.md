@@ -2092,7 +2092,8 @@ returns to the original parent. All mutations require a corresponding native
 receipt and exact observed effects. Player histories and fixed-weight neural
 inference retain separate per-player memory.
 
-Stage 2 is implemented and locally validated. Compact evidence is in
+Stage 2 is implemented and locally validated in draft
+[PR #16](https://github.com/tkorsi/heroes-rl/pull/16), stacked on #15. Compact evidence is in
 `validation/army-management-2026-10-25.json`, with an independent audit in
 `validation/army-management-independent-audit-2026-10-25.json`. The full suite
 passes **704 tests, zero skips**, and the prepared engine exactly matches the
@@ -2117,7 +2118,7 @@ stage 3 changes.
   260 values and 630 conditional probabilities exactly**, with separate player
   memories and unchanged weights. They naturally sample splits, merges, swaps,
   garrison operations and stack opening. Separate offline scoring of fourteen
-  verified mechanics histories covers all seven new v6 army actions, including upgrades;
+  verified mechanics episodes covers all seven new v6 army actions, including upgrades;
   those operator choices were not sampled by the policy and are not learner
   data.
 - Both unassisted games truncate after 128 choices. Across them, only four
