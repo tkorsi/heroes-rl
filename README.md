@@ -78,6 +78,15 @@ without unchecked operations. The initial stale-verifier packaging failure is
 retained separately. See the [new runtime evidence](validation/runtime-artifact-fix-2026-10-26.json). See the
 [dated failure analysis](validation/v8-artifact-crash-2026-10-26.json).
 
+The [bounded repair3 continuation](validation/local-v8-repair3-launch-2026-10-26.json)
+started at **22:20:31 UTC on 25 October** (00:20:31 Kyiv on 26 October),
+using pinned source `fe62a80` and a separately frozen artifact-fix runtime.
+Its two baseline games passed native replay and policy reconstruction. It then
+started fresh training sequence95 from unchanged update92. This inherits the
+original **23:44:09 UTC compute cutoff and 23:49:09 UTC hard stop**; no new
+two-hour budget was granted. Activity and progress in this paragraph are dated
+launch evidence, not a guarantee that the campaign remains running.
+
 The completed cloud session continued update 21 to **update 31**: 40 new
 training games, ten PPO updates and eight evaluation games. Its 48 verified
 games produced **zero wins, 47 natural losses and one day-limit cutoff**. The

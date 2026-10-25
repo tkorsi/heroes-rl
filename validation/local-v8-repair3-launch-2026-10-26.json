@@ -1,0 +1,75 @@
+{
+  "attempt": 3,
+  "attempt_started_utc": "2026-10-25T22:20:31.049299+00:00",
+  "baseline": {
+    "choices": 274,
+    "games": 2,
+    "natural_losses": 2,
+    "private_commit": "1c8ce09313ce3e9775167c0260d66dabee70f98b",
+    "training_samples": 0
+  },
+  "checkpoint_migration": {
+    "exact_model_adam_rng_progress_restored": true,
+    "plan": {
+      "bytes": 11154,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/migrations/update92-v8-repair3-final/plan.json",
+      "sha256": "6b4e1a8cda2ff97c2e7517e4c0b1b0da9b2b6820748257f447edf0b3ef07b5cd"
+    },
+    "private_commit": "9e86db43aa40e776eb06bef92fd5d98858d9a565"
+  },
+  "compute_cutoff_utc": "2026-10-25T23:44:09.568623+00:00",
+  "configuration": {
+    "battle_policy": "BattleAI",
+    "experimental_engine_enabled": false,
+    "map": "hero-management-v2",
+    "max_days": 365,
+    "max_total_choices": 5120,
+    "opponent": "Nullkiller Easy",
+    "reward": "natural terminal +1/-1 only",
+    "training_games_per_batch": 4
+  },
+  "continuation_started": true,
+  "controller_pid": 23289,
+  "failed_attempts_retained": {
+    "admitted_failed_samples": 0,
+    "artifact_crash_attempt2": true,
+    "failed_batch94_and_unstarted_seeds_reserved": true,
+    "stale_verifier_diagnostic": true,
+    "startup_attempt1": true
+  },
+  "hard_stop_kyiv": "2026-10-26T01:49:09.568623+02:00",
+  "hard_stop_utc": "2026-10-25T23:49:09.568623+00:00",
+  "latest_verified_progress_at_observation": {
+    "decisions": 21300,
+    "rollouts": 372,
+    "updates": 93
+  },
+  "live_controller_command_verified": true,
+  "native_acceptance": {
+    "cases_passed": 28,
+    "summary": "validation/capabilities-artifact-fix-2026-10-26.json",
+    "transactions_checked": 3120,
+    "unchecked_transactions": 0
+  },
+  "new_two_hour_budget": false,
+  "observed_utc": "2026-10-25T22:22:01.902194+00:00",
+  "original_window_started_utc": "2026-10-25T21:49:09.568623+00:00",
+  "pending_plan_at_observation": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-096/plan.json",
+  "release": {
+    "bytes": 27131,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/release.json",
+    "sha256": "01f0f8cb7093978207f276c324b9a964fcf3c8f60b97063c61516120183cb627"
+  },
+  "release_timestamp_note": "The immutable release copied its released_at_utc metadata from repair2. Actual repair3 start is the session attempt_started_unix recorded above; source, runtime, release hash and original deadlines were verified before launch.",
+  "runtime_directory": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2",
+  "schema": "heroes-local-v8-repair3-launch-v1",
+  "session": {
+    "bytes": 8308,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-v8-update92-repair3/campaign-session.json",
+    "sha256": "d534edeb9bb88f69bddda56f4543832b7ef5f0c928a49411d0d0c9fe106c0163"
+  },
+  "source_commit": "fe62a8096ef5dc445ebc5769794c94447b447421",
+  "state": "running",
+  "status_is_dated_not_live": true,
+  "strategic_improvement_demonstrated": false
+}
