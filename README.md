@@ -10,8 +10,9 @@ omniscient and player-fog videos.
 against Nullkiller Easy**, covering both learner colors. The neural cohort hit
 its shared one-hour limit during validation of game five; that attempt remains
 unscored and three games were not started. The Easy comparison stopped on game
-five because terminal request accounting does not yet accept a client-only town
-building command. That row is unscored and three games were not started. Neither
+five because terminal request accounting did not accept a client-only town
+building command. The narrow repair now passes a separate retained-capture native
+diagnostic; that original row stays unscored and three games were not started. Neither
 cohort performed optimizer updates. Both retain their original eight-row
 schedules and reused seeds; this is repaired-runtime validation, not evidence of
 learning or a new held-out evaluation. The specific real Frost Ring replay that
@@ -2645,10 +2646,28 @@ same map, fog, rules, rewards and frozen learner. Its first four games ended in
 verified defeats after 23, 13, 28 and 27 learner choices. The fifth reached a local
 natural terminal but failed before independent replay: a native `BuildStructure`
 request was emitted during the final callbacks and never became an authoritative
-server input. The verifier currently recognizes only `MoveHero` in this exact
-terminal-unapplied position. This is an accounting coverage gap, not evidence of
+server input. The frozen verifier recognized only `MoveHero` in this exact
+terminal-unapplied position. This was an accounting coverage gap, not evidence of
 a native replay divergence; the original fifth row remains failed and unscored.
 No retry or replacement game is included in either cohort.
+
+The subsequent repair admits a typed `BuildStructure` under the same strict
+single-request, opposite-seat, contiguous-ID, final receipt-range and terminal
+barrier checks. The command remains unapplied; no gameplay or scoring rule changes.
+Thirty-four focused tests pass, including 231 real native codec/corruption checks
+over both packet types and both learner seats. Only `vcmireplay` was rebuilt.
+A separate diagnostic of the retained fifth capture now regenerates all 89
+authoritative inputs and 595 packets, checks all 90 client request attempts,
+9 responses, 20 messages and 672 transactions, and records zero unchecked items
+or divergence. All 26 bound original files, the checkpoint and nonverifier runtime
+binaries remain unchanged. The diagnostic is explicitly optimizer-ineligible,
+has null scores and cannot admit the original failed row. Evidence is in
+`validation/build-terminal-diagnostic-2026-10-25.json`.
+
+The repair's correctness checks overlapped Claude's instrumented offline profiling
+from 12:06:41 to 12:07:52 UTC, after both scientific cohorts had finished. That
+overlap is recorded and excluded from clean performance comparisons; it does not
+alter the cohorts or establish a speed result.
 
 Phase measurements also separate gameplay from validation overhead. In the first
 neural game, the manifest's collection interval was 220.38 seconds, the evaluator's
