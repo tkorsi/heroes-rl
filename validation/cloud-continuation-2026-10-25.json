@@ -672,14 +672,49 @@
     }
   ],
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 1260,
-    "cross_army_operations": 118,
+    "cross_army_net_count_redistribution": 1275,
+    "cross_army_operations": 120,
     "moves_toward_visible_opponent_town": 0,
     "recruitment_completed": 50,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 47
+    "visible_battle_starts": 49
   },
   "heldout_checks": [
+    {
+      "at_update": 31,
+      "plan_sha256": "0e6f286eda71593577a0ceb46a67949a277157f39d94e0c2e0d9cbab53e9099c",
+      "report_sha256": "e31c29838bb1894a954dacd92820c5320ba50f9281e14d0d1ba1dddba766f597",
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 15,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 15,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-final-heldout-update-031",
+      "wall_seconds": 21.185310797000056
+    },
     {
       "at_update": 25,
       "plan_sha256": "4d6a0498f069386aa0963f05dfdc999c7f2b2aaaed2ed383e3e0dae06e87d382",
@@ -834,13 +869,13 @@
   "totals": {
     "adam_steps": 104,
     "cutoff": 1,
-    "evaluation_games": 6,
-    "loss": 45,
+    "evaluation_games": 8,
+    "loss": 47,
     "training_games": 40,
     "training_samples": 2832,
     "training_wall_milliseconds": 3200917,
     "updates": 10,
-    "verified_games": 46
+    "verified_games": 48
   },
-  "updated_utc": "2026-10-25T17:17:55.091283+00:00"
+  "updated_utc": "2026-10-25T17:24:44.394026+00:00"
 }

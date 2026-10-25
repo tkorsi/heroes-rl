@@ -1,28 +1,87 @@
 {
-  "activity": "No new batch launched: 1924.9s remains before compute cutoff; safe estimate is2234.5s.",
+  "activity": "Fixed compute cutoff reached. No learning, capture or replay remains active; update31 and independent backups are preserved. Results are ready for analysis.",
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 1260,
-    "cross_army_operations": 118,
+    "cross_army_net_count_redistribution": 1275,
+    "cross_army_operations": 120,
     "moves_toward_visible_opponent_town": 0,
     "recruitment_completed": 50,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 47
+    "visible_battle_starts": 49
   },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
   "deadline": {
     "authorized_window_start_utc": "2026-10-25T15:53:00Z",
+    "compute_cutoff_reached": true,
     "compute_stop_utc": "2026-10-25T17:50:00Z",
     "engineering_job_guard": "tools/run_cloud_teacher_job.py",
     "hard_stop_utc": "2026-10-25T17:53:00Z",
     "owned_child_timeout_smoke": "passed; child stopped after 0.5-second bound with exit137",
     "restart_after_cutoff_authorized": false,
+    "stop_observed_utc": "2026-10-25T17:50:00.029876+00:00",
+    "stop_publication_guardian": {
+      "absolute_publication_end_utc": "2026-10-25T17:52:50Z",
+      "evidence": "/workspace/Heroes-artifacts/session/final-stop-publisher-guardian.jsonl"
+    },
     "watchdog_pid": 9430,
     "watchdog_private_receipt": "/workspace/Heroes-artifacts/session/deadline-watchdog.json",
     "worker_and_native_absolute_guardians": true
   },
   "experimental_replay_worker_enabled": false,
+  "final_analysis": {
+    "behavior": {
+      "across_army_operations": 120,
+      "battle_role_defender": 49,
+      "movement_attempts": 115,
+      "movement_endpoint_changes": 13,
+      "moves_toward_visible_opponent_town": 0,
+      "observed_cross_army_net_count_redistribution": 1275,
+      "recruitment_completed_actions": 50,
+      "town_capture_evidence": 0
+    },
+    "cutoffs": 1,
+    "model_tensor_count": 39,
+    "model_tensors_changed": 39,
+    "natural_losses": 47,
+    "natural_wins": 0,
+    "no_new_training_decision_utc": "2026-10-25T17:17:55.061561+00:00",
+    "path": "validation/cloud-final-analysis-2026-10-25.json",
+    "private_analysis_commit": "089d5a4",
+    "three_checkpoint_copies_restored_exactly": true
+  },
   "heldout_checks": [
+    {
+      "at_update": 31,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 15,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 15,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-final-heldout-update-031"
+    },
     {
       "at_update": 25,
       "rows": [
@@ -173,7 +232,7 @@
     "native_build": "passed_linux_v2",
     "same_runtime_replay": "passed_both_seats"
   },
-  "next_step": "Continue fresh complete batches and required fixed held-out pairs only while sufficient absolute deadline reserve remains.",
+  "next_step": "Analyze the published results. Do not restart without a new user instruction.",
   "next_unused_training_sequence": 22,
   "optimizer_status_observed": {
     "branch": "codex/portable-engine-session",
@@ -216,7 +275,13 @@
     "admitted_rollouts": 40,
     "updates": 10
   },
-  "state": "stopped_for_deadline_reserve",
+  "state": "stopped",
+  "stop_evidence": {
+    "live_native_processes": [],
+    "path": "results/cloud-deadline-stop-2026-10-25.json",
+    "private_commit": "5543039615394f32edc3634cfdf80d198fd296c3",
+    "sha256": "e3f498978c1d6831beaf3a156a7f491e41d07e6ba456f491e1ea64b3a208ca3c"
+  },
   "throughput": {
     "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
     "reported_training_batch_wall_seconds": 3200.917,
@@ -224,16 +289,16 @@
     "verified_training_games_per_reported_batch_second": 0.012496418994931766
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T17:17:55.092252+00:00",
+  "updated_utc": "2026-10-25T17:50:00.029876+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 104,
     "cutoff": 1,
-    "evaluation_games": 6,
-    "loss": 45,
+    "evaluation_games": 8,
+    "loss": 47,
     "training_games": 40,
     "training_samples": 2832,
     "training_wall_milliseconds": 3200917,
     "updates": 10,
-    "verified_games": 46
+    "verified_games": 48
   }
 }

@@ -1,0 +1,224 @@
+{
+  "all_completed_game_replays_and_cleanup_verified": true,
+  "authorized_window_seconds": 7200,
+  "behavior_evidence": {
+    "limitations": [
+      "Attacker role alone does not distinguish neutral from opponent combat.",
+      "Recruitment counts completed actions, not necessarily distinct units.",
+      "Cross-army redistribution is summed per-operation visible net change, not distinct units or strategic concentration."
+    ],
+    "scope": "Verified own player-visible histories only, including training and fixed evaluations; failed/diagnostic cohorts excluded.",
+    "totals": {
+      "across_army_operations": 120,
+      "battle_role_defender": 49,
+      "movement_attempts": 115,
+      "movement_endpoint_changes": 13,
+      "moves_toward_visible_opponent_town": 0,
+      "observed_cross_army_net_count_redistribution": 1275,
+      "recruitment_completed_actions": 50,
+      "town_capture_evidence": 0
+    },
+    "verified_episodes": 48
+  },
+  "checkpoint_restoration": {
+    "copies": {
+      "canonical": {
+        "checkpoint": "builtin-pilot-after-23f9ad687ffe3640",
+        "exact_model_adam_rng_progress_pool": true,
+        "progress": {
+          "decisions": 6776,
+          "rollouts": 124,
+          "updates": 31
+        },
+        "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+      },
+      "independent_backup": {
+        "checkpoint": "builtin-pilot-after-23f9ad687ffe3640",
+        "exact_model_adam_rng_progress_pool": true,
+        "progress": {
+          "decisions": 6776,
+          "rollouts": 124,
+          "updates": 31
+        },
+        "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+      },
+      "private_git_snapshot": {
+        "checkpoint": "builtin-pilot-after-23f9ad687ffe3640",
+        "exact_model_adam_rng_progress_pool": true,
+        "progress": {
+          "decisions": 6776,
+          "rollouts": 124,
+          "updates": 31
+        },
+        "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+      }
+    },
+    "optimizer_steps": 253,
+    "original_update21_checkpoint_hashes_unchanged": true,
+    "restart_after_deadline_authorized": false,
+    "schema": "heroes-final-cloud-checkpoint-restore-v1"
+  },
+  "compute_deadline_utc": "2026-10-25T17:50:00Z",
+  "hard_deadline_utc": "2026-10-25T17:53:00Z",
+  "heldout_checks": [
+    {
+      "at_update": 21,
+      "choices": [
+        72,
+        150
+      ],
+      "outcomes": [
+        "loss",
+        "loss"
+      ],
+      "run": "linux-update21-gate-002"
+    },
+    {
+      "at_update": 25,
+      "choices": [
+        132,
+        150
+      ],
+      "outcomes": [
+        "loss",
+        "loss"
+      ],
+      "run": "cloud-heldout-update-025"
+    },
+    {
+      "at_update": 30,
+      "choices": [
+        72,
+        53
+      ],
+      "outcomes": [
+        "loss",
+        "loss"
+      ],
+      "run": "cloud-heldout-update-030"
+    },
+    {
+      "at_update": 31,
+      "choices": [
+        72,
+        15
+      ],
+      "outcomes": [
+        "loss",
+        "loss"
+      ],
+      "run": "cloud-final-heldout-update-031"
+    }
+  ],
+  "interpretation": [
+    "Training updated model parameters and preserved complete resumable state.",
+    "No learner win or held-out win/loss improvement was observed.",
+    "Recruitment and army redistribution occurred, with limited movement and no observed learner-initiated battles.",
+    "The single verified day-limit cutoff is unscored and was bootstrapped; it is not a natural loss.",
+    "Repeated fixed held-out checks are not independent win-rate samples."
+  ],
+  "latest_complete": {
+    "adam_steps": 253,
+    "after_checkpoint": {
+      "exact_model_adam_rng_progress_pool": true,
+      "policy": {
+        "bytes": 637363,
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/after-policy.pt",
+        "sha256": "84b0cc3c884023b92c68bc7b98c4499a97d65d39492ceaade4fe1e4c06dd45a3"
+      },
+      "resume": {
+        "bytes": 1265461,
+        "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/after-resume.pt",
+        "sha256": "63ddf8d19fbd3a963a6886f9bfa4df6944e7a8d68b53f8b34ddfe39d6af86bf4"
+      },
+      "weights_sha256": "23f9ad687ffe36403cfd18fa61a2b94eb260c02ddb30cb273cdfb2ed1d8fedb2"
+    },
+    "plan": {
+      "bytes": 50062,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/plan.json",
+      "sha256": "b6e02771ab069cd541f57716d9b9d36974fb9b37c1c360f9b1e3c8bebc76f228"
+    },
+    "progress": {
+      "decisions": 6776,
+      "rollouts": 124,
+      "updates": 31
+    },
+    "report": {
+      "bytes": 10417,
+      "path": "/workspace/Heroes-artifacts/runs/cloud-continuation-2026-10-25-031/execution/report.json",
+      "sha256": "b6fcb958deaf4cb4997254dca7f31b4ec67848d85e934e452a06d923e921133b"
+    }
+  },
+  "live_native_processes": [],
+  "minimal_native_fix_sha": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "model_tensor_count": 39,
+  "model_tensors_changed": 39,
+  "native_recipe_exact": true,
+  "no_new_training_decision_utc": "2026-10-25T17:17:55.061561+00:00",
+  "optional_workers_used": false,
+  "policy_features_ppo_math_sources_unchanged": true,
+  "prepared_utc": "2026-10-25T17:31:30.815284+00:00",
+  "private_results": {
+    "analysis_commit": "089d5a4",
+    "analysis_manifest": "results/final-analysis-2026-10-25.json",
+    "branch": "codex/cloud-teacher-results",
+    "checkpoint_run": "checkpoints/cloud/cloud-continuation-2026-10-25-031",
+    "repository": "tkorsi/heroes-rl-training-state"
+  },
+  "reason_no_further_training": "Measured full-batch safety estimate exceeded remaining compute window; checkpoint preservation and final paired evaluation retained priority.",
+  "restart_authorized": false,
+  "schema": "heroes-cloud-final-analysis-v1",
+  "since_update21": {
+    "adam_steps": 104,
+    "admitted_decisions": 2832,
+    "admitted_training_games": 40,
+    "updates": 10
+  },
+  "source_changes": {
+    "experiments/learner/builtin_first_run.py": {
+      "from": "29d8d9b5da2eccd5c7a13b01edd33a6af74537d1f43483b52b30c5f7b38dc005",
+      "to": "550812dea5b8d0fc9ed3913745ee3097f46286be13fb4b57e74718ea454e5ceb"
+    },
+    "experiments/learner/builtin_gameplay.py": {
+      "from": "5d36eafaeb3bce3c6a813197524038cd7da8e07ae34c1801e01b5bc96e8436ba",
+      "to": "df01492aef99d555f35251bb4a30738564decdf41308b85220f549e9acf16670"
+    },
+    "experiments/learner/builtin_preservation.py": {
+      "from": "0133eb5a4c0b3e050b70a3fb134a24d65577b7df254eabd4a0f90391328ed204",
+      "to": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e"
+    },
+    "experiments/learner/builtin_training.py": {
+      "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
+      "to": "19020e6b1e1e78ec28749c775c734b89a7f74d9b59305a0137cd607f57d4f542"
+    },
+    "experiments/learner/builtin_training_resume.py": {
+      "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
+      "to": "8dd7c97802c8002712ce0183832f4ad5d3dacbd5f19ef6c1c707943fee334a30"
+    },
+    "experiments/learner/checkpoints.py": {
+      "from": "9abf3b84a180220a77548b4671129b51dccfcd92edb5a10b08375d49e8bd0000",
+      "to": "bb853a0040366d11030de70cc2a617dc0fd627ded279228c6905d1af05c66abb"
+    }
+  },
+  "state": "learning_stopped_analysis_preserved",
+  "throughput": {
+    "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
+    "reported_training_batch_wall_seconds": 3200.917,
+    "scope": "Batch wall includes capture, audits, replay, PPO, checkpoint roundtrip and supervised cleanup; excludes preparation and private publication.",
+    "verified_training_games_per_reported_batch_second": 0.012496418994931766
+  },
+  "total_adam_steps": 253,
+  "unscored_separate_evidence": {
+    "gdb_reproductions": 2,
+    "original_failed_gate_games": 1,
+    "unstarted_gate_seats": 1
+  },
+  "valid_cloud_episodes": {
+    "heldout_games": 8,
+    "natural_learner_losses": 47,
+    "natural_learner_wins": 0,
+    "total": 48,
+    "training_games": 40,
+    "verified_cutoffs": 1
+  }
+}

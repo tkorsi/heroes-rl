@@ -41,12 +41,14 @@ Latest evidence is timestamped, not a live activity guarantee:
   [native session evidence](validation/native-engine-session-2026-10-25.json).
 - [Contextual pipeline performance](validation/performance-2026-10-25.json).
 
-The imported Teacher baseline was update 21. At the recorded 17:17 UTC snapshot,
-cloud continuation reached update 31: 40 new training games, 10 PPO updates and
-6 evaluation games. The 46 verified games produced 45 natural losses and one
-cutoff. The Teacher stopped launching batches to preserve its deadline reserve;
-the checkpoint restoration was exact. Changed weights or occasional recruitment
-are not proof of improved strategy.
+The completed cloud session continued update 21 to **update 31**: 40 new
+training games, ten PPO updates and eight evaluation games. Its 48 verified
+games produced **zero wins, 47 natural losses and one day-limit cutoff**. The
+checkpoint preserves 124 cumulative rollouts, 6,776 decisions and 253 Adam
+steps; model, optimizer, RNG, progress and pool restored exactly from three
+copies. The cloud Teacher stopped by its fixed deadline with no native
+processes remaining. See the [final analysis](validation/cloud-final-analysis-2026-10-25.json).
+Changed weights or occasional recruitment do not establish improved strategy.
 
 ## Experiment agreement
 
@@ -68,19 +70,28 @@ are not proof of improved strategy.
 - Gameplay training needs its explicit experiment scope and budget. Unit tests
   may exercise synthetic PPO; they do not start a gameplay campaign.
 
-### Current bounded cloud session
+### Current local continuation
 
-The separately pinned cloud Teacher uses **5120 total choices per game**
-(4960 ordinary plus 160 reserve), fixed evaluations and durable private
-snapshots. Compute stops at **2026-10-25 17:50 UTC**; all work must stop by
-**17:53 UTC (19:53 Kyiv)**. Restart afterward is not authorized. The dated
-campaign tools deliberately expire with this session.
+The user authorized a new **local Mac session lasting at most two hours**, then
+shutdown and analysis. New episodes use **365 game days** and **5120 total
+choices** (4960 ordinary plus 160 reserve), whichever limit is reached first.
+Use complete four-game PPO batches and both-seat fixed evaluation. The training
+clock starts when the prepared campaign launches; allow time within the bound
+for safe shutdown and checkpoint preservation.
 
-Merging `main` does not update/restart that pinned checkout. Performance code
-changes source identities: continuing its old checkpoint on `main` requires a
-separately reviewed exact source/runtime transition and fresh checks. Never
-bypass guards or rewrite historical metadata. Weights, Adam and RNG state are
-preserved in private storage.
+Continue the preserved **cloud update 31**, including Adam, RNG, progress and
+pool; never resume the stale local update 21. Preparation must first validate an
+explicit, exactly bound Linux-to-Mac and source transition, then fresh native
+capture/replay in both seats. The current ordinary cold-process backend remains
+the training runtime. Claude's in-process engine work is separate and
+experimental. Preparation is not training; dated local evidence must confirm
+that the campaign actually launched.
+
+The earlier cloud session is complete. Its compute cutoff was **2026-10-25
+17:50 UTC** and final stop **17:53 UTC (19:53 Kyiv)**. Its dated tools remain
+expired and its original 30-day configurations/results remain immutable. The
+new local authorization does not restart cloud work or rewrite historical
+metadata. Weights and full optimizer state remain in private storage.
 
 ## Source layout
 
