@@ -33,3 +33,29 @@ verifier, including full private-view messages and terminal accounting. They do
 not replace Teacher's failed 72-choice gate. Rebuild and rerun that restored
 policy's fresh Linux gate before training; preserve the original failure
 unscored. Compact evidence: `validation/native-headless-shutdown-2026-10-25.json`.
+
+## Separate terminal-attempt contract extension
+
+A later fresh Linux workload exposed a different case: one native
+`TradeOnMarketplace` request issued while the final authoritative terminal
+packets were being consumed never reached server application. Closing admission
+after the first client terminal callback cannot prevent requests already issued
+before it; that attempted guard was not retained.
+
+The existing request-accounting contract now recognizes this fourth concrete
+packet type alongside `MoveHero`, `BuildStructure` and `EndTurn`. Its proof
+requirements are unchanged: the independently replayed final terminal input and
+its exact packet range, one opposite-seat native request with the immediately
+next ID, decoded bytes bound to metadata, the matching actual terminal close,
+no later learner response, and complete agreement of all applied inputs,
+packets, states and client history. Unknown request types remain rejected. The
+attempt is counted and retained as **unapplied**, never executed, charged or
+invented as a successful trade. No game rule, opponent algorithm or learner
+behavior changes; this is an explicit verifier-contract extension.
+
+The real packet/codec tamper matrix covers both seats and all four admitted
+types (460 checks). Retained failed captures may have separately named
+supplemental diagnostics under the extended contract; the original failed rows
+remain unscored. Fresh games and their unchanged native checks establish new
+admission. Teacher owns any exact checkpoint/runtime-binding transition and
+must rerun its current gate before training.
