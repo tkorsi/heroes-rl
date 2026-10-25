@@ -1,0 +1,33 @@
+{
+  "schema": "heroes-cloud-optimizer-status-v1",
+  "timestamp_utc": "2026-10-25T15:42:31.072866+00:00",
+  "branch": "codex/portable-engine-session",
+  "current_activity": "Private user-provided assets are cloning outside public tree; native live-session benchmark source/build complete, merged Teacher correctness regression running.",
+  "source_commit": "1c6d848083b0133b69926fc680d7bb1b78ecbdd9",
+  "latest_pushed_commit": "f52b5df",
+  "latest_tested_commit": "d87ea64",
+  "checks": {
+    "native_transport_host_socket": {
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Asset-free contracts only; no real-game throughput"
+    },
+    "merged_source_recipe": "passed",
+    "merged_native_build": "passed",
+    "merged_focused_regressions": "running"
+  },
+  "real_benchmarks": {
+    "completed_games": 0,
+    "captured_native_replays": 0,
+    "speedup_established": false,
+    "full_live_reset_reuse_established": false
+  },
+  "asset_transfer": {
+    "access": "succeeded",
+    "state": "private Git clone in progress outside public source tree"
+  },
+  "blocker": "Awaiting completion of private asset transfer before fresh Linux gameplay validation.",
+  "next_step": "Reconstruct and verify private parts, configure isolated Linux profile, then run real cold/reused A/B/A and independent native capture replay.",
+  "training": false
+}
