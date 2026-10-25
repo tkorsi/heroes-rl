@@ -1,12 +1,12 @@
 {
-  "activity": "No new batch launched: 1924.9s remains before compute cutoff; safe estimate is2234.5s.",
+  "activity": "Learning stopped at update31; final fixed held-out pair passed with0 wins/2 losses. Final canonical, independent backup and private Git checkpoint copies restore exactly; preparing final evidence and remaining available until17:53 UTC.",
   "behavior_diagnostics": {
-    "cross_army_net_count_redistribution": 1260,
-    "cross_army_operations": 118,
+    "cross_army_net_count_redistribution": 1275,
+    "cross_army_operations": 120,
     "moves_toward_visible_opponent_town": 0,
     "recruitment_completed": 50,
     "town_capture_evidence": 0,
-    "visible_battle_starts": 47
+    "visible_battle_starts": 49
   },
   "blocker": null,
   "checkpoint_pair_restore_exact": true,
@@ -23,6 +23,38 @@
   },
   "experimental_replay_worker_enabled": false,
   "heldout_checks": [
+    {
+      "at_update": 31,
+      "rows": [
+        {
+          "choices": 72,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 0,
+            "cross_army_operations": 0,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 0
+        },
+        {
+          "choices": 15,
+          "diagnostics": {
+            "cross_army_net_count_redistribution": 15,
+            "cross_army_operations": 2,
+            "moves_toward_visible_opponent_town": 0,
+            "recruitment_completed": 0,
+            "town_capture_evidence": 0,
+            "visible_battle_starts": 1
+          },
+          "outcome": "loss",
+          "seat": 1
+        }
+      ],
+      "run": "cloud-final-heldout-update-031"
+    },
     {
       "at_update": 25,
       "rows": [
@@ -216,7 +248,7 @@
     "admitted_rollouts": 40,
     "updates": 10
   },
-  "state": "stopped_for_deadline_reserve",
+  "state": "analyzing_before_hard_stop",
   "throughput": {
     "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
     "reported_training_batch_wall_seconds": 3200.917,
@@ -224,16 +256,16 @@
     "verified_training_games_per_reported_batch_second": 0.012496418994931766
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T17:17:55.092252+00:00",
+  "updated_utc": "2026-10-25T17:24:44.395184+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 104,
     "cutoff": 1,
-    "evaluation_games": 6,
-    "loss": 45,
+    "evaluation_games": 8,
+    "loss": 47,
     "training_games": 40,
     "training_samples": 2832,
     "training_wall_milliseconds": 3200917,
     "updates": 10,
-    "verified_games": 46
+    "verified_games": 48
   }
 }
