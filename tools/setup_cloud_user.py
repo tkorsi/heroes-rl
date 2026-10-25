@@ -81,6 +81,8 @@ def setup(prefix):
         f'export LIBRARY_PATH={q(str(sysroot / "usr/lib/x86_64-linux-gnu"))}',
         f'export PKG_CONFIG_PATH={q(str(sysroot / "usr/lib/x86_64-linux-gnu/pkgconfig"))}:{q(str(sysroot / "usr/share/pkgconfig"))}',
         f'export CCACHE_DIR={q(str(prefix / "ccache"))}',
+        # Avoid retaining a static SDL2 cache entry from an incomplete configure.
+        f'export HEROES_CLOUD_SDL2_LIBRARY={q(str(sysroot / "usr/lib/x86_64-linux-gnu/libSDL2.so"))}',
         'export OMP_NUM_THREADS=1', 'export MKL_NUM_THREADS=1', 'export HEROES_CLOUD_BUILD_JOBS=2',
     ]) + '\n'
     (prefix / 'activate.sh').write_text(activation)

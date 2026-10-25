@@ -29,6 +29,7 @@ Environment overrides (relative paths are relative to the repository root):
   HEROES_CLOUD_PYTHON       Python used to create the venv (default: python3)
   HEROES_CLOUD_VENV         Venv directory (default: .venv, ignored by Git)
   HEROES_CLOUD_BUILD_JOBS   Concurrent compiler jobs (default: 2)
+  HEROES_CLOUD_SDL2_LIBRARY Explicit SDL2 shared library for a relocated prefix
 
 The build directory is fixed at vcmi/build because native tests use that path.
 
@@ -66,6 +67,10 @@ CLOUD_PYTHON="${HEROES_CLOUD_PYTHON:-python3}"
 CLOUD_VENV="${HEROES_CLOUD_VENV:-$ROOT/.venv}"
 CLOUD_BUILD="$ROOT/vcmi/build"
 CLOUD_JOBS="${HEROES_CLOUD_BUILD_JOBS:-2}"
+CLOUD_CMAKE_ARGS=()
+if [ -n "${HEROES_CLOUD_SDL2_LIBRARY:-}" ]; then
+  CLOUD_CMAKE_ARGS+=("-DSDL2_LIBRARY=$HEROES_CLOUD_SDL2_LIBRARY")
+fi
 [[ "$CLOUD_JOBS" =~ ^[1-9][0-9]*$ ]] || die "HEROES_CLOUD_BUILD_JOBS must be a positive integer."
 
 if [ "$DRY_RUN" -eq 0 ]; then
@@ -152,7 +157,8 @@ for stage in "${STAGES[@]}"; do
         -DENABLE_NULLKILLER2_AI=OFF -DENABLE_STUPID_AI=OFF \
         -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF -DENABLE_MMAI=OFF \
         -DENABLE_DISCORD=OFF -DENABLE_TRANSLATIONS=OFF -DENABLE_VIDEO=OFF \
-        -DENABLE_LUA=OFF -DENABLE_ERM=OFF -DENABLE_LOBBY=OFF -DENABLE_TEST=OFF
+        -DENABLE_LUA=OFF -DENABLE_ERM=OFF -DENABLE_LOBBY=OFF -DENABLE_TEST=OFF \
+        "${CLOUD_CMAKE_ARGS[@]}"
       run cmake --build "$CLOUD_BUILD" --parallel "$CLOUD_JOBS" \
         --target vcmiclient vcmiserver ExplorerRL BattleAI Nullkiller vcmireplay
       ;;
