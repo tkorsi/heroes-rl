@@ -312,3 +312,9 @@ profile, and actual A/B/A native capture/contextual/observation files covering
 the matrix above. The prior native probe failed before ready on missing
 `DATA/VCDESC`. This milestone provides no real reset-equivalence or speedup
 result and does not integrate with the Teacher or a second gameplay verifier.
+
+Validation for this extension: **24 focused tests pass, zero skips**; `vcmireplay`
+builds, the repeat build has no work, and exact recipe agreement passes.
+The source-build native probe emits no ready receipt and exits 3 for missing
+`DATA/VCDESC`. Compact measured evidence, temporary-fixture scope and remaining
+prerequisites: [runtime inventory validation](../validation/optimizer-runtime-inventory-2026-10-25.json).
