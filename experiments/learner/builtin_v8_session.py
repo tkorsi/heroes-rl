@@ -11,7 +11,46 @@ from .inference import source_identity
 
 ROOT = Path(__file__).resolve().parents[2]
 SCOPE = 'heroes-local-v8-update92-v1'
-SESSION = DURABLE_ROOT/'local-v8-update92/campaign-session.json'
+ORIGINAL_SESSION = DURABLE_ROOT/'local-v8-update92/campaign-session.json'
+REPAIR = os.environ.get('HEROES_V8_REPAIR', '')
+require(REPAIR in ('', 'attempt2'), 'Only explicit repair attempt2 is supported')
+SESSION = (DURABLE_ROOT/'local-v8-update92-repair2/campaign-session.json') if REPAIR else ORIGINAL_SESSION
+RUN_PREFIX = 'v8-update92-repair2' if REPAIR else 'v8-update92'
+ORIGINAL_SESSION_SHA = 'fc9fa9d5de659a2d833918fe9b373343074dfd3729b62e752dd7564b9dcc376f'
+ORIGINAL_FAILURE_SHA = '4a62c384c566f1b8d03fdcbf63702147bce9e4674adc3881a1fa68b01df2cd21'
+
+
+def repair_origin(release):
+    repair = release.get('repair')
+    if not REPAIR:
+        require(repair is None, 'Repair release requires explicit attempt2 mode')
+        return None
+    require(type(repair) is dict and repair.get('attempt') == 2, 'Explicit repair attempt2 release required')
+    require(repair['original_session'] == binding(ORIGINAL_SESSION)
+            and repair['original_session']['sha256'] == ORIGINAL_SESSION_SHA,
+            'Repair must bind the exact consumed original session')
+    original = checked(repair['original_session'])
+    failure_path = DURABLE_ROOT/'runs/v8-update92-heldout-092/execution/report.json'
+    require(repair['failure'] == binding(failure_path)
+            and repair['failure']['sha256'] == ORIGINAL_FAILURE_SHA, 'Repair must retain exact failed baseline')
+    failed = checked(repair['failure'])
+    require(failed['training_samples'] == failed['optimizer_steps'] == 0
+            and failed['attempts'][0]['sampled_choices'] == 0
+            and failed['attempts'][1]['status'] == 'not_started', 'Only zero-choice startup repair is authorized')
+    require(repair['controller_result'] == binding(ORIGINAL_SESSION.parent/'controller-result.json'),
+            'Repair must bind original cleanup')
+    cleanup = checked(repair['controller_result'])
+    require(cleanup['controller_cleanup_verified'] is True and cleanup['cleanup_incomplete'] == [],
+            'Original controller cleanup is incomplete')
+    require(repair.get('absolute_deadline_unix') == original['absolute_deadline_unix']
+            and original['absolute_deadline_unix'] == original['started_unix']+7200
+            and original['compute_deadline_unix'] == original['started_unix']+6900,
+            'Repair cannot reset or extend original wall budget')
+    require(time.time() < original['compute_deadline_unix']
+            and 0 <= time.monotonic()-original['started_monotonic'] < 6900,
+            'Original repair window expired')
+    return original
+
 FEATURES = ('marketplace', 'purchases', 'artifact_equipment', 'artifact_assembly', 'artifact_transfer',
     'level_up', 'adventure_spells', 'visions', 'flight_movement', 'water_walk_movement',
     'eagle_eye', 'stables', 'neutral_join')
@@ -131,6 +170,7 @@ def validate_release(path):
                     for row in matching), 'Required native feature/seat has no actual passed case')
     for proof in value.get('additional_evidence', []):
         checked(proof)
+    repair_origin(value)
     return value
 
 
@@ -143,11 +183,15 @@ def create_session(release_path):
     require(not SESSION.exists(), 'Consumed v8 session cannot restart')
     with SESSION.with_suffix('.lock').open('x') as stream:
         stream.write(str(os.getpid())+'\n')
-    now = time.time()
-    value = {'schema': SCOPE, 'mode': 'campaign', 'started_unix': now, 'started_monotonic': time.monotonic(),
+    origin = repair_origin(release)
+    now = origin['started_unix'] if origin else time.time()
+    monotonic = origin['started_monotonic'] if origin else time.monotonic()
+    value = {'schema': SCOPE, 'mode': 'campaign', 'started_unix': now, 'started_monotonic': monotonic,
         'absolute_deadline_unix': now+7200, 'compute_deadline_unix': now+6900,
         'release': binding(release_path), 'configuration': configuration(), 'source': release['source'],
         'authorization': AUTHORIZATION, 'controller_pid': os.getpid(), 'controller': binding(ROOT/'tools/v8_teacher_campaign.py')}
+    if origin:
+        value.update(repair=release['repair'], attempt_started_unix=time.time(), attempt=2)
     write_new(SESSION, value)
     return value
 
@@ -165,5 +209,10 @@ def session_for(path):
             and value['controller'] == binding(ROOT/'tools/v8_teacher_campaign.py'), 'V8 session code/scope drift')
     checked(value['release'])
     release = validate_release(value['release']['path'])
+    origin = repair_origin(release)
+    if origin:
+        require(value.get('repair') == release['repair'] and value.get('attempt') == 2
+                and all(value[key] == origin[key] for key in ('started_unix', 'started_monotonic',
+                    'absolute_deadline_unix', 'compute_deadline_unix')), 'Repair session changed original budget')
     require(value['source'] == release['source'], 'Session release/source differs')
     return value
