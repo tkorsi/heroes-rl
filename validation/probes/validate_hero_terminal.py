@@ -27,7 +27,7 @@ def main(argv=None):
     parser.add_argument('--data', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seed', type=int, default=102201)
-    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), default=c.HEROES_ENVIRONMENT)
+    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT, c.DIALOGS_ENVIRONMENT), default=c.HEROES_ENVIRONMENT)
     args = parser.parse_args(argv)
     if not 1 <= args.seed < 2147483647:
         parser.error('Use a positive bounded native seed')

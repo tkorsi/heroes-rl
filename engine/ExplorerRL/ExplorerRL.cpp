@@ -186,9 +186,10 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	if(const char * interface = std::getenv("EXPLORER_RL_INTERFACE"))
 	{
 		const std::string name(interface);
-		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1" && name != "adventure-armies-v1" && name != "adventure-heroes-v1" && name != "adventure-army-management-v1")
+		if(name != "movement-v1" && name != "adventure-windows-v1" && name != "adventure-town-v1" && name != "adventure-armies-v1" && name != "adventure-heroes-v1" && name != "adventure-army-management-v1" && name != "adventure-dialogs-v1")
 			throw std::runtime_error("Unsupported ExplorerRL interface");
-		armyManagement = name == "adventure-army-management-v1";
+		adventureDialogs = name == "adventure-dialogs-v1";
+		armyManagement = adventureDialogs || name == "adventure-army-management-v1";
 		heroRecruitment = armyManagement || name == "adventure-heroes-v1";
 		armyTransfer = name == "adventure-heroes-v1" || name == "adventure-armies-v1";
 		townEconomy = heroRecruitment || armyTransfer || name == "adventure-town-v1";
@@ -201,7 +202,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
 	if(contextual && contextualEvidenceEnabled())
-		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement);
+		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
@@ -294,7 +295,7 @@ JsonNode ExplorerRL::message(const std::string & type) const
 {
 	JsonNode result;
 	result["type"].String() = type;
-	result["protocol_version"].Integer() = armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : contextual ? 4 : 3;
+	result["protocol_version"].Integer() = adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : contextual ? 4 : 3;
 	result["player"].Integer() = playerID.getNum();
 	result["episode"].String() = episode;
 	return result;
@@ -407,9 +408,9 @@ void ExplorerRL::run() noexcept
 		auto ready = message("ready");
 		if(contextual)
 		{
-			ready["interface"].String() = armyManagement ? "adventure-army-management-v1" : heroRecruitment ? "adventure-heroes-v1" : armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
-			ready["history_schema"].String() = armyManagement ? "heroes-player-history-v6" : heroRecruitment ? "heroes-player-history-v5" : armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
-			ready["action_schema"].String() = armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+			ready["interface"].String() = adventureDialogs ? "adventure-dialogs-v1" : armyManagement ? "adventure-army-management-v1" : heroRecruitment ? "adventure-heroes-v1" : armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
+			ready["history_schema"].String() = adventureDialogs ? "heroes-player-history-v7" : armyManagement ? "heroes-player-history-v6" : heroRecruitment ? "heroes-player-history-v5" : armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
+			ready["action_schema"].String() = adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 		}
 		else
 		{
@@ -863,7 +864,8 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 		}
 		const auto acknowledged = acknowledgements.find(requestID);
 		if(acknowledged != acknowledgements.end() && (!waitForAdventure || (!moving && !inBattle)
-			|| (armyManagement && contextState.ownHeroExchange && !contextState.ownHeroExchange->installed && !inBattle)))
+			|| (armyManagement && contextState.ownHeroExchange && !contextState.ownHeroExchange->installed && !inBattle)
+			|| (adventureDialogs && contextState.adventureDialog && !contextState.adventureDialog->installed && !inBattle)))
 		{
 			const bool accepted = acknowledged->second;
 			acknowledgements.erase(acknowledged);

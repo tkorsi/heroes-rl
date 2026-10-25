@@ -1,4 +1,4 @@
-add_library(ExplorerRL SHARED ExplorerRL.cpp ExplorerRL.h Contextual.cpp Contextual.h ContextualEvidence.cpp ContextualEvidence.h TownEconomy.cpp TownEconomy.h TownRecruitment.cpp Tavern.cpp ArmyOperations.cpp ArmyOperationRules.h Exchange.cpp TownTransfer.cpp TransferRules.h Notice.cpp Notice.h KnowledgeGrid.h KnowledgePlanner.cpp KnowledgePlanner.h main.cpp StdInc.cpp StdInc.h)
+add_library(ExplorerRL SHARED ExplorerRL.cpp ExplorerRL.h Contextual.cpp Contextual.h ContextualEvidence.cpp ContextualEvidence.h TownEconomy.cpp TownEconomy.h TownRecruitment.cpp Tavern.cpp ArmyOperations.cpp ArmyOperationRules.h Exchange.cpp Dialog.cpp Dialog.h DialogContext.cpp TownTransfer.cpp TransferRules.h Notice.cpp Notice.h KnowledgeGrid.h KnowledgePlanner.cpp KnowledgePlanner.h main.cpp StdInc.cpp StdInc.h)
 target_include_directories(ExplorerRL PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(ExplorerRL PRIVATE vcmi)
 add_dependencies(ExplorerRL BattleAI)

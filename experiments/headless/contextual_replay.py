@@ -23,6 +23,7 @@ import time
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import replay as legacy
 from experiments.headless.army_replay_mutations import army_management_mutations
+from experiments.headless.dialog_replay_mutations import adventure_dialogs_mutations
 from experiments.learner import contextual as contract
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -65,6 +66,9 @@ def bound_evidence(episode, manifest, binary):
             or final.get("streams_complete") != [True, True]
             or final.get("engine_evidence_error") is not None):
         raise ReplayError("Finalization does not bind the recorded episode")
+    if contract.profile_for(manifest["environment"]).dialogs:
+        if "dialog_cutoff_drain" not in manifest or final.get("dialog_cutoff_drain") != manifest["dialog_cutoff_drain"]:
+            raise ReplayError("Finalization does not bind strategic dialog cutoff choices")
     if identity.get("captured_before_launch") is not True:
         raise ReplayError("Native identities were not captured before launch")
     runtime = identity.get("native_runtime_sha256", {})
@@ -231,6 +235,8 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300):
                              for path in (Path(__file__), Path(evidence.__file__), Path(legacy.__file__),
                                           ROOT / "experiments/headless/contextual_replay_history.py",
                                           ROOT / "experiments/headless/army_replay_mutations.py",
+                                          ROOT / "experiments/headless/dialog_replay_mutations.py",
+                                          ROOT / "validation/probes/audit_contextual_histories.py",
                                           ROOT / "experiments/headless/contextual_protocol.py",
                                           Path(contract.__file__)) if path.is_file()}}, "training_performed": False}
     try:
@@ -512,6 +518,7 @@ def tamper_cases(tape):
             selected.add("navigation")
     _hero_recruitment_mutations(tape, add)
     army_management_mutations(tape, add)
+    adventure_dialogs_mutations(tape, add)
     closes = [i for i, row in enumerate(tape) if row.get("kind") == "close"]
     if closes:
         add("missing_natural_close", closes[-1], lambda rows, i: rows.pop(i))

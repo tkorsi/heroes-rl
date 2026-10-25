@@ -2,6 +2,7 @@
 #include "Notice.h"
 
 #include "../../lib/GameLibrary.h"
+#include "../../lib/CSkillHandler.h"
 #include "../../lib/entities/artifact/CArtHandler.h"
 #include "../../lib/spells/CSpellHandler.h"
 
@@ -36,6 +37,7 @@ struct Token
 /// indices to another family; it cannot prove an exact native template.
 struct NativePools
 {
+	size_t limit = 64;
 	int field = 0;
 	std::vector<std::string> raw;
 	std::vector<std::pair<EMetaText, ui32>> local;
@@ -45,7 +47,7 @@ struct NativePools
 
 	template<typename Values> NativePools & operator&(Values & values)
 	{
-		if(values.size() > 64)
+		if(values.size() > limit)
 			unsupported("Unsupported informational notice pool");
 		if constexpr(std::is_same_v<Values, std::vector<std::string>>)
 		{
@@ -102,9 +104,10 @@ std::string localID(const std::pair<EMetaText, ui32> & local)
 	unsupported("Unsupported informational notice local text");
 }
 
-std::vector<Token> readTokens(const MetaString & text)
+std::vector<Token> readTokens(const MetaString & text, size_t limit = 64)
 {
 	NativePools data;
+	data.limit = limit;
 	auto copy = text; // native serialize is non-const; never mutate delivered text
 	copy.serialize(data);
 	if(data.field != 5)
@@ -265,19 +268,216 @@ std::string resultID(const Token & token)
 	if(token.text == "Your opponent lost their last town.") return "heroes.baseline.opponent_lost_last_town";
 	return {};
 }
+
+const Entity * shownContent(const Component & component)
+{
+	if(!LIBRARY) unsupported("Missing static notice content library");
+	const Entity * content = nullptr;
+	if(component.type == ComponentType::SPELL)
+	{
+		const auto id = component.subType.as<SpellID>();
+		if(component.subType != ComponentSubType(id) || component.value || id.getNum() < 0
+			|| !LIBRARY->spellh || static_cast<size_t>(id.getNum()) >= LIBRARY->spellh->size())
+			unsupported("Invalid displayed notice spell");
+		content = LIBRARY->spells()->getById(id);
+	}
+	else if(component.type == ComponentType::SEC_SKILL)
+	{
+		const auto id = component.subType.as<SecondarySkill>();
+		if(component.subType != ComponentSubType(id) || !component.value || *component.value < 1 || *component.value > 3
+			|| id.getNum() < 0 || !LIBRARY->skillh || static_cast<size_t>(id.getNum()) >= LIBRARY->skillh->size())
+			unsupported("Invalid displayed notice secondary skill");
+		content = LIBRARY->skills()->getById(id);
+	}
+	else if(component.type == ComponentType::ARTIFACT)
+	{
+		trophyContentID(component); // exact type/range/core checks, no instance lookup
+		content = LIBRARY->artifacts()->getById(component.subType.as<ArtifactID>());
+	}
+	else unsupported("Unsupported displayed notice content");
+	static const std::regex key("core:[A-Za-z][A-Za-z0-9_]{0,63}");
+	if(!content || !std::regex_match(content->getJsonKey(), key)) unsupported("Unsupported displayed notice content key");
+	return content;
+}
+
+JsonNode shownComponent(const Component & component)
+{
+	JsonNode result;
+	for(const char * key : {"resource", "amount", "owner", "content_id", "skill"}) result[key] = JsonNode();
+	if(component.type == ComponentType::PRIM_SKILL)
+	{
+		const auto skill = component.subType.as<PrimarySkill>();
+		if(component.subType != ComponentSubType(skill) || skill.getNum() < 0 || skill.getNum() > 3
+			|| !component.value || *component.value != 1) unsupported("Invalid displayed primary skill reward");
+		static const std::array<const char *, 4> names{"attack", "defence", "spellpower", "knowledge"};
+		result["kind"].String() = "primary_skill";
+		result["skill"].String() = names.at(skill.getNum());
+		result["amount"].Integer() = *component.value;
+	}
+	else
+	{
+		result["content_id"].String() = shownContent(component)->getJsonKey();
+		result["kind"].String() = component.type == ComponentType::SPELL ? "spell"
+			: component.type == ComponentType::SEC_SKILL ? "secondary_skill" : "artifact";
+		if(component.value) result["amount"].Integer() = *component.value;
+	}
+	return result;
+}
+
+bool nameToken(const Token & token, const char * prefix)
+{
+	const std::regex pattern(std::string(prefix) + "\\.core\\.[A-Za-z][A-Za-z0-9_]{0,63}\\.name");
+	return token.operation == REPLACE_TEXT && std::regex_match(token.text, pattern);
+}
+
+/// Only the v7 enumerated informational families. Returning null delegates to
+/// the unchanged legacy allowlist. No world query or unused substitution is
+/// exposed: static catalog lookup resolves only a delivered visible component.
+JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens,
+	const std::vector<Component> & components, PlayerColor recipient, const std::set<std::string> & ownNames)
+{
+	if(tokens.empty()) return {};
+	std::vector<Token> shown;
+	bool supported = false;
+	// An abandoned mine's native victory continuation precedes flagMine.
+	if(mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
+		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.85"))
+	{
+		shown = tokens;
+		supported = true;
+	}
+	if(mode == EInfoWindowMode::MODAL && components.empty() && tokens.size() == 1
+		&& (exact(tokens[0], APPEND_LOCAL, "core.advevent.87") || exact(tokens[0], APPEND_LOCAL, "core.genrltxt.29")))
+	{
+		shown = tokens;
+		supported = true;
+	}
+	// initializeGuards appends one object-name replacement to these templates,
+	// which have no placeholder. Validate its operation, then discard it.
+	if(mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 2 && tokens[1].operation == REPLACE_RAW)
+		for(const int id : {1, 72, 73, 159, 160})
+			if(exact(tokens[0], APPEND_LOCAL, "core.advevent." + std::to_string(id)))
+			{
+				shown = {tokens[0]};
+				supported = true;
+			}
+	if(mode == EInfoWindowMode::AUTO && components.size() == 1 && tokens.size() == 3
+		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.145") && tokens[2].operation == REPLACE_RAW
+		&& components[0].type == ComponentType::ARTIFACT
+		&& exact(tokens[1], REPLACE_TEXT, shownContent(components[0])->getNameTextID()))
+	{
+		shown = {tokens[0], tokens[1]};
+		supported = true;
+	}
+	// Scholar115 has zero placeholders. Its selected reward name and both
+	// initialized latent variables are unrendered; retain just the actual
+	// delivered primary/secondary/spell component and the template.
+	if(mode == EInfoWindowMode::AUTO && components.size() == 1
+		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.115"))
+	{
+		const auto & component = components[0];
+		const bool selectedName = component.type == ComponentType::SPELL || component.type == ComponentType::SEC_SKILL;
+		const size_t latent = selectedName ? 2 : 1;
+		if(component.type != ComponentType::PRIM_SKILL && !selectedName) unsupported("Invalid Scholar reward component");
+		if(tokens.size() != latent + 3 || !nameToken(tokens[latent], "skill")
+			|| !nameToken(tokens[latent + 1], "spell") || tokens[latent + 2].operation != REPLACE_RAW
+			|| (selectedName && !exact(tokens[1], REPLACE_TEXT, shownContent(component)->getNameTextID())))
+			unsupported("Unsupported Scholar reward grammar");
+		if(selectedName && tokens[1].text != tokens[latent + (component.type == ComponentType::SPELL)].text)
+			unsupported("Scholar selected reward differs from its native variable");
+		shown = {tokens[0]};
+		supported = true;
+	}
+	if(mode == EInfoWindowMode::MODAL && exact(tokens[0], APPEND_LOCAL, "core.genrltxt.139"))
+	{
+		if(tokens.size() < 6 || components.size() < 2 || components[0].type != ComponentType::SEC_SKILL
+			|| components[0].subType != ComponentSubType(SecondarySkill(SecondarySkill::SCHOLAR)))
+			unsupported("Unsupported meeting Scholar components");
+		shownContent(components[0]);
+		size_t position = 1, component = 1;
+		const auto heroName = [&]()
+		{
+			if(position >= tokens.size() || !nameToken(tokens[position], "hero") || !ownNames.contains(tokens[position].text))
+				unsupported("Meeting Scholar hero is not currently owned");
+			return tokens[position++].text;
+		};
+		const auto first = heroName();
+		std::string second;
+		std::set<int> allSpells;
+		const auto section = [&](int prefix, int suffix)
+		{
+			if(position >= tokens.size() || !exact(tokens[position], APPEND_LOCAL, "core.genrltxt." + std::to_string(prefix))) return false;
+			++position;
+			const size_t start = position;
+			while(position < tokens.size() && !exact(tokens[position], APPEND_LOCAL, "core.genrltxt." + std::to_string(suffix))) ++position;
+			if(position == tokens.size()) unsupported("Incomplete meeting Scholar section");
+			const size_t end = position;
+			const size_t count = (end - start + 1) / 2;
+			if(!count || end - start != count * 2 - 1) unsupported("Invalid meeting Scholar list");
+			int previous = -1;
+			for(size_t i = 0; i < count; ++i)
+			{
+				if(component >= components.size() || components[component].type != ComponentType::SPELL)
+					unsupported("Missing meeting Scholar spell component");
+				const auto & spell = components[component++];
+				const int id = spell.subType.as<SpellID>().getNum();
+				if(id <= previous || !allSpells.insert(id).second
+					|| !exact(tokens[start + 2 * i], APPEND_TEXT, shownContent(spell)->getNameTextID()))
+					unsupported("Meeting Scholar spell order differs from components");
+				previous = id;
+				if(i + 1 < count && !(i + 2 == count
+					? exact(tokens[start + 2 * i + 1], APPEND_LOCAL, "core.genrltxt.141")
+					: exact(tokens[start + 2 * i + 1], APPEND_RAW, ", ")))
+					unsupported("Unsupported meeting Scholar separator");
+			}
+			++position;
+			const auto name = heroName();
+			if(name == first || (!second.empty() && second != name)) unsupported("Meeting Scholar hero mismatch");
+			second = name;
+			return true;
+		};
+		const bool learns = section(140, 142);
+		if(learns && position < tokens.size())
+		{
+			if(!exact(tokens[position++], APPEND_LOCAL, "core.genrltxt.141")) unsupported("Missing meeting Scholar conjunction");
+			if(!section(147, 148)) unsupported("Missing meeting Scholar teaching section");
+		}
+		else if(!learns && !section(147, 148)) unsupported("Empty meeting Scholar notice");
+		if(position != tokens.size() || component != components.size()) unsupported("Unused meeting Scholar fields");
+		shown = tokens;
+		supported = true;
+	}
+	if(!supported) return {};
+	JsonNode result;
+	result["display_mode"].String() = mode == EInfoWindowMode::AUTO ? "auto" : "modal";
+	for(const auto & token : shown)
+	{
+		JsonNode value = token.operation == APPEND_RAW ? textToken("append_text", "heroes.notice.comma_space") : tokenJSON(token, recipient);
+		for(const char * key : {"text_id", "number", "owner"}) if(value[key].isNull()) value[key] = JsonNode();
+		result["text"].Vector().push_back(std::move(value));
+	}
+	result["components"].Vector();
+	for(const auto & component : components) result["components"].Vector().push_back(shownComponent(component));
+	return result;
+}
 }
 
 JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	const std::vector<Component> & components, PlayerColor recipient,
-	const std::set<std::string> & ownHeroNameTextIds)
+	const std::set<std::string> & ownHeroNameTextIds, bool adventureDialogs)
 {
-	if(components.size() > 32)
+	if(components.size() > (adventureDialogs ? 128 : 32))
 		unsupported("Too many informational notice components");
 	// Validate recipient even for notices without a player replacement.
 	relative(recipient.getNum(), recipient);
-	const auto tokens = readTokens(text);
+	const auto tokens = readTokens(text, adventureDialogs ? 512 : 64);
 	if(tokens.empty())
 		unsupported("Empty informational notice");
+	if(adventureDialogs)
+	{
+		auto notice = adventureNotice(mode, tokens, components, recipient, ownHeroNameTextIds);
+		if(!notice.isNull()) return notice;
+	}
 	const char * displayMode = nullptr;
 	switch(mode)
 	{

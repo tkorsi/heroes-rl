@@ -38,6 +38,7 @@ public:
 	void gameOver(PlayerColor player, const EVictoryLossCheckResult & result) override;
 	void heroGotLevel(const CGHeroInstance *, PrimarySkill, std::vector<SecondarySkill> &, QueryID) override;
 	void commanderGotLevel(const CCommanderInstance *, std::vector<ui32>, QueryID) override;
+	void showStructuredBlockingDialog(const MetaString &, const std::vector<Component> &, QueryID, int, bool, bool, bool) override;
 	void showBlockingDialog(const std::string &, const std::vector<Component> &, QueryID, int, bool, bool, bool) override;
 	void showStructuredInfoDialog(EInfoWindowMode, const MetaString &, const std::vector<Component> &, int) override;
 	void showInfoDialog(EInfoWindowMode, const std::string &, const std::vector<Component> &, int) override;
@@ -102,6 +103,7 @@ private:
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool heroRecruitment = false; ///< opt-in protocol-7 owned-town tavern and multiple heroes
 	bool armyTransfer = false; ///< opt-in protocol-6 overview armies and exact transfers
+	bool adventureDialogs = false; ///< opt-in protocol-9 explicit native adventure choices
 	bool armyManagement = false; ///< opt-in protocol-8 explicit army operations and exchange queries
 	bool contextualIssueLockHeld = false; ///< worker thread only, during request()/requestSent()
 	explorer_rl::ContextualState contextState; ///< protected by stateMutex
@@ -195,5 +197,8 @@ private:
 	bool activeOwnHeroExchange(int firstEngineID, int secondEngineID) const; ///< stateMutex held
 	void installOwnHeroExchange(); ///< stable game state and stateMutex held, no pending action
 	bool executeExchangeClose(const JsonNode & action, int64_t decision);
+	void installAdventureDialog(); ///< stable game state and stateMutex held, parent action finished
+	JsonNode adventureDialogPanel() const; ///< immutable received payload only, stateMutex held
+	bool executeDialogAction(const JsonNode & action, int64_t decision);
 	void contextualResult(JsonNode result, int64_t decision);
 };

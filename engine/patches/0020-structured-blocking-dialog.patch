@@ -1,0 +1,27 @@
+--- a/lib/callback/CGameInterface.h
++++ b/lib/callback/CGameInterface.h
+@@ -40,6 +40,11 @@
+ 	// if cancel he is allowed to not choose. After making choice, CCallback::selectionMade should be called
+ 	// with number of selected component (1 - n) or 0 for cancel (if allowed) and askID.
+ 	virtual void showBlockingDialog(const std::string &text, const std::vector<Component> &components, QueryID askID, const int soundID, bool selection, bool cancel, bool safeToAutoaccept) = 0;
++	/// Preserve delivered dialog structure; legacy interfaces still localize normally.
++	virtual void showStructuredBlockingDialog(const MetaString & text, const std::vector<Component> & components, QueryID askID, int soundID, bool selection, bool cancel, bool safeToAutoaccept)
++	{
++		showBlockingDialog(text.toString(), components, askID, soundID, selection, cancel, safeToAutoaccept);
++	}
+ 
+ 	// all stacks operations between these objects become allowed, interface has to call onEnd when done
+ 	virtual void showGarrisonDialog(const CArmedInstance *up, const CGHeroInstance *down, bool removableUnits, QueryID queryID, const MetaString & customTitle) = 0;
+--- a/client/NetPacksClient.cpp
++++ b/client/NetPacksClient.cpp
+@@ -735,9 +735,7 @@
+ 
+ void ApplyClientNetPackVisitor::visitBlockingDialog(BlockingDialog & pack)
+ {
+-	std::string str = pack.text.toString();
+-
+-	if(!callOnlyThatInterface(cl, pack.player, &CGameInterface::showBlockingDialog, str, pack.components, pack.queryID, (soundBase::soundID)pack.soundID, pack.selection(), pack.cancel(), pack.safeToAutoaccept()))
++	if(!callOnlyThatInterface(cl, pack.player, &CGameInterface::showStructuredBlockingDialog, pack.text, pack.components, pack.queryID, (soundBase::soundID)pack.soundID, pack.selection(), pack.cancel(), pack.safeToAutoaccept()))
+ 		logNetwork->warn("We received YesNoDialog for not our player...");
+ }
+ 

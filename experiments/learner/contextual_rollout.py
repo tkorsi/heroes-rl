@@ -435,6 +435,9 @@ def _paired_binding(histories, manifest):
     if (red.player, blue.player) != (0, 1) or red.episode != blue.episode or red.schema != blue.schema or red.boundary != blue.boundary:
         raise ValueError("Paired histories disagree on identity/schema/boundary")
     profile = red.profile
+    if profile.dialogs:
+        from validation.probes.audit_contextual_histories import _dialog_cutoff_checks
+        _dialog_cutoff_checks(manifest, histories)
     expected = {"schema_version": 1, "kind": "contextual-headless-self-play", "environment": profile.environment,
         "history_schema": profile.history_schema, "action_schema": profile.action_schema, "episode": red.episode}
     if any(type(manifest.get(key)) is not type(value) or manifest.get(key) != value for key, value in expected.items()):
@@ -616,7 +619,12 @@ class ContextualCollector:
         choices = 0
         while not request.done:
             if max_requests is not None and choices >= max_requests:
-                request = env.truncate("collection_window")
+                decision = c.decode_frame(request.frames[-1])
+                if self.profile.dialogs and decision.observation.context.kind == "dialog":
+                    env.defer_dialog_cutoff("collection_window")
+                    request = env.step(self.act(request)); choices += 1
+                else:
+                    request = env.truncate("collection_window")
             else:
                 request = env.step(self.act(request)); choices += 1
         return self.finish(request, histories=(env.history("red"), env.history("blue")),

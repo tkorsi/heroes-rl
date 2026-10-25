@@ -100,6 +100,14 @@ class ContextualNativeProbeTests(unittest.TestCase):
         frames = [native_issue(1), record(2, "event", event=VisibleEvent("visit")), native_ack(3, True), final]
         self.assertEqual(probe.route_stop_evidence(frames, result)["encounter"]["status"], "passed")
 
+    def test_delivered_dialog_is_a_real_route_stop_cause(self):
+        from tests.test_contextual_dialogs import history_at
+        history = history_at()
+        result = next(frame.result for frame in history.frames if frame.kind == "result")
+        evidence = probe.route_stop_evidence(history.frames, result)["encounter"]
+        self.assertEqual(evidence["status"], "passed")
+        self.assertEqual(evidence["issued_after_cause"], [])
+
     def test_native_command_after_encounter_is_failed_evidence(self):
         final, result = route_result(6, "interaction")
         frames = [native_issue(1), record(2, "event", event=VisibleEvent("battle_start")),

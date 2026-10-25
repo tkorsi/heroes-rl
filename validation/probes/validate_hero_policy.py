@@ -243,7 +243,7 @@ def retain_failed_evidence(env, collector, attempt, error, *, cleanup_seconds=30
 
 def run(args):
     interface = getattr(args, "interface", INTERFACE)
-    require(interface in (c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), "Unsupported diagnostic interface")
+    require(interface in (c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT, c.DIALOGS_ENVIRONMENT), "Unsupported diagnostic interface")
     profile = c.profile_for(interface)
     settings = Settings(**{name: getattr(args, name) for name in Settings.__dataclass_fields__})
     torch.set_num_threads(1)
@@ -371,7 +371,7 @@ def main(argv=None):
     parser.add_argument("--map", type=Path, default=ROOT / "experiments/explorer/maps/hero-management-v1.vmap")
     for name, default in asdict(Settings()).items():
         parser.add_argument("--" + name.replace("_", "-"), type=float if name == "case_seconds" else int, default=default)
-    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT), default=INTERFACE)
+    parser.add_argument("--interface", choices=(c.HEROES_ENVIRONMENT, c.MANAGEMENT_ENVIRONMENT, c.DIALOGS_ENVIRONMENT), default=INTERFACE)
     args = parser.parse_args(argv)
     report = run(args)
     print(json.dumps({"status": report["status"], "attempts": len(report["attempts"]),

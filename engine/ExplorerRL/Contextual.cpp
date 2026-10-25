@@ -92,7 +92,7 @@ JsonNode ContextualState::contextJson() const
 	JsonNode node;
 	node["kind"].String() = context;
 	node["subject"] = context == "map" ? JsonNode() : JsonNode(subject);
-	if((context == "town" && !panel.empty()) || context == "stack" || context == "exchange")
+	if((context == "town" && !panel.empty()) || context == "stack" || context == "exchange" || context == "dialog")
 	{
 		node["panel"] = panel.empty() ? JsonNode() : JsonNode(panel);
 		node["selection"] = selection.empty() ? JsonNode() : JsonNode(selection);
@@ -120,6 +120,7 @@ void ContextualState::supersede(int day, const char * reason)
 	executing = false;
 	issueArmed = false;
 	routeInteractions.reset();
+	executingHero.reset();
 	requests.clear();
 }
 }
@@ -200,8 +201,9 @@ JsonNode ExplorerRL::contextualObservation()
 				observation["objects"].Vector().push_back(std::move(entry));
 			}
 		}
+	const bool dialogModal = adventureDialogs && contextState.context == "dialog";
 	const bool armyModal = armyManagement && (contextState.context == "exchange" || contextState.context == "stack");
-	if(contextState.context != "map" && !openHero && !openTown && !armyModal)
+	if(contextState.context != "map" && !openHero && !openTown && !armyModal && !dialogModal)
 	{
 		const auto day = callback->getDate(Date::DAY);
 		contextState.supersede(day, "subject_unavailable");
@@ -215,7 +217,7 @@ JsonNode ExplorerRL::contextualObservation()
 		record["reason"].String() = "subject_unavailable";
 		contextState.records.push_back(std::move(record));
 	}
-	if(openHero || openTown || armyModal)
+	if(openHero || openTown || armyModal || dialogModal)
 	{
 		JsonNode window;
 		window["context"] = contextState.contextJson();
@@ -265,6 +267,7 @@ JsonNode ExplorerRL::contextualObservation()
 			window["armies"] = contextualArmyViews();
 			window["stack_panel"] = contextState.context == "stack" ? stackPanel() : JsonNode();
 		}
+		if(adventureDialogs) window["dialog_panel"] = dialogModal ? adventureDialogPanel() : JsonNode();
 		observation["window"] = std::move(window);
 	}
 	return observation;
@@ -337,6 +340,8 @@ void ExplorerRL::contextualTerminal(const char * outcome)
 		std::lock_guard lock(stateMutex);
 		contextState.supersede(day, "terminal");
 		contextState.ownHeroExchange.reset();
+		contextState.adventureDialog.reset();
+		contextState.executingHero.reset();
 		contextState.stackParentContext = JsonNode();
 		contextState.selectedUpgradeRef.clear();
 		if(contextState.context != "map")
@@ -378,6 +383,7 @@ void ExplorerRL::contextualResult(JsonNode result, int64_t decision)
 				contextState.records.push_back(std::move(record));
 				contextState.decision.reset();
 				contextState.executing = false;
+				contextState.executingHero.reset();
 				contextState.routeInteractions.reset();
 			}
 		}
@@ -403,6 +409,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			{
 				std::lock_guard lock(stateMutex);
 				installOwnHeroExchange();
+				installAdventureDialog();
 			}
 			captureContextual();
 			{
@@ -426,7 +433,7 @@ void ExplorerRL::runContextualTurn(QueryID queryID)
 			return;
 		fields(response, {"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"},
 			{"protocol_version", "type", "episode", "player", "decision_id", "revision", "action"});
-		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
+		if(!integer(response["protocol_version"]) || response["protocol_version"].Integer() != (adventureDialogs ? 9 : armyManagement ? 8 : heroRecruitment ? 7 : armyTransfer ? 6 : townEconomy ? 5 : 4)
 			|| response["type"].String() != "context_action" || response["episode"].String() != episode
 			|| !integer(response["player"]) || response["player"].Integer() != playerID.getNum()
 			|| !integer(response["decision_id"]) || response["decision_id"].Integer() != decision
@@ -603,9 +610,15 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 {
 	fields(action, townEconomy ? std::set<std::string>{"schema", "kind", "subject", "x", "y", "panel", "selection", "count", "destination"}
 		: std::set<std::string>{"schema", "kind", "subject", "x", "y"}, {"schema", "kind"});
-	if(action["schema"].String() != (armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
+	if(action["schema"].String() != (adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2") || !action["kind"].isString())
 		throw std::runtime_error("Unsupported contextual action schema");
 	const std::string kind = action["kind"].String();
+	if(adventureDialogs)
+	{
+		bool activeDialog;
+		{ std::lock_guard lock(stateMutex); activeDialog = contextState.context == "dialog"; }
+		if(activeDialog || kind == "choose_dialog") return executeDialogAction(action, decision);
+	}
 	if(armyManagement)
 	{
 		bool stackBack = false, exchangeClose = false;
@@ -696,6 +709,7 @@ bool ExplorerRL::executeContextualAction(const JsonNode & action, int64_t decisi
 		contextState.executing = true;
 		contextState.commands = 0;
 		interactions = contextState.interactions;
+		contextState.executingHero = adventureDialogs && kind == "move_to" ? std::optional<int>(subject.getNum()) : std::nullopt;
 		contextState.routeInteractions = kind == "move_to" ? std::optional<int64_t>(interactions) : std::nullopt;
 		auto consumed = contextState.record("consumed", callback->getDate(Date::DAY));
 		consumed["decision_id"].Integer() = decision;
@@ -864,7 +878,7 @@ void ExplorerRL::showStructuredInfoDialog(EInfoWindowMode mode, const MetaString
 				names.insert(hero->getNameTextID());
 		JsonNode event;
 		event["kind"].String() = "notice";
-		event["notice"] = explorer_rl::normalizeNotice(mode, text, components, playerID, names);
+		event["notice"] = explorer_rl::normalizeNotice(mode, text, components, playerID, names, adventureDialogs);
 		contextualEvent(std::move(event));
 	}
 	catch(const explorer_rl::UnsupportedNotice &)

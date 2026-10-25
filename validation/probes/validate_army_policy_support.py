@@ -1,4 +1,4 @@
-"""Offline counterfactual scoring of native-validated operator-controlled v6 history.
+"""Offline counterfactual scoring of native-validated operator-controlled v6/v7 history.
 
 The recorded actions were chosen by the diagnostic operator, not sampled from
 this checkpoint. This tool checks their support and probabilities under frozen
@@ -27,10 +27,11 @@ from experiments.headless.contextual_replay import REPORT_SCHEMA, validate_nativ
 from experiments.headless.contextual_replay_history import verify_histories
 from experiments.learner import contextual as c
 from experiments.learner.checkpoints import load_policy_checkpoint
-from experiments.learner.contextual_model import ContextualEncoder, MANAGEMENT_MODEL_SCHEMA, weights_sha256
+from experiments.learner.contextual_model import ContextualEncoder, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA, model_schema_for, weights_sha256
 
 COLORS = ("red", "blue")
 SCHEMA = "heroes-v6-counterfactual-policy-support-v1"
+DIALOGS_SCHEMA = "heroes-v7-counterfactual-policy-support-v1"
 V6_ACTIONS = ("split_stack", "merge_stacks", "swap_stacks", "open_stack",
               "select_upgrade", "upgrade_stack", "swap_garrison")
 
@@ -56,7 +57,7 @@ def tensor_digest(value):
 
 
 def assert_frozen(model):
-    require(model.config.schema == MANAGEMENT_MODEL_SCHEMA, "Only the explicit v6 model is supported")
+    require(model.config.schema in (MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA), "Only explicit v6/v7 models are supported")
     require(not model.training and all(not parameter.requires_grad and parameter.device.type == "cpu"
                                       for parameter in model.parameters()), "Model must be frozen on CPU")
 
@@ -70,10 +71,13 @@ def score_history(frames, model):
     leave memory unchanged, according to the production encoder.
     """
     frames = tuple(frames)
-    require(frames and all(frame.schema == c.MANAGEMENT_SCHEMA for frame in frames), "Expected nonempty v6 history")
+    require(frames and frames[0].schema in (c.MANAGEMENT_SCHEMA, c.DIALOGS_SCHEMA)
+            and all(frame.schema == frames[0].schema for frame in frames), "Expected nonempty v6/v7 history")
+    profile = c.profile_for(frames[0].schema)
     assert_frozen(model)
+    require(model.config.schema == model_schema_for(profile.environment), "Model/history profile mismatch")
     before = weights_sha256(model)
-    encoder = ContextualEncoder(frames[0].episode, frames[0].player, c.MANAGEMENT_SCHEMA)
+    encoder = ContextualEncoder(frames[0].episode, frames[0].player, profile.history_schema)
     state = model.initial_state()
     initial_memory = tensor_digest(state)
     records, decisions = [], []
@@ -124,7 +128,7 @@ def score_history(frames, model):
                 require(step.decision is None, "A non-decision frame unexpectedly produced a decision")
     require(weights_sha256(model) == before, "Counterfactual scoring changed weights")
     actions = Counter(row["operator_action"]["kind"] for row in decisions if row["operator_action"] is not None)
-    return {"schema": SCHEMA, "scope": "counterfactual_scoring_of_recorded_operator_choices",
+    return {"schema": DIALOGS_SCHEMA if profile.dialogs else SCHEMA, "scope": "counterfactual_scoring_of_recorded_operator_choices",
             "episode": frames[0].episode, "player": frames[0].player,
             "checkpoint_weights_sha256": before, "initial_memory_sha256": initial_memory,
             "frames": records, "decisions": decisions, "action_kinds_scored": dict(sorted(actions.items())),
@@ -150,10 +154,12 @@ def validate_replay_binding(manifest_path, manifest, replay):
             and replay.get("training_performed") is False, "A successful independent native replay report is required")
     require(replay.get("inputs", {}).get("manifest") == evidence.file_identity(manifest_path),
             "Replay report is bound to another manifest")
-    require(manifest.get("environment") == c.MANAGEMENT_ENVIRONMENT
-            and manifest.get("history_schema") == c.MANAGEMENT_SCHEMA
-            and manifest.get("action_schema") == c.MANAGEMENT_ACTION_SCHEMA
-            and manifest.get("status") in ("completed", "truncated"), "Only native-validated v6 natural/cutoff history is supported")
+    require(manifest.get("environment") in (c.MANAGEMENT_ENVIRONMENT, c.DIALOGS_ENVIRONMENT),
+            "Only native-validated v6/v7 natural/cutoff history is supported")
+    profile = c.profile_for(manifest["environment"])
+    require(manifest.get("history_schema") == profile.history_schema
+            and manifest.get("action_schema") == profile.action_schema
+            and manifest.get("status") in ("completed", "truncated"), "Only native-validated v6/v7 natural/cutoff history is supported")
 
 
 def load_inputs(episode, replay_path):
@@ -182,7 +188,7 @@ def load_inputs(episode, replay_path):
         bindings[name] = {"path": str(path), **declared}
     histories = []
     for player, color in enumerate(COLORS):
-        declaration = manifest["players"][color][c.MANAGEMENT_PROFILE.history_key]
+        declaration = manifest["players"][color][c.profile_for(manifest["environment"]).history_key]
         path = evidence.inside(episode, declaration["path"])
         identity = evidence.file_identity(path)
         require(identity["sha256"] == declaration["sha256"], "Player history differs from its manifest")
@@ -227,7 +233,9 @@ def run(args):
                    Path(evidence.__file__))
         for path in sources:
             bindings["scoring_source:" + str(path.relative_to(ROOT))] = {"path": str(path), **evidence.file_identity(path)}
-        loaded = load_policy_checkpoint(checkpoint, interface=c.MANAGEMENT_ENVIRONMENT)
+        profile = c.profile_for(manifest["environment"])
+        report["schema"] = DIALOGS_SCHEMA if profile.dialogs else SCHEMA
+        loaded = load_policy_checkpoint(checkpoint, interface=profile.environment)
         loaded.model.requires_grad_(False)
         assert_frozen(loaded.model)
         report.update(episode=manifest["episode"], native_boundary=manifest["status"], bindings=bindings,
@@ -258,9 +266,11 @@ def run(args):
             write_json(output / "report.json", report)
         check_bindings(bindings)
         require(weights_sha256(loaded.model) == loaded.weights_sha256, "Checkpoint weights changed during scoring")
-        missing = sorted(set(V6_ACTIONS) - all_actions.keys())
-        report.update(status="passed", action_kinds_scored=dict(sorted(all_actions.items())),
-                      missing_v6_action_kinds=missing, all_v6_action_kinds_covered=not missing,
+        required = ("choose_dialog",) if profile.dialogs else V6_ACTIONS
+        missing = sorted(set(required) - all_actions.keys())
+        coverage = ({"missing_v7_action_kinds": missing, "all_v7_action_kinds_covered": not missing}
+                    if profile.dialogs else {"missing_v6_action_kinds": missing, "all_v6_action_kinds_covered": not missing})
+        report.update(status="passed", action_kinds_scored=dict(sorted(all_actions.items())), **coverage,
                       coverage_scope="Only operator actions present in this bound episode; absent branches are not claimed",
                       independent_player_memories=True, independent_memory_folds=2, weights_unchanged=True,
                       maximum_absolute_difference=0)

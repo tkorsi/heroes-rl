@@ -94,21 +94,21 @@ bool ContextualEvidence::cancelled()
 	return value->replay ? value->stopping : value->sealed;
 }
 
-ContextualEvidence & ContextualEvidence::live(const std::string & episode, bool town, bool armies, bool heroes, bool management)
+ContextualEvidence & ContextualEvidence::live(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs)
 {
 	if(auto * existing = current())
 	{
 		if(existing->metadata["episode"].String() != episode
-			|| existing->metadata["interface"].String() != (management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1"))
+			|| existing->metadata["interface"].String() != (dialogs ? "adventure-dialogs-v1" : management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1"))
 			throw std::runtime_error("Contextual replay identity changed during initialization");
 		return *existing;
 	}
-	recorder.reset(new ContextualEvidence(episode, town, armies, heroes, management));
+	recorder.reset(new ContextualEvidence(episode, town, armies, heroes, management, dialogs));
 	setExperimentEvidenceHooks(recorder);
 	return *recorder;
 }
 
-ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, bool armies, bool heroes, bool management)
+ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs)
 {
 	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
 	if(!directory || !*directory)
@@ -119,10 +119,10 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	metadata["kind"].String() = "init";
 	metadata["schema"].String() = SCHEMA;
 	metadata["episode"].String() = episode;
-	metadata["interface"].String() = management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1";
-	metadata["protocol_version"].Integer() = management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4;
-	metadata["history_schema"].String() = management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2";
-	metadata["action_schema"].String() = management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+	metadata["interface"].String() = dialogs ? "adventure-dialogs-v1" : management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1";
+	metadata["protocol_version"].Integer() = dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4;
+	metadata["history_schema"].String() = dialogs ? "heroes-player-history-v7" : management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2";
+	metadata["action_schema"].String() = dialogs ? "heroes-context-actions-v7" : management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
 	output << line(metadata) << '\n';
 	output.flush();
 	if(!output)
@@ -149,14 +149,15 @@ ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool 
 	if(tape.empty() || tape.front()["kind"].String() != "init" || tape.front()["schema"].String() != SCHEMA)
 		throw std::runtime_error("Missing current contextual replay header");
 	metadata = tape.front();
+	const bool dialogs = metadata["interface"].String() == "adventure-dialogs-v1";
 	const bool management = metadata["interface"].String() == "adventure-army-management-v1";
 	const bool heroes = metadata["interface"].String() == "adventure-heroes-v1";
 	const bool armies = metadata["interface"].String() == "adventure-armies-v1";
 	const bool town = metadata["interface"].String() == "adventure-town-v1";
-	if((!management && !heroes && !armies && !town && metadata["interface"].String() != "adventure-windows-v1")
-		|| metadata["protocol_version"].Integer() != (management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4)
-		|| metadata["history_schema"].String() != (management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2")
-		|| metadata["action_schema"].String() != (management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2"))
+	if((!dialogs && !management && !heroes && !armies && !town && metadata["interface"].String() != "adventure-windows-v1")
+		|| metadata["protocol_version"].Integer() != (dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4)
+		|| metadata["history_schema"].String() != (dialogs ? "heroes-player-history-v7" : management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2")
+		|| metadata["action_schema"].String() != (dialogs ? "heroes-context-actions-v7" : management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2"))
 		throw std::runtime_error("Inconsistent contextual replay interface versions");
 	for(const auto * key : {"transactions", "messages", "responses", "requests", "client_packets"})
 		loaded[key].Integer() = checked[key].Integer() = 0;

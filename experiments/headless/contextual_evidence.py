@@ -80,7 +80,7 @@ def terminal_barrier(directory, *, episode, interface, outcomes):
     require an explicit replayable origin before they can receive a reward.
     """
     if (type(episode) is not str or not episode or interface not in
-            ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1") or type(outcomes) is not list
+            ("adventure-windows-v1", "adventure-town-v1", "adventure-armies-v1", "adventure-heroes-v1", "adventure-army-management-v1", "adventure-dialogs-v1") or type(outcomes) is not list
             or outcomes not in (["win", "loss"], ["loss", "win"])):
         raise ValueError("Invalid expected terminal barrier identity")
     records, files = [], {}

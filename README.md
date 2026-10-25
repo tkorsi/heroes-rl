@@ -2142,6 +2142,36 @@ No new gameplay optimizer update, training, paid compute or merge occurred.
 Stage 3 enumerated adventure choices remain pending; earlier initial/timer-origin
 terminal limitations remain explicit.
 
+## Adventure dialogs — implementation under native validation
+
+The separate `adventure-dialogs-v1` interface uses protocol 9, history/actions
+v7 and model/policy v5. It retains the army-management capabilities and adds
+explicit choices for guarded mines, free/paid neutral joining, neutral flight,
+treasure chests, Arenas and Schools of Magic/War. The delivered dialog's text,
+visible components and choice references enter the player's immutable history
+before its decision. Native query IDs and replies remain private. A successful
+reply means the engine acknowledged the choice; subsequent visible effects
+establish the actual reward, joining or battle result.
+
+Dialog windows contain no refreshed parent army panel. Separate informational
+notices cover the supported follow-ups, including native Scholar messages;
+unused native substitutions are discarded rather than exposing latent rewards.
+Unsupported dialog families fail explicitly before an answer. Fixed automatic
+combat, normal fog, level cap and terminal-only scoring remain unchanged.
+
+An active strategic query cannot become technical cutoff cleanup. Collection
+and environment budgets defer to the first safe decision, allowing at most
+eight additional **real policy choices** through a dialog chain. These choices
+remain in learner history with their ordinary rewards and are declared separately
+in finalization evidence. A strategic query arising after a prefix was already
+frozen fails unscored. Direct truncation of an active query is rejected.
+
+Versioned diagnostic maps declare their exact starting objects and armies and
+retain native reward randomness. They are excluded from training and ordinary
+outcome statistics. Native both-color checks, replay mutations, frozen-policy
+reconstruction and coverage limits will be recorded after real validation;
+implementation and synthetic tests alone do not establish those results.
+
 ## Headless self-play environment (issue #4, in progress)
 
 Status: the legacy `movement-v1` environment has passed bounded real-game,

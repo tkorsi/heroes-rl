@@ -38,6 +38,7 @@ _IMPORTED_SOURCE_HASHES = {
     str(Path(contextual_evidence.__file__).resolve().relative_to(ROOT)): scoring.digest(Path(contextual_evidence.__file__)),
 }
 
+DIALOG_DRAIN_LIMIT = 8  # real policy answers after the declared collection budget
 CONTINUATION_LIMIT = 8  # per seat; close then end-turn normally needs at most two
 # These are explicit engine failure channels in the owned headless patch. In
 # particular, a late unsupported event can report only through the client hook
@@ -90,6 +91,7 @@ class ContextualMixin:
                          snapshot_every=snapshot_every, replay=replay)
         self.interface = interface
         self.cutoff_reason = None
+        self.dialog_cutoff_drain = None
         self._context_identity = None
         # The public env module may be loaded under a probe-specific name. Read
         # the actual base class module's import hash, not a second env import.
@@ -133,6 +135,7 @@ class ContextualMixin:
         self.closing = self.settling = False
         self.stopping = threading.Event()
         self.reason = self.detail = self.cutoff_reason = None
+        self.dialog_cutoff_drain = None
         self.engine_wait = self.agent_wait = 0.0
         self.step_latencies = []
         self.costs = {"ingest": 0.0, "act": 0.0, "ledger": 0.0, "respond": 0.0}
@@ -196,6 +199,11 @@ class ContextualMixin:
             raise ValueError("history_v6 requires adventure-army-management-v1")
         return self.history(color)
 
+    def history_v7(self, color):
+        if self.context_profile != contract.DIALOGS_PROFILE:
+            raise ValueError("history_v7 requires adventure-dialogs-v1")
+        return self.history(color)
+
     def history(self, color):
         if color not in COLORS:
             raise ValueError("Unknown player color")
@@ -219,6 +227,15 @@ class ContextualMixin:
             self._note_problem("cutoff_continuation_limit", "Could not obtain both real player boundaries")
             self.request = None
             return
+        drain = self.dialog_cutoff_drain if not continuation else None
+        if drain is not None:
+            if action.kind != "choose_dialog":
+                raise ValueError("Deferred dialog cutoff accepts only a real dialog choice")
+            if len(drain["choices"]) >= DIALOG_DRAIN_LIMIT:
+                self._note_problem("cutoff_boundary_unavailable", "Strategic dialog chain exceeded its real-policy answer bound")
+                self.request = None
+                return
+            drain_choice = {"player": side.player, "decision_seq": producer.live.decision.seq}
         self.agent_wait += time.monotonic() - self.request_time
         started = time.perf_counter()
         try:
@@ -234,6 +251,8 @@ class ContextualMixin:
         if delivered:
             producer.submitted(action)
             side.actions_sent += 1
+            if drain is not None:
+                drain["choices"].append(drain_choice)
         else:
             # Even an undelivered action cannot turn an impending real terminal
             # into an invented consumed sample. Actual streams/exit still decide.
@@ -279,10 +298,30 @@ class ContextualMixin:
         side.cutoff_reason = side.limit = self.cutoff_reason
         side.cutoff_actions = side.actions_sent
 
+    def defer_dialog_cutoff(self, reason):
+        """Keep a blocking strategic query inside real policy experience.
+
+        No answer is chosen here. The caller must sample/record its unchanged
+        policy, and the first non-dialog decision becomes the actual cutoff.
+        """
+        if (not self.context_profile.dialogs or self.request is None
+                or self.request.past_horizon or reason not in scoring.HEADLESS_TRUNCATIONS
+                or self.sides[self.request.player].validator.live.context.kind != "dialog"
+                or self.cutoff_reason is not None):
+            raise ValueError("Defer a horizon only at an unfrozen strategic dialog")
+        if self.dialog_cutoff_drain is None:
+            self.dialog_cutoff_drain = {"reason": reason,
+                "trigger": {"player": self.request.player,
+                    "decision_seq": self.sides[self.request.player].validator.live.decision.seq,
+                    "actions_sent": [self.sides[p].actions_sent for p in (0, 1)]},
+                "limit": DIALOG_DRAIN_LIMIT, "choices": [], "learner_included": True}
+
     def truncate(self, reason="collection_window"):
         if self.request is None or reason not in scoring.HEADLESS_TRUNCATIONS:
             raise ValueError("Truncate only at a pending own request with a declared horizon")
         request = self.request
+        if self.sides[request.player].validator.live.context.kind == "dialog":
+            raise ValueError("A strategic dialog needs a recorded policy answer before cutoff")
         exited = self._settle()
         if self.reason is not None or exited is not None:
             self.request = None
@@ -309,6 +348,10 @@ class ContextualMixin:
                 return self._finish(None)
             if self.request is not None:
                 side = self.sides[self.request.player]
+                if side.validator.live.context.kind == "dialog":
+                    self._note_problem("cutoff_boundary_unavailable", "Strategic dialog arose during frozen technical continuation")
+                    self.request = None
+                    return self._finish(None)
                 if side.validator.cutoff is None:
                     self._capture_cutoff(side)
                     continue
@@ -361,12 +404,22 @@ class ContextualMixin:
             return None
         producer = side.validator
         decision = producer.live.decision
-        if self.cutoff_reason is None and (decision.day > self.limits.max_days or side.actions_sent >= self.limits.max_actions):
-            self.cutoff_reason = "game_day_limit" if decision.day > self.limits.max_days else "agent_action_limit"
-        if self.cutoff_reason is not None:
-            self._capture_cutoff(side)
         if self.request is not None:
             raise ValueError("Concurrent outstanding contextual requests")
+        reason = self.dialog_cutoff_drain["reason"] if self.dialog_cutoff_drain is not None else None
+        if reason is None and (decision.day > self.limits.max_days or side.actions_sent >= self.limits.max_actions):
+            reason = "game_day_limit" if decision.day > self.limits.max_days else "agent_action_limit"
+        if self.cutoff_reason is not None and producer.live.context.kind == "dialog":
+            self._note_problem("cutoff_boundary_unavailable", "Strategic dialog arose during frozen technical continuation")
+            return None
+        if self.cutoff_reason is None and reason is not None:
+            if producer.live.context.kind == "dialog":
+                request = self._issue(side.player)
+                self.defer_dialog_cutoff(reason)
+                return request
+            self.cutoff_reason = reason
+        if self.cutoff_reason is not None:
+            self._capture_cutoff(side)
         return self._issue(side.player, continuation=self.cutoff_reason is not None)
 
     def _issue(self, player, continuation=False):
@@ -540,6 +593,8 @@ class ContextualMixin:
             "raw_bridge_sha256": {side.color: scoring.digest(self.episode_dir / "agents" / side.color / "bridge.jsonl")
                                   for side in self.sides.values()}, "identity": identity,
         }
+        if self.context_profile.dialogs:
+            evidence_document["dialog_cutoff_drain"] = self.dialog_cutoff_drain
         scoring.write_json(evidence_path, evidence_document)
         evidence_ref = evidence_path.name + "#sha256=" + scoring.digest(evidence_path)
         try:
@@ -590,6 +645,8 @@ class ContextualMixin:
                     "replay": replay_evidence,
                     "deterministic_replay_verified": False, "training_performed": False,
                     "natural_terminal_after_horizon": natural_after_cutoff}
+        if self.context_profile.dialogs:
+            manifest["dialog_cutoff_drain"] = self.dialog_cutoff_drain
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
         final = {side.color: encoded(side.validator.history, min(side.unread_frames_from, len(side.validator.history.frames) - 1))
                  for side in self.sides.values()}

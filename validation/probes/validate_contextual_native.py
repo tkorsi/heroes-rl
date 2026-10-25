@@ -90,7 +90,7 @@ class CaseRun:
         self.records.touch(exist_ok=False)
         self.interface = getattr(args, "interface", contract.ENVIRONMENT)
         self.history_version = {"adventure-windows-v1": 2, "adventure-town-v1": 3,
-                                "adventure-armies-v1": 4, "adventure-heroes-v1": 5, "adventure-army-management-v1": 6}[self.interface]
+                                "adventure-armies-v1": 4, "adventure-heroes-v1": 5, "adventure-army-management-v1": 6, "adventure-dialogs-v1": 7}[self.interface]
         days = 1 if name == "day-cutoff" else args.max_days
         limits = env_module.Limits(max_days=days, max_actions=args.max_decisions,
                                    watchdog_seconds=args.watchdog, startup_seconds=args.startup_seconds,
@@ -306,7 +306,7 @@ def route_stop_evidence(frames, result):
     causes = {
         "encounter": [index for index in range(start, result_index)
                       if frames[index].event is not None and frames[index].event.kind in
-                      ("visit", "battle_start", "battle_complete", "notice")],
+                      ("visit", "battle_start", "battle_complete", "notice", "dialog_requested", "army_exchange_requested")],
         "interruption": [index for index in range(start, result_index)
                          if frames[index].kind == "acknowledged" and frames[index].decision_seq == decision
                          and frames[index].accepted is False],

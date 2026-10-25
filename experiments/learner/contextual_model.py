@@ -26,9 +26,11 @@ HEROES_MODEL_SCHEMA = "heroes-context-model-v3"
 HEROES_DISTRIBUTION_SCHEMA = "heroes-context-policy-v3"
 MANAGEMENT_MODEL_SCHEMA = "heroes-context-model-v4"
 MANAGEMENT_DISTRIBUTION_SCHEMA = "heroes-context-policy-v4"
+DIALOGS_MODEL_SCHEMA = "heroes-context-model-v5"
+DIALOGS_DISTRIBUTION_SCHEMA = "heroes-context-policy-v5"
 _ACTIONS = ("move_to", "open_hero", "open_town", "end_turn", "close", "open_panel",
             "open_building", "construct", "back", "select_recruit", "recruit", "transfer_stack", "select_hero", "hire_hero", "split_stack", "merge_stacks", "swap_stacks",
-            "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison")
+            "open_stack", "select_upgrade", "upgrade_stack", "swap_garrison", "choose_dialog")
 # Verification, command identifiers and technical boundaries are not observations.
 _METADATA = frozenset(("issued", "cutoff", "cutoff_finalized", "finalized", "failure", "superseded"))
 
@@ -41,7 +43,7 @@ class ModelConfig:
     max_map_side: int = 256
 
     def __post_init__(self):
-        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA):
+        if self.schema not in (MODEL_SCHEMA, ARMIES_MODEL_SCHEMA, HEROES_MODEL_SCHEMA, MANAGEMENT_MODEL_SCHEMA, DIALOGS_MODEL_SCHEMA):
             raise ValueError("Unsupported contextual model schema")
         for name in ("hidden_size", "feature_size", "max_map_side"):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
@@ -61,6 +63,8 @@ class ModelConfig:
 
 def model_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.dialogs:
+        return DIALOGS_MODEL_SCHEMA
     if profile.army_management:
         return MANAGEMENT_MODEL_SCHEMA
     if profile.hero_recruitment:
@@ -70,6 +74,8 @@ def model_schema_for(profile_or_schema):
 
 def distribution_schema_for(profile_or_schema):
     profile = c.profile_for(profile_or_schema)
+    if profile.dialogs:
+        return DIALOGS_DISTRIBUTION_SCHEMA
     if profile.army_management:
         return MANAGEMENT_DISTRIBUTION_SCHEMA
     if profile.hero_recruitment:
@@ -118,6 +124,9 @@ def _subject(observation, ref):
 
 
 def _selection(observation, ref):
+    if observation is not None and observation.window is not None and observation.window.dialog_panel is not None:
+        panel = observation.window.dialog_panel
+        return next((_dialog_choice(panel, item) for item in panel.choices if item.ref == ref), _node("unresolved_selection"))
     if observation is not None and observation.window is not None and observation.window.stack_panel is not None:
         return next((_semantic(item) for item in observation.window.stack_panel.offers if item.ref == ref), _node("unresolved_selection"))
     if observation is None or observation.window is None or observation.window.town_panel is None:
@@ -167,6 +176,13 @@ def _army_slot(observation, ref, *, receiving):
                  _node("requires_nonempty", _semantic(army.requires_nonempty)), _semantic(slot))
 
 
+def _dialog_choice(panel, choice):
+    # The ordinal only routes to an already displayed component. Its magnitude
+    # and the opaque choice/query references never become learned features.
+    component = panel.components[choice.component_index] if choice.kind == "select_component" else None
+    return _node("dialog_choice", _text(choice.kind), _semantic(component))
+
+
 def _semantic(value):
     """Lossless field selection before learned compression; no reference IDs.
 
@@ -197,6 +213,13 @@ def _semantic(value):
         cards = [_node("upgrade", _semantic(card), _semantic(card.ref == value.selected_upgrade_ref)) for card in value.offers]
         return _node("stack_panel", _semantic(value.parent_context), _semantic(value.source), _set("offers", cards),
                      _node("total_cost", _semantic(value.total_cost)), _node("affordable", _semantic(value.affordable)))
+    if type(value) is c.DialogPanel:
+        return _node("dialog_panel", _text(value.family), _semantic(value.text),
+                     _set("components", [_semantic(item) for item in value.components]),
+                     _node("selection", _semantic(value.selection)), _node("cancel", _semantic(value.cancel)),
+                     _set("choices", [_dialog_choice(value, choice) for choice in value.choices]))
+    if type(value) is c.DialogChoice:
+        raise ValueError("Dialog choice requires its displayed component binding")
     if type(value) is c.Notice:
         return _node("notice", _text(value.display_mode),
                      ("ordered", "notice_text", tuple(_semantic(token) for token in value.text)),
@@ -209,8 +232,9 @@ def _semantic(value):
             # old observations: archived values/probabilities remain exact.
             if item is None and (type(value) is c.TownPanel and name in ("armies", "tavern")
                                  or type(value) is c.Hero and name == "in_garrison"
-                                 or type(value) is c.Window and name in ("armies", "stack_panel")
-                                 or type(value) is c.VisibleEvent and name == "partner"):
+                                 or type(value) is c.Window and name in ("armies", "stack_panel", "dialog_panel")
+                                 or type(value) is c.VisibleEvent and name in ("partner", "dialog")
+                                 or type(value) is c.NoticeComponent and name == "skill"):
                 continue
             if type(value) is c.TownPanel and name in ("armies", "tavern") and item is None:
                 continue
@@ -245,6 +269,7 @@ class ContextualEncoder:
     def encode(self, frame):
         candidate = copy(self.history)
         candidate._frames = list(self.history.frames)
+        candidate.dialog_refs = set(self.history.dialog_refs)
         candidate.append(frame)
         basis = self.history.decision.observation if self.history.decision is not None else self.observation
         kind = frame.kind
@@ -494,6 +519,8 @@ class ContextualDistribution:
 
     def _kinds(self):
         offers, context = self.offers, self.offers.context
+        if context.kind == "dialog":
+            return ("choose_dialog",)
         if context.kind == "map":
             movable = offers.hero_refs if offers.movable_hero_refs is None else offers.movable_hero_refs
             return tuple(kind for kind in _ACTIONS if kind == "end_turn"
@@ -542,7 +569,13 @@ class ContextualDistribution:
         kind = kinds[choose("kind", self._logits([_node("action_kind", _text(kind)) for kind in kinds]),
                             kinds.index(action.kind) if action else None)]
         subject = panel = selection = destination = x = y = count = None
-        if kind in ("move_to", "open_hero", "open_town"):
+        if kind == "choose_dialog":
+            delivered = self.offers.dialog_panel
+            choices = delivered.choices
+            index = choose("dialog_choice", self._logits([_dialog_choice(delivered, item) for item in choices]),
+                           next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
+            subject, selection = self.offers.context.subject, choices[index].ref
+        elif kind in ("move_to", "open_hero", "open_town"):
             refs = (self.offers.town_refs if kind == "open_town" else self.offers.movable_hero_refs
                     if kind == "move_to" and self.offers.movable_hero_refs is not None else self.offers.hero_refs)
             semantics = [_node(kind, _subject(self.observation, ref)) for ref in refs]

@@ -39,6 +39,17 @@ struct ContextualState
 		bool installed = false;
 	};
 	std::optional<OwnHeroExchange> ownHeroExchange; ///< private native query, never policy input
+	struct AdventureDialog
+	{
+		int hero;
+		int query;
+		JsonNode panel;
+		std::map<std::string, int> replies;
+		bool installed = false;
+	};
+	std::optional<AdventureDialog> adventureDialog; ///< private query/reply routing
+	std::optional<int> executingHero; ///< own subject of current move or dialog answer
+	uint64_t nextDialog = 0;
 	int64_t revision = -1;
 	int64_t nextDecision = 0;
 	std::optional<int64_t> decision;

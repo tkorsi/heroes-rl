@@ -1,0 +1,233 @@
+{
+  "baseline_sha256": "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db58d",
+  "changed_header_fields": {
+    "description": {
+      "after": "Isolated native adventure-dialog diagnostic; excluded from training. Authored initial objects/armies only. Normal fog, native random rewards and creature behavior, automatic battles, standard outcomes and level cap 1.",
+      "before": "Versioned baseline with native Tavern construction permitted for both sides. Initial buildings, heroes, armies, resources, terrain, fog, victory rules and level cap 1 are unchanged. Hero limits are native engine settings."
+    },
+    "name": {
+      "after": "dialog-neutral-free-attack-red-v1",
+      "before": "Hero management: two castles"
+    }
+  },
+  "engine_verified": false,
+  "fixture": "neutral_free_attack",
+  "fog": "normal native team fog",
+  "hero_management_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+  "layout_seed": 0,
+  "level_cap": 1,
+  "map_sha256": "6a54f1de51363d5058d663dbaaf04e6ebb7919addd1b3ade1a2be66f034d0fe9",
+  "native_reward_and_join_randomness": true,
+  "note": "Exact generator identity only. Native loading, observed branches and replay require separate validation.",
+  "object_changes": [
+    {
+      "after": {
+        "instanceName": "diagnostic_target_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "compliant",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 4,
+        "y": 10
+      },
+      "before": null,
+      "instance": "diagnostic_target_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_0",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 4,
+        "y": 10
+      },
+      "instance": "gold_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "gold_1",
+        "l": 0,
+        "options": {
+          "amount": 500,
+          "army": []
+        },
+        "subtype": "gold",
+        "template": {
+          "animation": "AVTgold0.def",
+          "mask": [
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "resource",
+        "x": 15,
+        "y": 10
+      },
+      "instance": "gold_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_0",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 6,
+        "y": 12
+      },
+      "instance": "guard_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "guard_1",
+        "l": 0,
+        "options": {
+          "amount": 6,
+          "character": "savage",
+          "neverFlees": true,
+          "noGrowing": true
+        },
+        "subtype": "pikeman",
+        "template": {
+          "animation": "AvWPike.def",
+          "mask": [
+            "VV",
+            "VA"
+          ],
+          "visitableFrom": [
+            "+++",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "monster",
+        "x": 13,
+        "y": 12
+      },
+      "instance": "guard_1"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_0",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 6,
+        "y": 16
+      },
+      "instance": "mine_0"
+    },
+    {
+      "after": null,
+      "before": {
+        "instanceName": "mine_1",
+        "l": 0,
+        "options": {
+          "army": []
+        },
+        "subtype": "sawmill",
+        "template": {
+          "animation": "AVMsawd0.def",
+          "mask": [
+            "VVVVV",
+            "VVVBB",
+            "VBBAB"
+          ],
+          "visitableFrom": [
+            "---",
+            "+-+",
+            "+++"
+          ]
+        },
+        "type": "mine",
+        "x": 15,
+        "y": 16
+      },
+      "instance": "mine_1"
+    }
+  ],
+  "player": "red",
+  "rules_and_rewards_unchanged": true,
+  "runtime_resource_or_army_grants": false,
+  "scenario_id": "dialog-neutral-free-attack-red-v1",
+  "schema": "heroes-dialog-diagnostic-scenario-v1",
+  "terrain_unchanged": true,
+  "training_input": false,
+  "training_performed": false,
+  "variable_presets": false
+}

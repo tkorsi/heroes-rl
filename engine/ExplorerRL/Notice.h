@@ -27,5 +27,5 @@ public:
 /// parser does not query the world, inspect inventories or alter game state.
 JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	const std::vector<Component> & components, PlayerColor recipient,
-	const std::set<std::string> & ownHeroNameTextIds);
+	const std::set<std::string> & ownHeroNameTextIds, bool adventureDialogs = false);
 }

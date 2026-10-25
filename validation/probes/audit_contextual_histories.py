@@ -138,7 +138,7 @@ def audit_player(path, player):
                 raw = _json(line)
                 # The serialized envelope must carry its version, even if a
                 # dataclass constructor has a convenient in-process default.
-                if type(raw) is not dict or raw.get("schema") not in (contract.SCHEMA, contract.TOWN_SCHEMA, contract.ARMIES_SCHEMA, contract.HEROES_SCHEMA, contract.MANAGEMENT_SCHEMA):
+                if type(raw) is not dict or raw.get("schema") not in (contract.SCHEMA, contract.TOWN_SCHEMA, contract.ARMIES_SCHEMA, contract.HEROES_SCHEMA, contract.MANAGEMENT_SCHEMA, contract.DIALOGS_SCHEMA):
                     raise ValueError("Explicit supported contextual history schema is required")
                 frame = contract.decode_frame(raw)
                 if frame.player != player:
@@ -183,6 +183,46 @@ def _is_digest(value):
     return type(value) is str and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
 
 
+def _dialog_cutoff_checks(manifest, histories):
+    """Derive post-budget choices from immutable player histories, not counters."""
+    if not histories[0].profile.dialogs:
+        if "dialog_cutoff_drain" in manifest:
+            raise ValueError("Legacy manifest cannot claim strategic dialog draining")
+        return
+    if "dialog_cutoff_drain" not in manifest:
+        raise ValueError("Missing explicit dialog cutoff declaration")
+    drain = manifest["dialog_cutoff_drain"]
+    if drain is None:
+        return
+    if (type(drain) is not dict or set(drain) != {"reason", "trigger", "limit", "choices", "learner_included"}
+            or drain["reason"] not in ("collection_window", "game_day_limit", "agent_action_limit")
+            or type(drain["limit"]) is not int or drain["limit"] != 8 or drain["learner_included"] is not True):
+        raise ValueError("Invalid strategic dialog cutoff declaration")
+    trigger = drain["trigger"]
+    if (type(trigger) is not dict or set(trigger) != {"player", "decision_seq", "actions_sent"}
+            or type(trigger["player"]) is not int or trigger["player"] not in (0, 1)
+            or type(trigger["decision_seq"]) is not int or trigger["decision_seq"] < 0
+            or type(trigger["actions_sent"]) is not list or len(trigger["actions_sent"]) != 2
+            or any(type(count) is not int or count < 0 for count in trigger["actions_sent"])):
+        raise ValueError("Invalid strategic dialog cutoff trigger")
+    player, seq = trigger["player"], trigger["decision_seq"]
+    frames = histories[player].frames
+    if (seq >= len(frames) or frames[seq].kind != "decision"
+            or frames[seq].observation.context.kind != "dialog"):
+        raise ValueError("Dialog cutoff trigger is not its real own decision")
+    before = sum(frame.kind == "submitted" for frame in frames[:seq])
+    other = sum(frame.kind == "submitted" for frame in histories[1-player].frames)
+    if before != trigger["actions_sent"][player] or other != trigger["actions_sent"][1-player]:
+        raise ValueError("Dialog cutoff trigger counts disagree with player histories")
+    submitted = [frame for frame in frames[seq+1:] if frame.kind == "submitted"]
+    expected = [{"player": player, "decision_seq": frame.decision_seq} for frame in submitted]
+    if (type(drain["choices"]) is not list or drain["choices"] != expected or len(expected) > 8
+            or any(frame.action.kind != "choose_dialog" for frame in submitted)):
+        raise ValueError("Post-budget dialog choices disagree with learner experience")
+    if manifest["status"] == "truncated" and manifest["termination_reason"] != drain["reason"]:
+        raise ValueError("Deferred cutoff lost its original horizon reason")
+
+
 def _manifest_checks(manifest, reports, histories):
     failures = []
 
@@ -194,6 +234,7 @@ def _manifest_checks(manifest, reports, histories):
         require(False, "Manifest must be an object")
         return failures
     profile = histories[0].profile
+    _dialog_cutoff_checks(manifest, histories)
     expected = {"schema_version": 1, "kind": "contextual-headless-self-play", "environment": profile.environment,
                 "history_schema": profile.history_schema, "action_schema": profile.action_schema}
     for key, value in expected.items():
@@ -236,7 +277,7 @@ def _manifest_checks(manifest, reports, histories):
     for color, report, history in zip(COLORS, reports, histories):
         player = players.get(color, {})
         declaration = player.get(profile.history_key, {}) if type(player) is dict else {}
-        other_keys = {candidate.history_key for candidate in (contract.WINDOWS_PROFILE, contract.TOWN_PROFILE, contract.ARMIES_PROFILE, contract.HEROES_PROFILE, contract.MANAGEMENT_PROFILE)
+        other_keys = {candidate.history_key for candidate in (contract.WINDOWS_PROFILE, contract.TOWN_PROFILE, contract.ARMIES_PROFILE, contract.HEROES_PROFILE, contract.MANAGEMENT_PROFILE, contract.DIALOGS_PROFILE)
                       if candidate != profile}
         require(type(player) is dict and not other_keys.intersection(player), f"{color} contains a different history version declaration")
         if type(declaration) is not dict:

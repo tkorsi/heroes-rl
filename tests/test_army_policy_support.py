@@ -123,6 +123,24 @@ class ArmyPolicySupportTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "another manifest"):
                 p.validate_replay_binding(path, manifest, replay)
 
+    def test_v7_dialog_choices_score_exact_semantics_with_private_memory(self):
+        from tests.test_contextual_dialogs import FAMILIES, history_at as dialog_history, panel, begin_answer, finish_answer
+        with torch.random.fork_rng():
+            torch.manual_seed(302)
+            model = m.ContextualActorCritic(m.ModelConfig(schema=m.DIALOGS_MODEL_SCHEMA, hidden_size=8, feature_size=4))
+        model.eval().requires_grad_(False)
+        for family in FAMILIES:
+            history = dialog_history(panel(family))
+            seq = begin_answer(history, 1); finish_answer(history, seq)
+            with patch.object(m.ContextualDistribution, "sample", side_effect=AssertionError("Must not sample")):
+                first = p.score_history(history.frames, model)
+                second = p.score_history(history.frames, model)
+            self.assertTrue(p.compare_folds(first, second)["exact"])
+            self.assertEqual(first["schema"], p.DIALOGS_SCHEMA)
+            self.assertEqual(first["action_kinds_scored"], {"move_to": 1, "choose_dialog": 1})
+            self.assertEqual(first["decisions"][-1]["support"]["offers"]["dialog_panel"]["family"], family)
+            with self.assertRaises(ValueError): p.score_history(history.frames, self.model)
+
     def test_bound_file_mutation_and_failed_attempt_are_retained(self):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)

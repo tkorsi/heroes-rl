@@ -265,6 +265,11 @@ def verify_histories(directory, manifest, finalization_document):
             histories_complete=tuple(final["streams_complete"]), failure_free=True,
             shutdown_verified=final["shutdown_verified"], continuation_limit=final["continuation"]["limit_per_player"],
             continuation_steps=tuple(item[0].continuation_steps for item in reconstructed))
+    from validation.probes.audit_contextual_histories import _dialog_cutoff_checks
+    _dialog_cutoff_checks(manifest, histories)
+    if profile.dialogs:
+        _require("dialog_cutoff_drain" in final and final["dialog_cutoff_drain"] == manifest["dialog_cutoff_drain"],
+                 "Finalization does not bind post-budget strategic choices")
     players = {}
     for color, (producer, counts, bridge) in zip(COLORS, reconstructed):
         declaration = manifest["players"][color]
