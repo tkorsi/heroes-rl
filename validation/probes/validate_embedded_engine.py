@@ -49,9 +49,10 @@ SCOPE = ("Bounded evaluation-only rows; no training, rewards, demonstrations or 
          "Controllers other than policy are explicit test workloads, never learner inputs.")
 
 
-def schedule(count, seats, engine_seed, policy_seed):
+def schedule(count, seats, engine_seed, policy_seed, step=1):
     return [{"index": index, "episode": index + 1, "learner_player": seats[index % len(seats)],
-             "engine_seed": engine_seed + index, "policy_seed": policy_seed + index} for index in range(count)]
+             "engine_seed": engine_seed + step * index, "policy_seed": policy_seed + step * index}
+            for index in range(count)]
 
 
 def percentiles(values):
@@ -200,7 +201,7 @@ def run(args):
     require(args.controller != "visit" or args.visit_kind is not None, "The visit controller needs --visit-kind")
     seats = [int(seat) for seat in args.seats.split(",")]
     require(seats and all(seat in (0, 1) for seat in seats), "Seats are 0 and/or 1")
-    rows = schedule(args.episodes, seats, args.engine_seed, args.policy_seed)
+    rows = schedule(args.episodes, seats, args.engine_seed, args.policy_seed, args.seed_step)
     runtime = runtime_identity(args.binary.parent)
     loaded = fixed = None
     if args.controller == "policy":
@@ -492,6 +493,7 @@ def main(argv=None):
     runner.add_argument("--seats", default="0,1")
     runner.add_argument("--engine-seed", type=int, default=121902)
     runner.add_argument("--policy-seed", type=int, default=121903)
+    runner.add_argument("--seed-step", type=int, default=1, help="0 repeats the base seeds on every row")
     runner.add_argument("--max-days", type=int, default=12)
     runner.add_argument("--choices", type=int, default=256)
     runner.add_argument("--watchdog", type=float, default=60)

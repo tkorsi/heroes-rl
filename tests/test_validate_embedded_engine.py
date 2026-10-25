@@ -79,6 +79,7 @@ class ProbeHelperTests(unittest.TestCase):
         rows = probe.schedule(3, [0, 1], 100, 200)
         self.assertEqual([(r["episode"], r["learner_player"], r["engine_seed"], r["policy_seed"]) for r in rows],
                          [(1, 0, 100, 200), (2, 1, 101, 201), (3, 0, 102, 202)])
+        self.assertEqual({(r["engine_seed"], r["policy_seed"]) for r in probe.schedule(4, [0, 1], 7, 8, 0)}, {(7, 8)})
 
 
 if __name__ == "__main__":
