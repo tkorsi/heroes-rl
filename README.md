@@ -29,7 +29,7 @@ also passed. Native gameplay acceptance is recorded separately below.
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
 | Actions | Native coordinate routing, construction/recruitment, Tavern, armies, dialogs, marketplace, artifacts, adventure spells and level-up choices | Supported object families only; no tactical battle policy or path-cost oracle |
-| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Winning strategy has not been demonstrated |
+| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | A learned winning strategy has not been demonstrated |
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
 | Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
@@ -99,6 +99,19 @@ steps; model, optimizer, RNG, progress and pool restored exactly from three
 copies. The cloud Teacher stopped by its fixed deadline with no native
 processes remaining. See the [final analysis](validation/cloud-final-analysis-2026-10-25.json).
 Changed weights or occasional recruitment do not establish improved strategy.
+
+The separate [scripted recruitment/rush diagnostic](validation/recruit-rush-2026-10-26.json)
+establishes that a short winning path exists on the current map. Red won all
+three corrected trials on day 1 after buying 14 pikemen and transferring them to
+its starting hero (39 total). Attack began on typed command 8; nine commands were
+submitted including the subsequent level-up response, which the natural terminal
+superseded. Blue lost both trials after its first attack; Nullkiller had already
+used its first turn to recruit and transfer the same 14 pikemen. A preliminary
+Red trial that accidentally left the purchased troops in town also won and is
+retained separately. All six games passed native replay. These authored probes
+are excluded from training and are neither learned-policy wins nor proof of a
+globally shortest sequence. The Teacher's policy and campaign settings were not
+changed by this diagnostic.
 
 ## Experiment agreement
 
