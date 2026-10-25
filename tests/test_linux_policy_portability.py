@@ -1,6 +1,8 @@
 """Synthetic, inference-only portability checks; no game data or optimizer."""
 from copy import deepcopy
 import json
+import platform
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -8,7 +10,9 @@ from unittest.mock import patch
 
 try:
     import torch
-except ModuleNotFoundError:
+except ModuleNotFoundError as error:
+    if error.name != 'torch':
+        raise
     raise unittest.SkipTest('Optional torch dependency is not installed')
 from experiments.learner import contextual as c
 from experiments.learner.checkpoints import FrozenOpponentPool, save_policy_checkpoint, load_policy_checkpoint
@@ -17,7 +21,9 @@ from experiments.learner.inference import source_identity
 from tools import port_fixed_policy_linux as p
 
 
-@unittest.skipUnless(str(torch.__version__) == '2.9.1+cpu', 'Linux CPU portability target only')
+@unittest.skipUnless(str(torch.__version__) == '2.9.1+cpu' and platform.system() == 'Linux'
+                     and platform.machine() == 'x86_64' and sys.version_info[:2] == (3, 12),
+                     'Linux x86_64 CPython 3.12 CPU portability target only')
 class LinuxPortabilityTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -43,9 +49,11 @@ class LinuxPortabilityTests(unittest.TestCase):
 
     def test_exact_tensors_and_original_preserved_under_standard_loader(self):
         before = self.original.read_bytes()
+        rng_before = torch.get_rng_state().clone()
         with patch.object(torch.optim.Adam, 'step', side_effect=AssertionError('No optimizer')):
             report = self.run_conversion()
         self.assertTrue(report['exact_learner_and_opponent_tensors'])
+        self.assertTrue(torch.equal(rng_before, torch.get_rng_state()))
         self.assertEqual(before, self.original.read_bytes())
         converted = self.output / 'fixed-policy-linux.pt'
         loaded = load_policy_checkpoint(converted, interface=c.DIALOGS_ENVIRONMENT)

@@ -44,7 +44,8 @@ def _convert(source, output, *, expected_sha256, expected_bytes, expected_learne
 
     source, output = Path(source).resolve(), Path(output).resolve()
     require(not output.exists(), 'Output already exists; never overwrite a migration')
-    require(platform.system() == 'Linux' and platform.machine() == 'x86_64', 'Linux x86_64 required')
+    require(platform.system() == 'Linux' and platform.machine() == 'x86_64'
+            and sys.version_info[:2] == (3, 12), 'Linux x86_64 with CPython 3.12 required')
     require(str(torch.__version__) == '2.9.1+cpu' and torch.version.cuda is None and torch.version.hip is None,
             'Validated target requires CPU PyTorch 2.9.1+cpu')
     require(source.stat().st_size == expected_bytes and digest(source) == expected_sha256,

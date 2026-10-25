@@ -194,6 +194,24 @@ Two compiler jobs and one PyTorch thread are the default. Source the activation
 file in each new shell; processes and shell exports do not survive publication.
 No persistent service or automatic gameplay startup is required.
 
+### Private input inventory
+
+After the user supplies an approved private mount or artifact location, inventory
+the selected inputs without copying them into the checkout:
+
+```sh
+python tools/inventory_cloud_inputs.py --data /private-inputs/game \
+  --checkpoint /private-inputs/fixed-policy.pt \
+  --output /private-inputs/manifest.json
+```
+
+The command verifies the exact original checkpoint identity and writes relative
+Data file names, sizes and SHA-256 hashes to a new mode-0600 manifest outside
+the repository. It rejects empty data and nested symlinks/nonregular entries.
+This is a byte inventory, not proof of complete/usable game content, legal
+ownership, checkpoint portability, or successful gameplay. Both inputs and this
+manifest must stay private and outside shared snapshots.
+
 ### Explicit frozen-policy portability
 
 The original fixed checkpoint is still an input, never a generated substitute.
