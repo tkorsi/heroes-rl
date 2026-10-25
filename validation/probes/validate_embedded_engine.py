@@ -174,6 +174,24 @@ def delta(before, after):
     return {key: after[key] - before[key] for key in after if isinstance(after[key], (int, float))}
 
 
+def random_policy(seed):
+    """A labelled, freshly initialized v7 model: never a trained or the frozen checkpoint.
+
+    Used where the frozen checkpoint cannot load (its exact Torch release is
+    bound); it exercises the same model, sampling and engine paths.
+    """
+    from types import SimpleNamespace
+    import torch
+    from experiments.learner import contextual_model as m
+    torch.manual_seed(seed)
+    model = m.ContextualActorCritic(m.ModelConfig(schema=m.DIALOGS_MODEL_SCHEMA))
+    model.eval().requires_grad_(False)
+    from experiments.learner.builtin_rollout import weights_sha256
+    label = f"random-initialization-v7-seed-{seed}-not-a-trained-or-frozen-checkpoint"
+    return SimpleNamespace(model=model, checkpoint=label), {"label": label, "weights_sha256": weights_sha256(model),
+                                                             "model_config": model.config.to_dict()}
+
+
 def make_launcher(args):
     if args.backend == "embedded":
         from experiments.headless.embedded_env import EmbeddedLauncher
@@ -197,7 +215,8 @@ def run(args):
             setattr(args, name, getattr(args, name).expanduser().resolve())
     output = args.output
     require(not output.exists(), "Preserve every earlier run; use a new output directory")
-    require(args.controller != "policy" or args.checkpoint is not None, "The policy controller needs --checkpoint")
+    require(args.controller != "policy" or (args.checkpoint is None) != (args.random_policy_seed is None),
+            "The policy controller needs exactly one of --checkpoint or --random-policy-seed")
     require(args.controller != "visit" or args.visit_kind is not None, "The visit controller needs --visit-kind")
     seats = [int(seat) for seat in args.seats.split(",")]
     require(seats and all(seat in (0, 1) for seat in seats), "Seats are 0 and/or 1")
@@ -205,13 +224,14 @@ def run(args):
     runtime = runtime_identity(args.binary.parent)
     loaded = fixed = None
     if args.controller == "policy":
-        loaded, fixed = load_fixed(args.checkpoint)
+        loaded, fixed = load_fixed(args.checkpoint) if args.checkpoint else random_policy(args.random_policy_seed)
     output.mkdir(parents=True)
     limits = Limits(max_days=args.max_days, max_actions=args.choices + 8, startup_seconds=60,
                     watchdog_seconds=args.watchdog, shutdown_seconds=15, bridge_timeout=args.bridge_timeout)
     plan = {"schema": SCHEMA, "backend": args.backend, "controller": args.controller, "rows": rows,
             "map": binding(args.map), "binary": str(args.binary), "replay_binary": str(args.replay_binary),
             "data": str(args.data), "runtime": runtime, "checkpoint": binding(args.checkpoint) if args.checkpoint else None,
+            "random_policy_seed": args.random_policy_seed,
             "frozen": fixed, "limits": {"max_days": args.max_days, "choices": args.choices, "hard_choices": args.choices + 8,
             "watchdog_seconds": args.watchdog, "bridge_timeout": args.bridge_timeout, "row_seconds": args.row_seconds},
             "visit_kind": args.visit_kind, "stall_seconds": args.stall_seconds, "replay": args.replay,
@@ -331,7 +351,8 @@ def run(args):
             if controller == "policy" and result["replay_verified"]:
                 begun = time.perf_counter()
                 try:
-                    rebuilt, _ = load_fixed(args.checkpoint)
+                    rebuilt, _ = (load_fixed(args.checkpoint) if args.checkpoint
+                                  else random_policy(args.random_policy_seed))
                     audit = audit_persisted_builtin_policy(Path(result["episode_directory"]), rebuilt.model,
                         rebuilt.checkpoint, row["policy_seed"], native_opponent(runtime, seat))
                     result["policy_audit"] = audit.get("passed") is True
@@ -530,6 +551,7 @@ def main(argv=None):
     runner.add_argument("--map", type=Path, required=True)
     runner.add_argument("--output", type=Path, required=True)
     runner.add_argument("--checkpoint", type=Path)
+    runner.add_argument("--random-policy-seed", type=int, help="labelled freshly initialized v7 policy instead of --checkpoint")
     runner.add_argument("--episodes", type=int, default=2)
     runner.add_argument("--seats", default="0,1")
     runner.add_argument("--engine-seed", type=int, default=121902)
