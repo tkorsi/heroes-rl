@@ -1,5 +1,5 @@
 {
-  "activity": "Learning stopped at update31; final fixed held-out pair passed with0 wins/2 losses. Final canonical, independent backup and private Git checkpoint copies restore exactly; preparing final evidence and remaining available until17:53 UTC.",
+  "activity": "All10 cloud updates and4 paired held-out checks complete; three final checkpoint copies restore exactly; results and portable runtime privately archived. Awaiting fixed hard stop without launching more learning.",
   "behavior_diagnostics": {
     "cross_army_net_count_redistribution": 1275,
     "cross_army_operations": 120,
@@ -22,6 +22,27 @@
     "worker_and_native_absolute_guardians": true
   },
   "experimental_replay_worker_enabled": false,
+  "final_analysis": {
+    "behavior": {
+      "across_army_operations": 120,
+      "battle_role_defender": 49,
+      "movement_attempts": 115,
+      "movement_endpoint_changes": 13,
+      "moves_toward_visible_opponent_town": 0,
+      "observed_cross_army_net_count_redistribution": 1275,
+      "recruitment_completed_actions": 50,
+      "town_capture_evidence": 0
+    },
+    "cutoffs": 1,
+    "model_tensor_count": 39,
+    "model_tensors_changed": 39,
+    "natural_losses": 47,
+    "natural_wins": 0,
+    "no_new_training_decision_utc": "2026-10-25T17:17:55.061561+00:00",
+    "path": "validation/cloud-final-analysis-2026-10-25.json",
+    "private_analysis_commit": "089d5a4",
+    "three_checkpoint_copies_restored_exactly": true
+  },
   "heldout_checks": [
     {
       "at_update": 31,
@@ -205,7 +226,7 @@
     "native_build": "passed_linux_v2",
     "same_runtime_replay": "passed_both_seats"
   },
-  "next_step": "Continue fresh complete batches and required fixed held-out pairs only while sufficient absolute deadline reserve remains.",
+  "next_step": "At the fixed cutoff, record stopped state and publish stop evidence. No restart without new user instruction.",
   "next_unused_training_sequence": 22,
   "optimizer_status_observed": {
     "branch": "codex/portable-engine-session",
@@ -248,7 +269,7 @@
     "admitted_rollouts": 40,
     "updates": 10
   },
-  "state": "analyzing_before_hard_stop",
+  "state": "learning_stopped_analysis_ready",
   "throughput": {
     "admitted_decisions_per_reported_batch_second": 0.8847464648411689,
     "reported_training_batch_wall_seconds": 3200.917,
@@ -256,7 +277,7 @@
     "verified_training_games_per_reported_batch_second": 0.012496418994931766
   },
   "training_performed_in_cloud": true,
-  "updated_utc": "2026-10-25T17:24:44.395184+00:00",
+  "updated_utc": "2026-10-25T17:31:30.815828+00:00",
   "validated_cloud_outcomes": {
     "adam_steps": 104,
     "cutoff": 1,

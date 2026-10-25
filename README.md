@@ -295,6 +295,42 @@ no canonical C++ was edited by Teacher. Follow Optimizer's
 `codex/portable-engine-session` status for a tested minimal separately applicable
 correctness repair before a fresh ordinary-runtime gate.
 
+### Cloud outcome through update 31
+
+The restored update-21 lineage completed **ten fresh cloud PPO updates** on the
+ordinary repaired Linux runtime: **40 training games, 2,832 admitted decisions
+and 104 Adam steps**. The latest complete state is **31 updates, 124 cumulative
+rollouts, 6,776 decisions and 253 Adam steps**. Original update-21 checkpoint
+hashes remain unchanged. Every batch has an independent restore-tested durable
+backup and a second restore-tested copy committed to the private results repo.
+The final canonical pair, backup and private Git copy were all restored again.
+No policy, feature, observation, reward or PPO numerical source was changed.
+
+Across 48 valid cloud games, the learner had **zero wins, 47 natural losses and
+one verified unscored day-limit cutoff**. The cutoff supplied its verified own
+bootstrap value; it was never scored as defeat. The fixed both-seat checks at
+updates 21, 25, 30 and the final 31 each returned 0/2 wins. These repeated seeds
+are regression checks, not independent win-rate samples; no improvement in the
+held-out win/loss result was observed.
+
+Manifest-bound own-history diagnostics recorded 50 completed recruitment actions,
+120 across-army operations and 13 movement endpoint changes. All 49 observed
+battle starts had the learner defending; there was no visible opponent-town
+targeting or town capture evidence. Redistribution counts do not establish
+strategic concentration or distinct units transferred. Reported training-batch
+wall time was 3,200.917 seconds (capture, reconstruction/replay, PPO, checkpoint
+roundtrip and cleanup), about 0.885 admitted decisions per reported batch second;
+preparation and private publication are outside that measure.
+
+New learning stopped when the measured full-batch safety estimate exceeded the
+remaining compute window. The final paired evaluation and evidence audit passed.
+The absolute stop remains 17:53 UTC, with the independent compute cutoff at
+17:50 UTC and no restart authorized. Compact results are
+`validation/cloud-final-analysis-2026-10-25.json`; current stop/status information
+is `reports/cloud/teacher-status.json`. All raw captures, checkpoints, the portable
+Linux runtime and full restore/behavior proofs remain private on
+`tkorsi/heroes-rl-training-state`, branch `codex/cloud-teacher-results`.
+
 ## Current authorized local PPO pilot
 
 After the four replay-verified natural defeats against Nullkiller Easy, the user
