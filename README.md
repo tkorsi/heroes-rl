@@ -16,8 +16,10 @@ remains unscored and seven games were not started. Neither stopped evaluation
 performed optimizer updates. A separate replay with the repaired verifier now
 regenerates that ordinary game's natural ending exactly, including its explicitly
 accounted terminal-unapplied movement attempt. This establishes reachability,
-not retrospective admission or an outcome rate. Automatic BattleAI combat, normal
-fog and terminal-only rewards remain fixed.
+not retrospective admission or an outcome rate. Two separate frozen-policy
+fixture cases also pass natural-ending replay, with learner defeats from both
+colors. Automatic BattleAI combat, normal fog and terminal-only rewards remain
+fixed. No training was performed during this validation work.
 
 The original ten-attempt experiment remains preserved: one PPO update (ten
 optimizer steps), followed by four separately authorized evaluations with zero
@@ -2528,17 +2530,51 @@ The repaired verifier builds successfully; exact dependency preparation passes.
 The full suite runs 906 tests successfully with one retained-capture skip.
 Focused native accounting tests include 65 checks using the actual packet codec;
 fixture orchestration tests cover failure retention, cleanup and fixed limits.
+Ten focused offline-summary tests additionally pass after tightening natural
+manifest, terminal-day and exact policy-reconstruction admission checks.
 
-The next bounded validation is separately declared by
-`validation/probes/validate_builtin_natural.py`: two fixed cases, learner Red
-then Blue, using the existing townless boundary fixture and unchanged v7 frozen
-policy. Every action is sampled by that policy; the fixture's historical action
+The separate bounded validation declared by
+`validation/probes/validate_builtin_natural.py` completed from frozen source
+`19ea34f`: two fixed cases, learner Red then Blue, using the existing townless
+boundary fixture and unchanged v7 frozen policy. Every action is sampled by that policy; the fixture's historical action
 script is unused. Each case allows 120 seconds including cleanup/replay,
 256 nominal choices plus eight real-dialog reserve choices and at most 12 game
 days. Engine seed 121902 and policy seed 121903 are fixed for both seats. A
 failure is retained and stops subsequent cases. These checks cannot replace
 ordinary rows, establish ordinary outcome rates or authorize training. No
 optimizer updates or training samples are produced.
+
+Both cases **passed**, with native natural defeats for the learner: Red on
+day 2 and Blue on day 3 (Blue's last sampled decision was on day 2).
+
+| Learner color | Terminal day | Policy choices | Own-history frames | Applied inputs / captured attempts | Regenerated packets | Case time including replay |
+|---|---:|---:|---:|---:|---:|---:|
+| Red | 2 | 9 | 69 | 42 / 43 | 292 | 1.298 s |
+| Blue | 3 | 30 | 212 | 88 / 89 | 500 | 2.576 s |
+
+Each case independently reconstructs every action and value exactly, retains
+visible events between decisions, resets the learner's private memory, and
+checks every native record with zero unchecked entries. Both expose the same
+explicitly accounted terminal-unapplied native movement pattern. Checkpoint
+bytes remain unchanged. These are combat endings on the declared fixture;
+they do not demonstrate expiry of the townless timer, a learned victory, or an
+ordinary self-play natural outcome. All original stopped rows remain intact.
+
+Compact evidence is
+[validation/builtin-terminal-validation-2026-10-25.json](validation/builtin-terminal-validation-2026-10-25.json).
+It binds both original schedules, the supplemental ordinary replay, both fresh
+fixture cases, reconstruction reports, historical source/runtime identities,
+the frozen checkpoint and validation logs. The offline summary performs no
+additional game, replay or model execution.
+
+The observed lack of ordinary self-play outcomes therefore has two distinct
+parts: random policies made little progress toward capturing towns, and replay
+failures blocked independent verification of other captures. The
+87.9% control/army-action share supports limited strategic progress; it does not
+prove a sole cause or exclude every environment bug. The repaired ordinary
+native-opponent replay establishes reachability without changing victory rules,
+map rules or rewards. Natural self-play outcome frequency and broader unsupported
+mechanics remain unmeasured, and training remains off.
 
 ## Stable spell target ordering
 
@@ -2556,8 +2592,8 @@ order and damage over 576 independent allocation/input permutations. Geometry,
 unit-state and RNG collaborators are explicit test fakes; this is not native
 packet-serialization or rebirth-RNG validation. The production engine rebuild
 and exact generated-source check pass. Mixed-controller cutoff replay passes,
-but the stopped ordinary comparison does not establish complete natural-ending
-or wider spell/combat replay coverage.
+and the separate terminal diagnostics above pass. Wider spell/combat coverage,
+including real rebirth-RNG behavior, remains unverified.
 
 ## Headless self-play environment (issue #4, in progress)
 

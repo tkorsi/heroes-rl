@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from validation.probes import summarize_builtin_terminal as s
 from tests import test_builtin_replay as replay_fixtures
+from experiments.learner import contextual as c
 
 
 class TerminalSummaryTests(unittest.TestCase):
@@ -144,4 +145,68 @@ class TerminalSummaryTests(unittest.TestCase):
         path=self.root/"report.json";path.write_text('{}\n');before=s.bind(path)
         path.write_text('{"changed":true}\n')
         with self.assertRaises(ValueError):s.bind(path,before)
+
+    def natural_fixture(self):
+        folder=self.root/"natural";folder.mkdir()
+        fixture=replay_fixtures.HistoryFixture(folder,0,natural=True)
+        fixture.manifest["seed"]=100
+        common={"schema":s.evidence.native.SCHEMA,"episode":"1","interface":c.DIALOGS_ENVIRONMENT,
+            "barrier_id":1,"origin":"request","request":{"player":0,"id":3,"type":198},
+            "client_packets":10,"outcomes":["win","loss"],"controllers":s.evidence.controllers(0)}
+        (folder/"engine").mkdir()
+        for side in ("server","client"):
+            record={**common,"kind":side}
+            if side == "client":record.update(callbacks_complete=True,observed_count=10,
+                native_terminal_callbacks=[0,1],explorer_terminal_callbacks=[0])
+            (folder/f"engine/terminal-barrier-{side}.jsonl").write_text(json.dumps(record)+"\n")
+        (folder/"engine/contextual-replay.jsonl").write_text(json.dumps({"seq":12,"kind":"close","barrier_id":1,"client_packets":10})+"\n")
+        fixture.final["terminal_barrier"]=s.evidence.terminal_barrier(folder,episode="1",interface=c.DIALOGS_ENVIRONMENT,
+            outcomes=["win","loss"],learner_player=0)
+        fixture.save_bindings()
+        row={"episode":1,"learner_player":0,"engine_seed":100,"policy_seed":200,"sampled_choices":1,"latest_sampled_day":1}
+        return folder,fixture,row
+
+    def test_natural_capture_requires_actual_terminal_and_scheduled_identity(self):
+        folder,fixture,row=self.natural_fixture()
+        history,audit=s.natural_history(folder,fixture.manifest,row)
+        self.assertEqual(history.terminal,"win");self.assertEqual(audit["boundary"],"natural")
+        for change in (lambda m:m.update(status="failed"),lambda m:m.update(returncode=True),
+                       lambda m:m.update(termination_reason="collection_window"),lambda m:m.update(seed=101),
+                       lambda m:m.update(learner_player=1),lambda m:m.update(episode="2"),
+                       lambda m:m["outcomes_by_player"].update(red="loss"),lambda m:m["rewards_by_player"].update(red=0)):
+            changed=deepcopy(fixture.manifest);change(changed)
+            with self.assertRaises(ValueError):s.natural_history(folder,changed,row)
+        fixture.final["terminal_barrier"]["client"]["request"]["id"]=999;fixture.save_bindings()
+        with self.assertRaisesRegex(ValueError,"terminal receipts"):s.natural_history(folder,fixture.manifest,row)
+
+    def test_exact_reconstruction_is_bound_to_own_rollout_and_counts(self):
+        folder,fixture,row=self.natural_fixture();history,audit=s.natural_history(folder,fixture.manifest,row)
+        frozen={"learner_weights_sha256":"a"*64}
+        encoded=[c.encode_frame(f) for f in history.frames]
+        prefix={"episode":"1","player":0,"checkpoint":"synthetic-fixed","weights_sha256":"a"*64,"through_seq":0,
+                "history_sha256":s.hashlib.sha256((json.dumps(encoded[0],sort_keys=True,separators=(",", ":"))+"\n").encode()).hexdigest()}
+        decision={"decision_seq":0,"action":c.encode_action(next(f.action for f in history.frames if f.kind == "submitted")),
+                  "value":0,"prefix":prefix,"conditionals":[{"name":"kind","log_prob":0}]}
+        rollout={"schema":"heroes-builtin-evaluation-rollout-v1","purpose":"diagnostic","origin":"native",
+            "optimization_eligible":False,"training_samples":0,"manifest":fixture.manifest,"player":0,"policy_seed":200,
+            "checkpoint":"synthetic-fixed","weights_sha256":"a"*64,"opponent_identity":fixture.manifest["opponent_identity"],
+            "history":encoded,"decisions":[decision],"estimates":[{"decision_seq":0,"value":0,"prefix":prefix}]}
+        report={"passed":True,"weights_unchanged":True,"private_memory_reset":True,"maximum_absolute_difference":0,
+                "player":0,"history_audit":audit,"actions_resampled":1,"values_recomputed":1,"conditionals_recomputed":1}
+        def check(r=report,v=rollout):
+            (folder/"policy-reconstruction.json").write_text(json.dumps(r));(folder/"builtin-rollout.json").write_text(json.dumps(v))
+            return s.reconstruction_binding(folder,fixture.manifest,{**row,"reconstruction":r},frozen,history,audit)
+        self.assertEqual(check()["actions_resampled"],1)
+        for change in (lambda r:r.update(maximum_absolute_difference=.01),lambda r:r.update(private_memory_reset=False),
+                       lambda r:r.update(player=1),lambda r:r["history_audit"].update(frames=999),
+                       lambda r:r.update(actions_resampled=2),lambda r:r.update(values_recomputed=2),
+                       lambda r:r.update(conditionals_recomputed=2)):
+            bad=deepcopy(report);change(bad)
+            with self.assertRaises(ValueError):check(bad)
+        for change in (lambda v:v["decisions"].clear(),lambda v:v["estimates"].clear(),
+                       lambda v:v.update(policy_seed=201),lambda v:v.update(weights_sha256="b"*64),
+                       lambda v:v["decisions"][0]["prefix"].update(history_sha256="b"*64),
+                       lambda v:v["decisions"][0]["action"].update(kind="close")):
+            bad=deepcopy(rollout);change(bad)
+            with self.assertRaises(ValueError):check(v=bad)
 

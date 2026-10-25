@@ -13,6 +13,7 @@ from pathlib import Path
 
 from experiments.headless import builtin_evidence as evidence
 from experiments.headless import builtin_replay as replay
+from experiments.learner import contextual as c
 from validation.probes.summarize_builtin_preflight import binding, compact_identity, read, require
 
 SCHEMA = "heroes-builtin-terminal-evidence-v1"
@@ -135,6 +136,72 @@ def checked_replay(path, folder, manifest, *, supplemental):
     return result
 
 
+def natural_history(folder, manifest, row):
+    require(manifest.get("status") == "completed" and manifest.get("termination_reason") == "natural_terminal"
+            and type(manifest.get("returncode")) is int and manifest["returncode"] == 0
+            and manifest.get("episode") == str(row["episode"])
+            and type(manifest.get("learner_player")) is int and manifest["learner_player"] == row["learner_player"]
+            and type(manifest.get("seed")) is int and manifest["seed"] == row["engine_seed"],
+            "Passed fixture does not bind its scheduled natural episode/seat/seed")
+    player=manifest["learner_player"]; declaration=manifest["players"][COLORS[player]]["history_v7"]
+    path=evidence.native.inside(folder,declaration["path"]);bind(path,declaration["sha256"])
+    history=c.PlayerHistory(manifest["episode"],player,schema=c.DIALOGS_SCHEMA)
+    for line in path.read_bytes().splitlines():history.append(c.decode_frame(evidence.native.strict_json(line)))
+    audit=evidence.validate_manifest_history(history,manifest)
+    final=evidence.read_finalization(folder,manifest)
+    barrier=evidence.terminal_barrier(folder,episode=manifest["episode"],interface=manifest["environment"],
+        outcomes=[manifest["outcomes_by_player"][color] for color in COLORS],learner_player=player)
+    require(evidence.same(barrier,final.get("terminal_barrier")),"Natural fixture finalization changed terminal receipts")
+    evidence.native.terminal_capture_close(folder,barrier)
+    return history,audit
+
+
+def reconstruction_binding(folder, manifest, row, frozen, history, audit):
+    """Validate saved reconstruction claims against actual own records, without resampling."""
+    path=folder/"policy-reconstruction.json";record=read(path);rollout_path=folder/"builtin-rollout.json";rollout=read(rollout_path)
+    require(evidence.same(record,row["reconstruction"]) and record.get("passed") is True
+            and record.get("weights_unchanged") is True and record.get("private_memory_reset") is True
+            and type(record.get("maximum_absolute_difference")) in (int,float) and record["maximum_absolute_difference"] == 0
+            and type(record.get("player")) is int and record["player"] == history.player
+            and evidence.same(record.get("history_audit"),audit),"Fixture reconstruction is not exact for its actual own history")
+    require(rollout.get("schema") == "heroes-builtin-evaluation-rollout-v1" and rollout.get("purpose") == "diagnostic"
+            and rollout.get("origin") == "native" and rollout.get("optimization_eligible") is False
+            and type(rollout.get("training_samples")) is int and rollout["training_samples"] == 0
+            and evidence.same(rollout.get("manifest"),manifest) and type(rollout.get("player")) is int
+            and rollout["player"] == history.player and rollout.get("policy_seed") == row["policy_seed"]
+            and rollout.get("weights_sha256") == frozen["learner_weights_sha256"]
+            and evidence.same(rollout.get("opponent_identity"),manifest["opponent_identity"])
+            and evidence.same(rollout.get("history"),[c.encode_frame(f) for f in history.frames]),
+            "Saved rollout changed frozen policy, episode, player or delivered history")
+    decisions,estimates=rollout.get("decisions"),rollout.get("estimates")
+    require(type(decisions) is list and type(estimates) is list
+            and [x["decision_seq"] for x in decisions] == [f.decision_seq for f in history.frames if f.kind == "submitted"]
+            and [x["decision_seq"] for x in estimates] == [f.seq for f in history.frames if f.kind == "decision"],
+            "Reconstruction omitted or invented own decisions/values")
+    digest=hashlib.sha256();prefixes={}
+    for frame in history.frames:
+        digest.update((json.dumps(c.encode_frame(frame),sort_keys=True,separators=(",", ":"))+"\n").encode())
+        if frame.kind == "decision":prefixes[frame.seq]=digest.hexdigest()
+    values={x["decision_seq"]:x["value"] for x in estimates}
+    submitted={f.decision_seq:c.encode_action(f.action) for f in history.frames if f.kind == "submitted"}
+    for item in [*decisions,*estimates]:
+        seq=item["decision_seq"]
+        require(type(seq) is int and evidence.same(item.get("prefix"),{
+            "episode":history.episode,"player":history.player,"checkpoint":rollout["checkpoint"],
+            "weights_sha256":frozen["learner_weights_sha256"],"through_seq":seq,"history_sha256":prefixes[seq]}),
+            "Reconstruction record is bound to another recurrent prefix")
+    for item in decisions:
+        require(evidence.same(item["action"],submitted[item["decision_seq"]]) and item["value"] == values[item["decision_seq"]]
+                and type(item.get("conditionals")) is list and bool(item["conditionals"]),"Saved action/value evidence differs from delivered experience")
+    wanted={"actions_resampled":len(decisions),"values_recomputed":len(estimates),
+            "conditionals_recomputed":sum(len(item["conditionals"]) for item in decisions)}
+    require(all(type(record.get(key)) is int and record[key] == value for key,value in wanted.items())
+            and type(row.get("sampled_choices")) is int and row["sampled_choices"] == len(decisions)
+            and row.get("latest_sampled_day") == max((history.frames[x["decision_seq"]].day for x in decisions),default=None),
+            "Reconstruction counts differ from saved decisions/values/conditionals")
+    return {"report":bind(path),"rollout":bind(rollout_path),**wanted,"maximum_absolute_difference":0,"history_audit":audit}
+
+
 def natural_diagnostic(directory, checkpoint, frozen):
     directory = Path(directory).resolve(); plan, report = read(directory/"plan.json"), read(directory/"report.json")
     require(plan.get("schema") == NATURAL_SCHEMA and report.get("schema") == NATURAL_SCHEMA+"-result"
@@ -162,17 +229,15 @@ def natural_diagnostic(directory, checkpoint, frozen):
             if row.get("manifest"):bind(folder/"manifest.json",row["manifest"])
         else:
             manifest=read(folder/"manifest.json");bind(folder/"manifest.json",row["manifest"])
+            history,audit=natural_history(folder,manifest,row)
+            result["terminal_day"]=next(frame.day for frame in reversed(history.frames) if frame.kind == "terminal")
             require(row.get("replay_verified") is True and row.get("weights_unchanged") is True
                     and row["outcomes"] == manifest["outcomes_by_player"] and row["rewards"] == manifest["rewards_by_player"],
                     "Passed fixture lacks frozen verified outcomes")
             path=folder/"builtin-verification/builtin-replay-verification.json";bind(path,row["replay"])
             result["verification"]=checked_replay(path,folder,manifest,supplemental=False)
             require(result["verification"]["passed"],"Passed fixture lacks native replay")
-            reconstruction=read(folder/"policy-reconstruction.json")
-            require(evidence.same(reconstruction,row["reconstruction"]) and reconstruction.get("passed") is True
-                    and reconstruction.get("weights_unchanged") is True,
-                    "Fixture policy reconstruction changed")
-            result["reconstruction"]=bind(folder/"policy-reconstruction.json")
+            result["reconstruction"]=reconstruction_binding(folder,manifest,row,frozen,history,audit)
         rows.append(result)
     require((report["status"] == "passed") == all(row["status"] == "passed" for row in rows),"Fixture overall status changed")
     return {"plan":bind(directory/"plan.json"),"report":bind(directory/"report.json"),"fixture":plan["fixture"],
@@ -207,7 +272,7 @@ def summarize(cohort, original_summary, supplemental, *, natural=None, validatio
     if diagnostic["diagnostic_verified"]:check_compatibility(diagnostic["identity_check"],manifest["identity"])
     supplemental_result=checked_replay(supplemental,episode,manifest,supplemental=True)
     supplemental_result.update(original_cohort_admission=False,compatibility=diagnostic.get("identity_check"),ordinary_cohort_member=False)
-    return {"schema":SCHEMA,"original_summary":bind(original_summary),"original_plan":bind(plan_path),
+    return {"schema":SCHEMA,"offline_validator":bind(Path(__file__)),"original_summary":bind(original_summary),"original_plan":bind(plan_path),
         "original_reports":[bind(directory/"report.json") for directory in executions],"cohorts":cohorts,
         "retained_original_artifacts":{"count":len(retained),"mapping_sha256":mapping_digest(retained)},
         "supplemental_replay":supplemental_result,

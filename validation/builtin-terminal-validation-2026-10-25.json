@@ -1,0 +1,1138 @@
+{
+  "cohorts": {
+    "builtin_nullkiller_easy": {
+      "attempts": [
+        {
+          "engine_seed": 120501,
+          "episode": 1,
+          "error": "ValueError: Independent native replay failed",
+          "latest_sampled_day": 2,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120601,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 23,
+          "status": "failed",
+          "termination_reason": "natural_terminal"
+        },
+        {
+          "engine_seed": 120501,
+          "episode": 2,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120601,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 3,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120603,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120603,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 5,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120605,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120605,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120607,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 120607,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        }
+      ],
+      "checkpoint": {
+        "bytes": 629494,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+        "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+      },
+      "counts": {
+        "failed": 1,
+        "not_started": 7
+      },
+      "frozen": {
+        "checkpoint_file_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+        "learner_weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae",
+        "opponents": [
+          [
+            "hero-opponent-7176f1a2e81393cb",
+            "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82"
+          ]
+        ]
+      },
+      "historical_runtime": {
+        "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+        "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+        "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+        "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+        "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+        "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+        "vcmireplay": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+      },
+      "historical_source": {
+        "git_commit": "52076a98df50a445f336fc954e4c4f5443591ba2",
+        "mapping_sha256": "5cb7796c1d10ff78c49befa5911855fe38e9b566bc40610a96fcfc0c52fba584"
+      },
+      "original_results_unchanged": true,
+      "status": "stopped"
+    },
+    "frozen_neural_opponent": {
+      "attempts": [
+        {
+          "engine_seed": 120501,
+          "episode": 1,
+          "latest_sampled_day": 104,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120601,
+            120602
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120501,
+          "episode": 2,
+          "latest_sampled_day": 140,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120602,
+            120601
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "passed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 3,
+          "error": "ValueError: Independent native replay failed",
+          "latest_sampled_day": 132,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120603,
+            120604
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4088,
+          "status": "failed",
+          "termination_reason": "collection_window"
+        },
+        {
+          "engine_seed": 120502,
+          "episode": 4,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120604,
+            120603
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 5,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120605,
+            120606
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120503,
+          "episode": 6,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120606,
+            120605
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 7,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120607,
+            120608
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        },
+        {
+          "engine_seed": 120504,
+          "episode": 8,
+          "learner_player": 1,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seeds": [
+            120608,
+            120607
+          ],
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "status": "not_started"
+        }
+      ],
+      "checkpoint": {
+        "bytes": 629494,
+        "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+        "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+      },
+      "counts": {
+        "failed": 1,
+        "not_started": 5,
+        "passed": 2
+      },
+      "frozen": {
+        "checkpoint_file_sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1",
+        "learner_weights_sha256": "1c290bcb1ca37cb876841645fab5cd08a94f999bbc57a56fb285243a8e46bbae",
+        "opponents": [
+          [
+            "hero-opponent-7176f1a2e81393cb",
+            "7176f1a2e81393cbfe709238fcd3c0060871a9ddaec1cf4181812f75fb08fc82"
+          ]
+        ]
+      },
+      "historical_runtime": {
+        "AI/libBattleAI.dylib": "c970befe23e88a4c1599c9c7a2dd5eada7ddddded48cb5d81a6ff06c3cf6b2bb",
+        "AI/libEmptyAI.dylib": "5d23fbb0e2553d3681d924ecd28ca9be7bd3bc13b996b327110dfe101a538d3e",
+        "AI/libExplorerRL.dylib": "65a9585942ff3aa8e933062a81201f245e9590d51f34b176b8d6bf2e04c0b599",
+        "AI/libMMAI.dylib": "8fd2203a1e988a7c7011cd4534a6cc63353980aae49128d02671a2aae4485a08",
+        "AI/libNullkiller.dylib": "f617174862bbbedcdec41885934e63b1b6ec4f119f84280345f21987310861b1",
+        "AI/libNullkiller2.dylib": "157837be6f5f04d1af2219828d913aae5b5f428efef092d860f5817ddc059238",
+        "AI/libStupidAI.dylib": "f77c4f978ef708d548d57b78eb154948d079c3d7cf472b2b0d9e4b99ebe3eca2",
+        "libvcmi.dylib": "6b4c4c4d302f61f53fa73c7df07aef23ecb3b8ebb3e259391fe3fae964690fa2",
+        "vcmireplay": "cdc3219ac333231f90c937736940a99b99061f6421e705795456b36795a81cce"
+      },
+      "historical_source": {
+        "git_commit": "8f2c8db21ac5d372863fda0eefe9009a4464d229",
+        "mapping_sha256": "050a2dae1d6517c4331837b780ecc1795ddcbc4a0307a9b9135f7ea214b17fbe"
+      },
+      "original_results_unchanged": true,
+      "status": "stopped"
+    }
+  },
+  "frozen_checkpoint": {
+    "bytes": 629494,
+    "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/adventure-dialogs-2026-10-25/policy-1/fixed-policy.pt",
+    "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+  },
+  "limitations": [
+    "Offline file/structure checks only; no game, model, build, test or replay is executed.",
+    "Both stopped ordinary schedules remain unchanged; supplemental or fixture success cannot replace their failed or unstarted rows.",
+    "The terminal tail is a captured unapplied attempt, not proof of server receipt or rejection.",
+    "Historical identities remain attached to each capture. Validation logs are bound, not interpreted as successful checks."
+  ],
+  "natural_fixture": {
+    "attempts": [
+      {
+        "engine_seed": 121902,
+        "episode": 1,
+        "latest_sampled_day": 2,
+        "learner_player": 0,
+        "outcomes": {
+          "blue": "win",
+          "red": "loss"
+        },
+        "policy_seed": 121903,
+        "reconstruction": {
+          "actions_resampled": 9,
+          "conditionals_recomputed": 17,
+          "history_audit": {
+            "boundary": "natural",
+            "consistent": true,
+            "frames": 69,
+            "history_sha256": "c9a7fca049f340740b6780922737df11e6cb992a49ed4466f65ce3bed7918c75",
+            "native_execution_verified": false,
+            "optimization_eligible": false,
+            "player": 0,
+            "training_samples": 0
+          },
+          "maximum_absolute_difference": 0,
+          "report": {
+            "bytes": 522,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/policy-reconstruction.json",
+            "sha256": "a89c6640150862f47817c551a77fcfa745d3b62e0a772d35fc9fac446d9797c7"
+          },
+          "rollout": {
+            "bytes": 656292,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/builtin-rollout.json",
+            "sha256": "ea9f5959252ff49b333486c1e0b6dbdbcf5209d4c6684ebff52a19eedf2daa01"
+          },
+          "values_recomputed": 9
+        },
+        "rewards": {
+          "blue": 1,
+          "red": -1
+        },
+        "sampled_choices": 9,
+        "status": "passed",
+        "terminal_day": 2,
+        "verification": {
+          "counts": {
+            "client_packets": 292,
+            "messages": 20,
+            "native_opponent_requests": 33,
+            "requests": 43,
+            "responses": 9,
+            "transactions": 366
+          },
+          "error": null,
+          "historical_identity": {
+            "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "ff0bdf81340a5638fa1b4c07f8ed67906d61a6275261807b20fcf3d6757481f4"
+            },
+            "project": {
+              "commit": "19ea34f54b65bdad2e1d19c5580aecc11ba9d6c2",
+              "dirty": false
+            },
+            "recorded_recipe_entries": 63,
+            "recorded_recipe_mapping_sha256": "dcd579b109f8027d9caf1a6f613a3737a01fb0ba7f34847924f07af688f61e24"
+          },
+          "history": {
+            "boundary": "natural",
+            "bridge": {
+              "bytes": 202089,
+              "sha256": "c0e5c4d1f664001b652fffb4a8b3ec052033eb000069d6a2d5583dcba6d34851"
+            },
+            "counts": {
+              "accepted": 3,
+              "acknowledged": 3,
+              "consumed": 9,
+              "context": 4,
+              "decision": 9,
+              "delivered_actions": 9,
+              "engine_messages": 20,
+              "event": 6,
+              "issued": 3,
+              "result": 9,
+              "rows": 29,
+              "submitted": 9,
+              "terminal": 1,
+              "view": 16
+            },
+            "cutoff_decision_seq": null,
+            "episode": "1",
+            "learner": {
+              "bytes": 221698,
+              "frames": 69,
+              "sha256": "c9a7fca049f340740b6780922737df11e6cb992a49ed4466f65ce3bed7918c75"
+            },
+            "learner_player": 0,
+            "live": {
+              "bytes": 221698,
+              "frames": 69,
+              "sha256": "c9a7fca049f340740b6780922737df11e6cb992a49ed4466f65ce3bed7918c75"
+            },
+            "native_replay_verified": false,
+            "opponent_history": null,
+            "schema": "heroes-builtin-history-reconstruction-v1",
+            "scope": "sole_learner_transport_to_history",
+            "verified": true
+          },
+          "native_report": {
+            "bytes": 2836,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/builtin-verification/native-report.json",
+            "sha256": "8ead35323830f3ba67a6fa2a117dade09f56fec2c00a5021309265f9d0ad47f3"
+          },
+          "passed": true,
+          "recorded_verifier_sources": {
+            "experiments/headless/builtin_evidence.py": {
+              "bytes": 13116,
+              "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+            },
+            "experiments/headless/builtin_replay.py": {
+              "bytes": 32037,
+              "sha256": "2f5724a5f3abf0b801dea3bc3368bca12851b4417e220a70fb9461c733652873"
+            },
+            "experiments/headless/builtin_replay_history.py": {
+              "bytes": 7533,
+              "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+            },
+            "experiments/headless/contextual_evidence.py": {
+              "bytes": 7785,
+              "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+            },
+            "experiments/headless/contextual_replay.py": {
+              "bytes": 37368,
+              "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+            },
+            "experiments/headless/replay.py": {
+              "bytes": 43840,
+              "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+            },
+            "experiments/learner/contextual.py": {
+              "bytes": 146467,
+              "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            }
+          },
+          "replay_copies": {
+            "contextual-replay.jsonl": {
+              "original": {
+                "bytes": 484489,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/engine/contextual-replay.jsonl",
+                "sha256": "c3e813da7638c8d832c24fb77e53a4a6c4b666ae2004119e1cddb10519cf89bd"
+              },
+              "replay_copy": {
+                "bytes": 305784,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/builtin-verification/contextual-replay.jsonl",
+                "sha256": "fff643831c34cbcdb9dc9d8127d6d253d0e137d36cfc58d154efd2ca8f2f0407"
+              }
+            },
+            "replay.jsonl": {
+              "original": {
+                "bytes": 22385,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/engine/replay.jsonl",
+                "sha256": "b45e7dd2be2a0d97cfc20300f488d5780a7657e82835ba9e3118c27b12fda860"
+              },
+              "replay_copy": {
+                "bytes": 22385,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/builtin-verification/replay.jsonl",
+                "sha256": "b45e7dd2be2a0d97cfc20300f488d5780a7657e82835ba9e3118c27b12fda860"
+              }
+            }
+          },
+          "report": {
+            "bytes": 9443,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000001/builtin-verification/builtin-replay-verification.json",
+            "sha256": "e54dfa2f2816a0f5c8cfca6b673341d11ae4796ef66d4767852f3bccbb5dd28a"
+          },
+          "request_accounting": {
+            "authoritative_inputs": 42,
+            "final_terminal_input": {
+              "first_client_packet": 266,
+              "input_seq": 41,
+              "last_client_packet": 292,
+              "pack_type": 198,
+              "player": 0,
+              "request_id": 42
+            },
+            "terminal_unapplied": [
+              {
+                "pack_sha256": "220d607635f26f0a0471c757c2993fb9b604b9b9aca6692faca9d5bc621b0bf0",
+                "pack_type": 182,
+                "player": 1,
+                "receipt": {
+                  "completed": 286,
+                  "index": 286,
+                  "phase": "callbacks_complete",
+                  "type": 117
+                },
+                "request_id": 43,
+                "seq": 1075,
+                "source": "native_opponent"
+              }
+            ]
+          },
+          "terminal_outcome_scope": "Separate replay evidence; does not change an original ordinary-cohort row.",
+          "terminal_outcomes": {
+            "blue": "win",
+            "red": "loss"
+          }
+        }
+      },
+      {
+        "engine_seed": 121902,
+        "episode": 2,
+        "latest_sampled_day": 2,
+        "learner_player": 1,
+        "outcomes": {
+          "blue": "loss",
+          "red": "win"
+        },
+        "policy_seed": 121903,
+        "reconstruction": {
+          "actions_resampled": 30,
+          "conditionals_recomputed": 69,
+          "history_audit": {
+            "boundary": "natural",
+            "consistent": true,
+            "frames": 212,
+            "history_sha256": "6b902e5915a2d6a71fb608f1b3cbfc4e8fbb350e7016eabf9f31d262b4d2a0ab",
+            "native_execution_verified": false,
+            "optimization_eligible": false,
+            "player": 1,
+            "training_samples": 0
+          },
+          "maximum_absolute_difference": 0,
+          "report": {
+            "bytes": 525,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/policy-reconstruction.json",
+            "sha256": "2595e16d2e2b218164dcbab74e0d2ea3b9d3266a4d9584cad1f155757268dd87"
+          },
+          "rollout": {
+            "bytes": 2048108,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/builtin-rollout.json",
+            "sha256": "6432eedfe9dbf66e2ee4ab31c410cd5675066edc0ad854082ef09372580b043d"
+          },
+          "values_recomputed": 30
+        },
+        "rewards": {
+          "blue": -1,
+          "red": 1
+        },
+        "sampled_choices": 30,
+        "status": "passed",
+        "terminal_day": 3,
+        "verification": {
+          "counts": {
+            "client_packets": 500,
+            "messages": 62,
+            "native_opponent_requests": 66,
+            "requests": 89,
+            "responses": 30,
+            "transactions": 700
+          },
+          "error": null,
+          "historical_identity": {
+            "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+            "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+            "captured_before_launch": true,
+            "contextual_python_sha256": {
+              "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+              "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+              "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+              "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+              "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+              "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+              "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            },
+            "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+            "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+            "map_sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836",
+            "native_runtime_sha256": {
+              "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+              "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+              "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+              "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+              "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+              "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+              "vcmireplay": "ff0bdf81340a5638fa1b4c07f8ed67906d61a6275261807b20fcf3d6757481f4"
+            },
+            "project": {
+              "commit": "19ea34f54b65bdad2e1d19c5580aecc11ba9d6c2",
+              "dirty": false
+            },
+            "recorded_recipe_entries": 63,
+            "recorded_recipe_mapping_sha256": "dcd579b109f8027d9caf1a6f613a3737a01fb0ba7f34847924f07af688f61e24"
+          },
+          "history": {
+            "boundary": "natural",
+            "bridge": {
+              "bytes": 641340,
+              "sha256": "f8b7a96f5539cad2a6911ab42d974fcc7a47c7dba4667573a4d1163b11546c48"
+            },
+            "counts": {
+              "accepted": 10,
+              "acknowledged": 10,
+              "consumed": 30,
+              "context": 18,
+              "decision": 30,
+              "delivered_actions": 30,
+              "engine_messages": 62,
+              "event": 8,
+              "issued": 10,
+              "result": 30,
+              "rows": 92,
+              "submitted": 30,
+              "terminal": 1,
+              "view": 45
+            },
+            "cutoff_decision_seq": null,
+            "episode": "2",
+            "learner": {
+              "bytes": 703474,
+              "frames": 212,
+              "sha256": "6b902e5915a2d6a71fb608f1b3cbfc4e8fbb350e7016eabf9f31d262b4d2a0ab"
+            },
+            "learner_player": 1,
+            "live": {
+              "bytes": 703474,
+              "frames": 212,
+              "sha256": "6b902e5915a2d6a71fb608f1b3cbfc4e8fbb350e7016eabf9f31d262b4d2a0ab"
+            },
+            "native_replay_verified": false,
+            "opponent_history": null,
+            "schema": "heroes-builtin-history-reconstruction-v1",
+            "scope": "sole_learner_transport_to_history",
+            "verified": true
+          },
+          "native_report": {
+            "bytes": 2840,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/builtin-verification/native-report.json",
+            "sha256": "bd16b2d2a71bddd60486ab9a54c242c904e756402d5dc7e3d1ce209ca1e32b84"
+          },
+          "passed": true,
+          "recorded_verifier_sources": {
+            "experiments/headless/builtin_evidence.py": {
+              "bytes": 13116,
+              "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+            },
+            "experiments/headless/builtin_replay.py": {
+              "bytes": 32037,
+              "sha256": "2f5724a5f3abf0b801dea3bc3368bca12851b4417e220a70fb9461c733652873"
+            },
+            "experiments/headless/builtin_replay_history.py": {
+              "bytes": 7533,
+              "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+            },
+            "experiments/headless/contextual_evidence.py": {
+              "bytes": 7785,
+              "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+            },
+            "experiments/headless/contextual_replay.py": {
+              "bytes": 37368,
+              "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+            },
+            "experiments/headless/replay.py": {
+              "bytes": 43840,
+              "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+            },
+            "experiments/learner/contextual.py": {
+              "bytes": 146467,
+              "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+            }
+          },
+          "replay_copies": {
+            "contextual-replay.jsonl": {
+              "original": {
+                "bytes": 1372652,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/engine/contextual-replay.jsonl",
+                "sha256": "079a5bf0d4aea8051542b099310899540704537a1e4ab23b4c0289e640faf8b9"
+              },
+              "replay_copy": {
+                "bytes": 836742,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/builtin-verification/contextual-replay.jsonl",
+                "sha256": "5fc7c89271b2558d4dacec11ee3ffada1924dfbbfa3a15514aa86bc8b9e64e4d"
+              }
+            },
+            "replay.jsonl": {
+              "original": {
+                "bytes": 41640,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/engine/replay.jsonl",
+                "sha256": "4c6af639b5348fda81ee6db0534d7dadeb6ed0fecd86d342214f3ac3cf435bb0"
+              },
+              "replay_copy": {
+                "bytes": 41640,
+                "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/builtin-verification/replay.jsonl",
+                "sha256": "4c6af639b5348fda81ee6db0534d7dadeb6ed0fecd86d342214f3ac3cf435bb0"
+              }
+            }
+          },
+          "report": {
+            "bytes": 9461,
+            "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/episode-000002/builtin-verification/builtin-replay-verification.json",
+            "sha256": "ca6997b7a7ad800ec385945c596529c6b60c2343a6040f5d5f590fe7ca727bb5"
+          },
+          "request_accounting": {
+            "authoritative_inputs": 88,
+            "final_terminal_input": {
+              "first_client_packet": 473,
+              "input_seq": 87,
+              "last_client_packet": 500,
+              "pack_type": 198,
+              "player": 1,
+              "request_id": 88
+            },
+            "terminal_unapplied": [
+              {
+                "pack_sha256": "ceed650924fcf72c5c25a65597f212e28909bbfa111d320cb44677331c1659b7",
+                "pack_type": 182,
+                "player": 0,
+                "receipt": {
+                  "completed": 497,
+                  "index": 497,
+                  "phase": "callbacks_complete",
+                  "type": 117
+                },
+                "request_id": 89,
+                "seq": 2070,
+                "source": "native_opponent"
+              }
+            ]
+          },
+          "terminal_outcome_scope": "Separate replay evidence; does not change an original ordinary-cohort row.",
+          "terminal_outcomes": {
+            "blue": "loss",
+            "red": "win"
+          }
+        }
+      }
+    ],
+    "fixture": {
+      "kind": "natural-townless",
+      "manifest": {
+        "bytes": 4156,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/fixture.json",
+        "sha256": "e635112434be00b75c0c5a9c47ceaaf2a73c500706391ffffb9894f28cd26756"
+      },
+      "map": {
+        "bytes": 2329,
+        "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-boundary-preflight-2026-10-25/fixture/natural-townless.vmap",
+        "sha256": "e8248b66e5184385f60dddc335691e465b9e18d5fb2aee98a1d034a815f59836"
+      },
+      "natural_outcome_validation": true,
+      "ordinary_cohort_member": false,
+      "probe_plan": "Unchanged frozen policy samples every choice; no historical fixture action script is used.",
+      "semantics_verified": true
+    },
+    "ordinary_cohort_member": false,
+    "plan": {
+      "bytes": 33733,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/plan.json",
+      "sha256": "92f48e327f5f28cc1808f4b63d27c45423ee7e16747dc71fe36859bf4f36b6fb"
+    },
+    "report": {
+      "bytes": 6473,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-natural-diagnostic-2026-10-25/report.json",
+      "sha256": "18663d4e1c4a0291cab8d50fa406060846a19d842e2e3f0b93536318a6a572f4"
+    },
+    "status": "passed"
+  },
+  "offline_validator": {
+    "bytes": 22708,
+    "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/probes/summarize_builtin_terminal.py",
+    "sha256": "6751775f07f4affb2affa4af3f9d007e17ca19ee175e462876c972f05a473c09"
+  },
+  "optimization_eligible": false,
+  "optimizer_steps": 0,
+  "original_plan": {
+    "bytes": 43110,
+    "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/plan.json",
+    "sha256": "3c7963f549be7a6a00ea6dffb635ac606b06479ec7f815aad0749554059d5ad0"
+  },
+  "original_reports": [
+    {
+      "bytes": 8490,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/report.json",
+      "sha256": "90fcf69f37b1145d68380dc0a27bc135bbbbfe7218c71fd2f1c796747777a70e"
+    },
+    {
+      "bytes": 13199,
+      "path": "/Users/orsi/.codex/worktrees/troop-transfer/Heroes/runs/long-dialog-evaluation-2026-10-25/execution/report.json",
+      "sha256": "ade74b69de0648b5ebab66687a9530c2324526e9a537d8153957de02dd29fdf4"
+    }
+  ],
+  "original_summary": {
+    "bytes": 177355,
+    "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/validation/builtin-opponent-evaluation-2026-10-25.json",
+    "sha256": "e7dcd1d616b8d7a13c96a54ccdb711a40b89561a32af308e0a605baeb3bd7150"
+  },
+  "retained_original_artifacts": {
+    "count": 126,
+    "mapping_sha256": "3cb6924814506bdd320b83cf01dd09a844948a0b01714a8d3b2bc10ec498c0d7"
+  },
+  "schema": "heroes-builtin-terminal-evidence-v1",
+  "supplemental_replay": {
+    "compatibility": {
+      "adapter_sources_unchanged": true,
+      "client_unchanged": true,
+      "mode": "diagnostic_verifier_only",
+      "nonverifier_recipe_unchanged": true,
+      "nonverifier_runtime_unchanged": true,
+      "recipe_changes": {
+        "engine/ExperimentReplay/ContextualReplay.cpp": {
+          "captured": "0c985471a6203c9562f3f4dde79f1b37517c116ed674858a69b4f99ddb2cb32a",
+          "current": "f3c77de1bb5e910668747769aa10333718005d6ab5ff582319ef168d73a8c615"
+        },
+        "engine/ExperimentReplay/ContextualReplay.h": {
+          "captured": "76f9d5442925ad8f3da11560ad0c632143fb539c44ea9202e655c399f8bd33da",
+          "current": "29075deb83cb06ec7622114ef1a51a1a65f8466f92ae9638007e5637510ae7e5"
+        },
+        "engine/ExperimentReplay/ReplayMain.cpp": {
+          "captured": "5123e27a9249ca66a13f768ae191c639c3ae264b97e00d69b11d88b3abcaa9d9",
+          "current": "6b534f238eccdb2ce0272a250a5c763cc615fcfdee0a4cfda19c57025d109371"
+        },
+        "engine/ExperimentReplay/RequestAccounting.h": {
+          "captured": null,
+          "current": "53fca5a671ff8d85251b836bba3357a606fa279c36760d7f08d53ff7094f15f8"
+        }
+      },
+      "runtime_changes": {
+        "vcmireplay": {
+          "captured": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020",
+          "current": "ff0bdf81340a5638fa1b4c07f8ed67906d61a6275261807b20fcf3d6757481f4"
+        }
+      }
+    },
+    "counts": {
+      "client_packets": 1280,
+      "messages": 48,
+      "native_opponent_requests": 114,
+      "requests": 196,
+      "responses": 23,
+      "transactions": 1421
+    },
+    "error": null,
+    "historical_identity": {
+      "binary_sha256": "24634350439e101c5cf8448e1d0cada93878cc5f2f51ebcc9cfe0644ec817ef2",
+      "bridge_source_sha256": "5a760384a7ba5d3eff6c692411cf0974adc434b0029f86e0b329d4d1238ac75a",
+      "captured_before_launch": true,
+      "contextual_python_sha256": {
+        "experiments/headless/builtin_env.py": "460ab1fb063d84e79788d515f9c98aa7829db8b862bdff4996911ac7a45c2212",
+        "experiments/headless/builtin_evidence.py": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de",
+        "experiments/headless/contextual_env.py": "1582cd11499c73180cda64b31ef2652058572a303c0d5c18a4939c706df3bd9f",
+        "experiments/headless/contextual_evidence.py": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74",
+        "experiments/headless/contextual_protocol.py": "a5308ddb0d676832e650a03878c8fbe5b91fac457343688b69d19d66f7cf65ad",
+        "experiments/headless/env.py": "69ddbc60fd61ff7bd2f1a31ae310cc4c259888bbd4973ff1fbbfc7469ef7656d",
+        "experiments/learner/contextual.py": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+      },
+      "engine_revision": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+      "explorer_rl_sha256": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+      "map_sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1",
+      "native_runtime_sha256": {
+        "AI/libBattleAI.dylib": "90473143327ad42058c6c1f8339ed50ae960132dabf8f224624a79bca740f3aa",
+        "AI/libEmptyAI.dylib": "ba7b42a7ad6b8df70d3f2c1c890728ec5e3b6e37c12a8fc356f89ade13295d7d",
+        "AI/libExplorerRL.dylib": "cc2469517eaf11bdec9dc0aca3282d1f0edc45b389d984ab7d8b75b5e98616f2",
+        "AI/libNullkiller.dylib": "1eddd89b2e9008f18e049565829d36393aa7309b94df683c650a4b713abecedd",
+        "AI/libStupidAI.dylib": "3f01d18881257cc4f1b46dc5d9faf5c5cad823a8e2c51e854e26e3a5c7776901",
+        "libvcmi.dylib": "e495079a145534b6194dedd59011796da8defe40f9d1ac16093ac21bbb614254",
+        "vcmireplay": "100c7f96ac77f5de8eb131a2a5838b9766dc079e04b4710ba0272fa4b69f9020"
+      },
+      "project": {
+        "commit": "52076a98df50a445f336fc954e4c4f5443591ba2",
+        "dirty": false
+      },
+      "recorded_recipe_entries": 62,
+      "recorded_recipe_mapping_sha256": "444fcd96e7bf51c0c38faf288f602712d068439dd889b985321888cfef8ab200"
+    },
+    "history": {
+      "boundary": "natural",
+      "bridge": {
+        "bytes": 457980,
+        "sha256": "7135cbada31fb38961ee2f3569ff0cb6a3c9ada6ad0afbc2ce13c40fcc0c134d"
+      },
+      "counts": {
+        "accepted": 9,
+        "acknowledged": 9,
+        "consumed": 23,
+        "context": 12,
+        "decision": 23,
+        "delivered_actions": 23,
+        "engine_messages": 48,
+        "event": 8,
+        "issued": 9,
+        "result": 23,
+        "rows": 71,
+        "submitted": 23,
+        "terminal": 1,
+        "view": 31
+      },
+      "cutoff_decision_seq": null,
+      "episode": "1",
+      "learner": {
+        "bytes": 506472,
+        "frames": 162,
+        "sha256": "3426f39581fcfde4a1a42443c0178fd6ad9642926f80045c2d838dd128e779a4"
+      },
+      "learner_player": 0,
+      "live": {
+        "bytes": 506472,
+        "frames": 162,
+        "sha256": "3426f39581fcfde4a1a42443c0178fd6ad9642926f80045c2d838dd128e779a4"
+      },
+      "native_replay_verified": false,
+      "opponent_history": null,
+      "schema": "heroes-builtin-history-reconstruction-v1",
+      "scope": "sole_learner_transport_to_history",
+      "verified": true
+    },
+    "native_report": {
+      "bytes": 2837,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-terminal-replay-diagnostic-2026-10-25/native-report.json",
+      "sha256": "62066043a65a3c64c1980d73a103de2f38a5af783840bad6a66eb644e2197f1a"
+    },
+    "ordinary_cohort_member": false,
+    "original_cohort_admission": false,
+    "passed": true,
+    "recorded_verifier_sources": {
+      "experiments/headless/builtin_evidence.py": {
+        "bytes": 13116,
+        "sha256": "6f39bb4ffa5725735e02d0c4d65801c6af431738aa3baf79b2ff1b5e276ac3de"
+      },
+      "experiments/headless/builtin_replay.py": {
+        "bytes": 32037,
+        "sha256": "2f5724a5f3abf0b801dea3bc3368bca12851b4417e220a70fb9461c733652873"
+      },
+      "experiments/headless/builtin_replay_history.py": {
+        "bytes": 7533,
+        "sha256": "ce77279969785786e0f27191257161302923fa75b8766823b685030fdc8110a6"
+      },
+      "experiments/headless/contextual_evidence.py": {
+        "bytes": 7785,
+        "sha256": "eabef2c421ef87680506a5d26a507bb57faf678c1b6b4bba536794d98058cc74"
+      },
+      "experiments/headless/contextual_replay.py": {
+        "bytes": 37368,
+        "sha256": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb"
+      },
+      "experiments/headless/replay.py": {
+        "bytes": 43840,
+        "sha256": "b9ba6ca87d92d4b676aba91fe86dd80fb9e704a4deea2f25fe2d9566887dd7f3"
+      },
+      "experiments/learner/contextual.py": {
+        "bytes": 146467,
+        "sha256": "b4f34ae8a7a6a51793a3c7bed154db0274a612ea86fcdda05e3a7c46c5a27fee"
+      }
+    },
+    "replay_copies": {
+      "contextual-replay.jsonl": {
+        "original": {
+          "bytes": 1327131,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/contextual-replay.jsonl",
+          "sha256": "2b7c9d3279d4389e12d7d19d16fe112ff8fa63109b78b4532f6ad13d0b3280f2"
+        },
+        "replay_copy": {
+          "bytes": 881515,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-terminal-replay-diagnostic-2026-10-25/contextual-replay.jsonl",
+          "sha256": "9585179ae0b89394cf7266212166a4d1acda0e5c74b8a00ef6aa2beaa78d3552"
+        }
+      },
+      "replay.jsonl": {
+        "original": {
+          "bytes": 93855,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-opponent-evaluation-2026-10-25/execution/episode-000001/engine/replay.jsonl",
+          "sha256": "d4d9478981611c04633454ffebac305a6d00518311c0e62214f993ccab19575e"
+        },
+        "replay_copy": {
+          "bytes": 93855,
+          "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-terminal-replay-diagnostic-2026-10-25/replay.jsonl",
+          "sha256": "d4d9478981611c04633454ffebac305a6d00518311c0e62214f993ccab19575e"
+        }
+      }
+    },
+    "report": {
+      "bytes": 12859,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-terminal-replay-diagnostic-2026-10-25/builtin-replay-diagnostic.json",
+      "sha256": "71e49d479e88a2396fa98f05d52f451646ae6601a6a8c0230039e7448bb4eccf"
+    },
+    "request_accounting": {
+      "authoritative_inputs": 195,
+      "final_terminal_input": {
+        "first_client_packet": 1242,
+        "input_seq": 194,
+        "last_client_packet": 1280,
+        "pack_type": 198,
+        "player": 0,
+        "request_id": 195
+      },
+      "terminal_unapplied": [
+        {
+          "pack_sha256": "b0a5a4c2b218a8e5addd181208159bee25b28f9a0af41f39938d2364b449deb6",
+          "pack_type": 182,
+          "player": 1,
+          "receipt": {
+            "completed": 1274,
+            "index": 1274,
+            "phase": "callbacks_complete",
+            "type": 117
+          },
+          "request_id": 196,
+          "seq": 4368,
+          "source": "native_opponent"
+        }
+      ]
+    },
+    "terminal_outcome_scope": "Separate replay evidence; does not change an original ordinary-cohort row.",
+    "terminal_outcomes": {
+      "blue": "win",
+      "red": "loss"
+    }
+  },
+  "training_performed": false,
+  "training_samples": 0,
+  "validation_logs": [
+    {
+      "bytes": 293,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/build-terminal-accounting.log",
+      "sha256": "b9bf335368878d1e96cdbabf005f0d03787354670e3ab8129837301bba087984"
+    },
+    {
+      "bytes": 5581,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/terminal-focused-tests.log",
+      "sha256": "8bd47d378af659492367140f34dbda4dd5ddb50e98cbf70fd5d926ab6cfb766c"
+    },
+    {
+      "bytes": 156738,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/python-terminal-full.log",
+      "sha256": "0cbea0108200880c018899d2b2be04536372b96cd5562cf3fa41f1009720c290"
+    },
+    {
+      "bytes": 1580,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/terminal-summary-tests.log",
+      "sha256": "154acecaf6de2dfa08bbdc6d6c15915b2986da5bf6841f484d72b46b953b5412"
+    },
+    {
+      "bytes": 1973,
+      "path": "/Users/orsi/.codex/worktrees/headless-review/Heroes/runs/builtin-preflight-2026-10-25/terminal-summary-final-tests.log",
+      "sha256": "6fcc9b1e2f0a0458477eec5ded36763aa65ada71282a36d3bee7291925159b24"
+    }
+  ]
+}
