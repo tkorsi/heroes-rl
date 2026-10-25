@@ -2139,10 +2139,13 @@ Scholar interactions remain unexercised. There is no wholly transient enemy
 sighting in this cohort; earlier visibility evidence remains separate.
 
 No new gameplay optimizer update, training, paid compute or merge occurred.
-Stage 3 enumerated adventure choices remain pending; earlier initial/timer-origin
-terminal limitations remain explicit.
+Stage 3 enumerated adventure choices and their separate validation are described
+below; earlier initial/timer-origin terminal limitations remain explicit.
 
-## Adventure dialogs — implementation under native validation
+## Adventure dialogs — native validation
+
+Draft [PR #17](https://github.com/tkorsi/heroes-rl/pull/17) is stacked on
+[PR #16](https://github.com/tkorsi/heroes-rl/pull/16); both remain unmerged.
 
 The separate `adventure-dialogs-v1` interface uses protocol 9, history/actions
 v7 and model/policy v5. It retains the army-management capabilities and adds
@@ -2168,9 +2171,89 @@ frozen fails unscored. Direct truncation of an active query is rejected.
 
 Versioned diagnostic maps declare their exact starting objects and armies and
 retain native reward randomness. They are excluded from training and ordinary
-outcome statistics. Native both-color checks, replay mutations, frozen-policy
-reconstruction and coverage limits will be recorded after real validation;
-implementation and synthetic tests alone do not establish those results.
+outcome statistics. The baseline and Tavern-enabled ordinary maps are unchanged.
+An extra affordability fixture starts with a declared native army and neutral
+stack; it does not grant resources or change prices, Diplomacy, rewards or rules.
+
+The local validation retained **220 real-game attempts**: **219 valid games**
+(217 unscored cutoffs and two controlled natural endings), plus one preserved
+unscored technical failure. Every valid original has a successful independent
+native replay. The fresh build passes **766 tests**, and the generated VCMI tree
+matches the root-owned sources and patches exactly. Compact evidence is in
+[`validation/adventure-dialogs-2026-10-25.json`](validation/adventure-dialogs-2026-10-25.json);
+raw captures, checkpoints, independent audits and replay mutations remain local
+under `runs/adventure-dialogs-2026-10-25/`.
+
+Both colors exercise every declared family and its specified branches: mine
+acceptance/refusal; free and paid joining; refusal followed by fleeing or attack;
+pursuit/release; chest gold/experience; both Arena and School selections, School
+cancellation, revisits and insufficient funds. Unaffordable paid acceptance
+produces the native insufficient-gold notice and a fresh flee query; the next
+explicit release leaves all seven resources and the army unchanged. Separate
+notices cover chest artifacts, all three map Scholar reward types and owned-hero
+Scholar exchanges. Native receipts and subsequent visible effects are checked
+separately. All **332 rehashed semantic mutations** are detected across nine
+replay groups, each with a passing unchanged native positive control. Mutations
+alter only witnessed fields and choices; no missing positive branch is invented.
+
+The first Scholar spell visit exposed a real parser mismatch: VCMI marks a
+learnable spell component with a numeric zero. The adapter now removes that
+producer-specific marker from the displayed notice without exposing unused
+reward substitutions. The failed capture, original executable inventory and
+its 30 earlier successful replays remain preserved. The corrected source was
+rebuilt and captured afresh; historical evidence was not relabelled.
+
+Fixed seed sweeps retain every alternate native branch as unverified for the
+requested branch. Three additional paired diagnostics reuse already-recorded
+native fixture seeds: Blue's paid refusal, and unchanged neural responses to
+Red's paid offer and Blue's chest. Their initial dialogs, maps, seeds and source
+manifests match the originals. These deliberately selected controls close
+branch coverage; they are not random outcome-frequency samples.
+
+The 18 mixed operator/neural context captures retain two no-dialog attempts
+as unverified. The other 16 captures collectively cover all eight families for
+both colors, with 18 actual sampled answers, 81 values and 36 conditional
+probabilities reconstructed exactly. Each player has separate memory; real
+policy answers remain included through deferred cutoffs. Only navigation is
+operator-controlled. A separate 20-episode offline check scores 462 recorded
+operator actions against the frozen model; those actions were not policy
+samples, demonstrations or training data. Neither check performs updates.
+The two unassisted ordinary games reconstruct 256 sampled actions, 260 values
+and 685 conditional probabilities exactly. Controlled town capture reaches
+verified natural endings on day 8 for either color, with rewards +1/-1.
+
+Coverage remains limited to the enumerated interface. Full-army neutral joining
+requires an unsupported native garrison dialog and fails explicitly. Initial
+and timer-origin terminal classes remain unsupported by this request-origin,
+all-AI profile. Numeric experience gain, private artifact inventories and
+spellbook changes are not inferred from informational notices; only the
+actually exposed effects are claimed. Live multiple/unaffordable upgrade
+options, capacity/cap-limit variants, exceptional rejected native replies and
+a wholly transient enemy sighting specifically under v7 remain unverified.
+Earlier visibility evidence stays separately bound. No new gameplay optimizer
+update, paid compute or merge occurred.
+
+### Why ordinary games still truncate
+
+In the two current frozen-policy games, **239 of 256 choices (93.4%)** navigate
+controls or rearrange armies. Only six choices attempt movement: four target
+unknown tiles and return `no_route_known`; two reach their destinations. One
+Red hero discovers 22 additional tiles, but neither game reaches a battle,
+changes town ownership or hires another hero. The 128-choice budgets expire
+between days 1 and 5. No opponent town is visible at any movement decision.
+The complete player-local evidence is retained in
+`runs/adventure-dialogs-2026-10-25/ordinary-behavior-audit.json`.
+
+Older 100-day cohorts spent 75–77% of their choices navigating windows and
+almost never targeted an observed enemy town. Those older interfaces also
+lacked replacement hiring and field army exchange, so a lost hero could leave
+a retained town with no usable attacker. The expanded interface removes those
+capability restrictions, but an untrained policy still spends most choices on
+controls and stack edits. Natural-ending controls show that the engine can
+finish games; they do not establish how often ordinary self-play will do so.
+Different interfaces, checkpoints and budgets prevent an improvement or
+regression claim. No movement heuristic, scripted strategy, shaped reward or
+forced outcome has been added to the ordinary policy.
 
 ## Headless self-play environment (issue #4, in progress)
 
