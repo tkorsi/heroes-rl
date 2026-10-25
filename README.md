@@ -89,13 +89,39 @@ The failed capture supplies zero samples; five later attempts were not started.
 **Zero PPO updates and zero Adam steps ran.** No trained recovery checkpoint exists.
 All three native groups closed; the Mac window was released early on issue #4.
 
-This is a material native shutdown correctness failure. Gameplay is stopped under
-the no-retry failure policy pending repair of that lifecycle race; the historical
-pilot and failed recovery attempt will not be relabelled. The preserved original
+This exposed a material native shutdown correctness failure. The user authorized
+a narrow repair and a separately labelled new batch; recovery-001 remains stopped
+and unscored. The historical pilot and failed recovery attempt are not relabelled. The preserved original
 baseline remains intact. All new captures, plan/report, and isolated runtime live
 under the durable artifact root. Forty-four focused tests pass, including deletion
 of the original checkpoint pair followed by exact restoration from the backup.
 Compact evidence: `validation/recovery-2026-10-25-001.json`.
+
+The repair cancels only a not-yet-entered native client-request event after the
+terminal ledger is sealed. Nullkiller catches that typed cancellation and exits
+its turn/async worker without issuing the request. Both the scheduling precheck
+and event entry check closure, so a terminal packet between those checks cannot
+race through. No record is appended to the sealed stream; other late events and
+in-event errors remain strict failures. Native regression checks exercise both
+closure orderings and retain self-play's strict rejection. The isolated v2
+runtime rebuilds the affected ExplorerRL, Nullkiller and replay translation units;
+Claude's runtime stays untouched. The exact source-recipe check and 63 focused
+tests pass before the new batch. Required map/prerequisite files for new plans
+are copied into durable `Heroes-artifacts/inputs/` and bound there.
+
+`experiments.learner.builtin_training` provides the small continuation path:
+`prepare --parent <completed-plan> --output <new-durable-run>` and
+`execute --plan <new-plan> --sha256 <printed-hash>`. Each training batch restores
+exact model/Adam/RNG/progress/pool, collects four fresh games on alternating seats,
+performs at most one PPO update, and has a 600-second shared limit. No partial
+prefix or failed-game replacement is allowed. `prepare --evaluate` instead runs
+both seats on the fixed held-out engine/policy seeds, with no optimizer update or
+training samples. The runner automatically creates and restore-tests the second
+durable checkpoint copy after successful training; it requires that receipt and
+unchanged backup hashes before the next batch. Fresh training seeds are disjoint
+from held-out seeds. All existing learner files must remain byte-identical between
+parent and child; additive committed modules are permitted. No source-drift gate
+is bypassed.
 
 ## Current authorized local PPO pilot
 

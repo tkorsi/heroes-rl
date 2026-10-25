@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolate an audited macOS build and rebuild the changed replay translation unit.
+"""Isolate an audited macOS build and rebuild the changed terminal/replay translation units.
 
 The caller first copies the complete dependency/build into this checkout and
 runs prepare_vcmi.py --check after installing the canonical accounting header.
@@ -31,24 +31,38 @@ def main():
         raise ValueError('Use a new durable destination outside managed worktrees')
     run(['python3', str(ROOT / 'tools/prepare_vcmi.py'), '--check'])
     # Extract the recorded compile/link recipes without running donor build rules.
-    commands = run(['/opt/homebrew/bin/ninja', '-C', str(build), '-t', 'commands', 'vcmireplay']).splitlines()
-    compile_line = next(c for c in commands if ' -c ' + str(donor / 'experimentreplay/ContextualReplay.cpp') in c)
-    link_line = next(c for c in commands if ' -o bin/vcmireplay ' in c)
-    compile_args = shlex.split(compile_line.replace(str(donor), str(source)))
-    cleaned = []
-    i = 0
-    while i < len(compile_args):
-        if compile_args[i:i+2] in (['-Xclang', '-include-pch'], ['-Xclang', '-include']):
-            i += 4
-        else:
-            cleaned.append(compile_args[i]); i += 1
-    cleaned += ['-include', str(source / 'experimentreplay/StdInc.h')]
-    subprocess.run(cleaned, cwd=build, check=True)
+    commands = run(['/opt/homebrew/bin/ninja', '-C', str(build), '-t', 'commands', 'vcmireplay', 'ExplorerRL', 'Nullkiller']).splitlines()
+    units = [
+        ('vcmireplay', 'experimentreplay/ContextualReplay.cpp'),
+        ('vcmireplay', 'AI/ExplorerRL/ContextualEvidence.cpp'),
+        ('ExplorerRL', 'AI/ExplorerRL/ContextualEvidence.cpp'),
+        ('Nullkiller', 'AI/Nullkiller/AIGateway.cpp'),
+    ]
+    compiled_commands = []
+    for target, unit in units:
+        command = next(c for c in commands if ' -c ' + str(donor / unit) in c
+                       and '/CMakeFiles/' + target + '.dir/' in c)
+        compile_args = shlex.split(command.replace(str(donor), str(source)))
+        cleaned = []
+        i = 0
+        while i < len(compile_args):
+            if compile_args[i:i+2] in (['-Xclang', '-include-pch'], ['-Xclang', '-include']):
+                i += 4
+            else:
+                cleaned.append(compile_args[i]); i += 1
+        header = source / ('experimentreplay/StdInc.h' if target == 'vcmireplay' else 'AI/' + target + '/StdInc.h')
+        cleaned += ['-include', str(header)]
+        subprocess.run(cleaned, cwd=build, check=True)
+        compiled_commands.append(cleaned)
     shutil.copytree(build / 'bin', destination, symlinks=True)
-    link = shlex.split(link_line.removeprefix(': && ').removesuffix(' && :'))
-    link = [v.replace(str(donor / 'build/bin'), str(destination)) for v in link]
-    link[link.index('-o') + 1] = str(destination / 'vcmireplay')
-    subprocess.run(link, cwd=build, check=True)
+    linked_commands = []
+    for output in ('bin/vcmireplay', 'bin/AI/libExplorerRL.dylib', 'bin/AI/libNullkiller.dylib'):
+        link_line = next(c for c in commands if ' -o ' + output + ' ' in c)
+        link = shlex.split(link_line.removeprefix(': && ').removesuffix(' && :'))
+        link = [v.replace(str(donor / 'build/bin'), str(destination)) for v in link]
+        link[link.index('-o') + 1] = str(destination / Path(output).relative_to('bin'))
+        subprocess.run(link, cwd=build, check=True)
+        linked_commands.append(link)
     patched = []
     for path in sorted(destination.rglob('*')):
         if not path.is_file() or path.is_symlink(): continue
@@ -64,8 +78,8 @@ def main():
                         'sha256': hashlib.sha256(path.read_bytes()).hexdigest()})
     receipt = {'schema': 'heroes-runtime-recovery-v1', 'donor_source': str(donor),
                'source': str(source), 'source_recipe_check': True,
-               'rebuilt': 'experimentreplay/ContextualReplay.cpp including canonical RequestAccounting.h',
-               'compile_command': cleaned, 'link_command': link, 'artifacts': patched,
+               'rebuilt': units,
+               'compile_commands': compiled_commands, 'link_commands': linked_commands, 'artifacts': patched,
                'load_commands_independent_of_donor_and_managed_worktrees': True}
     (destination.parent / 'recovery-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(json.dumps(receipt, indent=2))

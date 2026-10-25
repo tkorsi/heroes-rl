@@ -72,6 +72,7 @@ private:
 	std::condition_variable changed;
 	JsonNode loaded;
 	JsonNode checked;
+	void rejectSealedEvent(const std::string & actor, const std::string & operation) const;
 	void append(JsonNode record);
 	void expect(JsonNode record);
 	void drainAutomatic();
