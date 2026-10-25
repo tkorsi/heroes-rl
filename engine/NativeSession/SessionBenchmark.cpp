@@ -42,14 +42,15 @@ JsonNode response(const native_session::Boundary & boundary, const std::string &
 	auto & action = result["action"];
 	action["schema"].String() = "heroes-context-actions-v7";
 	const auto & observation = decision["observation"];
-	const auto kind = observation["context"]["kind"].String();
+	const auto & window = observation["window"];
+	const auto kind = window.isNull() ? std::string("map") : window["context"]["kind"].String();
 	if(kind == "map") action["kind"].String() = "end_turn";
 	else if(kind == "dialog")
 	{
 		const auto & choices = observation["window"]["dialog_panel"]["choices"].Vector();
 		if(choices.empty()) throw std::runtime_error("Missing displayed dialog choices");
 		action["kind"].String() = "choose_dialog";
-		action["subject"] = observation["context"]["subject"];
+		action["subject"] = window["context"]["subject"];
 		action["selection"] = choices.front()["ref"];
 	}
 	else throw std::runtime_error("End-turn workload reached an unsupported window; no fabricated action");
