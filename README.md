@@ -77,9 +77,25 @@ model, Adam, RNG, progress and archived pool before continuation. Absolute evide
 bindings are retained. The baseline is never overwritten. Heavy work is coordinated
 with Claude through issue #4 in short concrete windows.
 
-Current recovery status: baseline and recovered continuation files verified;
-isolated compatible runtime preparation and durable-preservation checks underway.
-No recovery games or updates have run yet.
+Recovery attempt `recovery-2026-10-25-001` ran from `8114c59` in **23.871 seconds**.
+The isolated runtime passed the exact source-recipe check; the existing narrow
+replay-accounting fix was rebuilt and all load paths were relocated outside
+managed worktrees and Claude's tree. Both before evaluations passed independent
+native replay and ended in natural learner losses (Red day 2, Blue day 13).
+The first training game then aborted with exit -6 after the terminal barrier:
+`Contextual evidence is sealed at its terminal barrier` escaped from
+`NKAI::AIGateway::makeTurn() noexcept`. Its loss callback is not a scored outcome.
+The failed capture supplies zero samples; five later attempts were not started.
+**Zero PPO updates and zero Adam steps ran.** No trained recovery checkpoint exists.
+All three native groups closed; the Mac window was released early on issue #4.
+
+This is a material native shutdown correctness failure. Gameplay is stopped under
+the no-retry failure policy pending repair of that lifecycle race; the historical
+pilot and failed recovery attempt will not be relabelled. The preserved original
+baseline remains intact. All new captures, plan/report, and isolated runtime live
+under the durable artifact root. Forty-four focused tests pass, including deletion
+of the original checkpoint pair followed by exact restoration from the backup.
+Compact evidence: `validation/recovery-2026-10-25-001.json`.
 
 ## Current authorized local PPO pilot
 

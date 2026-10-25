@@ -1,0 +1,431 @@
+{
+  "attempts": [
+    {
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "diagnostics_only": {
+        "accepted_army_action_counts": {
+          "merge_stacks": 3,
+          "split_stack": 3,
+          "swap_garrison": 6,
+          "swap_stacks": 9
+        },
+        "army_action_counts": {
+          "merge_stacks": 3,
+          "split_stack": 3,
+          "swap_garrison": 6,
+          "swap_stacks": 9
+        },
+        "failed_capture_is_unscored": false,
+        "observed_cross_army_redistributions": 0,
+        "recruitment": {
+          "accepted_quantity": 0,
+          "attempts": 0,
+          "displayed_delta_comparisons": 0,
+          "quantity_observed_successes": 0,
+          "successful": 0,
+          "successful_nonzero": 0,
+          "successful_zero": 0
+        },
+        "terminal_observation": {
+          "day": 2,
+          "outcome": "loss",
+          "seq": 463
+        },
+        "towns": {
+          "corroborated_captures": [],
+          "ownership_losses": [
+            {
+              "day": 2,
+              "seq": 458,
+              "subject": "object-1"
+            }
+          ],
+          "roster_additions": []
+        }
+      },
+      "engine_seed": 160101,
+      "episode": 1,
+      "episode_status": "completed",
+      "error": null,
+      "learner_player": 0,
+      "manifest": {
+        "bytes": 16775,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000001/manifest.json",
+        "sha256": "aa378f40811e77dcaee92a4cde38706e8e01f4ac0f1ab832b39ffe125f65bef4"
+      },
+      "metrics": {
+        "bytes": 98343,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000001/training-metrics.json",
+        "sha256": "754ba8a49137f141fab22e6b0b57a9b7674523b7245e48128f07f55749d60950"
+      },
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "phase": "before",
+      "policy_seed": 160201,
+      "replay_verified": true,
+      "rewards": {
+        "blue": 1,
+        "red": -1
+      },
+      "sampled_choices": 72,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 7.359576583010494
+    },
+    {
+      "cleanup_verified": true,
+      "completion_receipt": true,
+      "diagnostics_only": {
+        "accepted_army_action_counts": {
+          "merge_stacks": 12,
+          "split_stack": 20,
+          "swap_garrison": 4,
+          "swap_stacks": 14
+        },
+        "army_action_counts": {
+          "merge_stacks": 12,
+          "split_stack": 20,
+          "swap_garrison": 4,
+          "swap_stacks": 14
+        },
+        "failed_capture_is_unscored": false,
+        "observed_cross_army_redistributions": 0,
+        "recruitment": {
+          "accepted_quantity": 6,
+          "attempts": 1,
+          "displayed_delta_comparisons": 0,
+          "quantity_observed_successes": 1,
+          "successful": 1,
+          "successful_nonzero": 1,
+          "successful_zero": 0
+        },
+        "terminal_observation": {
+          "day": 13,
+          "outcome": "loss",
+          "seq": 1087
+        },
+        "towns": {
+          "corroborated_captures": [],
+          "ownership_losses": [
+            {
+              "day": 8,
+              "seq": 733,
+              "subject": "object-1"
+            }
+          ],
+          "roster_additions": []
+        }
+      },
+      "engine_seed": 160101,
+      "episode": 2,
+      "episode_status": "completed",
+      "error": null,
+      "learner_player": 1,
+      "manifest": {
+        "bytes": 16781,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000002/manifest.json",
+        "sha256": "7541cb56d2ce5358122b052067103bdd6690b4271928910e4929d69ead40888d"
+      },
+      "metrics": {
+        "bytes": 249099,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000002/training-metrics.json",
+        "sha256": "6b9425c7f1d37549bf26f3f08c8a34923866f52dd64167fa3538a3762d0b8861"
+      },
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "phase": "before",
+      "policy_seed": 160202,
+      "replay_verified": true,
+      "rewards": {
+        "blue": -1,
+        "red": 1
+      },
+      "sampled_choices": 154,
+      "status": "passed",
+      "termination_reason": "natural_terminal",
+      "training_samples": 0,
+      "wall_seconds": 12.330879708009888
+    },
+    {
+      "cleanup_verified": true,
+      "completion_receipt": false,
+      "diagnostics_only": {
+        "accepted_army_action_counts": {
+          "merge_stacks": 1,
+          "split_stack": 7,
+          "swap_garrison": 2,
+          "swap_stacks": 6
+        },
+        "army_action_counts": {
+          "merge_stacks": 1,
+          "split_stack": 7,
+          "swap_garrison": 2,
+          "swap_stacks": 6
+        },
+        "failed_capture_is_unscored": true,
+        "observed_cross_army_redistributions": 0,
+        "recruitment": {
+          "accepted_quantity": 0,
+          "attempts": 0,
+          "displayed_delta_comparisons": 0,
+          "quantity_observed_successes": 0,
+          "successful": 0,
+          "successful_nonzero": 0,
+          "successful_zero": 0
+        },
+        "terminal_observation": {
+          "day": 2,
+          "outcome": "loss",
+          "seq": 370
+        },
+        "towns": {
+          "corroborated_captures": [],
+          "ownership_losses": [
+            {
+              "day": 2,
+              "seq": 365,
+              "subject": "object-1"
+            }
+          ],
+          "roster_additions": []
+        }
+      },
+      "engine_seed": 160111,
+      "episode": 3,
+      "episode_status": "failed",
+      "error": "ValueError: Unscored technical episode failure",
+      "learner_player": 0,
+      "manifest": {
+        "bytes": 16798,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000003/manifest.json",
+        "sha256": "e7d46032de67164a4f4b29069ca924262ba7aed5d71df3d3d0a9ab8aeebad4fc"
+      },
+      "metrics": {
+        "bytes": 85657,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000003/training-metrics.json",
+        "sha256": "dfe55cdaa2bf3995630a99c0a479143cfb89e4ca17e4fec0e508e70520fdd098"
+      },
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "policy_seed": 160211,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": 56,
+      "status": "failed",
+      "termination_reason": "process_exit_without_verified_terminal",
+      "training_samples": 0,
+      "wall_seconds": 2.9510145840031328
+    },
+    {
+      "cleanup_verified": null,
+      "completion_receipt": false,
+      "engine_seed": 160111,
+      "episode": 4,
+      "episode_status": null,
+      "error": null,
+      "learner_player": 1,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "policy_seed": 160212,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": null,
+      "status": "not_started",
+      "termination_reason": null,
+      "training_samples": 0,
+      "wall_seconds": null
+    },
+    {
+      "cleanup_verified": null,
+      "completion_receipt": false,
+      "engine_seed": 160112,
+      "episode": 5,
+      "episode_status": null,
+      "error": null,
+      "learner_player": 0,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "policy_seed": 160213,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": null,
+      "status": "not_started",
+      "termination_reason": null,
+      "training_samples": 0,
+      "wall_seconds": null
+    },
+    {
+      "cleanup_verified": null,
+      "completion_receipt": false,
+      "engine_seed": 160112,
+      "episode": 6,
+      "episode_status": null,
+      "error": null,
+      "learner_player": 1,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "training",
+      "policy_seed": 160214,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": null,
+      "status": "not_started",
+      "termination_reason": null,
+      "training_samples": 0,
+      "wall_seconds": null
+    },
+    {
+      "cleanup_verified": null,
+      "completion_receipt": false,
+      "engine_seed": 160101,
+      "episode": 7,
+      "episode_status": null,
+      "error": null,
+      "learner_player": 0,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "after",
+      "policy_seed": 160201,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": null,
+      "status": "not_started",
+      "termination_reason": null,
+      "training_samples": 0,
+      "wall_seconds": null
+    },
+    {
+      "cleanup_verified": null,
+      "completion_receipt": false,
+      "engine_seed": 160101,
+      "episode": 8,
+      "episode_status": null,
+      "error": null,
+      "learner_player": 1,
+      "outcomes": {
+        "blue": null,
+        "red": null
+      },
+      "phase": "after",
+      "policy_seed": 160202,
+      "replay_verified": null,
+      "rewards": {
+        "blue": null,
+        "red": null
+      },
+      "sampled_choices": null,
+      "status": "not_started",
+      "termination_reason": null,
+      "training_samples": 0,
+      "wall_seconds": null
+    }
+  ],
+  "baseline": {
+    "bytes": 629494,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/checkpoints/baseline-v7/fixed-policy.pt",
+    "sha256": "4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1"
+  },
+  "cleanup_verified": true,
+  "coordination": "https://github.com/tkorsi/heroes-rl/issues/4",
+  "cutoffs": 0,
+  "date": "2026-10-25",
+  "durable_root": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001",
+  "execution_wall_seconds": 23.871416499998304,
+  "failed_unscored": 1,
+  "failure": {
+    "location": "NKAI::AIGateway::makeTurn() noexcept after terminal barrier and Ending network thread",
+    "message": "Contextual evidence is sealed at its terminal barrier",
+    "policy": "No retry, replacement, rescoring or failed-capture admission. Native lifecycle correctness must be resolved before another batch.",
+    "process_log": {
+      "bytes": 7743,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/episode-000003/logs/process.log",
+      "sha256": "50e1393956381060a52dfa6ba09977f861b9f1d1b0ca343ac0a8749011616365"
+    },
+    "returncode": -6
+  },
+  "games_started": 3,
+  "native": {
+    "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/recovery-v1/bin/vcmiclient",
+    "binary_sha256": "265c70769657fac59b9b2feb38a923747d667d0365b2308368a1c27357156839",
+    "explorer_rl_sha256": "43b2a47212ae4c2ce131e2bf89dbee0135130962430a44f5bbf4f83645715dab",
+    "log_level": "info",
+    "map": {
+      "name": "hero-management-v1.vmap",
+      "sha256": "852ea0211d20e1cbfb64790fe8076254e98983ba0ae29e854db192c816c76ad1"
+    }
+  },
+  "not_started": 5,
+  "optimizer_steps": 0,
+  "optimizer_updates": 0,
+  "original_trained_checkpoint_recovered": false,
+  "plan": {
+    "bytes": 45802,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/plan.json",
+    "sha256": "7235936882dadbe4b727a132e6f446686d49d8dbcddf74ab073db8cdf0d7e527"
+  },
+  "purpose": "New experiment from original baseline, not reconstruction of lost trained pilot",
+  "report": {
+    "bytes": 10589,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runs/recovery-2026-10-25-001/execution/report.json",
+    "sha256": "4da99d617eab37dd595fedc7ea1f5e7704b285ca3fa441bc1fe6482e17c81aea"
+  },
+  "runtime": {
+    "AI/libBattleAI.dylib": "88e0ece7aa6b87a7dfaf1fcf2ea2f59cd3a1c1b663c9d442c9ad01631232e4a3",
+    "AI/libEmptyAI.dylib": "8d1df73619ad7077172913ef9a19b75ffbc7bc90daa301cfeab5b1db1ded41ef",
+    "AI/libExplorerRL.dylib": "43b2a47212ae4c2ce131e2bf89dbee0135130962430a44f5bbf4f83645715dab",
+    "AI/libNullkiller.dylib": "f0c2238b11380c7d753023ff02b3b5e11704b10d3d1b4c6d1102c3b8cf7a78e4",
+    "AI/libStupidAI.dylib": "c843c158f88853c68655b6b8c9b25e56f54387ab6fc5bee90531b98bb447f9ea",
+    "libvcmi.dylib": "6430c77e12c854b6f9adabf8108bbe90a69836f29145959fb0866986e3a54155",
+    "vcmireplay": "1d025e538c53bc9f980752b9fafeaccb27fba4b0370505ea35073de99e6dc8be"
+  },
+  "runtime_recovery_receipt": {
+    "bytes": 7112,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/recovery-v1/recovery-receipt.json",
+    "sha256": "33448d41411011ec21d8c0f7e1a62ff63a42339585e1b43857340e0dcb05c626"
+  },
+  "schema": "heroes-recovery-attempt-v1",
+  "source_commit": "8114c5904fc423b91549984ace67801923e78a97",
+  "status": "stopped",
+  "training_samples": 0,
+  "validation": {
+    "backup_test": "Delete canonical checkpoint pair, then restore exact model/Adam/RNG/progress/pool from atomic durable backup.",
+    "focused_tests": 44,
+    "result": "passed"
+  },
+  "verified_natural_losses": 2,
+  "verified_natural_wins": 0
+}
