@@ -194,7 +194,12 @@ def audit_persisted_policy(folder, loaded, policy_seeds, *, interface=INTERFACE)
                 "Checkpoint and player roles disagree")
         model = models[rollout.behavior_checkpoint]
         require(model.config.to_dict() == json.loads(config), "Saved model configuration changed")
-        require(tuple(c.decode_frame(json.loads(line)) for line in path.read_text().splitlines()) == rollout.history,
+        lines = path.read_text().splitlines()
+        # The exact to_dict() roundtrip above proves each frame's canonical
+        # text decodes back to that frame, so identical lines need no decoding.
+        verbatim = len(lines) == len(rollout.history) and all(
+            line == c.canonical_frame(frame) for line, frame in zip(lines, rollout.history))
+        require(verbatim or tuple(c.decode_frame(json.loads(line)) for line in lines) == rollout.history,
                 "Rollout changed or omitted persisted visible history")
         result = reconstruct_behavior(rollout.history, rollout.decisions, rollout.estimates,
                                       model, policy_seeds[rollout.player], schema=profile.history_schema)

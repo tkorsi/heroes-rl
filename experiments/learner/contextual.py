@@ -1737,7 +1737,7 @@ class PlayerHistory:
     def digest(self):
         digest = hashlib.sha256()
         for frame in self._frames:
-            digest.update(json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":")).encode())
+            digest.update(canonical_frame(frame).encode())
             digest.update(b"\n")
         return digest.hexdigest()
 
@@ -2322,7 +2322,7 @@ def finalize_cutoff(histories, *, evidence_ref, histories_complete, failure_free
 
 
 def _record(raw, cls):
-    if type(raw) is not dict or set(raw) - {f.name for f in fields(cls)}:
+    if type(raw) is not dict or not _field_set(cls).issuperset(raw):
         raise ValueError(f"Unknown fields in {cls.__name__}")
     return dict(raw)
 
@@ -2358,7 +2358,7 @@ def _decode_context(raw, profile):
 
 def _exact_record(raw, cls):
     data = _record(raw, cls)
-    if set(data) != {field.name for field in fields(cls)}:
+    if set(data) != _field_set(cls):
         raise ValueError(f"Incomplete {cls.__name__} wire payload")
     return data
 
@@ -2508,12 +2508,30 @@ def decode_notice(raw, *, schema=SCHEMA):
         raise ValueError("Incomplete informational notice") from exc
 
 
+_FIELD_NAMES = {}
+_FIELD_SETS = {}
+
+
+def _field_names(cls):
+    names = _FIELD_NAMES.get(cls)
+    if names is None:
+        names = _FIELD_NAMES[cls] = tuple(field.name for field in fields(cls))
+    return names
+
+
+def _field_set(cls):
+    names = _FIELD_SETS.get(cls)
+    if names is None:
+        names = _FIELD_SETS[cls] = frozenset(_field_names(cls))
+    return names
+
+
 def _wire(value):
     """Detached canonical JSON, omitting additive fields from their older schema."""
     if isinstance(value, tuple):
         return [_wire(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
-        data = {field.name: _wire(getattr(value, field.name)) for field in fields(value)}
+        data = {name: _wire(getattr(value, name)) for name in _field_names(type(value))}
         if type(value) is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
         elif type(value) is Action and value.schema == ACTION_SCHEMA:
@@ -2574,10 +2592,35 @@ def encode_offers(offers):
 def encode_frame(frame):
     if type(frame) is not Frame:
         raise ValueError("Expected typed contextual frame")
-    data = _wire(frame)
+    # The observation is encoded once, by its schema-aware encoder below.
+    data = {name: None if name == "observation" else _wire(getattr(frame, name)) for name in _field_names(Frame)}
     if frame.observation is not None:
         data["observation"] = encode_observation(frame.observation, schema=frame.schema)
     return data
+
+
+def canonical_frame(frame):
+    """Canonical JSON text of one frame, encoded at most once per frame object.
+
+    Frames are frozen trees of tuples, strings, integers and frozen records, so
+    the text cannot change after the first encoding. The cache is per object
+    and is never a dataclass field: equality, replace() and decoding ignore it.
+    It costs memory while the frame lives, so owners that finish with a history
+    drop it with release_canonical.
+    """
+    if type(frame) is not Frame:
+        raise ValueError("Expected typed contextual frame")
+    text = frame.__dict__.get("_canonical_json")
+    if text is None:
+        text = json.dumps(encode_frame(frame), sort_keys=True, separators=(",", ":"), allow_nan=False)
+        object.__setattr__(frame, "_canonical_json", text)
+    return text
+
+
+def release_canonical(frames):
+    """Drop cached canonical text; a later canonical_frame re-encodes exactly."""
+    for frame in frames:
+        frame.__dict__.pop("_canonical_json", None)
 
 
 def decode_frame(raw):

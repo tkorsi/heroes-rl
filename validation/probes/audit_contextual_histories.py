@@ -155,11 +155,18 @@ def audit_player(path, player):
         frames = history.frames
         if any(_canonical(frame) != previous for frame, previous in zip(frames, frozen_encodings)):
             raise ValueError("A previously appended immutable prefix changed")
+        # The check above proves each frozen encoding equals the current one.
+        finalized = bool(frames) and frames[-1].kind in FINALIZED_KINDS
+        prefix = hashlib.sha256()
+        for encoding in frozen_encodings[:-1] if finalized else frozen_encodings:
+            prefix.update(encoding)
+        canonical = prefix.copy()
+        if finalized:
+            canonical.update(frozen_encodings[-1])
         report.update(episode=history.episode, history_schema=history.schema, environment=history.profile.environment,
                       decoded_frames=len(frames), boundary=history.boundary,
-                      terminal=history.terminal, canonical_sha256=_digest(frames),
-                      prefix_sha256=_digest(frames[:-1] if frames and frames[-1].kind in FINALIZED_KINDS else frames),
-                      coverage=_coverage(frames))
+                      terminal=history.terminal, canonical_sha256=canonical.hexdigest(),
+                      prefix_sha256=prefix.hexdigest(), coverage=_coverage(frames))
         if history.digest() != report["canonical_sha256"]:
             raise ValueError("Independent canonical history digest disagrees with contract")
         transitions = history.transitions()

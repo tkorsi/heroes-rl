@@ -58,7 +58,7 @@ def canonical_records(history):
     frames = history.frames
     cache = _WIRE_CACHE.setdefault(history, [])
     for frame in frames[len(cache):]:
-        cache.append(json.dumps(contract.encode_frame(frame), sort_keys=True, separators=(",", ":")))
+        cache.append(contract.canonical_frame(frame))
     return cache
 
 
@@ -623,7 +623,7 @@ class ContextualMixin:
             prefix = producer.history.frames[:-1] if producer.history.frames[-1].kind in ("finalized", "cutoff_finalized") else producer.history.frames
             digestor = hashlib.sha256()
             for frame in prefix:
-                digestor.update(json.dumps(contract.encode_frame(frame), sort_keys=True, separators=(",", ":")).encode() + b"\n")
+                digestor.update(contract.canonical_frame(frame).encode() + b"\n")
             live = folder / ("live-" + self.context_profile.history_filename)
             live_digest = persist_history(live, producer.live)
             declarations[side.color] = {**executions[side.color], "actions_sent": side.actions_sent,
