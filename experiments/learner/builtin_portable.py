@@ -89,6 +89,10 @@ class Migration:
         report = strict_json(Path(gate['report']['path']).read_bytes())
         require(plan['schema'] == 'heroes-builtin-checkpoint-evaluation-v1-plan'
                 and plan['runtime'] == runtime and plan['mode'] == 'evaluation'
+                and plan['native'] == self.value['runtime_transition']['to_native']
+                and plan['parent']['plan']['sha256'] == self.value['parent']['plan_sha256']
+                and plan['checkpoint']['sha256'] == self.value['parent']['policy_sha256']
+                and report['schema'] == 'heroes-builtin-checkpoint-evaluation-v1-result'
                 and report['plan_sha256'] == gate['plan']['sha256']
                 and report['status'] == 'finished' and report['worker_complete'] is True
                 and report['supervisor_cleanup_verified'] is True

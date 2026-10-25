@@ -67,7 +67,7 @@ def migration_for(bound):
     return Migration(bound['path'], pilot.ROOT)
 
 
-def require_heldout(state, runtime):
+def require_heldout(state, runtime, native):
     """Do not advance beyond a fifth update before its fixed two-seat check."""
     if state.progress.updates % 5:
         return
@@ -75,7 +75,7 @@ def require_heldout(state, runtime):
         plan = json.loads(path.read_text())
         if (plan.get('schema') != EVALUATION+'-plan'
                 or plan.get('parent', {}).get('plan', {}).get('sha256') != state.bindings['plan']['sha256']
-                or plan.get('runtime') != runtime
+                or plan.get('runtime') != runtime or plan.get('native') != native
                 or plan.get('schedule') != schedule(state.progress.updates, True)):
             continue
         report_path = Path(plan['execution_output'])/'report.json'
@@ -132,7 +132,7 @@ def prepare(args):
         current_runtime=current_runtime, current_native=current_native,
         expected_plan_sha256=pilot.digest(parent_path), expected_report_sha256=pilot.digest(report_path), migration=migration)
     if not args.evaluate:
-        require_heldout(state, current_runtime)
+        require_heldout(state, current_runtime, current_native)
     pilot.require(not output.exists(), 'Use a new batch directory')
     # Require the independently restored second copy before any further game.
     receipt_path = DURABLE_ROOT / 'checkpoints' / parent_path.parent.name / 'preservation-receipt.json'
@@ -220,7 +220,7 @@ def worker(args):
         pilot.check_identity(plan)
         state = parent_state(plan)
         if plan['mode'] == 'training':
-            require_heldout(state, plan['runtime'])
+            require_heldout(state, plan['runtime'], plan['native'])
         model = state.model
         receipts = []
         for index, row in enumerate(plan['schedule']):

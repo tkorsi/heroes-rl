@@ -15,7 +15,7 @@
     },
     "experiments/learner/builtin_training.py": {
       "from": "877585cf6ccc3ad026af4b42749e3d1371a2b34467893db71c9d34b624df9ca7",
-      "to": "41a434c055b1d0c8270724a54bd711a3a6284afd284c5f66bb69da4a1e8d6cf4"
+      "to": "75e03783eb9021f911b7978347c677f736a7d233f7802911cef8bbf05847dfcf"
     },
     "experiments/learner/builtin_training_resume.py": {
       "from": "ce5a7af62323aa00caa5c316721159c242692faa151b2634380423efe88983e4",
@@ -73,6 +73,10 @@
   "schema": "heroes-cloud-portability-validation-v1",
   "teacher_commit": "65a4f487d19957ad8346d7a1332a78d4fd0e172d",
   "tests": {
+    "additional_client_parent_gate_tests": {
+      "command": "python -m unittest tests.test_builtin_portable tests.test_builtin_training -q",
+      "passed": 12
+    },
     "command": "python -m unittest discover -s tests -p 'test_builtin*.py' -q",
     "passed": 184
   },

@@ -89,6 +89,31 @@ class PortableTests(unittest.TestCase):
         migration = self.commit_manifest()
         with self.assertRaisesRegex(ValueError, 'Fresh Linux'): migration.training_gate(self.fixture.runtime)
 
+    def test_linux_gate_binds_client_and_the_exact_parent_policy(self):
+        f = self.fixture
+        plan_path = self.relocated/'linux-evaluation-plan.json'
+        report_path = self.relocated/'linux-evaluation-report.json'
+        plan = {'schema': runner.EVALUATION+'-plan', 'runtime':f.runtime, 'native':f.native,
+                'mode':'evaluation', 'parent':{'plan':{'sha256':self.value['parent']['plan_sha256']}},
+                'checkpoint':{'sha256':self.value['parent']['policy_sha256']},
+                'schedule':runner.schedule(21,True)}
+        write(plan_path,plan)
+        rows = [{**row,'status':'passed','training_samples':0,'completion_receipt':True,
+                 'cleanup_verified':True,'identity_verified':True,'replay_verified':True}
+                for row in plan['schedule']]
+        report = {'schema':runner.EVALUATION+'-result','plan_sha256':resume.binding(plan_path)['sha256'],
+                  'status':'finished','worker_complete':True,'supervisor_cleanup_verified':True,
+                  'optimizer_updates':0,'optimizer_steps':0,'training_performed':False,'attempts':rows}
+        write(report_path,report)
+        self.value['linux_gate']={'plan':resume.binding(plan_path),'report':resume.binding(report_path)}
+        migration=self.commit_manifest();migration.training_gate(f.runtime)
+        plan['native']={**f.native,'binary_sha256':'changed-client'};write(plan_path,plan)
+        report['plan_sha256']=resume.binding(plan_path)['sha256'];write(report_path,report)
+        self.value['linux_gate']={'plan':resume.binding(plan_path),'report':resume.binding(report_path)}
+        migration=self.commit_manifest()
+        with self.assertRaisesRegex(ValueError,'clean current-runtime'):
+            migration.training_gate(f.runtime)
+
     def test_configuration_preserves_math_and_requires_complete_20x_batch(self):
         cfg = runner.configuration()
         self.assertEqual((cfg['ordinary_choice_limit'], cfg['reserved_dialog_choices'], cfg['max_total_choices']),
@@ -168,9 +193,9 @@ class HeldoutTests(unittest.TestCase):
             state = SimpleNamespace(progress=SimpleNamespace(updates=25),bindings={'plan':{'sha256':'parent'}})
             runtime = {'vcmireplay':'synthetic'}
             with patch.object(runner,'DURABLE_ROOT',root):
-                with self.assertRaisesRegex(ValueError,'held-out pair'): runner.require_heldout(state,runtime)
+                with self.assertRaisesRegex(ValueError,'held-out pair'): runner.require_heldout(state,runtime,{})
                 run = root/'runs/eval'; run.mkdir(parents=True)
-                plan = {'schema':runner.EVALUATION+'-plan','parent':state.bindings,'runtime':runtime,
+                plan = {'schema':runner.EVALUATION+'-plan','parent':state.bindings,'runtime':runtime,'native':{},
                         'schedule':runner.schedule(25,True),'execution_output':str(run/'execution')}
                 write(run/'plan.json',plan); (run/'execution').mkdir()
                 rows = [{**row,'status':'passed','training_samples':0,'completion_receipt':True,
@@ -180,7 +205,7 @@ class HeldoutTests(unittest.TestCase):
                     'worker_complete':True,'supervisor_cleanup_verified':True,'training_performed':False,
                     'optimizer_updates':0,'optimizer_steps':0,'attempts':rows}
                 write(run/'execution/report.json',report)
-                runner.require_heldout(state,runtime)
+                runner.require_heldout(state,runtime,{})
                 report['attempts'][1]['replay_verified']=False
                 write(run/'execution/report.json',report)
-                with self.assertRaisesRegex(ValueError,'held-out pair'): runner.require_heldout(state,runtime)
+                with self.assertRaisesRegex(ValueError,'held-out pair'): runner.require_heldout(state,runtime,{})
