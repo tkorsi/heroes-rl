@@ -1,0 +1,154 @@
+{
+  "schema": "heroes-native-headless-shutdown-validation-v1",
+  "timestamp_utc": "2026-10-25T16:05:38.343544+00:00",
+  "source_fix_commit": "ca488fd4c6b6aa821f46ed2a6ef994f39bf78aac",
+  "base": "65a4f48",
+  "branch": "codex/linux-native-shutdown-fix",
+  "integration_test_source": "be6df08 plus the exact canonical cleanup patch; default ordinary socket path, no EngineSession invocation",
+  "root_cause": "GDB stops in Nullkiller yourTurn TBB function_task completion, at the indirect wait_tree_vertex release in task_handle_task destruction. Its submitting network thread had exited; main was draining AIGateway::finish. Headless cleanup now stops callback admission and drains AI tasks before stopping/joining that thread.",
+  "scope": "Ordinary headless shutdown only; no rules, RNG, rewards, learner math, replay exemptions, experimental worker enablement or Teacher Python changes. Recorder release is not the repair for this crash.",
+  "checks": {
+    "source_recipe": "python3 tools/prepare_vcmi.py --check passed on integrated canonical sources",
+    "native_build": "vcmiclient and native_headless_shutdown_order built; vcmireplay existing target available",
+    "focused_tests": {
+      "count": 9,
+      "passed": 9,
+      "skipped": 0,
+      "seconds": 19.214,
+      "modules": [
+        "test_native_headless_shutdown_order",
+        "test_native_terminal_cancellation",
+        "test_native_shutdown",
+        "test_native_request_lock_order",
+        "test_native_terminal_barrier",
+        "test_native_terminal_accounting"
+      ]
+    },
+    "actual_production_order_fixture": {
+      "iterations": 100,
+      "fixed_exit_code": 0,
+      "pre_fix_exit_code": 3,
+      "pre_fix_error": "Production shutdown joined producer before AI drain",
+      "scope": "Actual CServerHandler::endNetwork and AsyncRunner/TBB with a blocked test callback; no game rules/assets simulated"
+    }
+  },
+  "fresh_real_ordinary_games": [
+    {
+      "workload": "explicit end-turn-only ordinary vcmiclient; no training",
+      "learner": 0,
+      "seed": 845011,
+      "choices": 2,
+      "native_returncode": 0,
+      "status": "completed",
+      "reason": "natural_terminal",
+      "wall_seconds_including_environment_close": 0.6394288670007882,
+      "outcomes": {
+        "red": "loss",
+        "blue": "win"
+      },
+      "native_replay_verified": true,
+      "checked": {
+        "client_packets": 475,
+        "messages": 6,
+        "native_opponent_requests": 62,
+        "requests": 70,
+        "responses": 2,
+        "transactions": 519
+      },
+      "unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "terminal_barrier_callbacks_complete": true,
+      "capture_sha256": {
+        "engine/replay.jsonl": {
+          "sha256": "001809c3a20d39ba944613d18ed553e3277a99d9cd965c7bfe528b31f32fd98c",
+          "bytes": 35170
+        },
+        "engine/contextual-replay.jsonl": {
+          "sha256": "86682416d193d2baede7638aaf763304043c142b6d052e2a56f9c71462ff8f38",
+          "bytes": 381447
+        },
+        "engine/terminal-barrier-server.jsonl": {
+          "sha256": "9bb34a4ad9ac1ee97b52b2ba7fe29364fd9caf58bf1c6418fb3f40ae3d0a4b7b",
+          "bytes": 459
+        },
+        "engine/terminal-barrier-client.jsonl": {
+          "sha256": "1556cac7ed6e8337926099389cbc4ff3e9f3942e84d2160d07c1ae13e2712bf2",
+          "bytes": 591
+        }
+      }
+    },
+    {
+      "workload": "explicit end-turn-only ordinary vcmiclient; no training",
+      "learner": 1,
+      "seed": 845012,
+      "choices": 1,
+      "native_returncode": 0,
+      "status": "completed",
+      "reason": "natural_terminal",
+      "wall_seconds_including_environment_close": 0.610060734000399,
+      "outcomes": {
+        "red": "win",
+        "blue": "loss"
+      },
+      "native_replay_verified": true,
+      "checked": {
+        "client_packets": 454,
+        "messages": 4,
+        "native_opponent_requests": 59,
+        "requests": 66,
+        "responses": 1,
+        "transactions": 492
+      },
+      "unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "native_opponent_requests": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      },
+      "terminal_barrier_callbacks_complete": true,
+      "capture_sha256": {
+        "engine/replay.jsonl": {
+          "sha256": "47f4f73d88fbb3cc87c6759d797f6017b3a1606c5754abc8aedaa6e5a48bfa22",
+          "bytes": 33158
+        },
+        "engine/contextual-replay.jsonl": {
+          "sha256": "fb0f1d7acb267a1ea2aa80f481b7cc5b64eb9777599c678716012ecc9149c740",
+          "bytes": 358091
+        },
+        "engine/terminal-barrier-server.jsonl": {
+          "sha256": "4f989d8dfff422b200f71dc071f66bfed44ac28ad4d1a663fcb8d39a190c8044",
+          "bytes": 459
+        },
+        "engine/terminal-barrier-client.jsonl": {
+          "sha256": "f554a02c477a08b4db9d15e7ee096245a9461294f85eb13b88dd7894125a8982",
+          "bytes": 591
+        }
+      }
+    }
+  ],
+  "failed_attempts_preserved": {
+    "teacher_original": "Public validation/cloud-linux-gate-001-2026-10-25.json at 44fbfda reports 72 choices and native SIGSEGV; remains unscored. The exact Teacher policy trajectory is not retested here.",
+    "optimizer_pre_fix": "Natural terminal reached, then SIGSEGV during shutdown; retained as incomplete/unscored. Separate GDB and stack-trace diagnostics are not benchmark replacements.",
+    "raw_observation_invocation": "An additional raw observation-mode replay without the recorded contextual environment rejected the terminal packet count. The required existing v7 contextual replay succeeds with full client messages and no unchecked records; no verifier was weakened."
+  },
+  "teacher_next_gate": "Pick the source fix, rebuild/check the actual Teacher runtime and rerun its restored-policy Linux control/replay before any training. Old captures/results remain unchanged.",
+  "real_speedup_claim": false,
+  "session_reuse_acceptance": false,
+  "training_performed": false,
+  "private_inputs": "User-supplied Data outside public source tree; no assets/raw captures committed.",
+  "local_logs": {
+    "terminal-cleanup-gdb-2.log": "cd2c4af56df332c4607f26a98e8e29289db9871400a40f1ce724e023b94ff8b9",
+    "shutdown-order-negative-control.log": "5cea2f93fc9e3aea83c23cbc5dc3ba4782ef5281718a7f5e11cdd7c8d1fb4915",
+    "shutdown-fix-focused.log": "38c7824df824daa63ea3f70ab0294b2fa4a040648877513737b615cd3f91502f",
+    "ordinary-fixed-001-driver.log": "8ed65a564296e59c4bc1eb2fb6a93b45198968afc4a6129627b3e36c986ae801",
+    "ordinary-fixed-blue-001-driver.log": "54a57021b1186b9619e842c54c2af0c9fd2622f757b6c00fef7f20e1c973a9f5"
+  }
+}

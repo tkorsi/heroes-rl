@@ -3721,3 +3721,10 @@ Outputs are never overwritten. Keep full recordings locally; share or archive
 them explicitly when needed. The smoke launcher remains available for recorder checks; `run_random.py` connects
 our external baseline agent. A trained policy and scheduled checkpoint evaluation
 remain future work.
+
+
+The ordinary Linux headless shutdown repair is documented in
+[headless AI shutdown order](docs/native-headless-shutdown.md). It drains native
+AI work before joining its submitting network thread. Its fresh ordinary-game
+and replay checks are separate from experimental session reuse and do not
+retrospectively score the original failed Teacher gate.
