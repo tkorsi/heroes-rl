@@ -294,12 +294,25 @@ void ContextualEvidence::expect(JsonNode record)
 	advance();
 }
 
+void ContextualEvidence::rejectSealedEvent(const std::string & actor, const std::string & operation) const
+{
+	if(!replay && sealed)
+	{
+		// A late Nullkiller callback may arrive after the final packet released
+		// the event mutex. Cancel before entry, allocation of a request ID or
+		// sending anything. Never suppress an error inside an entered event.
+		if(builtin && actor == "client" && operation == "request")
+			throw ExperimentTerminalFinished();
+		throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");
+	}
+}
+
 void ContextualEvidence::beforeEvent(const std::string & actor, const std::string & operation)
 {
 	std::unique_lock lock(mutex);
 	if(!replay)
 	{
-		if(sealed) throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");
+		rejectSealedEvent(actor, operation);
 		return;
 	}
 	const bool ready = changed.wait_for(lock, std::chrono::seconds(30), [&]
@@ -314,6 +327,7 @@ void ContextualEvidence::beforeEvent(const std::string & actor, const std::strin
 void ContextualEvidence::eventEntered(const std::string & actor, const std::string & operation)
 {
 	std::lock_guard lock(mutex);
+	rejectSealedEvent(actor, operation);
 	transactionActor = actor;
 	JsonNode record;
 	record["kind"].String() = "enter";

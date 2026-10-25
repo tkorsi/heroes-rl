@@ -11,7 +11,9 @@ transitions (five Adam steps)** in 62.161 seconds. Both policy and value weights
 changed; exact checkpoint restoration and all native replays passed. The learner
 lost all eight games, including both evaluations before and both after the update.
 This proves the bounded training path works, not improved strategy. The run is
-complete; no further training campaign is authorized by that pilot.
+complete. Its trained checkpoints were subsequently lost during managed-worktree
+archival; historical results remain unchanged. The new recovery authorization
+below supersedes the earlier restriction on further training.
 
 The preceding local v2 revalidation on frozen source `6abbfdb` produced
 **four verified frozen-neural cutoffs and four verified natural learner defeats
@@ -58,6 +60,161 @@ admission fixtures are separate from real reset-isolation and performance gates;
 it is not integrated with the Teacher or accepted for training.
 
 This is the canonical project document. Last agreement: **25 October 2026**.
+
+## Active recovery and continuation authorization — 25 October 2026
+
+The user explicitly authorized a new recovery experiment from the original v7
+baseline after the trained pilot checkpoints and ignored runtime were lost during
+managed-worktree cleanup. The preserved baseline at
+`/Users/orsi/Projects/Heroes-artifacts/checkpoints/baseline-v7/fixed-policy.pt`
+has SHA256 `4043b58bb3dc4eb6169514ca1ed7c1be0b373a5139efe04b95dfeda1832232c1`.
+The lost one-update trained state is not reconstructed. Recovery uses fresh
+real games and new plan/report/checkpoint provenance through the existing pilot
+runner: two before evaluations, four training games, one PPO update and two
+matched after evaluations. The historical pilot evidence below is unchanged.
+
+Following a verified recovery batch, successive bounded resumable local batches
+and periodic fixed held-out evaluation on both seats are authorized until
+sustained improvement, a meaningful plateau, or a material correctness/resource
+failure requires a user decision. Nullkiller Easy, the ordinary 20×20 two-castle
+scenario, automatic BattleAI, private structured observations, contextual actions
+and terminal-only +1/-1 rewards remain unchanged. Recruitment, army concentration
+and town-loss timing are diagnostics only. No demonstrations, shaping, hidden
+information, strategic filtering, paid compute or PR merges are authorized.
+
+Canonical plans, reports, histories, replay captures and checkpoints now go
+directly under `/Users/orsi/Projects/Heroes-artifacts/runs/<run-id>/`, outside all
+managed worktrees. `experiments.learner.builtin_preservation` verifies the completed
+plan/report and checkpoint pair, atomically publishes a second copy under
+`/Users/orsi/Projects/Heroes-artifacts/checkpoints/<run-id>/`, and restore-tests
+model, Adam, RNG, progress and archived pool before continuation. Absolute evidence
+bindings are retained. The baseline is never overwritten. Heavy work is coordinated
+with Claude through issue #4 in short concrete windows.
+
+Recovery attempt `recovery-2026-10-25-001` ran from `8114c59` in **23.871 seconds**.
+The isolated runtime passed the exact source-recipe check; the existing narrow
+replay-accounting fix was rebuilt and all load paths were relocated outside
+managed worktrees and Claude's tree. Both before evaluations passed independent
+native replay and ended in natural learner losses (Red day 2, Blue day 13).
+The first training game then aborted with exit -6 after the terminal barrier:
+`Contextual evidence is sealed at its terminal barrier` escaped from
+`NKAI::AIGateway::makeTurn() noexcept`. Its loss callback is not a scored outcome.
+The failed capture supplies zero samples; five later attempts were not started.
+**Zero PPO updates and zero Adam steps ran.** No trained recovery checkpoint exists.
+All three native groups closed; the Mac window was released early on issue #4.
+
+This exposed a material native shutdown correctness failure. The user authorized
+a narrow repair and a separately labelled new batch; recovery-001 remains stopped
+and unscored. The historical pilot and failed recovery attempt are not relabelled. The preserved original
+baseline remains intact. All new captures, plan/report, and isolated runtime live
+under the durable artifact root. Forty-four focused tests pass, including deletion
+of the original checkpoint pair followed by exact restoration from the backup.
+Compact evidence: `validation/recovery-2026-10-25-001.json`.
+
+The repair cancels only a not-yet-entered native client-request event after the
+terminal ledger is sealed. Nullkiller catches that typed cancellation and exits
+its turn/async worker without issuing the request. Both the scheduling precheck
+and event entry check closure, so a terminal packet between those checks cannot
+race through. No record is appended to the sealed stream; other late events and
+in-event errors remain strict failures. Native regression checks exercise both
+closure orderings and retain self-play's strict rejection. The isolated v2
+runtime rebuilds the affected ExplorerRL, Nullkiller and replay translation units;
+Claude's runtime stays untouched. The exact source-recipe check and 63 focused
+tests pass before the new batch. Required map/prerequisite files for new plans
+are copied into durable `Heroes-artifacts/inputs/` and bound there.
+
+`experiments.learner.builtin_training` provides the small continuation path:
+`prepare --parent <completed-plan> --output <new-durable-run> --sequence <unused-index>` and
+`execute --plan <new-plan> --sha256 <printed-hash>`. Each training batch restores
+exact model/Adam/RNG/progress/pool, collects four fresh games on alternating seats,
+performs at most one PPO update, and has a 600-second shared limit. No partial
+prefix or failed-game replacement is allowed. `prepare --evaluate` instead runs
+both seats on the fixed held-out engine/policy seeds, with no optimizer update or
+training samples. The runner automatically creates and restore-tests the second
+durable checkpoint copy after successful training; it requires that receipt and
+unchanged backup hashes before the next batch. Fresh training seeds are disjoint
+from held-out seeds. Policy, feature and PPO files must remain byte-identical between parent and child.
+Additive modules are permitted. A versioned committed transition manifest can
+also pin an exact reviewed loader/runner-only change and verifier-only native
+replacement; arbitrary source or gameplay-runtime drift is rejected.
+
+Recovery-002 subsequently passed all eight natural games and independent native
+replays in **67.540 seconds**. It performed one fresh PPO update (106 transitions,
+five Adam steps) and exact checkpoint restoration. Its provenance is new even
+though the deterministic learner update happened to reproduce the old weight
+digest; the historical lost checkpoint is not claimed recovered. Both checkpoint
+copies, canonical captures, map, prerequisites and runtime resources are durable.
+
+Four additional exact-resume batches and the update-5 held-out evaluation passed:
+**five cumulative updates, 651 fresh training transitions, 27 Adam steps**, and
+26 verified natural losses with no cutoffs or failures in the new lineage.
+Recovery-001 remains separately failed. The update-5 evaluation was 0/2 wins;
+Red recruited one unit and lost its town on day 2, Blue recruited six and lost its
+town on day 8 (terminal observation day 14). There is no demonstrated strategic improvement.
+Continuation is active in coordinated bounded windows, with fixed evaluation every
+five updates. Compact cumulative evidence is
+`validation/builtin-continuation-2026-10-25.json`; the raw durable run folders are
+linked from that evidence. No evaluation transitions enter PPO.
+
+The next batch, continuation-005, stopped before updating: two games passed,
+then episode 3's clean natural ending failed replay admission because Nullkiller
+sent a single terminal `EndTurn` (native type 180, request 194). The original
+attempt remains failed/unscored and all three captures supply zero training
+samples. The update-5 checkpoint is preserved unchanged. The narrow verifier
+extension accounts for this exact request class under the same single-tail,
+controller, contiguous-ID, verified final-packet-range and no-later-learner-response
+requirements as MoveHero/BuildStructure. It never applies the terminal tail to
+server state. A separate retained-capture diagnostic passes and preserves the
+original failed result; 346 native accounting checks and 44 focused tests pass.
+Evidence: `validation/terminal-endturn-repair-2026-10-25.json`.
+
+New continuation plans can bind the v3 verifier with the exact committed hashes
+in `configs/builtin-resume-transitions-v1.json`. All gameplay binary/library bytes,
+model, Adam, RNG, feature and PPO code remain unchanged. The transition pins only
+the two loader/runner source revisions and the old/new verifier inventories; it
+cannot permit changes to policy math or gameplay libraries. Fresh captures still
+require exact-current-runtime replay, never diagnostic admission. Training plans
+now require an explicit unused sequence and reject seeds already scheduled in
+any earlier continuation plan, including failed plans.
+
+### Continuation through update 21 (2026-10-25)
+
+Continuation-006 through -021 completed with the v3 verifier, resuming the
+preserved trained state after the failed -005 batch. The new recovery lineage
+now totals **21 PPO updates, 3,944 admitted training transitions and 149 Adam
+steps** across 84 admitted training rollouts. Across all attempted training and
+evaluation games, compact evidence records 95 verified natural losses, three
+verified cutoffs, the one historical failed capture and one unstarted game.
+The two verified games in failed batch -005 remain excluded from PPO along with
+its failed capture. Recovery-001 remains separately recorded. No learner win has
+been observed. Total reported execution time is 1,290.365 seconds; this excludes
+repair, setup, preservation and orchestration time.
+
+| Fixed held-out check | Learner wins | Recruitment | Town loss |
+| --- | --- | --- | --- |
+| Update 5 | 0/2 | Red 1 unit; Blue 6 units | Red day 2; Blue day 8 |
+| Update 10 | 0/2 | Neither seat recruited | Both day 2 |
+| Update 15 | 0/2 | Neither seat recruited | Both day 2 |
+| Update 20 | 0/2 | Neither seat recruited | Both day 2 |
+
+These repeated fixed seeds are regression checks, not independent evaluation
+samples. Occasional training games recruit or preserve a town longer, but the
+held-out results do not demonstrate repeatable strategic improvement. No reward,
+policy, feature or PPO configuration was changed during these batches.
+
+The latest resumable parent is
+`/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/plan.json`.
+Its canonical `execution/after-resume.pt` and `after-policy.pt` have a second copy
+under `Heroes-artifacts/checkpoints/continuation-2026-10-25-021/`, with an exact
+model/Adam/RNG/progress/pool restoration receipt. The policy weights digest is
+`0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb`.
+The executor stopped at its planned launch boundary; supervisor cleanup and the
+absence of remaining native/training processes were checked. Teacher released
+the Mac on issue #4 at approximately 14:50 UTC, ahead of Claude's 15:00 deadline.
+A one-time same-chat wake-up is scheduled for 16:00 UTC (18:00 Kyiv) to coordinate
+a fresh window and continue from this checkpoint, subject to the existing
+failure/plateau stop conditions. Use sequence 22 or the next unused sequence;
+never reuse failed plan seeds or restart from the original baseline.
 
 ## Current authorized local PPO pilot
 

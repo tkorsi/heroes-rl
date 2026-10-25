@@ -26,7 +26,7 @@ struct Fixture
 	JsonNode terminal;
 	bool prefix = false;
 	int learner = 0;
-	bool building = false;
+	int tailKind = 0;
 
 	JsonNode request(const CPackForServer & pack, const char * source) const
 	{
@@ -71,12 +71,18 @@ struct Fixture
 
 	JsonNode tailRequest(int player, uint32_t id) const
 	{
-		if(building)
+		if(tailKind == 1)
 		{
 			BuildStructure build(ObjectInstanceID(0), BuildingID::TAVERN);
 			build.player = PlayerColor(player);
 			build.requestID = id;
 			return request(build, "native_opponent");
+		}
+		if(tailKind == 2)
+		{
+			EndTurn end;
+			end.player = PlayerColor(player); end.requestID = id;
+			return request(end, "native_opponent");
 		}
 		MoveHero move;
 		move.player = PlayerColor(player);
@@ -86,7 +92,7 @@ struct Fixture
 		return request(move, "native_opponent");
 	}
 
-	explicit Fixture(int side = 0, bool build = false) : learner(side), building(build)
+	explicit Fixture(int side = 0, int kind = 0) : learner(side), tailKind(kind)
 	{
 		AdvInterfaceReady ready;
 		ready.player = PlayerColor(side);
@@ -125,9 +131,9 @@ struct Fixture
 void rejected(const std::function<void(Fixture &)> & mutate)
 {
 	for(const int side : {0, 1})
-		for(const bool building : {false, true})
+		for(const int tailKind : {0, 1, 2})
 		{
-			Fixture fixture(side, building);
+			Fixture fixture(side, tailKind);
 			mutate(fixture);
 			try { fixture.run(); }
 			catch(const std::exception &) { ++checks; continue; }
@@ -141,16 +147,16 @@ int main()
 	try
 	{
 		for(const int side : {0, 1})
-		for(const bool building : {false, true})
+		for(const int tailKind : {0, 1, 2})
 		{
-			Fixture f(side, building);
+			Fixture f(side, tailKind);
 			const auto actual = f.run();
 			check(actual["authoritative_inputs"].Integer() == 2);
 			check(actual["terminal_unapplied"].Vector().size() == 1);
 			check(actual["terminal_unapplied"][0]["pack"] == f.tape[7]["pack"]);
 			check(actual["terminal_unapplied"][0]["receipt"] == f.tape[6]["packet"]);
 			check(actual["final_terminal_input"] == f.terminal);
-			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (building ? 185 : 182));
+			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (tailKind == 2 ? 180 : tailKind == 1 ? 185 : 182));
 			for(const int position : {11, 19})
 			{
 				f.tape[6]["packet"]["completed"].Integer() = position;
@@ -180,13 +186,13 @@ int main()
 		rejected([](auto & f) { f.tape[7]["request_id"].Float() = 12.0; });
 		rejected([](auto & f) { f.tape[7]["seq"].Float() = 7.0; });
 		rejected([](auto & f) { f.tape[7]["pack_type"].Integer() = 198; });
-		rejected([](auto & f) { f.tape[7]["pack_type"].Integer() = f.building ? 182 : 185; });
+		rejected([](auto & f) { f.tape[7]["pack_type"].Integer() = f.tailKind == 1 ? 182 : 185; });
 		rejected([](auto & f) { f.tape[7]["pack"].String() += "00"; });
 		rejected([](auto & f) { f.tape[7]["pack"].String() = "not-hex"; });
 		for(const auto id : {11u, 13u, 0u})
 			rejected([id](auto & f) { f.tape[7] = f.tailRequest(1 - f.learner, id); });
 		rejected([](auto & f) { f.tape[7] = f.tailRequest(f.learner, 12); });
-		rejected([](auto & f) { EndTurn other; other.player = PlayerColor(1 - f.learner); other.requestID = 12;
+		rejected([](auto & f) { DismissHero other; other.player = PlayerColor(1 - f.learner); other.requestID = 12;
 			f.tape[7] = f.request(other, "native_opponent"); });
 		rejected([](auto & f) { const std::vector<JsonNode> extra(f.tape.begin() + 6, f.tape.begin() + 9);
 			f.tape.insert(f.tape.begin() + 9, extra.begin(), extra.end()); });
@@ -225,6 +231,9 @@ int main()
 		check(build != nullptr);
 		check(build->player == PlayerColor(1) && build->requestID == 90);
 		check(build->tid == ObjectInstanceID(0) && build->bid == BuildingID::TAVERN);
+		const auto capturedEnd = decodePack(fromHex("0000b40101c201"), nullptr);
+		const auto * end = dynamic_cast<const EndTurn *>(capturedEnd.get());
+		check(end != nullptr && end->player == PlayerColor(1) && end->requestID == 194);
 		std::cout << "native terminal request accounting: " << checks << " checks passed\n";
 		return 0;
 	}

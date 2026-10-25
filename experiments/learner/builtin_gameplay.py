@@ -80,7 +80,7 @@ class TrainingBinding:
         require(not folder.exists(), "Fresh training collection requires a previously absent episode directory")
         require(digest(plan_path) == plan_sha256, "Training plan bytes differ from the approved plan")
         plan = native.strict_json(plan_path.read_bytes())
-        require(plan.get("schema") == "heroes-builtin-ppo-pilot-v1-plan"
+        require(plan.get("schema") in ("heroes-builtin-ppo-pilot-v1-plan", "heroes-builtin-training-v1-plan")
                 and type(schedule_index) is int and 0 <= schedule_index < len(plan["schedule"]), "Invalid training plan/slot")
         row = plan["schedule"][schedule_index]
         result = cls(str(plan_path), plan_sha256, schedule_index, canonical(row), str(folder), checkpoint,

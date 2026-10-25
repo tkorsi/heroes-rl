@@ -173,8 +173,8 @@ def request_accounting(manifest, tape, server, requests, contexts, close):
         row = tail[0]
         transaction, receipt = contexts[-1]
         require(row["source"] == "native_opponent" and row["player"] == 1 - manifest["learner_player"]
-                and row["pack_type"] in (182, 185) and transaction == ("client", "request"),
-                "Only terminal native-opponent MoveHero or BuildStructure attempts are supported")
+                and row["pack_type"] in (180, 182, 185) and transaction == ("client", "request"),
+                "Only terminal native-opponent MoveHero, BuildStructure or EndTurn attempts are supported")
         require(inputs[-1]["request"] < 0xffffffff and row["request_id"] == inputs[-1]["request"] + 1,
                 "Terminal-unapplied request ID is not contiguous")
         require(type(receipt) is dict and set(receipt) == {"index", "completed", "phase", "type"}
@@ -352,7 +352,10 @@ def run_native(binary, environment, log, tape, report, *, cutoff, timeout):
 
 def diagnostic_inputs(episode, manifest):
     """Hash the original failed admission and captured artifacts, without rewriting them."""
-    original = "builtin-verification/builtin-replay-verification.json"
+    candidates = [name for name in ("builtin-verification/builtin-replay-verification.json",
+                  "training-verification/builtin-replay-verification.json") if (episode / name).is_file()]
+    require(len(candidates) == 1, "Supplemental diagnosis requires one unambiguous original admission report")
+    original = candidates[0]
     result = evidence.strict_json(evidence.inside(episode, original).read_bytes())
     require(result.get("schema") == REPORT_SCHEMA and result.get("verified") is False
             and equal(result.get("inputs", {}).get("manifest"), evidence.file_identity(episode / "manifest.json")),
