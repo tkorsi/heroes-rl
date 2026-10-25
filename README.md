@@ -136,7 +136,7 @@ Four additional exact-resume batches and the update-5 held-out evaluation passed
 26 verified natural losses with no cutoffs or failures in the new lineage.
 Recovery-001 remains separately failed. The update-5 evaluation was 0/2 wins;
 Red recruited one unit and lost its town on day 2, Blue recruited six and lost its
-town on day 8 (defeat day 13). There is no demonstrated strategic improvement.
+town on day 8 (terminal observation day 14). There is no demonstrated strategic improvement.
 Continuation is active in coordinated bounded windows, with fixed evaluation every
 five updates. Compact cumulative evidence is
 `validation/builtin-continuation-2026-10-25.json`; the raw durable run folders are
@@ -162,6 +162,45 @@ cannot permit changes to policy math or gameplay libraries. Fresh captures still
 require exact-current-runtime replay, never diagnostic admission. Training plans
 now require an explicit unused sequence and reject seeds already scheduled in
 any earlier continuation plan, including failed plans.
+
+### Continuation through update 21 (2026-10-25)
+
+Continuation-006 through -021 completed with the v3 verifier, resuming the
+preserved trained state after the failed -005 batch. The new recovery lineage
+now totals **21 PPO updates, 3,944 admitted training transitions and 149 Adam
+steps** across 84 admitted training rollouts. Across all attempted training and
+evaluation games, compact evidence records 95 verified natural losses, three
+verified cutoffs, the one historical failed capture and one unstarted game.
+The two verified games in failed batch -005 remain excluded from PPO along with
+its failed capture. Recovery-001 remains separately recorded. No learner win has
+been observed. Total reported execution time is 1,290.365 seconds; this excludes
+repair, setup, preservation and orchestration time.
+
+| Fixed held-out check | Learner wins | Recruitment | Town loss |
+| --- | --- | --- | --- |
+| Update 5 | 0/2 | Red 1 unit; Blue 6 units | Red day 2; Blue day 8 |
+| Update 10 | 0/2 | Neither seat recruited | Both day 2 |
+| Update 15 | 0/2 | Neither seat recruited | Both day 2 |
+| Update 20 | 0/2 | Neither seat recruited | Both day 2 |
+
+These repeated fixed seeds are regression checks, not independent evaluation
+samples. Occasional training games recruit or preserve a town longer, but the
+held-out results do not demonstrate repeatable strategic improvement. No reward,
+policy, feature or PPO configuration was changed during these batches.
+
+The latest resumable parent is
+`/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/plan.json`.
+Its canonical `execution/after-resume.pt` and `after-policy.pt` have a second copy
+under `Heroes-artifacts/checkpoints/continuation-2026-10-25-021/`, with an exact
+model/Adam/RNG/progress/pool restoration receipt. The policy weights digest is
+`0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb`.
+The executor stopped at its planned launch boundary; supervisor cleanup and the
+absence of remaining native/training processes were checked. Teacher released
+the Mac on issue #4 at approximately 14:50 UTC, ahead of Claude's 15:00 deadline.
+A one-time same-chat wake-up is scheduled for 16:00 UTC (18:00 Kyiv) to coordinate
+a fresh window and continue from this checkpoint, subject to the existing
+failure/plateau stop conditions. Use sequence 22 or the next unused sequence;
+never reuse failed plan seeds or restart from the original baseline.
 
 ## Current authorized local PPO pilot
 

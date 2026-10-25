@@ -1,13 +1,13 @@
 {
-  "execution_wall_seconds": 275.28411287401104,
+  "execution_wall_seconds": 1290.3645275819727,
   "limitations": [
     "Fixed repeated held-out seeds are not independent fresh evaluations.",
     "Recruitment, troop counts, transfer and town timing are diagnostics only, never rewards.",
     "Raw artifacts and exact resumable checkpoints are retained outside managed worktrees.",
     "Observed army counts cover displayed own rows only; they do not measure combat strength."
   ],
-  "optimizer_steps": 27,
-  "optimizer_updates": 5,
+  "optimizer_steps": 149,
+  "optimizer_updates": 21,
   "phases": {
     "after": {
       "natural_loss": 2
@@ -16,11 +16,12 @@
       "natural_loss": 2
     },
     "evaluation": {
-      "natural_loss": 2
+      "natural_loss": 8
     },
     "training": {
+      "cutoff": 3,
       "failed": 1,
-      "natural_loss": 22,
+      "natural_loss": 83,
       "not_started": 1
     }
   },
@@ -1216,6 +1217,2951 @@
       "wall_seconds": 31.50229112499801
     },
     {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/after-policy.pt",
+          "sha256": "0a64e736c364a267f977a8a8157770b4c50e1f5857d3e941bb063866ada3f4d5"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/after-resume.pt",
+          "sha256": "a4823495aba4a28464dbbda0dda205d60ad2cab7447484f6d90cf2f577ab3174"
+        },
+        "weights_sha256": "0c7830e75b0bbf97bc1d9bd9ec611bdf7d4ee319f110bb9981bee2853e636963"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 8,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 1,
+            "recruit_units": 8,
+            "terminal_day": 3,
+            "town_loss_days": [
+              3
+            ]
+          },
+          "engine_seed": 170012,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 26667,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/episode-000001/training-metrics.json",
+            "sha256": "bcf25c14828ad9451ad54300f503ea5f120d957106e91213d18841edd078c0bb"
+          },
+          "phase": "training",
+          "policy_seed": 270024,
+          "sampled_choices": 24,
+          "status": "passed",
+          "training_samples": 24,
+          "wall_seconds": 4.462930709007196
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170012,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 13201,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/episode-000002/training-metrics.json",
+            "sha256": "d44cae61179257cdc23be249cba3bc1ef239e6290948ab5226f07b81fa73a752"
+          },
+          "phase": "training",
+          "policy_seed": 270025,
+          "sampled_choices": 2,
+          "status": "passed",
+          "training_samples": 2,
+          "wall_seconds": 1.3715938749955967
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 1,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 12,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170013,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 26324,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/episode-000003/training-metrics.json",
+            "sha256": "738fb9e3b4ef41afe2ca59bbf78e061434ad342e76833a11b3be8cf185b7a497"
+          },
+          "phase": "training",
+          "policy_seed": 270026,
+          "sampled_choices": 10,
+          "status": "passed",
+          "training_samples": 10,
+          "wall_seconds": 1.9762345000053756
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 4,
+              "split_stack": 15,
+              "swap_garrison": 6,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 35,
+            "observed_cross_army_units": 48,
+            "recruit_attempts": 1,
+            "recruit_units": 10,
+            "terminal_day": 8,
+            "town_loss_days": [
+              8
+            ]
+          },
+          "engine_seed": 170013,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 157250,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/episode-000004/training-metrics.json",
+            "sha256": "836aab477dfc4b4b6aba34552f6d147466cd484db0882ec8a0befa49b4344aa6"
+          },
+          "phase": "training",
+          "policy_seed": 270027,
+          "sampled_choices": 74,
+          "status": "passed",
+          "training_samples": 74,
+          "wall_seconds": 6.766615041997284
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 761,
+        "rollouts": 24,
+        "updates": 6
+      },
+      "optimizer_steps": 5,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 51128,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/plan.json",
+        "sha256": "b5dbdbe1156af5115949784be6986c76d4c4ce9a6f6cd52b759cbd218923333e"
+      },
+      "ppo": {
+        "approximate_kl": 7.881901493595417e-06,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 5,
+        "policy_loss": -0.00038934946060180663,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 110,
+        "value_loss": 0.005835698949257759
+      },
+      "report": {
+        "bytes": 13479,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-006/execution/report.json",
+        "sha256": "324b84f6167e3b253bb125fb6a29b4038aef123a7a9164aa5eeb4d89e6bf3e3e"
+      },
+      "run": "continuation-2026-10-25-006",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 110,
+      "wall_seconds": 33.452444875001675
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/after-policy.pt",
+          "sha256": "9a583a08349b7cca7367b6ce30c11fc9d0bd3e24cc4559361ec7fb72ca038ed5"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/after-resume.pt",
+          "sha256": "2a4c55e7a3a798115170b868498cd49b35065c7e574d03460451b08d61183c12"
+        },
+        "weights_sha256": "d686c45ee1fc14b4e8444aec86152a6f7ed132b57c7d1106ba0e32f6472cb3f1"
+      },
+      "attempts": [
+        {
+          "classification": "cutoff",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 10,
+              "split_stack": 20,
+              "swap_garrison": 22,
+              "swap_stacks": 30
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 38,
+            "observed_cross_army_units": 47,
+            "recruit_attempts": 4,
+            "recruit_units": 13,
+            "terminal_day": null,
+            "town_loss_days": []
+          },
+          "engine_seed": 170014,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 358338,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/episode-000001/training-metrics.json",
+            "sha256": "e694dced4d78254d062d605c1aa3d1dca8293ea048faa82e42e586956b16242d"
+          },
+          "phase": "training",
+          "policy_seed": 270028,
+          "sampled_choices": 248,
+          "status": "passed",
+          "training_samples": 248,
+          "wall_seconds": 18.668489999996382
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 10,
+              "split_stack": 11,
+              "swap_garrison": 6,
+              "swap_stacks": 7
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 33,
+            "observed_cross_army_units": 8,
+            "recruit_attempts": 1,
+            "recruit_units": 8,
+            "terminal_day": 8,
+            "town_loss_days": [
+              4
+            ]
+          },
+          "engine_seed": 170014,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 157178,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/episode-000002/training-metrics.json",
+            "sha256": "5a6ac4f342544feb915cc228966a3c54e364e643b676db3e5e382beed96d75bf"
+          },
+          "phase": "training",
+          "policy_seed": 270029,
+          "sampled_choices": 120,
+          "status": "passed",
+          "training_samples": 120,
+          "wall_seconds": 10.987957749995985
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170015,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 20232,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/episode-000003/training-metrics.json",
+            "sha256": "9ea31a4d28afc2fd3001b093b25b701edc23f0da4a1bd61061c9f9e73f9d3cee"
+          },
+          "phase": "training",
+          "policy_seed": 270030,
+          "sampled_choices": 16,
+          "status": "passed",
+          "training_samples": 16,
+          "wall_seconds": 2.316338499993435
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170015,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 13198,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/episode-000004/training-metrics.json",
+            "sha256": "0d8d162d7d51d1660ddf2f8c9eb6347ad80c3977e24260f12785f2c2c8b43f27"
+          },
+          "phase": "training",
+          "policy_seed": 270031,
+          "sampled_choices": 2,
+          "status": "passed",
+          "training_samples": 2,
+          "wall_seconds": 1.477799917003722
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 1147,
+        "rollouts": 28,
+        "updates": 7
+      },
+      "optimizer_steps": 13,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48090,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/plan.json",
+        "sha256": "4eaa87359bd21204617deeda57ceb8ee101358d9559835a6a4a84a8fe89b6210"
+      },
+      "ppo": {
+        "approximate_kl": 0.0004699421700312143,
+        "clip_fraction": 0.007772020725388601,
+        "entropy": null,
+        "optimizer_steps": 13,
+        "policy_loss": 0.0004973311575583226,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 386,
+        "value_loss": 0.005180749619968351
+      },
+      "report": {
+        "bytes": 10468,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-007/execution/report.json",
+        "sha256": "3b64fab5baeaa71bd5b4653feaf87c29db925a6c06313ca6a6132f53d96ea4ef"
+      },
+      "run": "continuation-2026-10-25-007",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 386,
+      "wall_seconds": 120.55628812499344
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/after-policy.pt",
+          "sha256": "d4910bc4010021a6a306df1c3da6d06bea0dcda389673944bf6ad67700941c34"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/after-resume.pt",
+          "sha256": "36d2b452c58105452f876fc76bd5e9d7236bfb50739bbb9f2c41b2055c1693d8"
+        },
+        "weights_sha256": "dca668adf8199d6294e53a995146588bba5d75bb7e97e4182afae1b56d785382"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 11,
+              "split_stack": 19,
+              "swap_garrison": 4,
+              "swap_stacks": 17
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 36,
+            "observed_cross_army_units": 23,
+            "recruit_attempts": 1,
+            "recruit_units": 11,
+            "terminal_day": 10,
+            "town_loss_days": [
+              3
+            ]
+          },
+          "engine_seed": 170016,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 248669,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/episode-000001/training-metrics.json",
+            "sha256": "4fe7b8d6c50a47e3983581996c02c81e8ff239952994ade33aeb6346c24ffc0c"
+          },
+          "phase": "training",
+          "policy_seed": 270032,
+          "sampled_choices": 144,
+          "status": "passed",
+          "training_samples": 144,
+          "wall_seconds": 11.35645854100585
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170016,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 14574,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/episode-000002/training-metrics.json",
+            "sha256": "2f672330ccdb60a9984463b04f929a2fea2bfa27a21842d652dff207b9963f61"
+          },
+          "phase": "training",
+          "policy_seed": 270033,
+          "sampled_choices": 4,
+          "status": "passed",
+          "training_samples": 4,
+          "wall_seconds": 1.5055509579979116
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 5,
+              "split_stack": 11,
+              "swap_garrison": 3,
+              "swap_stacks": 7
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 2,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170017,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 130133,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/episode-000003/training-metrics.json",
+            "sha256": "06366fa6fe0fc839b1fbca02eb0187d6e13dc12a19c67d3f5347b2137d96d88e"
+          },
+          "phase": "training",
+          "policy_seed": 270034,
+          "sampled_choices": 76,
+          "status": "passed",
+          "training_samples": 76,
+          "wall_seconds": 6.8704307500011055
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 6,
+              "swap_stacks": 8
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 2,
+            "recruit_units": 13,
+            "terminal_day": 4,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170017,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 96228,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/episode-000004/training-metrics.json",
+            "sha256": "4a867ac9d8237d7354efe9fb90359bdfae1fc3b5096ea27e75a326bd4d685da6"
+          },
+          "phase": "training",
+          "policy_seed": 270035,
+          "sampled_choices": 109,
+          "status": "passed",
+          "training_samples": 109,
+          "wall_seconds": 12.096570415989845
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 1480,
+        "rollouts": 32,
+        "updates": 8
+      },
+      "optimizer_steps": 11,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48091,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/plan.json",
+        "sha256": "1db1fcc3276c8f761ce13eb3b5d05ecf73037164c67f418d4a58884ef3449034"
+      },
+      "ppo": {
+        "approximate_kl": 4.083240358002174e-05,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 11,
+        "policy_loss": 0.00011093417803446452,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 333,
+        "value_loss": 0.004958491898267655
+      },
+      "report": {
+        "bytes": 10448,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-008/execution/report.json",
+        "sha256": "1576edec03e73c423548b373a0de7a05dc77df2e76f3cd14738d3afff8e83ced"
+      },
+      "run": "continuation-2026-10-25-008",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 333,
+      "wall_seconds": 88.59457633299462
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/after-policy.pt",
+          "sha256": "91f1f4d3f1b900933d6f6dc738da04f08c230100b1edc56e58c935b0e7bcb5c5"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/after-resume.pt",
+          "sha256": "3550aadf7985985b8623a3721e098f901ae2fd199f5059cde00d0f84c01659ff"
+        },
+        "weights_sha256": "c4d97b0b54f1103471e669a35769b3c2895a0f4a31a03a17b01b6dbb35104687"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 8,
+              "split_stack": 19,
+              "swap_garrison": 2,
+              "swap_stacks": 15
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 29,
+            "observed_cross_army_units": 12,
+            "recruit_attempts": 2,
+            "recruit_units": 8,
+            "terminal_day": 8,
+            "town_loss_days": [
+              7
+            ]
+          },
+          "engine_seed": 170018,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 215635,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/episode-000001/training-metrics.json",
+            "sha256": "ddab249e7d78b361b2e07f83071e1dc62cf31af87f0d66812da42fb63a11851f"
+          },
+          "phase": "training",
+          "policy_seed": 270036,
+          "sampled_choices": 122,
+          "status": "passed",
+          "training_samples": 122,
+          "wall_seconds": 10.454479207997792
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170018,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12279,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/episode-000002/training-metrics.json",
+            "sha256": "859f0b4bdd65fca6535fb884980185e15d6b72330df3625bb82482bc12f10968"
+          },
+          "phase": "training",
+          "policy_seed": 270037,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.3976200420001987
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 2,
+              "split_stack": 2,
+              "swap_stacks": 7
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170019,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 66822,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/episode-000003/training-metrics.json",
+            "sha256": "c7c3d2678a66b1098e5506ca6f87299b5a37e511c5e5ee62577b404d3adbb53c"
+          },
+          "phase": "training",
+          "policy_seed": 270038,
+          "sampled_choices": 49,
+          "status": "passed",
+          "training_samples": 49,
+          "wall_seconds": 4.824517540997476
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_stacks": 2
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170019,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 32105,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/episode-000004/training-metrics.json",
+            "sha256": "ddbe017671e87f6a1dcfe6c2b8e273e39685dbc80d249e91985deffbce3e26d0"
+          },
+          "phase": "training",
+          "policy_seed": 270039,
+          "sampled_choices": 12,
+          "status": "passed",
+          "training_samples": 12,
+          "wall_seconds": 2.2117800419946434
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 1664,
+        "rollouts": 36,
+        "updates": 9
+      },
+      "optimizer_steps": 7,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48091,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/plan.json",
+        "sha256": "2fdc879510ec03736e0f42541f81fb2b9c78c57f680ed686ecb72be3459a2292"
+      },
+      "ppo": {
+        "approximate_kl": 5.44864196321657e-07,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 7,
+        "policy_loss": -4.416777063970981e-05,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 184,
+        "value_loss": 0.0029614755678820707
+      },
+      "report": {
+        "bytes": 10444,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-009/execution/report.json",
+        "sha256": "928afdad87220c06b9714de0fa57cd3d7c411fef13bb2acc79c62e768927f768"
+      },
+      "run": "continuation-2026-10-25-009",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 184,
+      "wall_seconds": 51.12290354100696
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/after-policy.pt",
+          "sha256": "60e381cc7e0c6e8f2e3684da63ae07d5be428233fabd27d2be47230df88653c0"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/after-resume.pt",
+          "sha256": "6316661c2eb3da63fb13c251768e911347018393ea6690f8f333aa5ab24643ec"
+        },
+        "weights_sha256": "afa9980ef1ee6546a83d5a4f0dbe195ce0f1f3afab454ac6ecc853917e990d37"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 4,
+              "swap_stacks": 4
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 1,
+            "recruit_units": 2,
+            "terminal_day": 8,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170020,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 70687,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/episode-000001/training-metrics.json",
+            "sha256": "199b2ac3376fe7784b1154319476470e65aab043ee88d3e301be7816c1fee779"
+          },
+          "phase": "training",
+          "policy_seed": 270040,
+          "sampled_choices": 54,
+          "status": "passed",
+          "training_samples": 54,
+          "wall_seconds": 6.5468513750092825
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170020,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12281,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/episode-000002/training-metrics.json",
+            "sha256": "3d5e17219872f18ec6fabb3acfec5f9a5c8f452f955ca8fc64cf385c994057e5"
+          },
+          "phase": "training",
+          "policy_seed": 270041,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.369400042007328
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 6,
+              "split_stack": 10,
+              "swap_garrison": 4,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 16,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170021,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 122692,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/episode-000003/training-metrics.json",
+            "sha256": "3919bd7bd27235c50bdcb80efc8d9164653a1ff17389132ef16955b5a770d97a"
+          },
+          "phase": "training",
+          "policy_seed": 270042,
+          "sampled_choices": 68,
+          "status": "passed",
+          "training_samples": 68,
+          "wall_seconds": 5.855832542001735
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 3,
+              "split_stack": 3,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170021,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 65982,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/episode-000004/training-metrics.json",
+            "sha256": "6bcd213c7c4c06967fac578bde480f875eb15a9a15fa1da8b31d047c9f56aadc"
+          },
+          "phase": "training",
+          "policy_seed": 270043,
+          "sampled_choices": 32,
+          "status": "passed",
+          "training_samples": 32,
+          "wall_seconds": 3.8587168750091223
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 1819,
+        "rollouts": 40,
+        "updates": 10
+      },
+      "optimizer_steps": 6,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48092,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/plan.json",
+        "sha256": "fcdd33e4a42db67fb522954033d1a00ab321b2a343d602ed9fe6e968dccef86a"
+      },
+      "ppo": {
+        "approximate_kl": 6.288136195097093e-05,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 6,
+        "policy_loss": -0.0007238576489110147,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 155,
+        "value_loss": 0.00361196453206151
+      },
+      "report": {
+        "bytes": 10441,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-010/execution/report.json",
+        "sha256": "44fba2e4f0e557689deee0d19812201e563107372f461b30bb12f9c141d1ab8d"
+      },
+      "run": "continuation-2026-10-25-010",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 155,
+      "wall_seconds": 41.70265958299569
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/after-policy.pt",
+          "sha256": "6e003ffd19847d1bb79fd358cccad324b0cc0ca73577bf5e3cade61bafa6af5f"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/after-resume.pt",
+          "sha256": "855bf00951e345bfc3bd0e992ac560b60a5589f39cad93bd8ceefdb83537695d"
+        },
+        "weights_sha256": "e7934174c336b5ff1bd8e121971fe6fe3c6640c119b52ca72bce321b15c62a73"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 3,
+              "split_stack": 7,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 1,
+            "recruit_units": 10,
+            "terminal_day": 3,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170022,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 92435,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/episode-000001/training-metrics.json",
+            "sha256": "37dc7d9aa9562dca9717be96ded87e944d294abbee945735ae6fc4f1398f4a82"
+          },
+          "phase": "training",
+          "policy_seed": 270044,
+          "sampled_choices": 67,
+          "status": "passed",
+          "training_samples": 67,
+          "wall_seconds": 8.24874495799304
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170022,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12284,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/episode-000002/training-metrics.json",
+            "sha256": "ccf7c88c192f69710888bd7931fb3c344e5e0d4ab9899e60358e8cb36006d3c7"
+          },
+          "phase": "training",
+          "policy_seed": 270045,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.4344300420052605
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 7,
+              "split_stack": 9,
+              "swap_garrison": 3,
+              "swap_stacks": 4
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 27,
+            "observed_cross_army_units": 8,
+            "recruit_attempts": 1,
+            "recruit_units": 2,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170023,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 118240,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/episode-000003/training-metrics.json",
+            "sha256": "d3e89f83bf083d7cdc33daa5c1e9d53bd4f2eee90850b50444e44057cdfc8bd7"
+          },
+          "phase": "training",
+          "policy_seed": 270046,
+          "sampled_choices": 71,
+          "status": "passed",
+          "training_samples": 71,
+          "wall_seconds": 6.4400920839980245
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170023,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 18070,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/episode-000004/training-metrics.json",
+            "sha256": "987c475b4a8e7412d4ac2fb40afa3521f3743dff1afd8132fd36ccd231640856"
+          },
+          "phase": "training",
+          "policy_seed": 270047,
+          "sampled_choices": 4,
+          "status": "passed",
+          "training_samples": 4,
+          "wall_seconds": 1.5661325000110082
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 1962,
+        "rollouts": 44,
+        "updates": 11
+      },
+      "optimizer_steps": 6,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48093,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/plan.json",
+        "sha256": "d11c3af6a74c854757812993f72571788fba663257218a75312041aaf3d08181"
+      },
+      "ppo": {
+        "approximate_kl": 2.4233664093861644e-06,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 6,
+        "policy_loss": 0.0005998994920637224,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 143,
+        "value_loss": 0.0027828548393388102
+      },
+      "report": {
+        "bytes": 10443,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-011/execution/report.json",
+        "sha256": "04e251cd8853414edf83aad78ff42e78973c6cb9cdca0f830032ae510a973b62"
+      },
+      "run": "continuation-2026-10-25-011",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 143,
+      "wall_seconds": 44.51341433399648
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/after-policy.pt",
+          "sha256": "dd5daea8eb6b2c08387cdfb18c239275e1c291cd8308bd955276cda75629f0dd"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/after-resume.pt",
+          "sha256": "3577135b3ec64a13c7ad6dd6979b3caf2e30386fdecfaf13aa55e1ec2cb8b41b"
+        },
+        "weights_sha256": "9818c1ce398370112b293c11a2bc6caebebb9ec3a4a5bc6c185107a82c4306e1"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 10,
+              "split_stack": 21,
+              "swap_garrison": 8,
+              "swap_stacks": 12
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 38,
+            "observed_cross_army_units": 19,
+            "recruit_attempts": 2,
+            "recruit_units": 13,
+            "terminal_day": 8,
+            "town_loss_days": [
+              4
+            ]
+          },
+          "engine_seed": 170024,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 240513,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/episode-000001/training-metrics.json",
+            "sha256": "0e5e8cc05849fbb19c966d35959765199e28422173e8733c49b761d0a9994a3f"
+          },
+          "phase": "training",
+          "policy_seed": 270048,
+          "sampled_choices": 147,
+          "status": "passed",
+          "training_samples": 147,
+          "wall_seconds": 11.69515916700766
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_stacks": 2
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170024,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 31171,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/episode-000002/training-metrics.json",
+            "sha256": "feb09f0793dce06f82ae81313d8208a9d820740021ba5da21fe6b7658c6b3188"
+          },
+          "phase": "training",
+          "policy_seed": 270049,
+          "sampled_choices": 9,
+          "status": "passed",
+          "training_samples": 9,
+          "wall_seconds": 1.9743662499968195
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 16,
+              "split_stack": 27,
+              "swap_garrison": 20,
+              "swap_stacks": 19
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 39,
+            "observed_cross_army_units": 97,
+            "recruit_attempts": 3,
+            "recruit_units": 14,
+            "terminal_day": 8,
+            "town_loss_days": [
+              8
+            ]
+          },
+          "engine_seed": 170025,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 362316,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/episode-000003/training-metrics.json",
+            "sha256": "a418e0b5bca30ad6f22dd35a2d726c43e71a0c8bb1df6397e1a7e575a21df3c3"
+          },
+          "phase": "training",
+          "policy_seed": 270050,
+          "sampled_choices": 243,
+          "status": "passed",
+          "training_samples": 243,
+          "wall_seconds": 18.313494875008473
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170025,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12282,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/episode-000004/training-metrics.json",
+            "sha256": "150f78777003a555b7c732de5a9eab1072cb86c7edcbb72d6d082b1f4b0937f5"
+          },
+          "phase": "training",
+          "policy_seed": 270051,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.3032812919991557
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 2362,
+        "rollouts": 48,
+        "updates": 12
+      },
+      "optimizer_steps": 14,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48093,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/plan.json",
+        "sha256": "05164cb1682d6dec8a7dba41bfde040f4e388e36d0ff9bbb33baf51ba956c3c0"
+      },
+      "ppo": {
+        "approximate_kl": 0.00028865084052199564,
+        "clip_fraction": 0.0025,
+        "entropy": null,
+        "optimizer_steps": 14,
+        "policy_loss": -0.0006950052827596664,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 400,
+        "value_loss": 0.0009656764488318003
+      },
+      "report": {
+        "bytes": 10458,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-012/execution/report.json",
+        "sha256": "5853853b080ed7752632fb48c7fdf8d64d012e25651ba1db384f0c6c1017c92d"
+      },
+      "run": "continuation-2026-10-25-012",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 400,
+      "wall_seconds": 121.76435016699543
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/after-policy.pt",
+          "sha256": "b9f14a3e8558b508795575c32c4066134ac036829b878970d6a64de6321f9438"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/after-resume.pt",
+          "sha256": "aaa2333f46662fc26fa422a6a1380b6f4a8453639402499289411ad1b4e97f6a"
+        },
+        "weights_sha256": "8891eedf349eae24a4a85ba6b5a7e45252e8a98e783b16d331febba303f0210a"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_garrison": 3,
+              "swap_stacks": 6
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170026,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 49360,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/episode-000001/training-metrics.json",
+            "sha256": "26c024491fc8fff8a12b64330b083badf84a264fc99d011ff02803155f19d67f"
+          },
+          "phase": "training",
+          "policy_seed": 270052,
+          "sampled_choices": 25,
+          "status": "passed",
+          "training_samples": 25,
+          "wall_seconds": 3.1170736250060145
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170026,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12278,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/episode-000002/training-metrics.json",
+            "sha256": "4cfe898ebc63baaa74af5e545f5ebb4fa1133d626c0c044e79f96b0a6035d919"
+          },
+          "phase": "training",
+          "policy_seed": 270053,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.4054237499949522
+        },
+        {
+          "classification": "cutoff",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 14,
+              "split_stack": 24,
+              "swap_garrison": 8,
+              "swap_stacks": 28
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 38,
+            "observed_cross_army_units": 38,
+            "recruit_attempts": 5,
+            "recruit_units": 33,
+            "terminal_day": null,
+            "town_loss_days": []
+          },
+          "engine_seed": 170027,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 343274,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/episode-000003/training-metrics.json",
+            "sha256": "27da8d3b0654a2c68f3b3877ad02e3db8fbc8992c3500ca272818377b7250190"
+          },
+          "phase": "training",
+          "policy_seed": 270054,
+          "sampled_choices": 248,
+          "status": "passed",
+          "training_samples": 248,
+          "wall_seconds": 18.745734834010364
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 2
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 43,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170027,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 33820,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/episode-000004/training-metrics.json",
+            "sha256": "64e7c8ffcc8c61109b7d1e47f89895bb8dda65403ec58de77aa022668949559b"
+          },
+          "phase": "training",
+          "policy_seed": 270055,
+          "sampled_choices": 8,
+          "status": "passed",
+          "training_samples": 8,
+          "wall_seconds": 1.892744083001162
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 2644,
+        "rollouts": 52,
+        "updates": 13
+      },
+      "optimizer_steps": 10,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48093,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/plan.json",
+        "sha256": "511e2f3623cbcdc9b86c81e584a802f65c539a3f45d3af0cba16f905a95d86c6"
+      },
+      "ppo": {
+        "approximate_kl": 1.198476084404729e-05,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 10,
+        "policy_loss": 0.00037203052787916033,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 282,
+        "value_loss": 0.0006865016469593219
+      },
+      "report": {
+        "bytes": 10449,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-013/execution/report.json",
+        "sha256": "78845538450c109eef6955d2d15558f94b1f292494bf1886839bd8e4f2dc0f55"
+      },
+      "run": "continuation-2026-10-25-013",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 282,
+      "wall_seconds": 90.2645148330048
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/after-policy.pt",
+          "sha256": "e40bea49de0e18769cbb88ab25949b0ed892e21046af20fb6235d427fc03d2fb"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/after-resume.pt",
+          "sha256": "45bfcd84f824e33ba834e75bce0a506336260bd5a65a17d1183b7088a4e429eb"
+        },
+        "weights_sha256": "3616fa1dac7cd06ce06bb8ebaca203b934b0a4fd2aae8b78f228f0b836237e89"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 13,
+              "split_stack": 23,
+              "swap_garrison": 6,
+              "swap_stacks": 22
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 39,
+            "observed_cross_army_units": 125,
+            "recruit_attempts": 1,
+            "recruit_units": 14,
+            "terminal_day": 8,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170028,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 324290,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/episode-000001/training-metrics.json",
+            "sha256": "6b72943b2537f230e1fedf1f99f29de4a4414dc802bca4915dcaee5f6a0ab94f"
+          },
+          "phase": "training",
+          "policy_seed": 270056,
+          "sampled_choices": 179,
+          "status": "passed",
+          "training_samples": 179,
+          "wall_seconds": 17.372621792004793
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170028,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 20071,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/episode-000002/training-metrics.json",
+            "sha256": "103c43e55251051bec34c2d421fd8aeae75823914c62b857e97dff3178354c83"
+          },
+          "phase": "training",
+          "policy_seed": 270057,
+          "sampled_choices": 11,
+          "status": "passed",
+          "training_samples": 11,
+          "wall_seconds": 2.127642499996
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 12,
+              "split_stack": 17,
+              "swap_garrison": 6,
+              "swap_stacks": 13
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 38,
+            "observed_cross_army_units": 71,
+            "recruit_attempts": 3,
+            "recruit_units": 13,
+            "terminal_day": 4,
+            "town_loss_days": [
+              4
+            ]
+          },
+          "engine_seed": 170029,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 235609,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/episode-000003/training-metrics.json",
+            "sha256": "4a6e05e7f2d174fe1d5d542dca681192a94a79a5f9defb2fa13dc79b53116e36"
+          },
+          "phase": "training",
+          "policy_seed": 270058,
+          "sampled_choices": 151,
+          "status": "passed",
+          "training_samples": 151,
+          "wall_seconds": 12.294190333006554
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170029,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 13201,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/episode-000004/training-metrics.json",
+            "sha256": "68bb532da447dbe53480c96c519fa24ffcc52140eb3c9ede00d3ed365565ae89"
+          },
+          "phase": "training",
+          "policy_seed": 270059,
+          "sampled_choices": 2,
+          "status": "passed",
+          "training_samples": 2,
+          "wall_seconds": 1.4534577089943923
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 2987,
+        "rollouts": 56,
+        "updates": 14
+      },
+      "optimizer_steps": 12,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48093,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/plan.json",
+        "sha256": "2e4bc9b52fdaf017b7d1be60c4185cde716a7b4107ca2a300701d13c20489ef8"
+      },
+      "ppo": {
+        "approximate_kl": 0.00018142107264342824,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 12,
+        "policy_loss": 0.0005379949775103578,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 343,
+        "value_loss": 0.0013393376965439572
+      },
+      "report": {
+        "bytes": 10451,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-014/execution/report.json",
+        "sha256": "739cd2a13cfb6a6768390fba535d228d94633697121cb0a6672dafc60f725f0c"
+      },
+      "run": "continuation-2026-10-25-014",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 343,
+      "wall_seconds": 104.42444479199185
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/after-policy.pt",
+          "sha256": "1fb8c3bb97be5b13d584b8bb6134f037efe5221e708748e2866a50bd3b8d2c95"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/after-resume.pt",
+          "sha256": "623a122029658940749511684fdfd3c3144ce12ccc8e5e78d783de4a366d0d11"
+        },
+        "weights_sha256": "c58e3510d056b811e89f0f312eb90d415960caebc3432101d2eefdf5896783cd"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170030,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 38381,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/episode-000001/training-metrics.json",
+            "sha256": "0d5284a37a041a1080b1ef320db7d34617f50a6ae5f0c6dcc5876cb3c676354d"
+          },
+          "phase": "training",
+          "policy_seed": 270060,
+          "sampled_choices": 12,
+          "status": "passed",
+          "training_samples": 12,
+          "wall_seconds": 2.0752558749954915
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_garrison": 1,
+              "swap_stacks": 2
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170030,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 26875,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/episode-000002/training-metrics.json",
+            "sha256": "f034b33a980f8d3f624fcaee86bca038661dbf1a82370e876b976548ca101eb4"
+          },
+          "phase": "training",
+          "policy_seed": 270061,
+          "sampled_choices": 21,
+          "status": "passed",
+          "training_samples": 21,
+          "wall_seconds": 2.841893375007203
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "swap_garrison": 1,
+              "swap_stacks": 4
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170031,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 35833,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/episode-000003/training-metrics.json",
+            "sha256": "48300604d9c188248ac4f14b4197c66631274b9e6dd9996f650a5d7a82d9f9b1"
+          },
+          "phase": "training",
+          "policy_seed": 270062,
+          "sampled_choices": 24,
+          "status": "passed",
+          "training_samples": 24,
+          "wall_seconds": 2.856644291008706
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 1,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170031,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 28966,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/episode-000004/training-metrics.json",
+            "sha256": "bfa4504910ca8f070e32729cfc9e864a42f4fde1bd563cb63159cb340d00b23d"
+          },
+          "phase": "training",
+          "policy_seed": 270063,
+          "sampled_choices": 11,
+          "status": "passed",
+          "training_samples": 11,
+          "wall_seconds": 2.119675708003342
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3055,
+        "rollouts": 60,
+        "updates": 15
+      },
+      "optimizer_steps": 3,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/plan.json",
+        "sha256": "82d47f4d28c1051965f82b7061d9cb1ae14c444f981c359b23d6873f0a3aefd2"
+      },
+      "ppo": {
+        "approximate_kl": 1.297277596195807e-07,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 3,
+        "policy_loss": 7.414298734682448e-05,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 68,
+        "value_loss": 0.0014857927042826573
+      },
+      "report": {
+        "bytes": 10446,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-015/execution/report.json",
+        "sha256": "400105b2eb8084cf26fa3fa6adac87552b4f6a85ea706099a1f030718892c4f6"
+      },
+      "run": "continuation-2026-10-25-015",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 68,
+      "wall_seconds": 20.188596958003473
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/after-policy.pt",
+          "sha256": "b9383d399f93f6417c7d66f436649e06d15d3803d1adc44a19efb89f773d8a8d"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/after-resume.pt",
+          "sha256": "c2e4b2c22f5954e0865e29067db1b7f11d3fbfdcbe11783a4e13141153e1fddd"
+        },
+        "weights_sha256": "8a5078a4559d62e6baf4d701328552d5883bf3a5664e4dd4527c5725b31463b8"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 4,
+              "split_stack": 12,
+              "swap_garrison": 3,
+              "swap_stacks": 7
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 30,
+            "observed_cross_army_units": 23,
+            "recruit_attempts": 1,
+            "recruit_units": 5,
+            "terminal_day": 8,
+            "town_loss_days": [
+              8
+            ]
+          },
+          "engine_seed": 170032,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 135088,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/episode-000001/training-metrics.json",
+            "sha256": "5eb7a75779df6420ac75fb409e98a36ae4c03399a8ac5961e735cafdc765c4a1"
+          },
+          "phase": "training",
+          "policy_seed": 270064,
+          "sampled_choices": 90,
+          "status": "passed",
+          "training_samples": 90,
+          "wall_seconds": 7.670840334001696
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 1,
+              "swap_garrison": 1,
+              "swap_stacks": 2
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170032,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 36224,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/episode-000002/training-metrics.json",
+            "sha256": "6cf9e85897962e36179593706ba096b9d16b190f3bf3413b55d1696ba156db21"
+          },
+          "phase": "training",
+          "policy_seed": 270065,
+          "sampled_choices": 20,
+          "status": "passed",
+          "training_samples": 20,
+          "wall_seconds": 2.5628237089986214
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 2,
+              "split_stack": 6,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 14,
+            "recruit_attempts": 1,
+            "recruit_units": 11,
+            "terminal_day": 3,
+            "town_loss_days": [
+              3
+            ]
+          },
+          "engine_seed": 170033,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 82221,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/episode-000003/training-metrics.json",
+            "sha256": "b8ccb7cd5edb2da68d02ba0f3069574c4ff2fd13dc158d72839d8c1de1413f39"
+          },
+          "phase": "training",
+          "policy_seed": 270066,
+          "sampled_choices": 42,
+          "status": "passed",
+          "training_samples": 42,
+          "wall_seconds": 5.070804999995744
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170033,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 13199,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/episode-000004/training-metrics.json",
+            "sha256": "85201c5794fc87da127291a816a814187f14018c8b2ccd5eb96a05a34904bb45"
+          },
+          "phase": "training",
+          "policy_seed": 270067,
+          "sampled_choices": 2,
+          "status": "passed",
+          "training_samples": 2,
+          "wall_seconds": 1.3947321669984376
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3209,
+        "rollouts": 64,
+        "updates": 16
+      },
+      "optimizer_steps": 6,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/plan.json",
+        "sha256": "c94515bc4c90746da800e0c8cb17f889d12c96d8c8f51838faffb2ed2b95e3b2"
+      },
+      "ppo": {
+        "approximate_kl": 3.98228693094487e-06,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 6,
+        "policy_loss": -0.0005340069145351261,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 154,
+        "value_loss": 0.0007899630884337541
+      },
+      "report": {
+        "bytes": 10447,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-016/execution/report.json",
+        "sha256": "d9639a2162d4ef45398690909fc67b524097352da40453deb3edd4c04ac3fa57"
+      },
+      "run": "continuation-2026-10-25-016",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 154,
+      "wall_seconds": 42.50655508298951
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/after-policy.pt",
+          "sha256": "66aa99943d846a6ee0d0abc1c235815601d9ae3d8328b31515005db8cb979533"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/after-resume.pt",
+          "sha256": "b649c6ed58932416f41c370d2cd5cc588ccc04c114f12f8889d66bcdaaa30d58"
+        },
+        "weights_sha256": "6889240cc55bf5765638657f2354f551420f2c6f5a7aaa6a5c2aaf0492002705"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 16,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170034,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 30192,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/episode-000001/training-metrics.json",
+            "sha256": "8a313ce615c71e6208cd99a0ab845f081e2e4f33747f4542547d8f97e6c3b783"
+          },
+          "phase": "training",
+          "policy_seed": 270068,
+          "sampled_choices": 21,
+          "status": "passed",
+          "training_samples": 21,
+          "wall_seconds": 2.60052083300252
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170034,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 19116,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/episode-000002/training-metrics.json",
+            "sha256": "bd2923a62596030744ac18b6ab64d9d8cd15807ab1380685e601b446daeb8613"
+          },
+          "phase": "training",
+          "policy_seed": 270069,
+          "sampled_choices": 7,
+          "status": "passed",
+          "training_samples": 7,
+          "wall_seconds": 1.7579504169989377
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 3
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170035,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 33156,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/episode-000003/training-metrics.json",
+            "sha256": "19919181feb973d534acd10ed9737203c08cb47e6ff5b28bbc15006ded5a8507"
+          },
+          "phase": "training",
+          "policy_seed": 270070,
+          "sampled_choices": 15,
+          "status": "passed",
+          "training_samples": 15,
+          "wall_seconds": 2.3484832499962067
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170035,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 14709,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/episode-000004/training-metrics.json",
+            "sha256": "c560f7b333326c530e414504d71b12f5f401ca271e72e75b794914b42c18bb1b"
+          },
+          "phase": "training",
+          "policy_seed": 270071,
+          "sampled_choices": 6,
+          "status": "passed",
+          "training_samples": 6,
+          "wall_seconds": 1.6486132079880917
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3258,
+        "rollouts": 68,
+        "updates": 17
+      },
+      "optimizer_steps": 3,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/plan.json",
+        "sha256": "d5117e62672e97ab58d4947dc9af90a119c4c350c134d90600ee6c120bf7de1e"
+      },
+      "ppo": {
+        "approximate_kl": 6.814392180581772e-06,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 3,
+        "policy_loss": 0.0001702174848439742,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 49,
+        "value_loss": 0.0011656661030874417
+      },
+      "report": {
+        "bytes": 10442,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-017/execution/report.json",
+        "sha256": "60b3ee87869f3ca3d324771d55db23c46c9327275551c9ad1671f210d9adcffc"
+      },
+      "run": "continuation-2026-10-25-017",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 49,
+      "wall_seconds": 16.180250958001125
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/after-policy.pt",
+          "sha256": "677ae703874f07fc8a4372203fe0bd9e071a49bb3c5aef34dc4fd7006022f36f"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/after-resume.pt",
+          "sha256": "b601f034188273d7e16ad9e18f4f473dbe167058049ff935203b686bde90b305"
+        },
+        "weights_sha256": "105907337f1066e982685f95f90c2bb32327acf499df31496b9491be823fb0ee"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 2,
+              "split_stack": 9,
+              "swap_garrison": 2,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 30,
+            "observed_cross_army_units": 10,
+            "recruit_attempts": 1,
+            "recruit_units": 5,
+            "terminal_day": 6,
+            "town_loss_days": [
+              6
+            ]
+          },
+          "engine_seed": 170036,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 102506,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/episode-000001/training-metrics.json",
+            "sha256": "5c90fa8f4f6f67903915c8cb1dbc47784de515b2298064545c6c11c38956daad"
+          },
+          "phase": "training",
+          "policy_seed": 270072,
+          "sampled_choices": 80,
+          "status": "passed",
+          "training_samples": 80,
+          "wall_seconds": 6.930245124996873
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170036,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12279,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/episode-000002/training-metrics.json",
+            "sha256": "a59e1c640176a3329141f0533f56ae6e0ab200379e2ee91d544020d8a854c0ec"
+          },
+          "phase": "training",
+          "policy_seed": 270073,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.4339711249922402
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 3,
+              "swap_garrison": 1,
+              "swap_stacks": 3
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 22,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170037,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 51932,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/episode-000003/training-metrics.json",
+            "sha256": "f45fd8f0583ca460135169f8def50dececa4fc340a3225a0873276ca2d9b111c"
+          },
+          "phase": "training",
+          "policy_seed": 270074,
+          "sampled_choices": 31,
+          "status": "passed",
+          "training_samples": 31,
+          "wall_seconds": 3.4675458340061596
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_garrison": 2,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170037,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 33852,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/episode-000004/training-metrics.json",
+            "sha256": "ff7119fb67b30cde342cd488c8523b8bad017a83ad478f26ed6a62a1d8295332"
+          },
+          "phase": "training",
+          "policy_seed": 270075,
+          "sampled_choices": 19,
+          "status": "passed",
+          "training_samples": 19,
+          "wall_seconds": 2.645887791994028
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3389,
+        "rollouts": 72,
+        "updates": 18
+      },
+      "optimizer_steps": 5,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/plan.json",
+        "sha256": "f9cc77bdf52f96d0b2cbb0a4c4ea23bf78034b76f320e4776bca0a88f1d25a91"
+      },
+      "ppo": {
+        "approximate_kl": 6.784009630222541e-07,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 5,
+        "policy_loss": -0.00013905695376505378,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 131,
+        "value_loss": 0.0007170408558480812
+      },
+      "report": {
+        "bytes": 10445,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-018/execution/report.json",
+        "sha256": "8d3e9dd11acebc2fb42b29d96d6df941425feb5236829cf6b748a2f95f96f4f3"
+      },
+      "run": "continuation-2026-10-25-018",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 131,
+      "wall_seconds": 34.31633741699625
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/after-policy.pt",
+          "sha256": "f559fe420cfab2c344bb47cc85315f5bc4d8962c9d9538168ae1db8a2ba68fca"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/after-resume.pt",
+          "sha256": "51e931e9639c5a1d18bd23488ef9cf1481e5b598eee9b1aa248cc49b325a6980"
+        },
+        "weights_sha256": "71423211647e1f25d0726a37544600500c6974db701c353dff75257dc47cb1dc"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 3,
+              "split_stack": 7,
+              "swap_garrison": 3,
+              "swap_stacks": 8
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170038,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 102053,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/episode-000001/training-metrics.json",
+            "sha256": "f8d3fd75306b83478d43684cc9d6939f783fcb533a41864946a3834cc0e5c9e4"
+          },
+          "phase": "training",
+          "policy_seed": 270076,
+          "sampled_choices": 43,
+          "status": "passed",
+          "training_samples": 43,
+          "wall_seconds": 4.366863083007047
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170038,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12279,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/episode-000002/training-metrics.json",
+            "sha256": "441b2a3d0bedff2dad2d90961bb320eea5286b6d30f99c7d514beec05601e064"
+          },
+          "phase": "training",
+          "policy_seed": 270077,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.3644524170085788
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170039,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 26438,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/episode-000003/training-metrics.json",
+            "sha256": "58ba8232bc544b483b19f4f53527a05c365c25e3470a64085b60e0c3e5c723e0"
+          },
+          "phase": "training",
+          "policy_seed": 270078,
+          "sampled_choices": 15,
+          "status": "passed",
+          "training_samples": 15,
+          "wall_seconds": 2.0870582080096938
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 9,
+              "split_stack": 13,
+              "swap_garrison": 8,
+              "swap_stacks": 14
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 32,
+            "observed_cross_army_units": 34,
+            "recruit_attempts": 1,
+            "recruit_units": 7,
+            "terminal_day": 8,
+            "town_loss_days": [
+              8
+            ]
+          },
+          "engine_seed": 170039,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 199379,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/episode-000004/training-metrics.json",
+            "sha256": "34aa96f827ccc02bd7c9de1ae78afa042dc0bfb8f02c45ccf85ba3bd69ad757f"
+          },
+          "phase": "training",
+          "policy_seed": 270079,
+          "sampled_choices": 130,
+          "status": "passed",
+          "training_samples": 130,
+          "wall_seconds": 10.303310416013119
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3578,
+        "rollouts": 76,
+        "updates": 19
+      },
+      "optimizer_steps": 7,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/plan.json",
+        "sha256": "3027f25d37f560fbe124e0b55a7e338c009383d8403b38ef59f9a2960601129f"
+      },
+      "ppo": {
+        "approximate_kl": 9.646932938233442e-05,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 7,
+        "policy_loss": -0.0010805139465937539,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 189,
+        "value_loss": 0.0006532871241991719
+      },
+      "report": {
+        "bytes": 10449,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-019/execution/report.json",
+        "sha256": "29577e41f601f908d7bfbd9e886a65cb4a81f96ce0c7c94bbfaa18fe1ba8f76c"
+      },
+      "run": "continuation-2026-10-25-019",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 189,
+      "wall_seconds": 52.720039666994126
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/after-policy.pt",
+          "sha256": "4383e61540fb1185924ea86fb451a0b4b43652d7a71e3592bae701f0a164e851"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/after-resume.pt",
+          "sha256": "dd4ec56ac0e627ebfde271cdb7ab5232ffb21e823fa8b6ce139d7e60d8372dbc"
+        },
+        "weights_sha256": "704b5f1f3ad9ed3dd0403e100a6cfd02dc3ea4fd391f57b2346746314a877205"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 2,
+              "split_stack": 2,
+              "swap_garrison": 1,
+              "swap_stacks": 3
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170040,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 49680,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/episode-000001/training-metrics.json",
+            "sha256": "cbc543119f67394ab5acc7058dc70e9f954422017cb3399665ab99309c2f8fc1"
+          },
+          "phase": "training",
+          "policy_seed": 270080,
+          "sampled_choices": 32,
+          "status": "passed",
+          "training_samples": 32,
+          "wall_seconds": 3.1764079999993555
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 4,
+              "split_stack": 7,
+              "swap_garrison": 1,
+              "swap_stacks": 5
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 21,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170040,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 90867,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/episode-000002/training-metrics.json",
+            "sha256": "1a37a1d9861196e6f79db48d1e5754341eb0a8c8557e2669bc1993ce5d30cab8"
+          },
+          "phase": "training",
+          "policy_seed": 270081,
+          "sampled_choices": 30,
+          "status": "passed",
+          "training_samples": 30,
+          "wall_seconds": 3.4960802080022404
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 1,
+              "split_stack": 2,
+              "swap_stacks": 4
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170041,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 45260,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/episode-000003/training-metrics.json",
+            "sha256": "8dc01651f1655ed475af302e21b7da0d0d600329c2c0bb61d02ddb361acea133"
+          },
+          "phase": "training",
+          "policy_seed": 270082,
+          "sampled_choices": 18,
+          "status": "passed",
+          "training_samples": 18,
+          "wall_seconds": 2.4586231669964036
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 1,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170041,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 23378,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/episode-000004/training-metrics.json",
+            "sha256": "74c07de192d2e1f1280d89640240f434bd2feb81a4553ad42d8162b50e5b6905"
+          },
+          "phase": "training",
+          "policy_seed": 270083,
+          "sampled_choices": 6,
+          "status": "passed",
+          "training_samples": 6,
+          "wall_seconds": 1.7611735410027904
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3664,
+        "rollouts": 80,
+        "updates": 20
+      },
+      "optimizer_steps": 4,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/plan.json",
+        "sha256": "aa8886161cc3495c9a03704587f4379fb235fedfa5fae3cdf58dc059110e645e"
+      },
+      "ppo": {
+        "approximate_kl": 0.0002676061365406874,
+        "clip_fraction": 0.0,
+        "entropy": null,
+        "optimizer_steps": 4,
+        "policy_loss": 0.0026725603397502458,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 86,
+        "value_loss": 0.0007337666404985845
+      },
+      "report": {
+        "bytes": 10448,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-020/execution/report.json",
+        "sha256": "a9cfed3de016320870b97e29e9218fa6c78be4f8b9134a6d016e35194ebdb556"
+      },
+      "run": "continuation-2026-10-25-020",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 86,
+      "wall_seconds": 24.008320583001478
+    },
+    {
+      "after_checkpoint": {
+        "exact_model_adam_rng_progress_pool": true,
+        "policy": {
+          "bytes": 637299,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/after-policy.pt",
+          "sha256": "de004381422cedf9f1fe0c36eef0a5b99754a9c86bbbcf955cffa7f8043139f8"
+        },
+        "resume": {
+          "bytes": 1265333,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/after-resume.pt",
+          "sha256": "e70481c8296514999ba21f47819d91882d82d7cbc81cc524a8934cd4940aca7f"
+        },
+        "weights_sha256": "0acd0849a3a52eda1307f4732271445affc8dbec385ff6fd1a8c2c61a5e188cb"
+      },
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 1,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170042,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 22600,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/episode-000001/training-metrics.json",
+            "sha256": "3ac095adae3120c04c10d409384d5c274b11b5877fc922425c80bdbe7982489f"
+          },
+          "phase": "training",
+          "policy_seed": 270084,
+          "sampled_choices": 6,
+          "status": "passed",
+          "training_samples": 6,
+          "wall_seconds": 1.6958059590106132
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {},
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": null,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170042,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 12278,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/episode-000002/training-metrics.json",
+            "sha256": "884cb0dd2f278a2165086d1c1c077e83e520da4288d5601e0f6d8931d6337e53"
+          },
+          "phase": "training",
+          "policy_seed": 270085,
+          "sampled_choices": 1,
+          "status": "passed",
+          "training_samples": 1,
+          "wall_seconds": 1.365889041000628
+        },
+        {
+          "classification": "cutoff",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 22,
+              "split_stack": 32,
+              "swap_garrison": 15,
+              "swap_stacks": 31
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 49,
+            "observed_cross_army_units": 169,
+            "recruit_attempts": 3,
+            "recruit_units": 24,
+            "terminal_day": null,
+            "town_loss_days": []
+          },
+          "engine_seed": 170043,
+          "episode": 3,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 457188,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/episode-000003/training-metrics.json",
+            "sha256": "ba6c802b688b7698059521895201c0073732d8cf9dfeee88f0ab09e635c0f854"
+          },
+          "phase": "training",
+          "policy_seed": 270086,
+          "sampled_choices": 248,
+          "status": "passed",
+          "training_samples": 248,
+          "wall_seconds": 18.693550750002032
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_garrison": 5,
+              "swap_stacks": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 24,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 170043,
+          "episode": 4,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 42794,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/episode-000004/training-metrics.json",
+            "sha256": "cf2aec4cb47c8096cea388fffe5dfff436c2303f7cf5e147061ccfa8af845695"
+          },
+          "phase": "training",
+          "policy_seed": 270087,
+          "sampled_choices": 25,
+          "status": "passed",
+          "training_samples": 25,
+          "wall_seconds": 3.126207916997373
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": {
+        "decisions": 3944,
+        "rollouts": 84,
+        "updates": 21
+      },
+      "optimizer_steps": 10,
+      "optimizer_updates": 1,
+      "plan": {
+        "bytes": 48094,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/plan.json",
+        "sha256": "b763f97314a17b406d06878e4a8ea2aba8c845fbb89b1f389184911a2f90e1e3"
+      },
+      "ppo": {
+        "approximate_kl": 0.002806755897992324,
+        "clip_fraction": 0.025000000106436864,
+        "entropy": null,
+        "optimizer_steps": 10,
+        "policy_loss": 0.0015154024752389108,
+        "purpose": "approved_builtin_gameplay_v1",
+        "samples": 280,
+        "value_loss": 0.00037050120668677015
+      },
+      "report": {
+        "bytes": 10466,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/continuation-2026-10-25-021/execution/report.json",
+        "sha256": "9039fe5167c731d1f0f24ed7d0e002c46069c281485bc30dffde14aaee90b3ac"
+      },
+      "run": "continuation-2026-10-25-021",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 280,
+      "wall_seconds": 90.1376929590042
+    },
+    {
       "after_checkpoint": null,
       "attempts": [
         {
@@ -1310,14 +4256,297 @@
       "stop_reason": null,
       "training_samples": 0,
       "wall_seconds": 22.926913625007728
+    },
+    {
+      "after_checkpoint": null,
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 4,
+              "split_stack": 10,
+              "swap_garrison": 7,
+              "swap_stacks": 12
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 44,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 155329,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-010/execution/episode-000001/training-metrics.json",
+            "sha256": "c9bf3a42318143b4747ee4a846d470b9b3a397056c20f577ee41e8ee270fc127"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160201,
+          "sampled_choices": 127,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 9.259902334000799
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_garrison": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 27351,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-010/execution/episode-000002/training-metrics.json",
+            "sha256": "9c72657d67bd2e48fb2c96ff97b0d9bba5f52ca42c3d2f59f322e27b7d9f9a70"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160202,
+          "sampled_choices": 10,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 1.7959871250059223
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": null,
+      "optimizer_steps": 0,
+      "optimizer_updates": 0,
+      "plan": {
+        "bytes": 47826,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-010/plan.json",
+        "sha256": "78cadcfecd426f388c781f8f2ec7aa5ffd25047b0db3717290288eab99408e81"
+      },
+      "ppo": null,
+      "report": {
+        "bytes": 7207,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-010/execution/report.json",
+        "sha256": "06a972207f3642e30ec41372b8ecaa4ff72b757f12772bcbf635e67d1fb9b9a2"
+      },
+      "run": "heldout-2026-10-25-update-010",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 0,
+      "wall_seconds": 13.197760249997373
+    },
+    {
+      "after_checkpoint": null,
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 5,
+              "split_stack": 8,
+              "swap_garrison": 4,
+              "swap_stacks": 11
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 132513,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-015/execution/episode-000001/training-metrics.json",
+            "sha256": "6a4da372f2dec7195b23df668264892f6613f116b9a41032ecca1c0f027daa08"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160201,
+          "sampled_choices": 120,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 8.57900937499653
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_garrison": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 27351,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-015/execution/episode-000002/training-metrics.json",
+            "sha256": "1174e1993bc3814d036ab0b004be882771f632bfe038a69206c9aa8fbdb281c0"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160202,
+          "sampled_choices": 10,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 1.9043162080051843
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": null,
+      "optimizer_steps": 0,
+      "optimizer_updates": 0,
+      "plan": {
+        "bytes": 47827,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-015/plan.json",
+        "sha256": "ff0fb6e830f6c48ea25e74ae2977172530dfc3e8d05777cd8e87d9dbbc92573f"
+      },
+      "ppo": null,
+      "report": {
+        "bytes": 7208,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-015/execution/report.json",
+        "sha256": "af99fa118e8a89443ac6813749807d7ece8fa019cf44b2437ee11b55ead7e028"
+      },
+      "run": "heldout-2026-10-25-update-015",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 0,
+      "wall_seconds": 12.505344624994905
+    },
+    {
+      "after_checkpoint": null,
+      "attempts": [
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "merge_stacks": 4,
+              "split_stack": 10,
+              "swap_garrison": 7,
+              "swap_stacks": 12
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 44,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 1,
+          "error": null,
+          "learner_player": 0,
+          "metrics": {
+            "bytes": 155327,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-020/execution/episode-000001/training-metrics.json",
+            "sha256": "a1501a4413c14993f5f140f99cdfb168a3c5ca96b19f05f667a9e829cfb94878"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160201,
+          "sampled_choices": 127,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 9.060650375002297
+        },
+        {
+          "classification": "natural_loss",
+          "diagnostics_only": {
+            "accepted_army_operations": {
+              "split_stack": 2,
+              "swap_garrison": 1
+            },
+            "corroborated_town_captures": 0,
+            "max_observed_army_units": 25,
+            "observed_cross_army_units": 0,
+            "recruit_attempts": 0,
+            "recruit_units": 0,
+            "terminal_day": 2,
+            "town_loss_days": [
+              2
+            ]
+          },
+          "engine_seed": 160101,
+          "episode": 2,
+          "error": null,
+          "learner_player": 1,
+          "metrics": {
+            "bytes": 27351,
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-020/execution/episode-000002/training-metrics.json",
+            "sha256": "9f39f82fd72f4db7a6c51bcfae73a18ffb72f43655065634db064218e532a59c"
+          },
+          "phase": "evaluation",
+          "policy_seed": 160202,
+          "sampled_choices": 10,
+          "status": "passed",
+          "training_samples": 0,
+          "wall_seconds": 1.806791750001139
+        }
+      ],
+      "cleanup_verified": true,
+      "cumulative_progress": null,
+      "optimizer_steps": 0,
+      "optimizer_updates": 0,
+      "plan": {
+        "bytes": 47827,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-020/plan.json",
+        "sha256": "96053e7a11932598214166ecd90cc38a1453d5c8d0a10d232bfaaa021f6a7ce3"
+      },
+      "ppo": null,
+      "report": {
+        "bytes": 7207,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/runs/heldout-2026-10-25-update-020/execution/report.json",
+        "sha256": "19b5ebf8fd294799dae652e6788821cb6e328b08388f36ce9c04fdf31f984d28"
+      },
+      "run": "heldout-2026-10-25-update-020",
+      "source_commit": "c46218dc9ef73016350173a17cdeb08703cab435",
+      "status": "finished",
+      "stop_reason": null,
+      "training_samples": 0,
+      "wall_seconds": 12.923919624998234
     }
   ],
   "schema": "heroes-builtin-continuation-summary-v1",
   "scope": "New recovery-002 lineage only; failed recovery-001 remains separately recorded and unscored.",
   "totals": {
+    "cutoff": 3,
     "failed": 1,
-    "natural_loss": 28,
+    "natural_loss": 95,
     "not_started": 1
   },
-  "training_samples": 651
+  "training_samples": 3944
 }
