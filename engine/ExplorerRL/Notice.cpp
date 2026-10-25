@@ -381,8 +381,8 @@ JsonNode adventureNotice(EInfoWindowMode mode, const std::vector<Token> & tokens
 			supported = true;
 		}
 	}
-	if(expanded && mode == EInfoWindowMode::MODAL && components.empty() && tokens.size() == 1
-		&& exact(tokens[0], APPEND_LOCAL, "core.genrltxt.580"))
+	if(expanded && mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
+		&& exact(tokens[0], APPEND_TEXT, "core.genrltxt.580"))
 	{
 		shown = tokens;
 		supported = true;

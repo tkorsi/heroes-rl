@@ -59,6 +59,82 @@ def market_history():
 
 
 class ExpandedContractTests(unittest.TestCase):
+    def test_visions_requires_explicit_inspection_and_never_learns_handles(self):
+        from experiments.learner import contextual_model as m
+        history = c.PlayerHistory("visions", 0, schema=c.EXPANDED_SCHEMA)
+        target = c.ObjectView("visible-target", (2, 1, 0), 54, 0, "neutral")
+        obs = replace(observation(), objects=(target,), tiles=(*observation().tiles, c.Tile((2, 1, 0), 1, 0, False, True)))
+        decide(history, obs)
+        hero = replace(observation("hero"), objects=(target,), tiles=obs.tiles)
+        hero = replace(hero, window=replace(hero.window, capability_controls=("artifacts", "spellbook", "visions")))
+        navigate(history, action("open_hero", "hero"), hero)
+        panel = c.CapabilityPanel("visions-panel", "visions", hero.context, False, None, None, (),
+            (choice("inspect_object", subject="hero", destination=target.handle, x=2, y=1),))
+        opened = replace(obs, window=c.Window(c.Context("capability", "hero", "visions"), None,
+                         armies=(), capability_controls=(), capability_panel=panel))
+        navigate(history, action("open_capability", "hero", panel="visions"), opened)
+        item = c.CapabilityItem("detail", "creature_exact", target.handle, 0, 0, 25, False, None, None, None, None)
+        with self.assertRaises(ValueError):
+            replace(panel, items=(item,))
+        shown = replace(opened, window=replace(opened.window, capability_panel=replace(panel,
+                        items=(item,), inspected_subject=target.handle)))
+        seq = begin(history, action("inspect_object", "hero", selection="choice-1"))
+        with self.assertRaises(ValueError):
+            history.emit("issued", decision_seq=seq, command_index=0)
+        history.emit("view", observation=shown)
+        history.emit("result", decision_seq=seq, result=c.Result("inspected", True))
+        decide(history, shown)
+        encoded = repr(m._window_semantic(shown))
+        self.assertNotIn(target.handle, encoded)
+        self.assertNotIn("visions-panel", encoded)
+        self.assertEqual(c.decode_observation(c.encode_observation(shown, schema=c.EXPANDED_SCHEMA), schema=c.EXPANDED_SCHEMA), shown)
+        with self.assertRaises(ValueError):
+            replace(shown, objects=())
+        navigate(history, action("close_capability", "hero"), hero, "closed")
+        seq = begin(history, action("open_capability", "hero", panel="visions"))
+        history.emit("context", decision_seq=seq, context=shown.context, revision=history.revision + 1)
+        with self.assertRaises(ValueError):
+            history.emit("view", observation=shown)
+
+    def test_scroll_spells_and_world_owner_remain_visible_semantics(self):
+        from experiments.learner import contextual_model as m
+        scroll = c.CapabilityItem("scroll", "artifact", "hero", 1, 19, None, False, None, None, None, None, spell=15)
+        self.assertNotEqual(m._semantic(scroll), m._semantic(replace(scroll, spell=16)))
+        world = c.CapabilityItem("object", "world_object", "hero", 53, None, 1, False, None, 2, 1, 0, owner="opponent")
+        self.assertNotEqual(m._semantic(world), m._semantic(replace(world, owner="self")))
+        with self.assertRaises(ValueError):
+            replace(world, owner=None)
+        with self.assertRaises(ValueError):
+            replace(scroll, kind="spell")
+
+    def test_neutral_overflow_stack_inspection_requires_native_query(self):
+        from tests.test_contextual_armies import army
+        target = c.ObjectView("neutral", (2, 1, 0), 54, 0, "neutral")
+        obs = replace(observation(), objects=(target,), tiles=(*observation().tiles, c.Tile((2, 1, 0), 1, 0, False, True)))
+        history = c.PlayerHistory("overflow", 0, schema=c.EXPANDED_SCHEMA)
+        decide(history, obs)
+        seq = begin(history, action("move_to", "hero", x=2, y=1), "engine")
+        history.emit("issued", decision_seq=seq, command_index=0)
+        history.emit("event", event=c.VisibleEvent("army_join_requested", "hero", partner=target.handle))
+        history.emit("acknowledged", decision_seq=seq, command_index=0, accepted=True)
+        history.emit("result", decision_seq=seq, result=c.Result("interaction", True, (1,1,0), 100, False))
+        context = c.Context("exchange", "hero", None, target.handle)
+        history.emit("context_opened", context=context, revision=history.revision + 1, reason="neutral_join")
+        own = army("own", "hero", "hero", {0:(0,14)})
+        neutral = replace(army("joining", "town_garrison", target.handle, {0:(2,10)}), role="joining_neutral")
+        opened = replace(obs, window=c.Window(context, None, armies=(own, neutral), capability_controls=()))
+        decide(history, opened)
+        self.assertTrue(history.decision.offers.permits(action("open_stack", "hero", selection="joining-0")))
+        self.assertFalse(history.decision.offers.permits(action("split_stack", "hero", selection="joining-0", destination="own-1", count=1)))
+        panel = c.StackPanel(context, neutral.slots[0], (), None, None, None)
+        details = replace(obs, window=c.Window(c.Context("stack", target.handle, "overview", "joining-0"), None,
+                          armies=(), stack_panel=panel, capability_controls=()))
+        navigate(history, action("open_stack", "hero", selection="joining-0"), details)
+        self.assertFalse(history.decision.offers.permits(action("open_capability", target.handle, panel="artifacts")))
+        history.active_join = False
+        with self.assertRaises(ValueError):
+            history.emit("view", observation=details)
+
     def test_market_navigation_lots_and_exact_native_ack(self):
         history = market_history()
         support = history.decision.offers
@@ -172,9 +248,9 @@ class ExpandedNoticeTests(unittest.TestCase):
             self.assertEqual(c.decode_notice(c._wire(notice), schema=c.EXPANDED_SCHEMA), notice)
 
     def test_stables_is_information_without_an_action_or_reward(self):
-        notice = c.Notice("modal", (c.NoticeToken("append_text", text_id="core.genrltxt.580"),), ())
+        notice = c.Notice("auto", (c.NoticeToken("append_text", text_id="core.genrltxt.580"),), ())
         self.assertEqual(c.decode_notice(c._wire(notice), schema=c.EXPANDED_SCHEMA), notice)
-        for changed in (replace(notice, display_mode="auto"),
+        for changed in (replace(notice, display_mode="modal"),
                         replace(notice, components=(c.NoticeComponent("resource", resource="gold", amount=400),))):
             with self.assertRaises(ValueError):
                 c.decode_notice(c._wire(changed), schema=c.EXPANDED_SCHEMA)
