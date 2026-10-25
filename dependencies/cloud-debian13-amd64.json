@@ -1,0 +1,1070 @@
+{
+  "distribution": "Debian 13 (trixie)",
+  "architecture": "amd64",
+  "packages": [
+    {
+      "name": "ca-certificates",
+      "version": "20250419+deb13u1",
+      "architecture": "all",
+      "filename": "ca-certificates_20250419+deb13u1_all.deb",
+      "sha256": "c10585ac22c7f617a73d394eea29ba71d0356f350ae973b19043d1b017f80f54"
+    },
+    {
+      "name": "ccache",
+      "version": "4.11.2-2",
+      "architecture": "amd64",
+      "filename": "ccache_4.11.2-2_amd64.deb",
+      "sha256": "08a3f49741c54a78325a85bfdce125e30026d697874b1bb37328916c47106506"
+    },
+    {
+      "name": "cmake-data",
+      "version": "3.31.6-2",
+      "architecture": "all",
+      "filename": "cmake-data_3.31.6-2_all.deb",
+      "sha256": "d9060145be892f43cd1888024114ceab019c81479d4b0a3383fe14cebe2295cb"
+    },
+    {
+      "name": "cmake",
+      "version": "3.31.6-2",
+      "architecture": "amd64",
+      "filename": "cmake_3.31.6-2_amd64.deb",
+      "sha256": "dee2fc94973325240604ffbca677a3f16b462fb6520946bd81be1ecbac770a02"
+    },
+    {
+      "name": "gir1.2-freedesktop-dev",
+      "version": "1.84.0-1",
+      "architecture": "amd64",
+      "filename": "gir1.2-freedesktop-dev_1.84.0-1_amd64.deb",
+      "sha256": "268a900e9ac36b0967024e29148c500f276446660696445466fe7176206f2bd8"
+    },
+    {
+      "name": "gir1.2-glib-2.0-dev",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "gir1.2-glib-2.0-dev_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "3b49adb163111011070d713324c595d854d7b8b367b310ea92d80a5ab71cd663"
+    },
+    {
+      "name": "gir1.2-ibus-1.0",
+      "version": "1.5.32-2",
+      "architecture": "amd64",
+      "filename": "gir1.2-ibus-1.0_1.5.32-2_amd64.deb",
+      "sha256": "880e87fe5b399d8a7c770dd6ee79dfb97399dda2837fcbd0af237f6ac2967d40"
+    },
+    {
+      "name": "girepository-tools",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "girepository-tools_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "2498e412b01d5d77049829d525b7ff559fd4be269a59cc4a50479337a50d8619"
+    },
+    {
+      "name": "icu-devtools",
+      "version": "76.1-4",
+      "architecture": "amd64",
+      "filename": "icu-devtools_76.1-4_amd64.deb",
+      "sha256": "e3ab7c37d90f9defed366f2c6a87d61941b34c7a740ede0553bca02117a98a18"
+    },
+    {
+      "name": "libasound2-dev",
+      "version": "1.2.14-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libasound2-dev_1.2.14-1+deb13u1_amd64.deb",
+      "sha256": "dfa8e8a133ef8704093d03464d86a3e86d26232baf1e3827aa030cb68c437e1c"
+    },
+    {
+      "name": "libblkid-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "amd64",
+      "filename": "libblkid-dev_2.41.5-0+deb13u1_amd64.deb",
+      "sha256": "775bc91f7a265d21cdfc6b710813017b2366e5c5bb665cd2e6979af5dd8a03a8"
+    },
+    {
+      "name": "libboost-atomic1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-atomic1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "d10e48cc19a8d693a87f03030854d37fc4809baab059ebb2e8b2ed4a99cb805c"
+    },
+    {
+      "name": "libboost-atomic1.83.0",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-atomic1.83.0_1.83.0-4.2_amd64.deb",
+      "sha256": "2b612ebd5a7d9bfcd395af58c05b1b55e9e83f4b93db182fb269dd8478d27e54"
+    },
+    {
+      "name": "libboost-chrono1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-chrono1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "4b9729862d76f52c395983d4ec29066e411bf12bca172a2cbb2e3827b2f8e82d"
+    },
+    {
+      "name": "libboost-chrono1.83.0t64",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-chrono1.83.0t64_1.83.0-4.2_amd64.deb",
+      "sha256": "59ffe41ccadbaba0701ab17e77830022d7a0c9b7f5bf3f8d685c3f5dcb86bfc5"
+    },
+    {
+      "name": "libboost-date-time-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-date-time-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "3f98dd76cf6e8fe1c9e92aa8b0333c617b6c9fb11676b8a29fcdd9a14ee833f8"
+    },
+    {
+      "name": "libboost-date-time1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-date-time1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "37a186258ebd043d33b8cc5f1f7b4e2b6107ee1b6631e9084ec37dd46bed83c8"
+    },
+    {
+      "name": "libboost-date-time1.83.0",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-date-time1.83.0_1.83.0-4.2_amd64.deb",
+      "sha256": "5e13c1cf49e2f7e5fafdaf6687c6d6783ccd7e1ffb30e3171a0f0ed80083ba7e"
+    },
+    {
+      "name": "libboost-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "00a8b3f70dc56337e2e516b7fc05a1ee2e916b7fdf2ba8a9d89a068ea8878df0"
+    },
+    {
+      "name": "libboost-filesystem-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-filesystem-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "1ebc1e2635c487670f08298ee28b0077efd9783ae8f0c1c23b78bfe198a6fd3f"
+    },
+    {
+      "name": "libboost-filesystem1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-filesystem1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "9a50fa4c8da94cef192a9139a9d26961689f8bc901ea4fdd5e5a912581f4a135"
+    },
+    {
+      "name": "libboost-iostreams-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-iostreams-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "04c8ae5ea905ca55ace90a38c0810338b04271203766904968e86b1ad9f157a4"
+    },
+    {
+      "name": "libboost-iostreams1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-iostreams1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "16eef0d86b58be09d9bec002775c35a969694650ef9bf01072776dc41b5561d8"
+    },
+    {
+      "name": "libboost-locale-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-locale-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "ddba79b1a94ee6f9bdaf6d2586f86a969d9a4d86412d84e13f17ce777886891a"
+    },
+    {
+      "name": "libboost-locale1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-locale1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "b37fa2c8d340e369af5a28d55519498bcc91b72b9714dbcf1e111f4fe1567d37"
+    },
+    {
+      "name": "libboost-program-options-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-program-options-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "62584494594979037e7a07d36b30fa70c77b550907580ee1c538c63f08a0f204"
+    },
+    {
+      "name": "libboost-program-options1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-program-options1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "d4086487f60aafffce183184d7cdf34d08537576732c56d51bd6f74d9c077195"
+    },
+    {
+      "name": "libboost-regex1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-regex1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "96190dddfe51cce68c5fcae31b99fff24c943b266c41ad473623ef2e7557f9b3"
+    },
+    {
+      "name": "libboost-regex1.83.0",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-regex1.83.0_1.83.0-4.2_amd64.deb",
+      "sha256": "e4d58b5ae30bb30a7701016dc25dd316878001a8e1a76e5afadd49ccc8d425d3"
+    },
+    {
+      "name": "libboost-serialization1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-serialization1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "c1c71dfd14710e86eab7cd49d6be4722595d1bf4b48b4934e0136742a374c964"
+    },
+    {
+      "name": "libboost-serialization1.83.0",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-serialization1.83.0_1.83.0-4.2_amd64.deb",
+      "sha256": "5c0f28f2464e72c16c01440db47122e23ae0b4147e11e0e6d3b4ced86190324c"
+    },
+    {
+      "name": "libboost-system-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-system-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "e3d51e24880e1d48c0808210cfd5ce6fc6415ba870c5f11cf7388bcd36dd8416"
+    },
+    {
+      "name": "libboost-system1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-system1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "ac60c2e1bdee779633fad66212b638bf77ddf1e99d650d06bd65ac55577e9839"
+    },
+    {
+      "name": "libboost-system1.83.0",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-system1.83.0_1.83.0-4.2_amd64.deb",
+      "sha256": "a453edc44ae53303495d6e123b3ea659431849dd52b075459518cfffc49ff179"
+    },
+    {
+      "name": "libboost-thread-dev",
+      "version": "1.83.0.2+b2",
+      "architecture": "amd64",
+      "filename": "libboost-thread-dev_1.83.0.2+b2_amd64.deb",
+      "sha256": "0a0566e2e55b483dba92cbd131b95b3a0a51672b2ffeb8282b21db60e557f4dc"
+    },
+    {
+      "name": "libboost-thread1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost-thread1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "839f2580bbe2032248736057075ac6c636964f49cbece146ad2145f3b53ba0cb"
+    },
+    {
+      "name": "libboost1.83-dev",
+      "version": "1.83.0-4.2",
+      "architecture": "amd64",
+      "filename": "libboost1.83-dev_1.83.0-4.2_amd64.deb",
+      "sha256": "1f11fc6fb2ffe9378a0f0ebc8f2fd9223fb958b4a40bb9381c67a8857d947ca3"
+    },
+    {
+      "name": "libbz2-dev",
+      "version": "1.0.8-6",
+      "architecture": "amd64",
+      "filename": "libbz2-dev_1.0.8-6_amd64.deb",
+      "sha256": "b395471bf69087a18a6baa04d68a9d50497b20f8a2602d9729c7069f820bbe6b"
+    },
+    {
+      "name": "libcap-dev",
+      "version": "1:2.75-10+deb13u1+b3",
+      "architecture": "amd64",
+      "filename": "libcap-dev_1%3a2.75-10+deb13u1+b3_amd64.deb",
+      "sha256": "795983cf2cbc2e12e9440383d701229966c35bc40712ccbfd03e5c93d9af619d"
+    },
+    {
+      "name": "libdbus-1-dev",
+      "version": "1.16.2-2",
+      "architecture": "amd64",
+      "filename": "libdbus-1-dev_1.16.2-2_amd64.deb",
+      "sha256": "83767cf52f88de6d6f370cee30e717828c6fd22cb55d1fb84b38a3e911742887"
+    },
+    {
+      "name": "libdecor-0-dev",
+      "version": "0.2.2-2",
+      "architecture": "amd64",
+      "filename": "libdecor-0-dev_0.2.2-2_amd64.deb",
+      "sha256": "f02b9409ff31d546beb5bf2f2eddbc432ed051696a632c82dc9e4ba76c9e60c4"
+    },
+    {
+      "name": "libdeflate-dev",
+      "version": "1.23-2",
+      "architecture": "amd64",
+      "filename": "libdeflate-dev_1.23-2_amd64.deb",
+      "sha256": "839ad493dd3b100022bd85970db72de93a1e363182c99cd21c95dbbe5825159b"
+    },
+    {
+      "name": "libdrm-dev",
+      "version": "2.4.124-2",
+      "architecture": "amd64",
+      "filename": "libdrm-dev_2.4.124-2_amd64.deb",
+      "sha256": "83b84b1207c4dda3d64ebad7725a7ad237c69c870668db3b01eabad1052f0dcb"
+    },
+    {
+      "name": "libdrm-nouveau2",
+      "version": "2.4.124-2",
+      "architecture": "amd64",
+      "filename": "libdrm-nouveau2_2.4.124-2_amd64.deb",
+      "sha256": "634dcb46487fb2ca267850261291463845ada90b81d16a926ca40d333ce57180"
+    },
+    {
+      "name": "libdrm-radeon1",
+      "version": "2.4.124-2",
+      "architecture": "amd64",
+      "filename": "libdrm-radeon1_2.4.124-2_amd64.deb",
+      "sha256": "7a82b1c88b45235e314a15b71781b47ed472dafbbf697481ec8427079840fc32"
+    },
+    {
+      "name": "libegl-dev",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libegl-dev_1.7.0-1+b2_amd64.deb",
+      "sha256": "97fcfff08a5de0a510066d55260a30fbd3ccbd87da6c2f317e6efe17566b9f5a"
+    },
+    {
+      "name": "libffi-dev",
+      "version": "3.4.8-2",
+      "architecture": "amd64",
+      "filename": "libffi-dev_3.4.8-2_amd64.deb",
+      "sha256": "76b2b80193a656733e1408ebec5371334be5fd48eb5f50ab99d6baf6081d0f1b"
+    },
+    {
+      "name": "libflac-dev",
+      "version": "1.5.0+ds-2",
+      "architecture": "amd64",
+      "filename": "libflac-dev_1.5.0+ds-2_amd64.deb",
+      "sha256": "fb38e53dbdd169cce68ccf6ff85c7e949020930f2b9d651b2bd1a49d402ea0c6"
+    },
+    {
+      "name": "libfmt-dev",
+      "version": "10.1.1+ds1-4",
+      "architecture": "amd64",
+      "filename": "libfmt-dev_10.1.1+ds1-4_amd64.deb",
+      "sha256": "c084df80e2842bc57157e8def529f4ca6bc8743d005550b56a5ef96c9bc92f0f"
+    },
+    {
+      "name": "libfreetype-dev",
+      "version": "2.13.3+dfsg-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libfreetype-dev_2.13.3+dfsg-1+deb13u1_amd64.deb",
+      "sha256": "f58107859d9fa44206e64cf35bdbd4febdec66a33e456ce2e5e3712f01b6c895"
+    },
+    {
+      "name": "libgbm-dev",
+      "version": "25.0.7-2+deb13u1",
+      "architecture": "amd64",
+      "filename": "libgbm-dev_25.0.7-2+deb13u1_amd64.deb",
+      "sha256": "8e3f9958fbcd4838953ebc7cb11e661e26652059473278d8f7e130c246f97c2a"
+    },
+    {
+      "name": "libgio-2.0-dev-bin",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "libgio-2.0-dev-bin_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "d43dddb9b306cb8427bd383e100b8510da8cfa03b5968624f3787bc66a5a95b8"
+    },
+    {
+      "name": "libgio-2.0-dev",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "libgio-2.0-dev_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "a9bbd748ddd40a08b336e8d6b1755e698957ac640d081ddc4c330b716c6b89c3"
+    },
+    {
+      "name": "libgirepository-2.0-0",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "libgirepository-2.0-0_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "c87a2d4dac81be719fb3dc2e3a1d78376151d8c5c34071e08c10304b8d1fd3c3"
+    },
+    {
+      "name": "libgl-dev",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libgl-dev_1.7.0-1+b2_amd64.deb",
+      "sha256": "2c5044a44bc7cd7a196d554ca6ff78ae0358fbb98b7d2cce49176bdc6a816fe4"
+    },
+    {
+      "name": "libgles-dev",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libgles-dev_1.7.0-1+b2_amd64.deb",
+      "sha256": "87af52464cb40d54e78ecf2046db019bf1ab19a8bed7511ab282be623d1216de"
+    },
+    {
+      "name": "libgles1",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libgles1_1.7.0-1+b2_amd64.deb",
+      "sha256": "ef909f784ed99a849bfdf69abaa0747cf842abbb6d3f4f119481a2f9e3431284"
+    },
+    {
+      "name": "libgles2",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libgles2_1.7.0-1+b2_amd64.deb",
+      "sha256": "e12c18aa77939d122ee1dea520ba0440b97dc19200b7396e03dff03a3ece74c1"
+    },
+    {
+      "name": "libglib2.0-dev-bin",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "libglib2.0-dev-bin_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "d35ef75a4b04ea10081d484e025b0a4fecd0232ffc0e76403bcd249b3b47e643"
+    },
+    {
+      "name": "libglib2.0-dev",
+      "version": "2.84.4-3~deb13u5",
+      "architecture": "amd64",
+      "filename": "libglib2.0-dev_2.84.4-3~deb13u5_amd64.deb",
+      "sha256": "ad98b1a769da55a8007ea9953306b0deb6092205d4fac8d915e2bd83d4ecc8a5"
+    },
+    {
+      "name": "libglx-dev",
+      "version": "1.7.0-1+b2",
+      "architecture": "amd64",
+      "filename": "libglx-dev_1.7.0-1+b2_amd64.deb",
+      "sha256": "93d456321c07009491b942783db8c57065b616db713ef5f6a0c629ca078c4ea0"
+    },
+    {
+      "name": "libgraphite2-dev",
+      "version": "1.3.14-2+deb13u1",
+      "architecture": "amd64",
+      "filename": "libgraphite2-dev_1.3.14-2+deb13u1_amd64.deb",
+      "sha256": "95285830ac3b4d672cdf05651de1c47884ca135a7601a365b9e5060ed18dee26"
+    },
+    {
+      "name": "libharfbuzz-cairo0",
+      "version": "10.2.0-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libharfbuzz-cairo0_10.2.0-1+deb13u1_amd64.deb",
+      "sha256": "66d557fdbf6adc51d24604cbf06faf1e5e6ec0db8ac17b0411e9a554e49a37cb"
+    },
+    {
+      "name": "libharfbuzz-dev",
+      "version": "10.2.0-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libharfbuzz-dev_10.2.0-1+deb13u1_amd64.deb",
+      "sha256": "2588a9535b4b08193418d076605ca0878545e5b06a1a86a1f952f88f33ce79f9"
+    },
+    {
+      "name": "libharfbuzz-icu0",
+      "version": "10.2.0-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libharfbuzz-icu0_10.2.0-1+deb13u1_amd64.deb",
+      "sha256": "0b45d951629e98673c0da73b2bcd0886a467d833bb3b7499892a168f247165d2"
+    },
+    {
+      "name": "libhiredis1.1.0",
+      "version": "1.2.0-6+b3",
+      "architecture": "amd64",
+      "filename": "libhiredis1.1.0_1.2.0-6+b3_amd64.deb",
+      "sha256": "dae3af5380cb0c12e170271f19d318529331cfa17b5fa47971837b3e2a49bb83"
+    },
+    {
+      "name": "libibus-1.0-5",
+      "version": "1.5.32-2",
+      "architecture": "amd64",
+      "filename": "libibus-1.0-5_1.5.32-2_amd64.deb",
+      "sha256": "68bdb1d1f4ef76b865025754c4205dd8dd1e759606f1eda1859a3aa9c0271ad0"
+    },
+    {
+      "name": "libibus-1.0-dev",
+      "version": "1.5.32-2",
+      "architecture": "amd64",
+      "filename": "libibus-1.0-dev_1.5.32-2_amd64.deb",
+      "sha256": "cdfc567aa0900775b50d24056331d5c2f330dd6a3e911d2c7ef127a220cb0adc"
+    },
+    {
+      "name": "libice-dev",
+      "version": "2:1.1.1-1",
+      "architecture": "amd64",
+      "filename": "libice-dev_2%3a1.1.1-1_amd64.deb",
+      "sha256": "cd4dceeb1afbb75c00df04be44ff117da8861a4c8e6ab45126baf3a78ebf1a24"
+    },
+    {
+      "name": "libicu-dev",
+      "version": "76.1-4",
+      "architecture": "amd64",
+      "filename": "libicu-dev_76.1-4_amd64.deb",
+      "sha256": "856ea1b86a008d71d3ffaf6a4a465ff38edf3a257ebab3f0222ce05fe94a5c1a"
+    },
+    {
+      "name": "libjbig-dev",
+      "version": "2.1-6.1+b2",
+      "architecture": "amd64",
+      "filename": "libjbig-dev_2.1-6.1+b2_amd64.deb",
+      "sha256": "058620479f5c2d6cab7f052264c42a6f6bd3f6806fc0bad37aa757738955861a"
+    },
+    {
+      "name": "libjpeg-dev",
+      "version": "1:2.1.5-4",
+      "architecture": "amd64",
+      "filename": "libjpeg-dev_1%3a2.1.5-4_amd64.deb",
+      "sha256": "405e38b18e38a3904337c643b87e908ea743cb7348f13ba827dba55489f2cb38"
+    },
+    {
+      "name": "libjpeg62-turbo-dev",
+      "version": "1:2.1.5-4",
+      "architecture": "amd64",
+      "filename": "libjpeg62-turbo-dev_1%3a2.1.5-4_amd64.deb",
+      "sha256": "e687e3c8b24a3aa74974928b8e0b07f6df2442187492d85cbcea7dacd91e3aba"
+    },
+    {
+      "name": "liblerc-dev",
+      "version": "4.0.0+ds-5",
+      "architecture": "amd64",
+      "filename": "liblerc-dev_4.0.0+ds-5_amd64.deb",
+      "sha256": "101ee2049de8e3931242bc4230da28053acc9c82d6f397b8fda11bcb957929ab"
+    },
+    {
+      "name": "liblzma-dev",
+      "version": "5.8.1-1+deb13u2",
+      "architecture": "amd64",
+      "filename": "liblzma-dev_5.8.1-1+deb13u2_amd64.deb",
+      "sha256": "7b5104b0418b2e958447f74c135841aefda555293ac7f7494cfc7a16b7180816"
+    },
+    {
+      "name": "liblzma5",
+      "version": "5.8.1-1+deb13u2",
+      "architecture": "amd64",
+      "filename": "liblzma5_5.8.1-1+deb13u2_amd64.deb",
+      "sha256": "b38acab30f295bf1066a6632e31cbd0a1980f2924b38040cda131d5dea5384ec"
+    },
+    {
+      "name": "libminizip-dev",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1",
+      "architecture": "amd64",
+      "filename": "libminizip-dev_1%3a1.3.dfsg+really1.3.1-1+b1_amd64.deb",
+      "sha256": "63b2f76a31a320c38cad3652cb86474cc30f61ce57991575aeb800947558ff9c"
+    },
+    {
+      "name": "libmount-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "amd64",
+      "filename": "libmount-dev_2.41.5-0+deb13u1_amd64.deb",
+      "sha256": "2bef03b918e927648c6552143e17e82aa7ed2a4ce180fabd07a7d1cac7ff8686"
+    },
+    {
+      "name": "libmpg123-dev",
+      "version": "1.32.10-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libmpg123-dev_1.32.10-1+deb13u1_amd64.deb",
+      "sha256": "b7c94bd607189491c42f4fb1db498092cae2a9ce80bcec3af8f9a532917cc31c"
+    },
+    {
+      "name": "libogg-dev",
+      "version": "1.3.5-3+b2",
+      "architecture": "amd64",
+      "filename": "libogg-dev_1.3.5-3+b2_amd64.deb",
+      "sha256": "0f5dee559f8e95a70b24159ebe8c68771157a83a812073a66f83d4e3fe59f5da"
+    },
+    {
+      "name": "libopus-dev",
+      "version": "1.5.2-2",
+      "architecture": "amd64",
+      "filename": "libopus-dev_1.5.2-2_amd64.deb",
+      "sha256": "e775bd6d612aca09207ac3581b9ad6df6e2a129bc93b8a0f8bcd1882ace4fe9e"
+    },
+    {
+      "name": "libopusfile-dev",
+      "version": "0.12-4+b3",
+      "architecture": "amd64",
+      "filename": "libopusfile-dev_0.12-4+b3_amd64.deb",
+      "sha256": "d959bef8932a344c806eaec0e2a4b17f6ebf57b2db0106539fbd55999bfdc5cb"
+    },
+    {
+      "name": "libopusfile0",
+      "version": "0.12-4+b3",
+      "architecture": "amd64",
+      "filename": "libopusfile0_0.12-4+b3_amd64.deb",
+      "sha256": "a8d9b1b297e30d259fe52007620f36fc4544feed721873bbd41959b08f46d181"
+    },
+    {
+      "name": "libout123-0t64",
+      "version": "1.32.10-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libout123-0t64_1.32.10-1+deb13u1_amd64.deb",
+      "sha256": "a7b2f77760e15f1ee91f26e84f20c53108c0117fd7146f19a09f6da3336ac379"
+    },
+    {
+      "name": "libpciaccess-dev",
+      "version": "0.17-3+b3",
+      "architecture": "amd64",
+      "filename": "libpciaccess-dev_0.17-3+b3_amd64.deb",
+      "sha256": "dfaa687d4ccb943f5b222261a11a1678992bc499abe472d539aa59c4787a0c33"
+    },
+    {
+      "name": "libpng-dev",
+      "version": "1.6.48-1+deb13u6",
+      "architecture": "amd64",
+      "filename": "libpng-dev_1.6.48-1+deb13u6_amd64.deb",
+      "sha256": "c340b3a68d3e494290db3952293cbb64f01a8ea1ac75ae0ac6980a3418782415"
+    },
+    {
+      "name": "libpng16-16t64",
+      "version": "1.6.48-1+deb13u6",
+      "architecture": "amd64",
+      "filename": "libpng16-16t64_1.6.48-1+deb13u6_amd64.deb",
+      "sha256": "0f8034d1c2547760430c81e8d87e5d6acd533a3493c80cf76dbecd0343b6773c"
+    },
+    {
+      "name": "libpulse-dev",
+      "version": "17.0+dfsg1-2+b1",
+      "architecture": "amd64",
+      "filename": "libpulse-dev_17.0+dfsg1-2+b1_amd64.deb",
+      "sha256": "bcbd91aae55d1794f8fe8b1e766ec810173a6415b2165642bf756858e20ab7c4"
+    },
+    {
+      "name": "librhash1",
+      "version": "1.4.5-1",
+      "architecture": "amd64",
+      "filename": "librhash1_1.4.5-1_amd64.deb",
+      "sha256": "9bf56d7d8ce3e7680a0dd8e3cfe8acdf50e0aa3b98b0a907cf744a4d1711af72"
+    },
+    {
+      "name": "libsamplerate0-dev",
+      "version": "0.2.2-4+b2",
+      "architecture": "amd64",
+      "filename": "libsamplerate0-dev_0.2.2-4+b2_amd64.deb",
+      "sha256": "04ea390f4e862561ab0383759c71e00612d9110e601891aee7ec107d9bae482a"
+    },
+    {
+      "name": "libsdl2-dev",
+      "version": "2.32.4+dfsg-1",
+      "architecture": "amd64",
+      "filename": "libsdl2-dev_2.32.4+dfsg-1_amd64.deb",
+      "sha256": "277dc6373473df2079ed44ac8661575b97b39fa263bfa424b0324c1501d21413"
+    },
+    {
+      "name": "libsdl2-image-2.0-0",
+      "version": "2.8.8+dfsg-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libsdl2-image-2.0-0_2.8.8+dfsg-1+deb13u1_amd64.deb",
+      "sha256": "3df007d463b84c3dd1d82cd91adc10cbeab5a2531357cfd9af21b3d81b2ebdf5"
+    },
+    {
+      "name": "libsdl2-image-dev",
+      "version": "2.8.8+dfsg-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libsdl2-image-dev_2.8.8+dfsg-1+deb13u1_amd64.deb",
+      "sha256": "7b64a6222e521816fca46a437a77c1248f16b3db5d753b348e44c02fecc6bc92"
+    },
+    {
+      "name": "libsdl2-mixer-2.0-0",
+      "version": "2.8.1+dfsg-2",
+      "architecture": "amd64",
+      "filename": "libsdl2-mixer-2.0-0_2.8.1+dfsg-2_amd64.deb",
+      "sha256": "72e8d4b9ef1cc910d4e3c84f22b583c33f16ecee74c6dacf1dd00101400152c6"
+    },
+    {
+      "name": "libsdl2-mixer-dev",
+      "version": "2.8.1+dfsg-2",
+      "architecture": "amd64",
+      "filename": "libsdl2-mixer-dev_2.8.1+dfsg-2_amd64.deb",
+      "sha256": "e9ba40ab081e304e12e0743e7238386a3e78dd20c17f9c2a0016e978c751ad07"
+    },
+    {
+      "name": "libsdl2-ttf-2.0-0",
+      "version": "2.24.0+dfsg-2",
+      "architecture": "amd64",
+      "filename": "libsdl2-ttf-2.0-0_2.24.0+dfsg-2_amd64.deb",
+      "sha256": "a7aff4e1f3389b1c25edfe9248d918a8ba762dcefb57c3be3a1bbdb6c55f833b"
+    },
+    {
+      "name": "libsdl2-ttf-dev",
+      "version": "2.24.0+dfsg-2",
+      "architecture": "amd64",
+      "filename": "libsdl2-ttf-dev_2.24.0+dfsg-2_amd64.deb",
+      "sha256": "08401a6fb5d33176ac0b7ac807c827e625f4849501ae22775dd0c6eb0d068b9e"
+    },
+    {
+      "name": "libselinux1-dev",
+      "version": "3.8.1-1",
+      "architecture": "amd64",
+      "filename": "libselinux1-dev_3.8.1-1_amd64.deb",
+      "sha256": "0107595c65dd5cfe7ce3643d400e7b2be2c2528bcd110ad5af8605711a858921"
+    },
+    {
+      "name": "libsepol-dev",
+      "version": "3.8.1-1",
+      "architecture": "amd64",
+      "filename": "libsepol-dev_3.8.1-1_amd64.deb",
+      "sha256": "c085881d0546f6d539909f5710d7a3243aeb24338f6dc455b0ef6199f45bd753"
+    },
+    {
+      "name": "libsharpyuv-dev",
+      "version": "1.5.0-0.1",
+      "architecture": "amd64",
+      "filename": "libsharpyuv-dev_1.5.0-0.1_amd64.deb",
+      "sha256": "4462f1e4e746e6117296d077c121d18977e719443e169f0547bb4bed203fe0d3"
+    },
+    {
+      "name": "libsm-dev",
+      "version": "2:1.2.6-1",
+      "architecture": "amd64",
+      "filename": "libsm-dev_2%3a1.2.6-1_amd64.deb",
+      "sha256": "22c83f0579dac10ff4583c31d0997097cfb4bc3ea8682eb75dafe35ae8251aea"
+    },
+    {
+      "name": "libsndio-dev",
+      "version": "1.10.0-0.1",
+      "architecture": "amd64",
+      "filename": "libsndio-dev_1.10.0-0.1_amd64.deb",
+      "sha256": "df8c30f4b63f53a7507740c89e7eada80df05a434d5090bc5bd9a9776ab08925"
+    },
+    {
+      "name": "libsndio7.0",
+      "version": "1.10.0-0.1",
+      "architecture": "amd64",
+      "filename": "libsndio7.0_1.10.0-0.1_amd64.deb",
+      "sha256": "4ddb8b7c9cafbea65b65727dbba207e3a33c08457ef6c179b23296cb9d5b52dc"
+    },
+    {
+      "name": "libsquish-dev",
+      "version": "1.15-3+b2",
+      "architecture": "amd64",
+      "filename": "libsquish-dev_1.15-3+b2_amd64.deb",
+      "sha256": "4578dc8b9283b0f2de48395d4342e38b9139a20eda213eb5b7a7f63db970c68f"
+    },
+    {
+      "name": "libsquish0",
+      "version": "1.15-3+b2",
+      "architecture": "amd64",
+      "filename": "libsquish0_1.15-3+b2_amd64.deb",
+      "sha256": "659642be7fa591625f99b6473cb2f22fe4b3bbb5bdd0b076b48c0df95fea7d31"
+    },
+    {
+      "name": "libsyn123-0t64",
+      "version": "1.32.10-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libsyn123-0t64_1.32.10-1+deb13u1_amd64.deb",
+      "sha256": "7242fa9f5118ff1fc80302f621aa86478ca59b2d7a10bab9d6089d2cf73bf21e"
+    },
+    {
+      "name": "libsysprof-capture-4-dev",
+      "version": "48.0-2",
+      "architecture": "amd64",
+      "filename": "libsysprof-capture-4-dev_48.0-2_amd64.deb",
+      "sha256": "3cb76e124187700f5977a0acb914b3f82b2bd28105fce6f1cf2a34497b234af2"
+    },
+    {
+      "name": "libsystemd-dev",
+      "version": "257.13-1~deb13u1",
+      "architecture": "amd64",
+      "filename": "libsystemd-dev_257.13-1~deb13u1_amd64.deb",
+      "sha256": "4db2d02ce32dfd9f2994a565a51c640b8e7a96a2e2b277484f9a2de7c0cd63e4"
+    },
+    {
+      "name": "libtbb-dev",
+      "version": "2022.1.0-1+deb13u1",
+      "architecture": "amd64",
+      "filename": "libtbb-dev_2022.1.0-1+deb13u1_amd64.deb",
+      "sha256": "1ccef2f481992df5e632c2dbfe3e7da2124061b76cb81dcc952dae2c6f28021b"
+    },
+    {
+      "name": "libtiff-dev",
+      "version": "4.7.0-3+deb13u3",
+      "architecture": "amd64",
+      "filename": "libtiff-dev_4.7.0-3+deb13u3_amd64.deb",
+      "sha256": "06b5847f751423fa8dfe1a05dca9bdf1e6deb51fee254c5d2407ed4e32bb0a17"
+    },
+    {
+      "name": "libtiffxx6",
+      "version": "4.7.0-3+deb13u3",
+      "architecture": "amd64",
+      "filename": "libtiffxx6_4.7.0-3+deb13u3_amd64.deb",
+      "sha256": "64d1fa23128a6658b60150c4894e6a12406e4eb8e1209f6530d10c4ae811c338"
+    },
+    {
+      "name": "libudev-dev",
+      "version": "257.13-1~deb13u1",
+      "architecture": "amd64",
+      "filename": "libudev-dev_257.13-1~deb13u1_amd64.deb",
+      "sha256": "73c3ed98a435ec420b327ef267d89ece81bf23c2c19391265bb4f261cbf5d558"
+    },
+    {
+      "name": "libuv1t64",
+      "version": "1.50.0-2",
+      "architecture": "amd64",
+      "filename": "libuv1t64_1.50.0-2_amd64.deb",
+      "sha256": "5fec8035002e0c745b64d1c5b3e1dc42790d1a77574315b976cf3e4aab9ddc0a"
+    },
+    {
+      "name": "libvorbis-dev",
+      "version": "1.3.7-3",
+      "architecture": "amd64",
+      "filename": "libvorbis-dev_1.3.7-3_amd64.deb",
+      "sha256": "bbbd81f69b335ae2eb199881edabb314f751b653c00fccae4d6b483dd8c99984"
+    },
+    {
+      "name": "libwayland-bin",
+      "version": "1.23.1-3",
+      "architecture": "amd64",
+      "filename": "libwayland-bin_1.23.1-3_amd64.deb",
+      "sha256": "9360776a0e973ae3cfb601aa6baa72b855f69109532ec06d5acb727ccc4e003b"
+    },
+    {
+      "name": "libwayland-dev",
+      "version": "1.23.1-3",
+      "architecture": "amd64",
+      "filename": "libwayland-dev_1.23.1-3_amd64.deb",
+      "sha256": "66055b7df9a6c4b15fe0b52a42a76680bb4d0f4d1083800e7cd7ba26e59e68ed"
+    },
+    {
+      "name": "libwebp-dev",
+      "version": "1.5.0-0.1",
+      "architecture": "amd64",
+      "filename": "libwebp-dev_1.5.0-0.1_amd64.deb",
+      "sha256": "cac680fe731eb850575dbb29ecfc8a5d30faaec5979df939fee5f314dbaa5130"
+    },
+    {
+      "name": "libwebpdecoder3",
+      "version": "1.5.0-0.1",
+      "architecture": "amd64",
+      "filename": "libwebpdecoder3_1.5.0-0.1_amd64.deb",
+      "sha256": "0f2fa9009be0856dc32297637b404b2733d209a13bf743c54a11c8b942f9fa0b"
+    },
+    {
+      "name": "libx11-dev",
+      "version": "2:1.8.12-1",
+      "architecture": "amd64",
+      "filename": "libx11-dev_2%3a1.8.12-1_amd64.deb",
+      "sha256": "530de60c9c6dadd997ae7d74eca2a41b25e849373a5ad5dcdb619aa05713d6e0"
+    },
+    {
+      "name": "libxau-dev",
+      "version": "1:1.0.11-1",
+      "architecture": "amd64",
+      "filename": "libxau-dev_1%3a1.0.11-1_amd64.deb",
+      "sha256": "1e29410af794a3d3790aab9fa0c1b0ec9324697502e982fce4dcdd4610ce3e8a"
+    },
+    {
+      "name": "libxcb1-dev",
+      "version": "1.17.0-2+b1",
+      "architecture": "amd64",
+      "filename": "libxcb1-dev_1.17.0-2+b1_amd64.deb",
+      "sha256": "669949f8d5dff76616630d839b9047b76af553c62c376458094bd759f8fdb903"
+    },
+    {
+      "name": "libxcursor-dev",
+      "version": "1:1.2.3-1",
+      "architecture": "amd64",
+      "filename": "libxcursor-dev_1%3a1.2.3-1_amd64.deb",
+      "sha256": "57f2fc575496edc9f3dd286423494499d231a8b1cdb417bb8401f6b66b584a26"
+    },
+    {
+      "name": "libxdmcp-dev",
+      "version": "1:1.1.5-1",
+      "architecture": "amd64",
+      "filename": "libxdmcp-dev_1%3a1.1.5-1_amd64.deb",
+      "sha256": "bc845297d20cf63388c6b248d9ee169a3890347cb1c29bcd9f771684bf17b528"
+    },
+    {
+      "name": "libxext-dev",
+      "version": "2:1.3.4-1+b3",
+      "architecture": "amd64",
+      "filename": "libxext-dev_2%3a1.3.4-1+b3_amd64.deb",
+      "sha256": "e6bd898976d762a6955ec465870e7f12a3b149f4c5b231b0687e293ed5726532"
+    },
+    {
+      "name": "libxfixes-dev",
+      "version": "1:6.0.0-2+b4",
+      "architecture": "amd64",
+      "filename": "libxfixes-dev_1%3a6.0.0-2+b4_amd64.deb",
+      "sha256": "1070e0721765992c5355a9585f6eae9e0d11437a7d2b4a2c28123e6e5b0c0b2f"
+    },
+    {
+      "name": "libxi-dev",
+      "version": "2:1.8.2-1",
+      "architecture": "amd64",
+      "filename": "libxi-dev_2%3a1.8.2-1_amd64.deb",
+      "sha256": "be3ca6202327858845aa0a8d70374b08dae5c89250ad8997256e02b2833501d3"
+    },
+    {
+      "name": "libxinerama-dev",
+      "version": "2:1.1.4-3+b4",
+      "architecture": "amd64",
+      "filename": "libxinerama-dev_2%3a1.1.4-3+b4_amd64.deb",
+      "sha256": "711206b2a759461fe27b86099c4b593cb80c1f558fa64dd92239706f8c2a43b3"
+    },
+    {
+      "name": "libxkbcommon-dev",
+      "version": "1.7.0-2",
+      "architecture": "amd64",
+      "filename": "libxkbcommon-dev_1.7.0-2_amd64.deb",
+      "sha256": "b62327152ae59bec442c0d7ae893520a3a3a2381100c83332e4a3497157ce5ec"
+    },
+    {
+      "name": "libxmp-dev",
+      "version": "4.6.2-2",
+      "architecture": "amd64",
+      "filename": "libxmp-dev_4.6.2-2_amd64.deb",
+      "sha256": "7f3248104b597a272846f7c05653994a0b7cf5e5e155522c7b62e30d12e83909"
+    },
+    {
+      "name": "libxmp4",
+      "version": "4.6.2-2",
+      "architecture": "amd64",
+      "filename": "libxmp4_4.6.2-2_amd64.deb",
+      "sha256": "e336a44ad6af98ddb47afd2c5228a6614e04b0246e15d0c063defde4730386c0"
+    },
+    {
+      "name": "libxrandr-dev",
+      "version": "2:1.5.4-1+b3",
+      "architecture": "amd64",
+      "filename": "libxrandr-dev_2%3a1.5.4-1+b3_amd64.deb",
+      "sha256": "e408e4f8c77135725e9055d445635587225839a929d348c04b85adfa84bdefb1"
+    },
+    {
+      "name": "libxrender-dev",
+      "version": "1:0.9.12-1",
+      "architecture": "amd64",
+      "filename": "libxrender-dev_1%3a0.9.12-1_amd64.deb",
+      "sha256": "55121741c44e03cbeb03dabb5721ded1341c987f055d7cae991de7431c9edfa6"
+    },
+    {
+      "name": "libxss-dev",
+      "version": "1:1.2.3-1+b3",
+      "architecture": "amd64",
+      "filename": "libxss-dev_1%3a1.2.3-1+b3_amd64.deb",
+      "sha256": "81d21bf2c9afff27392faba0d52d4b0dec7246f6146eaa05e7c461be620b21cc"
+    },
+    {
+      "name": "libxt-dev",
+      "version": "1:1.2.1-1.2+b2",
+      "architecture": "amd64",
+      "filename": "libxt-dev_1%3a1.2.1-1.2+b2_amd64.deb",
+      "sha256": "fb67298b1a2b1ca2f5d77167deaf8f6e4c3d5a7a1476ae72d2e0a91c5c41a1a4"
+    },
+    {
+      "name": "libxv-dev",
+      "version": "2:1.0.11-1.1+b3",
+      "architecture": "amd64",
+      "filename": "libxv-dev_2%3a1.0.11-1.1+b3_amd64.deb",
+      "sha256": "b36a8025062b93eaec729337ebab4c5b7c0e37faa328d4bb699f50c4e9345781"
+    },
+    {
+      "name": "libxxf86vm-dev",
+      "version": "1:1.1.4-1+b4",
+      "architecture": "amd64",
+      "filename": "libxxf86vm-dev_1%3a1.1.4-1+b4_amd64.deb",
+      "sha256": "cba80fa53162a7c3e3e4e8ec519c2fc3b19c2b4b4d4b22641b7236caeb5edba4"
+    },
+    {
+      "name": "native-architecture",
+      "version": "0.2.6",
+      "architecture": "all",
+      "filename": "native-architecture_0.2.6_all.deb",
+      "sha256": "cb065efb2dd0ad8de45ace298bdb959e4d66478ca8599312bde4fa543d8b7532"
+    },
+    {
+      "name": "ninja-build",
+      "version": "1.12.1-1",
+      "architecture": "amd64",
+      "filename": "ninja-build_1.12.1-1_amd64.deb",
+      "sha256": "bc172ce9270bd6fcd6d5335a83ff9d3c7ba0d13ec624cfdfa1b5aa06901dc453"
+    },
+    {
+      "name": "pkg-config",
+      "version": "1.8.1-4",
+      "architecture": "amd64",
+      "filename": "pkg-config_1.8.1-4_amd64.deb",
+      "sha256": "385209ba52e5c97808bbdc2fc4da22aea9020f96fbab6fbfb144921c4a31d400"
+    },
+    {
+      "name": "python3-pip-whl",
+      "version": "25.1.1+dfsg-1",
+      "architecture": "all",
+      "filename": "python3-pip-whl_25.1.1+dfsg-1_all.deb",
+      "sha256": "e65351935aa4af2b10ae2abb5744f5059e9abad51aea6cd0cb825702010763f7"
+    },
+    {
+      "name": "python3-pip",
+      "version": "25.1.1+dfsg-1",
+      "architecture": "all",
+      "filename": "python3-pip_25.1.1+dfsg-1_all.deb",
+      "sha256": "065695050e5fe10f162201a5bbe8759837427c76c95b5fe57b0701bcd6070c56"
+    },
+    {
+      "name": "python3-setuptools-whl",
+      "version": "78.1.1-0.1",
+      "architecture": "all",
+      "filename": "python3-setuptools-whl_78.1.1-0.1_all.deb",
+      "sha256": "0caf134e73ab90ffeaa5ce2529d73ea7d48078b2a9251ed9d1b7b514a61e9483"
+    },
+    {
+      "name": "python3-venv",
+      "version": "3.13.5-1",
+      "architecture": "amd64",
+      "filename": "python3-venv_3.13.5-1_amd64.deb",
+      "sha256": "744ea5038e645ed22299e1bca47f76169b5665dd640df3492bdd1e21eba6cb76"
+    },
+    {
+      "name": "python3-wheel",
+      "version": "0.46.1-2",
+      "architecture": "all",
+      "filename": "python3-wheel_0.46.1-2_all.deb",
+      "sha256": "17b788ad15f8231e5058ed386cd6841d42b31937075b56caf4cf63263910e992"
+    },
+    {
+      "name": "python3.13-venv",
+      "version": "3.13.5-2+deb13u5",
+      "architecture": "amd64",
+      "filename": "python3.13-venv_3.13.5-2+deb13u5_amd64.deb",
+      "sha256": "b079db533ff9d9d11585d06c3b2a5c034d01453a1e915502ffece42fb0ce4a3f"
+    },
+    {
+      "name": "sgml-base",
+      "version": "1.31+nmu1",
+      "architecture": "all",
+      "filename": "sgml-base_1.31+nmu1_all.deb",
+      "sha256": "a355b832d9f0f4dc9eca1a661080db5dc118e6c435f107a5c4dd201d7af59ba8"
+    },
+    {
+      "name": "uuid-dev",
+      "version": "2.41.5-0+deb13u1",
+      "architecture": "amd64",
+      "filename": "uuid-dev_2.41.5-0+deb13u1_amd64.deb",
+      "sha256": "cb7d7db20e5d91193c2c6629a3f4aa917e3bc558c72b7f2db7203bcfa9a3ba1b"
+    },
+    {
+      "name": "x11proto-dev",
+      "version": "2024.1-1",
+      "architecture": "all",
+      "filename": "x11proto-dev_2024.1-1_all.deb",
+      "sha256": "6a6764500eb8171d3cd6d793c09902974f8ea87bd20c68d9eac5f1eeaf3fc407"
+    },
+    {
+      "name": "xml-core",
+      "version": "0.19",
+      "architecture": "all",
+      "filename": "xml-core_0.19_all.deb",
+      "sha256": "079ec5e10b1c49aa23a6c53ae8e55e33aec121d1c87a131d2172bdabc3f4030e"
+    },
+    {
+      "name": "xorg-sgml-doctools",
+      "version": "1:1.11-1.1",
+      "architecture": "all",
+      "filename": "xorg-sgml-doctools_1%3a1.11-1.1_all.deb",
+      "sha256": "168345058319094e475a87ace66f5fb6ae802109650ea8434d672117982b5d0a"
+    },
+    {
+      "name": "xtrans-dev",
+      "version": "1.4.0-1",
+      "architecture": "all",
+      "filename": "xtrans-dev_1.4.0-1_all.deb",
+      "sha256": "9ce1af9464faee0c679348dd11cdf63934c12e734a64e0903692b0cb5af38e06"
+    },
+    {
+      "name": "xz-utils",
+      "version": "5.8.1-1+deb13u2",
+      "architecture": "amd64",
+      "filename": "xz-utils_5.8.1-1+deb13u2_amd64.deb",
+      "sha256": "66b060ef2f09722c947ba019da5e9a63f6bac9d7bf90b32339a72c0390acc53f"
+    }
+  ]
+}

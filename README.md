@@ -43,6 +43,12 @@ Raw artifacts and checkpoints stay local; draft PRs remain unmerged.
 Repository: [tkorsi/heroes-rl](https://github.com/tkorsi/heroes-rl).
 Original game assets are required locally and are not included or downloaded.
 
+The separate cloud Optimizer prototype is documented in
+[native lifecycle optimizer](docs/native-lifecycle-optimizer.md). It adds opt-in
+preloaded, process-isolated native replay jobs and phase timers. It has no learner
+integration or measured full-game speedup; real reset/replay acceptance requires
+the private game Data and captures absent from this cloud workspace.
+
 This is the canonical project document. Last agreement: **25 October 2026**.
 
 ## Current authorized local PPO pilot
