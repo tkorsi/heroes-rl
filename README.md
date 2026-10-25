@@ -123,6 +123,24 @@ from held-out seeds. All existing learner files must remain byte-identical betwe
 parent and child; additive committed modules are permitted. No source-drift gate
 is bypassed.
 
+Recovery-002 subsequently passed all eight natural games and independent native
+replays in **67.540 seconds**. It performed one fresh PPO update (106 transitions,
+five Adam steps) and exact checkpoint restoration. Its provenance is new even
+though the deterministic learner update happened to reproduce the old weight
+digest; the historical lost checkpoint is not claimed recovered. Both checkpoint
+copies, canonical captures, map, prerequisites and runtime resources are durable.
+
+Four additional exact-resume batches and the update-5 held-out evaluation passed:
+**five cumulative updates, 651 fresh training transitions, 27 Adam steps**, and
+26 verified natural losses with no cutoffs or failures in the new lineage.
+Recovery-001 remains separately failed. The update-5 evaluation was 0/2 wins;
+Red recruited one unit and lost its town on day 2, Blue recruited six and lost its
+town on day 8 (defeat day 13). There is no demonstrated strategic improvement.
+Continuation is active in coordinated bounded windows, with fixed evaluation every
+five updates. Compact cumulative evidence is
+`validation/builtin-continuation-2026-10-25.json`; the raw durable run folders are
+linked from that evidence. No evaluation transitions enter PPO.
+
 ## Current authorized local PPO pilot
 
 After the four replay-verified natural defeats against Nullkiller Easy, the user

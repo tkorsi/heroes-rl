@@ -93,7 +93,7 @@
           "swap_stacks": 14
         },
         "failed_capture_is_unscored": false,
-        "observed_cross_army_redistributions": 0,
+        "observed_cross_army_redistributions": 4,
         "recruitment": {
           "accepted_quantity": 6,
           "attempts": 1,
@@ -169,7 +169,7 @@
           "swap_stacks": 6
         },
         "failed_capture_is_unscored": true,
-        "observed_cross_army_redistributions": 0,
+        "observed_cross_army_redistributions": 1,
         "recruitment": {
           "accepted_quantity": 0,
           "attempts": 0,
