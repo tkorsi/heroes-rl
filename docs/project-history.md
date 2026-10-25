@@ -2,7 +2,7 @@
 
 This archive preserves the detailed notes accumulated before the October 25,
 2026 consolidation. Statements labeled "current" below describe their original
-milestones, not the current project state. See the [root README](../../README.md)
+milestones, not the current project state. See the [root README](../README.md)
 for the authoritative scope, status, source layout, and operating constraints.
 
 Paths inside commands are relative to the repository root.

@@ -36,10 +36,12 @@ Latest evidence is timestamped, not a live activity guarantee:
   [native session evidence](validation/native-engine-session-2026-10-25.json).
 - [Contextual pipeline performance](validation/performance-2026-10-25.json).
 
-The imported Teacher baseline was update 21. At the recorded 17:00 UTC snapshot,
-cloud continuation reached update 30: 36 new training games, 9 PPO updates and
-6 evaluation games. All 42 cloud games were verified natural losses. Changed
-weights or occasional recruitment are not proof of improved strategy.
+The imported Teacher baseline was update 21. At the recorded 17:17 UTC snapshot,
+cloud continuation reached update 31: 40 new training games, 10 PPO updates and
+6 evaluation games. The 46 verified games produced 45 natural losses and one
+cutoff. The Teacher stopped launching batches to preserve its deadline reserve;
+the checkpoint restoration was exact. Changed weights or occasional recruitment
+are not proof of improved strategy.
 
 ## Experiment agreement
 
@@ -69,7 +71,7 @@ snapshots. Compute stops at **2026-10-25 17:50 UTC**; all work must stop by
 **17:53 UTC (19:53 Kyiv)**. Restart afterward is not authorized. The dated
 campaign tools deliberately expire with this session.
 
-Merging `main` does not update/restart that running checkout. Performance code
+Merging `main` does not update/restart that pinned checkout. Performance code
 changes source identities: continuing its old checkpoint on `main` requires a
 separately reviewed exact source/runtime transition and fresh checks. Never
 bypass guards or rewrite historical metadata. Weights, Adam and RNG state are
@@ -127,7 +129,9 @@ For an existing macOS Homebrew build environment:
 ```sh
 cmake -S vcmi -B vcmi/build -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_PREFIX_PATH=/opt/homebrew -DENABLE_GOLDMASTER=ON \
-  -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON
+  -DENABLE_STRICT_COMPILATION=OFF -DENABLE_EXPLORER_RL=ON \
+  -DENABLE_LAUNCHER=OFF -DENABLE_EDITOR=OFF -DENABLE_DISCORD=OFF \
+  -DENABLE_MMAI=OFF -DENABLE_NULLKILLER2_AI=OFF -DENABLE_TRANSLATIONS=OFF
 cmake --build vcmi/build --parallel 2 \
   --target vcmiclient vcmiserver ExplorerRL Nullkiller BattleAI vcmireplay
 python3 tools/prepare_vcmi.py --check
