@@ -1,0 +1,47 @@
+{
+  "schema": "heroes-v8-integrated-validation-v1",
+  "date": "2026-10-25",
+  "status": "passed",
+  "gameplay_training_started": false,
+  "full_suite": {
+    "source_commit": "3dcb5f5",
+    "command": "python -m unittest discover -s tests",
+    "tests_run": 1253,
+    "passed": 1227,
+    "skipped": 26,
+    "failures": 0,
+    "errors": 0,
+    "elapsed_seconds": 168.447,
+    "skip_reason": "Platform-specific or optional native fixtures",
+    "log_sha256": "78e408f6b3ca6a1ea426b3a06c70463dec768d61929414f0f299414f5ce2229d"
+  },
+  "final_targeted_review": {
+    "source_commit": "34353da178d624c03eaab88ef17b2a7d885077e3",
+    "tests_run": 34,
+    "passed": 34,
+    "elapsed_seconds": 1.228,
+    "modules": [
+      "tests.test_builtin_v8_release",
+      "tests.test_builtin_v8_migration",
+      "tests.test_builtin_v8_cutoff",
+      "tests.test_capability_summary",
+      "tests.test_capability_probe"
+    ],
+    "covers": [
+      "Verified local checkpoint lineage survives private publication failure",
+      "Failed or partial experience remains unadmitted",
+      "Exact named-tensor, Adam, RNG and pool migration invariants",
+      "Release binds all28 native cases and exact runtime/codec implementation",
+      "One-use session and common hard deadline"
+    ]
+  },
+  "native_source_check": {
+    "command": "python3 tools/prepare_vcmi.py --check",
+    "status": "passed",
+    "meaning": "Generated dependency matches pinned upstream, canonical root patches and owned native source"
+  },
+  "limits": [
+    "Unit tests use synthetic game evidence where indicated; native acceptance is separate",
+    "No claim of learned strategy or full-game speedup from these tests"
+  ]
+}

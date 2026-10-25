@@ -1,8 +1,8 @@
 # Update92 to v8 preparation
 
-Status: **preparation only; launch blocked**. No new session, gameplay probe,
-optimizer update or migrated checkpoint has been created. The old local365
-session is consumed and must remain untouched. The new authorization permits
+This document defines the reviewed preparation and launch gates. Actual activity
+is recorded in the dated launch/campaign evidence. The old local365 session is
+consumed and must remain untouched. The new authorization permits
 at most two hours locally, starting at actual launch, only after all requested
 v8 features pass native validation and the coordinator explicitly releases it.
 
@@ -106,8 +106,9 @@ report all outcomes. No cloud launch is authorized by this document.
 ## Implemented preparation and launch tooling
 
 The Teacher tooling now implements the converter and separately gated session
-controller. It is still **not released**. Native suite completion and a final
-committed source/runtime are prerequisites. Temporary conversion of the real
+controller. It requires an explicit coordinator release; this document is not
+that release. Native suite completion and a final committed source/runtime are
+prerequisites. Temporary conversion of the real
 update92 pair passed exact named-tensor, Adam, RNG, progress and archived-pool
 checks; those temporary files were removed. See
 [the exact-parent test](../validation/v8-converter-exact-parent-test-2026-10-25.json).
@@ -151,7 +152,12 @@ The coordinator-authored release JSON must use schema
 `heroes-local-v8-update92-v1-release`, `coordinator_released: true`, a nonempty
 `release_message`, exact `authorization` and `configuration` from
 `builtin_v8_session`, current clean `source`, migrated `runtime` and `map`, and
-bindings for `migration_receipt` and `private_migration_receipt`. Each of the26
+bindings for `migration_receipt` and `private_migration_receipt`. A required
+`native_acceptance` binding points to the final 28-case compact summary. The gate
+rederives its bound raw reports, both-seat Dimension Door visibility comparisons,
+current native/codec implementation fingerprint and frozen runtime/client bytes.
+Documentation and controller-only changes do not invalidate mechanics evidence.
+Each of the 26
 `feature_cases` contains `feature`, integer `player`0/1, `passed: true`,
 `replay_verified: true`, and bound native diagnostic `plan` and `evidence`
 (report). Supported feature names are the module's `FEATURES` tuple. Validation

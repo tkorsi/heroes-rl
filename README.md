@@ -20,6 +20,11 @@ ran 1182 tests: 1156 passed and 26 required another platform or optional fixture
 A fresh nine-target macOS native build and the Swift viewer build also passed.
 This check launched no gameplay.
 
+The later [v8 integration check](validation/v8-integrated-validation-2026-10-25.json)
+ran 1253 tests: 1227 passed and the same 26 platform/optional cases were skipped.
+All 34 targeted checks after the final launch-controller and release-gate fixes
+also passed. Native gameplay acceptance is recorded separately below.
+
 | Area | Implemented | Current limit |
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
