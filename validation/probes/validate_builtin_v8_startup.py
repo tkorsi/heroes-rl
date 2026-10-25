@@ -61,6 +61,8 @@ def check(plan):
     require(binding(plan["checkpoint"]["path"]) == plan["checkpoint"], "Checkpoint changed")
     require(capability_implementation_identity() == plan["implementation"], "Diagnostic source changed")
     require(runtime_identity(Path(plan["binary"]).parent) == plan["runtime"], "Native runtime changed")
+    require({key: binding(plan[key]) for key in ("binary", "replay_binary")} == plan["executables"],
+            "Native executable bytes changed")
 
 
 def worker(args):
@@ -174,6 +176,7 @@ def execute(args):
         "map": ordinary_map_identity(args.map), "checkpoint": binding(args.checkpoint), "frozen": frozen,
         "implementation": capability_implementation_identity(), "runtime": runtime_identity(args.binary.resolve().parent),
         "binary": str(args.binary.resolve()), "replay_binary": str(args.replay_binary.resolve()),
+        "executables": {key: binding(getattr(args, key)) for key in ("binary", "replay_binary")},
         "data": str(args.data.resolve()), "case_seconds": CASE_SECONDS, "ordinary_choices": CHOICES,
         "hard_choices": HARD_CHOICES, "max_days": MAX_DAYS, "ordinary_cohort_member": False,
         "scope": "Two fixed ordinary-map v8 startup checks, unchanged migrated policy versus actual Nullkiller Easy; no PPO, sample admission, failed-game replacement or strategic improvement claim.",
