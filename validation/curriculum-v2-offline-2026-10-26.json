@@ -1,0 +1,22 @@
+{
+  "event": "renewed_authorization_offline_repair_complete",
+  "timestamp_utc": "2026-10-26T00:42:53.144668+00:00",
+  "authorization": "Renewed by user via coordinator: repair, freeze, repeat acceptance, then new two-hour local PPO if clean gates pass. Previous failed evidence remains excluded.",
+  "tests": {
+    "command": "python -m unittest tests.test_curriculum_campaign tests.test_curriculum_scenario tests.test_process_deadline tests.test_builtin_gameplay tests.test_builtin_preservation tests.test_builtin_training -q",
+    "passed": 55,
+    "seconds": 5.676
+  },
+  "offline_parent_restore": {
+    "update": 146,
+    "rollouts": 584,
+    "decisions": 40641,
+    "adam_steps": 1475,
+    "exact_model_adam_rng_progress_pool": true
+  },
+  "plan_admission": "Real training and evaluation plans and TrainingBinding.recheck verified for both seats without gameplay",
+  "code_frozen_next": true,
+  "campaign_launched": false,
+  "diagnostics_launched": false,
+  "repair": "Separate immutable execution checkout; explicit controller bindings; failed-batch preservation and fail-closed acceptance; unchanged existing source coverage and PPO math"
+}

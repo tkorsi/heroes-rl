@@ -68,3 +68,57 @@ The runtime dispatch was restored and draft executable modules removed.
 See [study2 evidence](../../validation/curriculum-v1-study2-2026-10-26.json).
 Future work must keep all bound source files frozen throughout a diagnostic;
 prepare a controller before the study or in a separate checkout.
+
+
+## Renewed authorization and prospective frozen release v2
+
+The user renewed authorization after the source-integrity stop: repair offline,
+freeze the complete implementation, repeat clean native acceptance, then launch
+one new two-hour local PPO session if all acceptance gates pass. Earlier studies
+remain unchanged and diagnostic only. This supersedes their no-retry instruction
+only for this newly declared preparation/campaign; it does not admit old games.
+
+The completed controller uses a separate detached Git checkout for execution.
+Its entire tracked tree must remain clean. Existing learner/capability identity
+coverage remains intact; controller, acceptance runner, configuration and map
+generator are explicitly bound as well. Research/status writes target the durable
+artifact directory and the separate authoring checkout. No bound executable is
+edited between acceptance and campaign completion. Further source work, if any,
+must use another checkout and cannot change the executing release.
+
+Acceptance study3 preregisters 64 fresh stochastic update146 games, four per
+seat per block for eight blocks. Engine seeds start at1010001 and policy seeds
+at1020001, adding100 per block and0–3 per game. The four capture/wait controls
+use1030001/1030002 for Red/Blue. The whole study has1200 seconds. Every policy
+game must have native replay, exact policy reconstruction, unchanged checkpoint,
+natural termination and cleanup; each seat must contain wins and losses. Controls
+must demonstrate capture wins and waiting losses separately. A material failure
+blocks launch without replacement, retrospective admission or weakening checks.
+Exact source/runtime/map/checkpoint bindings and schedules will be appended by
+`freeze` before gameplay; paths remain under `local-curriculum-update146`.
+
+The campaign uses `campaign-v2/session.json`, starts its new7200-second wall and
+monotonic clocks only at actual launch after acceptance, and reserves the last
+300 seconds for final evaluation/preservation/cleanup. Independent owned-process
+guardians cover controller worker, batch supervisor and native processes. Training
+starts from exact update146 (584 rollouts,40641 decisions,1475 Adam steps), with
+unchanged model/Adam/RNG/pool, PPO and native runtime. Four-game batches alternate
+Red and Blue on the open8×8 stage3 distribution. Training seeds start910001/920001,
+adding4 per batch and0–3 per game. No harder-stage transition is included.
+
+The same untouched fixed held-out seeds710001–710004/720001–720004 run separately
+for each seat before PPO and after the last verified checkpoint, with periodic
+checks after each five new updates while time allows. They supply no training
+samples. Reward remains +1/-1 at natural win/loss and0 ordinarily;365 days and5120
+choices, Nullkiller Easy/BattleAI, architecture and optimizer settings remain
+unchanged. Only complete verified four-game training batches reach the existing
+PPO worker. The outcome measure is descriptive before/after held-out wins per
+seat; these four fixed games per seat cannot establish broad strategic progress,
+and easier-start victories are not original-map victories.
+
+The offline review added fail-closed acceptance, explicit historical state
+restoration, failed-batch preservation, pre-run intent journaling, strict no-retry
+namespaces, private backup restoration and wall/monotonic deadline checks. The
+unfinished earlier patch remains retained for provenance. No embedded-engine or
+PR29 path is used. A campaign correctness failure stops and preserves evidence;
+there is no automatic restart, extension, overlap or cloud campaign.

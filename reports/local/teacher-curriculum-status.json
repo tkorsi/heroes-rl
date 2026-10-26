@@ -1,112 +1,12 @@
 {
-  "phase": "stopped_before_ppo_source_integrity_failure",
-  "timestamp": "2026-10-26T00:30:41.799790+00:00",
-  "branch": "codex/teacher-curriculum-v1",
-  "parent_update": 146,
-  "training_launched": false,
-  "diagnostic_schedule": {
-    "engine_seeds": [
-      610001,
-      610002,
-      610003,
-      610004
-    ],
-    "policy_seeds": [
-      620001,
-      620002,
-      620003,
-      620004
-    ],
-    "seats": [
-      0,
-      1
-    ]
-  },
-  "heldout_schedule": {
-    "engine_seeds": [
-      710001,
-      710002,
-      710003,
-      710004
-    ],
-    "policy_seeds": [
-      720001,
-      720002,
-      720003,
-      720004
-    ],
-    "seats": [
-      0,
-      1
-    ]
-  },
-  "curriculum": "study2 open8x8 stage3; no difficulty transition or training",
-  "reward": "natural terminal only",
-  "gate": "unchanged policy both natural wins and losses, independent replay, policy reconstruction, cleanup; controls must not win by waiting",
-  "campaign_session": null,
-  "launch": null,
-  "compute_deadline": null,
-  "hard_deadline": null,
-  "confirmed_diagnostic_games": 57,
-  "diagnostic_wins": 12,
-  "diagnostic_losses": 45,
+  "timestamp_utc": "2026-10-26T00:42:53.144668+00:00",
+  "phase": "offline_repair_verified_pending_frozen_acceptance",
+  "campaign_launched": false,
   "ppo_updates": 0,
-  "latest_preserved_checkpoint": {
-    "update": 146,
-    "rollouts": 584,
-    "decisions": 40641,
-    "adam_steps": 1475,
-    "policy_sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023"
-  },
-  "source_commit": "dfdda5fe42009c8a32508bae95e628e8b4a439b2",
-  "active_stage": null,
+  "parent_update": 146,
+  "acceptance_study_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study3/study-report.json",
+  "new_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v2/session.json",
+  "new_release_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v2/release.json",
   "actual_session_path": null,
-  "owned_cleanup_verified": true,
-  "blocker": "Agent edited builtin_first_run.py and added curriculum_training.py while the frozen diagnostic was running; capability identity includes both. This is an agent workflow error, not a gameplay failure.",
-  "selection_result": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/selection-result.json",
-  "validation_outcomes": {
-    "native_replay_and_reconstruction": "57 passed;1 played game unscored;2 failed before game;4 scheduled games not started",
-    "mixed_outcomes": "observed in both seats; overall integrity gate failed",
-    "controls": "capture wins and waiting loses in both seats",
-    "heldout_comparison": "not run"
-  },
-  "runtime_root": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2",
-  "private_preservation": {
-    "archive_sha256": "8ebb5fe4790bb536b3bfe43e2f77a013f8c3f8e8570fb09b862070cc609bd946",
-    "archive_bytes": 14903099,
-    "verified_files": 1865,
-    "verified_symlinks": 62,
-    "dereferenced_external_data": false,
-    "all_archived_files_verified": true,
-    "repository": "tkorsi/heroes-rl-training-state",
-    "branch": "codex/local365-teacher-results",
-    "private_commit": "49fe296094a83ec225918f9058a0a6ed59e38b9d"
-  },
-  "runtime_identity": {
-    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
-    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
-    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
-    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
-    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
-    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
-    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
-  },
-  "diagnostic_scope": "study2 only; study1 retains32losses separately",
-  "study2_results_by_seat": {
-    "red": {
-      "loss": 22,
-      "win": 7,
-      "failed_after_game": 1,
-      "failed_before_game": 2
-    },
-    "blue": {
-      "loss": 23,
-      "win": 5,
-      "not_started": 4
-    }
-  },
-  "study2_result": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2-result.json",
-  "study2_failed_after_game": 1,
-  "study2_failed_before_game": 2,
-  "study2_not_started": 4
+  "tests_passed": 55
 }

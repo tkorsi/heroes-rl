@@ -468,3 +468,13 @@ failed before gameplay and four were not started. The study stopped after
 Update146 remains exact and all evidence is privately preserved. The unfinished
 controller is archived as a non-executable patch, not a release. See the
 [study2 record](validation/curriculum-v1-study2-2026-10-26.json).
+
+
+The user subsequently renewed authorization for an offline controller repair,
+a clean acceptance repeat and, only if that passes, a fresh two-hour local PPO
+campaign. The v2 controller runs from an isolated frozen checkout and writes
+logs/status outside it; complete source integrity remains enforced. Study3 uses
+fresh diagnostic seeds. Campaign-v2 keeps exact update146 state, full four-game
+batches and native terminal-only rewards on the easier8×8 start. The campaign
+clock has not started during repair. See the prospective protocol in the
+[curriculum research record](docs/research/curriculum-v1.md).

@@ -56,8 +56,8 @@ def ordinary_map_identity(path):
 
 
 def schedule(seat, stage=0, block=0, study=1):
-    return [{'episode':i+1,'learner_player':seat,'engine_seed':(610001+1000*stage if study == 1 else 810001)+100*block+i,
-             'policy_seed':(620001+1000*stage if study == 1 else 820001)+100*block+i} for i in range(4)]
+    return [{'episode':i+1,'learner_player':seat,'engine_seed':(610001+1000*stage if study == 1 else {2:810001,3:1010001}[study])+100*block+i,
+             'policy_seed':(620001+1000*stage if study == 1 else {2:820001,3:1020001}[study])+100*block+i} for i in range(4)]
 
 
 def check(plan):
@@ -246,7 +246,7 @@ def main():
     for name in ("binary", "data", "replay-binary", "map", "checkpoint", "output", "plan"):
         parser.add_argument("--" + name, type=Path)
     parser.add_argument("--seed-block", type=int, choices=range(8), default=0)
-    parser.add_argument("--study", type=int, choices=(1,2), default=1)
+    parser.add_argument("--study", type=int, choices=(1,2,3), default=1)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--deadline-unix", type=float)
     parser.add_argument("--sha256")
