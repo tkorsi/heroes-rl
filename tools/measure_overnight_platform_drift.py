@@ -58,7 +58,9 @@ def measure(episode,model):
                     compare('conditional_log_probability',left.log_prob.item(),right.log_prob)
     require(weights_sha256(model)==episode.weights_sha256,'Comparison changed weights')
     return dict(metrics=metrics,action_mismatches=action_mismatches,
-        passed=action_mismatches==0 and all(r['outside_tolerance']==0 for r in metrics.values()),
+        passed=all(r['outside_tolerance']==0 for r in metrics.values()),
+        cross_platform_sampled_actions_are_descriptive=True,
+        same_linux_reconstruction_requires_exact_actions=True,
         absolute_tolerance=ABSOLUTE,relative_tolerance=RELATIVE,
         limitations='Full unrecorded logits are unavailable; comparison covers recorded values and selected probabilities.',
         training_samples=0,optimizer_steps=0)
@@ -76,7 +78,7 @@ def main():
         interface=plan['source']['interface'],allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,),
         historical_torch_version=plan['source']['torch'])
     episode=load_builtin_episode(a.episode/'builtin-rollout.json')
-    result=dict(episode=binding(a.episode/'builtin-rollout.json'),checkpoint=binding(a.checkpoint),
+    result=dict(diagnostic_source=binding(__file__),python=sys.version,torch=str(torch.__version__),episode=binding(a.episode/'builtin-rollout.json'),checkpoint=binding(a.checkpoint),
         historical_plan=binding(a.plan),**measure(episode,loaded.model))
     with a.output.open('x') as f:json.dump(result,f,indent=2);f.write('\n')
     print(json.dumps(dict(passed=result['passed'],output=str(a.output))))
