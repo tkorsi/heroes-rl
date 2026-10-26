@@ -775,3 +775,15 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T08:10:09.886986+00:00 campaign_batch_result: {"sequence": 220, "seat": 0, "mode": "training", "status": "passed"}
 
 - 2026-10-26T08:10:10.598195+00:00 campaign_batch_intent: {"sequence": 221, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:13:49.110111+00:00 campaign_batch_result: {"sequence": 221, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:13:49.801466+00:00 campaign_batch_intent: {"sequence": 222, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:16:15.592785+00:00 campaign_batch_result: {"sequence": 222, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:16:16.353577+00:00 campaign_batch_intent: {"sequence": 223, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:19:25.841408+00:00 campaign_batch_result: {"sequence": 223, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:19:26.527490+00:00 campaign_batch_intent: {"sequence": 224, "seat": 0, "mode": "training", "status": "preparing"}
