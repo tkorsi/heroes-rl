@@ -1,0 +1,33 @@
+{
+  "schema": "heroes-cloud-dispatch-status-v1",
+  "recorded_at_utc": "2026-10-26 01:21:26 UTC",
+  "authorization_hard_stop_utc": "2026-10-26T10:00:00Z",
+  "phase": "blocked_by_cloud_account_access",
+  "trigger": "User explicitly requested another cloud launch attempt",
+  "new_cloud_task": {
+    "created": false,
+    "error": "ChatGPT is not available for this account."
+  },
+  "existing_cloud_task": {
+    "thread_id": "01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+    "host": "durable",
+    "message_delivered": false,
+    "error": "ASB HTTP read failed (403)"
+  },
+  "cloud_training_started": false,
+  "local_campaign": {
+    "interrupted": false,
+    "session": "campaign-v3/session.json",
+    "hard_stop_utc": "2026-10-26T03:10:53.815159Z"
+  },
+  "next_step": "Wait for restored ordinary cloud account/thread access; do not bypass authentication or provision a different paid service.",
+  "prepared_prompt": {
+    "path": "docs/operations/teacher-overnight-20261026.txt",
+    "git_commit": "10c6889"
+  },
+  "limitations": [
+    "The creation tool error does not establish a general account-plan diagnosis.",
+    "The existing cloud thread was not successfully inspected or messaged.",
+    "Local work and checkpoint handoff preparation do not establish cloud execution."
+  ]
+}
