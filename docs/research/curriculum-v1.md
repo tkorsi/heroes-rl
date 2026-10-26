@@ -187,3 +187,21 @@ batch slots and preserves failed evidence; it cannot admit a partial batch.
 The original five-minute finalization reserve remains. The prior scientific
 configuration, four-game batches, terminal-only rewards, fixed held-out seeds
 and easier-start interpretation are unchanged.
+
+
+The user also authorized a subsequent cloud continuation until10:00 UTC on
+26 October, after the unchanged local window completes. Finalization will publish
+one unique private Git readiness manifest only after final archives and exact
+checkpoint restoration are verified and all owned local processes are stopped.
+The manifest transfers ownership local to cloud; no local training follows it.
+Cloud preparation is separate and must validate Linux relocation without changing
+the scientific settings. No readiness is asserted during the local run.
+
+
+Study4 passed in206.321 seconds on frozen source cb3d324:64 verified policy
+games, with Red5wins/27losses and Blue2wins/30losses (4911 sampled choices).
+All replay/reconstruction and unchanged-checkpoint checks passed. Separate
+capture controls won and wait controls lost in both seats. No diagnostic
+experience was admitted. Private acceptance archive commit is
+92c6b4333d667916ff90521eaaabf1b5c3747ddd. This establishes the clean
+preparation gate; it does not show learning. Campaign baseline remains pending.

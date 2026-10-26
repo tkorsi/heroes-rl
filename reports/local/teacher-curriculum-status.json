@@ -1,12 +1,37 @@
 {
-  "timestamp_utc": "2026-10-26T01:05:24.545489+00:00",
-  "phase": "independent_dependency_verified_offline_preparation",
-  "source_branch": "codex/teacher-curriculum-v1",
-  "dependency": "/Users/orsi/Projects/Heroes-artifacts/releases/curriculum-v3/vcmi",
-  "dependency_verification": "canonical recipe and pinned HEAD passed",
-  "new_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
-  "actual_session_path": null,
-  "ppo_updates": 0,
+  "timestamp_utc": "2026-10-26T01:10:10.507742+00:00",
+  "phase": "clean_acceptance_passed_preparing_campaign_release",
   "campaign_launched": false,
-  "parent_update": 146
+  "ppo_updates": 0,
+  "admitted_training_games": 0,
+  "parent_update": 146,
+  "actual_session_path": null,
+  "new_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
+  "frozen_release_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/frozen.json",
+  "acceptance_study_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study4/study-report.json",
+  "source_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
+  "policy_results_by_seat": {
+    "0": {
+      "win": 5,
+      "loss": 27
+    },
+    "1": {
+      "win": 2,
+      "loss": 30
+    }
+  },
+  "verified_policy_games": 64,
+  "owned_cleanup_verified": true,
+  "dependency_verification": "independent pinned checkout and canonical recipe passed",
+  "private_preservation": {
+    "commit": "92c6b4333d667916ff90521eaaabf1b5c3747ddd",
+    "archive": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-curriculum-update146/study4-clean-acceptance/evidence.tar.gz",
+      "sha256": "8062889295d8c0d0e131e935b02551ffeaf3ce87cb904060965f9d0dec2d3a4c",
+      "bytes": 17477143
+    },
+    "verified_files": 2035,
+    "verified_symlinks": 68,
+    "external_data_dereferenced": false
+  }
 }

@@ -1,0 +1,121 @@
+{
+  "schema": "heroes-curriculum-study4-result-v1",
+  "timestamp_utc": "2026-10-26T01:09:55.536397+00:00",
+  "status": "passed",
+  "study": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study4/study-report.json",
+    "sha256": "ab1d87a72285441e3b7d9fb55f921e6f29831c885f66411cdd9b95278ce194d4",
+    "bytes": 13587
+  },
+  "frozen": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/frozen.json",
+    "sha256": "ca9538fb726d20638753d0c05db7fef1e17b09435f6be4363523404615e38ada",
+    "bytes": 90330
+  },
+  "elapsed_seconds": 206.32063698768616,
+  "source_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
+  "policy_results_by_seat": {
+    "0": {
+      "win": 5,
+      "loss": 27
+    },
+    "1": {
+      "win": 2,
+      "loss": 30
+    }
+  },
+  "verified_policy_games": 64,
+  "verified_policy_choices": 4911,
+  "controls": [
+    {
+      "mode": "capture",
+      "seat": 0,
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "replay_verified": true
+    },
+    {
+      "mode": "capture",
+      "seat": 1,
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "replay_verified": true
+    },
+    {
+      "mode": "wait",
+      "seat": 0,
+      "outcomes": {
+        "blue": "win",
+        "red": "loss"
+      },
+      "replay_verified": true
+    },
+    {
+      "mode": "wait",
+      "seat": 1,
+      "outcomes": {
+        "blue": "loss",
+        "red": "win"
+      },
+      "replay_verified": true
+    }
+  ],
+  "gate_passed": true,
+  "checkpoint_restore": {
+    "plan": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json",
+      "sha256": "13725f81344b43113749e576edccb6bdc18544d0a1455246aedd46ea4aee28d6",
+      "bytes": 56924
+    },
+    "report": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/report.json",
+      "sha256": "8066f444fa2b3de13829f854319b48305d39ecd216daa1b65e062cdf673cf432",
+      "bytes": 10957
+    },
+    "policy": {
+      "bytes": 637939,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/after-policy.pt",
+      "sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023"
+    },
+    "resume": {
+      "bytes": 1266037,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/after-resume.pt",
+      "sha256": "50252db8da1a505ab5174cadef2489707783b44c4811d373581f7beec87b94e9"
+    },
+    "progress": {
+      "updates": 146,
+      "rollouts": 584,
+      "decisions": 40641
+    },
+    "optimizer_steps": 1475,
+    "source_proof": {
+      "explicit_curriculum_transition": true,
+      "policy_ppo_unchanged": true
+    },
+    "runtime_proof": {
+      "runtime_unchanged": true,
+      "initial_state_distribution_changes_only": true
+    }
+  },
+  "owned_cleanup_verified": true,
+  "checked_process_receipts": 152,
+  "ppo_updates": 0,
+  "training_samples": 0,
+  "campaign_launched": false,
+  "interpretation": "Feasibility on the easier8x8 initial state with unchanged update146, not learning or original-map success",
+  "private_preservation": {
+    "commit": "92c6b4333d667916ff90521eaaabf1b5c3747ddd",
+    "archive": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-curriculum-update146/study4-clean-acceptance/evidence.tar.gz",
+      "sha256": "8062889295d8c0d0e131e935b02551ffeaf3ce87cb904060965f9d0dec2d3a4c",
+      "bytes": 17477143
+    },
+    "verified_files": 2035,
+    "verified_symlinks": 68,
+    "external_data_dereferenced": false
+  }
+}
