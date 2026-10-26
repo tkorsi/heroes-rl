@@ -1,0 +1,73 @@
+{
+  "event": "automatic_finalization_watcher_armed",
+  "timestamp_utc": "2026-10-26T01:51:24.580871+00:00",
+  "launch": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/automatic-finalization-v3/launch.json",
+    "sha256": "fc5e2d6224d0fd0abe488a1345317fa4f0b3bfc8e0e93184c47eb0ba70024325"
+  },
+  "manifest": {
+    "created_utc": "2026-10-26T01:51:00.139579+00:00",
+    "supervisor_pid": 23660,
+    "window": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/window.json",
+      "sha256": "16819c053c550e69b9b7715e24befd1e243738b421cb25d46a3815f9e760be2a",
+      "bytes": 174
+    },
+    "command": [
+      "/Users/orsi/Projects/Heroes/.venv/bin/python",
+      "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/tools/watch_curriculum_finalization.py",
+      "worker"
+    ],
+    "code": {
+      "tools/watch_curriculum_finalization.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/tools/watch_curriculum_finalization.py",
+        "sha256": "1d9e41301598fe0c03309041903524f6ce8a1272e1b452f741f61ef8cc1b175a",
+        "bytes": 10375
+      },
+      "tools/finalize_curriculum_handoff.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/tools/finalize_curriculum_handoff.py",
+        "sha256": "9fe0f854ffd0541105ef3cc92781a0ce3949e19e9adab392e54ece36eeda5a11",
+        "bytes": 12453
+      },
+      "experiments/learner/builtin_preservation.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/learner/builtin_preservation.py",
+        "sha256": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e",
+        "bytes": 6023
+      },
+      "experiments/learner/builtin_training_resume.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/learner/builtin_training_resume.py",
+        "sha256": "3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb",
+        "bytes": 17656
+      },
+      "experiments/learner/checkpoints.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/learner/checkpoints.py",
+        "sha256": "be624a6fc8d02ddae134c85a8cd458b6abb63298df5ae22868894a6a4eaf4b03",
+        "bytes": 26238
+      },
+      "experiments/learner/contextual_model.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/learner/contextual_model.py",
+        "sha256": "0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f",
+        "bytes": 52136
+      },
+      "experiments/learner/contextual.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/learner/contextual.py",
+        "sha256": "fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d",
+        "bytes": 183208
+      },
+      "experiments/headless/process_deadline.py": {
+        "path": "/Users/orsi/.codex/worktrees/teacher-local365/Heroes/experiments/headless/process_deadline.py",
+        "sha256": "2850922be1d8e6245bf0fa3a2ed4dfda86ae0349e15b374aa8539e186e09365a",
+        "bytes": 17777
+      }
+    },
+    "source_commit": "21dd9d9e5d3d69f733a226a426dfedd01159dc50",
+    "deadline_unix": 1792984253.815159,
+    "deadline_monotonic": 160254.189320083,
+    "duplicate_exclusion": "Exclusive automatic-finalization-v3 directory and worker.lock",
+    "training_allowed": false
+  },
+  "execution_phase": "waiting_for_controller_exit",
+  "supervision_evidence_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/automatic-finalization-v3/watch-deadline.jsonl",
+  "no_human_wake_required": true,
+  "training_started_by_watcher": false
+}
