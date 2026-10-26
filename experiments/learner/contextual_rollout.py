@@ -16,7 +16,7 @@ from pathlib import Path
 import torch
 
 from . import contextual as c
-from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, distribution_schema_for, model_schema_for, weights_sha256
+from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, WeightsSnapshot, distribution_schema_for, model_schema_for, weights_sha256
 
 ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
 TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
@@ -398,7 +398,8 @@ class ContextualSession:
     def __init__(self, model, episode, player, checkpoint, opponent_checkpoint, *, schema=c.TOWN_SCHEMA, seed=0):
         _text(checkpoint, "checkpoint"); _text(opponent_checkpoint, "opponent checkpoint")
         self.model, self.checkpoint, self.opponent_checkpoint = model, checkpoint, opponent_checkpoint
-        self.weights_sha256 = weights_sha256(model)
+        self._weights = WeightsSnapshot(model)
+        self.weights_sha256 = self._weights.digest
         self.encoder = ContextualEncoder(episode, player, schema)
         self.history = c.PlayerHistory(episode, player, schema=schema)
         self._state = model.initial_state().detach().clone()
@@ -416,7 +417,7 @@ class ContextualSession:
 
     def _check_weights(self):
         if self._broken: raise ValueError("Session failed; partial collection cannot be resumed")
-        if weights_sha256(self.model) != self.weights_sha256:
+        if not self._weights.unchanged(self.model):
             self._broken = True
             raise ValueError("Behavior weights changed during collection")
 

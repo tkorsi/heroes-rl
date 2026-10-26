@@ -21,10 +21,12 @@ except ModuleNotFoundError as error:
 
 from experiments.headless import builtin_env as be, builtin_evidence as e
 from experiments.headless.builtin_replay_history import verify_history
-from experiments.learner import contextual as c, contextual_model as m
+from experiments.learner import builtin_rollout as br, contextual as c, contextual_model as m
 from experiments.learner.builtin_rollout import (BuiltinCollector, load_builtin_episode,
     audit_persisted_builtin_policy)
+from experiments.learner.contextual_rollout import _wire_text
 from tests import test_builtin_env as boundaries
+from tests.test_contextual_armies import history_at_armies
 
 initial = boundaries.initial
 
@@ -220,6 +222,31 @@ class BuiltinCollectorIntegrationTests(unittest.TestCase):
             path.write_bytes(path.read_bytes()+b"\n")
             with self.assertRaises(ValueError):audit_persisted_builtin_policy(folder,model,got.checkpoint,17,opponent)
 
+    def test_environment_frames_are_checked_against_records_and_change_nothing(self):
+        handed = []
+
+        def checked(records, typed):
+            handed.append((records, typed))
+            return delivered(records, typed)
+        delivered = br._delivered
+        for player in (0, 1):
+            for boundary in ("cutoff", "natural"):
+                with self.subTest(player=player, boundary=boundary), tempfile.TemporaryDirectory() as tmp:
+                    handed.clear()
+                    with patch.object(br, "_delivered", checked):
+                        typed = self.run_case(Path(tmp) / "typed", player, boundary)[0]
+                    # The request, the cutoff decision delivered again at truncation, then the final frames.
+                    self.assertEqual(len(handed), 3 if boundary == "cutoff" else 2)
+                    for records, frames in handed:
+                        self.assertIs(type(frames), tuple)
+                        self.assertEqual([c.canonical_frame(frame) for frame in frames], list(map(_wire_text, records)))
+                    with patch.object(br, "_delivered", lambda records, typed: records):
+                        decoded = self.run_case(Path(tmp) / "decoded", player, boundary)[0]
+                    typed, decoded = typed.to_dict(), decoded.to_dict()
+                    for run in (typed, decoded):  # wall-clock fields, and the proof digest covering timestamped logs
+                        del run["manifest"]["created_at"], run["manifest"]["wall_seconds"], run["manifest"]["evidence_ref"]
+                    self.assertEqual(typed, decoded)
+
     def test_feature_presence_checks_bound_rules_library_not_client(self):
         with tempfile.TemporaryDirectory() as tmp:
             launcher=SyntheticLauncher(Path(tmp),"cutoff")
@@ -228,6 +255,31 @@ class BuiltinCollectorIntegrationTests(unittest.TestCase):
             env._preflight_contextual()
             (launcher.binary.parent/"libvcmi.dylib").write_bytes(b"older-rules")
             with self.assertRaisesRegex(ValueError,"rules library"):env._preflight_contextual()
+
+
+class DeliveredFramesTests(unittest.TestCase):
+    def frames(self):
+        frames = tuple(history_at_armies().frames)
+        return frames, [json.loads(c.canonical_frame(frame)) for frame in frames]
+
+    def test_exact_frames_replace_their_records(self):
+        frames, records = self.frames()
+        self.assertIs(br._delivered(records, None), records)
+        self.assertIs(br._delivered(records, frames), frames)
+        self.assertEqual(tuple(map(c.decode_frame, records)), frames)
+
+    def test_every_difference_is_rejected(self):
+        frames, records = self.frames()
+        other = tuple(history_at_armies(player=1).frames)
+        changed = json.loads(json.dumps(records))
+        changed[-1]["revision"] += 1
+        unencodable = [*records[:-1], {**records[-1], "revision": float("nan")}]
+        for typed, delivered in ((frames[:-1], records), (frames, records[:-1]), ((), records),
+                                 (frames[::-1], records), (frames, records[::-1]), (other, records),
+                                 (frames, changed), (frames, unencodable), (list(frames), records),
+                                 (frames, tuple(records)), ((*frames[:-1], records[-1]), records)):
+            with self.subTest(typed=len(typed), delivered=len(delivered)), self.assertRaises(ValueError):
+                br._delivered(delivered, typed)
 
 
 if __name__ == "__main__": unittest.main()

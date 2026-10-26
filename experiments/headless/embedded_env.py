@@ -619,9 +619,11 @@ class EmbeddedBuiltinEnv(BuiltinHeadlessEnv):
             "deterministic_replay_verified": False, "training_performed": False, "training_samples": 0}
         evidence.validate_manifest_history(history, manifest)
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
-        frames = {side.color: encoded(history, min(side.unread_frames_from, len(history.frames) - 1))}
+        start = min(side.unread_frames_from, len(history.frames) - 1)
+        frames = {side.color: encoded(history, start)}
         self.result = EpisodeEnd(status, termination, outcomes, rewards, frames, frames,
-            {side.color: side.cutoff if status == "truncated" else None}, manifest)
+            {side.color: side.cutoff if status == "truncated" else None}, manifest,
+            final_typed_frames={side.color: tuple(history.frames[start:])})
         self.process = None
         return self.result
 

@@ -12,6 +12,7 @@ from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
 import json
 from math import copysign, log1p, sqrt
+from operator import attrgetter
 
 import torch
 from torch import Tensor, nn
@@ -93,21 +94,31 @@ def distribution_schema_for(profile_or_schema):
 _DIGEST_HEADERS = {}
 
 
-def weights_sha256(model):
-    """Bind architecture/config and named tensors without NumPy or pickle."""
-    digest = hashlib.sha256(json.dumps(model.config.to_dict(), sort_keys=True, separators=(",", ":")).encode())
+def _weight_entries(model):
+    """(name, dtype, shape, exact uint8 view) of every state_dict tensor, sorted by name."""
+    entries = []
     for name, tensor in sorted(model.state_dict().items()):
         value = tensor.detach().to("cpu").contiguous()
         if value.device.type != "cpu" or not value.is_contiguous():
             raise ValueError("Weights digest requires a contiguous CPU tensor")
-        key = (name, value.dtype, tuple(value.shape))
+        entries.append((name, value.dtype, tuple(value.shape), value.reshape(-1).view(torch.uint8)))
+    return entries
+
+
+def _config_text(model):
+    return json.dumps(model.config.to_dict(), sort_keys=True, separators=(",", ":"))
+
+
+def _entries_sha256(config, entries):
+    digest = hashlib.sha256(config.encode())
+    for name, dtype, shape, flat in entries:
+        key = (name, dtype, shape)
         header = _DIGEST_HEADERS.get(key)
         if header is None:
-            text = json.dumps((name, str(value.dtype), tuple(value.shape)), separators=(",", ":")).encode()
+            text = json.dumps((name, str(dtype), shape), separators=(",", ":")).encode()
             header = _DIGEST_HEADERS[key] = len(text).to_bytes(8, "big") + text
         # The exact bytes of the uint8 view, copied once by torch into Python-owned
         # memory: no Python integer per byte, no pointer reads, NumPy or pickle.
-        flat = value.reshape(-1).view(torch.uint8)
         data = bytearray(flat.numel())
         if data:
             torch.frombuffer(data, dtype=torch.uint8).copy_(flat)
@@ -116,16 +127,78 @@ def weights_sha256(model):
     return digest.hexdigest()
 
 
+def weights_sha256(model):
+    """Bind architecture/config and named tensors without NumPy or pickle."""
+    return _entries_sha256(_config_text(model), _weight_entries(model))
+
+
+class WeightsSnapshot:
+    """A private copy of exactly the bytes one weights_sha256 value digests.
+
+    ``digest`` is weights_sha256 of the copied bytes. ``matches(model)`` is True
+    only when the model's config text, state_dict names, dtypes and shapes
+    equal the copy's and every tensor is a contiguous CPU tensor whose bytes
+    equal the copy's; weights_sha256(model) is then ``digest``, because it is a
+    function of exactly those inputs. ``unchanged`` computes the digest itself
+    whenever ``matches`` is False, so it decides exactly as comparing
+    weights_sha256(model) with ``digest`` would.
+    """
+
+    def __init__(self, model):
+        self.config = _config_text(model)
+        entries = [(name, dtype, shape, flat.clone()) for name, dtype, shape, flat in _weight_entries(model)]
+        self.layout = tuple((name, dtype, shape) for name, dtype, shape, _ in entries)
+        # Zero padding to whole int64 words: torch.equal compares int64 words
+        # (bit patterns, as for uint8) many times faster than single bytes.
+        self.pad = torch.zeros(-sum(flat.numel() for *_, flat in entries) % 8, dtype=torch.uint8)
+        self.words = torch.cat([*(flat for *_, flat in entries), self.pad]).view(torch.int64)
+        self.digest = _entries_sha256(self.config, entries)
+
+    def matches(self, model):
+        if _config_text(model) != self.config:
+            return False
+        items = sorted(model.state_dict().items())
+        if len(items) != len(self.layout):
+            return False
+        flats = []
+        for (name, tensor), (known, dtype, shape) in zip(items, self.layout):
+            if (name != known or tensor.dtype != dtype or tuple(tensor.shape) != shape
+                    or tensor.device.type != "cpu" or not tensor.is_contiguous()):
+                return False
+            flats.append(tensor.reshape(-1).view(torch.uint8))
+        return torch.equal(torch.cat([*flats, self.pad]).view(torch.int64), self.words)
+
+    def unchanged(self, model):
+        return self.matches(model) or weights_sha256(model) == self.digest
+
+
 # Key of the per-frame cache entry that holds the exact leaf memo; no tree equals it.
 _LEAF_MEMO = object()
 _LEAF_MEMO_LIMIT = 65536
 _NODE_MEMO_LIMIT = 16384  # internal-node entries keep their (larger) trees alive
+_OBSERVATION_MEMO_BYTES = 64 << 20  # observation entries hold map cells, so bound their bytes
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
+# The other submodules an observation encoding reads.
+_MAP_MODULES = ("terrain", "road", "object_encoder", "map_cnn", "map_global")
 _BIT_DTYPES = {1: torch.uint8, 2: torch.int16, 4: torch.int32, 8: torch.int64}
+
+
+def _bit_state(tensors):
+    """Each tensor's (dtype, device, shape), and all their exact bits as CPU int64 words.
+
+    The words are the tensors' logical-order bytes, concatenated and zero padded
+    to whole words. For equal (dtype, device, shape) lists, two states' words are
+    equal exactly when every tensor's bits are, signed zeros and NaN payloads
+    included; torch.equal compares int64 words much faster than single bytes.
+    """
+    meta = tuple((value.dtype, value.device, value.shape) for value in tensors)
+    flats = [value.detach().reshape(-1).view(torch.uint8).to("cpu") for value in tensors]
+    flats.append(torch.zeros(-sum(flat.numel() for flat in flats) % 8, dtype=torch.uint8))
+    return meta, torch.cat(flats).view(torch.int64)
 
 
 def _bits(tensor):
@@ -172,6 +245,56 @@ def _exact_tree(tree):
         else:
             return False
     return True
+
+
+# Tokens of _record_key; no int, str or None equals them.
+_TRUE, _FALSE, _TUPLE = object(), object(), object()
+_RECORD_FIELDS = {}
+
+
+def _record_fields(kind):
+    """A getter of every field of a contract record class as a tuple, or None for any other type."""
+    getter = _RECORD_FIELDS.get(kind)
+    if getter is None and kind not in _RECORD_FIELDS:
+        if isinstance(kind, type) and is_dataclass(kind) and kind.__module__ == c.__name__:
+            names = tuple(field.name for field in fields(kind))
+            getter = attrgetter(*names) if len(names) > 1 else lambda item, names=names: tuple(getattr(item, name) for name in names)
+        _RECORD_FIELDS[kind] = getter
+    return getter
+
+
+def _record_key(value):
+    """An exact, injective key of a value of contract records, tuples, int, str, bool and None, or None.
+
+    The key lists every record's class and field values, every tuple's length
+    and elements, and each bool as its own token, so 1 and True stay distinct.
+    Equal keys therefore mean values of identical types and contents, which
+    every encoding reads identically. Anything else (floats, other types) has
+    no key and is never memoized.
+    """
+    out, stack = [], [value]
+    append, extend, pop = out.append, stack.extend, stack.pop
+    while stack:
+        item = pop()
+        kind = type(item)
+        if kind is int or kind is str or item is None:
+            append(item)
+        elif kind is tuple:
+            append(_TUPLE); append(len(item)); extend(item)
+        elif kind is bool:
+            append(_TRUE if item else _FALSE)
+        else:
+            getter = _record_fields(kind)
+            if getter is None:
+                return None
+            append(kind); extend(getter(item))
+    return tuple(out)
+
+
+def _has_army_operation(armies, kind):
+    """bool(c.army_operation_choices(armies, kind)), stopping at the first choice."""
+    return any(c.army_operation_maximum(armies, kind, source.ref, destination.ref) > 0
+               for first in armies for source in first.slots for second in armies for destination in second.slots)
 
 
 def _node(tag, *children):
@@ -511,7 +634,29 @@ class ContextualActorCritic(nn.Module):
     def __getstate__(self):
         state = super().__getstate__()
         state.pop("_leaf_memo_state", None)  # copies and pickles start without a memo
+        state.pop("_observation_memo_state", None)
         return state
+
+    def _walk_modules(self, names):
+        """(layout, references, tensors) of these submodules in eval mode without hooks, else None.
+
+        The layout names every module's identity, class, parameter, buffer and
+        submodule names and flat weight identities; holding the references keeps
+        those identities unique while a memo keeps the layout.
+        """
+        layout, tensors, referenced, modules = [], [], [], [self._modules.get(name) for name in names]
+        while modules:
+            module = modules.pop()
+            if (not isinstance(module, nn.Module) or module.training or module._forward_hooks
+                    or module._forward_pre_hooks or "forward" in module.__dict__):
+                return None
+            flat = tuple(module.__dict__.get("_flat_weights", ()))
+            referenced.append((module, flat))
+            layout.append((id(module), type(module), tuple(module._parameters), tuple(module._buffers),
+                           tuple(map(id, flat)), tuple(module._modules)))
+            tensors.extend(value for value in (*module._parameters.values(), *module._buffers.values()) if value is not None)
+            modules.extend(module._modules.values())
+        return layout, referenced, tensors
 
     def _leaf_memo(self):
         """Inference-only memo of text/number leaf and internal-node encodings, or None.
@@ -532,30 +677,20 @@ class ContextualActorCritic(nn.Module):
         if (torch.is_grad_enabled() or self.training or torch._C._is_any_autocast_enabled()
                 or nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks):
             return None
-        layout, tensors, referenced, modules = [], [], [], [self._modules.get(name) for name in _LEAF_MODULES]
-        while modules:
-            module = modules.pop()
-            if (not isinstance(module, nn.Module) or module.training or module._forward_hooks
-                    or module._forward_pre_hooks):
-                return None
-            flat = tuple(module.__dict__.get("_flat_weights", ()))
-            referenced.append((module, flat))
-            layout.append((id(module), type(module), tuple(module._parameters), tuple(module._buffers),
-                           tuple(map(id, flat)), tuple(module._modules)))
-            tensors.extend(value for value in (*module._parameters.values(), *module._buffers.values()) if value is not None)
-            modules.extend(module._modules.values())
+        walked = self._walk_modules(_LEAF_MODULES)
+        if walked is None:
+            return None
+        layout, referenced, tensors = walked
         context = (self.config, torch.is_inference_mode_enabled(), torch.get_num_threads(), layout)
         memo = self.__dict__.get("_leaf_memo_state")
-        if (memo is None or memo[0] != context or len(memo[2]) != len(tensors)
-                or not all((value.dtype, value.device, value.shape) == saved[0] and torch.equal(_bits(value), saved[1])
-                           for value, saved in zip(tensors, memo[2]))):
+        state = _bit_state(tensors)
+        if memo is None or memo[0] != context or memo[2][0] != state[0] or not torch.equal(memo[2][1], state[1]):
             # Referencing the modules and flat weights keeps every id in ``context`` unique.
-            snapshot = [((value.dtype, value.device, value.shape), _bits(value).clone()) for value in tensors]
-            memo = (context, referenced, snapshot, {"text": {}, "number": {}, "node": {}})
+            memo = (context, referenced, state, {"text": {}, "number": {}, "node": {}})
             self.__dict__["_leaf_memo_state"] = memo
         return memo[3]
 
-    def _encode_root(self, tree, cache):
+    def _encode_root(self, tree, cache, final=False):
         """Encode one top-level tree with this frame's cache, as ``_encode_tree`` does.
 
         Internal nodes come from the inference memo only while this tree and
@@ -571,7 +706,9 @@ class ContextualActorCritic(nn.Module):
         nodes = memo.get("node") if memo is not None and not torch.is_grad_enabled() else None
         if nodes is not None and cache.get(_EXACT_CACHE, True) and _exact_tree(tree):
             cache[_EXACT_CACHE] = True
-            return self._encode_tree(tree, cache, nodes)
+            # The last root of a cache that nothing reads afterwards needs no visit.
+            hit = nodes.get(tree) if final else None
+            return hit if hit is not None else self._encode_tree(tree, cache, nodes)
         cache[_EXACT_CACHE] = False
         return self._encode_tree(tree, cache)
 
@@ -678,15 +815,69 @@ class ContextualActorCritic(nn.Module):
                 or state.device != self.device or state.dtype != self.byte.weight.dtype):
             raise ValueError("State must match model dimensions, dtype and device")
 
-    def _frame_features(self, frame, cache):
-        """State-independent features; callers retain their own per-frame tree cache."""
+    def _frame_features(self, frame, cache, final=False):
+        """State-independent features; callers retain their own per-frame tree cache.
+
+        ``final`` means nothing reads the cache after these features.
+        """
         zero = self.byte.weight.new_zeros(self.config.feature_size)
         if frame.observation is None:
             map_features = own = zero
             cells = None
         else:
-            map_features, own, cells = self._encode_observation(frame.observation, cache)
-        return torch.cat((self._encode_root(frame.semantics, cache), map_features, own)), cells
+            map_features, own, cells = self._observation_features(frame.observation, cache)
+        return torch.cat((self._encode_root(frame.semantics, cache, final), map_features, own)), cells
+
+    def _observation_features(self, observation, cache):
+        """``_encode_observation``, reused for an observation with identical contents.
+
+        Only with the inference memo and a cache that holds nothing else yet, so
+        the encoding and the tree cache entries it adds are a pure function of
+        the observation (exactly keyed by ``_record_key``), ``config`` and the
+        tree and map submodules. A hit returns the stored tensors and adds
+        exactly the stored cache entries, as the computation would.
+        """
+        memo = cache.get(_LEAF_MEMO)
+        store = (self._observation_memo(memo) if memo is not None and len(cache) == 1
+                 and not torch.is_grad_enabled() else None)
+        key = _record_key(observation) if store is not None else None
+        if key is None:
+            return self._encode_observation(observation, cache)
+        entries = store["entries"]
+        hit = entries.get(key)
+        if hit is not None:
+            global_map, own, cells, added = hit
+            cache.update(added)
+            return global_map, own, cells
+        global_map, own, cells = self._encode_observation(observation, cache)
+        size = cells.element_size() * cells.numel()
+        if store["bytes"] + size > _OBSERVATION_MEMO_BYTES:
+            entries.clear()  # bounded memory; a miss only recomputes
+            store["bytes"] = 0
+        store["bytes"] += size
+        entries[key] = (global_map, own, cells, {k: v for k, v in cache.items() if k is not _LEAF_MEMO})
+        return global_map, own, cells
+
+    def _observation_memo(self, memo):
+        """Observation entries that belong to this leaf memo and the current map submodules, or None.
+
+        Like the leaf memo for the tree submodules, they are kept only while the
+        map submodules' identity, class, mode, layout and every parameter's
+        dtype, device, shape and bits equal the snapshot taken when they were
+        started; a new leaf memo (config, inference mode, thread count or tree
+        submodules changed) also starts them anew.
+        """
+        walked = self._walk_modules(_MAP_MODULES)
+        if walked is None:
+            return None
+        layout, referenced, tensors = walked
+        state = _bit_state(tensors)
+        store = self.__dict__.get("_observation_memo_state")
+        if (store is None or store["leaf"] is not memo or store["layout"] != layout or store["state"][0] != state[0]
+                or not torch.equal(store["state"][1], state[1])):
+            store = {"leaf": memo, "layout": layout, "referenced": referenced, "state": state, "entries": {}, "bytes": 0}
+            self.__dict__["_observation_memo_state"] = store
+        return store
 
     def _can_cache_prefix(self):
         # These exact modules have no stochastic or mutable training behavior.
@@ -699,7 +890,7 @@ class ContextualActorCritic(nn.Module):
                 or torch._C._is_any_autocast_enabled()
                 or nn.modules.module._global_forward_hooks or nn.modules.module._global_forward_pre_hooks
                 or any(name in self.__dict__ for name in
-                       ("forward_step", "_frame_features", "_encode_root", "_encode_tree", "_encode_observation",
+                       ("forward_step", "_frame_features", "_observation_features", "_encode_root", "_encode_tree", "_encode_observation",
                         "_check_step"))):
             return False
         return all(type(module) in allowed and not module._forward_hooks and not module._forward_pre_hooks
@@ -750,13 +941,13 @@ class ContextualActorCritic(nn.Module):
 
     def forward_step(self, frame, state):
         self._check_step(frame, state)
+        if frame.semantics is None:
+            return StepOutput(state, None)
         cache = {}
         memo = self._leaf_memo()
         if memo is not None:
             cache[_LEAF_MEMO] = memo
-        if frame.semantics is None:
-            return StepOutput(state, None)
-        vector, cells = self._frame_features(frame, cache)
+        vector, cells = self._frame_features(frame, cache, final=frame.frame.kind != "decision")
         state = self.gru(vector, state)
         decision = None
         if frame.frame.kind == "decision":
@@ -809,7 +1000,7 @@ class ContextualDistribution:
             return ("back",) + (("upgrade_stack",) if offers.stack_panel.affordable else ())
         if offers.armies:
             kinds = ("close",) + (("open_panel",) if offers.panel and offers.panel.controls else ())
-            kinds += tuple(kind for kind in ("split_stack", "merge_stacks", "swap_stacks") if c.army_operation_choices(offers.armies, kind))
+            kinds += tuple(kind for kind in ("split_stack", "merge_stacks", "swap_stacks") if _has_army_operation(offers.armies, kind))
             kinds += (("open_stack",) if any(slot.count for army in offers.armies for slot in army.slots) else ())
             if context.kind == "town" and any(army.role in ("garrison_hero", "visiting_hero") for army in offers.armies):
                 kinds += ("swap_garrison",)

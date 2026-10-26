@@ -439,15 +439,17 @@ class ContextualMixin:
         if history.decision is None or history.frames[-1] != history.decision:
             raise ValueError("Request must end at the exact current player decision")
         frames = encoded(history, side.unread_frames_from)
+        typed = tuple(history.frames[side.unread_frames_from:])
         # Internal continuation may have already delivered its boundary decision.
         if not frames and continuation:
             frames = [contract.encode_frame(history.decision)]
+            typed = (history.decision,)
         if not frames:
             raise ValueError("Empty contextual request history")
         if not continuation:
             side.unread_frames_from = len(history.frames)
         self.request = Request(side.color, player, "contextual", frames[-1], frames, frames,
-                               past_horizon=continuation)
+                               past_horizon=continuation, typed_frames=typed)
         self.request_time = time.monotonic()
         return self.request
 

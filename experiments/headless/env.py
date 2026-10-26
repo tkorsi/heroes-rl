@@ -84,6 +84,9 @@ class Request:
     # answered so the other player can reach its boundary, but transitions
     # from here on belong to no training trajectory.
     past_horizon: bool = False
+    # The environment's own validated contextual frames that ``frames`` encodes,
+    # one per record, when it holds them; None otherwise.
+    typed_frames: tuple | None = None
 
 
 @dataclass
@@ -98,6 +101,7 @@ class EpisodeEnd:
     manifest: dict
     done: bool = True
     bootstrap_v1_seq: dict = field(default_factory=dict)  # per player: that decision's history-v1 sequence, else None
+    final_typed_frames: dict = field(default_factory=dict)  # per player: the validated frames final_frames encodes, if held
 
 
 @dataclass
