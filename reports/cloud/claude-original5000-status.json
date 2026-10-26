@@ -1,27 +1,27 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-26T23:29:14Z",
+ "generated_utc": "2026-10-26T23:56:24Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
   "hard_stop_utc": "2026-10-27T11:00:00Z",
-  "heavy_work_stop_monotonic": 41689.85133165173,
-  "hard_stop_monotonic": 42289.85133165173,
+  "heavy_work_stop_monotonic": 39656.33168057152,
+  "hard_stop_monotonic": 40256.33168057152,
   "recorded_utc": "2026-10-26T18:16:32.554529Z",
-  "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+  "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
   "immutable": true
  },
  "watchdog": {
-  "pid": 294,
-  "kernel_starttime": 22589,
+  "pid": 238,
+  "kernel_starttime": 6576,
   "command": [
    "python3",
    "/home/claude/overnight/watchdog.py",
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-26T23:28:56.514891Z",
-  "seconds_to_heavy_stop": 40863.5,
+  "heartbeat_utc": "2026-10-26T23:56:09.914351Z",
+  "seconds_to_heavy_stop": 39230.1,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -30,6 +30,12 @@
     "pid": 294,
     "starttime": 22589,
     "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "utc": "2026-10-26T23:50:09.621962Z",
+    "pid": 238,
+    "starttime": 6576,
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb"
    }
   ],
   "reboots": [
@@ -58,81 +64,86 @@
      "schedule-m3-27710.json"
     ],
     "retired_to": "/home/claude/overnight/owned-stale/boot-3b357b50-ab00-4565-9348-e736b0dd027a"
+   },
+   {
+    "detected_utc": "2026-10-26T23:50:09.615305Z",
+    "previous_boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "previous": {
+     "heavy_stop_monotonic": 41689.85133165173,
+     "hard_stop_monotonic": 42289.85133165173
+    },
+    "retired_registrations": [
+     "bench-m1-F-482.json",
+     "driver-m1-F-407.json",
+     "ppo266-matrix3-473.json",
+     "ppo267-matrix4-2346.json",
+     "schedule-m3b-393.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
    }
   ]
  },
  "owned_processes": [
   {
-   "label": "bench-m1-F",
-   "pid": 482,
-   "starttime": 46669,
+   "label": "bench-m3-RH",
+   "pid": 1237,
+   "starttime": 35175,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
     "start",
     "--config",
-    "/home/claude/bench3/art/campaigns/m1-F/machine.json",
+    "/home/claude/bench3/art/campaigns/m3-RH/machine.json",
     "--profile"
    ],
-   "registered_utc": "2026-10-26T23:22:56.868201Z",
-   "live_descendants": 7
+   "registered_utc": "2026-10-26T23:54:55.450331Z",
+   "live_descendants": 8
   },
   {
-   "label": "driver-m1-F",
-   "pid": 407,
-   "starttime": 43942,
+   "label": "driver-m3-RH",
+   "pid": 1190,
+   "starttime": 34427,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
     "--name",
-    "m1-F",
+    "m3-RH",
     "--checkout",
-    "/home/claude/o5k-cand3"
+    "/home/claude/o5k-cand4"
    ],
-   "registered_utc": "2026-10-26T23:22:29.656948Z",
-   "live_descendants": 8
+   "registered_utc": "2026-10-26T23:54:48.011238Z",
+   "live_descendants": 9
   },
   {
-   "label": "ppo266-matrix3",
-   "pid": 473,
-   "starttime": 45750,
+   "label": "ppo-matrix5",
+   "pid": 1534,
+   "starttime": 36089,
    "alive": true,
    "command": [
     "/bin/bash",
-    "./run_matrix3.sh"
+    "./run_matrix5.sh"
    ],
-   "registered_utc": "2026-10-26T23:22:47.711200Z",
+   "registered_utc": "2026-10-26T23:55:04.598641Z",
    "live_descendants": 1
   },
   {
-   "label": "ppo267-matrix4",
-   "pid": 2346,
-   "starttime": 79587,
-   "alive": true,
-   "command": [
-    "/bin/bash",
-    "./run_matrix4.sh"
-   ],
-   "registered_utc": "2026-10-26T23:28:26.048519Z",
-   "live_descendants": 1
-  },
-  {
-   "label": "schedule-m3b",
-   "pid": 393,
-   "starttime": 43704,
+   "label": "schedule-m4",
+   "pid": 1173,
+   "starttime": 34362,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
-    "/home/claude/bench3/schedules/m3b.json"
+    "/home/claude/bench3/schedules/m4.json"
    ],
-   "registered_utc": "2026-10-26T23:22:27.249492Z",
-   "live_descendants": 9
+   "registered_utc": "2026-10-26T23:54:47.350534Z",
+   "live_descendants": 10
   }
  ],
- "phase": "measurement continues after a host reboot at about 23:15Z: m1-B, m1-CH and m1-XH finished before it; schedule m3b runs m1-F, m2-F, m2-XH, m2-CH, m2-B on CPUs 1-3; optimizer-only matrix on CPU 0 restarted with P (PR30), then B2 and C2; watchdog restarted with the same UTC deadlines",
+ "phase": "after a second host restart (about 23:48:50Z): schedule m4 on CPUs 1-3 runs the new exact candidate 1721220 (replayed text leaves) first (m3-RH, m3-RF), then m2-XH, m2-B (baselines only), m4-RH, m2-CH; optimizer-only queue 5 on CPU 0 checks the candidate bit for bit on batch 267 against m1-CH update 631, then the exact pair and PR30 on batches 267 and 266",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -199,7 +210,8 @@
   },
   "event_order": "Two accepted runs with the same seeds (s4-B, m1-B) differ in one of twelve games (asynchronous turn-end/new-day order), the same game where accepted and fast path once differed; m1-B equals the fast-path smoke in all twelve.",
   "local_runner_original_map_629_m1_CH": "m1-CH (fast exact, overlapped verification, 2 prefix helpers, alone on CPUs 1-3): baseline batches about 3.5 min each; training batch 266 worker 2891 s (games 145 s, PPO 2732 s), batch 267 864 s; stopped as requested after 2 updates",
-  "local_runner_original_map_629_m1_XH": "m1-XH (opt-in numerical experiment shared_graph_encodings with the same helpers): baseline batches 106 s and 191 s; training batch 266 477 s, batch 267 109 s; stopped as requested after 2 updates; batch 267 games differ from the exact ones because the weights differ"
+  "local_runner_original_map_629_m1_XH": "m1-XH (opt-in numerical experiment shared_graph_encodings with the same helpers): baseline batches 106 s and 191 s; training batch 266 477 s, batch 267 109 s; stopped as requested after 2 updates; batch 267 games differ from the exact ones because the weights differ",
+  "local_runner_original_map_629_m1_F": "m1-F (15ed404, serial verification, no helpers) lost to the second restart after its baseline batches: 140.1 s and 246.1 s (same games)"
  },
  "completed_checks": [
   "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",
@@ -219,10 +231,11 @@
  "official_lineage_touched": false,
  "official_run_launched": false,
  "teacher_touched": false,
- "candidate_commit": "6e0c5da (measured candidate checkout 15ed404; differences since are checks, tools and docs only)",
+ "candidate_commit": "1721220 (new exact candidate: replayed text leaves, under measurement); 15ed404 remains the measured fast-path checkout of m1-CH/m1-XH",
  "incidents": [
   "20:0x UTC: a pkill -f pattern matched my own waiting shell and killed only my tool shells (drivers verified alive); standing rule violated, waits now use kill -0 on recorded pids",
-  "about 23:15Z: the host rebooted (boot 3b357b50 -> b9c386f7); every process died. m1-XH had already finished; its summary and lossless compression were redone by hand. The watchdog refused to restart on a new boot; it was changed to re-anchor its monotonic deadlines to the unchanged UTC deadlines and to retire all registrations of the previous boot (tested), then restarted. Optimizer-only job P (PR30) was lost and rerun from the start; the remaining five campaigns run unchanged as schedule m3b."
+  "about 23:15Z: the host rebooted (boot 3b357b50 -> b9c386f7); every process died. m1-XH had already finished; its summary and lossless compression were redone by hand. The watchdog refused to restart on a new boot; it was changed to re-anchor its monotonic deadlines to the unchanged UTC deadlines and to retire all registrations of the previous boot (tested), then restarted. Optimizer-only job P (PR30) was lost and rerun from the start; the remaining five campaigns run unchanged as schedule m3b.",
+  "about 23:48:50Z: second host restart (boot b9c386f7 -> 72fdd1aa); lost m1-F (26 min in) and the second PR30 optimizer-only attempt; watchdog restarted through the reboot path with the same UTC deadlines; the optimizer-only queue now skips finished jobs"
  ],
  "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)"
 }

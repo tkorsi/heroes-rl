@@ -399,3 +399,50 @@ cutoff, as schedule m3b. The optimizer-only PR30 job on batch 266 was lost at ab
 restarted from the beginning, followed by the counterbalanced repeat (B2, C2) and a new pair on
 batch 267 from update 630 (C267, B267, and PR30 as P267), each compared with m1-CH's own update
 631.
+
+### O13. A second host restart, and an exact cut of the repeated text-leaf forward (23:45 to 00:00 UTC)
+
+The host restarted again at about 23:48:50 UTC (boot b9c386f7 to 72fdd1aa), 26 minutes into
+m1-F (fast path with serial verification and no helpers, the macOS default) and 26 minutes into
+the second attempt of the optimizer-only PR30 job. The watchdog restarted through the same
+reboot path (UTC deadlines unchanged; five registrations of the previous boot retired). m1-F is
+incomplete and is not a training measurement; its two baseline batches finished (140.1 s and
+246.1 s, the same eight games as m1-B and m1-CH) and are kept. Both lost jobs are recorded in
+the schedule and matrix logs. I do not know why the host restarted; memory use at the last
+sample was about 4 GB of 16. The remaining measurements are now queued so that the most
+valuable ones run first, and the optimizer-only queue skips any job whose result file already
+exists, so a further restart costs only the job in progress.
+
+O12 showed where the exact path's time goes: the opt-in experiment, which shares every equal
+leaf and subtree within a minibatch graph, cuts the forward from about 850 s to 50 s and the
+backward from about 1,600 s to 60 s, so almost all of the exact cost is repeated evaluation of
+identical subtrees. Sharing the backward cannot be exact (summing the incoming gradients first
+changes the parameters' summation order), but sharing the forward of a text leaf can be. In the
+reference, a non-empty text leaf is `text_gru(byte(indices).unsqueeze(0))[1][0, 0]`: about 16
+autograd nodes per character, reading only constant byte indices and the leaf parameters. Its
+nodes are created contiguously, so when the engine starts the chain (the highest-numbered ready
+node) every node created later is already done, and while the chain runs no other node can
+become ready (all its gradients flow to nodes created earlier) and no earlier node can outrank
+it: the chain runs as one uninterrupted sequence and delivers its contributions to `byte.weight`
+and the four GRU tensors in a fixed order.
+
+Candidate 1721220 (on top of b80c51a) keeps that order exactly. Within each minibatch graph the
+first occurrence of a text builds the leaf's graph once on detached aliases of the parameters
+(the same `F.embedding` and `_VF.gru` calls `nn.Embedding` and `nn.GRU` make) and keeps it; hooks
+on the nodes that feed each alias record every contribution as it is computed. Every occurrence
+is one autograd node whose value is the shared output and whose backward replays the leaf's
+graph with this occurrence's own incoming gradient and returns each contribution separately: a
+parameter is an input once per contribution, so the engine adds them to the parameter's gradient
+one by one, in the reference order. The per-frame cache, all other modules, the loss and the
+optimizer are untouched. Tests (tests/test_replayed_text_leaves.py): three complete PPO updates
+(several windows, minibatches and epochs, two rollouts) with and without the replay have
+bit-identical reports, weights, gradients, Adam state and generator; window values and
+gradients are bit-identical while leaves of several characters do repeat; a negative control
+that sums each occurrence's contributions before adding them is detected (gradients differ,
+values do not); the replay is inert with forward, backward or global backward hooks, is never
+pickled or copied, is cleared after a failed minibatch, and fails closed on an in-place
+parameter change inside the context, a replaced parameter, or a higher-order gradient. A
+standalone check with 32 occurrences per distinct leaf: forward 16.3 s to 0.7 s, backward 11.8 s
+to 13.8 s (the replay's own cost), bit-identical. The real-data checks (optimizer-only on batch
+267 from the exact update 630, compared with m1-CH's own update 631; on batch 266 against the
+fast path's C) and the campaign m3-RH are running.
