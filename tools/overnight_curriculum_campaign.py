@@ -307,16 +307,79 @@ def prepare_release():
 
 
 def analysis(v):
-    result=dict(schema='heroes-curriculum-campaign-v1-analysis',timestamp_utc=utc(),status=v['status'],
+    admitted=[b for b in v['batches'] if b['mode']=='training' and b.get('checkpoint_verified')]
+    evaluations=[b for b in v['batches'] if b['mode']!='training' and b.get('status')=='passed']
+    result=dict(schema='heroes-overnight-curriculum-analysis-v1',timestamp_utc=utc(),status=v['status'],
         new_updates=v['new_updates'],progress=v['latest_progress'],training_outcomes_by_seat={},heldout_by_seat={},
-        scope='Open8x8 easier-start distribution, not original full-map performance',
-        interpretation='Four fixed games per seat are descriptive paired checks, not evidence of general strategic improvement.')
+        training_games=sum(b['completed_games'] for b in admitted),evaluation_games=sum(b['completed_games'] for b in evaluations),
+        admitted_decisions=sum(b['training_samples'] for b in admitted),new_adam_steps=sum(b['optimizer_steps'] for b in admitted),
+        failed_batches=[{k:b.get(k) for k in ('sequence','seat','mode','error','cleanup_error','preservation_error','plan','report')} for b in v['batches'] if b.get('status')=='failed'],
+        scope='Seat-specific open8x8 easier-start curriculum, not original full-map performance',
+        interpretation='Repeated four-game fixed checks per seat are descriptive paired evidence; curriculum wins or changed weights alone do not prove general strategy improvement.')
+    behavior=Counter();battle_roles=Counter();reported_wall=0.;failed_attempts=unstarted=0
+    for batch in v['batches']:
+        if not batch.get('report'):continue
+        bound=batch['report'];require(binding(bound['path'])==bound,'Analysis report changed')
+        report=json.loads(Path(bound['path']).read_text())
+        failed_attempts+=sum(a['status']=='failed' for a in report['attempts'])
+        unstarted+=sum(a['status']=='not_started' for a in report['attempts'])
+        if batch not in admitted and batch not in evaluations:continue
+        if batch in admitted:reported_wall+=report['execution_wall_seconds']
+        for attempt in report['attempts']:
+            require(attempt['status']=='passed' and attempt['replay_verified'] and attempt['identity_verified'],'Analysis contains unverified game')
+            bound=attempt['behavior'];require(binding(bound['path'])==bound,'Behavior evidence changed')
+            metrics=json.loads(Path(bound['path']).read_text());require(metrics['status']=='complete' and metrics['coverage']['complete'],'Incomplete own-history behavior')
+            agg=metrics['aggregate']
+            for output,group,key in [('recruitment_completed_actions','recruitment','completed'),
+                ('across_army_operations','army_operations','across_armies'),
+                ('visible_net_army_redistribution','army_operations','observed_cross_army_net_count_redistribution'),
+                ('movement_attempts','movement','attempts'),('movement_endpoint_changes','movement','endpoint_changes'),
+                ('moves_toward_visible_opponent_town','movement','targets_visible_opponent_town')]:behavior[output]+=agg[group][key]
+            behavior['town_capture_evidence']+=agg['town_capture_evidence']
+            folder=Path(attempt['episode_directory']);manifest=json.loads((folder/'manifest.json').read_text())
+            color=('red','blue')[attempt['learner_player']]
+            # Select the history through its manifest rather than a guessed version.
+            from experiments.headless.builtin_evidence import manifest_profile
+            declaration=manifest['players'][color][manifest_profile(manifest).history_key]
+            history_path=folder/declaration['path'];history_bytes=history_path.read_bytes()
+            require(hashlib.sha256(history_bytes).hexdigest()==declaration['sha256'],'Analysis own history changed')
+            for line in history_bytes.splitlines():
+                frame=json.loads(line)
+                if frame.get('kind')=='event' and frame.get('event',{}).get('kind')=='battle_start':battle_roles[frame['event']['side']]+=1
+    result.update(failed_game_attempts=failed_attempts,unstarted_games=unstarted,behavior_totals=dict(behavior),
+        battle_start_roles=dict(battle_roles),reported_training_batch_wall_seconds=reported_wall,
+        admitted_decisions_per_reported_batch_second=result['admitted_decisions']/reported_wall if reported_wall else None,
+        throughput_scope='Complete training batch capture, audit, native replay, PPO and checkpoint/supervisor wall; excludes private Git publication and acceptance.',
+        behavior_scope='Verified training and heldout own player-visible histories only; controls, diagnostic and failed/partial games excluded.',
+        behavior_limitations=['Recruitment counts actions, not unique units. Visible net transfer is not unique units or strategic concentration.',
+            'Attacker role alone does not distinguish attacks on neutrals from attacks on the opponent.'])
     for seat in (0,1):
-        color=('red','blue')[seat]
-        rows=[b for b in v['batches'] if b['seat']==seat]
-        result['training_outcomes_by_seat'][color]=dict(Counter(o for b in rows if b['mode']=='training' and b.get('checkpoint_verified') for o in b['outcomes']))
-        result['heldout_by_seat'][color]={mode:[dict(parent=b['parent'],outcomes=b.get('outcomes'),status=b['status']) for b in rows if b['mode']==mode] for mode in ('baseline','final')}
+        color=('red','blue')[seat];rows=[b for b in v['batches'] if b['seat']==seat]
+        outcomes=[o for b in admitted if b['seat']==seat for o in b['outcomes']]
+        result['training_outcomes_by_seat'][color]=dict(natural_wins=outcomes.count('win'),natural_losses=outcomes.count('loss'),valid_cutoffs=outcomes.count(None))
+        result['heldout_by_seat'][color]={mode:[dict(parent=b['parent'],outcomes=b.get('outcomes'),status=b['status']) for b in rows if b['mode']==mode] for mode in ('baseline','periodic','final')}
+    result['valid_final_paired_comparison_available']=all(any(b['mode']=='final' and b['seat']==seat and b.get('status')=='passed'
+        and b['parent']==v['latest_verified_parent'] for b in v['batches']) for seat in (0,1))
     return result
+
+
+def restore_final_copies(v,state):
+    from types import SimpleNamespace
+    parent=Path(v['latest_verified_parent']['path'])
+    plan=json.loads(parent.read_text());report=json.loads(Path(state.bindings['report']['path']).read_text())
+    imported=parent==c.PARENT
+    migration=SimpleNamespace(checkpoint_options={'historical_torch_version':plan['source']['torch']}) if imported else None
+    folders=list(map(Path,c.context()['restore_backup_directories'])) if imported else [
+        c.SESSION.parent/'checkpoints'/parent.parent.name,
+        REPO/'checkpoints/overnight-20261026/campaign-v1'/c.SESSION.parent.name/parent.parent.name]
+    proofs=[]
+    for folder in folders:
+        for kind in ('policy','resume'):
+            actual=binding(folder/f'after-{kind}.pt');expected=state.bindings[kind]
+            require(all(actual[k]==expected[k] for k in ('sha256','bytes')),'Final checkpoint copy differs')
+        proof=verify_pair(folder/'after-resume.pt',folder/'after-policy.pt',plan,report,migration=migration)
+        proofs.append(dict(directory=str(folder),restore=proof))
+    return proofs
 
 
 def launch(recover_from=None):
@@ -360,7 +423,9 @@ def launch(recover_from=None):
         result.update(cleanup_errors=errors,owned_cleanup_verified=not errors,stopped_utc=utc(),within_budget=remaining(s)>=0)
         v=json.loads((c.SESSION.parent/'campaign-report.json').read_text())
         if result.get('error') or errors:v.update(status='stopped_failure',error=result.get('error') or str(errors))
-        result['latest_restore']=c.restore(v['latest_verified_parent']['path']).bindings
+        final_state=c.restore(v['latest_verified_parent']['path'])
+        result['latest_restore']=final_state.bindings
+        result['final_independent_restores']=restore_final_copies(v,final_state)
         v['owned_cleanup_verified']=not errors
         report=analysis(v);atomic(c.SESSION.parent/'analysis.json',report);v['analysis']=binding(c.SESSION.parent/'analysis.json');save(v)
         atomic(c.SESSION.parent/'controller-result.json',result)
