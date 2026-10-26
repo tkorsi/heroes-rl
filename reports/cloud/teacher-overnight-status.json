@@ -1,11 +1,11 @@
 {
-  "timestamp_utc": "2026-10-26T04:32:39.745952+00:00",
-  "phase": "stopped_failure",
+  "timestamp_utc": "2026-10-26T04:58:58.989391+00:00",
+  "phase": "running",
   "campaign_launched": true,
-  "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/session.json",
+  "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/session.json",
   "release_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/release.json",
-  "controller_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/controller-result.json",
-  "campaign_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/campaign-report.json",
+  "controller_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/controller-result.json",
+  "campaign_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/campaign-report.json",
   "source": {
     "git_commit": "30629a84bc3048ee64ae4f91186fbc0832e4ca25",
     "tracked_worktree_dirty": false,
@@ -59,20 +59,20 @@
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
   "heldout_games": 64,
-  "admitted_training_games": 128,
-  "ppo_updates": 32,
+  "admitted_training_games": 132,
+  "ppo_updates": 33,
   "latest_verified_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/plan.json",
-    "sha256": "2062213d932b8b8898b07b2e4f54a65f5636b26f4b0c3f2af5b1573258f72e15",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0140-seat0/plan.json",
+    "sha256": "ce132a9fb8f2234271527944ace93a7bad1a5aee73b3350f858aac3c626b6772",
     "bytes": 58426
   },
   "latest_preserved_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/plan.json",
-    "sha256": "2062213d932b8b8898b07b2e4f54a65f5636b26f4b0c3f2af5b1573258f72e15",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0140-seat0/plan.json",
+    "sha256": "ce132a9fb8f2234271527944ace93a7bad1a5aee73b3350f858aac3c626b6772",
     "bytes": 58426
   },
   "ownership": "cloud",
-  "remaining_compute_seconds": 19340.25398373604,
+  "remaining_compute_seconds": 17761.010546684265,
   "launch_utc": "2026-10-26T03:26:51.744627+00:00",
   "compute_deadline_utc": "2026-10-26T09:55:00+00:00",
   "hard_deadline_utc": "2026-10-26T10:00:00+00:00",
@@ -86,7 +86,7 @@
       "loss": 19
     }
   },
-  "error": "RuntimeError: Command '['git', '-C', '/workspace/heroes-overnight-private', 'push', 'origin', 'HEAD:refs/heads/codex/teacher-overnight-20261026']' returned non-zero exit status 128.",
+  "error": null,
   "final_analysis": {
     "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/analysis.json",
     "sha256": "d5c7cdf31f45b5eedcbb0f3aa6e7dbb323f6a98cc938588242d5af428250b6ff",
@@ -94,30 +94,30 @@
   },
   "owned_cleanup_verified": true,
   "cloud_training_started": true,
-  "new_admitted_games": 128,
-  "new_ppo_updates": 32,
+  "new_admitted_games": 132,
+  "new_ppo_updates": 33,
   "latest_complete_progress": {
-    "updates": 286,
-    "rollouts": 1144,
-    "decisions": 77321
+    "updates": 287,
+    "rollouts": 1148,
+    "decisions": 77450
   },
   "next_periodic_update": 291,
   "current_activity": {
-    "mode": "periodic",
-    "sequence": 286,
+    "mode": "training",
+    "sequence": 141,
     "seat": 1,
-    "status": "failed",
-    "started_utc": "2026-10-26T04:32:11.008713+00:00",
-    "finished_utc": "2026-10-26T04:32:33.356844+00:00"
+    "status": "running",
+    "started_utc": "2026-10-26T04:58:48.186713+00:00",
+    "finished_utc": null
   },
   "evaluation_natural_outcomes": {
     "loss": 22,
-    "win": 38
+    "win": 42
   },
   "natural_outcomes": {
-    "loss": 26,
-    "win": 102
+    "loss": 27,
+    "win": 105
   },
   "cutoffs": 0,
-  "failed_batches": 2
+  "failed_batches": 1
 }
