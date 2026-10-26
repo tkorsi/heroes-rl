@@ -81,3 +81,14 @@ dummy child in a separate session was terminated with its parent and left no
 live owned process. The whole study is capped at 2700 seconds, without any
 extension on failure. The dedicated probe is fail-fast after a failed row;
 unstarted rows remain recorded. These corrections precede all study gameplay.
+
+### Preserved startup correction
+
+Study1 stopped at 12:36:21 UTC before any game: resolving the selected virtual
+environment's Python symlink launched Anaconda's other Torch installation.
+The strict checkpoint loader rejected it. Zero games, samples and updates
+resulted; all 72 scheduled games remained unstarted. The fresh study2 keeps the
+original 13:21:20.318085 UTC diagnostic deadline and the same input bytes/seeds.
+The runner now preserves the virtual-environment interpreter path and anchors
+wrapper ownership to its original start time and command before any signalling.
+No game-rule, learner or checkpoint check was weakened.

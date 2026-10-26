@@ -43,9 +43,12 @@ def process_table():
     return result
 
 
-def owned_processes(child_pid, root, output):
+def owned_processes(child_pid, root, output, wrapper_identity=None):
     table = process_table()
-    found = {child_pid} if child_pid in table else set()
+    current = table.get(child_pid)
+    found = ({child_pid} if wrapper_identity and current and
+             (current['start'], current['command']) ==
+             (wrapper_identity['start'], wrapper_identity['command']) else set())
     # Cold games create their own sessions; their unique log/evidence argument
     # also identifies them after an abruptly terminated parent is reparented.
     binaries = [str(root / 'vcmi/build/bin' / name) + ' ' for name in ('vcmiclient', 'vcmireplay', 'vcmiserver')]
@@ -79,12 +82,15 @@ def execute(args):
     sources = {str(root): identity(root) for root, _ in variants.values()}
     started = time.monotonic()
     deadline = started + args.wall_seconds
+    if args.deadline_unix is not None:
+        deadline = min(deadline, started + args.deadline_unix - time.time())
     rows = []
     names = list(variants)
     schedule = [{'round': r + 1, 'variant': name, 'seat': seat}
                 for r in range(3) for name in names[r:] + names[:r] for seat in (0, 1)]
     plan = {'schema': 'heroes-checkpoint412-acceleration-study-v1', 'started_utc': utc(),
             'wall_seconds': args.wall_seconds, 'compute_deadline_monotonic': deadline,
+            'absolute_deadline_unix': args.deadline_unix,
             'schedule': schedule, 'source': sources, 'input': str(args.input.resolve()),
             'training_samples': 0, 'ppo_updates': 0, 'optimizer_steps': 0}
     write(out / 'plan.json', plan)
@@ -104,7 +110,8 @@ def execute(args):
         if remaining < 30:
             row.update(status='unstarted_budget')
             break
-        command = [str(args.python.resolve()), str(root / 'tools/validate_checkpoint_acceleration.py'),
+        # Resolving a venv's Python symlink loses its environment and wheel pins.
+        command = [str(args.python.expanduser().absolute()), str(root / 'tools/validate_checkpoint_acceleration.py'),
                    '--input', str(args.input.resolve()), '--backend', backend,
                    '--binary', str(root / 'vcmi/build/bin/vcmiclient'),
                    '--replay-binary', str(root / 'vcmi/build/bin/vcmireplay'),
@@ -123,12 +130,13 @@ def execute(args):
         with (out / (name + '.log')).open('w') as log:
             child = subprocess.Popen(command, cwd=root, env=env, stdout=log,
                                      stderr=subprocess.STDOUT, start_new_session=True)
-            row.update(pid=child.pid, process_group=child.pid)
+            wrapper_identity = process_table().get(child.pid)
+            row.update(pid=child.pid, process_group=child.pid, wrapper_identity=wrapper_identity)
             write(out / 'result.json', result)
             try:
                 code = child.wait(timeout=min(remaining, 1350))
             except subprocess.TimeoutExpired:
-                owned = owned_processes(child.pid, root, out / name)
+                owned = owned_processes(child.pid, root, out / name, wrapper_identity)
                 row['timeout_owned_processes'] = owned
                 stop_verified(owned, signal.SIGTERM)
                 try:
@@ -140,14 +148,14 @@ def execute(args):
                 code = child.returncode
                 row['timeout'] = True
         row.update(returncode=code, finished_utc=utc(), wall_seconds=time.monotonic() - wall_start)
-        leftovers = owned_processes(child.pid, root, out / name)
+        leftovers = owned_processes(child.pid, root, out / name, wrapper_identity)
         if leftovers:
             row['unexpected_owned_processes'] = leftovers
             stop_verified(leftovers, signal.SIGTERM)
             time.sleep(1)
             stop_verified(leftovers, signal.SIGKILL)
             code = code or 1
-        row['owned_processes_after'] = owned_processes(child.pid, root, out / name)
+        row['owned_processes_after'] = owned_processes(child.pid, root, out / name, wrapper_identity)
         if row['owned_processes_after']:
             code = code or 1
         receipt = out / name / 'validation-receipt.json'
@@ -177,6 +185,8 @@ if __name__ == '__main__':
     for key in ('base', 'accelerated', 'python', 'input', 'data', 'output'):
         parser.add_argument('--' + key, type=Path, required=True)
     parser.add_argument('--wall-seconds', type=int, default=2700)
+    parser.add_argument('--deadline-unix', type=float,
+                        help='Optional original absolute deadline, retained for a fresh setup-repair attempt')
     args = parser.parse_args()
     if not 60 <= args.wall_seconds <= 2700:
         parser.error('The diagnostic wall limit must be between 60 and 2700 seconds')
