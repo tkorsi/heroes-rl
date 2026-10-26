@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T01:54:36.894628+00:00",
+  "timestamp_utc": "2026-10-26T02:02:58.012927+00:00",
   "phase": "waiting_final_local_handoff",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
@@ -9,12 +9,21 @@
   "new_ppo_updates": 0,
   "checkpoint": null,
   "verified_asset_files": 8,
-  "watchdog_pid": 22133,
+  "watchdog_pid": 26662,
   "blocker": "Final verified local ownership transfer not yet published",
-  "next_step": "Start committed detached cloud controller; wait for final local ownership transfer; no cloud gameplay yet",
-  "offline_control_tests": 14,
+  "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
+  "offline_control_tests": 15,
   "private_git_read_access": true,
-  "canonical_build": "in_progress",
+  "canonical_build": "passed",
   "remaining_compute_seconds": 28823.105365991592,
-  "autonomous_controller_pid": 26663
+  "autonomous_controller_pid": 26663,
+  "handoff_poller_pid": 26664,
+  "autonomous_bootstrap_commit": "245e317b100fccb757f2ec620e0fdda2f652051c",
+  "autonomous_command": [
+    "/workspace/heroes-rl/.venv/bin/python",
+    "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_autocontinue.py"
+  ],
+  "duplicate_exclusion": "exclusive live flock plus immutable handoff claim and session lock",
+  "second_real_controller_rejected": true,
+  "absolute_child_guard_control_passed": true
 }

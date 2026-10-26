@@ -30,6 +30,83 @@ def marker():
 
 
 class HandoffControls(unittest.TestCase):
+    def test_complete_fake_bundle_materializes_without_rewriting_and_rejects_tamper(self):
+        """Exercise the actual handoff reader, with mocked Git blobs, no tensors/gameplay."""
+        def encoded(value):return (json.dumps(value,indent=2)+'\n').encode()
+        def bound(path,data):return dict(path=str(path),sha256=h.digest(data),bytes=len(data))
+        old=h.OLD/'local-curriculum-update146/campaign-v3'
+        folder=old/'batches/train-0053-seat1'
+        previous=old/'batches/train-0052-seat0'
+        original={}
+        def add(name,path,data):original[name]=(str(path),data)
+        m=marker();m.update(archive_commit='c'*40,public_commit='a'*40,
+            initial_checkpoint_dependency=bound(previous/'execution/after-policy.pt',b'old-policy'),
+            cumulative_adam_steps=1900,next_unused_training_sequence=54)
+        from experiments.learner.curriculum_training import schedule
+        m['next_training_schedule']=schedule(54,0)
+        m['heldout_schedule_by_seat']={str(s):schedule(200,s,True) for s in (0,1)}
+        source=m['source'];source['source_sha256']={'experiments/learner/example.py':h.digest(b'unchanged source')}
+        m['runtime']={'test':'Mac historical bytes'}
+        saved=dict(policy=bound(folder/'execution/after-policy.pt',b'final-policy'),
+            resume=bound(folder/'execution/after-resume.pt',b'final-resume'),weights_sha256='f'*64)
+        plan=dict(source=source,runtime=m['runtime'],configuration=m['configuration'],
+            checkpoint_metadata={'initial_checkpoint':m['initial_checkpoint_dependency']})
+        add('plan.json',folder/'plan.json',encoded(plan))
+        plan_binding=bound(folder/'plan.json',encoded(plan))
+        report=dict(plan_sha256=plan_binding['sha256'],after_checkpoint=saved)
+        add('report.json',folder/'execution/report.json',encoded(report))
+        add('after-policy.pt',folder/'execution/after-policy.pt',b'final-policy')
+        add('after-resume.pt',folder/'execution/after-resume.pt',b'final-resume')
+        add('dependencies/initial-policy.pt',previous/'execution/after-policy.pt',b'old-policy')
+        add('dependencies/parent-plan.json',previous/'plan.json',b'previous-plan')
+        add('dependencies/parent-report.json',previous/'execution/report.json',b'previous-report')
+        add('dependencies/parent-resume.pt',previous/'execution/after-resume.pt',b'previous-resume')
+        session=dict(m['clock']);add('session.json',old/'session.json',encoded(session))
+        add('window.json',old/'window.json',encoded(m['clock']))
+        controller=dict(owned_cleanup_verified=True,stopped_utc=m['local_stop'],finalized_utc=m['local_finalization'],
+            latest_restore={'policy':saved['policy']})
+        add('controller-result.json',old/'controller-result.json',encoded(controller))
+        raw_files={folder.name+'/plan.json':encoded(plan),folder.name+'/execution/report.json':encoded(report)}
+        def archive(files):
+            stream=io.BytesIO()
+            with tarfile.open(fileobj=stream,mode='w:gz') as t:
+                for name,data in files.items():
+                    info=tarfile.TarInfo(name);info.size=len(data);t.addfile(info,io.BytesIO(data))
+            return stream.getvalue()
+        raw=archive(raw_files);raw_path='results/local-curriculum-update146/last/evidence.tar.gz'
+        preserved=dict(commit='b'*40,archive=bound(h.OLD/'private-local365-state'/raw_path,raw))
+        journal=dict(status='finished_budget_reserve',latest_progress=m['progress'],latest_verified_parent=plan_binding,
+            new_updates=m['local_ppo_updates'],batches=[dict(mode='training',sequence=53,plan=plan_binding,private_preservation=preserved)])
+        add('campaign-report.json',old/'campaign-report.json',encoded(journal))
+        for seat in (0,1):add(f'maps/curriculum-3-{seat}.vmap',h.OLD/f'local-curriculum-update146/maps/curriculum-3-{seat}.vmap',bytes([seat]))
+        inventory={name:dict(original=bound(path,data),committed_path=h.PREFIX+'bundle/'+name,sha256=h.digest(data),bytes=len(data)) for name,(path,data) in original.items()}
+        files={'bundle/'+name:data for name,(path,data) in original.items()}
+        files['bundle/shutdown-proof.json']=encoded(dict(local_auto_resume=False,controllers=[{'owned_command_absent':True}]))
+        restore=dict(exact_model_adam_rng_progress_pool=True,progress=m['progress'])
+        files['bundle/restore-receipt.json']=encoded(dict(canonical=restore,copied=restore))
+        bundle=archive(files)
+        m.update(files=inventory,checkpoint=saved,local_session=inventory['session.json']['original'],
+            archive=dict(path=h.PREFIX+'bundle.tar.gz',sha256=h.digest(bundle),bytes=len(bundle)),
+            maps_by_seat={str(s):inventory[f'maps/curriculum-3-{s}.vmap'] for s in (0,1)},prior_batch_archives=['b'*40])
+        for key,name in [('shutdown_proof','shutdown-proof.json'),('restore_evidence','restore-receipt.json')]:
+            m[key]=dict(commit='c'*40,path=h.PREFIX+'bundle/'+name,sha256=h.digest(files['bundle/'+name]))
+        blobs={'d'*40+':'+h.PREFIX+'ready.json':encoded(m),'c'*40+':'+h.PREFIX+'bundle.tar.gz':bundle,
+            'c'*40+':'+h.PREFIX+'inventory.json':encoded(inventory),'b'*40+':'+raw_path:raw,
+            h.SOURCE+':experiments/learner/example.py':b'unchanged source'}
+        blobs.update({'c'*40+':'+h.PREFIX+name:data for name,data in files.items()})
+        def git(repo,*args):
+            if args[0]=='merge-base':return b''
+            if args[0]=='cat-file':return b'commit\n'
+            self.assertEqual(args[0],'show');return blobs[args[1]]
+        with tempfile.TemporaryDirectory() as td,patch.object(h,'git',side_effect=git),patch.object(h.time,'time',return_value=h.LOCAL_START+7500):
+            root=Path(td)/'valid';receipt=h.materialize('private','d'*40,root,'public')
+            self.assertTrue(receipt['ownership_transfer_verified'])
+            self.assertEqual(Path(receipt['parent']['plan']['path']).read_bytes(),encoded(plan))
+            self.assertEqual(receipt['marker']['clock']['started_monotonic'],999999999)
+            self.assertFalse(receipt['historical_metadata_rewritten'])
+            blobs['c'*40+':'+h.PREFIX+'bundle.tar.gz']=bundle+b'changed'
+            with self.assertRaisesRegex(ValueError,'hash/size'):h.materialize('private','d'*40,Path(td)/'invalid','public')
+
     def test_fresh_final_marker_and_fail_closed_variants(self):
         now=h.LOCAL_START+7500
         self.assertEqual(h.validate_marker(marker(),now)['final_update'],200)

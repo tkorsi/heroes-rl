@@ -195,18 +195,25 @@ def worker():
         v=json.loads(Path(s['recovery_from']['path']).read_text());v.update(status='running',error=None)
         parent=Path(v['latest_verified_parent']['path'])
         c.restore(parent)
-    save(v);durations=[60.];seq=1+max((b['sequence'] for b in v['batches'] if b['mode']=='training'),default=c.context()['next_unused_training_sequence']-1)
+    gate=json.loads((c.BASE/'study4/study-report.json').read_text())
+    gate_durations=[r['finished_unix']-r['started_unix'] for r in gate['attempts'] if r['kind']=='policy']
+    save(v);durations=[max(60.,max(gate_durations))];seq=1+max((b['sequence'] for b in v['batches'] if b['mode']=='training'),default=c.context()['next_unused_training_sequence']-1)
     try:
         for seat in (0,1):
             if not any(b['mode']=='baseline' and b['seat']==seat and b['status']=='passed' for b in v['batches']):
-                run(v,c.PARENT,c.context()['progress']['updates'],seat,'baseline')
+                require(enough_for_batch(c.session(),durations),'Insufficient measured reserve for frozen baseline')
+                start=time.monotonic();run(v,c.PARENT,c.context()['progress']['updates'],seat,'baseline');durations.append(time.monotonic()-start)
         while enough_for_batch(c.session(),durations):
             started=time.monotonic();parent=run(v,parent,seq,seq%2,'training');seq+=1;durations.append(time.monotonic()-started)
             if v['latest_progress']['updates']%5==0:
                 require(enough_for_batch(c.session(),durations),'Periodic evaluation due but insufficient safe time')
-                for seat in (0,1):run(v,parent,v['latest_progress']['updates'],seat,'periodic')
+                for seat in (0,1):
+                    require(enough_for_batch(c.session(),durations),'Insufficient measured reserve for due paired evaluation')
+                    run(v,parent,v['latest_progress']['updates'],seat,'periodic')
         if enough_for_batch(c.session(),durations):
-            for seat in (0,1):run(v,parent,v['latest_progress']['updates'],seat,'final')
+            for seat in (0,1):
+                if not enough_for_batch(c.session(),durations):break
+                run(v,parent,v['latest_progress']['updates'],seat,'final')
         v['status']='finished_budget_reserve'
     except Exception as exc:v.update(status='stopped_failure',error=f'{type(exc).__name__}: {exc}')
     finally:v['stopped_utc']=utc();save(v)
