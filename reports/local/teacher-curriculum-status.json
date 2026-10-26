@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T02:38:10.271408+00:00",
+  "timestamp_utc": "2026-10-26T02:58:00.545446+00:00",
   "phase": "running",
   "campaign_launched": true,
   "actual_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
@@ -59,17 +59,17 @@
   },
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
-  "heldout_games": 136,
-  "admitted_training_games": 324,
-  "ppo_updates": 81,
+  "heldout_games": 168,
+  "admitted_training_games": 404,
+  "ppo_updates": 101,
   "latest_verified_checkpoint": {
-    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0080-seat0/plan.json",
-    "sha256": "1cdee344be12d4ee062ff6ec32b1d59be1729e21ff7694428fbddcd36dc93ed5",
-    "bytes": 57868
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0100-seat0/plan.json",
+    "sha256": "bcd587f910404b451095e059bfd6a3d564144ac4ff40425e094f1ca3e1333f7e",
+    "bytes": 57869
   },
   "latest_preserved_checkpoint": {
-    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0080-seat0/plan.json",
-    "sha256": "1cdee344be12d4ee062ff6ec32b1d59be1729e21ff7694428fbddcd36dc93ed5",
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0099-seat1/plan.json",
+    "sha256": "2e9e2d1dae84e7f0b00f86fde510ff4356ef21401d4eb7d9634d46546dd3ee60",
     "bytes": 57868
   },
   "launch_utc": "2026-10-26T01:10:53.815159+00:00",
