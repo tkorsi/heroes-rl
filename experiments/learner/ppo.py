@@ -194,15 +194,25 @@ def _verify_behavior(model, rollouts, inputs):
     The modules ``_can_cache_prefix`` admits behave identically in training and
     evaluation mode, so the check then runs them in evaluation mode, where the
     exact inference memos apply, and restores every module's mode afterwards.
+    It starts from empty memos and discards them afterwards: nothing the
+    collector or the policy reconstruction cached is reused, so the check stays
+    an independent recomputation of every stored probability and value.
     """
     modes = [(module, module.training) for module in model.modules()] if model._can_cache_prefix() else None
     if modes is not None:
         model.eval()
     try:
+        _drop_inference_memos(model)
         _verify_behavior_frames(model, rollouts, inputs)
     finally:
+        _drop_inference_memos(model)
         for module, mode in modes or ():
             module.training = mode
+
+
+def _drop_inference_memos(model):
+    for name in ("_leaf_memo_state", "_observation_memo_state"):
+        model.__dict__.pop(name, None)
 
 
 def _verify_behavior_frames(model, rollouts, inputs):

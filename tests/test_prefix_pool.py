@@ -2,8 +2,12 @@
 from copy import deepcopy
 from dataclasses import replace
 import os
+import signal
 import sys
+import threading
+import time
 import unittest
+from unittest.mock import patch
 
 try:
     import torch
@@ -27,6 +31,14 @@ def reaped(pid):
     except ChildProcessError:
         return True
     return False
+
+
+def alarm(signum, frame):
+    raise TimeoutError("wall limit")  # as the update's wall limit raises
+
+
+def alarm_main_thread():
+    signal.pthread_kill(threading.main_thread().ident, signal.SIGALRM)
 
 
 @unittest.skipUnless(hasattr(os, "fork"), "Prefix helpers fork")
@@ -129,6 +141,57 @@ class PrefixPoolTests(unittest.TestCase):
         stop = len(self.inputs[0])
         with self.assertRaisesRegex(RuntimeError, "differs from the parent"):
             pool.vectors(0, stop)
+
+    def test_a_helper_whose_later_rows_differ_is_rejected(self):
+        parent = os.getpid()
+        original = prefix_pool._encode
+        def poisoned(model, frames, seqs):
+            vectors = original(model, frames, seqs)
+            if os.getpid() == parent:
+                return vectors
+            return [vector if row == 0 else vector + 1e-3 for row, vector in enumerate(vectors)]
+        prefix_pool._encode = poisoned
+        try:
+            pool = self.pool(1)
+        finally:
+            prefix_pool._encode = original
+        stop = len(self.inputs[0])
+        keys = frame_keys_until([], self.inputs[0], stop)
+        self.assertGreater(len({key for key in keys if key is not None}), 3)  # the helper's share has later rows
+        with self.assertRaisesRegex(RuntimeError, "differs from the parent"):
+            pool.vectors(0, stop)
+
+    def test_an_alarm_during_a_fork_stops_every_helper_already_started(self):
+        previous = signal.signal(signal.SIGALRM, alarm)
+        self.addCleanup(signal.signal, signal.SIGALRM, previous)
+        fork, started = os.fork, []
+        def forked():
+            pid = fork()
+            if pid:
+                started.append(pid)
+                if len(started) == 2:
+                    alarm_main_thread()  # arrives as the second fork returns
+            return pid
+        with patch.object(prefix_pool.os, "fork", forked), self.assertRaisesRegex(TimeoutError, "wall limit"):
+            PrefixPool(self.model, self.inputs, 3)
+        self.assertEqual(len(started), 2)
+        self.assertTrue(all(reaped(pid) for pid in started))
+
+    def test_an_alarm_while_close_waits_kills_and_reaps_at_once(self):
+        pool = self.pool(2)
+        pids = list(pool.processes)
+        os.kill(pids[0], signal.SIGSTOP)  # cannot exit when asked, so close would wait its grace
+        previous = signal.signal(signal.SIGALRM, alarm)
+        self.addCleanup(signal.signal, signal.SIGALRM, previous)
+        timer = threading.Timer(0.3, alarm_main_thread)
+        timer.start()
+        self.addCleanup(timer.cancel)
+        started = time.monotonic()
+        with self.assertRaisesRegex(TimeoutError, "wall limit"):
+            pool.close()
+        self.assertLess(time.monotonic() - started, 3)
+        self.assertTrue(all(reaped(pid) for pid in pids))
+        self.assertEqual((pool.processes, pool.connections), ([], []))
 
     def test_a_dead_helper_fails_the_request_and_is_reaped(self):
         pool = self.pool(1)

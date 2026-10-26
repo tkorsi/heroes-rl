@@ -277,6 +277,7 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save, *,
             # forked child alongside verification and written only after verification passes.
             analyzing = BackgroundCheck(analyze_episode, folder)
             try:
+                analyzing.start()
                 if row["phase"] == "training":
                     receipt = verify_training_capture(folder, collected, bound, model,
                         replay_binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),

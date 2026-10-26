@@ -231,3 +231,98 @@ plan reader and `builtin_training.worker`'s first action; and a passed attempt's
 the next attempt's opening check. Each pair keeps one check. `tools/prepare_vcmi.py --check` now
 runs while the benchmark builds the plan; no plan is written unless it passed. Tests extended in
 `tests/test_builtin_training.py` and `tests/test_builtin_first_run.py`.
+
+### A12. First full candidate smoke fails closed on an import path, then passes (15:30 and 15:36 UTC)
+
+`func-XH-easy-1` (candidate 373b299, experiment plus three helpers, sequence 9000, seat 0) failed
+closed in the first game: `contextual_env` imports `contextual_evidence` as a top-level module, so
+the new relative `digest_scope` import raised `ImportError`; no update was attempted. Fix 23c1922:
+absolute import with a direct-hash fallback (same digest) in `contextual_evidence` and `scoring`,
+plus a subprocess test of both load paths. The unit tests had not caught it because they import the
+package form only. `func-XH-easy-2` (23c1922, CPUs 1 to 3 only while the A13 baseline ran on CPU 0)
+then passed: the same 340 samples, decisions 26/36/232/46 and outcomes as A1's baseline batch on the
+same seeds; compute cycle 53.0 s, durable 55.1 s, PPO 17.4 s, process-tree CPU 76.3 s. Not a timed
+comparison (pinned, shared host).
+
+### A13. Baseline PPO on the long A6 batch, optimizer-only (15:22 to 16:25 UTC)
+
+B (3cb6a78) restored relocated 412 and updated on the verified A6 batch (2680 samples; histories of
+33, 422, 637 and 16044 frames), pinned to CPU 0; CPUs 1 to 3 ran single-thread correctness jobs and
+the A12 smoke part of the time. PPO took 3779 s: behaviour verification 275, prefix reconstruction
+1646, loss forward 623, backward 1218, Adam 12.6. This exceeds the whole update phase budget (3540 s
+from worker start, of which this batch's games and verification had already used about 240 s), so
+the baseline cannot complete a batch containing a game of this length on this host, contended or
+not; A6's failure was not caused by contention. (A6 refers to this measurement as A9; it is A13.)
+The experiment (A8) took 820.5 s on the same batch; its update differs from the baseline update by
+2.08e-4 of the update's L2 norm.
+
+### A14. Exactness of the exact paths, optimizer-only
+
+Same restored state, same verified batch, single repetitions unless noted; digests cover model,
+gradients, Adam state, minibatch generator, the sampled window order and the PPO report.
+
+- A1 batch (340 samples): B 261.5 s; C (candidate, no helpers) 227.5 s; CH (three helpers) 217.6 s.
+  C and CH are bitwise equal to B in every digest. X 18.4 s and XH 23.5 s are bitwise equal to each
+  other (XH ran with four processes on one CPU) and differ from B by 4.45e-4 of the update's L2 norm.
+- 411 to 412 (relocated 411 and the archived verified 412 batch, 19 samples, two repetitions each):
+  B 8.0/8.3 s, C 7.0/7.1 s, CH 7.7/7.6 s, all bitwise equal to each other and identical across
+  repetitions. All three differ from the archived 412 model and Adam state (the minibatch generator
+  matches): the archived run used Torch `2.9.1+cpu` on another host, this host uses `2.9.1+cu128` on
+  CPU, so this is cross-build drift present in the baseline itself (measured with the same bench: L2
+  difference 1.05e-3 of the update, largest element difference 7.1e-5). XH differs from B by at most
+  6.6e-6 per element.
+- Native runtimes: `runtime/base` and `runtime/cand-0` are byte-identical builds (same SHA-256 of
+  every binary and library); phase 2 changed no native code.
+
+### A15. Frozen candidate and measurement set (16:26 UTC)
+
+Candidate frozen at a9b90d3 (`/home/claude/phase2`, clean); baseline 3cb6a78 (`/home/claude/p2base`,
+clean). `tools/acceleration2/run_rounds.py` runs the schedule strictly one campaign at a time and
+refuses a dirty or moved checkout. Easy workload, two rounds, sequences 10 to 13 then 20 to 23, seats
+0, 1, 0, 1, order B XH CH X then X CH XH B. Nothing else heavy runs during the set; a read-only code
+review (file reads only) runs alongside.
+
+### A16. Pilot easy pair on a9b90d3 (16:25 to 16:36 UTC, `e1-B`, `e1-XH`, sequences 10 to 13)
+
+The first two campaigns of the A15 set ran before I stopped the schedule for A17; they are kept as a
+pilot pair, not as part of the final measurement set. All eight batches passed, and both variants
+played identical games in every batch (samples 83, 80, 196, 89; the same decisions and outcomes),
+including batches 2 to 4, whose parents already differ by the experiment's update difference.
+
+| batch (seat) | samples | B compute / durable (s) | XH compute / durable (s) | B PPO | XH PPO |
+| --- | --- | --- | --- | --- | --- |
+| 10 (0), cold | 83 | 90.6 / 91.9 | 30.4 / 31.7 | 51.3 | 3.6 |
+| 11 (1) | 80 | 92.1 / 93.3 | 30.1 / 31.3 | 55.2 | 3.5 |
+| 12 (0) | 196 | 190.3 / 192.0 | 40.5 / 42.1 | 148.7 | 12.0 |
+| 13 (1) | 89 | 89.6 / 91.0 | 32.6 / 34.0 | 53.8 | 4.5 |
+
+Campaign launch wall time 476.7 s against 146.9 s; process-tree CPU 473.5 s against 172.2 s. Outside
+PPO the candidate spends about 27 s per batch (B about 38 s): worker start 5 s, prepare 2 s, gaps
+between games 2 s each, games 3 to 5 s, publication 1.3 s.
+
+### A17. Independent review and hardening (15:47 to 16:50 UTC)
+
+A read-only review workflow (five reviewers: fork safety, PPO exactness, check coverage,
+verification overlap, test adequacy; then one skeptical verifier per dimension) reported 23
+findings; 12 survived verification, all rated low (every one fails closed), 11 were refuted. The
+measurement set was stopped and the candidate changed:
+
+- Behaviour verification in PPO (A2) ran on the producer's persistent inference memo, so it was no
+  longer independent of the collector's cached state (refuted as a defect, since the memo is exact by
+  construction, but the baseline had one memo-free recomputation and A2 removed it). It now starts
+  from empty memos and discards them, so it still recomputes every stored probability and value from
+  the parameters. A test poisons every entry the producer left and shows the old path fails it.
+- Background checks and prefix helpers defer SIGALRM, SIGINT and SIGTERM while a child is forked and
+  recorded and while it is stopped; a check is started inside the caller's `try`, and a stop that is
+  interrupted kills and reaps at once before the interrupt is raised. Fork failures close their
+  pipes.
+- The history check that overlaps the native verifier runs on a daemon thread; an interrupt during
+  the native run no longer waits for it (in the serial order the alarm interrupted it directly).
+- The capture is bound before the native fork only from a manifest equal to the fresh capture's;
+  otherwise the persisted checks run first, so a tampered capture reports the serial order's error.
+- The benchmark worker's reader requires the benchmark scope and takes the experiment and helper
+  choices through the same function the identity check uses.
+- Prefix helpers: the parent now recomputes the first and one unpredictable later encoding of every
+  share (tests poison only later rows).
+- New tests for each item, for overlapped failure combinations, for the analysis child's failure
+  paths, and an overlap test that fails under the serial order.

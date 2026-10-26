@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -17,6 +16,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import threading
 import time
 
 from experiments.headless import builtin_evidence as builtin
@@ -382,6 +382,24 @@ def diagnostic_inputs(episode, manifest):
     return {name: evidence.file_identity(evidence.inside(episode, name)) for name in sorted(names)}
 
 
+def _started(function, *args):
+    """Run ``function`` on a daemon thread; the returned call waits, then returns or raises its result."""
+    result = {}
+    def run():
+        try:
+            result["value"] = function(*args)
+        except BaseException as error:
+            result["error"] = error
+    thread = threading.Thread(target=run, name="history-verification", daemon=True)
+    thread.start()
+    def wait():
+        thread.join()  # interruptible: the caller's alarm handler still runs here
+        if "error" in result:
+            raise result["error"]
+        return result["value"]
+    return wait
+
+
 def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnostic_verifier_compatibility=False):
     episode, binary, data = (Path(p).expanduser().resolve() for p in (episode, binary, data))
     manifest = evidence.strict_json((episode / "manifest.json").read_bytes())
@@ -429,15 +447,18 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnosti
         # The independent Python history check runs while this thread waits on the native
         # verifier, which reads only the files written above. A history error, which the serial
         # order raised first, is still the error raised; no result is recorded before both pass.
-        with ThreadPoolExecutor(1) as pool:
-            history = pool.submit(verify_history, episode, manifest, final)
-            try:
-                native = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
-                    directory / "native-report.json", cutoff=cutoff, timeout=timeout)
-            except BaseException:
-                report["history"] = history.result()
-                raise
-            report["history"] = history.result()
+        history = _started(verify_history, episode, manifest, final)
+        try:
+            native = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
+                directory / "native-report.json", cutoff=cutoff, timeout=timeout)
+        except (TimeoutError, KeyboardInterrupt, SystemExit):
+            # The caller's wall limit or a stop ends verification now; the history thread cannot
+            # be interrupted, so it is abandoned (it only reads) and records nothing.
+            raise
+        except BaseException:
+            report["history"] = history()
+            raise
+        report["history"] = history()
         report["native"] = native
         validate_native_report(report["native"], report["wire"], final, cutoff=cutoff)
         if diagnostic_verifier_compatibility:

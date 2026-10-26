@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import replace
 import pickle
 import unittest
+from unittest.mock import patch
 
 try:
     import torch
@@ -65,12 +66,40 @@ class PhaseTwoAccelerationTests(unittest.TestCase):
     def test_behavior_check_uses_eval_memos_and_restores_mixed_modes(self):
         self.model.train()
         self.model.text_gru.eval()  # a mixed configuration must come back exactly
-        before = self.modes()
-        _verify_behavior(self.model, self.rollouts, self.inputs)
+        before, seen = self.modes(), []
+        def spy(model, *args):
+            self.assertNotIn("_leaf_memo_state", model.__dict__)  # the check starts from empty memos
+            _verify_behavior_frames(model, *args)
+            seen.append("_leaf_memo_state" in model.__dict__)  # the exact memo served the check
+        with patch.object(ppo, "_verify_behavior_frames", spy):
+            _verify_behavior(self.model, self.rollouts, self.inputs)
+        self.assertEqual(seen, [True])
         self.assertEqual(before, self.modes())
-        self.assertIn("_leaf_memo_state", self.model.__dict__)  # the exact memo served the check
+        self.assertNotIn("_leaf_memo_state", self.model.__dict__)  # and discards them
         # The reference algorithm (train mode, no memo) accepts the same records.
         _verify_behavior_frames(self.model, self.rollouts, self.inputs)
+
+    def test_behavior_check_never_reads_a_memo_the_producer_left(self):
+        # The collector and the policy reconstruction run on the same model object in eval mode.
+        self.model.eval()
+        with torch.no_grad():
+            for encoded in self.inputs:
+                state = self.model.initial_state()
+                for frame in encoded:
+                    state = self.model.forward_step(frame, state).state
+        self.model.__dict__.pop("_observation_memo_state", None)
+        poisoned = self.model.__dict__["_leaf_memo_state"]
+        self.assertTrue(poisoned[3]["text"] and poisoned[3]["number"])
+        for table in poisoned[3].values():  # poison every cached encoding the producer left
+            for key in table:
+                table[key] = table[key] + 1.0
+        self.model.train()
+        _verify_behavior(self.model, self.rollouts, self.inputs)  # nothing poisoned was read
+        # A check that did read them could not reproduce the stored probabilities.
+        self.model.eval()
+        self.model.__dict__["_leaf_memo_state"] = poisoned
+        with self.assertRaisesRegex(ValueError, "differs from frozen"):
+            _verify_behavior_frames(self.model, self.rollouts, self.inputs)
 
     def test_poisoned_behavior_probability_is_rejected_by_both_paths_and_modes_survive(self):
         self.model.train()

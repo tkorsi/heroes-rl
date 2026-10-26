@@ -1,6 +1,7 @@
 """Parallel verification: forked checks return exactly what an in-process call would, and keep the serial error order."""
 import os
 from pathlib import Path
+import signal
 import subprocess
 import sys
 import tempfile
@@ -52,27 +53,43 @@ def descriptors():
     return sorted(os.listdir("/proc/self/fd"))
 
 
+def stubborn(path):
+    # Ignores the polite stop, so only the SIGKILL fallback ends it.
+    signal.signal(signal.SIGTERM, signal.SIG_IGN)
+    Path(path).write_text("ready")
+    time.sleep(60)
+
+
+def alarm(signum, frame):
+    raise TimeoutError("wall limit")  # as the attempt's wall limit raises
+
+
+def alarm_main_thread():
+    # Thread-directed, so it is pending while the main thread defers it, whatever other threads run.
+    signal.pthread_kill(threading.main_thread().ident, signal.SIGALRM)
+
+
 @unittest.skipUnless(hasattr(os, "fork"), "Background checks fork")
 class BackgroundCheckTests(unittest.TestCase):
     def test_value_and_exception_type_are_returned_exactly(self):
-        check = BackgroundCheck(answer, (1, 2.5, None))
+        check = BackgroundCheck(answer, (1, 2.5, None)).start()
         result = check.result(timeout=30)
         self.assertEqual(result["value"], (1, 2.5, None))  # tuples stay tuples
         self.assertNotEqual(result["pid"], os.getpid())
         self.assertTrue(reaped(check.pid))
         with self.assertRaisesRegex(ValueError, "invalid literal"):
-            BackgroundCheck(int, "not a number").result(timeout=30)
+            BackgroundCheck(int, "not a number").start().result(timeout=30)
 
     def test_patches_made_before_the_fork_apply_in_the_child(self):
         with patch.object(background_check, "_CHUNK", 7):
-            self.assertEqual(BackgroundCheck(lambda: background_check._CHUNK).result(timeout=30), 7)
+            self.assertEqual(BackgroundCheck(lambda: background_check._CHUNK).start().result(timeout=30), 7)
 
     def test_timeout_and_stop_end_and_reap_the_child(self):
-        check = BackgroundCheck(hang)
+        check = BackgroundCheck(hang).start()
         with self.assertRaises(TimeoutError):
             check.result(timeout=0.2)
         self.assertTrue(reaped(check.pid))
-        other = BackgroundCheck(hang)
+        other = BackgroundCheck(hang).start()
         other.stop()
         self.assertTrue(reaped(other.pid))
         other.stop()  # idempotent
@@ -81,7 +98,7 @@ class BackgroundCheckTests(unittest.TestCase):
     def test_stop_unwinds_the_childs_own_subprocess(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / "pid"
-            check = BackgroundCheck(sleeper, path)
+            check = BackgroundCheck(sleeper, path).start()
             deadline = time.monotonic() + 10
             while not path.exists() or not path.read_text():
                 self.assertLess(time.monotonic(), deadline)
@@ -93,13 +110,55 @@ class BackgroundCheckTests(unittest.TestCase):
                 time.sleep(0.01)
             self.assertFalse(running(grandchild))
 
+    def test_an_alarm_during_the_fork_is_raised_only_once_the_child_is_recorded(self):
+        previous = signal.signal(signal.SIGALRM, alarm)
+        self.addCleanup(signal.signal, signal.SIGALRM, previous)
+        fork = os.fork
+        def forked():
+            pid = fork()
+            if pid:  # the parent: the alarm arrives as the fork returns
+                alarm_main_thread()
+            return pid
+        check = BackgroundCheck(hang)
+        with patch.object(background_check.os, "fork", forked), self.assertRaisesRegex(TimeoutError, "wall limit"):
+            try:
+                check.start()
+            finally:
+                check.stop()
+        self.assertIsNotNone(check.pid)
+        self.assertTrue(reaped(check.pid))
+        self.assertIsNone(check.read)
+        with self.assertRaises(RuntimeError):
+            BackgroundCheck(hang).result(timeout=1)  # never started
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "Process states use /proc")
+    def test_an_alarm_while_stop_waits_kills_and_reaps_the_child_at_once(self):
+        with tempfile.TemporaryDirectory() as temp:
+            ready = Path(temp) / "ready"
+            check = BackgroundCheck(stubborn, ready).start()
+            deadline = time.monotonic() + 10
+            while not ready.exists():
+                self.assertLess(time.monotonic(), deadline)
+                time.sleep(0.01)
+            previous = signal.signal(signal.SIGALRM, alarm)
+            self.addCleanup(signal.signal, signal.SIGALRM, previous)
+            timer = threading.Timer(0.3, alarm_main_thread)
+            timer.start()
+            self.addCleanup(timer.cancel)
+            started = time.monotonic()
+            with self.assertRaisesRegex(TimeoutError, "wall limit"):
+                check.stop()
+            self.assertLess(time.monotonic() - started, 3)  # not the five-second grace
+            self.assertTrue(reaped(check.pid))
+            self.assertIsNone(check.read)
+
     @unittest.skipUnless(sys.platform.startswith("linux"), "Descriptor listing uses /proc")
     def test_the_child_keeps_only_its_result_pipe_and_standard_streams(self):
         read, write = os.pipe()
         self.addCleanup(os.close, read)
         self.addCleanup(os.close, write)
         self.assertGreater(len(descriptors()), 5)  # the caller holds more, including this pipe
-        names = BackgroundCheck(descriptors).result(timeout=30)
+        names = BackgroundCheck(descriptors).start().result(timeout=30)
         self.assertLessEqual(len(names), 5)  # 0, 1, 2, the result pipe, and the listing's own directory
 
 
@@ -124,10 +183,12 @@ class OverlappedNativeReplayTests(unittest.TestCase):
     def test_both_run_at_once_and_both_results_are_recorded(self):
         started = threading.Event()
         def history(*args):
-            started.set()
+            # Waits for the native verifier to start, which the serial order never does first.
+            if not started.wait(10):
+                raise AssertionError("history check ran before the native verifier started")
             return {"verified": True}
         def native(*args, **kwargs):
-            self.assertTrue(started.wait(10))  # the history check began before the native verifier finished
+            started.set()
             return self.fixture.native
         result = self.verify(history=history, native=native)
         self.assertTrue(result["verified"], result.get("error"))
@@ -145,6 +206,17 @@ class OverlappedNativeReplayTests(unittest.TestCase):
                 self.assertFalse(result["verified"])
                 self.assertIn("history differs", result["error"])
                 self.assertNotIn("native", result)
+
+    def test_an_interrupt_during_the_native_verifier_does_not_wait_for_the_history_check(self):
+        def native(*args, **kwargs):
+            raise TimeoutError("wall limit")  # as the caller's wall-limit handler raises it here
+        started = time.monotonic()
+        result = self.verify(history=lambda *args: time.sleep(5) or {"verified": True}, native=native)
+        self.assertLess(time.monotonic() - started, 3)
+        self.assertFalse(result["verified"])
+        self.assertIn("TimeoutError: wall limit", result["error"])
+        self.assertNotIn("history", result)
+        self.assertNotIn("native", result)
 
     def test_a_native_error_after_a_passing_history_keeps_the_history(self):
         result = self.verify(history=lambda *args: {"verified": True}, native=subprocess.TimeoutExpired("vcmireplay", 1))

@@ -250,9 +250,15 @@ def _check_identity(plan):
     for key in ('plan', 'report', 'policy', 'resume'): require(binding(plan['parent'][key]['path']) == plan['parent'][key], 'Parent artifact drift')
     require(plan['absolute_deadline_unix'] == v['absolute_deadline_unix'], 'Extended batch deadline')
     require(plan['compute_deadline_unix'] == v['compute_deadline_unix'], 'Changed compute budget')
+    execution_options(plan)
+
+
+def execution_options(plan):
+    """The PPO execution choices this campaign bound into the plan and its checkpoint metadata."""
     require(plan.get('experiments', []) == experiments() and plan['checkpoint_metadata'].get('numerical_experiments', []) == experiments(),
             'Numerical experiment selection changed')
     require(plan.get('prefix_helpers', 0) == prefix_helpers(), 'Prefix helper selection changed')
+    return frozenset(plan.get('experiments', ())), plan.get('prefix_helpers', 0)
 
 
 def prepare(parent, sequence, seat):
@@ -304,8 +310,11 @@ def _prepare(v, parent, sequence, seat):
 
 
 def read_plan(path, sha, *, check=True):
+    """The plan at ``path``; ``check=False`` only for a caller whose next action is the full identity check."""
     path = Path(path); require(path.is_relative_to(BASE/'batches') and binding(path)['sha256'] == sha, 'Plan changed')
     plan = json.loads(path.read_text()); require(plan['execution_output'] == str(path.parent/'execution'), 'Output drift')
+    # The scope selects this module's identity check (builtin_first_run.check_identity).
+    require(plan.get('scope') == SCOPE, 'Unreleased source')
     if check: check_identity(plan)
     return plan
 
@@ -325,8 +334,7 @@ def main():
             # builtin_training.worker checks the identity first thing, before any use of the plan.
             plan = read_plan(path, sha, check=False)
             from . import ppo
-            ppo.EXPERIMENTS = frozenset(plan.get('experiments', ()))
-            ppo.PREFIX_HELPERS = plan.get('prefix_helpers', 0)
+            ppo.EXPERIMENTS, ppo.PREFIX_HELPERS = execution_options(plan)
             return plan
         result = batches.worker(a, plan_reader=reader, state_reader=lambda plan: restore(plan['parent']['plan']['path']), heldout_checker=heldout)
     else:

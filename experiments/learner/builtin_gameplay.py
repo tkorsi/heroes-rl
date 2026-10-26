@@ -372,7 +372,8 @@ def _capture_file_bindings(folder, manifest):
     return {name: native.file_identity(native.inside(folder, name)) for name in sorted(names)}
 
 
-def _check_rollout(folder, collected, binding, model, manifest, verify_history, reconstruct_behavior):
+def _check_persisted(folder, collected, model, manifest):
+    """The persisted rollout and manifest checks, in their original order; returns the rebuilt episode."""
     raw = native.strict_json((folder / "builtin-training-rollout.json").read_bytes())
     require(canonical(raw) == canonical(collected.to_dict()), "Fresh training artifact changed after capture")
     rebuilt = load_builtin_episode(raw["experience"])
@@ -380,6 +381,11 @@ def _check_rollout(folder, collected, binding, model, manifest, verify_history, 
             and json.loads(rebuilt.model_config_json) == model.config.to_dict(), "Behavior differs from current frozen model")
     require(canonical(manifest) == canonical(rebuilt.manifest) and manifest["status"] in ("completed", "truncated"),
             "Only an intact naturally ended or verified cutoff capture can be admitted")
+    return rebuilt
+
+
+def _check_rollout(folder, collected, binding, model, manifest, verify_history, reconstruct_behavior):
+    rebuilt = _check_persisted(folder, collected, model, manifest)
     final = evidence.read_finalization(folder, manifest)
     history_report = verify_history(folder, manifest, final)
     require(history_report.get("verified") is True and history_report.get("opponent_history") is None,
@@ -411,10 +417,20 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
     manifest = native.strict_json((folder / "manifest.json").read_bytes())
     # Bind the capture first: the independent native replay reads it in its own interpreter
     # while this process checks the rollout, history and policy; every check below still runs.
-    original_files = _capture_file_bindings(folder, manifest)
+    # The capture is bound from a manifest equal to the fresh capture's own, which the persisted
+    # checks require anyway. Otherwise, or if binding fails, it is bound in the serial order,
+    # after those checks, so any error raised is the one the serial order raised.
+    try:
+        require(canonical(manifest) == canonical(collected.experience.manifest)
+                and manifest["status"] in ("completed", "truncated"), "Manifest differs from the fresh capture")
+        original_files = _capture_file_bindings(folder, manifest)
+    except Exception:
+        _check_persisted(folder, collected, model, manifest)
+        original_files = _capture_file_bindings(folder, manifest)
     replaying = BackgroundCheck(builtin_replay.verify_episode, folder, binary=replay_binary, data=data,
                                 output=folder / "training-verification", timeout=_time_left(remaining))
     try:
+        replaying.start()
         history_report, policy_report, rebuilt, final = _check_rollout(folder, collected, binding, model, manifest,
                                                                        verify_history, reconstruct_behavior)
         replay = replaying.result(timeout=_time_left(remaining))

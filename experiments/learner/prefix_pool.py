@@ -8,9 +8,10 @@ already reuses it for frames with an identical exact key. Helpers forked after t
 histories are encoded compute disjoint shares of the distinct encodings with the parameter
 bits and module modes the parent sends with every request, the same single-thread CPU
 kernels and fresh request-local memos, and return them bit for bit. The parent recomputes
-the first encoding of every helper's share and requires identical bits, and still checks
-every frame and applies every transition itself. Helpers hold no file descriptors but their
-own pipe and the standard streams, never touch the optimizer, and end with the update.
+the first and one unpredictable other encoding of every helper's share and requires identical
+bits, and still checks every frame and applies every transition itself. Helpers hold no file
+descriptors but their own socket and the standard streams, never touch the optimizer, and end
+with the update.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ import gc
 from multiprocessing.connection import Connection
 import os
 import pickle
+import secrets
 import signal
 import socket
 import time
@@ -27,6 +29,9 @@ import torch
 from .contextual_model import _LEAF_MEMO, _bits, frame_keys_until
 
 MAX_HELPERS = 15
+# Deferred while a helper is forked and recorded, and while helpers are stopped and reaped, so
+# that the update's wall-limit alarm or an interrupt can neither lose a helper nor leave one running.
+_DEFERRED = (signal.SIGALRM, signal.SIGINT, signal.SIGTERM)
 
 
 def _empty_memo():
@@ -44,13 +49,14 @@ def _same_bits(left, right):
             and torch.equal(_bits(left.contiguous()), _bits(right.contiguous())))
 
 
-def _serve(connection, model, inputs):
+def _serve(connection, model, inputs, mask):
     # Keep only this socket and the standard streams: no ownership pipe, lock or file leaks.
     keep = sorted({0, 1, 2, connection.fileno()})
     for low, high in zip(keep, [*keep[1:], os.sysconf("SC_OPEN_MAX")]):
         os.closerange(low + 1, high)
     signal.signal(signal.SIGALRM, signal.SIG_DFL)
     signal.setitimer(signal.ITIMER_REAL, 0)
+    signal.pthread_sigmask(signal.SIG_SETMASK, mask)
     torch.set_num_threads(1)
     tensors = [*model.parameters(), *model.buffers()]
     modules = list(model.modules())
@@ -89,18 +95,24 @@ class PrefixPool:
         try:
             for _ in range(helpers):
                 mine, theirs = socket.socketpair()
-                pid = os.fork()
-                if pid == 0:  # helper: never returns into the parent's code
-                    code = 1
-                    try:
-                        mine.close()
-                        _serve(Connection(theirs.detach()), model, inputs)
-                        code = 0
-                    finally:
-                        os._exit(code)
-                theirs.close()
-                self.connections.append(Connection(mine.detach()))
-                self.processes.append(pid)
+                mask = signal.pthread_sigmask(signal.SIG_BLOCK, _DEFERRED)
+                try:
+                    pid = os.fork()
+                    if pid == 0:  # helper: never returns into the parent's code
+                        code = 1
+                        try:
+                            mine.close()
+                            _serve(Connection(theirs.detach()), model, inputs, mask)
+                            code = 0
+                        finally:
+                            os._exit(code)
+                    self.processes.append(pid)
+                    self.connections.append(Connection(mine.detach()))
+                finally:
+                    theirs.close()
+                    mine.close()  # after detach() this closes nothing
+                    # A deferred alarm or interrupt is raised here; the handler below stops every helper.
+                    signal.pthread_sigmask(signal.SIG_SETMASK, mask)
         except BaseException:
             self.close()
             raise
@@ -146,26 +158,37 @@ class PrefixPool:
                 raise RuntimeError(f"Prefix helper failed: {payload if status != 'ok' else 'malformed reply'}")
             # Separate allocations, as the serial reconstruction's own encodings are.
             rows = [row.clone() for row in payload]
-            if not _same_bits(rows[0], _encode(model, frames, seqs[:1])[0]):
+            # The first row and one unpredictable other row of every share are recomputed here.
+            audited = [0, 1 + secrets.randbelow(len(seqs) - 1)] if len(seqs) > 1 else [0]
+            checks = _encode(model, frames, [seqs[i] for i in audited])
+            if not all(_same_bits(rows[i], vector) for i, vector in zip(audited, checks, strict=True)):
                 raise RuntimeError("Prefix helper encoding differs from the parent's")
             encoded.update(zip(seqs, rows))
         return {seq: encoded[first[keys[seq]]] for seq in range(stop) if keys[seq] is not None}
 
     def close(self):
-        """Stop and reap every helper; one that has not exited within five seconds is killed."""
-        for connection in self.connections:
-            try:
-                connection.send_bytes(pickle.dumps(None))
-            except OSError:
-                pass
-        deadline = time.monotonic() + 5
-        for pid in self.processes:
-            while os.waitpid(pid, os.WNOHANG)[0] != pid:
-                if time.monotonic() > deadline:
-                    os.kill(pid, signal.SIGKILL)
-                    os.waitpid(pid, 0)
-                    break
-                time.sleep(0.005)
-        for connection in self.connections:
-            connection.close()
-        self.connections, self.processes = [], []
+        """Stop and reap every helper; one that has not exited within five seconds is killed.
+
+        A deferred alarm or interrupt that arrives meanwhile kills the remaining helpers at once,
+        and is delivered after every helper is reaped and every connection closed.
+        """
+        mask = signal.pthread_sigmask(signal.SIG_BLOCK, _DEFERRED)
+        try:
+            for connection in self.connections:
+                try:
+                    connection.send_bytes(pickle.dumps(None))
+                except OSError:
+                    pass
+            deadline = time.monotonic() + 5
+            for pid in self.processes:
+                while os.waitpid(pid, os.WNOHANG)[0] != pid:
+                    if time.monotonic() > deadline or signal.sigpending() & set(_DEFERRED):
+                        os.kill(pid, signal.SIGKILL)
+                        os.waitpid(pid, 0)
+                        break
+                    time.sleep(0.005)
+            for connection in self.connections:
+                connection.close()
+            self.connections, self.processes = [], []
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, mask)
