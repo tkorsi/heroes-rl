@@ -351,3 +351,23 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T05:07:38.715270+00:00 campaign_batch_intent: {"sequence": 145, "seat": 1, "mode": "training", "status": "preparing"}
 
 - 2026-10-26T05:08:37.055840+00:00 autonomous_continuation_chain_verified: {"timestamp_utc": "2026-10-26T05:08:37.055840+00:00", "event": "autonomous_continuation_chain_verified", "receipt": {"path": "/workspace/heroes-overnight/validation/overnight-cloud-controller-2026-10-26.json", "sha256": "6a7edd69e29a09160df159132eaceafbb1e09686cf25fd17d6e19bb38bc22ca9", "bytes": 18040}, "active_watcher_pid": 81883, "actual_controller_pid": 81927, "finalizer_pid": 85347, "watchdog_pid": 26662, "registry_guard_pid": 87931, "exclusive_locks": {"main_controller_held": true, "finalizer_held": true, "registry_guard_held": true}, "progress": {"updates": 291, "rollouts": 1164, "decisions": 77990}, "compute_deadline": "2026-10-26T09:55:00Z", "hard_deadline": "2026-10-26T10:00:00Z", "readiness_audit_correction": "First audit generation could not read /proc/environ; retained no false successful receipt. Registry guard and separate-job signal proof now verify cutoff without environment inspection."}
+
+- 2026-10-26T05:09:35.580451+00:00 campaign_batch_result: {"sequence": 145, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T05:09:36.427874+00:00 campaign_batch_intent: {"sequence": 146, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T05:11:35.275791+00:00 campaign_batch_result: {"sequence": 146, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T05:11:35.974987+00:00 campaign_batch_intent: {"sequence": 147, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T05:13:00.660562+00:00 campaign_batch_result: {"sequence": 147, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T05:13:01.331392+00:00 campaign_batch_intent: {"sequence": 148, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T05:15:39.550847+00:00 campaign_batch_result: {"sequence": 148, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T05:15:40.242769+00:00 campaign_batch_intent: {"sequence": 149, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T05:16:44.548319+00:00 campaign_batch_result: {"sequence": 149, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T05:16:45.899300+00:00 campaign_batch_intent: {"sequence": 296, "seat": 0, "mode": "periodic", "status": "preparing"}
