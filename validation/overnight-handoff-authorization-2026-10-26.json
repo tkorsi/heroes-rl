@@ -1,0 +1,43 @@
+{
+  "schema": "heroes-overnight-handoff-authorization-v1",
+  "recorded_at_utc": "2026-10-26 01:12:45 UTC",
+  "user_authorization": "Finish the current local Teacher campaign, then continue in cloud until noon Kyiv on 26 October 2026; autonomously repair routine technical failures, log, commit and push.",
+  "cloud_compute_cutoff_utc": "2026-10-26T09:55:00Z",
+  "cloud_hard_stop_utc": "2026-10-26T10:00:00Z",
+  "cloud_hard_stop_local": "2026-10-26T12:00:00+02:00",
+  "timezone": "Europe/Kiev",
+  "order": [
+    "local_complete",
+    "local_checkpoint_preserved",
+    "local_owned_shutdown_verified",
+    "private_ready_manifest_published",
+    "cloud_exact_restore_and_native_acceptance",
+    "cloud_ppo"
+  ],
+  "cloud_dispatch_status_at_recording": "blocked: old durable chat returned403; new cloud task creation returned cloudflare_challenge; user is handling browser verification",
+  "cloud_task_created": false,
+  "cloud_training_started": false,
+  "local_teacher_thread": "01a17348-5d09-7162-bc74-f18846441c89",
+  "old_inaccessible_cloud_thread": "01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+  "private_handoff": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local365-teacher-results",
+    "path": "handoffs/2026-10-26-local-to-cloud/ready.json",
+    "must_bind": [
+      "latest local campaign and final report",
+      "owned shutdown receipt and explicit local-to-cloud ownership",
+      "immutable public source and private archive commits",
+      "final plan/report/policy/resume and initial_checkpoint dependency",
+      "both seat-specific curriculum maps",
+      "exact model/Adam/RNG/progress/sampler/opponent-pool restore evidence",
+      "next unused training seeds and fixed held-out schedule"
+    ]
+  },
+  "cloud_prompt_path": "docs/operations/teacher-overnight-20261026.txt",
+  "limitations": [
+    "This is authorization and a handoff protocol, not a launch receipt.",
+    "Local two-hour campaign retains its own actual-launch deadline; cloud hard stop is not extended if handoff is late.",
+    "Cloud execution must be verified independently of local chat activity.",
+    "The existing curriculum controller and old cloud manifests are not directly interchangeable."
+  ]
+}

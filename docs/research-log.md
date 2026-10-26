@@ -145,6 +145,24 @@ experiments**. Preparation is separate from the fresh two-hour campaign clock,
 whose persisted deadline starts at actual launch and includes checks,
 evaluation and preservation.
 
+## Overnight handoff authorization, 26 October 2026
+
+The user subsequently requested that the current local Teacher finish its
+campaign, then continue the final verified state in cloud until **12:00 Kyiv
+(10:00 UTC) on 26 October 2026**. The cloud compute cutoff is 09:55 UTC, leaving
+five minutes for preservation and shutdown. This authorizes a sequential
+continuation; it does not permit overlapping local/cloud training or extending
+the cloud deadline if the local handoff arrives late.
+
+The [recorded authorization and handoff contract](../validation/overnight-handoff-authorization-2026-10-26.json)
+and [prepared English cloud task](operations/teacher-overnight-20261026.txt)
+specify the required final checkpoint dependencies, both seat-specific maps,
+restoration evidence and explicit ownership transfer through private Git.
+At this entry's creation, cloud dispatch was blocked by access/Cloudflare
+checks and the user was handling browser verification. **No cloud task creation
+or training launch was confirmed.** This paragraph is a dated authorization
+record, not a live activity indicator or an experiment result.
+
 ## Recording protocol for the seminar
 
 For every new stage, preserve:
