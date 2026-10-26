@@ -189,6 +189,7 @@ def analysis(value,manifest):
         gate_status=value.get('gate_status'),gate_comparison=value.get('gate_comparison'),selected_backend=value.get('selected_backend'),
         games_attempted=len(allrows),training_samples=0,ppo_updates=0,optimizer_steps=0,window=value.get('window'),private_preservation=value.get('private_preservation',[]),
         backend_withdrawal=value.get('backend_withdrawal'),recovery=value.get('recovery'),retained_failures=value.get('retained_failures',[]),
+        fixture_exclusions=value.get('fixture_exclusions'),fixture_diagnosis=value.get('fixture_diagnosis'),
         limitations=['16 games per checkpoint/scenario/seat; seed does not fix all native opponent scheduling.',
             'Repeated four fixed old gate starts are not transfer games. Varied easier coordinates and original scenario are separate.',
             'Embedded process reuse capped at two gate games and one transfer game; no memory plateau or PPO throughput claim.',
@@ -198,8 +199,9 @@ def analysis(value,manifest):
 
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--recover-from',type=Path);args=parser.parse_args()
-    recovery=args.recover_from is not None;tag='recovery-001' if recovery else ''
+    parser=argparse.ArgumentParser();parser.add_argument('--recover-from',type=Path);parser.add_argument('--fixture-safe-subset',action='store_true');args=parser.parse_args()
+    recovery=args.recover_from is not None;tag=('recovery-002' if args.fixture_safe_subset else 'recovery-001') if recovery else ''
+    require(not args.fixture_safe_subset or recovery,'Fixture subset requires the preserved stopped attempt')
     lock=(BASE/'owner.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     if not recovery:require(not (BASE/'window.json').exists(),'This diagnostic clock is already consumed')
     for path in Path('/proc').iterdir():
@@ -222,9 +224,15 @@ def main():
         require(args.recover_from.is_relative_to(BASE/'attempts'),'Fresh subordinate recovery receipt required')
         value=json.loads(args.recover_from.read_text());last=value['runs'][-1]
         require(value['status']=='stopped_failure' and value.get('post_study_full_restore_verified') is True,'Complete stopped restoration required')
-        require(last['label']=='transfer-037' and last['returncode']==-11 and last['owned_cleanup_verified'] is True,'Only the preserved concrete embedded SIGSEGV qualifies')
+        if not args.fixture_safe_subset:
+            require(last['label']=='transfer-037' and last['returncode']==-11 and last['owned_cleanup_verified'] is True,'Only the preserved concrete embedded SIGSEGV qualifies')
+        else:
+            require(last['label']=='transfer-038' and last['worker_status']=='failed' and last['owned_cleanup_verified'] is True,'Only the preserved concrete cold fixture crash qualifies')
+            failed=BASE/'runs/transfer-038/games/episode-000001'
+            require(json.loads((failed/'builtin-finalization.json').read_text())['returncode']==-11,'Cold native SIGSEGV receipt required; no replay integrity bypass')
+            require(json.loads((failed/'manifest.json').read_text())['status']=='failed','Failed native startup cannot be rescored')
         require(value['private_preservation'][-1]['remote_acknowledged'] is True,'Failed evidence must already be private and acknowledged')
-        require(len(value['runs'])==41 and value['gate_comparison']['passed'] is True,'Original eight-game gate and consumed schedule differ')
+        require(len(value['runs'])==(42 if args.fixture_safe_subset else 41) and value['gate_comparison']['passed'] is True,'Original eight-game gate and consumed schedule differ')
         window=json.loads((BASE/'window.json').read_text());require(time.time()<window['compute_deadline_unix']-600,'Insufficient unchanged diagnostic budget')
         prior_error=value.pop('error',None);value.setdefault('retained_failures',[]).append(dict(original_error=prior_error,last_attempt=last,private_commit=value['private_preservation'][-1]['commit']))
         value.pop('preservation_error',None);value['post_study_full_restore_verified']=False
@@ -234,6 +242,16 @@ def main():
             recovery=dict(prior_report=binding(args.recover_from),window=binding(BASE/'window.json'),orchestration=binding(ROOT/'tools/run_transfer_eval.py'),
                 new_harness_commit=git(ROOT,'rev-parse','HEAD'),clock_reset=False),
             gate_status='passed_narrow_gate_later_embedded_backend_withdrawn',selected_backend='original-cold-after-embedded-SIGSEGV')
+        if args.fixture_safe_subset:
+            excluded={key for key,bound in manifest['maps'].items() if key.startswith('easy-') and bound['hero'][0]<1}
+            require(excluded=={f'easy-{i}-{s}' for i in (3,7,10,13) for s in (0,1)},'Unexpected fixture exclusion set')
+            value['fixture_exclusions']=[dict(schedule=row,reason='Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice')
+                for row in manifest['transfer_schedule'] if row['map_key'] in excluded]
+            value['fixture_diagnosis']=dict(cause='Map preflight validated anchor coordinates rather than native hero visitable anchor-minus(1,0,0)',
+                both_embedded_and_cold_native_SIGSEGV=True,acceleration_specific_regression_established=False,
+                maps_or_schedule_rewritten=False,excluded_layouts=[3,7,10,13],failed_attempts_retained=['transfer-037','transfer-038'],
+                valid_future_starts_unchanged=True,original_scope_hypothesis_now_limited_to12_valid_layouts_per_seat=True)
+            value['selected_backend']='original-cold-valid-frozen-fixture-subset'
     result_path=BASE/'result.json';write(result_path,value)
     try:
       if not recovery:
@@ -274,8 +292,10 @@ def main():
       else:raise ValueError('Current watchdog did not acknowledge unchanged clock')
       completed_since_archive=[];last_public=time.time();durations=[c['wrapper_seconds'] for c in value['runs'] if c['label'].startswith('transfer-') and c['status']=='passed']
       consumed={r['id'] for c in value['runs'] for r in c['schedule']}
+      excluded_ids={r['schedule']['id'] for r in value.get('fixture_exclusions',[])}
       for row in manifest['transfer_schedule']:
             if row['id'] in consumed:continue
+            if row['id'] in excluded_ids:continue
             remaining=min(window['compute_deadline_unix']-time.time(),window['compute_deadline_monotonic']-time.monotonic())
             if remaining<max(90,2*max(durations[-12:],default=30)+30):break
             key='accelerated' if accepted else 'cold';label=row['id']
@@ -286,7 +306,8 @@ def main():
             if len(completed_since_archive)>=12:
                 value['private_preservation'].append(preserve('transfer-through-'+label,completed_since_archive));completed_since_archive=[];write(result_path,value)
             if time.time()-last_public>300:publish_public('Publish bounded frozen transfer progress');last_public=time.time()
-      value['status']='completed' if len([x for x in value['runs'] if x['label'].startswith('transfer-')])==192 else 'stopped_safe_budget_reserve'
+      completed_ids={r['id'] for c in value['runs'] for r in c['schedule']}
+      value['status']='completed_valid_fixture_subset' if args.fixture_safe_subset and all(r['id'] in completed_ids|excluded_ids for r in manifest['transfer_schedule']) else 'completed' if len([x for x in value['runs'] if x['label'].startswith('transfer-')])==192 else 'stopped_safe_budget_reserve'
     except BaseException as exc:value.update(status='stopped_failure',error=f'{type(exc).__name__}: {exc}');event('diagnostic_failure_retained',error=value['error'])
     finally:
         # All remaining work is preservation, with a distinct five-minute reserve.

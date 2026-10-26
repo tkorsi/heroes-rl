@@ -16,7 +16,7 @@ def binding(path):
 
 def summarize():
     value=json.loads((BASE/'result.json').read_text())
-    if value['status'] not in ('completed','stopped_failure','stopped_safe_budget_reserve'):
+    if value['status'] not in ('completed','completed_valid_fixture_subset','stopped_failure','stopped_safe_budget_reserve'):
         raise ValueError('Do not interpret an unfinished study as a final result')
     manifest=json.loads((BASE/'manifest.json').read_text());rows=[];gate=[]
     for cell in value['runs']:
@@ -74,6 +74,7 @@ def summarize():
         capture_recomputation=verification,full_final_restore=frozen,watchdog=guard,
         window=json.loads((BASE/'window.json').read_text()),
         unstarted_transfer_ids=[r['id'] for r in manifest['transfer_schedule'] if r['id'] not in {x['schedule']['id'] for x in rows}],
+        fixture_diagnosis=value.get('fixture_diagnosis'),fixture_exclusions=value.get('fixture_exclusions'),
         natural_outcomes=dict(Counter(r.get('outcome') for r in rows if r['status']=='passed')),
         new_training_samples=0,new_ppo_updates=0,new_adam_steps=0,next_curriculum_proposal=proposal,
         resource_limit='RSS/descriptors/threads measured within at most two embedded gate games and one transfer game per process. Long-run plateau is unproven.',
