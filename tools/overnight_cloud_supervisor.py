@@ -26,20 +26,21 @@ def atomic(path, value):
     tmp.replace(path)
 
 
-def owned():
+def owned(role=None):
     result = []
     for p in Path('/proc').iterdir():
         if p.name.isdigit() and int(p.name) != os.getpid():
             try:
-                if TAG in (p/'environ').read_bytes().split(b'\0'):
+                entries=(p/'environ').read_bytes().split(b'\0')
+                if TAG in entries and (role is None or ('HEROES_OVERNIGHT_ROLE='+role).encode() in entries or (role=='compute' and not any(e.startswith(b'HEROES_OVERNIGHT_ROLE=') for e in entries))):
                     result.append(int(p.name))
             except (OSError, PermissionError):
                 pass
     return result
 
 
-def stop_owned(sig):
-    for pid in owned():
+def stop_owned(sig,role=None):
+    for pid in owned(role):
         try: os.kill(pid, sig)
         except ProcessLookupError: pass
 
@@ -69,8 +70,8 @@ def main():
         if now >= COMPUTE or time.monotonic() >= compute_mono:
             if not stopped:
                 atomic(args.state/'stop-launching.json', dict(at_unix=now, reason='absolute_compute_cutoff'))
-                stop_owned(signal.SIGTERM); stopped = True
-            if now >= COMPUTE+10: stop_owned(signal.SIGKILL)
+                stop_owned(signal.SIGTERM,'compute'); stopped = True
+            if now >= COMPUTE+10: stop_owned(signal.SIGKILL,'compute')
             status.update(phase='preservation_shutdown', owned_pids=owned())
         elif now >= next_poll:
             next_poll = now + 120
@@ -84,9 +85,10 @@ def main():
                     continue
                 subprocess.run(['git','-C',str(args.repository),'fetch','--no-tags','origin',BRANCH],
                     check=True, capture_output=True, timeout=min(75, COMPUTE-now))
+                subprocess.run(['git','-C',str(args.repository),'update-ref','refs/remotes/origin/'+BRANCH,'FETCH_HEAD'],check=True,timeout=10)
                 commit = subprocess.check_output(['git','-C',str(args.repository),'rev-parse','FETCH_HEAD'], text=True, timeout=10).strip()
                 raw = subprocess.run(['git','-C',str(args.repository),'show',commit+':'+MARKER],capture_output=True,timeout=10)
-                status.update(last_poll_unix=now, private_commit=commit, access=True)
+                status.update(last_poll_unix=now, private_commit=commit, access=True, phase='waiting_final_local_handoff')
                 if raw.returncode == 0:
                     candidate = json.loads(raw.stdout)
                     atomic(args.state/'handoff-candidate.json',dict(private_commit=commit,marker=candidate))
@@ -112,13 +114,13 @@ def watchdog(args):
     atomic(args.state/'supervisor-status.json',status)
     with (args.state/'poller.log').open('a') as log:
         child=subprocess.Popen([os.sys.executable,__file__,'--poller','--state',str(args.state),
-            '--repository',str(args.repository)], env={**os.environ,'HEROES_OVERNIGHT_OWNER':'teacher-20261026'},
+            '--repository',str(args.repository)], env={**os.environ,'HEROES_OVERNIGHT_OWNER':'teacher-20261026','HEROES_OVERNIGHT_ROLE':'compute'},
             stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
     while time.time()<HARD and time.monotonic()<hard_mono:
         if time.time()>=COMPUTE or time.monotonic()>=compute_mono:
             atomic(args.state/'stop-launching.json',dict(reason='absolute_compute_cutoff',at_unix=time.time()))
-            stop_owned(signal.SIGTERM)
-            if time.time()>=COMPUTE+10: stop_owned(signal.SIGKILL)
+            stop_owned(signal.SIGTERM,'compute')
+            if time.time()>=COMPUTE+10: stop_owned(signal.SIGKILL,'compute')
             status['phase']='preservation_shutdown'
         status.update(timestamp_utc=datetime.now(timezone.utc).isoformat(),poller_pid=child.pid)
         atomic(args.state/'supervisor-status.json',status)

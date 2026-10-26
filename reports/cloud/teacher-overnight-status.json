@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T01:34:45.517889+00:00",
-  "phase": "preparing_linux_waiting_final_local_handoff",
+  "timestamp_utc": "2026-10-26T01:54:24.301039+00:00",
+  "phase": "arming_autonomous_verified_handoff_chain",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
   "hard_deadline_utc": "2026-10-26T10:00:00Z",
@@ -11,5 +11,8 @@
   "verified_asset_files": 8,
   "watchdog_pid": 22133,
   "blocker": "Final local ownership handoff required",
-  "next_step": "Prepare canonical Linux runtime and portable curriculum adapter"
+  "next_step": "Start committed detached cloud controller; wait for final local ownership transfer; no cloud gameplay yet",
+  "offline_control_tests": 14,
+  "private_git_read_access": true,
+  "canonical_build": "in_progress"
 }

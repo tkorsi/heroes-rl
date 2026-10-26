@@ -165,6 +165,9 @@ def read_plan(path, sha):
 
 
 def check_identity(plan):
+    if plan.get("scope") == "heroes-overnight-curriculum-20261026":
+        from .overnight_training import check_identity as check_overnight
+        return check_overnight(plan)
     if plan.get("scope") == "heroes-update146-curriculum-v3":
         from .curriculum_training import check_identity as check_curriculum
         return check_curriculum(plan)

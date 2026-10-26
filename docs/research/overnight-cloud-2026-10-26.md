@@ -21,3 +21,7 @@ Every complete batch receives an independent exact restore-tested backup outside
 - Isolated author checkout: `/workspace/heroes-overnight`, branch `codex/teacher-overnight-20261026`, based on specified source `cb3d324cb09919383dac7e97a97bc0696dcd588d`.
 - Original asset hashes: all8 files verified against the private transfer manifest,902697497bytes. Assets remain under `/workspace/Heroes-artifacts/game-data`.
 - No cloud gameplay or optimizer launched during preparation.
+
+## Autonomous chain control
+
+Fourteen offline checks passed. Fake-marker controls rejected stale/incomplete ownership and wrong deadlines, retained failed acceptance without launch, required all gates before exactly one mocked launch, and rejected a duplicate controller before work. These controls launched no games and no PPO. The actual detached controller will wait for the real final marker, then validate/copy/restore its exact final state, measure platform drift, freeze a clean independent Linux release, run fresh acceptance, establish both heldout baselines and continue complete batches. Status and research writes occur in the author checkout. The independent cutoff guard allows preservation controllers through the five-minute reserve while stopping compute at09:55UTC; all owned roles stop at10:00UTC.
