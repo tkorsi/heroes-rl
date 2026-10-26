@@ -195,7 +195,9 @@ def main():
     write_new(spec_path, dict(schema='heroes-local-linux-bench-spec-v1', created_utc=utc(), machine_config=str(config_path),
                               seed_namespace=dict(NAMESPACE), shim_sha256=site_digest,
                               purpose='Benchmark processes only; disposable copies; no official namespace or lineage.'))
-    env = {**os.environ, 'PYTHONPATH': str(site), 'HEROES_LOCAL_BENCH_SPEC': str(spec_path), 'HEROES_ARTIFACT_ROOT': str(ART)}
+    # The copied runtime's ELF RUNPATH names its build folder; the loader must use the hashed copy.
+    env = {**os.environ, 'PYTHONPATH': str(site), 'HEROES_LOCAL_BENCH_SPEC': str(spec_path), 'HEROES_ARTIFACT_ROOT': str(ART),
+           'LD_LIBRARY_PATH': str(runtime_bin)}
     env.pop('PYTHONDONTWRITEBYTECODE', None)
     prepared = time.monotonic()
     config = machine_config(checkout, runtime_bin, run_root, a.first_sequence, env)
