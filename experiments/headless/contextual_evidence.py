@@ -6,7 +6,6 @@ Replay separately verifies the request and packet positions against the engine.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -41,8 +40,9 @@ def strict_json(data):
 
 
 def file_identity(path):
-    data = Path(path).read_bytes()
-    return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+    from .digest_scope import sha256_file
+    digest, size = sha256_file(path)
+    return {"sha256": digest, "bytes": size}
 
 
 def inside(root, name):

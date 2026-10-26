@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
-import hashlib
 import json
 from pathlib import Path
 import re
@@ -66,12 +65,10 @@ def validate_config(value):
 
 
 def file_identity(path):
+    from experiments.headless.digest_scope import sha256_file
     path = Path(path)
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
-            digest.update(chunk)
-    return {"sha256": digest.hexdigest(), "bytes": path.stat().st_size}
+    digest = sha256_file(path)[0]
+    return {"sha256": digest, "bytes": path.stat().st_size}
 
 
 def read_json(path):

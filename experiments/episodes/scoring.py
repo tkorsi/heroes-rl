@@ -5,7 +5,6 @@ recordings; a headless run is scored from the same engine and socket evidence.
 """
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 import re
@@ -24,8 +23,8 @@ ENGINE_RECIPE = ("dependencies/vcmi.json", "engine/patches", "engine/ExplorerRL"
 
 
 def digest(path: Path) -> str:
-    with path.open("rb") as source:
-        return hashlib.file_digest(source, "sha256").hexdigest()
+    from experiments.headless.digest_scope import sha256_file
+    return sha256_file(path)[0]
 
 
 def git_state(path: Path) -> dict:

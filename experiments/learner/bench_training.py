@@ -19,6 +19,7 @@ import torch
 from . import builtin_first_run as pilot, builtin_training as batches, builtin_training_resume as resume, checkpoints as cp
 from .builtin_preservation import binding, preserve
 from .inference import source_identity
+from experiments.headless import digest_scope
 from experiments.headless.contextual_evidence import runtime_identity
 from experiments.headless.env import VcmiLauncher
 
@@ -108,8 +109,21 @@ def runtime_files(directory):
     return files
 
 
+def frozen_inputs(frozen):
+    """Files one identity check reads, for concurrent prefetch; the check itself still compares every value."""
+    runtime = Path(frozen['runtime_bin'])
+    return [*runtime.rglob('*'), *(ROOT/name for name in frozen['implementation']), *(ROOT/name for name in frozen['source']['source_sha256']),
+            *(Path(m['path']) for m in frozen['maps']), *(Path(v['path']) for v in frozen['parent'].values() if type(v) is dict and 'path' in v)]
+
+
 def check_frozen():
+    with digest_scope.scope():
+        return _check_frozen()
+
+
+def _check_frozen():
     frozen = json.loads((BASE/'frozen.json').read_text())
+    digest_scope.prefetch(frozen_inputs(frozen))
     require(binding(CONTEXT_PATH) == frozen['context'], 'Benchmark context drift')
     require(dependency_identity() == frozen['dependency'], 'Generated dependency drift')
     asset_proof = frozen['assets_verification']; require(binding(asset_proof['path']) == asset_proof, 'Private asset verification receipt drift')
@@ -132,6 +146,11 @@ def check_frozen():
 
 
 def session():
+    with digest_scope.scope():
+        return _session()
+
+
+def _session():
     check_frozen()
     v = json.loads(SESSION.read_text()); clock = json.loads(WINDOW.read_text())
     require(binding(WINDOW) == v['window'], 'Benchmark clock binding changed')
@@ -203,6 +222,12 @@ def restore(path):
 
 
 def check_identity(plan):
+    # One scope: each unchanged file is hashed once per complete check, never across checks.
+    with digest_scope.scope():
+        _check_identity(plan)
+
+
+def _check_identity(plan):
     v = session(); require(plan['scope'] == SCOPE and plan['source'] == v['source'] and not v['source']['tracked_worktree_dirty'], 'Unreleased source')
     require(plan['implementation'] == pilot.implementation() and plan['prerequisites'] == pilot.prerequisites(), 'Implementation drift')
     require(plan['configuration'] == configuration(), 'PPO/configuration drift')
