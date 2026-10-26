@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T02:24:45.647120+00:00",
+  "timestamp_utc": "2026-10-26T02:33:33.395955+00:00",
   "phase": "waiting_final_local_handoff",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
@@ -10,7 +10,7 @@
   "checkpoint": null,
   "verified_asset_files": 8,
   "watchdog_pid": 26662,
-  "blocker": "Final verified local ownership transfer not yet published",
+  "blocker": "Final verified local ownership marker has not arrived",
   "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
   "offline_control_tests": 15,
   "private_git_read_access": true,
@@ -29,12 +29,13 @@
   "private_git_write_access": true,
   "runtime_startup_checks": "passed",
   "builtin_regression_tests": 234,
-  "overnight_controls": 15,
+  "overnight_controls": 18,
   "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220",
   "full_offline_suite": {
     "run": 1309,
     "passed": 1301,
     "skipped": 8
   },
-  "dependency_closure_release_gate": "implemented_and_fake_bundle_tested"
+  "dependency_closure_release_gate": "implemented_and_fake_bundle_tested",
+  "heldout_cadence": "Carry146+5*k phase from local curriculum; additional fresh Linux baseline and final fixed pair"
 }

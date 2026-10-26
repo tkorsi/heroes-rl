@@ -499,3 +499,5 @@ See the updated [research protocol](docs/research/curriculum-v1.md).
 ## Overnight cloud preparation —26October2026
 
 Renewed user authorization permits isolated Linux preparation now and PPO only after the final local Teacher Git ownership handoff. Compute stops at09:55UTC and all owned work stops by10:00UTC on26October2026. See the [protocol](docs/research/overnight-cloud-2026-10-26.md) and [cloud status](reports/cloud/teacher-overnight-status.json).
+
+The committed cloud-owned continuation controller is armed from a separate bootstrap checkout. The current canonical Linux build and CLI/library checks passed; all eight private Data files match the transfer manifest. Public/private Git access and actual duplicate-controller rejection are verified. The full offline suite passed1301checks with8skips, followed by18focused continuation controls. No cloud game or PPO has started: the final local Git handoff, exact restoration, platform drift check, fresh both-seat mixed-outcome native gates and fixed baseline remain mandatory. The original local five-update evaluation phase carries across the handoff.

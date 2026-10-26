@@ -68,6 +68,23 @@ class CampaignTests(unittest.TestCase):
         with patch.object(ctl.time,'time',return_value=0),patch.object(ctl.time,'monotonic',return_value=9000):
             self.assertLess(ctl.remaining(s),0);self.assertFalse(ctl.enough_for_batch(s,[10]))
 
+    def test_periodic_phase_survives_handoff_and_requires_both_seats(self):
+        from types import SimpleNamespace
+        self.assertEqual(c.latest_periodic_update(200),196)
+        self.assertEqual(c.latest_periodic_update(201),201)
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);session=root/'session.json'
+            journal={'batches':[dict(mode='baseline',seat=seat,status='passed') for seat in (0,1)]}
+            journal['batches'].append(dict(mode='periodic',seat=0,sequence=201,status='passed'))
+            report=root/'campaign-report.json';report.write_text(json.dumps(journal))
+            state=SimpleNamespace(progress=SimpleNamespace(updates=201))
+            with patch.object(c,'SESSION',session),patch.object(c,'session',return_value={}),patch.object(c,'context',return_value={'progress':{'updates':200}}):
+                with self.assertRaisesRegex(ValueError,'Due paired'):c.heldout(state,None,None)
+                journal['batches'].append(dict(mode='periodic',seat=1,sequence=201,status='passed'))
+                report.write_text(json.dumps(journal));c.heldout(state,None,None)
+                journal['batches'][-1]['sequence']=200;report.write_text(json.dumps(journal))
+                with self.assertRaisesRegex(ValueError,'Due paired'):c.heldout(state,None,None)
+
     def test_complete_receipts_required(self):
         r={'status':'finished','worker_complete':True,'supervisor_cleanup_verified':True,'within_shared_budget':True,
            'attempts':[dict(status='passed',completion_receipt=True,cleanup_verified=True,identity_verified=True,replay_verified=True) for _ in range(4)]}

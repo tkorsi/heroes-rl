@@ -91,6 +91,7 @@ def save(v):
     status['new_admitted_games'] = status['admitted_training_games']
     status['new_ppo_updates'] = v['new_updates']
     status['latest_complete_progress'] = v['latest_progress']
+    status['next_periodic_update'] = c.latest_periodic_update(v['latest_progress']['updates'])+c.PERIODIC_EVERY
     status['current_activity'] = {k:v['batches'][-1].get(k) for k in ('mode','sequence','seat','status','started_utc','finished_utc')} if v['batches'] else {'mode':'initializing'}
     status['evaluation_natural_outcomes'] = dict(Counter(o for b in v['batches'] if b['mode']!='training' and b.get('status')=='passed' for o in b.get('outcomes',[]) if o in ('win','loss')))
     status['natural_outcomes'] = dict(Counter(o for b in admitted for o in b.get('outcomes',[]) if o in ('win','loss')))
@@ -211,7 +212,7 @@ def worker():
                 start=time.monotonic();run(v,c.PARENT,c.context()['progress']['updates'],seat,'baseline');durations.append(time.monotonic()-start)
         while enough_for_batch(c.session(),durations):
             started=time.monotonic();parent=run(v,parent,seq,seq%2,'training');seq+=1;durations.append(time.monotonic()-started)
-            if v['latest_progress']['updates']%5==0:
+            if (v['latest_progress']['updates']-c.PERIODIC_ORIGIN)%c.PERIODIC_EVERY==0:
                 require(enough_for_batch(c.session(),durations),'Periodic evaluation due but insufficient safe time')
                 for seat in (0,1):
                     require(enough_for_batch(c.session(),durations),'Insufficient measured reserve for due paired evaluation')
@@ -272,6 +273,7 @@ def freeze():
         data='/workspace/Heroes-artifacts/game-data',
         maps=[c.map_identity(c.BASE/f'maps/curriculum-3-{seat}.vmap',seat) for seat in (0,1)],
         diagnostic_schedule=[r for block in range(8) for seat in (0,1) for r in diagnostic_schedule(seat,3,block,4)],
+        periodic_origin_update=c.PERIODIC_ORIGIN,periodic_every_updates=c.PERIODIC_EVERY,next_periodic_update=c.latest_periodic_update(state.progress.updates)+c.PERIODIC_EVERY,
         control_seeds=[1130001,1130002],heldout={str(seat):c.schedule(c.context()['progress']['updates'],seat,True) for seat in (0,1)},
         distribution='Alternating four-game same-seat batches on open8x8 stage3; no difficulty transition in this campaign',
         success_criteria='Clean64game acceptance with natural wins and losses in each seat; capture/wait controls separately; descriptive fixed heldout win-rate change after PPO',

@@ -44,6 +44,13 @@ SESSION=Path(os.environ.get('HEROES_CURRICULUM_SESSION',str(BASE/'campaign-v1/se
 PARENT=Path(json.loads(CONTEXT_PATH.read_text())['parent']['plan']['path']) if CONTEXT_PATH.exists() else BASE/'not-yet-handed-off/plan.json'
 INTERFACE='adventure-capabilities-v1'
 SCOPE='heroes-overnight-curriculum-20261026'
+PERIODIC_ORIGIN=146
+PERIODIC_EVERY=5
+
+def latest_periodic_update(update):
+    require(type(update) is int and update>=PERIODIC_ORIGIN,'Invalid curriculum evaluation progress')
+    return PERIODIC_ORIGIN+((update-PERIODIC_ORIGIN)//PERIODIC_EVERY)*PERIODIC_EVERY
+
 require=resume.require
 CORE=('contextual.py','contextual_model.py','contextual_rollout.py','checkpoints.py','ppo.py',
       'builtin_gameplay.py','builtin_rollout.py','trajectory.py','contract.py')
@@ -270,6 +277,10 @@ def heldout(state,runtime,native):
     for seat in (0,1):
         require(any(b.get('mode')=='baseline' and b.get('seat')==seat and b.get('status')=='passed'
                     for b in journal['batches']),'Both frozen baselines required')
+    due=latest_periodic_update(state.progress.updates)
+    if due>context()['progress']['updates']:
+        for seat in (0,1):
+            require(any(b.get('mode')=='periodic' and b.get('seat')==seat and b.get('sequence')==due and b.get('status')=='passed' for b in journal['batches']),'Due paired heldout evaluation required before more PPO')
 
 
 def main():
