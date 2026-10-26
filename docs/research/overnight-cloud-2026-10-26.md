@@ -115,3 +115,35 @@ The first offline preparation attempt then failed before native gameplay: the dr
 - 2026-10-26T03:35:39.636419+00:00 campaign_batch_result: {"sequence": 111, "seat": 1, "mode": "training", "status": "passed"}
 
 - 2026-10-26T03:35:39.910233+00:00 campaign_batch_intent: {"sequence": 112, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:37:05.514189+00:00 campaign_batch_result: {"sequence": 112, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:37:05.867261+00:00 campaign_batch_intent: {"sequence": 113, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:38:39.904052+00:00 campaign_batch_result: {"sequence": 113, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:38:40.165851+00:00 campaign_batch_intent: {"sequence": 114, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:40:06.005839+00:00 campaign_batch_result: {"sequence": 114, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:40:06.529100+00:00 campaign_batch_intent: {"sequence": 261, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T03:40:35.504211+00:00 campaign_batch_result: {"sequence": 261, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T03:40:35.772141+00:00 campaign_batch_intent: {"sequence": 261, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T03:41:05.717074+00:00 campaign_batch_result: {"sequence": 261, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T03:41:05.976046+00:00 campaign_batch_intent: {"sequence": 115, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:42:08.977480+00:00 campaign_batch_result: {"sequence": 115, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:42:09.240573+00:00 campaign_batch_intent: {"sequence": 116, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:43:38.700186+00:00 campaign_batch_result: {"sequence": 116, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:43:38.961974+00:00 campaign_batch_intent: {"sequence": 117, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:45:34.352504+00:00 campaign_batch_result: {"sequence": 117, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:45:34.608513+00:00 campaign_batch_intent: {"sequence": 118, "seat": 0, "mode": "training", "status": "preparing"}
