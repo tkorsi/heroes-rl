@@ -16,6 +16,7 @@ import time
 from experiments.headless.contextual_evidence import strict_json, runtime_identity
 from experiments.learner.evaluate_builtin_opponent import native_opponent
 from experiments.learner import checkpoints
+from experiments.learner.builtin_training_resume import _metadata
 from experiments.learner.builtin_v8_migration import map_identity, metadata, SCHEMA as MIGRATION_SCHEMA
 from validation.probes.validate_capabilities import capability_implementation_identity
 from validation.probes.validate_hero_policy import frozen_fingerprints
@@ -41,7 +42,7 @@ def load_fixed(path):
             and binding(path)['sha256'] == '5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023',
             'Only immutable update146 policy is admitted to selection diagnostics')
     loaded = checkpoints.load_policy_checkpoint(path, interface=INTERFACE,
-        expected_source_metadata=plan['checkpoint_metadata'],
+        expected_source_metadata=_metadata(plan, report['plan_sha256']),
         allowed_provenance=(checkpoints.BUILTIN_GAMEPLAY_PROVENANCE,))
     loaded.model.eval().requires_grad_(False)
     return loaded, frozen_fingerprints(loaded, path)
