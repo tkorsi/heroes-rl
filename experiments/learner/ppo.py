@@ -239,6 +239,9 @@ def _verify_behavior_frames(model, rollouts, inputs):
 # Separate numerical experiments, never defaults. Only a caller that binds the choice into
 # its immutable plan (the benchmark harness) sets this; no environment variable can.
 EXPERIMENTS = frozenset()
+# Exact, opt-in: forked helpers compute prefix frame encodings bit for bit (``prefix_pool``).
+# Zero keeps every encoding in this process. Set the same way as ``EXPERIMENTS``.
+PREFIX_HELPERS = 0
 
 
 @dataclass(frozen=True)
@@ -262,20 +265,25 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
 
 
 def _update(model, optimizer, rollouts, **options):
+    pools = []
     try:
-        return _update_kernel(model, optimizer, rollouts, **options)
+        return _update_kernel(model, optimizer, rollouts, pools=pools, **options)
     finally:
+        # Prefix helpers end with the update, whatever its outcome.
+        for pool in pools:
+            pool.close()
         # The experiment's shared encodings never outlive their minibatch graph.
         model.__dict__.pop("_graph_memo_state", None)
 
 
-def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None):
+def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,
+                   pools=None):
     """Shared numerical kernel; callers must establish admission before entering.
 
     The public default entry point remains synthetic-only. The separately gated
     gameplay runner verifies native artifacts and replay before using this kernel.
     """
-    from .contextual_model import encode_history
+    from .contextual_model import encode_history, frame_keys_until
     started = perf_counter()
     timings = dict(history_encoding=0.0, behavior_verification=0.0, prefix_reconstruction=0.0,
                    loss_forward=0.0, backward_and_clip=0.0, optimizer_step=0.0)
@@ -322,6 +330,17 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     shared = "shared_graph_encodings" in EXPERIMENTS
     if shared:
         timings["experiment_shared_graph_encodings"] = 1.0
+    # Memo keys of the unchanged histories, computed once per update instead of once per minibatch.
+    # A caller's own replacement of prefix_states keeps the original call.
+    prefix_keys = None if "prefix_states" in model.__dict__ else [[] for _ in inputs]
+    pool = None
+    if PREFIX_HELPERS and pools is not None and prefix_keys is not None and model._can_cache_prefix():
+        from .prefix_pool import PrefixPool
+        phase = perf_counter()
+        pool = PrefixPool(model, inputs, PREFIX_HELPERS)
+        pools.append(pool)
+        timings["prefix_helpers"] = float(PREFIX_HELPERS)
+        timings["prefix_helper_start"] = perf_counter() - phase
     for _ in range(config.epochs):
         order = torch.randperm(len(windows), generator=generator).tolist()
         for batch_start in range(0, len(order), config.windows_per_minibatch):
@@ -336,7 +355,14 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             if model._can_cache_prefix():
                 for window in selected:
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
-            prefixes = {index: model.prefix_states(inputs[index], stops) for index, stops in boundaries.items()}
+            prefixes = {}
+            for index, stops in boundaries.items():
+                if prefix_keys is None:
+                    prefixes[index] = model.prefix_states(inputs[index], stops)
+                    continue
+                keys = frame_keys_until(prefix_keys[index], inputs[index], max(stops))
+                vectors = None if pool is None else pool.vectors(index, max(stops), keys)
+                prefixes[index] = model.prefix_states(inputs[index], stops, vectors=vectors, keys=keys)
             timings["prefix_reconstruction"] += perf_counter() - phase
             phase = perf_counter()
             new_log_probs, new_values, old_log_probs, old_values, batch_advantages, returns = [], [], [], [], [], []

@@ -624,6 +624,19 @@ class ContextualInput:
     observation: c.Observation | None = None
 
 
+def frame_key(frame):
+    """Exact prefix memo key of a frame with semantics: repr keeps number types and signed zeros."""
+    return repr((frame.semantics, frame.observation))
+
+
+def frame_keys_until(keys, frames, stop):
+    """Extend ``keys`` (one entry per frame, None without semantics) to ``stop`` frames; return it."""
+    for seq in range(len(keys), stop):
+        frame = frames[seq]
+        keys.append(None if frame.semantics is None else frame_key(frame))
+    return keys
+
+
 class ContextualEncoder:
     """Chronology checker plus temporary routing bindings, with no neural state."""
 
@@ -1069,7 +1082,7 @@ class ContextualActorCritic(nn.Module):
                    and (type(module) is not nn.GRU or module.dropout == 0)
                    for module in self.modules())
 
-    def prefix_states(self, inputs, stops):
+    def prefix_states(self, inputs, stops, vectors=None, keys=None):
         """Reconstruct detached states at frame boundaries under the current weights.
 
         The memo exists only for this synchronous call, before an optimizer step.
@@ -1077,6 +1090,11 @@ class ContextualActorCritic(nn.Module):
         versions. Every chronological GRU transition still executes in order.
         Training mode is unchanged; train-mode leaves use only this local memo,
         not the persistent inference memo. Differentiable windows never see it.
+        ``vectors`` may supply, for every frame before the last stop that has
+        semantics, the exact encoding this memo would hold (``prefix_pool``
+        computes them under the same weights); checks and transitions are unchanged.
+        ``keys`` may supply the memo keys (``frame_keys_until``) of the same
+        unchanged history, computed once instead of in every call.
         """
         stops = tuple(stops)
         if not stops or any(type(stop) is not int or not 0 <= stop <= len(inputs) for stop in stops):
@@ -1084,6 +1102,8 @@ class ContextualActorCritic(nn.Module):
         wanted, result = set(stops), {}
         state = self.initial_state()
         use_cache = self._can_cache_prefix()
+        if vectors is not None and not use_cache:
+            raise ValueError("Supplied prefix encodings need the exact cached reconstruction path")
         # Internal-node entries obey the same exact-tree rule as the inference memo.
         features, leaves = {}, {"text": {}, "number": {}, "node": {}}
         with torch.no_grad():
@@ -1095,11 +1115,13 @@ class ContextualActorCritic(nn.Module):
                     state = self.forward_step(frame, state).state
                 else:
                     self._check_step(frame, state)
-                    if frame.semantics is not None:
+                    if frame.semantics is not None and vectors is not None:
+                        state = self.gru(vectors[seq], state)
+                    elif frame.semantics is not None:
                         # repr preserves number types and signed zeros. A fresh
                         # tree cache on a miss preserves within-frame evaluation
                         # order and the original cache's equality semantics.
-                        key = repr((frame.semantics, frame.observation))
+                        key = frame_key(frame) if keys is None else keys[seq]
                         vector = features.get(key)
                         if vector is None:
                             vector, _ = self._frame_features(frame, {_LEAF_MEMO: leaves})

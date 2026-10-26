@@ -72,11 +72,13 @@ def main():
     p.add_argument('--seats', required=True); p.add_argument('--push-delay', type=float, default=0.0)
     p.add_argument('--hours', type=float, default=2.0)
     p.add_argument('--experiment', action='append', default=[], help='numerical experiment, recorded in the plan')
+    p.add_argument('--prefix-helpers', type=int, default=0, help='exact prefix helpers, recorded in the plan')
     a = p.parse_args()
     checkout = a.checkout.resolve(); python = str(checkout/'.venv/bin/python')
     campaign = BENCH/'campaigns'/a.name
     env = {**os.environ, 'HEROES_ARTIFACT_ROOT': str(BENCH), 'HEROES_BENCH_CAMPAIGN': str(campaign),
-           'HEROES_BENCH_PUSH_DELAY': str(a.push_delay), 'PYTHONDONTWRITEBYTECODE': '0'}
+           'HEROES_BENCH_PUSH_DELAY': str(a.push_delay)}
+    env.pop('PYTHONDONTWRITEBYTECODE', None)  # any value, even '0', disables bytecode caching
     tool = str(checkout/'tools/acceleration2/bench_campaign.py')
     steps = {}
     def step(name, *args):
@@ -86,7 +88,8 @@ def main():
     step('init', '--campaign', str(campaign), '--relocated', str(BENCH/'inputs/relocated-412'),
          '--runtime-bin', str(BENCH/'runtime'/a.runtime/'bin'), '--data', str(DATA), '--maps', str(BENCH/'inputs/maps'),
          '--historical-plans', str(BENCH/'inputs/historical-plans'), '--durable', str(BENCH/'durable'),
-         '--variant', a.variant, '--workload', a.workload, '--hours', str(a.hours), *(x for e in a.experiment for x in ('--experiment', e)))
+         '--variant', a.variant, '--workload', a.workload, '--hours', str(a.hours), *(x for e in a.experiment for x in ('--experiment', e)),
+         *(('--prefix-helpers', str(a.prefix_helpers)) if a.prefix_helpers else ()))
     step('freeze'); step('release')
     before = resource.getrusage(resource.RUSAGE_CHILDREN)
     started = time.monotonic()
@@ -95,7 +98,7 @@ def main():
     sampler = Sampler(process.pid, campaign/'resources.jsonl'); sampler.start()
     returncode = process.wait(); sampler.stop.set(); sampler.join()
     after = resource.getrusage(resource.RUSAGE_CHILDREN)
-    record = dict(variant=a.variant, workload=a.workload, experiments=a.experiment, checkout=str(checkout), runtime=a.runtime, seats=a.seats,
+    record = dict(variant=a.variant, workload=a.workload, experiments=a.experiment, prefix_helpers=a.prefix_helpers, checkout=str(checkout), runtime=a.runtime, seats=a.seats,
                   first_sequence=a.first_sequence, push_delay=a.push_delay, setup_seconds=steps,
                   launch_seconds=time.monotonic()-started, returncode=returncode,
                   child_cpu_seconds=(after.ru_utime-before.ru_utime)+(after.ru_stime-before.ru_stime),

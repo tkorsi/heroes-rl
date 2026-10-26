@@ -59,6 +59,13 @@ def experiments():
     return chosen
 
 
+def prefix_helpers():
+    # Exact execution choice (ppo.PREFIX_HELPERS): bound in the plan, not a numerical experiment.
+    helpers = context().get('prefix_helpers', 0)
+    require(type(helpers) is int and 0 <= helpers <= 15, 'Invalid prefix helper count')
+    return helpers
+
+
 def historical_plan():
     return Path(context()['historical']['plan']['path'])
 
@@ -245,6 +252,7 @@ def _check_identity(plan):
     require(plan['compute_deadline_unix'] == v['compute_deadline_unix'], 'Changed compute budget')
     require(plan.get('experiments', []) == experiments() and plan['checkpoint_metadata'].get('numerical_experiments', []) == experiments(),
             'Numerical experiment selection changed')
+    require(plan.get('prefix_helpers', 0) == prefix_helpers(), 'Prefix helper selection changed')
 
 
 def prepare(parent, sequence, seat):
@@ -275,6 +283,8 @@ def prepare(parent, sequence, seat):
     if experiments():
         # The plan, and through its metadata every checkpoint it produces, names the experiment.
         plan['experiments'] = plan['checkpoint_metadata']['numerical_experiments'] = experiments()
+    if prefix_helpers():
+        plan['prefix_helpers'] = prefix_helpers()
     check_identity(plan); write_new(output/'plan.json', plan); return output/'plan.json'
 
 
@@ -298,6 +308,7 @@ def main():
             plan = read_plan(path, sha)
             from . import ppo
             ppo.EXPERIMENTS = frozenset(plan.get('experiments', ()))
+            ppo.PREFIX_HELPERS = plan.get('prefix_helpers', 0)
             return plan
         result = batches.worker(a, plan_reader=reader, state_reader=lambda plan: restore(plan['parent']['plan']['path']), heldout_checker=heldout)
     else:

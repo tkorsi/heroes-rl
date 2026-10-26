@@ -9,7 +9,7 @@ be compared bit for bit. Nothing is written into any checkpoint lineage.
 
     ppo_bench.py --parent-plan P --parent-report R --policy F --resume F --batch DIR [--repeat N]
                  [--reference-resume F] [--save-state F] [--compare-state F]
-                 [--experiment shared_graph_encodings] [--profile OUT] [--output JSON]
+                 [--experiment shared_graph_encodings] [--prefix-helpers N] [--profile OUT] [--output JSON]
 """
 import argparse
 import cProfile
@@ -147,8 +147,10 @@ def main():
     p.add_argument('--compare-state', type=Path, help='report differences from a state saved by --save-state')
     p.add_argument('--experiment', action='append', default=[], choices=['shared_graph_encodings'],
                    help='enable a separate numerical experiment (never a default)')
+    p.add_argument('--prefix-helpers', type=int, default=0, help='exact forked prefix-encoding helpers (0: serial)')
     a = p.parse_args()
     ppo.EXPERIMENTS = frozenset(a.experiment)
+    ppo.PREFIX_HELPERS = a.prefix_helpers
     items = rollouts(a.batch)
     results = []
     for index in range(a.repeat):
@@ -174,7 +176,7 @@ def main():
         results.append(result)
         print(json.dumps({k: result[k] for k in ('seconds', 'weights_sha256', 'model_sha256', 'adam_sha256', 'gradient_sha256')}
                          | {'reference_equal': result.get('reference_equal'), 'difference': result.get('difference'), 'timings': result['timings']}))
-    record = dict(experiments=sorted(ppo.EXPERIMENTS), samples=sum(len(i.samples) for i in items), frames=[len(i.history) for i in items],
+    record = dict(experiments=sorted(ppo.EXPERIMENTS), prefix_helpers=ppo.PREFIX_HELPERS, samples=sum(len(i.samples) for i in items), frames=[len(i.history) for i in items],
                   decisions=[len(i.decisions) for i in items], torch=str(torch.__version__), repetitions=results,
                   identical_across_repetitions=len({r['model_sha256'] + r['adam_sha256'] + r['gradient_sha256'] for r in results}) == 1)
     if a.output: a.output.write_text(json.dumps(record, indent=2) + '\n')
