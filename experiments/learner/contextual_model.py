@@ -132,6 +132,83 @@ def weights_sha256(model):
     return _entries_sha256(_config_text(model), _weight_entries(model))
 
 
+_MODULE_STATE_DICT, _MODULE_SAVE_STATE, _MODULE_EXTRA_STATE = (
+    nn.Module.state_dict, nn.Module._save_to_state_dict, nn.Module.get_extra_state)
+_PLAIN_TENSORS = (Tensor, nn.Parameter)
+
+
+def _plain_state(model):
+    """``model.state_dict()`` before detaching, when that call is plain Module code; else None.
+
+    Plain means every module's class keeps Module.state_dict, _save_to_state_dict
+    and get_extra_state, no instance overrides the first two, no module has
+    state-dict hooks and every stored value is an exact Tensor or Parameter.
+    state_dict() then makes, in this same order, exactly these assignments of
+    detached aliases of these very tensors (same dtype, shape, strides, device
+    and bits), so the name to tensor mapping equals its result.
+    """
+    state, stack = {}, [("", model)]
+    while stack:
+        prefix, module = stack.pop()
+        cls, attributes = type(module), module.__dict__
+        try:
+            if (cls.state_dict is not _MODULE_STATE_DICT or cls._save_to_state_dict is not _MODULE_SAVE_STATE
+                    or getattr(cls, "get_extra_state", _MODULE_EXTRA_STATE) is not _MODULE_EXTRA_STATE
+                    or "state_dict" in attributes or "_save_to_state_dict" in attributes
+                    or attributes["_state_dict_pre_hooks"] or attributes["_state_dict_hooks"]):
+                return None
+            parameters, buffers = attributes["_parameters"], attributes["_buffers"]
+            persistent, children = attributes["_non_persistent_buffers_set"], attributes["_modules"]
+        except KeyError:
+            return None
+        for name, value in parameters.items():
+            if value is not None:
+                if type(value) not in _PLAIN_TENSORS:
+                    return None
+                state[prefix + name] = value
+        for name, value in buffers.items():
+            if value is not None and name not in persistent:
+                if type(value) not in _PLAIN_TENSORS:
+                    return None
+                state[prefix + name] = value
+        stack.extend((prefix + name + ".", child) for name, child in reversed(children.items()) if child is not None)
+    return state
+
+
+_WORD_DTYPES = {1: torch.uint8, 2: torch.int16, 4: torch.int32, 8: torch.int64}
+_FLATTEN = getattr(torch._C._nn, "flatten_dense_tensors", None)  # torch.cat of view(-1)s, in one call
+
+
+def _joined_words(tensors, fresh):
+    """The concatenated bits of nonempty contiguous CPU tensors of one plain dtype, as integer words.
+
+    Words are int64 when the byte count allows, else integers of the element
+    width; either way, for lists of equal dtypes and sizes, equal words mean
+    exactly equal bits, signed zeros and NaN payloads included. With ``fresh``
+    the result never aliases the tensors (flattening one tensor is a view).
+    """
+    with torch.no_grad():
+        if _FLATTEN is not None and (len(tensors) > 1 or not fresh):
+            joined = _FLATTEN(tensors)
+        else:
+            joined = torch.cat([tensor.view(-1) for tensor in tensors])
+    size = tensors[0].element_size()
+    return joined.view(torch.int64 if joined.numel() * size % 8 == 0 else _WORD_DTYPES[size])
+
+
+def _typed_words(tensors):
+    """A fresh copy of the bits of contiguous CPU tensors of one dtype as integer words, else None."""
+    if not tensors:
+        return None
+    dtype = tensors[0].dtype
+    if tensors[0].element_size() not in _WORD_DTYPES or dtype.is_complex:
+        return None
+    for tensor in tensors:
+        if tensor.dtype != dtype or tensor.device.type != "cpu" or not tensor.is_contiguous():
+            return None
+    return _joined_words(tensors, True)
+
+
 class WeightsSnapshot:
     """A private copy of exactly the bytes one weights_sha256 value digests.
 
@@ -152,21 +229,34 @@ class WeightsSnapshot:
         # (bit patterns, as for uint8) many times faster than single bytes.
         self.pad = torch.zeros(-sum(flat.numel() for *_, flat in entries) % 8, dtype=torch.uint8)
         self.words = torch.cat([*(flat for *_, flat in entries), self.pad]).view(torch.int64)
+        # The same bytes as integer words of the tensors' own width, when they all share one dtype.
+        self.typed = None
+        if len({dtype for _, dtype, _ in self.layout}) == 1:
+            try:
+                self.typed = _typed_words([flat.view(dtype).view(shape) for _, dtype, shape, flat in entries])
+            except RuntimeError:  # a dtype without a plain view keeps the byte comparison
+                pass
         self.digest = _entries_sha256(self.config, entries)
 
     def matches(self, model):
         if _config_text(model) != self.config:
             return False
-        items = sorted(model.state_dict().items())
+        state = _plain_state(model)
+        items = sorted((model.state_dict() if state is None else state).items())
         if len(items) != len(self.layout):
             return False
-        flats = []
+        tensors = []
         for (name, tensor), (known, dtype, shape) in zip(items, self.layout):
-            if (name != known or tensor.dtype != dtype or tuple(tensor.shape) != shape
+            if (name != known or tensor.dtype != dtype or tensor.shape != shape
                     or tensor.device.type != "cpu" or not tensor.is_contiguous()):
                 return False
-            flats.append(tensor.reshape(-1).view(torch.uint8))
-        return torch.equal(torch.cat([*flats, self.pad]).view(torch.int64), self.words)
+            tensors.append(tensor)
+        if self.typed is not None:
+            # Same names, one dtype and the same shapes: equal words are exactly equal bytes.
+            return torch.equal(_joined_words(tensors, False), self.typed)
+        with torch.no_grad():
+            flats = [tensor.reshape(-1).view(torch.uint8) for tensor in tensors]
+            return torch.equal(torch.cat([*flats, self.pad]).view(torch.int64), self.words)
 
     def unchanged(self, model):
         return self.matches(model) or weights_sha256(model) == self.digest
@@ -188,17 +278,23 @@ _BIT_DTYPES = {1: torch.uint8, 2: torch.int16, 4: torch.int32, 8: torch.int64}
 
 
 def _bit_state(tensors):
-    """Each tensor's (dtype, device, shape), and all their exact bits as CPU int64 words.
+    """Each tensor's (dtype, device, shape), and all their exact bits as CPU integer words.
 
-    The words are the tensors' logical-order bytes, concatenated and zero padded
-    to whole words. For equal (dtype, device, shape) lists, two states' words are
-    equal exactly when every tensor's bits are, signed zeros and NaN payloads
-    included; torch.equal compares int64 words much faster than single bytes.
+    The words are the tensors' logical-order elements as integers of their own
+    width when all are contiguous CPU tensors of one dtype, else their bytes,
+    concatenated and zero padded to whole int64 words; the last meta entry
+    names which. For equal meta, two states' words are equal exactly when every
+    tensor's bits are, signed zeros and NaN payloads included; torch.equal
+    compares integer words much faster than single bytes.
     """
     meta = tuple((value.dtype, value.device, value.shape) for value in tensors)
-    flats = [value.detach().reshape(-1).view(torch.uint8).to("cpu") for value in tensors]
-    flats.append(torch.zeros(-sum(flat.numel() for flat in flats) % 8, dtype=torch.uint8))
-    return meta, torch.cat(flats).view(torch.int64)
+    words = _typed_words(tensors)
+    if words is None:
+        flats = [value.detach().reshape(-1).view(torch.uint8).to("cpu") for value in tensors]
+        flats.append(torch.zeros(-sum(flat.numel() for flat in flats) % 8, dtype=torch.uint8))
+        words = torch.cat(flats).view(torch.int64)
+        return (*meta, "bytes"), words
+    return (*meta, "typed"), words
 
 
 def _bits(tensor):
