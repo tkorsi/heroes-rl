@@ -1,0 +1,47 @@
+{
+  "schema": "heroes-operational-dispatch-v1",
+  "recorded_at_utc": "2026-10-26T18:15:35.900835+00:00",
+  "assignment_commit": "b4fe70cc0285a76716430b5f41b17b43ba828b12",
+  "assignment_path": "docs/operations/claude-original5000-overnight-20261026.txt",
+  "assignment_sha256": "8b9e1ef61e07fb12ecb8dd5131db7e052ad3a4c93b6d56e60f022b671ca01851",
+  "destination": {
+    "service": "Claude",
+    "project": "Heroes Rl",
+    "task_title": "Build embedded in-process VCMI engine",
+    "url": "https://claude.ai/code/project/chan_01FymZoDy7tjZX4gzNj7NWe8?thread=cmsg_01FymZoDy7tjZX4gzNj7NWe8DHU5djxJ4rRQzgaZ1sjYsp"
+  },
+  "delivery": {
+    "route": "Existing task in native Claude app",
+    "language": "English",
+    "sent_once": true,
+    "observed_send_local_time": "2026-10-26T20:13:00+02:00",
+    "timestamp_precision": "UI minute precision",
+    "visible_acknowledgment": "Understood: overnight until 11:00 UTC on the local 5,000-game original-map run. First I will read the new assignment, then set up a deadline watchdog.",
+    "observed_activity": "Claude is working; assignment acknowledged; watchdog installation not yet independently verified"
+  },
+  "compute_cutoff_utc": "2026-10-27T10:50:00Z",
+  "hard_stop_utc": "2026-10-27T11:00:00Z",
+  "root_started_games_or_ppo": false,
+  "manual_launch_preserved": true,
+  "automations": {
+    "health": "claude-overnight-ppo-acceleration-health",
+    "final_audit": "claude-acceleration-final-audit-27-oct",
+    "final_audit_local": "2026-10-27T13:05:00+02:00",
+    "requires_local_mac_and_app_awake": true
+  },
+  "limitations": [
+    "Delivery and acknowledgment are confirmed; no new speedup result is claimed.",
+    "Root monitoring does not substitute for Claude-owned deadline enforcement."
+  ],
+  "followup_observation": {
+    "timestamp_utc": "2026-10-26T18:20:25.705271+00:00",
+    "task_status": "Independent deadline watchdog (running, pid 27780; testing its stop path on dummy processes)",
+    "observed_todo": [
+      "New assignment read; phase-2 branch pushed",
+      "Original-map PR30 comparison in progress",
+      "Local-runner integration, baseline/candidate measurements and update629 validation planned"
+    ],
+    "process_identity_independently_audited": false,
+    "watchdog_stop_test_result_not_yet_observed": true
+  }
+}

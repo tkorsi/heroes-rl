@@ -421,3 +421,9 @@ lineage. The user retains manual launch of the 5,000-game campaign. The previous
 opted-in reordered-gradient experiment remains separate from the exact default.
 See [the prospective assignment](operations/claude-original5000-overnight-20261026.txt)
 and [authorization](../validation/claude-original5000-authorization-2026-10-26.json).
+
+The renewed assignment was delivered once to the existing Claude task at
+20:13 Kyiv. Claude acknowledged the 11:00 UTC deadline and began work on
+the assignment/watchdog. Installation is not yet independently verified.
+[Dispatch receipt](../validation/claude-original5000-dispatch-2026-10-26.json)
+records this distinction and the bounded root follow-ups.
