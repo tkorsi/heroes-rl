@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T03:17:52.040619+00:00",
-  "phase": "handoff_restored_preparing_linux_acceptance",
+  "timestamp_utc": "2026-10-26T03:21:33.293385+00:00",
+  "phase": "linux_acceptance_running",
   "ownership": "cloud",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
   "hard_deadline_utc": "2026-10-26T10:00:00Z",
@@ -31,7 +31,7 @@
   },
   "verified_asset_files": 8,
   "watchdog_pid": 26662,
-  "blocker": "Fresh Linux both-seat mixed-outcome acceptance and baseline required",
+  "blocker": "Complete fresh mixed-outcome Linux acceptance and fixed baseline remain mandatory",
   "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
   "offline_control_tests": 15,
   "private_git_read_access": true,
@@ -39,10 +39,12 @@
   "remaining_compute_seconds": 23827.959374666214,
   "autonomous_controller_pid": 35903,
   "handoff_poller_pid": 26664,
-  "autonomous_bootstrap_commit": "18a6b199ea663646d3e6066a051807b661903f87",
+  "autonomous_bootstrap_commit": "f8109749ae544717bf65e5ccb96a6cab124d9a7e",
   "autonomous_command": [
     "/workspace/heroes-rl/.venv/bin/python",
-    "/workspace/releases/teacher-overnight-bootstrap-18a6b19/tools/overnight_autocontinue.py"
+    "/workspace/releases/teacher-overnight-bootstrap-f810974/tools/overnight_autocontinue.py",
+    "--repair-preparation",
+    "preparation-repair-002"
   ],
   "duplicate_exclusion": "exclusive live flock plus immutable handoff claim and session lock",
   "second_real_controller_rejected": true,
@@ -50,7 +52,7 @@
   "private_git_write_access": true,
   "runtime_startup_checks": "passed",
   "builtin_regression_tests": 234,
-  "overnight_controls": 19,
+  "overnight_controls": 20,
   "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220",
   "full_offline_suite": {
     "run": 1309,
@@ -63,15 +65,6 @@
   "previous_wait_controller_exited": true,
   "real_handoff_received": false,
   "real_weights_inspected": false,
-  "autonomous_result": {
-    "status": "stopped_before_training",
-    "training_started": false,
-    "error": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
-    "stopped_utc": "2026-10-26T03:06:10.935669+00:00",
-    "hard_deadline_unix": 1793008800.0,
-    "compute_deadline_unix": 1793008500.0,
-    "restart_authorized": false
-  },
   "latest_complete_progress": {
     "updates": 254,
     "rollouts": 1016,
@@ -80,5 +73,66 @@
   "cumulative_adam_steps": 2626,
   "next_unused_training_sequence": 108,
   "exact_final_restore": "passed_three_copies",
-  "repair_attempt": "preparation-repair-002"
+  "repair_attempt": "preparation-repair-002",
+  "prior_preparation_failure": {
+    "status": "stopped_before_training",
+    "training_started": false,
+    "error": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
+    "stopped_utc": "2026-10-26T03:06:10.935669+00:00",
+    "hard_deadline_unix": 1793008800.0,
+    "compute_deadline_unix": 1793008500.0,
+    "restart_authorized": false
+  },
+  "linux_controls": [
+    {
+      "seat": 0,
+      "mode": "capture",
+      "outcome": "win",
+      "natural": true,
+      "replay": true,
+      "cleanup": true
+    },
+    {
+      "seat": 1,
+      "mode": "capture",
+      "outcome": "win",
+      "natural": true,
+      "replay": true,
+      "cleanup": true
+    },
+    {
+      "seat": 0,
+      "mode": "wait",
+      "outcome": "loss",
+      "natural": true,
+      "replay": true,
+      "cleanup": true
+    },
+    {
+      "seat": 1,
+      "mode": "wait",
+      "outcome": "loss",
+      "natural": true,
+      "replay": true,
+      "cleanup": true
+    }
+  ],
+  "verified_linux_diagnostic_policy_games": 16,
+  "linux_policy_outcomes_by_seat": {
+    "0": {
+      "loss": 6,
+      "win": 2
+    },
+    "1": {
+      "loss": 6,
+      "win": 2
+    }
+  },
+  "platform_drift": {
+    "passed": true,
+    "values_max_abs": 1.7881393432617188e-07,
+    "joint_log_probability_max_abs": 4.76837158203125e-07,
+    "sampled_action_mismatches": 0
+  },
+  "executable_release": "/workspace/releases/teacher-overnight-30629a84bc30"
 }
