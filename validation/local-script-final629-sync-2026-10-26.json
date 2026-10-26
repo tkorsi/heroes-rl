@@ -1,0 +1,90 @@
+{
+  "schema": "heroes-local-script-final-sync-v1",
+  "timestamp_utc": "2026-10-26T18:30:06.867971+00:00",
+  "run_id": "run-20261026T160706Z-0be8eb77",
+  "frozen_source_commit": "3268f2f8cae6a01277c1629c5d0a9fb8958b5786",
+  "checkpoint_update": 629,
+  "progress": {
+    "updates": 629,
+    "rollouts": 2516,
+    "decisions": 127958
+  },
+  "optimizer_steps": 4882,
+  "new_training_games": 868,
+  "new_ppo_updates": 217,
+  "training_outcomes": {
+    "win": 868
+  },
+  "evaluation_games": 352,
+  "evaluation_outcomes": {
+    "win": 352
+  },
+  "latest_paired_evaluation": {
+    "checkpoint": 627,
+    "red_wins": 4,
+    "red_games": 4,
+    "blue_wins": 4,
+    "blue_games": 4
+  },
+  "final629_paired_evaluation_performed": false,
+  "failed_batches": 0,
+  "cutoffs": 0,
+  "all_305_batches_passed": true,
+  "training_sequence_audit": {
+    "first": 266,
+    "last": 482,
+    "count": 217,
+    "unique": true,
+    "next_unused": 483
+  },
+  "evaluation_training_samples_and_adam_steps": 0,
+  "stopped_utc": "2026-10-26T17:58:01.638494+00:00",
+  "shutdown_utc": "2026-10-26T17:58:39.075819+00:00",
+  "owned_cleanup_verified": true,
+  "within_hard_deadline": true,
+  "private_checkpoint": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "private_verified": true,
+    "branch": "codex/local-script-final629-checkpoint",
+    "package_commit": "3f507507afde652c61def59a994a816d12cb0170",
+    "receipt_commit": "8ab78fea6e7dfb023a5daf38b8fcc10d0e89de51",
+    "path": "local-script/run-20261026T160706Z-0be8eb77",
+    "remote_branch_acknowledged": true,
+    "remote_tree_and_blobs_verified": true,
+    "remote_download_restore": {
+      "checkpoint": "builtin-pilot-after-798d4efbfea6437b",
+      "weights_sha256": "798d4efbfea6437b8d94d5f07bb8200e2a86da0559452e2646e548cafca38a29",
+      "progress": {
+        "updates": 629,
+        "rollouts": 2516,
+        "decisions": 127958
+      },
+      "exact_model_adam_rng_progress_pool": true
+    },
+    "readback_note": "Transient network read failures were retried against the same immutable commit; exact download restoration then passed."
+  },
+  "full_raw_archive": {
+    "local_complete": true,
+    "remote_publication_confirmed": false,
+    "upload_status": "First single535MB push failed with HTTP408; remote branch absent. Local verified archive and every source file remain intact.",
+    "intended_branch": "codex/local-script-final629",
+    "local_package_commit": "87e814e6d2de8a0690fed7e158d2e50f87b59267",
+    "compressed_bytes": 534988500,
+    "sha256": "da18b9f18ad14c66b437876935fc2e17894eaa00b44fdc81aa2c310813c67c94",
+    "parts": 13,
+    "regular_files": 38337,
+    "all_contents_verified": true,
+    "symlinks_recorded_not_dereferenced": 1220,
+    "copyrighted_data_copied": false
+  },
+  "source_summary_sha256": "77d2a6eecf1664561263334f745f8bdca88519260214facf7ee086130d8785a7",
+  "source_report_sha256": "ace694b3d2f836585d1e1be12c3a1a8f6558dc96a96a0b8df3af437abebd60fe",
+  "source_shutdown_sha256": "9e227c86f3b180d3cf267df9b38a3d838b8ec9a0e8ed4219f17416802d38fe8c",
+  "new_games_or_ppo_during_sync": 0,
+  "linux_acceptance_performed_during_sync": false,
+  "limitations": [
+    "The run used the easier8x8 distribution. These results do not establish original-map wins.",
+    "The final629 checkpoint has no dedicated final paired evaluation; the latest pair belongs to627.",
+    "At this receipt timestamp the exact final checkpoint is remotely preserved, but the full raw archive has not yet completed remote publication."
+  ]
+}

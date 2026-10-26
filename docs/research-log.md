@@ -427,3 +427,21 @@ The renewed assignment was delivered once to the existing Claude task at
 the assignment/watchdog. Installation is not yet independently verified.
 [Dispatch receipt](../validation/claude-original5000-dispatch-2026-10-26.json)
 records this distinction and the bounded root follow-ups.
+
+## 26 October 2026 — completed manual easy run and private629 handoff
+
+The user-launched local run closed at 17:58:39 UTC, advancing412 to629
+with868 admitted training games and217 PPO updates. All868 training games
+and352 separate evaluation games won on the easier8x8 distribution. All305
+batches passed;217 unique training sequences266–482 were consumed. These
+results do not establish original-map performance. The last paired fixed check
+was627 (4/4 each seat); no final629 pair was run.
+
+The final model/Adam/RNG/progress/pool restored exactly in local copies and
+from an independent private Git download. [The synchronization receipt](../validation/local-script-final629-sync-2026-10-26.json)
+binds the remote checkpoint commit and input dependency. A single535MB full
+archive push failed with HTTP408; the complete local archive remains intact.
+Checkpoint publication is confirmed; full-archive publication is tracked
+separately and is not yet claimed. This transport failure occurred after clean
+training shutdown and invalidates no admitted experience. No games or PPO were
+started by this synchronization.

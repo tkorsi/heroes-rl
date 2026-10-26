@@ -34,14 +34,15 @@
     "Root monitoring does not substitute for Claude-owned deadline enforcement."
   ],
   "followup_observation": {
-    "timestamp_utc": "2026-10-26T18:20:25.705271+00:00",
-    "task_status": "Independent deadline watchdog (running, pid 27780; testing its stop path on dummy processes)",
+    "timestamp_utc": "2026-10-26T18:27:19.564701+00:00",
+    "task_status": "PR30 comparison on the original map: XH campaign running",
     "observed_todo": [
-      "New assignment read; phase-2 branch pushed",
-      "Original-map PR30 comparison in progress",
-      "Local-runner integration, baseline/candidate measurements and update629 validation planned"
+      "Independent deadline watchdog running and tested (owned trees stopped, unowned and stale entries untouched)",
+      "Read local runner/config/wrapper",
+      "Integration branch from main with PR30 and phase2 merged",
+      "Local-runner original-map benchmark planned; explicit source transition needed"
     ],
     "process_identity_independently_audited": false,
-    "watchdog_stop_test_result_not_yet_observed": true
+    "watchdog_test_status": "Owner UI reports passed; raw process/test receipt not independently read by root"
   }
 }
