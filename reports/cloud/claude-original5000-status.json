@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-26T20:36:31Z",
+ "generated_utc": "2026-10-26T22:09:43Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,8 +20,8 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-26T20:36:03.253806Z",
-  "seconds_to_heavy_stop": 51236.7,
+  "heartbeat_utc": "2026-10-26T22:09:33.666086Z",
+  "seconds_to_heavy_stop": 45626.3,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": []
@@ -31,7 +31,7 @@
    "label": "bench-m1-B",
    "pid": 27772,
    "starttime": 2570614,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
@@ -41,7 +41,23 @@
     "--profile"
    ],
    "registered_utc": "2026-10-26T20:33:42.102989Z",
-   "live_descendants": 6
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m1-CH",
+   "pid": 4244,
+   "starttime": 3021631,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m1-CH/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-26T21:48:52.265003Z",
+   "live_descendants": 8
   },
   {
    "label": "bench-s4-B",
@@ -79,7 +95,7 @@
    "label": "driver-m1-B",
    "pid": 27730,
    "starttime": 2570186,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
@@ -89,7 +105,23 @@
     "/home/claude/o5k-main"
    ],
    "registered_utc": "2026-10-26T20:33:37.877203Z",
-   "live_descendants": 7
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m1-CH",
+   "pid": 4201,
+   "starttime": 3021220,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m1-CH",
+    "--checkout",
+    "/home/claude/o5k-cand3"
+   ],
+   "registered_utc": "2026-10-26T21:48:48.208258Z",
+   "live_descendants": 9
   },
   {
    "label": "driver-s4-B",
@@ -162,10 +194,10 @@
     "/home/claude/bench3/schedules/m3.json"
    ],
    "registered_utc": "2026-10-26T20:33:37.637644Z",
-   "live_descendants": 8
+   "live_descendants": 10
   }
  ],
- "phase": "measurement schedule m3 running since 20:33 UTC on CPUs 1-3 (B, CH, XH, F, then F, XH, CH, B; one campaign at a time); optimizer-only exact PPO matrix on batch 266 running on CPU 0; review fixes committed (15ed404)",
+ "phase": "measurement schedule m3 on CPUs 1-3: m1-B done (accepted failed batch 266 alone at the update wall limit), m1-CH training batch 266 running; optimizer-only matrix on CPU 0: C done (3241.7 s), B running; second review fixes pushed",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -204,7 +236,20 @@
  "measurements": {
   "pr30_comparison_original_map": "Earlier (412 parent): PR30 baseline B cannot finish the first original-map batch (games of 2, 60, 93 and 2525 decisions): its PPO alone took 3779 s optimizer-only against a 3540 s update budget. The opt-in experiment with three exact helpers completed the same complete verified batch in 543.6 s compute.",
   "pr30_comparison_easy_map": "Steady-state ratio of medians over 6 paired batches: exact with helpers 1.22x compute; opt-in experiment 3.89x compute, 3.77x durable (local push).",
-  "local_runner_original_map_629": "Concurrent smokes (not timed comparisons): fast path (overlap, no helpers) admitted batch 266 (3968 decisions) at 3468 s of the 3540 s worker budget (games 170 s, PPO 3285 s); accepted a8ac411 played the same games in 492 s and was stopped inside PPO by the update wall limit after 77 of 125 optimizer steps, update rolled back, run stopped_failure. Game identity on every observation and decision frame: 11 of 12 paired games identical; one baseline game differed in the order of an asynchronous turn-end event and a new-day notice before its last decision (same decisions and result); an accepted-vs-accepted repeat is scheduled."
+  "local_runner_original_map_629": "Concurrent smokes (not timed comparisons): fast path (overlap, no helpers) admitted batch 266 (3968 decisions) at 3468 s of the 3540 s worker budget (games 170 s, PPO 3285 s); accepted a8ac411 played the same games in 492 s and was stopped inside PPO by the update wall limit after 77 of 125 optimizer steps, update rolled back, run stopped_failure. Game identity on every observation and decision frame: 11 of 12 paired games identical; one baseline game differed in the order of an asynchronous turn-end event and a new-day notice before its last decision (same decisions and result); an accepted-vs-accepted repeat is scheduled.",
+  "local_runner_original_map_629_solo_accepted": "m1-B (a8ac411 alone on CPUs 1-3): baseline batches 318 s and 557 s; training batch 266 games 474 s, PPO stopped by the update wall limit after 83 of 125 optimizer steps (worker 3519 s), update rolled back, run stopped_failure.",
+  "optimizer_only_batch266": {
+   "fast_path_exact_no_helpers_seconds": 3241.7,
+   "breakdown": {
+    "prefix_reconstruction": 461.8,
+    "loss_forward": 911.2,
+    "backward_and_clip": 1826.7,
+    "behavior_verification": 20.9,
+    "optimizer_step": 17.4
+   },
+   "accepted": "running"
+  },
+  "event_order": "Two accepted runs with the same seeds (s4-B, m1-B) differ in one of twelve games (asynchronous turn-end/new-day order), the same game where accepted and fast path once differed; m1-B equals the fast-path smoke in all twelve."
  },
  "completed_checks": [
   "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",
@@ -224,8 +269,9 @@
  "official_lineage_touched": false,
  "official_run_launched": false,
  "teacher_touched": false,
- "candidate_commit": "15ed404",
+ "candidate_commit": "e83fb0d (measured candidate checkout 15ed404; differences since are checks, tools and docs only)",
  "incidents": [
   "20:0x UTC: a pkill -f pattern matched my own waiting shell and killed only my tool shells (drivers verified alive); standing rule violated, waits now use kill -0 on recorded pids"
- ]
+ ],
+ "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)"
 }
