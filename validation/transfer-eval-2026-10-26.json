@@ -8,155 +8,45 @@
   },
   "cells": {
     "146-easy-seat0": {
-      "battle_start_roles": {},
-      "checkpoint": 146,
-      "natural_losses": 3,
-      "natural_wins": 0,
-      "observed_behavior": {
-        "army_transfers": 0,
-        "movement_attempts": 16,
-        "movement_endpoints": 13,
-        "recruitment": 0,
-        "target_opponent_town": 0,
-        "town_capture_evidence": 0,
-        "visible_net_redistribution": 0
-      },
-      "planned": 16,
-      "scenario": "easy",
-      "seat": 0,
-      "technical_failures": 1,
-      "unstarted": 12,
-      "valid": 3,
-      "valid_cutoffs": 0,
-      "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
-      ],
-      "win_fraction": 0.0
-    },
-    "146-easy-seat1": {
-      "battle_start_roles": {},
-      "checkpoint": 146,
-      "natural_losses": 3,
-      "natural_wins": 0,
-      "observed_behavior": {
-        "army_transfers": 0,
-        "movement_attempts": 24,
-        "movement_endpoints": 15,
-        "recruitment": 0,
-        "target_opponent_town": 0,
-        "town_capture_evidence": 0,
-        "visible_net_redistribution": 0
-      },
-      "planned": 16,
-      "scenario": "easy",
-      "seat": 1,
-      "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
-      "valid_cutoffs": 0,
-      "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
-      ],
-      "win_fraction": 0.0
-    },
-    "146-original-seat0": {
-      "battle_start_roles": {
-        "defender": 4
-      },
-      "checkpoint": 146,
-      "natural_losses": 3,
-      "natural_wins": 0,
-      "observed_behavior": {
-        "army_transfers": 16,
-        "movement_attempts": 18,
-        "movement_endpoints": 2,
-        "recruitment": 6,
-        "target_opponent_town": 0,
-        "town_capture_evidence": 0,
-        "visible_net_redistribution": 299
-      },
-      "planned": 16,
-      "scenario": "original",
-      "seat": 0,
-      "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
-      "valid_cutoffs": 0,
-      "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
-      ],
-      "win_fraction": 0.0
-    },
-    "146-original-seat1": {
-      "battle_start_roles": {
-        "defender": 3
-      },
-      "checkpoint": 146,
-      "natural_losses": 3,
-      "natural_wins": 0,
-      "observed_behavior": {
-        "army_transfers": 14,
-        "movement_attempts": 10,
-        "movement_endpoints": 2,
-        "recruitment": 3,
-        "target_opponent_town": 0,
-        "town_capture_evidence": 0,
-        "visible_net_redistribution": 144
-      },
-      "planned": 16,
-      "scenario": "original",
-      "seat": 1,
-      "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
-      "valid_cutoffs": 0,
-      "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
-      ],
-      "win_fraction": 0.0
-    },
-    "254-easy-seat0": {
       "battle_start_roles": {
         "attacker": 1
       },
-      "checkpoint": 254,
-      "natural_losses": 1,
-      "natural_wins": 2,
+      "checkpoint": 146,
+      "natural_losses": 11,
+      "natural_wins": 1,
       "observed_behavior": {
         "army_transfers": 0,
-        "movement_attempts": 18,
-        "movement_endpoints": 12,
+        "movement_attempts": 88,
+        "movement_endpoints": 64,
         "recruitment": 0,
-        "target_opponent_town": 2,
-        "town_capture_evidence": 2,
+        "target_opponent_town": 1,
+        "town_capture_evidence": 1,
         "visible_net_redistribution": 0
       },
       "planned": 16,
       "scenario": "easy",
       "seat": 0,
       "technical_failures": 1,
-      "unstarted": 12,
-      "valid": 3,
+      "unstarted": 3,
+      "valid": 12,
       "valid_cutoffs": 0,
       "wilson95": [
-        0.2076596008020477,
-        0.9385080552796037
+        0.014865094404917095,
+        0.35387991114111694
       ],
-      "win_fraction": 0.6666666666666666
+      "win_fraction": 0.08333333333333333
     },
-    "254-easy-seat1": {
-      "battle_start_roles": {},
-      "checkpoint": 254,
-      "natural_losses": 2,
+    "146-easy-seat1": {
+      "battle_start_roles": {
+        "attacker": 1
+      },
+      "checkpoint": 146,
+      "natural_losses": 11,
       "natural_wins": 1,
       "observed_behavior": {
         "army_transfers": 0,
-        "movement_attempts": 22,
-        "movement_endpoints": 14,
+        "movement_attempts": 80,
+        "movement_endpoints": 46,
         "recruitment": 0,
         "target_opponent_town": 1,
         "town_capture_evidence": 1,
@@ -166,71 +56,188 @@
       "scenario": "easy",
       "seat": 1,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 4,
+      "valid": 12,
       "valid_cutoffs": 0,
       "wilson95": [
-        0.06149194472039621,
-        0.7923403991979522
+        0.014865094404917095,
+        0.35387991114111694
       ],
-      "win_fraction": 0.3333333333333333
+      "win_fraction": 0.08333333333333333
     },
-    "254-original-seat0": {
+    "146-original-seat0": {
       "battle_start_roles": {
         "attacker": 1,
-        "defender": 6
+        "defender": 18
       },
-      "checkpoint": 254,
-      "natural_losses": 3,
+      "checkpoint": 146,
+      "natural_losses": 16,
       "natural_wins": 0,
       "observed_behavior": {
-        "army_transfers": 47,
-        "movement_attempts": 76,
-        "movement_endpoints": 11,
-        "recruitment": 8,
+        "army_transfers": 37,
+        "movement_attempts": 45,
+        "movement_endpoints": 7,
+        "recruitment": 14,
         "target_opponent_town": 0,
         "town_capture_evidence": 0,
-        "visible_net_redistribution": 1630
+        "visible_net_redistribution": 797
       },
       "planned": 16,
       "scenario": "original",
       "seat": 0,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 0,
+      "valid": 16,
       "valid_cutoffs": 0,
       "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
+        0.0,
+        0.1936076805344365
       ],
       "win_fraction": 0.0
     },
-    "254-original-seat1": {
+    "146-original-seat1": {
       "battle_start_roles": {
-        "defender": 3
+        "defender": 17
       },
-      "checkpoint": 254,
-      "natural_losses": 3,
+      "checkpoint": 146,
+      "natural_losses": 16,
       "natural_wins": 0,
       "observed_behavior": {
-        "army_transfers": 4,
-        "movement_attempts": 2,
-        "movement_endpoints": 0,
-        "recruitment": 0,
+        "army_transfers": 40,
+        "movement_attempts": 45,
+        "movement_endpoints": 7,
+        "recruitment": 12,
         "target_opponent_town": 0,
         "town_capture_evidence": 0,
-        "visible_net_redistribution": 96
+        "visible_net_redistribution": 684
       },
       "planned": 16,
       "scenario": "original",
       "seat": 1,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 0,
+      "valid": 16,
       "valid_cutoffs": 0,
       "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
+        0.0,
+        0.1936076805344365
+      ],
+      "win_fraction": 0.0
+    },
+    "254-easy-seat0": {
+      "battle_start_roles": {
+        "attacker": 4
+      },
+      "checkpoint": 254,
+      "natural_losses": 3,
+      "natural_wins": 9,
+      "observed_behavior": {
+        "army_transfers": 0,
+        "movement_attempts": 56,
+        "movement_endpoints": 31,
+        "recruitment": 0,
+        "target_opponent_town": 9,
+        "town_capture_evidence": 9,
+        "visible_net_redistribution": 0
+      },
+      "planned": 16,
+      "scenario": "easy",
+      "seat": 0,
+      "technical_failures": 1,
+      "unstarted": 3,
+      "valid": 12,
+      "valid_cutoffs": 0,
+      "wilson95": [
+        0.46769466506643426,
+        0.9110583316059453
+      ],
+      "win_fraction": 0.75
+    },
+    "254-easy-seat1": {
+      "battle_start_roles": {
+        "attacker": 2
+      },
+      "checkpoint": 254,
+      "natural_losses": 7,
+      "natural_wins": 5,
+      "observed_behavior": {
+        "army_transfers": 0,
+        "movement_attempts": 70,
+        "movement_endpoints": 41,
+        "recruitment": 0,
+        "target_opponent_town": 6,
+        "town_capture_evidence": 5,
+        "visible_net_redistribution": 0
+      },
+      "planned": 16,
+      "scenario": "easy",
+      "seat": 1,
+      "technical_failures": 0,
+      "unstarted": 4,
+      "valid": 12,
+      "valid_cutoffs": 0,
+      "wilson95": [
+        0.19326031365875665,
+        0.6804886874504503
+      ],
+      "win_fraction": 0.4166666666666667
+    },
+    "254-original-seat0": {
+      "battle_start_roles": {
+        "attacker": 2,
+        "defender": 23
+      },
+      "checkpoint": 254,
+      "natural_losses": 16,
+      "natural_wins": 0,
+      "observed_behavior": {
+        "army_transfers": 87,
+        "movement_attempts": 138,
+        "movement_endpoints": 19,
+        "recruitment": 20,
+        "target_opponent_town": 0,
+        "town_capture_evidence": 0,
+        "visible_net_redistribution": 2978
+      },
+      "planned": 16,
+      "scenario": "original",
+      "seat": 0,
+      "technical_failures": 0,
+      "unstarted": 0,
+      "valid": 16,
+      "valid_cutoffs": 0,
+      "wilson95": [
+        0.0,
+        0.1936076805344365
+      ],
+      "win_fraction": 0.0
+    },
+    "254-original-seat1": {
+      "battle_start_roles": {
+        "defender": 18
+      },
+      "checkpoint": 254,
+      "natural_losses": 16,
+      "natural_wins": 0,
+      "observed_behavior": {
+        "army_transfers": 11,
+        "movement_attempts": 17,
+        "movement_endpoints": 3,
+        "recruitment": 4,
+        "target_opponent_town": 0,
+        "town_capture_evidence": 0,
+        "visible_net_redistribution": 231
+      },
+      "planned": 16,
+      "scenario": "original",
+      "seat": 1,
+      "technical_failures": 0,
+      "unstarted": 0,
+      "valid": 16,
+      "valid_cutoffs": 0,
+      "wilson95": [
+        0.0,
+        0.1936076805344365
       ],
       "win_fraction": 0.0
     },
@@ -238,118 +245,453 @@
       "battle_start_roles": {},
       "checkpoint": 412,
       "natural_losses": 0,
-      "natural_wins": 3,
+      "natural_wins": 12,
       "observed_behavior": {
         "army_transfers": 0,
-        "movement_attempts": 14,
-        "movement_endpoints": 5,
+        "movement_attempts": 40,
+        "movement_endpoints": 16,
         "recruitment": 0,
-        "target_opponent_town": 3,
-        "town_capture_evidence": 3,
+        "target_opponent_town": 12,
+        "town_capture_evidence": 12,
         "visible_net_redistribution": 0
       },
       "planned": 16,
       "scenario": "easy",
       "seat": 0,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 4,
+      "valid": 12,
       "valid_cutoffs": 0,
       "wilson95": [
-        0.4385029682449546,
+        0.7575059933447592,
         1.0
       ],
       "win_fraction": 1.0
     },
     "412-easy-seat1": {
-      "battle_start_roles": {},
+      "battle_start_roles": {
+        "attacker": 1
+      },
       "checkpoint": 412,
       "natural_losses": 0,
-      "natural_wins": 3,
+      "natural_wins": 12,
       "observed_behavior": {
         "army_transfers": 0,
-        "movement_attempts": 27,
-        "movement_endpoints": 7,
+        "movement_attempts": 101,
+        "movement_endpoints": 33,
         "recruitment": 0,
-        "target_opponent_town": 5,
-        "town_capture_evidence": 3,
+        "target_opponent_town": 23,
+        "town_capture_evidence": 12,
         "visible_net_redistribution": 0
       },
       "planned": 16,
       "scenario": "easy",
       "seat": 1,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 4,
+      "valid": 12,
       "valid_cutoffs": 0,
       "wilson95": [
-        0.4385029682449546,
+        0.7575059933447592,
         1.0
       ],
       "win_fraction": 1.0
     },
     "412-original-seat0": {
       "battle_start_roles": {
-        "attacker": 1,
-        "defender": 3
+        "attacker": 4,
+        "defender": 20
       },
       "checkpoint": 412,
-      "natural_losses": 3,
+      "natural_losses": 16,
       "natural_wins": 0,
       "observed_behavior": {
-        "army_transfers": 11,
-        "movement_attempts": 16,
-        "movement_endpoints": 4,
-        "recruitment": 1,
-        "target_opponent_town": 1,
-        "town_capture_evidence": 1,
-        "visible_net_redistribution": 352
+        "army_transfers": 23,
+        "movement_attempts": 169,
+        "movement_endpoints": 25,
+        "recruitment": 5,
+        "target_opponent_town": 2,
+        "town_capture_evidence": 2,
+        "visible_net_redistribution": 623
       },
       "planned": 16,
       "scenario": "original",
       "seat": 0,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 0,
+      "valid": 16,
       "valid_cutoffs": 0,
       "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
+        0.0,
+        0.1936076805344365
       ],
       "win_fraction": 0.0
     },
     "412-original-seat1": {
       "battle_start_roles": {
-        "defender": 3
+        "attacker": 3,
+        "defender": 14
       },
       "checkpoint": 412,
-      "natural_losses": 3,
+      "natural_losses": 16,
       "natural_wins": 0,
       "observed_behavior": {
-        "army_transfers": 0,
-        "movement_attempts": 3,
-        "movement_endpoints": 0,
-        "recruitment": 0,
-        "target_opponent_town": 0,
+        "army_transfers": 2,
+        "movement_attempts": 59,
+        "movement_endpoints": 13,
+        "recruitment": 2,
+        "target_opponent_town": 1,
         "town_capture_evidence": 0,
-        "visible_net_redistribution": 0
+        "visible_net_redistribution": 28
       },
       "planned": 16,
       "scenario": "original",
       "seat": 1,
       "technical_failures": 0,
-      "unstarted": 13,
-      "valid": 3,
+      "unstarted": 0,
+      "valid": 16,
       "valid_cutoffs": 0,
       "wilson95": [
-        5.551115123125783e-17,
-        0.5614970317550454
+        0.0,
+        0.1936076805344365
       ],
       "win_fraction": 0.0
     }
   },
-  "error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
-  "games_attempted": 38,
+  "error": null,
+  "fixture_diagnosis": {
+    "acceleration_specific_regression_established": false,
+    "both_embedded_and_cold_native_SIGSEGV": true,
+    "cause": "Map preflight validated anchor coordinates rather than native hero visitable anchor-minus(1,0,0)",
+    "excluded_layouts": [
+      3,
+      7,
+      10,
+      13
+    ],
+    "failed_attempts_retained": [
+      "transfer-037",
+      "transfer-038"
+    ],
+    "maps_or_schedule_rewritten": false,
+    "original_scope_hypothesis_now_limited_to12_valid_layouts_per_seat": true,
+    "valid_future_starts_unchanged": true
+  },
+  "fixture_exclusions": [
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810007,
+        "id": "transfer-037",
+        "layout": 3,
+        "map_key": "easy-3-0",
+        "policy_seed": 820007,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810007,
+        "id": "transfer-038",
+        "layout": 3,
+        "map_key": "easy-3-0",
+        "policy_seed": 820007,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810007,
+        "id": "transfer-039",
+        "layout": 3,
+        "map_key": "easy-3-0",
+        "policy_seed": 820007,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810008,
+        "id": "transfer-040",
+        "layout": 3,
+        "map_key": "easy-3-1",
+        "policy_seed": 820008,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810008,
+        "id": "transfer-041",
+        "layout": 3,
+        "map_key": "easy-3-1",
+        "policy_seed": 820008,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810008,
+        "id": "transfer-042",
+        "layout": 3,
+        "map_key": "easy-3-1",
+        "policy_seed": 820008,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810015,
+        "id": "transfer-085",
+        "layout": 7,
+        "map_key": "easy-7-0",
+        "policy_seed": 820015,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810015,
+        "id": "transfer-086",
+        "layout": 7,
+        "map_key": "easy-7-0",
+        "policy_seed": 820015,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810015,
+        "id": "transfer-087",
+        "layout": 7,
+        "map_key": "easy-7-0",
+        "policy_seed": 820015,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810016,
+        "id": "transfer-088",
+        "layout": 7,
+        "map_key": "easy-7-1",
+        "policy_seed": 820016,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810016,
+        "id": "transfer-089",
+        "layout": 7,
+        "map_key": "easy-7-1",
+        "policy_seed": 820016,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810016,
+        "id": "transfer-090",
+        "layout": 7,
+        "map_key": "easy-7-1",
+        "policy_seed": 820016,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810021,
+        "id": "transfer-121",
+        "layout": 10,
+        "map_key": "easy-10-0",
+        "policy_seed": 820021,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810021,
+        "id": "transfer-122",
+        "layout": 10,
+        "map_key": "easy-10-0",
+        "policy_seed": 820021,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810021,
+        "id": "transfer-123",
+        "layout": 10,
+        "map_key": "easy-10-0",
+        "policy_seed": 820021,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810022,
+        "id": "transfer-124",
+        "layout": 10,
+        "map_key": "easy-10-1",
+        "policy_seed": 820022,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810022,
+        "id": "transfer-125",
+        "layout": 10,
+        "map_key": "easy-10-1",
+        "policy_seed": 820022,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810022,
+        "id": "transfer-126",
+        "layout": 10,
+        "map_key": "easy-10-1",
+        "policy_seed": 820022,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810027,
+        "id": "transfer-157",
+        "layout": 13,
+        "map_key": "easy-13-0",
+        "policy_seed": 820027,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810027,
+        "id": "transfer-158",
+        "layout": 13,
+        "map_key": "easy-13-0",
+        "policy_seed": 820027,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810027,
+        "id": "transfer-159",
+        "layout": 13,
+        "map_key": "easy-13-0",
+        "policy_seed": 820027,
+        "scenario": "easy",
+        "seat": 0
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 412,
+        "engine_seed": 810028,
+        "id": "transfer-160",
+        "layout": 13,
+        "map_key": "easy-13-1",
+        "policy_seed": 820028,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 146,
+        "engine_seed": 810028,
+        "id": "transfer-161",
+        "layout": 13,
+        "map_key": "easy-13-1",
+        "policy_seed": 820028,
+        "scenario": "easy",
+        "seat": 1
+      }
+    },
+    {
+      "reason": "Hero anchor x=0 gives native visitable x=-1; fixture invalid before any policy choice",
+      "schedule": {
+        "checkpoint": 254,
+        "engine_seed": 810028,
+        "id": "transfer-162",
+        "layout": 13,
+        "map_key": "easy-13-1",
+        "policy_seed": 820028,
+        "scenario": "easy",
+        "seat": 1
+      }
+    }
+  ],
+  "games_attempted": 170,
   "gate_comparison": {
     "comparisons": [
       {
@@ -395,34 +737,34 @@
   "optimizer_steps": 0,
   "paired_comparisons": {
     "412-vs-146-easy": {
-      "both_win": 0,
+      "both_win": 2,
       "neither_win": 0,
       "scope": "Descriptive exact-start pairing; neither-win includes any explicitly reported valid cutoff",
-      "valid_matched_pairs": 6,
-      "wins_only_412": 6,
+      "valid_matched_pairs": 24,
+      "wins_only_412": 22,
       "wins_only_earlier": 0
     },
     "412-vs-146-original": {
       "both_win": 0,
-      "neither_win": 6,
+      "neither_win": 32,
       "scope": "Descriptive exact-start pairing; neither-win includes any explicitly reported valid cutoff",
-      "valid_matched_pairs": 6,
+      "valid_matched_pairs": 32,
       "wins_only_412": 0,
       "wins_only_earlier": 0
     },
     "412-vs-254-easy": {
-      "both_win": 3,
+      "both_win": 14,
       "neither_win": 0,
       "scope": "Descriptive exact-start pairing; neither-win includes any explicitly reported valid cutoff",
-      "valid_matched_pairs": 6,
-      "wins_only_412": 3,
+      "valid_matched_pairs": 24,
+      "wins_only_412": 10,
       "wins_only_earlier": 0
     },
     "412-vs-254-original": {
       "both_win": 0,
-      "neither_win": 6,
+      "neither_win": 32,
       "scope": "Descriptive exact-start pairing; neither-win includes any explicitly reported valid cutoff",
-      "valid_matched_pairs": 6,
+      "valid_matched_pairs": 32,
       "wins_only_412": 0,
       "wins_only_earlier": 0
     }
@@ -585,20 +927,280 @@
       ],
       "publication_errors": [],
       "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3358160,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-054.tar.gz",
+        "sha256": "fc7a7a552edbd5de34548bbd995044efb6083047037ffe1e073b8a9cd9773a01"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "0860b7b89dae7e6c8b1f5ae93a469ff28e2d78d3",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3358160,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-054/evidence.tar.gz.part000",
+          "sha256": "fc7a7a552edbd5de34548bbd995044efb6083047037ffe1e073b8a9cd9773a01"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3987961,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-066.tar.gz",
+        "sha256": "e839e2d6941f040f698938175d75a85c3f8b61e0b4a38ca6562ceadc30181e4a"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "6c857ed574caf6f8bfa6c2e6ebb8c1adf38d5ecf",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3987961,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-066/evidence.tar.gz.part000",
+          "sha256": "e839e2d6941f040f698938175d75a85c3f8b61e0b4a38ca6562ceadc30181e4a"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3537214,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-078.tar.gz",
+        "sha256": "fd96fe1badf967bec6892398f571b21430bdbf33508f44c8211ba6ec3ab9d96a"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "524336550a9e555482d1df435c78b82d9e38ef1e",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3537214,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-078/evidence.tar.gz.part000",
+          "sha256": "fd96fe1badf967bec6892398f571b21430bdbf33508f44c8211ba6ec3ab9d96a"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 7164291,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-096.tar.gz",
+        "sha256": "6c2e03250be39b97b5d37a5504e1dbff85885f9423a89dae5056a52107e666ff"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "b1dbac13b2affe81079dfbd73153c5549b5b99d0",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 7164291,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-096/evidence.tar.gz.part000",
+          "sha256": "6c2e03250be39b97b5d37a5504e1dbff85885f9423a89dae5056a52107e666ff"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3949043,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-108.tar.gz",
+        "sha256": "6d818e75272878a830d8d14cf09b55a72b813dbd8fa93d45c5f43c009285ae5a"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "d808bd433d29dbe6a4f6b44ac3228bf405181ee1",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3949043,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-108/evidence.tar.gz.part000",
+          "sha256": "6d818e75272878a830d8d14cf09b55a72b813dbd8fa93d45c5f43c009285ae5a"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 6558551,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-120.tar.gz",
+        "sha256": "6827fa6c3d3ed6870a3e6d78ae17ec0039ebe9be0483257298e43f4467f2957b"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "bd869d6fd2680305a0ec48ef47900c0167a171ef",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 6558551,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-120/evidence.tar.gz.part000",
+          "sha256": "6827fa6c3d3ed6870a3e6d78ae17ec0039ebe9be0483257298e43f4467f2957b"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3443095,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-138.tar.gz",
+        "sha256": "04c5e69f9fbf0242f024daa8bc208fc5c1193ce1e6c46c994c119c4eb65d067f"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "decf57d4154920eb2243ec6a4cbf2981c867fe3d",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3443095,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-138/evidence.tar.gz.part000",
+          "sha256": "04c5e69f9fbf0242f024daa8bc208fc5c1193ce1e6c46c994c119c4eb65d067f"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3025156,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-150.tar.gz",
+        "sha256": "c7d537bee40b03b8b273d4d667bd492081267e98f056bb8184c1fdcac043d4a6"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "56884e54c1b3c0694c99def503f7aba423afcdca",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3025156,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-150/evidence.tar.gz.part000",
+          "sha256": "c7d537bee40b03b8b273d4d667bd492081267e98f056bb8184c1fdcac043d4a6"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 6268687,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-168.tar.gz",
+        "sha256": "ae9715a5b8e19cb41fe6cafa786c2de734fa8853adfc520298bcd5b6b634db66"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "cb9ac31197ee145ebdf967d35e1317442ec089c9",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 6268687,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-168/evidence.tar.gz.part000",
+          "sha256": "ae9715a5b8e19cb41fe6cafa786c2de734fa8853adfc520298bcd5b6b634db66"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 3976422,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-180.tar.gz",
+        "sha256": "0b8ee1c519e816bec4fb4797ef2f594b74edf08a405921f3f2cf471e8e769ba6"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "e177423e2e1ef2902ec42d4188bc76e14b004076",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 3976422,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-180/evidence.tar.gz.part000",
+          "sha256": "0b8ee1c519e816bec4fb4797ef2f594b74edf08a405921f3f2cf471e8e769ba6"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 2562611,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/transfer-through-transfer-192.tar.gz",
+        "sha256": "ba23804a73dc8f6d6ea826b356024542bc0a0bf73255d181b17b1bf08adf7555"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "a3baf5b3b10157c776e4c1ae242e192cac784c43",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 2562611,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/transfer-through-transfer-192/evidence.tar.gz.part000",
+          "sha256": "ba23804a73dc8f6d6ea826b356024542bc0a0bf73255d181b17b1bf08adf7555"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 70330759,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/final-all-captures-recovery-002.tar.gz",
+        "sha256": "44beb9f38bc971190febd02d0e3bb01d2405cc772794c746a54339eccc6dd8dc"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "d00675305595e62078f8c9bab85b22d67b990504",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 16777216,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-002/evidence.tar.gz.part000",
+          "sha256": "3c07ac76da9179b74bda0d9784ed27884db711ebf7982a5d0410f42cd7920f54"
+        },
+        {
+          "bytes": 16777216,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-002/evidence.tar.gz.part001",
+          "sha256": "fa71693af7b421f02fd2efadfe5b536c049bbed4745b18725b45404909ff6b1c"
+        },
+        {
+          "bytes": 16777216,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-002/evidence.tar.gz.part002",
+          "sha256": "dabce8f99302fd9b56196305ce0f545f8a0e74c3d37290ab695cbba8abae0ac3"
+        },
+        {
+          "bytes": 16777216,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-002/evidence.tar.gz.part003",
+          "sha256": "6892547b8088903c0ef94fa94f9cb8f855c1a92db04a7173ed406d1ea3b1dc63"
+        },
+        {
+          "bytes": 3221895,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-002/evidence.tar.gz.part004",
+          "sha256": "dce972c4e34cb1c4630257037e150d6d6e9eeb9f76840c67939c5681dec013cb"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
     }
   ],
   "recovery": {
     "clock_reset": false,
-    "new_harness_commit": "3c4a506f39649a92c332f7a1e505fe91850eb756",
+    "new_harness_commit": "aaff4ef632d4ba110d4eb8a1c2b3b32688a32c73",
     "orchestration": {
-      "bytes": 25927,
-      "path": "/workspace/releases/teacher-transfer-cold-recovery-3c4a506/tools/run_transfer_eval.py",
-      "sha256": "156039d4971d45e3398a6b2bcfc24788ae69166f6521243cd17f0b0ea5add39d"
+      "bytes": 28397,
+      "path": "/workspace/releases/teacher-transfer-valid-subset-aaff4ef/tools/run_transfer_eval.py",
+      "sha256": "c38773778188b289962e4c41aaa66982a454193298cad693ae65f1eb9de6a9c6"
     },
     "prior_report": {
-      "bytes": 401154,
-      "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/attempts/stopped-001/result.json",
-      "sha256": "efbd5fda51ed277a4babb52e13faa6c4846b91bd71614d6a4528008032c27165"
+      "bytes": 413949,
+      "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/attempts/stopped-002/result.json",
+      "sha256": "a33b52c59dc2cc27146f95566fa63222a7a5b7ecf628f89eac558a287fcb1971"
     },
     "window": {
       "bytes": 369,
@@ -735,12 +1337,156 @@
       },
       "original_error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
       "private_commit": "1ee9f60338f7a8d6c7caba5f38b7c86c45176228"
+    },
+    {
+      "last_attempt": {
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-transfer-cold-recovery-3c4a506/tools/transfer_eval_worker.py",
+          "--mode",
+          "run",
+          "--source",
+          "/workspace/releases/teacher-overnight-30629a84bc30",
+          "--manifest",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/manifest.json",
+          "--checkpoint",
+          "254",
+          "--output",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-038",
+          "--binary",
+          "/workspace/Heroes-artifacts/runtime/overnight-20261026/bin/vcmiclient",
+          "--replay-binary",
+          "/workspace/Heroes-artifacts/runtime/overnight-20261026/bin/vcmireplay",
+          "--window",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json",
+          "--rows",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/schedules/transfer-038.json",
+          "--backend",
+          "cold",
+          "--runtime-key",
+          "cold"
+        ],
+        "finished_utc": "2026-10-26T13:51:53.912616+00:00",
+        "label": "transfer-038",
+        "owned_cleanup_verified": true,
+        "process_identity": {
+          "command": [
+            "/workspace/heroes-rl/.venv/bin/python",
+            "-I",
+            "/workspace/releases/teacher-transfer-cold-recovery-3c4a506/experiments/headless/process_deadline.py",
+            "--guarded-exec",
+            "--deadline-monotonic",
+            "85241.935462651",
+            "--deadline-wall",
+            "1793026613.894478",
+            "--evidence",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/deadlines/transfer-038.jsonl",
+            "--owner-pipe",
+            "5",
+            "--",
+            "/workspace/heroes-rl/.venv/bin/python",
+            "/workspace/releases/teacher-transfer-cold-recovery-3c4a506/tools/transfer_eval_worker.py",
+            "--mode",
+            "run",
+            "--source",
+            "/workspace/releases/teacher-overnight-30629a84bc30",
+            "--manifest",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/manifest.json",
+            "--checkpoint",
+            "254",
+            "--output",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-038",
+            "--binary",
+            "/workspace/Heroes-artifacts/runtime/overnight-20261026/bin/vcmiclient",
+            "--replay-binary",
+            "/workspace/Heroes-artifacts/runtime/overnight-20261026/bin/vcmireplay",
+            "--window",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json",
+            "--rows",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/schedules/transfer-038.json",
+            "--backend",
+            "cold",
+            "--runtime-key",
+            "cold"
+          ],
+          "parent_pid": 232384,
+          "pid": 232405,
+          "start_ticks": 8133854
+        },
+        "resources_end": {
+          "descriptors": 4,
+          "rss_bytes": 260640768,
+          "threads": 1
+        },
+        "resources_start": {
+          "descriptors": 4,
+          "rss_bytes": 245264384,
+          "threads": 1
+        },
+        "returncode": 0,
+        "rows": [
+          {
+            "collection_seconds": 0.6497260670003016,
+            "episode_directory": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-038/games/episode-000001",
+            "error": "ValueError: Independent replay failed: ReplayError: Native mixed capture changed after finalization",
+            "optimizer_steps": 0,
+            "replay_seconds": 0.0023995289957383648,
+            "replay_verified": false,
+            "resources_after": {
+              "descriptors": 4,
+              "rss_bytes": 260243456,
+              "threads": 1
+            },
+            "resources_before": {
+              "descriptors": 4,
+              "rss_bytes": 260022272,
+              "threads": 1
+            },
+            "schedule": {
+              "checkpoint": 254,
+              "engine_seed": 810007,
+              "id": "transfer-038",
+              "layout": 3,
+              "map_key": "easy-3-0",
+              "policy_seed": 820007,
+              "scenario": "easy",
+              "seat": 0
+            },
+            "status": "failed",
+            "training_samples": 0,
+            "wall_seconds": 0.6573498979996657
+          }
+        ],
+        "schedule": [
+          {
+            "checkpoint": 254,
+            "engine_seed": 810007,
+            "id": "transfer-038",
+            "layout": 3,
+            "map_key": "easy-3-0",
+            "policy_seed": 820007,
+            "scenario": "easy",
+            "seat": 0
+          }
+        ],
+        "started_utc": "2026-10-26T13:51:50.506125+00:00",
+        "status": "failed",
+        "worker_report": {
+          "bytes": 6215,
+          "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-038/report.json",
+          "sha256": "699bb562d6b92cd4a2b3dfb4d829053a45d05db09a72b2fa82a70c8df4c1be53"
+        },
+        "worker_status": "failed",
+        "wrapper_seconds": 3.4065021779970266
+      },
+      "original_error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
+      "private_commit": "37b6b30f7102e238f8225c02e0908dde556cdc06"
     }
   ],
   "schema": "heroes-frozen-transfer-result-v1",
-  "selected_backend": "original-cold-after-embedded-SIGSEGV",
-  "status": "stopped_failure",
-  "timestamp_utc": "2026-10-26T13:52:30.625207+00:00",
+  "selected_backend": "original-cold-valid-frozen-fixture-subset",
+  "status": "completed_valid_fixture_subset",
+  "timestamp_utc": "2026-10-26T14:22:14.643092+00:00",
   "training_samples": 0,
   "window": {
     "compute_deadline_monotonic": 85241.935462651,
