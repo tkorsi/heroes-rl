@@ -121,13 +121,30 @@ def main():
         for b in c['training_batches']:
             for r in base['training_batches']:
                 if (r['sequence'], r['seat']) == (b['sequence'], b['seat']):
+                    both = r['status'] == b['status'] == 'passed' and b['seconds']
+                    # A baseline stopped by its wall limit only bounds its own time from below.
+                    censored = r['status'] != 'passed' and b['status'] == 'passed' and b['seconds']
                     pairs.append(dict(block=block, variant=c['variant'], sequence=b['sequence'], seat=b['seat'],
                                       baseline_status=r['status'], candidate_status=b['status'],
                                       baseline_seconds=r['seconds'], candidate_seconds=b['seconds'],
-                                      ratio=r['seconds'] / b['seconds'] if b['seconds'] else None,
+                                      ratio=r['seconds'] / b['seconds'] if both else None,
+                                      ratio_lower_bound=r['seconds'] / b['seconds'] if censored else None,
                                       identical_games=same([r['games'], b['games']]),
                                       identical_state=same([r.get('state'), b.get('state')])))
-    result = dict(campaigns=campaigns, per_variant=per_variant, paired_training_batches=pairs)
+    # Evaluation batches: every campaign plays the same eight baseline games first (same seeds).
+    evaluation = []
+    for name, c in campaigns.items():
+        if c.get('variant') in (None, 'B'):
+            continue
+        base = campaigns.get(f"{name.split('-')[0]}-B")
+        for b in c.get('evaluation_batches', []):
+            for r in (base or {}).get('evaluation_batches', []):
+                if r['seat'] == b['seat'] and r['status'] == b['status'] == 'passed':
+                    evaluation.append(dict(block=name.split('-')[0], variant=c['variant'], seat=b['seat'],
+                                           baseline_seconds=r['seconds'], candidate_seconds=b['seconds'],
+                                           ratio=r['seconds'] / b['seconds']))
+    result = dict(campaigns=campaigns, per_variant=per_variant, paired_training_batches=pairs,
+                  paired_evaluation_batches=evaluation)
     text = json.dumps(result, indent=1, sort_keys=True)
     if a.out:
         a.out.write_text(text + '\n')

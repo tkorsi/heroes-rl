@@ -353,3 +353,49 @@ evaluation of identical leaves. The result is not exact, as designed: after 125 
 34 of 39 model tensors differ (largest absolute difference 1.7e-4, largest relative 0.37%),
 gradients of the last step by at most 3.4e-8 absolute; the reported policy loss, KL and clip
 fraction agree to six or more digits. It remains a separately reported opt-in.
+
+### O12. Exact and experimental campaigns from 629, and a host reboot (m1-CH, m1-XH, 21:47 to 23:23 UTC)
+
+m1-CH ran the exact fast path with overlapped verification and two prefix helpers (15ed404) alone
+on CPUs 1 to 3. Its eight baseline games and the four games of training batch 266 are identical,
+on every observation and decision frame, to m1-B's. Baseline batches took 119.5 s and 207.6 s
+against m1-B's 318.1 s and 557.7 s (2.66x and 2.69x). Training batch 266 passed in 2891.1 s
+(games 9.0, 31.6, 38.2 and 65.8 s; PPO 2731.6 s = prefix reconstruction 243.0, loss forward
+850.2, backward and clip 1602.6, behaviour verification 18.7, Adam 14.4 s). Its update 630 weights
+are fe1378ef..., the same bytes as the optimizer-only accepted and fast-path jobs of O11 produced
+from the accepted path's own capture of those games: game to checkpoint, the fast path reproduces
+the accepted computation exactly. Batch 267 (seat 1, 1359 decisions) passed in 863.9 s (PPO
+809.0 s). The forward and backward here (850 and 1603 s) are no slower than the accepted path's
+optimizer-only numbers (858 and 1696 s), so the 6 to 8% seen in O11 was most likely disturbance
+on CPU 0.
+
+The accepted path's batch 266 has no measured completion time, because it cannot complete
+(O10). Lower bound of the paired ratio: 3523 s (stopped) / 2891 s = 1.22x. Estimate with the
+accepted path's optimizer-only PPO (4215 s) in place of the stopped one: about 600 s of games,
+replay and verification plus 4215 s, about 4800 s, so about 1.7x for this batch. This estimate is
+not a measurement; the optimizer-only accepted job on batch 267 (queued, from the exact update
+630) gives the second batch's PPO.
+
+m1-XH ran the opt-in numerical experiment `shared_graph_encodings` with the same helpers. Baseline
+batches 105.5 s and 190.9 s (3.0x and 2.9x against m1-B; the same games). Training batch 266
+476.8 s (same games; PPO 336.8 s, of which forward 49.4 and backward 61.0 s), 7.4x against the
+stopped accepted batch's 3523 s and about 10x against the estimate above. Update 630 weights
+863e82e7..., the same bytes as the optimizer-only experiment X (O11). Batch 267 109.1 s. Its four
+games equal m1-CH's batch 267 games on every observation and decision frame although the weights
+differ by up to 0.37%: with the same seeds the sampled actions happened to coincide; that is not
+guaranteed and later batches may diverge.
+
+Host reboot. At about 23:15 UTC the host restarted (boot id 3b357b50 to b9c386f7) while the
+schedule wrote m1-XH's summary; every process died. Nothing of m1-XH was lost (the runner had
+finished, returncode 0); I reran its summary and lossless compression by hand on CPU 0. The
+watchdog refused to start on a new boot, as written. I changed it to keep the recorded UTC
+deadlines unchanged (a changed deadline is still refused), re-anchor the monotonic deadlines to
+those same instants, and retire every registration of the previous boot so that a reused pid can
+never be taken for one of them (tested with a live process carrying the old registration's pid
+and start time: untouched, while a current registration is stopped at the deadline), then
+restarted it; the reboot and restart are recorded in `watchdog.json`. The five campaigns not yet
+started (m1-F, m2-F, m2-XH, m2-CH, m2-B) run unchanged, in the same order and with the same
+cutoff, as schedule m3b. The optimizer-only PR30 job on batch 266 was lost at about 50 minutes and
+restarted from the beginning, followed by the counterbalanced repeat (B2, C2) and a new pair on
+batch 267 from update 630 (C267, B267, and PR30 as P267), each compared with m1-CH's own update
+631.
