@@ -265,3 +265,8 @@ disposable-state optimizer benchmarks are allowed; official checkpoint412 and
 the active Teacher transfer study remain unchanged. Any numerical alternatives
 are separate experiments, not silently accepted replacements. This records an
 engineering objective, not a measured speedup or a new learning campaign.
+
+At 13:25 UTC (minute precision), Claude visibly acknowledged the additional
+twofold complete-cycle target in the existing Linux task and began reading
+the assignment and profiling prerequisites. The [dispatch receipt](../validation/claude-acceleration-phase2-dispatch-2026-10-26.json)
+records delivery and acknowledgment. No additional speedup has yet been measured.

@@ -1,0 +1,33 @@
+{
+  "schema": "heroes-operational-dispatch-v1",
+  "recorded_at_utc": "2026-10-26T13:29:11.446032+00:00",
+  "assignment_commit": "83456186f78efa9148807f9ec7eb7b316fdf267a",
+  "assignment_path": "docs/operations/claude-acceleration-phase2-20261026.txt",
+  "assignment_sha256": "1646acc07d15586695d3b7074f454a057a3e464e1aae401c3498b550612fbca0",
+  "destination": {
+    "service": "Claude",
+    "project": "Heroes Rl",
+    "task_title": "Build embedded in-process VCMI engine",
+    "url": "https://claude.ai/code/project/chan_01FymZoDy7tjZX4gzNj7NWe8?thread=cmsg_01FymZoDy7tjZX4gzNj7NWe8DHU5djxJ4rRQzgaZ1sjYsp"
+  },
+  "delivery": {
+    "route": "Existing task in the native Claude app",
+    "language": "English",
+    "sent_once": true,
+    "visible_acknowledgment": "Understood: another 2× on the full verified four-game PPO cycle over PR30 head. First reading the phase-2 assignment and profiling on Linux.",
+    "visible_acknowledgment_local_time": "2026-10-26T15:25:00+02:00",
+    "timestamp_precision": "UI minute precision; not an exact send timestamp",
+    "observed_activity": "In progress: read the phase-2 assignment, README/AGENTS and the checkpoint412 report"
+  },
+  "baseline": {
+    "pr": 30,
+    "head": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321"
+  },
+  "target": "At least 2x additional complete verified four-game PPO throughput over the current optimized implementation on equal resources",
+  "root_started_games_or_ppo": false,
+  "teacher_interrupted": false,
+  "limitations": [
+    "Delivery and acknowledgment are confirmed; no phase-2 speedup result is claimed.",
+    "The official checkpoint412 and the separate frozen transfer evaluation remain outside this performance experiment."
+  ]
+}
