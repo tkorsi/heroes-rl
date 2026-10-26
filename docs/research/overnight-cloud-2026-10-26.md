@@ -193,3 +193,35 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T04:09:07.180545+00:00 campaign_batch_intent: {"sequence": 121, "seat": 1, "mode": "training", "status": "preparing"}
 
 - 2026-10-26T04:09:08.851204+00:00 Recovery002 is now running from exact update265 on the unchanged30629a8 executable source/runtime. All original wall and Linux monotonic window fields match byte-for-byte; no deadline or clock reset occurred. Source-bound acceptance and baseline remain unchanged. Fresh sequence119 completed update266 from four new natural wins, then the due266paired fixed evaluation started. Canonical/durable/private parent restoration and exact private Git acknowledgement were verified before recovery; no failed game or PPO step was reused. Transport watcher57601 and recovery controller57630 remain cloud-owned under the original watchdog.
+
+- 2026-10-26T04:11:02.512140+00:00 campaign_batch_result: {"sequence": 121, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:11:02.773972+00:00 campaign_batch_intent: {"sequence": 122, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:11:47.454278+00:00 campaign_batch_result: {"sequence": 122, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:11:47.721995+00:00 campaign_batch_intent: {"sequence": 123, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:12:18.684323+00:00 campaign_batch_result: {"sequence": 123, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:12:18.968047+00:00 campaign_batch_intent: {"sequence": 124, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:13:04.933890+00:00 campaign_batch_result: {"sequence": 124, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:13:05.494466+00:00 campaign_batch_intent: {"sequence": 271, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:13:27.525944+00:00 campaign_batch_result: {"sequence": 271, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:13:27.789072+00:00 campaign_batch_intent: {"sequence": 271, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:13:50.316707+00:00 campaign_batch_result: {"sequence": 271, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:13:50.579469+00:00 campaign_batch_intent: {"sequence": 125, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:14:47.722209+00:00 campaign_batch_result: {"sequence": 125, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:14:47.996386+00:00 campaign_batch_intent: {"sequence": 126, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:16:15.964148+00:00 campaign_batch_result: {"sequence": 126, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:16:16.227580+00:00 campaign_batch_intent: {"sequence": 127, "seat": 1, "mode": "training", "status": "preparing"}
