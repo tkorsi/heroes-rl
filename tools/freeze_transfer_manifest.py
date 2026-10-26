@@ -84,7 +84,7 @@ def main():
             numeric_tolerance=0,failure_action='preserve failure and use independently accepted original cold runtime; never waive gate'),
         dependency_locks={str(p.relative_to(ROOT)):binding(p) for p in (ROOT/'dependencies').glob('*') if p.is_file()})
     write(ROOT/'configs/teacher-transfer-eval-20261026.json',value)
-    print(json.dumps(dict(cold_source=sources['cold']['commit'],accelerated_source=sources['accelerated']['commit'],data_files=len(actual),
+    print(json.dumps(dict(cold_source=sources['cold']['git_commit'],accelerated_source=sources['accelerated']['git_commit'],data_files=len(actual),
         transfer_games=len(value['transfer_schedule']),gate_games=len(value['gate_schedule']),new_games=0)))
 
 

@@ -106,7 +106,7 @@ def worker(manifest,schedule,label,runtime_key,backend,window):
         '--rows',str(rows_path),'--backend',backend,'--runtime-key',runtime_key]
     evidence=BASE/'deadlines'/(label+'.jsonl');evidence.parent.mkdir(exist_ok=True);proc=None;started=time.monotonic()
     record=dict(label=label,schedule=schedule,command=command,started_utc=utc(),rows=[])
-    event('game_cell_launch_intent',label=label,schedule=schedule,source=manifest['sources'][runtime_key]['commit'],backend=backend)
+    event('game_cell_launch_intent',label=label,schedule=schedule,source=manifest['sources'][runtime_key]['git_commit'],backend=backend)
     env=dict(os.environ);env.pop('HEROES_VERIFY_NATIVE_CAPTURE',None)
     env['LD_LIBRARY_PATH']=str(Path(runtime['binary']).parent)+':'+env.get('LD_LIBRARY_PATH','')
     if label.startswith('gate-accelerated'):env['HEROES_VERIFY_NATIVE_CAPTURE']='1'

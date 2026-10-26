@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T13:09:41.897084+00:00",
-  "phase": "canonical_build_in_progress_checkpoints_and_layouts_prepared",
+  "timestamp_utc": "2026-10-26T13:30:12.922467+00:00",
+  "phase": "prospective_manifest_frozen_ready_for_detached_gate",
   "source_base": "deddbf934675a768bd49d677762ae0622d51a3f7",
   "branch": "codex/teacher-transfer-eval-20261026",
   "scope": "Frozen146/254/412 transfer diagnostics only; overnight PPO remains closed",
@@ -24,5 +24,10 @@
   "original_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
   "matched_schedule_entries": 192,
   "accelerated_recipe_check_passed": true,
-  "pre_game_target_correction": "Initial non-existent vcmi_engine target rejected before compilation; corrected to canonical heroes_embedded_engine, original log preserved."
+  "pre_game_target_correction": "Initial non-existent vcmi_engine target rejected before compilation; corrected to canonical heroes_embedded_engine, original log preserved.",
+  "canonical_build_complete": true,
+  "archived_strict_linux_cold_passed": true,
+  "archived_strict_linux_accelerated_passed": true,
+  "offline_tests_passed": 92,
+  "manifest": "configs/teacher-transfer-eval-20261026.json"
 }
