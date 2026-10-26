@@ -37,9 +37,10 @@ METADATA_KINDS = frozenset(('issued', 'cutoff', 'cutoff_finalized', 'finalized',
 def episode_files(episode, pattern):
     """(relative name, bytes) of the episode's files matching pattern, from the folder or its archive."""
     episode = Path(episode)
-    if episode.is_dir():
-        return [(p.relative_to(episode).as_posix(), p.read_bytes()) for p in sorted(episode.glob(pattern))]
     archive = episode.with_name(episode.name + '.tar.gz')
+    # A completed archive is preferred: a folder beside it may be partly removed.
+    if episode.is_dir() and not archive.is_file():
+        return [(p.relative_to(episode).as_posix(), p.read_bytes()) for p in sorted(episode.glob(pattern))]
     if not archive.is_file():
         raise FileNotFoundError(f'episode {episode} has neither its folder nor its archive')
     with tarfile.open(archive, 'r:gz') as tar:

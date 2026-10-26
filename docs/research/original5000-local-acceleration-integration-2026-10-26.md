@@ -45,6 +45,11 @@ review, not a substitute for the exact learner in the official lineage.
   through the reviewed, pinned source transition `FAST_PATH_SOURCES` (each of twelve learner and
   collector files: the accepted digest it may replace and the exact fast-path digest it must have;
   any other byte difference refuses). The restore proof lists every replaced file.
+- Every other file the run executes (all of `experiments/`, the admission verifiers in
+  `validation/probes`, the learner lock, the runner, its preparation, `prepare_vcmi.py`,
+  `train-local.sh`) must equal the a8ac411 blob or its `FAST_PATH_TREE` pin, checked on every
+  restore; untracked Python files in those folders refuse too. `fast_path_pins.py` regenerates the
+  pins after a reviewed change and otherwise reports any difference.
 - A fast-path checkpoint can be continued only by the fast path. The pinned accepted release has no
   reverse transition and refuses it. So once the official run starts with `--fast-path`, the in-lineage
   fallback is `--fast-path --serial-verification --prefix-helpers 0`, which executes every
@@ -78,13 +83,18 @@ seed namespace 60M/70M, and never touches the official lineage):
 fixed baseline games and one training batch with the accepted implementation and then with the
 macOS fast-path default, from the same parent and seeds. It exits 0 only if both campaigns ended
 cleanly (every requested batch admitted, no bound reached, nothing interrupted or left running, the
-checkout unchanged) and every paired training batch with identical games produced bitwise-identical
-learner state; `summary.json` in the bench folder lists every problem and has per-batch times, game
+expected commit released, the checkout unchanged) and every exact campaign had at least one
+training batch with identical games from the same parent as A, each with bitwise-identical learner
+state; `summary.json` in the bench folder lists every problem and has per-batch times, game
 lengths, PPO times, peak memory and process counts. Games are compared on every observation and
 decision record. The engine delivers some notices asynchronously, so a faster learner can see two
 of them in the other order (once in 13 paired games on Linux, at the end of a game); such a pair is
 reported as not comparable rather than as a failure of exactness, and the check needs a pair with
-identical games (repeat with `--order AFF` if the first pair differs). Optional:
+identical games (repeat with `--order AFF` if the first pair differs). If the A campaign's training
+batch is stopped by the update wall limit (on this Linux host the accepted path could not finish
+that batch, sequence 266 from 629, within the fixed 3,540 s worker budget), the summary reports it
+as a problem: it means the accepted implementation cannot run that batch on the Mac either, which
+the official run would meet as a failed batch and a stop. Optional:
 `--order AOOA` tests forked verification on macOS (fork safety with Torch loaded is unverified
 there), `--order AHHA` adds two prefix helpers, `--order AFFA` gives a counterbalanced timing pair,
 `X` adds the numerical experiment (reported apart). Ctrl-C stops after the current batch as with

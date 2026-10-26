@@ -15,17 +15,20 @@ from disposable copies of the final 629 checkpoint, exactly through ``run_local_
     H  ``--fast-path --overlap-verification --prefix-helpers 2``
     X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
 
-Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds;
-each exact campaign (A, F, O, H) is compared with the first one, and wherever their games are
-identical their checkpoints must be bitwise identical; ``summary.json`` says whether they were. The default order AF is the acceptance check; AFFA (or
-AOOA) is a counterbalanced timing comparison.
+Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds.
+Each exact campaign (F, O, H, and any repeated A) is compared with the A campaigns batch by batch
+while both still share the same parent; wherever their games are identical their checkpoints must
+be bitwise identical, and every exact campaign needs at least one such comparable batch.
+``summary.json`` gives each campaign's status (identical, diverged, not comparable). The default
+order AF is the acceptance check; AFFA (or AOOA) is a counterbalanced timing comparison.
 
 Safety and scope:
 - Refuses unless this checkout is clean and contains both the accepted implementation and the fast
   path, no ``run_local_training.py`` process is running, and the official owner lock is free. It
   then holds that lock (read-only descriptor, exclusive) until it exits, so the manual 5,000-game
   run cannot start alongside it (it would refuse immediately with "Another local training script
-  owns this artifact root") and this tool cannot start alongside that run. If the lock file does
+  owns this artifact root") and this tool cannot start alongside that run; each benchmark runner
+  inherits the locked descriptor, so the exclusion holds as long as any of them runs. If the lock file does
   not exist (no official run has ever started on this Mac), nothing is created and only the process
   check guards. The checkout must stay at the same clean commit; it is checked before every campaign.
 - Writes only into a fresh benchmark root outside the official artifact root. Official files are
@@ -42,9 +45,9 @@ Safety and scope:
   further campaign; the summary is still written. After ``--updates`` checkpoints it requests the
   runner's own stop while the last batch runs, so the final evaluation pair is skipped.
 - Exit status 0 only if every campaign ended cleanly (runner status stopped_requested, every
-  requested training batch admitted, no bound reached, no leftover process), the checkout did not
-  change, nothing was interrupted, and every exact training pair with identical games had
-  bitwise-identical learner state. ``summary.json`` lists every problem.
+  requested training batch admitted, no bound reached, no leftover process, the expected release
+  ran), the checkout did not change, nothing was interrupted, and every exact campaign was
+  identical. ``summary.json`` lists every problem.
 """
 import argparse
 from datetime import datetime, timezone
@@ -130,6 +133,17 @@ def hold_official_lock():
     except BlockingIOError:
         refuse('the official local training lock is held; is the manual run active?')
     return descriptor, 'held'
+
+
+def inside_official(path):
+    """Whether path is in the official artifact root, by file identity (macOS paths are case-insensitive
+    and may pass through firmlinks), with a case-insensitive comparison when the root does not exist."""
+    path = Path(path).expanduser().resolve()
+    official = OFFICIAL.expanduser()
+    if official.exists():
+        return any(p.exists() and os.path.samefile(p, official) for p in (path, *path.parents))
+    folded = str(official.resolve()).casefold().rstrip('/') + '/'
+    return (str(path).casefold().rstrip('/') + '/').startswith(folded)
 
 
 def copy_pinned(source, destination):
@@ -273,8 +287,9 @@ def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
     with (campaign / 'runner.log').open('x') as log:
         # Same process group as this tool: Ctrl-C reaches the runner exactly as with train-local.sh
         # (a manual stop after the current batch).
+        # The runner inherits the official lock, so the manual run stays excluded even if this tool dies.
         process = subprocess.Popen(command, cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=log,
-                                   stderr=subprocess.STDOUT)
+                                   stderr=subprocess.STDOUT, pass_fds=() if args.lock_fd is None else (args.lock_fd,))
     INTERRUPT['runner'] = process
     sampler = Sampler(process.pid, campaign / 'resources.jsonl'); sampler.start()
     stop = threading.Event()
@@ -317,12 +332,59 @@ def problems(record, updates):
         found.append(f"leftover processes {run['leftover_processes']}")
     if record.get('status') != 'stopped_requested':
         found.append(f"runner status {record.get('status')}")
+    if record.get('release') != record.get('expected_release'):
+        found.append(f"ran release {record.get('release')}, expected {record.get('expected_release')}")
     trained = [b for b in record.get('batches', []) if b['mode'] == 'training']
     if sum(b['status'] == 'passed' for b in trained) != updates or len(trained) != updates:
         found.append(f'{sum(b["status"] == "passed" for b in trained)} of {updates} training batches admitted')
     if sum(b['mode'] == 'baseline' and b['status'] == 'passed' for b in record.get('batches', [])) != 2:
         found.append('baseline evaluation pair incomplete')
     return found
+
+
+def release_of(run_dir):
+    """The commit the campaign's runner actually released and ran (its session's source)."""
+    return json.loads((Path(run_dir) / 'session.json').read_text())['source']['git_commit']
+
+
+def chained_pairs(campaigns, reference, other):
+    """The two campaigns' batches paired; a training pair is comparable only while both still share the
+    same parent: identical games and identical admitted state in every earlier training pair, and
+    both states present in this one."""
+    rows, same_parent = [], True
+    for pair in campaign_summary.compare({n: campaigns[n] for n in (reference, other)}):
+        row = dict(pair, campaigns=[reference, other])
+        if pair['mode'] == 'training':  # compare() orders training pairs by sequence
+            row['comparable'] = same_parent and pair['games_identical'] is True and pair['states_identical'] is not None
+            same_parent = row['comparable'] and pair['states_identical'] is True
+        rows.append(row)
+    return rows
+
+
+def exact_verdict(campaigns):
+    """Every exact campaign is checked against the accepted campaigns (the first exact one without A):
+    identical (at least one comparable training pair, all with identical state), diverged (a comparable
+    pair with different state) or not comparable (no comparable pair, e.g. different games)."""
+    exact = [n for n, c in campaigns.items() if c['letter'] in EXACT]
+    references = [n for n in exact if campaigns[n]['letter'] == 'A'] or exact[:1]
+    pairs, status = [], {}
+    for other in exact:
+        if references and other == references[0]:
+            continue
+        rows = [row for reference in references if reference != other for row in chained_pairs(campaigns, reference, other)]
+        pairs += rows
+        comparable = [r for r in rows if r.get('comparable')]
+        status[other] = ('diverged' if any(r['states_identical'] is not True for r in comparable)
+                         else 'identical' if comparable else 'not_comparable')
+    if not status:
+        verdict = 'not_comparable: fewer than two exact campaigns'
+    elif all(s == 'identical' for s in status.values()):
+        verdict = True
+    elif any(s == 'diverged' for s in status.values()):
+        verdict = False
+    else:
+        verdict = 'not_comparable: ' + ', '.join(n for n, s in status.items() if s == 'not_comparable')
+    return verdict, status, pairs
 
 
 def main():
@@ -347,9 +409,12 @@ def main():
     signal.signal(signal.SIGINT, interrupted); signal.signal(signal.SIGTERM, interrupted)
     runner, head = preflight()
     lock, lock_state = hold_official_lock()
+    if lock is not None:
+        os.set_inheritable(lock, True)
+    args.lock_fd = lock
     bench = (args.bench_root or Path.home() / 'Projects/Heroes-bench' /
              ('original5000-acceleration-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))).expanduser().resolve()
-    if bench.is_relative_to(OFFICIAL.resolve()):
+    if inside_official(bench):
         refuse('the benchmark root must be outside the official artifact root')
     bench.mkdir(parents=True, exist_ok=False)
     inputs, official_parent = prepare_inputs(runner, bench, args.parent_run.expanduser().resolve())
@@ -375,28 +440,29 @@ def main():
             if git('rev-parse', 'HEAD') != head or git('status', '--porcelain'):
                 record['checkout_changed'] = utc(); break
             name, run_root, run = run_campaign(args, bench, inputs, site, letter, index, env, data)
+            expected = runner.ACCEPTED_IMPLEMENTATION if letter == 'A' else head
             try:
-                record['campaigns'][name] = dict(letter=letter, run=run, **campaign_summary.batches(run_root))
+                record['campaigns'][name] = dict(letter=letter, run=run, expected_release=expected,
+                                                 **campaign_summary.batches(run_root))
+                record['campaigns'][name]['release'] = release_of(record['campaigns'][name]['run_dir'])
             except (OSError, ValueError, KeyError) as error:
-                record['campaigns'][name] = dict(letter=letter, run=run, status='no_session', error=repr(error), batches=[])
+                record['campaigns'][name] = dict(letter=letter, run=run, expected_release=expected, status='no_session',
+                                                 error=repr(error), batches=[])
             print(json.dumps({name: record['campaigns'][name]['status']}), flush=True)
+        if git('rev-parse', 'HEAD') != head or git('status', '--porcelain'):
+            record['checkout_changed'] = utc()
     except Exception as error:  # still write what was measured
         record['error'] = repr(error)
     finally:
         record['interrupted'] = INTERRUPT['requested']
         for campaign in record['campaigns'].values():
             campaign['problems'] = problems(campaign, args.updates)
-        # Every other exact campaign against the first one, pair by pair.
-        exact = [n for n, c in record['campaigns'].items() if c['letter'] in EXACT]
-        record['pairs'] = [dict(pair, campaigns=[exact[0], other]) for other in exact[1:] for pair in
-                           campaign_summary.compare({n: record['campaigns'][n] for n in (exact[0], other)})]
+        # Identical games from the same parent must give bitwise-identical learner state on every exact path.
+        record['exact_campaigns_identical'], record['exact_campaign_status'], record['pairs'] = \
+            exact_verdict(record['campaigns'])
         trained = [p for p in record['pairs'] if p['mode'] == 'training']
-        # Identical games must give bitwise-identical learner state on every exact implementation.
-        comparable = [p for p in trained if p['games_identical'] is True]
-        record['exact_campaigns_identical'] = (all(p['states_identical'] is True for p in comparable) if comparable
-                                               else 'not_comparable: no paired training batch had identical games')
-        record['paired_training_batches'] = dict(total=len(trained), identical_games=len(comparable),
-                                                 not_comparable=sum(p['games_identical'] is None for p in trained))
+        record['paired_training_batches'] = dict(total=len(trained), comparable=sum(p['comparable'] for p in trained),
+                                                 identical_games=sum(p['games_identical'] is True for p in trained))
         if 'X' in args.order:
             record['experiment_pairs'] = campaign_summary.compare(record['campaigns'])
         record['problems'] = ([f'{n}: {x}' for n, c in record['campaigns'].items() for x in c['problems']]

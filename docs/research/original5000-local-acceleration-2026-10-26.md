@@ -274,3 +274,34 @@ XH (CH plus the numerical experiment, 2), F (serial verification, the macOS defa
 reverse: F (1), XH (2), CH (2), B (baseline games only, the accepted repeat). No campaign starts
 after 09:30. CPU 0 runs the optimizer-only matrix on batch 266 (C, B, X and PR30 in sequence) and
 each campaign's summary and compression afterwards.
+
+### O9. Second independent review (20:45 to 21:20 UTC)
+
+A second read-only review of the fixes (three reviewers, each finding checked by an adversarial
+verifier; 9 confirmed, 3 refuted) found, and I fixed before any campaign used the changed code:
+- `REVIEWED_TREE` left out `validation/probes`, whose `reconstruct_behavior` is the admission
+  verifier of every training game (and which provides `wall_limit` and the history audit). Nothing
+  compared those files with a8ac411, so a later commit relaxing the verifier would have passed every
+  pin. They are now in the reviewed tree and scanned for untracked Python files; tests cover an
+  altered verifier and a new module there. (Today `validation/` is identical to a8ac411.)
+- Mac tool verdict: with a counterbalanced order (AOOA) an accepted-against-accepted pair could
+  stand in for fast-path campaigns whose games all differed; with two or more updates a later batch
+  with identical games from already different parents was called a divergence; a failed accepted
+  batch (no state) was called a divergence. Now every exact campaign is compared with the A
+  campaigns batch by batch while both still share the same parent, needs at least one comparable
+  batch, and gets its own status (identical, diverged, not comparable).
+- Mac tool safety: the official-root guard now compares by file identity (case-insensitive APFS,
+  firmlinks); the official lock descriptor is inherited by every benchmark runner, so the manual run
+  stays excluded even if the tool itself is killed; the commit each campaign actually released is
+  checked against the expected one, and the checkout is re-checked after the last campaign.
+- Episode compression writes under a temporary name, syncs archive, manifest and folder entry
+  before removing anything, finishes an interrupted removal on a rerun, and the summary prefers a
+  completed archive to a folder beside it.
+
+Refuted (kept as is, reasons in the review record): a planted file in the frozen release outside the
+scanned folders (requires deliberately editing a fresh worktree; not an exactness defect), the
+release's `prepare_vcmi.py` running before the first tree check (its own `--check` and the engine
+recipe pins govern it), and an absent PSS reading counted as zero (no such data in these runs).
+
+The measured candidate (o5k-cand3, 15ed404) differs from the reviewed head only by these checks and
+tools; no game, verification, PPO or optimizer code changed.

@@ -52,6 +52,19 @@ class LockTests(unittest.TestCase):
             self.assertFalse(lock.exists())
 
 
+class OfficialRootTests(unittest.TestCase):
+    def test_paths_inside_the_official_root_are_refused_by_identity_or_folded_case(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            official = Path(tmp) / 'Heroes-artifacts'
+            with mock.patch.object(tool, 'OFFICIAL', official):
+                self.assertTrue(tool.inside_official(Path(tmp) / 'heroes-ARTIFACTS' / 'bench'))  # root absent: case-folded
+                official.mkdir()
+                (Path(tmp) / 'alias').symlink_to(official)
+                self.assertTrue(tool.inside_official(Path(tmp) / 'alias' / 'bench' / 'deeper'))
+                self.assertTrue(tool.inside_official(official))
+                self.assertFalse(tool.inside_official(Path(tmp) / 'Heroes-bench' / 'x'))
+
+
 class ParentCopyTests(unittest.TestCase):
     def fake_run(self, root, names):
         files = {}
@@ -172,7 +185,13 @@ class MainTests(unittest.TestCase):
         self.addCleanup(lambda: (signal.signal(signal.SIGINT, saved[0]), signal.signal(signal.SIGTERM, saved[1])))
         tool.INTERRUPT.update(requested=None, runner=None)
         bench = Path(tmp) / 'bench'
+        releases = {}
+        def batches_and_release(run_root):
+            value = batches(run_root)
+            releases[str(run_root)] = value.pop('release')
+            return dict(value, run_dir=str(run_root))
         with mock.patch.object(sys, 'platform', 'darwin'), \
+                mock.patch.object(tool, 'release_of', side_effect=lambda run_dir: releases[run_dir]), \
                 mock.patch.object(sys, 'argv', ['mac_acceptance.py', '--bench-root', str(bench), *argv]), \
                 mock.patch.object(tool, 'preflight', return_value=(runner, 'abc')), \
                 mock.patch.object(tool, 'hold_official_lock', return_value=(None, 'absent')), \
@@ -180,7 +199,7 @@ class MainTests(unittest.TestCase):
                 mock.patch.object(tool, 'OFFICIAL_CONFIG', Path(tmp) / 'missing.json'), \
                 mock.patch.object(tool, 'git', side_effect=lambda *a: 'abc' if a[0] == 'rev-parse' else ''), \
                 mock.patch.object(tool, 'run_campaign', side_effect=campaign), \
-                mock.patch.object(tool.campaign_summary, 'batches', side_effect=batches), \
+                mock.patch.object(tool.campaign_summary, 'batches', side_effect=batches and batches_and_release), \
                 redirect_stdout(io.StringIO()):
             code = tool.main()
         return code, json.loads((bench / 'summary.json').read_text())
@@ -193,13 +212,16 @@ class MainTests(unittest.TestCase):
             self.assertEqual(summary['platform']['sysname'], os.uname().sysname)
 
     @staticmethod
-    def campaign_result(letter, state, returncode=0, status='stopped_requested'):
+    def campaign_result(letter, state, returncode=0, status='stopped_requested', states=None, games=None):
         batches = [dict(sequence=629, seat=s, mode='baseline', status='passed', seconds=1.0, games=['g'] * 4,
                         raw=['r'] * 4, choices=[1] * 4) for s in (0, 1)]
-        batches.append(dict(sequence=266, seat=0, mode='training', status='passed', seconds=1.0, games=['t'] * 4,
-                            raw=['r'] * 4, choices=[1] * 4, state=state))
+        for index, value in enumerate(states or [state]):
+            batches.append(dict(sequence=266 + index, seat=index % 2, mode='training', status='passed', seconds=1.0,
+                                games=(games or {}).get(index, ['t%d' % index] * 4), raw=['r'] * 4, choices=[1] * 4,
+                                state=value))
         run = dict(returncode=returncode, bound='not_reached', leftover_processes=[])
-        return run, dict(status=status, batches=batches)
+        release = runner.ACCEPTED_IMPLEMENTATION if letter == 'A' else 'abc'
+        return run, dict(status=status, batches=batches, run_dir='', release=release)
 
     def fake(self, results):
         runs = iter(results)
@@ -207,7 +229,7 @@ class MainTests(unittest.TestCase):
         def campaign(args, bench, inputs, site, letter, index, env, data):
             current['value'] = next(runs)
             return f'{index:02d}-{letter}', Path(bench) / str(index), current['value'][0]
-        return campaign, lambda run_root: current['value'][1]
+        return campaign, lambda run_root: dict(current['value'][1])
 
     def test_identical_clean_campaigns_pass(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -215,16 +237,55 @@ class MainTests(unittest.TestCase):
             code, summary = self.run_main(tmp, '--order', 'AF', campaign=campaign, batches=batches)
             self.assertEqual((code, summary['passed'], summary['problems']), (0, True, []))
 
-    def test_each_exact_campaign_is_compared_with_the_first(self):
+    def verdict(self, order, results, *argv):
         with tempfile.TemporaryDirectory() as tmp:
-            first, other, second = self.campaign_result('A', 's'), self.campaign_result('F', 's'), self.campaign_result('F', 's')
-            other[1]['batches'][2]['games'] = ['different'] * 4  # this pair is not comparable; the next one is
-            campaign, batches = self.fake([first, other, second])
-            code, summary = self.run_main(tmp, '--order', 'AFF', campaign=campaign, batches=batches)
-            self.assertEqual((code, summary['exact_campaigns_identical']), (0, True))
-            trained = [p for p in summary['pairs'] if p['mode'] == 'training']
-            self.assertEqual([(p['campaigns'], p['games_identical']) for p in trained],
-                             [(['00-A', '01-F'], False), (['00-A', '02-F'], True)])
+            campaign, batches = self.fake(results)
+            return self.run_main(tmp, '--order', order, *argv, campaign=campaign, batches=batches)
+
+    def test_every_exact_campaign_needs_a_comparable_batch(self):
+        first, other, second = self.campaign_result('A', 's'), self.campaign_result('F', 's'), self.campaign_result('F', 's')
+        other[1]['batches'][2]['games'] = ['different'] * 4
+        code, summary = self.verdict('AFF', [first, other, second])
+        self.assertEqual(code, 1)
+        self.assertEqual(summary['exact_campaign_status'], {'01-F': 'not_comparable', '02-F': 'identical'})
+        self.assertEqual(summary['exact_campaigns_identical'], 'not_comparable: 01-F')
+
+    def test_an_accepted_repeat_cannot_stand_in_for_the_fast_path(self):
+        results = [self.campaign_result('A', 's'), self.campaign_result('O', 's'), self.campaign_result('O', 's'),
+                   self.campaign_result('A', 's')]
+        for result in results[1:3]:
+            result[1]['batches'][2]['games'] = ['timing'] * 4
+        code, summary = self.verdict('AOOA', results)
+        self.assertEqual(code, 1)
+        self.assertEqual(summary['exact_campaign_status'],
+                         {'01-O': 'not_comparable', '02-O': 'not_comparable', '03-A': 'identical'})
+
+    def test_a_later_batch_is_compared_only_while_the_parents_agree(self):
+        # 266: different games (so different updates); 267: identical games from different parents.
+        a = self.campaign_result('A', None, states=['a266', 'a267'], games={0: ['x'] * 4})
+        f = self.campaign_result('F', None, states=['f266', 'f267'], games={0: ['y'] * 4})
+        code, summary = self.verdict('AF', [a, f], '--updates', '2')
+        self.assertEqual(summary['exact_campaign_status'], {'01-F': 'not_comparable'})
+        self.assertNotEqual(summary['exact_campaigns_identical'], False)
+        a = self.campaign_result('A', None, states=['s266', 'a267'])
+        f = self.campaign_result('F', None, states=['s266', 'f267'])
+        code, summary = self.verdict('AF', [a, f], '--updates', '2')
+        self.assertEqual((code, summary['exact_campaigns_identical']), (1, False))
+
+    def test_a_missing_state_is_not_called_a_divergence(self):
+        a = self.campaign_result('A', None, status='stopped_failure')
+        a[1]['batches'][2]['status'] = 'failed'
+        code, summary = self.verdict('AF', [a, self.campaign_result('F', 's')])
+        self.assertEqual(code, 1)
+        self.assertEqual(summary['exact_campaign_status'], {'01-F': 'not_comparable'})
+        self.assertTrue(any('0 of 1 training batches admitted' in x for x in summary['problems']))
+
+    def test_the_release_that_ran_is_checked(self):
+        f = self.campaign_result('F', 's')
+        f[1]['release'] = 'other'
+        code, summary = self.verdict('AF', [self.campaign_result('A', 's'), f])
+        self.assertEqual(code, 1)
+        self.assertTrue(any('ran release other' in x for x in summary['problems']))
 
     def test_a_failed_or_divergent_campaign_fails(self):
         cases = [([self.campaign_result('A', 's'), self.campaign_result('F', 'other')], 'identical'),

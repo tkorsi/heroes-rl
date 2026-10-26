@@ -9,7 +9,7 @@ its bytes at the accepted commits (3268f2f produced 629; a8ac411 is
 exactly the files that differ (other than the adapter itself and the reviewed scope-routing
 file), each with its accepted digests and this tree's digest; ``LOCAL_ADAPTER_TRANSITION_AST`` must
 be this adapter's AST digest. ``FAST_PATH_TREE`` must list exactly the other files of
-``REVIEWED_TREE`` (collector, game interface, runner, lock) whose bytes differ from the a8ac411 tree,
+``REVIEWED_TREE`` (collector, game interface, admission verifiers, runner, lock) whose bytes differ from the a8ac411 tree,
 with the accepted git blob ('' when new) and this tree's SHA-256. Without ``--write`` it only
 reports and exits non-zero on a mismatch.
 """
@@ -60,7 +60,8 @@ def expected_tree():
         meta, name = line.split('\t', 1)
         accepted[name] = meta.split()[2]
     names = set(accepted) | set(git('ls-files', '--full-name', '--', *local.REVIEWED_TREE).split('\n'))
-    names |= {p.relative_to(ROOT).as_posix() for p in (ROOT / 'experiments').rglob('*.py') if '__pycache__' not in p.parts}
+    names |= {p.relative_to(ROOT).as_posix() for folder in local.REVIEWED_SCAN for p in (ROOT / folder).rglob('*.py')
+              if '__pycache__' not in p.parts}
     learner = set(expected_pins())
     tree = {}
     for name in sorted(names - {''} - learner - {ADAPTER}):

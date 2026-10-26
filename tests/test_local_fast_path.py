@@ -108,10 +108,23 @@ class ReviewedTreeTests(unittest.TestCase):
         with patch.object(Path, 'read_bytes', tampered), \
                 self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: experiments/headless/contextual_replay.py'):
             local.reviewed_tree()
-        probe = ROOT/'experiments/headless/unreviewed_probe_for_test.py'
-        probe.write_text('X = 1\n')
-        self.addCleanup(probe.unlink)
-        with self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: experiments/headless/unreviewed_probe_for_test.py'):
+        for folder in ('experiments/headless', 'validation/probes'):
+            probe = ROOT/folder/'unreviewed_probe_for_test.py'
+            probe.write_text('X = 1\n')
+            try:
+                with self.subTest(folder=folder), self.assertRaisesRegex(
+                        ValueError, f'Unreviewed fast-path source: {folder}/unreviewed_probe_for_test.py'):
+                    local.reviewed_tree()
+            finally:
+                probe.unlink()
+
+    def test_the_admission_verifier_is_reviewed(self):
+        original = Path.read_bytes
+        def relaxed(path):
+            data = original(path)
+            return data + b'\n' if path.as_posix().endswith('validation/probes/validate_hero_policy.py') else data
+        with patch.object(Path, 'read_bytes', relaxed), \
+                self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: validation/probes/validate_hero_policy.py'):
             local.reviewed_tree()
 
     def test_the_adapter_is_bound_by_its_ast_pin(self):
