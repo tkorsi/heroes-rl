@@ -111,3 +111,7 @@ The first offline preparation attempt then failed before native gameplay: the dr
 - 2026-10-26T03:33:19.079509+00:00 campaign_batch_intent: {"sequence": 111, "seat": 1, "mode": "training", "status": "preparing"}
 
 - 2026-10-26T03:35:14.623665+00:00 All64fresh Linux policy games passed capture, exact reconstruction, native replay, natural terminal accounting and cleanup: Red12wins/20losses, Blue13wins/19losses. The four controls passed separately and supply no samples. The frozen final-update254 baseline returned1win/3losses in each seat. Controller43610 launched at03:26:49UTC; real sequence108 training began03:27:55UTC. The first complete cloud update255 added192admitted decisions and7Adamsteps from four fresh games (2wins/2losses), with durable backup restoration verified. This is real continuation, not diagnostic training; the unchanged compute/hard cutoffs remain09:55/10:00UTC.
+
+- 2026-10-26T03:35:39.636419+00:00 campaign_batch_result: {"sequence": 111, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:35:39.910233+00:00 campaign_batch_intent: {"sequence": 112, "seat": 0, "mode": "training", "status": "preparing"}
