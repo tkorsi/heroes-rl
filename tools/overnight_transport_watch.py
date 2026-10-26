@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import time
 
 ROOT=Path(__file__).resolve().parents[1]
@@ -33,6 +34,64 @@ BRANCH=owner.PUBLIC_BRANCH
 
 def transient(error):
     return bool(re.search(r'(?:HTTP (?:429|502|503|504)|returned error: (?:429|502|503|504))',error))
+
+
+def publication_fault(error):
+    return transient(error) or "could not read Username for 'https://github.com'" in error
+
+
+def reconcile_evaluation(path,ack):
+    """New effective journal; never alter the original failed publication record."""
+    v=json.loads(path.read_text());row=v['batches'][-1]
+    if row.get('mode') not in ('baseline','periodic','final') or not row.get('preservation_error'):
+        return path
+    require(ack['remote_acknowledged'] is True,'Publication must really be acknowledged first')
+    require(row['status']=='failed' and row.get('owned_cleanup_verified') is True
+        and not row.get('error') and not row.get('cleanup_error'),'Not a publication-only evaluation failure')
+    require(binding(row['plan']['path'])==row['plan'] and binding(row['report']['path'])==row['report'],'Evaluation binding drift')
+    plan_path=Path(row['plan']['path']);report=json.loads(Path(row['report']['path']).read_text())
+    from tools.overnight_curriculum_campaign import verified_report
+    require(verified_report(report,0),'Evaluation report must already be completely verified')
+    require(report['training_performed'] is False and report['optimizer_updates']==report['optimizer_steps']==report['training_samples']==0,
+        'Evaluation cannot contain PPO or training samples')
+    require(report['parent']['plan']==row['parent']==v['latest_verified_parent'],'Evaluation must bind the last complete checkpoint')
+    require(report['plan_sha256']==row['plan']['sha256'],'Evaluation plan differs')
+    for attempt in report['attempts']:
+        require(attempt['weights_unchanged'] is True and attempt['reconstruction']['passed'] is True
+            and attempt['reconstruction']['weights_unchanged'] is True,'Evaluation reconstruction changed weights')
+        require(binding(attempt['behavior']['path'])==attempt['behavior'],'Evaluation behavior drift')
+    folder=PRIVATE/'results/overnight-20261026'/('campaign-v1-'+path.parent.name+'-'+plan_path.parent.name)
+    receipt=json.loads((folder/'receipt.json').read_text());archive=folder/'evidence.tar.gz'
+    require(binding(archive)==receipt['archive'],'Preserved evaluation archive drift')
+    from tools.overnight_git_api import api,ROOTS,remote_head
+    require(remote_head(ROOTS[PRIVATE])==ack['commit'],'Publication acknowledgement moved')
+    remote=api(ROOTS[PRIVATE],'contents/'+str(archive.relative_to(PRIVATE))+'?ref='+ack['commit'])
+    blob=checked('rev-parse','HEAD:'+str(archive.relative_to(PRIVATE))).decode().strip()
+    require(remote['sha']==blob and remote['size']==archive.stat().st_size,'Remote evaluation archive differs')
+    files=links=0
+    with tarfile.open(archive) as tar:
+        for member in tar.getmembers():
+            original=plan_path.parent.parent/member.name
+            if member.isfile():
+                require(hashlib.sha256(tar.extractfile(member).read()).hexdigest()==binding(original)['sha256'],'Archived evaluation file differs');files+=1
+            elif member.issym():require(member.linkname==os.readlink(original),'Archived symlink differs');links+=1
+    require(files==receipt['verified_files'] and links==receipt['verified_symlinks'],'Archive inventory differs')
+    original=dict(row)
+    row['status']='passed';row['original_publication_failure']=original
+    row.pop('preservation_error')
+    row['private_preservation']=dict(commit=ack['commit'],**receipt)
+    reconciliation=dict(original_report=binding(path),original_failure=original,ack=ack,
+        remote_archive_blob=blob,archive_verified=True,evaluation_revalidated=True,
+        training_samples_added=0,optimizer_steps_added=0,game_repeated=False)
+    row['publication_reconciliation']=reconciliation
+    v['publication_reconciliation']=reconciliation
+    for index in range(1,100):
+        target=path.parent/('publication-reconciled-input-%03d.json'%index)
+        if not target.exists():break
+    else:raise ValueError('Reconciliation attempts exhausted')
+    owner.atomic(target,v)
+    owner.event('completed_evaluation_publication_reconciled',effective_report=binding(target),**reconciliation)
+    return target
 
 
 def git(*args):
@@ -69,11 +128,13 @@ def verify_stopped(report_path):
     require(stopped['owned_cleanup_verified'] is True and stopped['within_budget'] is True,'Previous owned controller cleanup required')
     require(v['status']=='stopped_failure' and 'push' in v.get('error',''),'Only publication-only failure may recover automatically')
     last=v['batches'][-1]
-    require(last.get('checkpoint_verified') is True and last.get('owned_cleanup_verified') is True
-        and last.get('preservation_error') and not last.get('error') and not last.get('cleanup_error'),
+    complete_training=(last.get('checkpoint_verified') is True and last.get('preservation_error'))
+    reconciled_evaluation=last.get('publication_reconciliation',{}).get('evaluation_revalidated') is True
+    require((complete_training or reconciled_evaluation) and last.get('owned_cleanup_verified') is True
+        and not last.get('error') and not last.get('cleanup_error'),
         'No replay/gameplay/PPO/integrity failure may use transport recovery')
     log=(report_path.parent/'controller.log').read_text()
-    require(transient(log),'A concrete transient HTTP publication error is required')
+    require(publication_fault(log),'A concrete transport publication error is required')
     plan_path=Path(v['latest_verified_parent']['path']);require(binding(plan_path)==v['latest_verified_parent'],'Verified parent drift')
     plan=json.loads(plan_path.read_text());report=json.loads((Path(plan['execution_output'])/'report.json').read_text())
     progress,steps,_=_completion(plan,report)
@@ -135,7 +196,7 @@ def main():
         first=max(existing,default=0)+1
         for index in range(first,first+32):
             require(time.time()<COMPUTE-600,'No safe original compute window for another recovery')
-            details=verify_stopped(current);ack=push_ack()
+            ack=push_ack();current=reconcile_evaluation(current,ack);details=verify_stopped(current)
             owner.event('private_publication_acknowledged_after_transient_failure',ack=ack,
                 verified_checkpoint=details[0]['latest_verified_parent'],three_exact_restores=details[-1])
             target,record=prepare_session(current,index,details)

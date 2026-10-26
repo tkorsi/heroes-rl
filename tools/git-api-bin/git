@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""Route only this campaign's exact push/ref reads through its API transport."""
+from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parents[2]))
+from tools.overnight_git_api import shim
+raise SystemExit(shim(sys.argv[1:]))
