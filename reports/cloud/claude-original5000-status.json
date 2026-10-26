@@ -1,0 +1,181 @@
+{
+ "schema": "claude-original5000-status-v1",
+ "generated_utc": "2026-10-26T19:04:00Z",
+ "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
+ "deadlines": {
+  "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
+  "hard_stop_utc": "2026-10-27T11:00:00Z",
+  "heavy_work_stop_monotonic": 77084.07492852677,
+  "hard_stop_monotonic": 77684.07492852677,
+  "recorded_utc": "2026-10-26T18:16:32.554529Z",
+  "boot_id": "3b357b50-ab00-4565-9348-e736b0dd027a",
+  "immutable": true
+ },
+ "watchdog": {
+  "pid": 27780,
+  "kernel_starttime": 1747659,
+  "command": [
+   "python3",
+   "/home/claude/overnight/watchdog.py",
+   "run"
+  ],
+  "alive": true,
+  "heartbeat_utc": "2026-10-26T19:03:32.762157Z",
+  "seconds_to_heavy_stop": 56787.2,
+  "heavy_stop_receipt": null,
+  "hard_stop_receipt": null,
+  "restarts": []
+ },
+ "owned_processes": [
+  {
+   "label": "bench-chk-B-1",
+   "pid": 8833,
+   "starttime": 1955427,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "check",
+    "--config",
+    "/home/claude/bench3/art/campaigns/chk-B-1/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-26T18:51:10.229403Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-s1-B",
+   "pid": 8953,
+   "starttime": 1957264,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/s1-B/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-26T18:51:28.600974Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-s2-B",
+   "pid": 9960,
+   "starttime": 1966276,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/s2-B/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-26T18:52:58.721068Z",
+   "live_descendants": 6
+  },
+  {
+   "label": "build-base",
+   "pid": 31196,
+   "starttime": 1816012,
+   "alive": false,
+   "command": [
+    "/bin/sh",
+    "/home/claude/overnight/build-base.sh"
+   ],
+   "registered_utc": "2026-10-26T18:27:57.109364Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "build-base",
+   "pid": 32244,
+   "starttime": 1827877,
+   "alive": false,
+   "command": [
+    "/bin/sh",
+    "/home/claude/overnight/build-base.sh"
+   ],
+   "registered_utc": "2026-10-26T18:29:55.745310Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-s2-B-actual",
+   "pid": 9918,
+   "starttime": 1965854,
+   "alive": true,
+   "command": [
+    "python3",
+    "run_local_bench.py",
+    "--name",
+    "s2-B",
+    "--checkout",
+    "/home/claude/o5k-main"
+   ],
+   "registered_utc": "2026-10-26T18:53:58.651650Z",
+   "live_descendants": 7
+  },
+  {
+   "label": "o-XH-original-driver",
+   "pid": 26535,
+   "starttime": 1739888,
+   "alive": false,
+   "command": [
+    "/bin/sh",
+    "./run-oxh.sh"
+   ],
+   "registered_utc": "2026-10-26T18:16:34.530699Z",
+   "live_descendants": 0
+  }
+ ],
+ "phase": "measurement setup: Linux port of main's local runner validated; baseline smoke from a disposable 629 copy running; opt-in fast path implemented (tests passing), candidate smoke next",
+ "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
+ "bindings": {
+  "main": "a8ac411d32658387598376c792136bc586edc5f9",
+  "accepted_implementation_for_default_path": "a8ac411d32658387598376c792136bc586edc5f9",
+  "fast_path_branch": "claude/project-thread-iba9jw-original5000",
+  "pr30_head": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+  "phase2_branch": "claude/project-thread-iba9jw-acceleration-phase2 @ 74afd86",
+  "update629": {
+   "handoff_receipt": "main validation/local-script-final629-sync-2026-10-26.json",
+   "checkpoint_package_commit": "3f507507afde652c61def59a994a816d12cb0170 (restore receipt 8ab78fea6e7dfb023a5daf38b8fcc10d0e89de51)",
+   "full_archive_commit": "87e814e6d2de8a0690fed7e158d2e50f87b59267 (publication receipt 78afd6f27b589a71414f143f6f866d6ded0cca49); read only, not downloaded here",
+   "policy_sha256": "8be3d31b51edc11bd6affe45d4276cde56b97688f00fb9fa113c13f490577520",
+   "resume_sha256": "1b86fcedc1ad9eda8a9a56d03783ff70761205fa88045896dbe8f6d74029d487",
+   "plan_sha256": "853cb4cbd04a4daf503c41820e4facac6d8d1c7a4ea3730fee5cf37a8a31cc99",
+   "report_sha256": "b5bb3310ff981e428482e91e528ee4c4b57b6b3e3ac9c958ad16caa4b0fcd29a",
+   "initial_update628_sha256": "2f017a503902b7f29f6e3e3a2b88831d05d18a196386d96c6f3d34df67e22cf5",
+   "progress": {
+    "updates": 629,
+    "rollouts": 2516,
+    "decisions": 127958
+   },
+   "benchmark_use": "disposable read-only copies; exact full restore (model, Adam, all RNG, progress, pool) passes on this host through the benchmark-only Torch build relocation"
+  },
+  "accepted_runtime_build": {
+   "recipe": "main's engine recipe (engine/ identical to main), built here; Linux binaries, not the Mac pins",
+   "vcmiclient_sha256": "c03abdcaa3a148610f0af069ad0fd667190b2528a45aa0f8077bf321d5c35c79",
+   "libExplorerRL_sha256": "e60b7bb088917fea5869eb9cb38f97c29882de17435ca6f4451738cbd2f2092e"
+  },
+  "original_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "benchmark_seed_namespace": {
+   "engine_base": 60000000,
+   "policy_base": 70000000,
+   "note": "separate ledger per campaign; never 40M/50M or 20M/30M"
+  }
+ },
+ "measurements": {
+  "pr30_comparison_original_map": "Earlier (412 parent): PR30 baseline B cannot finish the first original-map batch (games of 2, 60, 93 and 2525 decisions): its PPO alone took 3779 s optimizer-only against a 3540 s update budget. The opt-in experiment with three exact helpers completed the same complete verified batch in 543.6 s compute.",
+  "pr30_comparison_easy_map": "Steady-state ratio of medians over 6 paired batches: exact with helpers 1.22x compute; opt-in experiment 3.89x compute, 3.77x durable (local push).",
+  "local_runner_original_map_629": "running: accepted path baseline smoke; first baseline evaluation games from 629 took 19 to 150 s each (200 to 1315 choices)"
+ },
+ "completed_checks": [
+  "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",
+  "main's local runner offline check on this host: exact 629 restore through the benchmark shim",
+  "fast-path unit tests: reviewed transition pins, tampered or unlisted sources rejected, execution choices bound, serial fallback never forks, default path releases the accepted commit"
+ ],
+ "blockers": [],
+ "official_lineage_touched": false,
+ "official_run_launched": false,
+ "teacher_touched": false
+}
