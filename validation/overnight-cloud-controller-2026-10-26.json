@@ -1,0 +1,509 @@
+{
+  "schema": "heroes-overnight-autonomous-chain-verification-v1",
+  "timestamp_utc": "2026-10-26T05:08:37.055840+00:00",
+  "environment": "/workspace original managed Linux environment",
+  "branch": "codex/teacher-overnight-20261026",
+  "compute_cutoff_utc": "2026-10-26T09:55:00Z",
+  "hard_stop_utc": "2026-10-26T10:00:00Z",
+  "clock_reset": false,
+  "original_watchdog": {
+    "pid": 26662,
+    "state": "S",
+    "parent_pid": 1,
+    "start_ticks": 3830485,
+    "command": [
+      "python",
+      "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+      "--state",
+      "/workspace/Heroes-artifacts/overnight-20261026",
+      "--repository",
+      "/workspace/heroes-rl-training-state"
+    ]
+  },
+  "registered_identity_watchdog": {
+    "pid": 87931,
+    "state": "S",
+    "parent_pid": 1,
+    "start_ticks": 4989367,
+    "command": [
+      "/workspace/heroes-rl/.venv/bin/python",
+      "/workspace/releases/teacher-overnight-registry-b9c5d30/tools/overnight_registry_guard.py"
+    ]
+  },
+  "registered_identity_guard_status": {
+    "pid": 87931,
+    "command": [
+      "/workspace/heroes-rl/.venv/bin/python",
+      "/workspace/releases/teacher-overnight-registry-b9c5d30/tools/overnight_registry_guard.py"
+    ],
+    "phase": "armed",
+    "compute_deadline_utc": "2026-10-26T09:55:00Z",
+    "hard_deadline_utc": "2026-10-26T10:00:00Z",
+    "identity": "kernel PID+start_ticks+exact argv and registered ancestry; no environment reads",
+    "timestamp_utc": "2026-10-26T05:08:36.741398+00:00",
+    "live_owned": [
+      {
+        "pid": 26662,
+        "parent_pid": 1,
+        "start_ticks": 3830485,
+        "command": [
+          "python",
+          "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+          "--state",
+          "/workspace/Heroes-artifacts/overnight-20261026",
+          "--repository",
+          "/workspace/heroes-rl-training-state"
+        ],
+        "role": "preservation"
+      },
+      {
+        "pid": 81883,
+        "parent_pid": 1,
+        "start_ticks": 4921922,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-transport-c06a432/tools/overnight_transport_watch.py",
+          "--from-report",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "preservation"
+      },
+      {
+        "pid": 85347,
+        "parent_pid": 1,
+        "start_ticks": 4966436,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-finalizer-8776a59/tools/overnight_finalizer.py"
+        ],
+        "role": "preservation"
+      },
+      {
+        "pid": 26664,
+        "parent_pid": 26662,
+        "start_ticks": 3830489,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+          "--poller",
+          "--state",
+          "/workspace/Heroes-artifacts/overnight-20261026",
+          "--repository",
+          "/workspace/heroes-rl-training-state"
+        ],
+        "role": "compute",
+        "registered_by_parent": 26662
+      },
+      {
+        "pid": 81927,
+        "parent_pid": 81883,
+        "start_ticks": 4923925,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "recover",
+          "--recover-from",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "preservation",
+        "registered_by_parent": 81883
+      },
+      {
+        "pid": 81929,
+        "parent_pid": 81927,
+        "start_ticks": 4923928,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-transport-c06a432/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67338.0409810543",
+          "--deadline-wall",
+          "1793008710.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/http-transport-003-outer-supervisor-deadline.jsonl",
+          "--owner-pipe",
+          "5",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "recover",
+          "--recover-from",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "preservation",
+        "registered_by_parent": 81927
+      },
+      {
+        "pid": 82228,
+        "parent_pid": 81927,
+        "start_ticks": 4924878,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "worker"
+        ],
+        "role": "compute",
+        "registered_by_parent": 81927
+      },
+      {
+        "pid": 82229,
+        "parent_pid": 82228,
+        "start_ticks": 4924881,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67128.04098343849",
+          "--deadline-wall",
+          "1793008500.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/controller-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "worker"
+        ],
+        "role": "compute",
+        "registered_by_parent": 82228
+      },
+      {
+        "pid": 88047,
+        "parent_pid": 82228,
+        "start_ticks": 4989893,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "execute",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be"
+        ],
+        "role": "compute",
+        "registered_by_parent": 82228
+      },
+      {
+        "pid": 88048,
+        "parent_pid": 88047,
+        "start_ticks": 4989896,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67128.04098343849",
+          "--deadline-wall",
+          "1793008500.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/supervisor-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "execute",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88047
+      },
+      {
+        "pid": 88070,
+        "parent_pid": 88047,
+        "start_ticks": 4990091,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "worker",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be",
+          "--started",
+          "49900.915670906",
+          "--wall-started",
+          "1792991272.8746886"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88047
+      },
+      {
+        "pid": 88071,
+        "parent_pid": 88070,
+        "start_ticks": 4990095,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "53498.915670906",
+          "--deadline-wall",
+          "1792994870.8746886",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/execution/worker-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "worker",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be",
+          "--started",
+          "49900.915670906",
+          "--wall-started",
+          "1792991272.8746886"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88070
+      }
+    ],
+    "signals_sent": 0
+  },
+  "detached_watcher": {
+    "pid": 81883,
+    "state": "S",
+    "parent_pid": 1,
+    "start_ticks": 4921922,
+    "command": [
+      "/workspace/heroes-rl/.venv/bin/python",
+      "/workspace/releases/teacher-overnight-transport-c06a432/tools/overnight_transport_watch.py",
+      "--from-report",
+      "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+    ]
+  },
+  "actual_recovery_controller": {
+    "pid": 81927,
+    "state": "S",
+    "parent_pid": 81883,
+    "start_ticks": 4923925,
+    "command": [
+      "/workspace/heroes-rl/.venv/bin/python",
+      "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+      "recover",
+      "--recover-from",
+      "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+    ]
+  },
+  "detached_finalizer": {
+    "pid": 85347,
+    "state": "S",
+    "parent_pid": 1,
+    "start_ticks": 4966436,
+    "command": [
+      "/workspace/heroes-rl/.venv/bin/python",
+      "/workspace/releases/teacher-overnight-finalizer-8776a59/tools/overnight_finalizer.py"
+    ]
+  },
+  "locks": {
+    "main_controller_held": true,
+    "finalizer_held": true,
+    "registry_guard_held": true
+  },
+  "duplicate_controller_control": {
+    "timestamp_utc": "2026-10-26T01:55:40.249656+00:00",
+    "second_controller_rejected": true,
+    "exit_code": 1,
+    "rejection": "exclusive flock before waiting, validation or launch",
+    "native_games": 0,
+    "optimizer_updates": 0,
+    "live_controller_pid": 26663,
+    "watchdog_pid": 26662
+  },
+  "duplicate_finalizer_control": {
+    "timestamp_utc": "2026-10-26T05:03:27.194316+00:00",
+    "second_finalizer_rejected": true,
+    "exit_code": 1,
+    "reason": "exclusive finalizer.lock before any evaluator or preservation child",
+    "native_games": 0,
+    "ppo_updates": 0
+  },
+  "absolute_stop_control": {
+    "timestamp_utc": "2026-10-26T01:57:49.458499+00:00",
+    "absolute_owned_child_guard_passed": true,
+    "child_returncode": -9,
+    "wall_seconds": 1.0434549279962084,
+    "owned_groups_closed": [
+      27055
+    ],
+    "native_games": 0,
+    "optimizer_updates": 0
+  },
+  "cross_job_signalling_control": {
+    "timestamp_utc": "2026-10-26T05:07:14.879930+00:00",
+    "separate_tool_job_signal_control_passed": true,
+    "expected_identity": {
+      "pid": 86992,
+      "parent_pid": 86991,
+      "start_ticks": 4984028,
+      "command": [
+        "/workspace/heroes-rl/.venv/bin/python",
+        "-c",
+        "import time; time.sleep(120)"
+      ]
+    },
+    "terminated_in_seconds": 0.051251028999104165,
+    "environ_reads": 0,
+    "native_games": 0,
+    "ppo_updates": 0
+  },
+  "original_window": {
+    "started_unix": 1792985211.7446275,
+    "started_monotonic": 43839.785611023,
+    "compute_deadline_unix": 1793008500.0,
+    "absolute_deadline_unix": 1793008800.0
+  },
+  "handoff": {
+    "verification": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/handoff/verification.json",
+      "sha256": "5b3b46fb5e31abaeafb44a1a6b7fa74220f56a604f9f8b0d5a428b76946f863e",
+      "bytes": 34390
+    },
+    "ready_commit": "bcdee6ecc3609f3024f304c15ef8ccba7e605404",
+    "archive_commit": "208ebad9ebacd91163bf583ee6aa9b13a64f79a0",
+    "archive_sha256": "ef2b01597b6a1308e6e876c452c1f94e7d30b6a72cedb0d3c6ca102e2c82672e",
+    "public_commit": "85d0983268c92e8e1ad65ae2e0a09df523e9cf6d",
+    "ownership_transfer_verified": true,
+    "local_shutdown_verified": true,
+    "historical_metadata_rewritten": false,
+    "initial_full_restore": {
+      "checkpoint": "builtin-pilot-after-fdbd0ef3b9448fca",
+      "weights_sha256": "fdbd0ef3b9448fca514b8d7ba3d3c6badb2ec8e7a5e6c1f2e7c8d0572be789fe",
+      "progress": {
+        "updates": 254,
+        "rollouts": 1016,
+        "decisions": 73345
+      },
+      "exact_model_adam_rng_progress_pool": true
+    }
+  },
+  "platform_drift": {
+    "receipt": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/platform-drift.json",
+      "sha256": "47455f8334bf4252ae45503a9ad08cbd2672cac3ca2615563975a9c669348a9c",
+      "bytes": 2507
+    },
+    "metrics": {
+      "value": {
+        "count": 39,
+        "maximum_absolute": 1.7881393432617188e-07,
+        "maximum_relative": 2.580242088633724e-07,
+        "outside_tolerance": 0
+      },
+      "joint_log_probability": {
+        "count": 39,
+        "maximum_absolute": 4.76837158203125e-07,
+        "maximum_relative": 1.3418310599807876e-07,
+        "outside_tolerance": 0
+      },
+      "conditional_log_probability": {
+        "count": 112,
+        "maximum_absolute": 1.1920928955078125e-07,
+        "maximum_relative": 4.982829407140584e-06,
+        "outside_tolerance": 0
+      },
+      "selected_probability": {
+        "count": 39,
+        "maximum_absolute": 3.756536920418441e-08,
+        "maximum_relative": 4.768372719319507e-07,
+        "outside_tolerance": 0
+      }
+    },
+    "absolute_tolerance": 1e-05,
+    "relative_tolerance": 0.0001,
+    "passed": true,
+    "sampled_action_mismatches": 0,
+    "limitation": "Full unrecorded logits are unavailable; comparison covers recorded values and selected probabilities."
+  },
+  "linux_acceptance": {
+    "report": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/study4/study-report.json",
+      "sha256": "e39b5ada978d94b1d197994080a359cf394d52566d60779b0c8e130fc1b55bfe",
+      "bytes": 12965
+    },
+    "status": "finished",
+    "policy_games": 64,
+    "natural_wins": 25,
+    "natural_losses": 39,
+    "separate_controls": 4,
+    "training_samples": 0,
+    "owned_cleanup_verified": true,
+    "same_linux_replay_and_policy_reconstruction_passed": true,
+    "both_seats_natural_wins_and_losses_observed": true
+  },
+  "actual_continuation": {
+    "phase": "running",
+    "progress": {
+      "updates": 291,
+      "rollouts": 1164,
+      "decisions": 77990
+    },
+    "new_complete_updates": 37,
+    "new_complete_training_games": 148,
+    "latest_verified_parent": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0144-seat0/plan.json",
+      "sha256": "c31ae5bbb5087e0e06cdabd8957d83b30edea4956a6b19f815f44a51ac4470a2",
+      "bytes": 58426
+    },
+    "latest_private_parent": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0144-seat0/plan.json",
+      "sha256": "c31ae5bbb5087e0e06cdabd8957d83b30edea4956a6b19f815f44a51ac4470a2",
+      "bytes": 58426
+    },
+    "last_private_batch_commit": "d032069d3ad5f2ab738266c2e992688e480f02fc",
+    "active_batch": {
+      "mode": "training",
+      "sequence": 145,
+      "seat": 1,
+      "status": "running"
+    },
+    "source_release": "/workspace/releases/teacher-overnight-30629a84bc30"
+  },
+  "transport": {
+    "code_commit": "c06a432a6bcd87654da90b5f9e999a109c69b57e",
+    "exact_original_git_object_hashes": true,
+    "no_credentials_created_read_or_printed": true,
+    "private_assets_remain_private": true,
+    "acknowledgements": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/git-api-publications.jsonl",
+      "sha256": "c31705ef7b6172085afc8c253feb77b596d9a50d6dcbcf229f7788cbea2467ed",
+      "bytes": 3984
+    }
+  },
+  "finalizer": {
+    "code_commit": "8776a5902ba69d67558812e9ad2bbd24c6a9ccf9",
+    "no_ppo_launch_path": true,
+    "waits_for_existing_controller_lock": true,
+    "final_pair_only_with_measured_reserve": true,
+    "all_evaluations_excluded_from_PPO": true,
+    "exact_restore_before_and_after": true,
+    "private_raw_public_compact": true,
+    "command_receipt": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/detached-finalizer-v2-command.json",
+      "sha256": "b45d817a4bc53898576135f8c36de436d6d8aec88207203da224187c5a3c8199",
+      "bytes": 830
+    }
+  },
+  "offline_focused_controls": {
+    "passed": 34,
+    "failed": 0
+  },
+  "scientific_scope": "Easier seat-specific open8x8 curriculum; no claim of improvement on original map"
+}

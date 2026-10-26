@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T05:06:53.176533+00:00",
+  "timestamp_utc": "2026-10-26T05:07:50.198016+00:00",
   "phase": "running",
   "campaign_launched": true,
   "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/session.json",
@@ -58,7 +58,7 @@
   },
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
-  "heldout_games": 68,
+  "heldout_games": 72,
   "admitted_training_games": 148,
   "ppo_updates": 37,
   "latest_verified_checkpoint": {
@@ -72,7 +72,7 @@
     "bytes": 58426
   },
   "ownership": "cloud",
-  "remaining_compute_seconds": 17286.823414087296,
+  "remaining_compute_seconds": 17229.801921844482,
   "launch_utc": "2026-10-26T03:26:51.744627+00:00",
   "compute_deadline_utc": "2026-10-26T09:55:00+00:00",
   "hard_deadline_utc": "2026-10-26T10:00:00+00:00",
@@ -103,16 +103,16 @@
   },
   "next_periodic_update": 296,
   "current_activity": {
-    "mode": "periodic",
-    "sequence": 291,
+    "mode": "training",
+    "sequence": 145,
     "seat": 1,
-    "status": "preparing",
-    "started_utc": "2026-10-26T05:06:53.173862+00:00",
+    "status": "running",
+    "started_utc": "2026-10-26T05:07:38.711782+00:00",
     "finished_utc": null
   },
   "evaluation_natural_outcomes": {
     "loss": 22,
-    "win": 46
+    "win": 50
   },
   "natural_outcomes": {
     "loss": 30,
