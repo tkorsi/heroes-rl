@@ -1,138 +1,119 @@
 {
-  "timestamp_utc": "2026-10-26T03:26:47.263472+00:00",
-  "phase": "launching_verified_cloud_campaign",
+  "timestamp_utc": "2026-10-26T03:33:20.575570+00:00",
+  "phase": "running",
+  "campaign_launched": true,
+  "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/session.json",
+  "release_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/release.json",
+  "controller_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/controller-result.json",
+  "campaign_report_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/campaign-report.json",
+  "source": {
+    "git_commit": "30629a84bc3048ee64ae4f91186fbc0832e4ca25",
+    "tracked_worktree_dirty": false,
+    "source_sha256": {
+      "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+      "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+      "experiments/learner/builtin_behavior.py": "36f67e7a60dcfe3fa826a966fcabe8b04fd27aca13b8b7bd9aed7e2aa99914e9",
+      "experiments/learner/builtin_first_run.py": "21c08b67e8ef30b1c58edb2408607afab68d470717cf367c0f53a45c73a8b33e",
+      "experiments/learner/builtin_gameplay.py": "fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831",
+      "experiments/learner/builtin_local365.py": "c45949b5e969f2729e8bfd117f3266f0e2312d6247900e5ca16af46b4f278650",
+      "experiments/learner/builtin_portable.py": "cbeb1573ce89c93edd329e404c0e239cd4ce894cd42861ff3d7b5cfaabc7fe66",
+      "experiments/learner/builtin_preservation.py": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e",
+      "experiments/learner/builtin_rollout.py": "c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6",
+      "experiments/learner/builtin_training.py": "00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768",
+      "experiments/learner/builtin_training_metrics.py": "aab1a57558019be7ce09bf4bba0866dff7bdd90f4cdfec059e5e73967e10d98f",
+      "experiments/learner/builtin_training_resume.py": "3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb",
+      "experiments/learner/builtin_v8_migration.py": "390614b27498aebbfd75e46b0036b0844773fadb3bc226d80600858d009d837f",
+      "experiments/learner/builtin_v8_session.py": "08f290eefdf8b3ff9cf4c97883e90ea90a5299f5c475a8f07f6645e299578301",
+      "experiments/learner/builtin_v8_training.py": "dc76d56d95db30ac68cb1d44af236f2e7090efa84ff40746771735b056e81588",
+      "experiments/learner/checkpoints.py": "be624a6fc8d02ddae134c85a8cd458b6abb63298df5ae22868894a6a4eaf4b03",
+      "experiments/learner/contextual.py": "fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d",
+      "experiments/learner/contextual_model.py": "0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f",
+      "experiments/learner/contextual_rollout.py": "afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637",
+      "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+      "experiments/learner/curriculum_training.py": "f424c0ec4e740c030cb5767010960f1b28ed56b022a2b242efdc180375c7d413",
+      "experiments/learner/evaluate_builtin_opponent.py": "3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0",
+      "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+      "experiments/learner/evaluate_long_dialogs.py": "405b190f8034e7ce4a0dd40c8286a8e17859f4f78bc7054a2821f7a10a6493b8",
+      "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+      "experiments/learner/evaluation_revalidation.py": "c997549616a76a7901d6dda3b8ce4292b516f073728a1d4e4afdb4b869046f5f",
+      "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+      "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+      "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+      "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+      "experiments/learner/overnight_training.py": "5ef7e362e59951bbb80208b0d5d1b6137805116bd50401ff8a66baf8ffda5dad",
+      "experiments/learner/ppo.py": "0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60",
+      "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+      "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932"
+    },
+    "torch": "2.9.1+cpu",
+    "python": "3.12.14 (main, Aug 25 2026, 14:00:49) [Clang 22.1.3 ]",
+    "interface": "adventure-capabilities-v1"
+  },
+  "runtime": {
+    "AI/libBattleAI.so": "9bd248a5c95fd8194203493114cef9b3979a35c34ef3f632d7efc6f10baaf219",
+    "AI/libExplorerRL.so": "b3da0be5942752aff5dc22a25c9620b80d3dcc579679e9e08b2bc5e4a03fe1da",
+    "AI/libNullkiller.so": "4a0bbe22154c83ddc608cd641c175762c58bf9f4b118eca622bdc45e8c7d462b",
+    "libvcmi.so": "6d7326bec3a06a14101979e3d1efe7b0329aeab5cca709e5278d6d80bf57c13b",
+    "vcmireplay": "d02b93e4e1c32dbbd76f9057aab10116a7ab815571dbe31b70c39cd658f75857"
+  },
+  "diagnostic_games": 64,
+  "diagnostic_training_samples": 0,
+  "heldout_games": 16,
+  "admitted_training_games": 12,
+  "ppo_updates": 3,
+  "latest_verified_checkpoint": {
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/batches/train-0110-seat0/plan.json",
+    "sha256": "cd84d5bdcb6624218a14e38bffb662589ccc5f97c3c83b39c9654fcec1a1a70f",
+    "bytes": 58186
+  },
+  "latest_preserved_checkpoint": {
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/batches/train-0110-seat0/plan.json",
+    "sha256": "cd84d5bdcb6624218a14e38bffb662589ccc5f97c3c83b39c9654fcec1a1a70f",
+    "bytes": 58186
+  },
   "ownership": "cloud",
-  "compute_deadline_utc": "2026-10-26T09:55:00Z",
-  "hard_deadline_utc": "2026-10-26T10:00:00Z",
-  "cloud_training_started": false,
-  "new_admitted_games": 0,
-  "new_ppo_updates": 0,
-  "checkpoint": {
-    "plan": {
-      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
-      "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
-      "bytes": 57870
-    },
-    "report": {
-      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/report.json",
-      "sha256": "4814e4539ceb8d442c43d0018d436e29c9686adc473302adf53456ee49c9e79f",
-      "bytes": 11137
-    },
-    "policy": {
-      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-policy.pt",
-      "sha256": "4820f656835e4a339f5b2364fe842f09e8fcf815b5474c7c2b6b611c867c8204",
-      "bytes": 638131
-    },
-    "resume": {
-      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-resume.pt",
-      "sha256": "0899a4a9845ceeef213510c8cd383a0c3ecd7f4ab7440a0c2ae07afe5c2b65fa",
-      "bytes": 1266165
-    }
-  },
-  "verified_asset_files": 8,
-  "watchdog_pid": 26662,
-  "blocker": null,
-  "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
-  "offline_control_tests": 15,
-  "private_git_read_access": true,
-  "canonical_build": "passed",
-  "remaining_compute_seconds": 23292.73651599884,
-  "autonomous_controller_pid": 35903,
-  "handoff_poller_pid": 26664,
-  "autonomous_bootstrap_commit": "f8109749ae544717bf65e5ccb96a6cab124d9a7e",
-  "autonomous_command": [
-    "/workspace/heroes-rl/.venv/bin/python",
-    "/workspace/releases/teacher-overnight-bootstrap-f810974/tools/overnight_autocontinue.py",
-    "--repair-preparation",
-    "preparation-repair-002"
-  ],
-  "duplicate_exclusion": "exclusive live flock plus immutable handoff claim and session lock",
-  "second_real_controller_rejected": true,
-  "absolute_child_guard_control_passed": true,
-  "private_git_write_access": true,
-  "runtime_startup_checks": "passed",
-  "builtin_regression_tests": 234,
-  "overnight_controls": 20,
-  "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220",
-  "full_offline_suite": {
-    "run": 1309,
-    "passed": 1301,
-    "skipped": 8
-  },
-  "dependency_closure_release_gate": "implemented_and_fake_bundle_tested",
-  "heldout_cadence": "Carry146+5*k phase from local curriculum; additional fresh Linux baseline and final fixed pair",
-  "previous_wait_controller_pid": 26663,
-  "previous_wait_controller_exited": true,
-  "real_handoff_received": false,
-  "real_weights_inspected": false,
-  "latest_complete_progress": {
-    "updates": 254,
-    "rollouts": 1016,
-    "decisions": 73345
-  },
-  "cumulative_adam_steps": 2626,
-  "next_unused_training_sequence": 108,
-  "exact_final_restore": "passed_three_copies",
-  "repair_attempt": "preparation-repair-002",
-  "prior_preparation_failure": {
-    "status": "stopped_before_training",
-    "training_started": false,
-    "error": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
-    "stopped_utc": "2026-10-26T03:06:10.935669+00:00",
-    "hard_deadline_unix": 1793008800.0,
-    "compute_deadline_unix": 1793008500.0,
-    "restart_authorized": false
-  },
-  "linux_controls": [
-    {
-      "seat": 0,
-      "mode": "capture",
-      "outcome": "win",
-      "natural": true,
-      "replay": true,
-      "cleanup": true
-    },
-    {
-      "seat": 1,
-      "mode": "capture",
-      "outcome": "win",
-      "natural": true,
-      "replay": true,
-      "cleanup": true
-    },
-    {
-      "seat": 0,
-      "mode": "wait",
-      "outcome": "loss",
-      "natural": true,
-      "replay": true,
-      "cleanup": true
-    },
-    {
-      "seat": 1,
-      "mode": "wait",
-      "outcome": "loss",
-      "natural": true,
-      "replay": true,
-      "cleanup": true
-    }
-  ],
-  "verified_linux_diagnostic_policy_games": 16,
-  "linux_policy_outcomes_by_seat": {
+  "remaining_compute_seconds": 22899.424375534058,
+  "launch_utc": "2026-10-26T03:26:51.744627+00:00",
+  "compute_deadline_utc": "2026-10-26T09:55:00+00:00",
+  "hard_deadline_utc": "2026-10-26T10:00:00+00:00",
+  "validation_outcomes": {
     "0": {
-      "loss": 6,
-      "win": 2
+      "win": 12,
+      "loss": 20
     },
     "1": {
-      "loss": 6,
-      "win": 2
+      "win": 13,
+      "loss": 19
     }
   },
-  "platform_drift": {
-    "passed": true,
-    "values_max_abs": 1.7881393432617188e-07,
-    "joint_log_probability_max_abs": 4.76837158203125e-07,
-    "sampled_action_mismatches": 0
+  "error": null,
+  "final_analysis": null,
+  "owned_cleanup_verified": null,
+  "cloud_training_started": true,
+  "new_admitted_games": 12,
+  "new_ppo_updates": 3,
+  "latest_complete_progress": {
+    "updates": 257,
+    "rollouts": 1028,
+    "decisions": 73815
   },
-  "executable_release": "/workspace/releases/teacher-overnight-30629a84bc30"
+  "next_periodic_update": 261,
+  "current_activity": {
+    "mode": "training",
+    "sequence": 111,
+    "seat": 1,
+    "status": "running",
+    "started_utc": "2026-10-26T03:33:19.078036+00:00",
+    "finished_utc": null
+  },
+  "evaluation_natural_outcomes": {
+    "loss": 12,
+    "win": 4
+  },
+  "natural_outcomes": {
+    "loss": 4,
+    "win": 8
+  },
+  "cutoffs": 0,
+  "failed_batches": 0
 }

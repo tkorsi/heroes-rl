@@ -77,3 +77,37 @@ The first offline preparation attempt then failed before native gameplay: the dr
 - 2026-10-26T03:26:42.225095+00:00 linux_acceptance_retained: {"private_preservation": {"commit": "150ca3284f8fb87aaac9058b328d0f04c0c8d560", "archive": {"path": "/workspace/heroes-overnight-private/results/overnight-20261026/linux-acceptance-001/evidence.tar.gz", "sha256": "790f9c2370416b1c1077f2af859467fb9acbf941dc5f93dad9600ace78bc9f1a", "bytes": 12976026}}, "error": null}
 
 - 2026-10-26T03:26:47.264140+00:00 automatic_campaign_launch_intent: {"release": "/workspace/releases/teacher-overnight-30629a84bc30", "compute_cutoff": 1793008500.0, "hard_stop": 1793008800.0}
+
+- 2026-10-26T03:26:51.745384+00:00 campaign_launched: {}
+
+- 2026-10-26T03:26:53.427964+00:00 campaign_batch_intent: {"sequence": 254, "seat": 0, "mode": "baseline", "status": "preparing"}
+
+- 2026-10-26T03:27:23.943785+00:00 campaign_batch_result: {"sequence": 254, "seat": 0, "mode": "baseline", "status": "passed"}
+
+- 2026-10-26T03:27:24.205655+00:00 campaign_batch_intent: {"sequence": 254, "seat": 1, "mode": "baseline", "status": "preparing"}
+
+- 2026-10-26T03:27:54.776989+00:00 campaign_batch_result: {"sequence": 254, "seat": 1, "mode": "baseline", "status": "passed"}
+
+- 2026-10-26T03:27:55.039589+00:00 campaign_batch_intent: {"sequence": 108, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:29:40.986122+00:00 campaign_batch_result: {"sequence": 108, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:29:41.248368+00:00 campaign_batch_intent: {"sequence": 109, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:30:47.678856+00:00 campaign_batch_result: {"sequence": 109, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:30:48.202250+00:00 campaign_batch_intent: {"sequence": 256, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T03:31:17.711657+00:00 campaign_batch_result: {"sequence": 256, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T03:31:17.976890+00:00 campaign_batch_intent: {"sequence": 256, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T03:31:48.034687+00:00 campaign_batch_result: {"sequence": 256, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T03:31:48.289925+00:00 campaign_batch_intent: {"sequence": 110, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:33:18.815193+00:00 campaign_batch_result: {"sequence": 110, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T03:33:19.079509+00:00 campaign_batch_intent: {"sequence": 111, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T03:35:14.623665+00:00 All64fresh Linux policy games passed capture, exact reconstruction, native replay, natural terminal accounting and cleanup: Red12wins/20losses, Blue13wins/19losses. The four controls passed separately and supply no samples. The frozen final-update254 baseline returned1win/3losses in each seat. Controller43610 launched at03:26:49UTC; real sequence108 training began03:27:55UTC. The first complete cloud update255 added192admitted decisions and7Adamsteps from four fresh games (2wins/2losses), with durable backup restoration verified. This is real continuation, not diagnostic training; the unchanged compute/hard cutoffs remain09:55/10:00UTC.
