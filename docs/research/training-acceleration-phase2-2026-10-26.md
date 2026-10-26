@@ -113,3 +113,121 @@ dispatch the overnight branch added.
 ## Attempts and corrections
 
 (appended in order; nothing is removed)
+
+### A1. Baseline smoke batch (14:16 UTC, `smoke-B-easy-1`, B = 3cb6a78, sequence 9000, seat 0)
+
+Purpose: check the harness end to end and locate the time. Not a timed comparison (single batch,
+development work ran alongside). Result: passed; 340 samples from games of 26, 36, 232 and 46
+decisions. Compute cycle 286.1 s, durable cycle 287.9 s (local push 1.8 s), prepare 4.0 s,
+supervisor-to-first-game 6.5 s, games 3.1/1.2/3.6/1.1 s, gaps between games (verification of the
+previous game plus the next game's setup and identity checks) 3.5/3.8/8.9 s. PPO 238.7 s: behaviour
+verification 26.1, prefix reconstruction 12.8, loss forward 74.9, backward and clip 123.5, Adam 1.3.
+Process-tree CPU 290.8 s. So H2 holds here (PPO 83% of the cycle) and H1 is secondary for a batch of
+this size; on this host PPO costs 0.70 s per sample, about twice Teacher's recorded 0.29 to 0.40.
+
+### A2. Exact behaviour verification in evaluation mode (E1) and a prefix node memo
+
+Hypothesis: `_verify_behavior` recomputes every frame in train mode, where the exact inference
+memos are disabled although every allowed module is mode-independent; running it in eval mode
+with the memos, then restoring every module's mode, is bitwise identical. Result on the smoke batch
+(optimizer-only, same restored state): behaviour verification 26.1 s to 1.5-1.8 s; outputs, model,
+gradients, Adam and generator bitwise equal to the reference. Prefix reconstruction gains a
+call-local internal-node memo with the inference memo's exact-tree rule (5.4 s against 12.8 s).
+Loss forward and backward are unchanged (about 66-78 s and 124-130 s): bitwise-exact PPO cannot
+change autograd's gradient summation order, so the exact PPO gain on PPO-heavy easy batches is
+about 1.2-1.4x. Tests: `tests/test_ppo_phase2_acceleration.py` (mixed modes restored; poisoned
+probabilities rejected by both paths and not laundered by a warm memo; a stale memo after
+`.data` weight changes rejected; hooks keep the reference path; the node memo equals uncached
+states; the update equals the reference).
+
+### A3. Separate numerical experiment: shared graph encodings (opt-in, never a default)
+
+Within one minibatch's autograd graph, a text/number leaf or exact internal tree is encoded once
+and the same tensor serves every later frame. Forward values, log-probabilities, values and losses
+are bit-identical; parameter gradients differ only in floating-point summation order. Selection
+is bound in the plan (`experiments`) and in every produced checkpoint's metadata
+(`numerical_experiments`), checked by every identity check; no environment variable can select it.
+Smoke batch: PPO 238.7 s to 17.5 s (optimizer-only). The resulting update differs from the exact
+update by 4.45e-4 of its L2 norm, deterministically (identical across repetitions). The user chose
+to count this path toward the target as an opt-in candidate pending manual review (14:34 UTC);
+exact remains the default and nothing is deployed to Teacher.
+
+### A4. Fail-closed incident during profiling (14:41 UTC, `prof-X-easy-1`)
+
+I created an untracked helper file in the measured candidate checkout while its campaign ran. The
+next identity check failed closed ("Frozen checkout must remain clean") and the batch stopped
+without an update. Correction: separate development (`p2dev`) and measured (`phase2`) worktrees;
+measured checkouts are only fast-forwarded between measurement sets. `prof-X-easy-2` (py-spy
+attached, so its timings are inflated and not used) then passed: PPO 6.1 s for 112 samples.
+
+### A5. Identity-check hashing (H1)
+
+Profile of one benchmark identity check: about 0.9 s, mostly SHA-256 of the same runtime,
+implementation and parent files bound by several helpers (`check_frozen` ran twice per check).
+Change: `experiments/headless/digest_scope.py`, a per-check memo keyed by resolved path, device,
+inode, size, mtime and ctime observed both before and after hashing; every check opens a fresh
+scope, outside a scope every call rehashes, and files of at least 1 MB are prefetched by four
+threads. Microbenchmark: hashing per check 0.78-0.80 s to about 0.40 s; prefetching small files
+too was slower (0.78 s, interpreter-bound), hence the 1 MB threshold. Tests:
+`tests/test_digest_scope.py` (rewrites with forced-equal mtime, atomic replace, truncation and a
+change during hashing are all rehashed; scopes never share; prefetch errors stay with the check).
+
+### A6. Original-workload baseline warm-up (14:18 UTC, `r0-B-original`, B, sequence 0, seat 0)
+
+Games of 2, 60, 93 and 2525 decisions (69.1 s for the long game). The worker then spent about
+165 s verifying the long game and entered PPO for 2680 samples. PPO exceeded the update phase
+budget (worker start + 3540 s): `UpdateRolledBack: TimeoutError`; model, Adam and all RNG state
+were restored, no checkpoint was published, and the campaign stopped (fail closed). Caveat: this
+run shared the host with my profiling (one extra busy core most of the time), so it is not a clean
+baseline time; the clean baseline PPO time of the same verified batch is measured optimizer-only
+(A9). A py-spy sample 35 minutes into this PPO: backward 48%, prefix reconstruction 35%, loss
+forward 12%. Prefix reconstruction replays every earlier frame of an episode under the current
+weights for every minibatch, so its cost grows with the square of the episode length.
+
+### A7. Long-game verification profile (episode 4 of A6, 2525 decisions, read-only re-run)
+
+strict JSON parse of the 112 MB rollout 5.0 s; canonical re-serialization 2.3 s (twice in the
+real check); `load_builtin_episode` 9.9 s; Python history check 12.5 s; policy reconstruction 21.1 s
+(warm repeat 21.9 s); `verify_episode` 62.1 s (its own history check 10.6 s, JSONL record parsing
+16 s, wire cross-check 10.7 s, report writes 3 s, waiting on `vcmireplay` about 26 s); behaviour
+report 14.4 s. All of it ran serially in one process.
+
+### A8. Experiment PPO on the A6 batch (optimizer-only, candidate e33fa7c, 15:04 UTC)
+
+820.5 s in total: prefix reconstruction 689.9 s (84%), loss forward 48.1, backward 62.7, behaviour
+verification 15.9. So on long games the experiment alone leaves prefix reconstruction as the
+bottleneck (H4). Note: the frames of that episode number 16044, of which 15302 have semantics
+and only 4162 are distinct encodings; one full replay took 11.0 s, 1.8 s of it recomputing every
+frame's memo key.
+
+### A9. Exact prefix keys and exact prefix helpers (candidate 097f7b9)
+
+Hypothesis: (a) the memo keys of an unchanged history can be computed once per update; (b) frame
+encodings under fixed weights are independent pure functions, so forked helpers can compute
+disjoint shares bit for bit while the parent keeps every check and every recurrent step in order.
+Microbenchmark on the A6 episode (full replay; one other core busy): serial 11.0 s; with three
+helpers 4.0-5.5 s (encodings 3.1-4.0 s, chain 1.1-1.4 s); with two 3.5-7.2 s; every state bitwise
+equal to the serial result. Safety: the parent recomputes the first encoding of every helper's
+share and requires identical bits; helpers keep only their socket and standard streams, never
+touch the optimizer and are reaped when the update ends, whatever its outcome. Tests:
+`tests/test_prefix_pool.py`.
+
+### A10. Overlapped per-game verification (candidate f55703f)
+
+Hypothesis: native replay (`verify_episode`, unchanged) is independent of the worker's rollout,
+history and policy checks, its own history check is independent of the `vcmireplay` run, and the
+behaviour report is a pure function of the finalized capture files. Change: capture files are bound
+first, the native replay runs in a forked child (result or exception returned exactly) while the
+parent checks rollout, history and policy; inside `verify_episode` the history check runs in a
+thread while the main thread waits on `vcmireplay` (a history error is still the error reported);
+the behaviour report runs in a forked child and is written only after verification passes. No
+check was removed. Tests: `tests/test_parallel_verification.py` plus the existing 110 verification
+tests.
+
+### A11. Back-to-back identity checks and the canonical prepare check (candidate 373b299)
+
+Two kinds of identity check were exact repeats with nothing in between: the benchmark worker's
+plan reader and `builtin_training.worker`'s first action; and a passed attempt's final check and
+the next attempt's opening check. Each pair keeps one check. `tools/prepare_vcmi.py --check` now
+runs while the benchmark builds the plan; no plan is written unless it passed. Tests extended in
+`tests/test_builtin_training.py` and `tests/test_builtin_first_run.py`.

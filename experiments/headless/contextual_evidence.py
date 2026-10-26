@@ -6,6 +6,7 @@ Replay separately verifies the request and packet positions against the engine.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -40,9 +41,19 @@ def strict_json(data):
 
 
 def file_identity(path):
-    from .digest_scope import sha256_file
-    digest, size = sha256_file(path)
+    digest, size = _sha256_file(path)
     return {"sha256": digest, "bytes": size}
+
+
+def _sha256_file(path):
+    # Also imported as top-level ``contextual_evidence`` (contextual_env puts this directory on
+    # sys.path); without the repository root there, hash directly as before.
+    try:
+        from experiments.headless.digest_scope import sha256_file
+    except ImportError:
+        data = Path(path).read_bytes()
+        return hashlib.sha256(data).hexdigest(), len(data)
+    return sha256_file(path)
 
 
 def inside(root, name):

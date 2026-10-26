@@ -2,6 +2,8 @@
 import hashlib
 import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -90,6 +92,24 @@ class DigestScopeTests(unittest.TestCase):
         with self.count_hashes() as hashed, digest_scope.scope():
             self.assertEqual(file_identity(link)["sha256"], file_identity(self.path)["sha256"])
         self.assertEqual(hashed.call_count, 1)
+
+    def test_modules_loaded_without_the_package_still_hash_exactly(self):
+        # contextual_env imports ``contextual_evidence`` as a top-level module, and the recorders
+        # load scoring.py by file path; neither may depend on the repository root being importable.
+        root = Path(__file__).resolve().parents[1]
+        script = (
+            "import importlib.util, sys\n"
+            f"sys.path[:0] = [{str(root / 'experiments/headless')!r}]\n"
+            "import contextual_evidence\n"
+            f"spec = importlib.util.spec_from_file_location('heroes_episode_scoring', {str(root / 'experiments/episodes/scoring.py')!r})\n"
+            "scoring = importlib.util.module_from_spec(spec); spec.loader.exec_module(scoring)\n"
+            "from pathlib import Path\n"
+            "path = Path(sys.argv[1])\n"
+            "print(contextual_evidence.file_identity(path)['sha256'], contextual_evidence.file_identity(path)['bytes'], scoring.digest(path))\n"
+            "print('experiments' in sys.modules)\n")
+        output = subprocess.run([sys.executable, "-I", "-c", script, str(self.path)], cwd=self.root,
+                                check=True, capture_output=True, text=True).stdout.split()
+        self.assertEqual(output, [self.expected(b"first"), "5", self.expected(b"first"), "False"])
 
 
 if __name__ == "__main__":
