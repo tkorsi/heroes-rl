@@ -1,0 +1,139 @@
+{
+  "timestamp_utc": "2026-10-26T01:35:18.589850+00:00",
+  "phase": "running_snapshot_not_final",
+  "source_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
+  "session": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
+  "new_updates": 20,
+  "progress": {
+    "updates": 166,
+    "rollouts": 664,
+    "decisions": 47277
+  },
+  "admitted_training_games": 80,
+  "verified_heldout_games": 40,
+  "evaluation_rows": [
+    {
+      "mode": "baseline",
+      "sequence": 146,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "baseline",
+      "sequence": 146,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 151,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 151,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 156,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 156,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 161,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "win",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 161,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 166,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "win",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 166,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    }
+  ],
+  "technical_failures": 0,
+  "absolute_deadline_unix": 1792984253.815159,
+  "handoff_ready": false
+}

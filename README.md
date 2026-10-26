@@ -495,3 +495,13 @@ isolated release, with canonical patch agreement verified. Study4 and campaign-v
 preserve prior failed evidence and keep one immutable two-hour campaign clock,
 including any in-window recovery. No campaign has launched during preparation.
 See the updated [research protocol](docs/research/curriculum-v1.md).
+
+
+Clean study4 acceptance passed on frozen source cb3d324:64 verified unchanged-
+policy games (Red5wins/27losses, Blue2wins/30losses) and all four controls. The
+actual local campaign launched at01:10:53 UTC on26 October (03:10:53 Kyiv),
+with03:05:53 UTC compute cutoff and03:10:53 UTC hard stop. Both initial fixed
+held-out baselines were0/4 wins. Real PPO is running from exact update146 in
+`local-curriculum-update146/campaign-v3`; see the timestamped
+[local status](reports/local/teacher-curriculum-status.json). Final ownership
+transfer to cloud is gated on complete preservation and verified local shutdown.
