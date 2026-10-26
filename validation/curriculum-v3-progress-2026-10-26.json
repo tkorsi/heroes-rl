@@ -1,16 +1,16 @@
 {
-  "timestamp_utc": "2026-10-26T01:35:18.589850+00:00",
+  "timestamp_utc": "2026-10-26T02:00:21.522812+00:00",
   "phase": "running_snapshot_not_final",
   "source_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
   "session": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
-  "new_updates": 20,
+  "new_updates": 41,
   "progress": {
-    "updates": 166,
-    "rollouts": 664,
-    "decisions": 47277
+    "updates": 187,
+    "rollouts": 748,
+    "decisions": 54149
   },
-  "admitted_training_games": 80,
-  "verified_heldout_games": 40,
+  "admitted_training_games": 164,
+  "verified_heldout_games": 72,
   "evaluation_rows": [
     {
       "mode": "baseline",
@@ -131,9 +131,106 @@
         "loss",
         "loss"
       ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 171,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "win",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 171,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "win",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 176,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "win",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 176,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "win",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 181,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 181,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 186,
+      "seat": 0,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
+    },
+    {
+      "mode": "periodic",
+      "sequence": 186,
+      "seat": 1,
+      "status": "passed",
+      "outcomes": [
+        "loss",
+        "loss",
+        "loss",
+        "loss"
+      ]
     }
   ],
   "technical_failures": 0,
   "absolute_deadline_unix": 1792984253.815159,
-  "handoff_ready": false
+  "handoff_ready": false,
+  "automatic_finalization": "armed, separate owned watcher waiting for controller exit"
 }
