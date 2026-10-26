@@ -158,3 +158,51 @@ value and error as the fork; default start releases the accepted commit, fast op
 import sibling test modules by top-level name were rerun from `tests/`); the nine
 `test_prepare_local_training` tests fail on this host on main too (they require Torch `2.9.1` or
 `2.9.1+cpu`).
+
+### O5. Paired smokes from 629 and what identical games mean (19:10 to 20:30 UTC, s4-B and s4-C)
+
+Main's accepted path (s4-B, a8ac411) and the fast path (s4-C, 7c744a2 with overlapped verification)
+ran concurrently on separate benchmark roots from the same 629 copies and the same benchmark
+sequence, so they are smokes, not a timed comparison. Both played the eight fixed baseline games
+and the first training batch (sequence 266, seat 0; games of 246, 1066, 1091 and 1565 decisions).
+
+Game identity. The paired games have the same decisions, submitted actions, observations, contexts
+and terminal results, record by record, and the same choice counts. Their raw files are not
+byte-identical: the native replay's start record carries the engine's start time (games started in
+the same second are byte-identical; the first game of each smoke was), and in one game the
+interleaving of two asynchronous notices near the end differed (the day stamp of the last result
+record and the order of a new-day notice and a turn-end event), without any effect on what the
+learner saw. `tools/acceleration3/campaign_summary.py` therefore identifies a game by its
+decision-relevant record (decision, submitted, consumed, view, context and terminal records without
+record numbers) and reports raw-file identity separately. Exact equality of the learner is checked
+on the admitted checkpoints' full state (model, Adam, all RNG, progress, pool, sampler).
+
+Per-game wall time (collection plus every check), fast path against accepted: baseline games
+10.0/54.4/31.5/21.2 s against 25.9/148.5/86.1/50.9 s (seat 0), training games 9.8/39.4/43.3/78.0 s
+against 27.9/117.9/130.4/216.1 s (2.6x to 2.9x). Both smokes shared four vCPUs with each other and
+with an optimizer-only job, so these are lower bounds of neither side.
+
+### O6. Optimizer-only exact PPO on the long 412 batch (19:11 to 19:47 UTC, `r0b0-C`)
+
+The fast path's PPO (7c744a2, no helpers, CPU 3, contended by the two smokes) on the same verified
+batch as phase-2 A13 (2680 samples; one game of 2525 decisions; 16044 frames): 2104.3 s against
+3779.1 s for phase-2 B (PR30 head; the same `ppo.py` as main), 1.80x. Model, gradients and Adam state
+are bitwise equal to B's. Breakdown (C against B): prefix reconstruction 458.5 against 1646.2 s,
+loss forward 548.8 against 623.1, backward 1068.2 against 1218.1, behaviour verification 13.7
+against 275.4, Adam 11.6 against 12.6.
+
+Profile of what is left (one window of 85 to 129 frames from the long game, CPU 0): forward 2.0 to
+3.7 s, backward 3.3 to 5.2 s; 66% of the forward is `torch.gru` of the byte-level text encoder (2627
+text leaves per window, about 0.77 ms each), and the backward follows the same graph. The exact
+path must evaluate and differentiate every text leaf of every frame separately: sharing equal
+leaves within a minibatch graph is precisely the numerical experiment, since it sums their
+gradient contributions in a different order; batching leaves into one recurrent call changes the
+matrix kernels' reduction order. So on a long-game batch the exact path is bounded by the
+unchanged forward and backward (about 1600 s of the 2104 s here), whatever happens to collection,
+verification and prefix reconstruction (prefix helpers parallelize only the latter).
+
+Consequence for the update budget (H7). Forward plus backward costs about 0.6 to 0.7 s per decision
+on this host on both exact paths. The update phase must finish within 3540 s of the worker's start,
+including the four games and their checks, so on this host any batch with more than roughly 4,500
+decisions in total exceeds the budget on the exact paths too and stops the run (fail closed). The
+first training batch from 629 has 3,968.
