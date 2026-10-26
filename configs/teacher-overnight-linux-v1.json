@@ -1,0 +1,193 @@
+{
+  "schema": "heroes-overnight-linux-continuation-v1",
+  "parent": {
+    "plan": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+      "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+      "bytes": 57870
+    },
+    "report": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/report.json",
+      "sha256": "4814e4539ceb8d442c43d0018d436e29c9686adc473302adf53456ee49c9e79f",
+      "bytes": 11137
+    },
+    "policy": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-policy.pt",
+      "sha256": "4820f656835e4a339f5b2364fe842f09e8fcf815b5474c7c2b6b611c867c8204",
+      "bytes": 638131
+    },
+    "resume": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-resume.pt",
+      "sha256": "0899a4a9845ceeef213510c8cd383a0c3ecd7f4ab7440a0c2ae07afe5c2b65fa",
+      "bytes": 1266165
+    }
+  },
+  "historical_source": {
+    "git_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
+    "tracked_worktree_dirty": false,
+    "source_sha256": {
+      "experiments/learner/__init__.py": "48e62bbbfcfc84b07522263926e25b39511ec892630eb14b254e27f8c02275a8",
+      "experiments/learner/actions.py": "ae74fa14b158e4d94365cdb2b9427df887c87ae5d5740204b99bbbc724e67e20",
+      "experiments/learner/builtin_behavior.py": "36f67e7a60dcfe3fa826a966fcabe8b04fd27aca13b8b7bd9aed7e2aa99914e9",
+      "experiments/learner/builtin_first_run.py": "e41fbfb7c1ca6700932dae1ce7a0abb1de03c0a10943d136c2bf9a3c974e18ad",
+      "experiments/learner/builtin_gameplay.py": "fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831",
+      "experiments/learner/builtin_local365.py": "c45949b5e969f2729e8bfd117f3266f0e2312d6247900e5ca16af46b4f278650",
+      "experiments/learner/builtin_portable.py": "cbeb1573ce89c93edd329e404c0e239cd4ce894cd42861ff3d7b5cfaabc7fe66",
+      "experiments/learner/builtin_preservation.py": "c6e6bb28267419fa34d28ce044256c0354282e13a222029ece29d40c0baab17e",
+      "experiments/learner/builtin_rollout.py": "c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6",
+      "experiments/learner/builtin_training.py": "00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768",
+      "experiments/learner/builtin_training_metrics.py": "aab1a57558019be7ce09bf4bba0866dff7bdd90f4cdfec059e5e73967e10d98f",
+      "experiments/learner/builtin_training_resume.py": "3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb",
+      "experiments/learner/builtin_v8_migration.py": "390614b27498aebbfd75e46b0036b0844773fadb3bc226d80600858d009d837f",
+      "experiments/learner/builtin_v8_session.py": "08f290eefdf8b3ff9cf4c97883e90ea90a5299f5c475a8f07f6645e299578301",
+      "experiments/learner/builtin_v8_training.py": "dc76d56d95db30ac68cb1d44af236f2e7090efa84ff40746771735b056e81588",
+      "experiments/learner/checkpoints.py": "be624a6fc8d02ddae134c85a8cd458b6abb63298df5ae22868894a6a4eaf4b03",
+      "experiments/learner/contextual.py": "fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d",
+      "experiments/learner/contextual_model.py": "0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f",
+      "experiments/learner/contextual_rollout.py": "afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637",
+      "experiments/learner/contract.py": "c471d4b1b36fa65c3fd05e047fd18dc116634ad7df3f733517a30f80f0d388a3",
+      "experiments/learner/curriculum_training.py": "f424c0ec4e740c030cb5767010960f1b28ed56b022a2b242efdc180375c7d413",
+      "experiments/learner/evaluate_builtin_opponent.py": "3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0",
+      "experiments/learner/evaluate_continuation.py": "6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d",
+      "experiments/learner/evaluate_long_dialogs.py": "405b190f8034e7ce4a0dd40c8286a8e17859f4f78bc7054a2821f7a10a6493b8",
+      "experiments/learner/evaluation_behavior.py": "fdcd3f7f8625c4fef93da76718377c342b7e74ac6aeb9395618204abe7a2f148",
+      "experiments/learner/evaluation_revalidation.py": "c997549616a76a7901d6dda3b8ce4292b516f073728a1d4e4afdb4b869046f5f",
+      "experiments/learner/first_run.py": "8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c",
+      "experiments/learner/gameplay.py": "f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f",
+      "experiments/learner/inference.py": "b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54",
+      "experiments/learner/model.py": "39b137de85db7244172b5224cb9079e5c3e76e73c22ada8af974a289c8baedde",
+      "experiments/learner/ppo.py": "0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60",
+      "experiments/learner/trajectory.py": "684c954e2dd471b80f31f77470148da94874f77cc72158c9ea7d13bedf6b8f8e",
+      "dependencies/learner.lock": "37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932"
+    },
+    "torch": "2.9.1",
+    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 11:23:37) [Clang 14.0.6 ]",
+    "interface": "adventure-capabilities-v1"
+  },
+  "historical_runtime": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  },
+  "linux_runtime": {
+    "AI/libBattleAI.so": "9bd248a5c95fd8194203493114cef9b3979a35c34ef3f632d7efc6f10baaf219",
+    "AI/libExplorerRL.so": "b3da0be5942752aff5dc22a25c9620b80d3dcc579679e9e08b2bc5e4a03fe1da",
+    "AI/libNullkiller.so": "4a0bbe22154c83ddc608cd641c175762c58bf9f4b118eca622bdc45e8c7d462b",
+    "libvcmi.so": "6d7326bec3a06a14101979e3d1efe7b0329aeab5cca709e5278d6d80bf57c13b",
+    "vcmireplay": "d02b93e4e1c32dbbd76f9057aab10116a7ab815571dbe31b70c39cd658f75857"
+  },
+  "ownership_transfer_verified": true,
+  "handoff_verification": {
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/handoff/verification.json",
+    "sha256": "5b3b46fb5e31abaeafb44a1a6b7fa74220f56a604f9f8b0d5a428b76946f863e",
+    "bytes": 34390
+  },
+  "ready_commit": "bcdee6ecc3609f3024f304c15ef8ccba7e605404",
+  "archive_commit": "208ebad9ebacd91163bf583ee6aa9b13a64f79a0",
+  "public_source_commit": "85d0983268c92e8e1ad65ae2e0a09df523e9cf6d",
+  "relocation_roots": {
+    "/Users/orsi/Projects/Heroes-artifacts": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical"
+  },
+  "historical_campaign_root": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3",
+  "progress": {
+    "updates": 254,
+    "rollouts": 1016,
+    "decisions": 73345
+  },
+  "optimizer_steps": 2626,
+  "next_unused_training_sequence": 108,
+  "map_sha256_by_seat": [
+    "7d88860234664580c564fc2c71554fd813519ace9904ff368dc30eef3c352019",
+    "75303cc2b19c1d0ddc5fbac35315a951dfc9bb6e780b4245508f8a2a78e691f1"
+  ],
+  "heldout_schedule_by_seat": {
+    "0": [
+      {
+        "episode": 1,
+        "phase": "evaluation",
+        "learner_player": 0,
+        "engine_seed": 710001,
+        "policy_seed": 720001
+      },
+      {
+        "episode": 2,
+        "phase": "evaluation",
+        "learner_player": 0,
+        "engine_seed": 710002,
+        "policy_seed": 720002
+      },
+      {
+        "episode": 3,
+        "phase": "evaluation",
+        "learner_player": 0,
+        "engine_seed": 710003,
+        "policy_seed": 720003
+      },
+      {
+        "episode": 4,
+        "phase": "evaluation",
+        "learner_player": 0,
+        "engine_seed": 710004,
+        "policy_seed": 720004
+      }
+    ],
+    "1": [
+      {
+        "episode": 1,
+        "phase": "evaluation",
+        "learner_player": 1,
+        "engine_seed": 710001,
+        "policy_seed": 720001
+      },
+      {
+        "episode": 2,
+        "phase": "evaluation",
+        "learner_player": 1,
+        "engine_seed": 710002,
+        "policy_seed": 720002
+      },
+      {
+        "episode": 3,
+        "phase": "evaluation",
+        "learner_player": 1,
+        "engine_seed": 710003,
+        "policy_seed": 720003
+      },
+      {
+        "episode": 4,
+        "phase": "evaluation",
+        "learner_player": 1,
+        "engine_seed": 710004,
+        "policy_seed": 720004
+      }
+    ]
+  },
+  "restore_backup_directories": [
+    "/workspace/Heroes-artifacts/overnight-20261026/checkpoints/imported-final-local",
+    "/workspace/heroes-overnight-private/checkpoints/overnight-20261026/imported-final-local"
+  ],
+  "initial_checkpoint_dependency": {
+    "bytes": 638131,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0106-seat0/execution/after-policy.pt",
+    "sha256": "d7aa3b675c5fec41467660511070b225951f021d3100c6d8ee6aaf545197c6af"
+  },
+  "glue_changes": {
+    "experiments/learner/builtin_first_run.py": {
+      "from": "e41fbfb7c1ca6700932dae1ce7a0abb1de03c0a10943d136c2bf9a3c974e18ad",
+      "to": "21c08b67e8ef30b1c58edb2408607afab68d470717cf367c0f53a45c73a8b33e"
+    }
+  },
+  "platform_drift_report": {
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/platform-drift.json",
+    "sha256": "47455f8334bf4252ae45503a9ad08cbd2672cac3ca2615563975a9c669348a9c",
+    "bytes": 2507
+  },
+  "hard_deadline_unix": 1793008800.0,
+  "compute_deadline_unix": 1793008500.0,
+  "monotonic_clock_scope": "Fresh Linux wall/monotonic anchor; original Mac monotonic clock is immutable provenance only",
+  "historical_training_admission": false
+}
