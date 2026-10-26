@@ -21,6 +21,11 @@ ADAPTER_SOURCES = {"experiments/headless/env.py", "experiments/headless/contextu
 
 
 def _unique(pairs):
+    # dict() keeps first insertion order and drops nothing unless a key repeats;
+    # only then does the loop name the first repeated key, as it always did.
+    result = dict(pairs)
+    if len(result) == len(pairs):
+        return result
     result = {}
     for key, value in pairs:
         if key in result:

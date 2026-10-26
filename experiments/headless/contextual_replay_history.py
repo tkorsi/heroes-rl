@@ -43,8 +43,21 @@ def _identity(path):
 
 
 def _wire(frame):
-    return json.dumps(contract.encode_frame(frame), sort_keys=True,
-                      separators=(",", ":")).encode() + b"\n"
+    """The frame's canonical JSON line, encoded once per frame object.
+
+    This is json.dumps(encode_frame(frame), sort_keys=True, separators=(",",
+    ":")) plus a newline. Whenever canonical_frame succeeds its text is exactly
+    that dump, since allow_nan=False changes nothing for finite values, so the
+    per-frame canonical cache serves every later comparison and digest of the
+    same frame. Anything canonical_frame rejects takes the original encoding,
+    which then fails or succeeds just as before.
+    """
+    try:
+        text = contract.canonical_frame(frame)
+    except ValueError:
+        return json.dumps(contract.encode_frame(frame), sort_keys=True,
+                          separators=(",", ":")).encode() + b"\n"
+    return text.encode() + b"\n"
 
 
 def _records(path):

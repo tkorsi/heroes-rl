@@ -213,7 +213,8 @@ class TrainingCollector(BuiltinCollector):
         folder = Path(manifest_path).resolve().parent
         require(str(folder) == self.binding.folder, "Training finalization is outside its fresh directory")
         with (folder / "builtin-training-rollout.json").open("x") as stream:
-            json.dump(result.to_dict(), stream, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            # json.dumps writes the same text as json.dump with the C encoder.
+            stream.write(json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False))
             stream.write("\n")
         _CAPTURES[id(result)] = result
         return result
