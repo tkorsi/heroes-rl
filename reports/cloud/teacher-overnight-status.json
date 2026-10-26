@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T04:23:14.506058+00:00",
+  "timestamp_utc": "2026-10-26T04:26:20.683199+00:00",
   "phase": "running",
   "campaign_launched": true,
   "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/session.json",
@@ -58,21 +58,21 @@
   },
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
-  "heldout_games": 48,
-  "admitted_training_games": 96,
-  "ppo_updates": 24,
+  "heldout_games": 52,
+  "admitted_training_games": 108,
+  "ppo_updates": 27,
   "latest_verified_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0131-seat1/plan.json",
-    "sha256": "4b3b25a26a04730c9a5155c8ec0428fa1121206921d8412c3a6cd8a24c293a7c",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0134-seat0/plan.json",
+    "sha256": "e609bc93becd03006704d9285795d28a6c04379ec4d6b0a7b220821bfa1086c1",
     "bytes": 58426
   },
   "latest_preserved_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0131-seat1/plan.json",
-    "sha256": "4b3b25a26a04730c9a5155c8ec0428fa1121206921d8412c3a6cd8a24c293a7c",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0134-seat0/plan.json",
+    "sha256": "e609bc93becd03006704d9285795d28a6c04379ec4d6b0a7b220821bfa1086c1",
     "bytes": 58426
   },
   "ownership": "cloud",
-  "remaining_compute_seconds": 19905.4938852787,
+  "remaining_compute_seconds": 19719.316727399826,
   "launch_utc": "2026-10-26T03:26:51.744627+00:00",
   "compute_deadline_utc": "2026-10-26T09:55:00+00:00",
   "hard_deadline_utc": "2026-10-26T10:00:00+00:00",
@@ -94,29 +94,29 @@
   },
   "owned_cleanup_verified": true,
   "cloud_training_started": true,
-  "new_admitted_games": 96,
-  "new_ppo_updates": 24,
+  "new_admitted_games": 108,
+  "new_ppo_updates": 27,
   "latest_complete_progress": {
-    "updates": 278,
-    "rollouts": 1112,
-    "decisions": 76599
+    "updates": 281,
+    "rollouts": 1124,
+    "decisions": 76840
   },
-  "next_periodic_update": 281,
+  "next_periodic_update": 286,
   "current_activity": {
-    "mode": "training",
-    "sequence": 132,
-    "seat": 0,
+    "mode": "periodic",
+    "sequence": 281,
+    "seat": 1,
     "status": "running",
-    "started_utc": "2026-10-26T04:23:12.911427+00:00",
+    "started_utc": "2026-10-26T04:26:19.141551+00:00",
     "finished_utc": null
   },
   "evaluation_natural_outcomes": {
-    "loss": 20,
-    "win": 28
+    "loss": 21,
+    "win": 31
   },
   "natural_outcomes": {
-    "loss": 23,
-    "win": 73
+    "loss": 24,
+    "win": 84
   },
   "cutoffs": 0,
   "failed_batches": 1
