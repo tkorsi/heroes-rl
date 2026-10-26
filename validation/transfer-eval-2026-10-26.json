@@ -1,4 +1,11 @@
 {
+  "backend_withdrawal": {
+    "failed_attempt": "transfer-037",
+    "no_failed_attempt_retry": true,
+    "reason": "Embedded SIGSEGV at transfer037 after narrow gate passed; no replay/reconstruction completion, unscored",
+    "remaining_rows_only": true,
+    "same_model_and_game_semantics": true
+  },
   "cells": {
     "146-easy-seat0": {
       "battle_start_roles": {},
@@ -131,8 +138,8 @@
       "planned": 16,
       "scenario": "easy",
       "seat": 0,
-      "technical_failures": 0,
-      "unstarted": 13,
+      "technical_failures": 1,
+      "unstarted": 12,
       "valid": 3,
       "valid_cutoffs": 0,
       "wilson95": [
@@ -342,7 +349,7 @@
     }
   },
   "error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
-  "games_attempted": 37,
+  "games_attempted": 38,
   "gate_comparison": {
     "comparisons": [
       {
@@ -376,7 +383,7 @@
     ],
     "passed": true
   },
-  "gate_status": "passed",
+  "gate_status": "passed_narrow_gate_later_embedded_backend_withdrawn",
   "limitations": [
     "16 games per checkpoint/scenario/seat; seed does not fix all native opponent scheduling.",
     "Repeated four fixed old gate starts are not transfer games. Varied easier coordinates and original scenario are separate.",
@@ -553,12 +560,187 @@
       ],
       "publication_errors": [],
       "remote_acknowledged": true
+    },
+    {
+      "archive": {
+        "bytes": 22371775,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/final-all-captures-recovery-001.tar.gz",
+        "sha256": "292ed2f3c3b261b11fa0baa0e81500fc2a84b4173aa43e9c2603d6fa34f883ab"
+      },
+      "attempts": 1,
+      "checkpoint_or_game_data_in_public_source": false,
+      "commit": "37b6b30f7102e238f8225c02e0908dde556cdc06",
+      "game_data_symlinks_dereferenced": false,
+      "parts": [
+        {
+          "bytes": 16777216,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-001/evidence.tar.gz.part000",
+          "sha256": "b846f47f426c5943538e13bc1a7abdbc30169803fef76a07b28b1ee328676fdb"
+        },
+        {
+          "bytes": 5594559,
+          "path": "/workspace/heroes-transfer-private/validations/teacher-transfer-eval-20261026/final-all-captures-recovery-001/evidence.tar.gz.part001",
+          "sha256": "e0113ef179776692eccc8755286fc1de054b8ea7337ceae131861483efa76467"
+        }
+      ],
+      "publication_errors": [],
+      "remote_acknowledged": true
+    }
+  ],
+  "recovery": {
+    "clock_reset": false,
+    "new_harness_commit": "3c4a506f39649a92c332f7a1e505fe91850eb756",
+    "orchestration": {
+      "bytes": 25927,
+      "path": "/workspace/releases/teacher-transfer-cold-recovery-3c4a506/tools/run_transfer_eval.py",
+      "sha256": "156039d4971d45e3398a6b2bcfc24788ae69166f6521243cd17f0b0ea5add39d"
+    },
+    "prior_report": {
+      "bytes": 401154,
+      "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/attempts/stopped-001/result.json",
+      "sha256": "efbd5fda51ed277a4babb52e13faa6c4846b91bd71614d6a4528008032c27165"
+    },
+    "window": {
+      "bytes": 369,
+      "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json",
+      "sha256": "16de3c9b5e75946dfe8c7583bc2ce19d93580398ca4bb2d88dbd7d3e3bd92b3e"
+    }
+  },
+  "retained_failures": [
+    {
+      "last_attempt": {
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-transfer-harness-6a2dea3/tools/transfer_eval_worker.py",
+          "--mode",
+          "run",
+          "--source",
+          "/workspace/releases/teacher-transfer-accelerated-941f60b",
+          "--manifest",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/manifest.json",
+          "--checkpoint",
+          "146",
+          "--output",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-037",
+          "--binary",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/runtime/accelerated/bin/vcmiclient",
+          "--replay-binary",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/runtime/accelerated/bin/vcmireplay",
+          "--window",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json",
+          "--rows",
+          "/workspace/Heroes-artifacts/transfer-eval-20261026/schedules/transfer-037.json",
+          "--backend",
+          "embedded",
+          "--runtime-key",
+          "accelerated"
+        ],
+        "finished_utc": "2026-10-26T13:38:27.263981+00:00",
+        "label": "transfer-037",
+        "owned_cleanup_verified": true,
+        "process_identity": {
+          "command": [
+            "/workspace/heroes-rl/.venv/bin/python",
+            "-I",
+            "/workspace/releases/teacher-transfer-harness-6a2dea3/experiments/headless/process_deadline.py",
+            "--guarded-exec",
+            "--deadline-monotonic",
+            "85241.935462651",
+            "--deadline-wall",
+            "1793026613.894478",
+            "--evidence",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/deadlines/transfer-037.jsonl",
+            "--owner-pipe",
+            "5",
+            "--",
+            "/workspace/heroes-rl/.venv/bin/python",
+            "/workspace/releases/teacher-transfer-harness-6a2dea3/tools/transfer_eval_worker.py",
+            "--mode",
+            "run",
+            "--source",
+            "/workspace/releases/teacher-transfer-accelerated-941f60b",
+            "--manifest",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/manifest.json",
+            "--checkpoint",
+            "146",
+            "--output",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-037",
+            "--binary",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/runtime/accelerated/bin/vcmiclient",
+            "--replay-binary",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/runtime/accelerated/bin/vcmireplay",
+            "--window",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json",
+            "--rows",
+            "/workspace/Heroes-artifacts/transfer-eval-20261026/schedules/transfer-037.json",
+            "--backend",
+            "embedded",
+            "--runtime-key",
+            "accelerated"
+          ],
+          "parent_pid": 230239,
+          "pid": 232074,
+          "start_ticks": 8053269
+        },
+        "resources_end": null,
+        "resources_start": {
+          "descriptors": 4,
+          "rss_bytes": 245383168,
+          "threads": 1
+        },
+        "returncode": -11,
+        "rows": [
+          {
+            "optimizer_steps": 0,
+            "resources_before": {
+              "descriptors": 5,
+              "rss_bytes": 299618304,
+              "threads": 1
+            },
+            "schedule": {
+              "checkpoint": 146,
+              "engine_seed": 810007,
+              "id": "transfer-037",
+              "layout": 3,
+              "map_key": "easy-3-0",
+              "policy_seed": 820007,
+              "scenario": "easy",
+              "seat": 0
+            },
+            "status": "failed",
+            "training_samples": 0
+          }
+        ],
+        "schedule": [
+          {
+            "checkpoint": 146,
+            "engine_seed": 810007,
+            "id": "transfer-037",
+            "layout": 3,
+            "map_key": "easy-3-0",
+            "policy_seed": 820007,
+            "scenario": "easy",
+            "seat": 0
+          }
+        ],
+        "started_utc": "2026-10-26T13:38:24.653709+00:00",
+        "status": "failed",
+        "worker_report": {
+          "bytes": 4989,
+          "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-037/report.json",
+          "sha256": "fa5ed039527a8792c1111950839a80432f646fcbc1df74cdc866258126c7c893"
+        },
+        "worker_status": "prepared",
+        "wrapper_seconds": 2.610284310998395
+      },
+      "original_error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
+      "private_commit": "1ee9f60338f7a8d6c7caba5f38b7c86c45176228"
     }
   ],
   "schema": "heroes-frozen-transfer-result-v1",
-  "selected_backend": "accelerated-embedded",
+  "selected_backend": "original-cold-after-embedded-SIGSEGV",
   "status": "stopped_failure",
-  "timestamp_utc": "2026-10-26T13:39:02.046047+00:00",
+  "timestamp_utc": "2026-10-26T13:52:30.625207+00:00",
   "training_samples": 0,
   "window": {
     "compute_deadline_monotonic": 85241.935462651,
