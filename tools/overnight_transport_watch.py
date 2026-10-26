@@ -131,7 +131,9 @@ def main():
         started_utc=datetime.now(timezone.utc).isoformat(),compute_deadline_unix=COMPUTE,hard_deadline_unix=HARD))
     current=a.from_report.resolve();result={}
     try:
-        for index in range(1,33):
+        existing=[int(p.name.rsplit('-',1)[1]) for p in (BASE/'campaign-v1/recoveries').glob('http-transport-*') if p.name.rsplit('-',1)[1].isdigit()]
+        first=max(existing,default=0)+1
+        for index in range(first,first+32):
             require(time.time()<COMPUTE-600,'No safe original compute window for another recovery')
             details=verify_stopped(current);ack=push_ack()
             owner.event('private_publication_acknowledged_after_transient_failure',ack=ack,
@@ -141,10 +143,12 @@ def main():
             env={**owner.ENV,'HEROES_CURRICULUM_SESSION':str(session)}
             command=[sys.executable,str(release/'tools/overnight_curriculum_campaign.py'),'recover','--recover-from',str(current)]
             wall=HARD-90;mono=time.monotonic()+wall-time.time();proc=None;last_publish=0
+            evidence=BASE/(target.name+'-outer-supervisor-deadline.jsonl')
+            require(not evidence.is_relative_to(current.parent),'Outer guard must be outside the stopped evidence subtree')
             try:
                 with (target/'transport-supervisor.log').open('x') as log:
                     proc=guarded_popen(command,cwd=release,env=env,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,
-                        deadline_wall=wall,deadline_monotonic=mono,evidence_path=target/'transport-supervisor-deadline.jsonl')
+                        deadline_wall=wall,deadline_monotonic=mono,evidence_path=evidence)
                     owner.atomic(target/'owned-command.json',dict(pid=proc.pid,command=command,session=str(session)))
                     while proc.poll() is None and time.time()<wall-2:
                         if time.time()-last_publish>600:
@@ -154,7 +158,7 @@ def main():
                         time.sleep(5)
             finally:
                 if proc is not None:close_owned_process(proc,timeout=1)
-                cleanup_from_evidence(target/'transport-supervisor-deadline.jsonl',timeout=1)
+                cleanup_from_evidence(evidence,timeout=1)
             current=target/'campaign-report.json';v=json.loads(current.read_text())
             result=dict(status=v['status'],new_updates=v['new_updates'],progress=v['latest_progress'],report=binding(current))
             if v['status']!='stopped_failure':break
