@@ -1,0 +1,50 @@
+{
+  "phase": "preparation",
+  "timestamp": "2026-10-26T00:07:41.745043+00:00",
+  "branch": "codex/teacher-curriculum-v1",
+  "parent_update": 146,
+  "training_launched": false,
+  "diagnostic_schedule": {
+    "engine_seeds": [
+      610001,
+      610002,
+      610003,
+      610004
+    ],
+    "policy_seeds": [
+      620001,
+      620002,
+      620003,
+      620004
+    ],
+    "seats": [
+      0,
+      1
+    ]
+  },
+  "heldout_schedule": {
+    "engine_seeds": [
+      710001,
+      710002,
+      710003,
+      710004
+    ],
+    "policy_seeds": [
+      720001,
+      720002,
+      720003,
+      720004
+    ],
+    "seats": [
+      0,
+      1
+    ]
+  },
+  "curriculum": "stage0 townless nearby capture; stage1 farther and weaker; stage2 original start",
+  "reward": "natural terminal only",
+  "gate": "unchanged policy both natural wins and losses, independent replay, policy reconstruction, cleanup; controls must not win by waiting",
+  "campaign_session": null,
+  "launch": null,
+  "compute_deadline": null,
+  "hard_deadline": null
+}
