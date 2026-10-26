@@ -342,3 +342,14 @@ CPU 0 also carried short tests and read-only review agents during both jobs (and
 compression during the accepted job), so this may be disturbance. A counterbalanced repeat (accepted, then fast path) is
 queued after the matrix, and a read-only analysis of the window path is checking for added
 overhead.
+
+Numerical experiment on the same batch (`ppo266` job X, 7c4303f `--experiment shared_graph_encodings`,
+no helpers, CPU 0, 22:22 to 22:31 UTC): 521.7 s, 6.2x the exact fast path and 8.1x the accepted
+path (prefix reconstruction 380.1, loss forward 52.1, backward and clip 66.4, behaviour
+verification 19.8 s). Sharing equal leaves within a minibatch graph evaluates and differentiates
+each distinct text leaf once instead of at every occurrence, so the forward and backward fall
+from about 2,740 s to 118 s: on this batch nearly all of the exact path's cost is repeated
+evaluation of identical leaves. The result is not exact, as designed: after 125 optimizer steps
+34 of 39 model tensors differ (largest absolute difference 1.7e-4, largest relative 0.37%),
+gradients of the last step by at most 3.4e-8 absolute; the reported policy loss, KL and clip
+fraction agree to six or more digits. It remains a separately reported opt-in.
