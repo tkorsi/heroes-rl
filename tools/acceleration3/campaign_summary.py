@@ -7,17 +7,21 @@ For each campaign run root (the folder holding ``latest-run.json``): every batch
 ``research-log.jsonl`` (intent to result, which includes preparation, the guarded supervisor and
 worker, four games with all checks, PPO, checkpoint round trip, preservation and the independent
 restore of the preserved copy), the worker's own report (execution wall, per-game choices, wall
-and outcome, PPO result), a path-independent digest of every game's decision record (see game_digest), and with Torch a digest of every admitted checkpoint's full state (model, Adam, all RNG,
-progress, opponent pool; metadata such as source digests and paths excluded). Batches of different
-campaigns with the same (sequence, seat, mode) are paired: identical game digests mean identical
-games; identical state digests mean bitwise-identical learner state.
+and outcome, PPO result), a path-independent digest of every game's observations and decisions
+(see game_digest; read from the episode folder or its compressed archive), and with Torch a digest
+of every admitted checkpoint's full state (model, Adam, all RNG, progress, opponent pool, sampler;
+metadata such as source digests and paths excluded). Batches of different campaigns with the same
+(sequence, seat, mode) are paired: identical game digests mean identical games; identical state
+digests mean bitwise-identical learner state; a missing digest makes the pair not comparable (null).
 """
 import argparse
 from datetime import datetime
+import fnmatch
 import hashlib
 import json
 from pathlib import Path
 import statistics
+import tarfile
 
 
 def sha(path):
@@ -25,34 +29,46 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
-DECISION_KINDS = ('decision', 'submitted', 'consumed', 'view', 'context', 'terminal')
+# Bookkeeping frames of the history (contextual_model._METADATA): issue/cutoff/finalization records
+# that carry no game content.
+METADATA_KINDS = frozenset(('issued', 'cutoff', 'cutoff_finalized', 'finalized', 'failure', 'superseded'))
+
+
+def episode_files(episode, pattern):
+    """(relative name, bytes) of the episode's files matching pattern, from the folder or its archive."""
+    episode = Path(episode)
+    if episode.is_dir():
+        return [(p.relative_to(episode).as_posix(), p.read_bytes()) for p in sorted(episode.glob(pattern))]
+    archive = episode.with_name(episode.name + '.tar.gz')
+    if not archive.is_file():
+        raise FileNotFoundError(f'episode {episode} has neither its folder nor its archive')
+    with tarfile.open(archive, 'r:gz') as tar:
+        return sorted((m.name.split('/', 1)[1], tar.extractfile(m).read()) for m in tar
+                      if m.isfile() and fnmatch.fnmatchcase(m.name.split('/', 1)[1], pattern))
 
 
 def game_digest(episode):
-    """The learner's decision-relevant record: every decision, submission, observation, context and
-    the terminal result, without record numbers. Raw histories and native replays of identical
-    games still differ in the engine's start time and in the interleaving of asynchronous notices."""
-    paths = sorted(Path(episode).glob('agents/*/history-v8.jsonl'))
-    if not paths:
-        return None
+    """Every game frame of both agents' histories (all but METADATA_KINDS), without record numbers.
+    Raw histories and native replays of identical games still differ in the engine's start time."""
+    histories = [h for h in episode_files(episode, 'agents/*/history-v8.jsonl')]
+    if not histories:
+        raise FileNotFoundError(f'episode {episode} has no agent history')
     digest = hashlib.sha256()
-    for path in paths:
-        for line in path.open():
+    for name, data in histories:
+        digest.update(name.encode() + b'\0')
+        for line in data.splitlines():
             row = json.loads(line)
-            if row.get('kind') in DECISION_KINDS:
+            if row.get('kind') not in METADATA_KINDS:
                 row.pop('seq', None)
                 digest.update(json.dumps(row, sort_keys=True).encode() + b'\n')
     return digest.hexdigest()
 
 
 def raw_digest(episode):
-    episode = Path(episode)
-    files = sorted(episode.glob('agents/*/history-v8.jsonl')) + [episode / 'engine' / 'replay.jsonl']
+    files = episode_files(episode, 'agents/*/history-v8.jsonl') + episode_files(episode, 'engine/replay.jsonl')
     digest = hashlib.sha256()
-    for path in files:
-        if not path.exists():
-            return None
-        digest.update(path.relative_to(episode).as_posix().encode() + b'\0' + bytes.fromhex(sha(path)))
+    for name, data in files:
+        digest.update(name.encode() + b'\0' + hashlib.sha256(data).digest())
     return digest.hexdigest()
 
 
@@ -86,6 +102,14 @@ def state_digest(resume_path):
     return digest.hexdigest()
 
 
+def present(digest, episode):
+    """A digest of an episode, or None (recorded as not comparable) when its files are gone."""
+    try:
+        return digest(episode) if episode else None
+    except FileNotFoundError:
+        return None
+
+
 def batches(run_root, with_state=True):
     run = Path(json.loads((Path(run_root) / 'latest-run.json').read_text())['run_dir'])
     rows = []
@@ -104,8 +128,8 @@ def batches(run_root, with_state=True):
                     choices=[a.get('sampled_choices') for a in attempts],
                     game_seconds=[a.get('wall_seconds') for a in attempts],
                     outcomes=row.get('outcomes'),
-                    games=[game_digest(a['episode_directory']) if a.get('episode_directory') else None for a in attempts],
-                    raw=[raw_digest(a['episode_directory']) if a.get('episode_directory') else None for a in attempts],
+                    games=[present(game_digest, a.get('episode_directory')) for a in attempts],
+                    raw=[present(raw_digest, a.get('episode_directory')) for a in attempts],
                     optimizer_steps=report.get('optimizer_steps'), training_samples=report.get('training_samples'),
                     ppo={k: v for k, v in ppo.items() if not isinstance(v, (list, dict)) or k.endswith('seconds')},
                     after_weights=(report.get('after_checkpoint') or {}).get('weights_sha256'))
@@ -117,6 +141,14 @@ def batches(run_root, with_state=True):
     return dict(run_root=str(run_root), run_dir=str(run), status=summary.get('status'), batches=rows)
 
 
+def same(values):
+    """True or False when every value is present; None (not comparable) when any is missing."""
+    values = [tuple(v) if isinstance(v, list) else v for v in values]
+    if len(values) < 2 or any(v is None or (isinstance(v, tuple) and (not v or None in v)) for v in values):
+        return None
+    return len(set(values)) == 1
+
+
 def compare(campaigns):
     keyed = {}
     for name, campaign in campaigns.items():
@@ -126,12 +158,11 @@ def compare(campaigns):
     for key, by in sorted(keyed.items(), key=lambda kv: (kv[0][2] != 'baseline', kv[0][0], kv[0][1])):
         if len(by) < 2:
             continue
-        games = {n: tuple(b['games']) for n, b in by.items()}
-        states = {n: b.get('state') for n, b in by.items() if b.get('state')}
         pairs.append(dict(sequence=key[0], seat=key[1], mode=key[2], seconds={n: b['seconds'] for n, b in by.items()},
-                          games_identical=len(set(games.values())) == 1,
-                          raw_records_identical=len({tuple(b['raw']) for b in by.values()}) == 1,
-                          states_identical=(len(set(states.values())) == 1) if len(states) == len(by) else None,
+                          statuses={n: b['status'] for n, b in by.items()},
+                          games_identical=same(b['games'] for b in by.values()),
+                          raw_records_identical=same(b['raw'] for b in by.values()),
+                          states_identical=same(b.get('state') for b in by.values()),
                           choices={n: b['choices'] for n, b in by.items()}))
     return pairs
 

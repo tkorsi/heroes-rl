@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 """Compress the raw episode folders of finished benchmark campaigns to fit the host's disk allowance.
 
-    compress_episodes.py RUN_ROOT [RUN_ROOT ...]
+    compress_episodes.py RUN_ROOT [RUN_ROOT ...] [--batches GLOB]
 
 Only for benchmark campaigns that have ended (no live owner lock) and have been summarized. Each
 ``batches/*/execution/episode-*`` folder becomes ``episode-*.tar.gz`` beside it (private, local);
 its manifest lists every member's size and SHA-256, the archive is re-read and every member checked
 against the manifest before the folder is removed. Plans, reports, logs, research logs and
 checkpoints are never touched, so the runner's own records and every admitted state remain.
+``campaign_summary.py`` reads the archives as it reads the folders. ``--batches`` limits it to batch
+folders matching GLOB (for example ``baseline-*``).
 """
+import argparse
 import fcntl
 import hashlib
 import json
 from pathlib import Path
 import shutil
-import sys
 import tarfile
 
 
@@ -59,11 +61,15 @@ def compress(episode):
 
 
 def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument('run_roots', nargs='+', type=Path)
+    p.add_argument('--batches', default='*')
+    a = p.parse_args()
     total = packed = 0
-    for root in map(Path, sys.argv[1:]):
+    for root in a.run_roots:
         if not ended(root):
             print('campaign still owns its lock, skipped:', root); continue
-        for episode in sorted(root.glob('run-*/batches/*/execution/episode-*')):
+        for episode in sorted(root.glob(f'run-*/batches/{a.batches}/execution/episode-*')):
             if episode.is_dir():
                 raw, archive = compress(episode)
                 total += raw; packed += archive

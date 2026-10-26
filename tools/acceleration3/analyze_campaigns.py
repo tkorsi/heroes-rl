@@ -20,17 +20,19 @@ import json
 from pathlib import Path
 import statistics
 
+from campaign_summary import same
+
 
 def ts(value):
     return datetime.fromisoformat(value).timestamp()
 
 
 def resources(path):
-    peak = dict(total_rss=0, fds=0, threads=0, processes=0)
+    peak = dict(total_rss=0, total_pss=0, fds=0, threads=0, processes=0)
     first = last = None
     for line in path.open():
         row = json.loads(line)
-        peak = {k: max(peak[k], row[k] if k != 'processes' else len(row['processes'])) for k in peak}
+        peak = {k: max(peak[k], row.get(k, 0) if k != 'processes' else len(row['processes'])) for k in peak}
         top = row['processes'][0] if row['processes'] else None
         if top:
             first = first or top
@@ -123,8 +125,8 @@ def main():
                                       baseline_status=r['status'], candidate_status=b['status'],
                                       baseline_seconds=r['seconds'], candidate_seconds=b['seconds'],
                                       ratio=r['seconds'] / b['seconds'] if b['seconds'] else None,
-                                      identical_games=r['games'] == b['games'],
-                                      identical_state=(r['state'] == b['state']) if r.get('state') and b.get('state') else None))
+                                      identical_games=same([r['games'], b['games']]),
+                                      identical_state=same([r.get('state'), b.get('state')])))
     result = dict(campaigns=campaigns, per_variant=per_variant, paired_training_batches=pairs)
     text = json.dumps(result, indent=1, sort_keys=True)
     if a.out:

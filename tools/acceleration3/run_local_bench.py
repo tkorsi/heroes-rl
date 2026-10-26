@@ -79,10 +79,17 @@ def sample(pid):
     try:
         with open(f'/proc/{pid}/stat') as f: stat = f.read().rsplit(')', 1)[1].split()
         with open(f'/proc/{pid}/cmdline', 'rb') as f: command = f.read().split(b'\0')[:5]
-        return dict(pid=pid, rss=int(stat[21]) * PAGE, threads=int(stat[17]), cpu=(int(stat[11]) + int(stat[12])) / TICK,
-                    fds=len(os.listdir(f'/proc/{pid}/fd')), command=' '.join(c.decode(errors='replace') for c in command))
+        row = dict(pid=pid, rss=int(stat[21]) * PAGE, threads=int(stat[17]), cpu=(int(stat[11]) + int(stat[12])) / TICK,
+                   fds=len(os.listdir(f'/proc/{pid}/fd')), command=' '.join(c.decode(errors='replace') for c in command))
     except OSError:
         return None
+    # Proportional set size: forked children share their parent's pages, so summed RSS overcounts.
+    try:
+        with open(f'/proc/{pid}/smaps_rollup') as f:
+            row['pss'] = next(int(line.split()[1]) * 1024 for line in f if line.startswith('Pss:'))
+    except (OSError, StopIteration):
+        row['pss'] = None
+    return row
 
 
 class Sampler(threading.Thread):
@@ -90,16 +97,18 @@ class Sampler(threading.Thread):
 
     def __init__(self, root, path, period=1.0):
         super().__init__(daemon=True); self.root, self.path, self.period = root, path, period
-        self.stop = threading.Event(); self.peak = dict(total_rss=0, processes=0, fds=0, threads=0)
+        self.stop = threading.Event(); self.peak = dict(total_rss=0, total_pss=0, processes=0, fds=0, threads=0)
 
     def run(self):
         with open(self.path, 'w') as out:
             while not self.stop.is_set():
                 rows = [r for r in map(sample, [self.root, *children(self.root)]) if r]
                 row = dict(t=time.monotonic(), utc=time.time(), total_rss=sum(r['rss'] for r in rows),
+                           total_pss=sum(r['pss'] or 0 for r in rows),
                            fds=sum(r['fds'] for r in rows), threads=sum(r['threads'] for r in rows), processes=rows)
                 out.write(json.dumps(row) + '\n'); out.flush()
                 self.peak.update(total_rss=max(self.peak['total_rss'], row['total_rss']),
+                                 total_pss=max(self.peak['total_pss'], row['total_pss']),
                                  processes=max(self.peak['processes'], len(rows)),
                                  fds=max(self.peak['fds'], row['fds']), threads=max(self.peak['threads'], row['threads']))
                 self.stop.wait(self.period)
@@ -194,6 +203,8 @@ def main():
     if subprocess.check_output(['git', 'status', '--porcelain'], cwd=checkout, text=True).strip():
         raise SystemExit('Checkout is dirty')
     campaign = ART / 'campaigns' / a.name
+    if (ART / 'runs' / a.name).exists():
+        raise SystemExit('Run root exists; every campaign needs a fresh ledger')
     campaign.mkdir(parents=True, exist_ok=False)
     # The deadline watchdog may stop this driver and everything below it, and nothing else.
     subprocess.run(['python3', WATCHDOG, 'own', str(os.getpid()), 'driver-' + a.name], check=False, stdout=subprocess.DEVNULL)

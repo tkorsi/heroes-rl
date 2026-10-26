@@ -25,7 +25,9 @@ Safety and scope:
   path, no ``run_local_training.py`` process is running, and the official owner lock is free. It
   then holds that lock (read-only descriptor, exclusive) until it exits, so the manual 5,000-game
   run cannot start alongside it (it would refuse immediately with "Another local training script
-  owns this artifact root") and this tool cannot start alongside that run.
+  owns this artifact root") and this tool cannot start alongside that run. If the lock file does
+  not exist (no official run has ever started on this Mac), nothing is created and only the process
+  check guards. The checkout must stay at the same clean commit; it is checked before every campaign.
 - Writes only into a fresh benchmark root outside the official artifact root. Official files are
   read, never written: the parent run (selected by the runner's own final-parent rule), the pinned
   preparation inputs, the validation prerequisites, the machine description and the runtime. The
@@ -37,8 +39,12 @@ Safety and scope:
 - Bounded: each runner has its own ``--hours`` hard stop; this tool additionally sends SIGTERM (the
   runner's manual stop) ten minutes after it and kills the campaign's process tree two minutes
   later. Ctrl-C works as with ``train-local.sh`` (stop after the current batch) and starts no
-  further campaign; the summary is still written. After ``--updates`` checkpoints it requests the runner's own stop while the last batch
-  runs, so the final evaluation pair is skipped.
+  further campaign; the summary is still written. After ``--updates`` checkpoints it requests the
+  runner's own stop while the last batch runs, so the final evaluation pair is skipped.
+- Exit status 0 only if every campaign ended cleanly (runner status stopped_requested, every
+  requested training batch admitted, no bound reached, no leftover process), the checkout did not
+  change, nothing was interrupted, and every exact training pair with identical games had
+  bitwise-identical learner state. ``summary.json`` lists every problem.
 """
 import argparse
 from datetime import datetime, timezone
@@ -176,7 +182,8 @@ def machine_config(python, inputs, data, art, run_root, env):
             f'v = p.build_configuration(Path({str(inputs / "input412")!r}), p.DEFAULT_RUNTIME, Path({str(data)!r}),'
             f' Path({str(art)!r}), Path({str(run_root)!r}), "original")\n'
             'print(json.dumps(v))')
-    out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+    out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True,
+                         start_new_session=True)
     value = json.loads(out.stdout.strip().splitlines()[-1])
     if value['seed_namespace'] != NAMESPACE:
         refuse('benchmark namespace did not apply; nothing was started')
@@ -197,7 +204,14 @@ def tree(root):
     return {pid: rows[pid] for pid in found}
 
 
+def leftovers(bench):
+    """Processes still naming this benchmark's artifact folder (runner, worker, engine), other than this tool."""
+    rows = subprocess.run(['ps', '-A', '-o', 'pid=,command='], capture_output=True, text=True).stdout.splitlines()
+    return sorted(int(r.split()[0]) for r in rows if str(bench / 'art') in r and int(r.split()[0]) != os.getpid())
+
+
 class Sampler(threading.Thread):
+    """Summed resident memory of the runner's process tree (forked children share pages, so it overcounts)."""
     def __init__(self, root, path, period=5.0):
         super().__init__(daemon=True); self.root, self.path, self.period = root, path, period
         self.stop = threading.Event(); self.peak = dict(total_rss=0, processes=0)
@@ -249,6 +263,8 @@ def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
     env = {**env_base, 'HEROES_LOCAL_BENCH_SPEC': str(spec)}
     config = machine_config(args.python, inputs, data, bench / 'art', run_root, env)
     write_new(campaign / 'machine.json', config)
+    if INTERRUPT['requested']:
+        return name, run_root, dict(name=name, letter=letter, not_started='interrupted during setup')
     command = [args.python, 'tools/run_local_training.py', 'start', '--config', str(campaign / 'machine.json'),
                '--profile', 'original', '--parent', str(inputs / 'parent629.json'), '--hours', str(args.hours),
                '--eval-every', '100', '--max-updates', str(args.updates), *CAMPAIGNS[letter]]
@@ -280,11 +296,33 @@ def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
             record['bound'] = 'killed'
     INTERRUPT['runner'] = None
     stop.set(); sampler.stop.set(); sampler.join()
-    left = tree(process.pid)
+    time.sleep(2.0)  # let the runner's own cleanup finish before looking for leftovers
     record.update(returncode=returncode, launch_seconds=time.monotonic() - started, finished_utc=utc(),
-                  peaks=sampler.peak, leftover_processes=sorted(left))
+                  peaks=sampler.peak, leftover_processes=leftovers(bench))
     write_new(campaign / 'bench-run.json', record)
-    return name, run_root
+    return name, run_root, record
+
+
+def problems(record, updates):
+    """Why a campaign does not count as a clean, complete campaign (empty when it does)."""
+    found = []
+    run = record.get('run', {})
+    if run.get('not_started'):
+        return ['not started: ' + run['not_started']]
+    if run.get('returncode') != 0:
+        found.append(f"runner exit status {run.get('returncode')}")
+    if run.get('bound') != 'not_reached':
+        found.append(f"tool bound reached: {run.get('bound')}")
+    if run.get('leftover_processes'):
+        found.append(f"leftover processes {run['leftover_processes']}")
+    if record.get('status') != 'stopped_requested':
+        found.append(f"runner status {record.get('status')}")
+    trained = [b for b in record.get('batches', []) if b['mode'] == 'training']
+    if sum(b['status'] == 'passed' for b in trained) != updates or len(trained) != updates:
+        found.append(f'{sum(b["status"] == "passed" for b in trained)} of {updates} training batches admitted')
+    if sum(b['mode'] == 'baseline' and b['status'] == 'passed' for b in record.get('batches', [])) != 2:
+        found.append('baseline evaluation pair incomplete')
+    return found
 
 
 def main():
@@ -305,6 +343,8 @@ def main():
         p.error('--updates 1 to 4 and --hours 0.25 to 12')
     if sys.platform != 'darwin':
         refuse('this is the Mac acceptance tool; Linux benchmarks use run_local_bench.py')
+    # From here a first Ctrl-C or SIGTERM only stops further work; the summary is still written.
+    signal.signal(signal.SIGINT, interrupted); signal.signal(signal.SIGTERM, interrupted)
     runner, head = preflight()
     lock, lock_state = hold_official_lock()
     bench = (args.bench_root or Path.home() / 'Projects/Heroes-bench' /
@@ -321,38 +361,55 @@ def main():
                   accepted_implementation=runner.ACCEPTED_IMPLEMENTATION, order=args.order, updates=args.updates,
                   hours=args.hours, official_lock=lock_state, parent_run=str(args.parent_run),
                   official_parent={k: v['sha256'] for k, v in official_parent.items()}, shim_sha256=site_digest,
-                  seed_namespace=NAMESPACE, python=args.python, platform=os.uname()._asdict(), campaigns={})
+                  seed_namespace=NAMESPACE, python=args.python,
+                  platform=dict(zip(('sysname', 'nodename', 'release', 'version', 'machine'), os.uname())), campaigns={})
     if args.dry_run:
         record['dry_run'] = True
         write_new(bench / 'summary.json', record)
         print(json.dumps(dict(bench=str(bench), dry_run=True, official_lock=lock_state)))
         return 0
-    signal.signal(signal.SIGINT, interrupted); signal.signal(signal.SIGTERM, interrupted)
-    for index, letter in enumerate(args.order):
-        if INTERRUPT['requested']:
-            record['interrupted'] = INTERRUPT['requested']; break
-        name, run_root = run_campaign(args, bench, inputs, site, letter, index, env, data)
-        try:
-            record['campaigns'][name] = dict(letter=letter, **campaign_summary.batches(run_root))
-        except (OSError, ValueError, KeyError) as error:
-            record['campaigns'][name] = dict(letter=letter, status='no_session', error=repr(error), batches=[])
-        print(json.dumps({name: record['campaigns'][name]['status']}), flush=True)
-    exact = {n: c for n, c in record['campaigns'].items() if c['letter'] in EXACT}
-    record['pairs'] = campaign_summary.compare(exact)
-    trained = [p for p in record['pairs'] if p['mode'] == 'training']
-    # Identical games must give bitwise-identical learner state on every exact implementation.
-    comparable = [p for p in trained if p['games_identical']]
-    record['exact_campaigns_identical'] = (all(p['states_identical'] for p in comparable) if comparable
-                                           else 'not_comparable: no paired training batch had identical games')
-    record['paired_training_batches'] = dict(total=len(trained), identical_games=sum(p['games_identical'] for p in trained))
-    if 'X' in args.order:
-        record['experiment_pairs'] = campaign_summary.compare(record['campaigns'])
-    record['finished_utc'] = utc()
-    write_new(bench / 'summary.json', record)
-    print(json.dumps(dict(bench=str(bench), exact_campaigns_identical=record['exact_campaigns_identical'])))
-    if lock is not None:
-        os.close(lock)
-    return 0 if record['exact_campaigns_identical'] is True else 1
+    try:
+        for index, letter in enumerate(args.order):
+            if INTERRUPT['requested']:
+                break
+            if git('rev-parse', 'HEAD') != head or git('status', '--porcelain'):
+                record['checkout_changed'] = utc(); break
+            name, run_root, run = run_campaign(args, bench, inputs, site, letter, index, env, data)
+            try:
+                record['campaigns'][name] = dict(letter=letter, run=run, **campaign_summary.batches(run_root))
+            except (OSError, ValueError, KeyError) as error:
+                record['campaigns'][name] = dict(letter=letter, run=run, status='no_session', error=repr(error), batches=[])
+            print(json.dumps({name: record['campaigns'][name]['status']}), flush=True)
+    except Exception as error:  # still write what was measured
+        record['error'] = repr(error)
+    finally:
+        record['interrupted'] = INTERRUPT['requested']
+        for campaign in record['campaigns'].values():
+            campaign['problems'] = problems(campaign, args.updates)
+        exact = {n: c for n, c in record['campaigns'].items() if c['letter'] in EXACT}
+        record['pairs'] = campaign_summary.compare(exact)
+        trained = [p for p in record['pairs'] if p['mode'] == 'training']
+        # Identical games must give bitwise-identical learner state on every exact implementation.
+        comparable = [p for p in trained if p['games_identical'] is True]
+        record['exact_campaigns_identical'] = (all(p['states_identical'] is True for p in comparable) if comparable
+                                               else 'not_comparable: no paired training batch had identical games')
+        record['paired_training_batches'] = dict(total=len(trained), identical_games=len(comparable),
+                                                 not_comparable=sum(p['games_identical'] is None for p in trained))
+        if 'X' in args.order:
+            record['experiment_pairs'] = campaign_summary.compare(record['campaigns'])
+        record['problems'] = ([f'{n}: {x}' for n, c in record['campaigns'].items() for x in c['problems']]
+                              + (['interrupted'] if record['interrupted'] else [])
+                              + (['checkout changed'] if record.get('checkout_changed') else [])
+                              + ([record['error']] if record.get('error') else [])
+                              + ([] if len(record['campaigns']) == len(args.order) else ['not every campaign ran']))
+        record['passed'] = record['exact_campaigns_identical'] is True and not record['problems']
+        record['finished_utc'] = utc()
+        write_new(bench / 'summary.json', record)
+        print(json.dumps(dict(bench=str(bench), passed=record['passed'], problems=record['problems'],
+                              exact_campaigns_identical=record['exact_campaigns_identical'])))
+        if lock is not None:
+            os.close(lock)
+    return 0 if record['passed'] else 1
 
 
 if __name__ == '__main__':

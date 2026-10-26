@@ -570,6 +570,11 @@ def main():
         raise FileNotFoundError(f'Prepare local assets first: {sys.executable} tools/prepare_local_training.py --output {args.config}')
     config = read(args.config); os.environ['HEROES_ARTIFACT_ROOT'] = config['artifact_root']
     if config['default_profile'] != args.profile: parser.error('--profile differs from the selected machine configuration')
+    if args.experiment:
+        official = {Path(read(c)['run_root']).resolve() for c in (DEFAULT_CONFIG, ORIGINAL_CONFIG) if c.exists()}
+        if args.config.resolve() in (DEFAULT_CONFIG.resolve(), ORIGINAL_CONFIG.resolve()) \
+                or Path(config['run_root']).resolve() in official:
+            parser.error('A numerical experiment needs its own --config and run root, never the official ones')
     if args.command == 'check':
         from prepare_local_training import validate_config
         checked = validate_config(config)
