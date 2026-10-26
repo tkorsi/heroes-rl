@@ -127,6 +127,7 @@ def soak(directory):
         result[name] = {**{k: brief[k] for k in ("verdict", "passed", "rows", "natural_completed", "submitted_decisions",
                                                    "decisions_per_second", "reset", "rss_trajectory", "thread_trajectory",
                                                    "descriptor_trajectory", "native_timings")},
+                        "rss_after_load": (load(report).get("resources_start") or {}).get("resident_bytes"),
                         "engine_load_seconds": load(report).get("engine_load_seconds"),
                         "native_load_seconds": (load(report).get("engine_timings_after_load") or {}).get("load_seconds"),
                         "perf_stat": stat,
@@ -206,10 +207,13 @@ record = {
     "cold_ab": {**section("cold_ab"), **ab(runs / notes["cold_ab"]["dir"])},
     "embedded_ab_host_a": {**section("embedded_ab_host_a"), **ab(runs / notes["embedded_ab_host_a"]["dir"])},
     "repeated_reset_soak": {**section("repeated_reset_soak"), "runs": soak(runs / notes["repeated_reset_soak"]["dir"]),
-                            "method": ("One embedded engine per run with one reused environment per seat (seats 0 and 1 "
-                                       "alternating, 12 games each) under perf stat, which counts the whole process: "
-                                       "24 end-turn games per run in 3 interleaved rounds per configuration, then 8 cold "
-                                       "end-turn games and 12 embedded v7 policy games per configuration; no replay or audit.")},
+                            "method": ("Embedded runs use one engine per run with one reused environment per seat (seats 0 and 1 "
+                                       "alternating: 12 games each in the 24-game end-turn runs, 6 each in the 12-game "
+                                       "policy runs); cold runs start a new game process per game. perf stat counts the "
+                                       "whole probe process: 24 end-turn games per run in 3 interleaved rounds per "
+                                       "configuration, then 8 cold end-turn games and 12 embedded v7 policy games per "
+                                       "configuration; no replay or audit. rss_trajectory is read after each game; "
+                                       "rss_after_load before the first.")},
     "scaling": {**section("scaling"), **scaling(runs / notes["scaling"]["file"])},
     "scaling_host_a": {**section("scaling_host_a"), **scaling(runs / notes["scaling_host_a"]["file"])},
     "controller_replay": {**section("controller_replay"), **timing(runs / notes["controller_replay"]["file"], "ms_per_decision",

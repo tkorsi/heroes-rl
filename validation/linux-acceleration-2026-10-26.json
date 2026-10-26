@@ -8157,7 +8157,7 @@
  },
  "repeated_reset_soak": {
   "host": "host_b",
-  "method": "One embedded engine per run with one reused environment per seat (seats 0 and 1 alternating, 12 games each) under perf stat, which counts the whole process: 24 end-turn games per run in 3 interleaved rounds per configuration, then 8 cold end-turn games and 12 embedded v7 policy games per configuration; no replay or audit.",
+  "method": "Embedded runs use one engine per run with one reused environment per seat (seats 0 and 1 alternating: 12 games each in the 24-game end-turn runs, 6 each in the 12-game policy runs); cold runs start a new game process per game. perf stat counts the whole probe process: 24 end-turn games per run in 3 interleaved rounds per configuration, then 8 cold end-turn games and 12 embedded v7 policy games per configuration; no replay or audit. rss_trajectory is read after each game; rss_after_load before the first.",
   "runs": {
    "accel-cold": {
     "context_switches_per_decision": 319.9166666666667,
@@ -8194,6 +8194,7 @@
      "p99": 0.7949997180000992
     },
     "rows": 8,
+    "rss_after_load": null,
     "rss_trajectory": [
      null,
      null,
@@ -8281,6 +8282,7 @@
      "p99": 0.20792621500004316
     },
     "rows": 24,
+    "rss_after_load": 563834880,
     "rss_trajectory": [
      601767936,
      603787264,
@@ -8400,6 +8402,7 @@
      "p99": 0.21821655100006865
     },
     "rows": 24,
+    "rss_after_load": 563884032,
     "rss_trajectory": [
      602034176,
      607203328,
@@ -8519,6 +8522,7 @@
      "p99": 0.4150161659999867
     },
     "rows": 24,
+    "rss_after_load": 563900416,
     "rss_trajectory": [
      601915392,
      607285248,
@@ -8626,6 +8630,7 @@
      "p99": 0.22055422099992938
     },
     "rows": 12,
+    "rss_after_load": 568774656,
     "rss_trajectory": [
      682467328,
      686895104,
@@ -8693,6 +8698,7 @@
      "p99": 0.9008735219999835
     },
     "rows": 8,
+    "rss_after_load": null,
     "rss_trajectory": [
      null,
      null,
@@ -8780,6 +8786,7 @@
      "p99": 0.20738106199996764
     },
     "rows": 24,
+    "rss_after_load": 563834880,
     "rss_trajectory": [
      604794880,
      606969856,
@@ -8899,6 +8906,7 @@
      "p99": 0.2011198070000546
     },
     "rows": 24,
+    "rss_after_load": 563777536,
     "rss_trajectory": [
      604708864,
      606793728,
@@ -9018,6 +9026,7 @@
      "p99": 0.19898214400006964
     },
     "rows": 24,
+    "rss_after_load": 563777536,
     "rss_trajectory": [
      604995584,
      608124928,
@@ -9125,6 +9134,7 @@
      "p99": 0.273708379000027
     },
     "rows": 12,
+    "rss_after_load": 568807424,
     "rss_trajectory": [
      710864896,
      714104832,

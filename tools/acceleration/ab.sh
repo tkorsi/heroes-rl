@@ -8,7 +8,9 @@ set -u
 OUT=${1:?out}; N=${2:-3}; WORKLOADS=${3:-"v7-recorded v7-policy v8-recorded v8-policy"}
 : ${BASE_ROOT:?} ${ACCEL_ROOT:?} ${GAME_DATA:?} ${RECORDED_V7:?} ${RECORDED_V8:?}
 BACKEND=${BACKEND:-embedded}
-mkdir -p "$OUT"
+mkdir -p "$OUT"  # each run changes directory, so the paths are made absolute
+OUT=$(cd "$OUT" && pwd); GAME_DATA=$(cd "$GAME_DATA" && pwd)
+RECORDED_V7=$(cd "$RECORDED_V7" && pwd); RECORDED_V8=$(cd "$RECORDED_V8" && pwd)
 for i in $(seq 1 "$N"); do
   for w in $WORKLOADS; do
     case $w in

@@ -5,7 +5,8 @@
 set -u
 ROOT=${1:?root}; OUT=${2:?out}; K=${3:?workers}; N=${4:?episodes}; IFACE=${5:-adventure-dialogs-v1}
 : ${GAME_DATA:?}
-mkdir -p "$OUT"; cd "$ROOT"
+mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd); GAME_DATA=$(cd "$GAME_DATA" && pwd)  # before cd
+cd "$ROOT"
 start=$(date +%s.%N)
 for k in $(seq 1 "$K"); do
   .venv/bin/python -m validation.probes.validate_embedded_engine run --binary vcmi/build/bin/vcmiclient \

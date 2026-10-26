@@ -4,13 +4,21 @@ This branch makes real VCMI games, their player-local capture, the frozen policy
 in the loop and the per-episode verification faster without changing any
 observable output. The game is the pinned VCMI 1.7.5 C++ state and rule code
 with Nullkiller Easy as the opponent and BattleAI for automatic battles. Rules,
-fog, RNG, legal actions, opponent logic, routing, event and query ordering,
-histories, digests, replay files and model choices are bit-for-bit what the
-base code produces. Values, log-probabilities and recurrent prefixes are too:
-replaying the base code's recorded v7 and v8 policy games through the
-accelerated collector reproduces all of them exactly. Every correctness
-check still runs, including the four frozen-weights checks per decision. No
-training, PPO update, Teacher work or Mac time was used.
+fog, RNG, legal actions, opponent logic, routing and event and query ordering
+are not changed. Against the base code's run of the same scenario, every
+outcome is equal and 71 of 74 learner histories are byte-identical; the other 3
+diverge after 34 identical frames on maps where the base code's own runs
+diverge the same way (see [Exactness evidence](#exactness-evidence)).
+Replaying the base code's recorded v7 and v8 policy games through the
+accelerated collector reproduces every choice, log-probability, value and
+recurrent prefix exactly. Every ended game's replay verifies under
+`vcmireplay`. Replay files themselves were not compared with the base: they
+embed the wall-clock start time, and the contextual replay tape records the
+learner's sends and the opponent's requests in an order that varies between
+runs of the same code, so no two runs' files are byte-equal, base runs
+included. Every
+correctness check still runs, including the four frozen-weights checks per
+decision. No training, PPO update, Teacher work or Mac time was used.
 
 Evidence: [acceleration record](../validation/linux-acceleration-2026-10-26.json)
 (A/B runs on two hosts, repeated-reset soak, scaling, engine-free controller
@@ -22,11 +30,14 @@ on, the 4 runs that resubmit base-code games, and every comparison, including
 the 24 with the base code's runs of the same scenarios). The base runs they are
 compared with are in
 [the embedded engine record](../validation/linux-embedded-2026-10-25-compact.json).
-The scripts that made the runs, the comparisons and both records are in
-`tools/acceleration/` (see [Reproducing](#reproducing)). `record.py` regenerates
-the acceleration record byte for byte from the run outputs and the committed
-notes file `record-notes-2026-10-26.json`, which supplies the commits, the
-platform text, where each input lies and the summary of the independent review.
+`tools/acceleration/` holds the scripts behind the runs, the comparisons and
+both records (see [Reproducing](#reproducing)). The run scripts are cleaned-up
+copies of the ones that made the runs, which differed only in local paths and
+in deleting episode directories as they went; `measure.sh` puts the host B
+measurements in the order they ran. `record.py` regenerates the acceleration
+record byte for byte from the run outputs and the committed notes file
+`record-notes-2026-10-26.json`, which supplies the commits, the platform text,
+where each input lies and the summary of the independent review.
 
 ## Results
 
@@ -124,16 +135,18 @@ decisions) and 11.3 against 41.9 for v8 (×3.7, 342 decisions).
 When the same model works through the same games twice, the second pass finds
 what the first left in its inference memos. In the policy audit
 (`reconstruct_behavior`, as training's admission check runs it), the
-accelerated code's second pass takes about 55% of its first (v7: 8.3 to 9.2 ms
-per decision, then 4.5 to 5.2; v8: 8.5 to 9.6, then 4.5 to 4.9), the base code's
-93 to 95% (v7: 25.8 then 23.1 ms, v8: 23.9 then 22.4, medians). Through the
-collector the accelerated second pass takes 67% of its first (10.6 then 7.1 ms)
-and the base code's 95%.
+accelerated code's second pass takes 52 to 56% of its first (medians of 3
+repeats: v7 8.9 then 5.0 ms per decision, v8 9.0 then 4.7), the base code's 90
+to 94% (v7 25.8 then 23.1, v8 23.9 then 22.4). Through the collector the
+accelerated second pass takes 67% of its first (10.6 then 7.1 ms) and the base
+code's 96% (41.8 then 40.2).
 
 ### Resets, CPU, system calls and memory
 
-One engine per run with one reused environment per seat (two environments
-taking turns, 12 games each), no replay or audit, host B. `perf stat` counts
+Embedded runs use one engine per run with one reused environment per seat
+(two environments taking turns: 12 games each in the 24-game end-turn runs, 6
+each in the 12-game policy runs); the cold rows start a new game process per
+game. No replay or audit, host B. `perf stat` counts
 the whole probe process: interpreter start, imports, model construction, engine
 load, the games and shutdown. The per-game and per-decision rows divide those
 whole-run totals, so they include one-time work and overstate steady-state
@@ -156,15 +169,21 @@ model, 1024 choices, 365 days), 88 decisions per game on average.
 | Threads, descriptors after every game | 4, 7 | 4, 7 |
 
 Threads and descriptors stay the same after every game in both configurations.
-Resident memory grows, mostly in the first games: over 24 end-turn games, which
-run no inference, by 7 to 12 MiB from about 575 MiB in both configurations, still
-creeping by 0.1 to 0.2 MiB per game at the end; over 12 policy games by 23 MiB
-for the base (678 → 701 MiB) and 42 MiB for the accelerated code (651 → 693
-MiB), which added another 5 MiB in the last game. The extra growth fits the
-memos the accelerated code adds (up to 64 MiB of observations and 16,384
-internal-node encodings; the leaf memo of 65,536 entries per kind was already in
-the base code and is used the same way there); 12 games are not enough to show
-where it levels off. The engine-load code was not changed; the warm-load
+Resident memory is read after engine load and after each game, and grows mostly
+in the first game. Over 24 end-turn games, which run no inference, it grows by
+46 to 51 MiB from about 538 MiB after load in both configurations, 36 to 39 MiB
+of it in the first game and 7 to 12 MiB over the other 23; at the end it is
+still growing by about 0.1 to 0.25 MiB per game on average over the last 12
+games, mostly in steps under 0.1 MiB with occasional jumps of up to 2.3 MiB.
+Over the 12 policy games, from about 542 MiB after load, it grows by 159 MiB for
+the base and 151 MiB for the accelerated code. The first game adds 136 and 108
+MiB; games 2 to 12 add 23 MiB for the base (678 → 701 MiB) and 42 MiB for the
+accelerated code (651 → 693 MiB), 5 MiB of that in its last game. The
+accelerated code's faster later growth fits the memos it adds (up to 64 MiB of
+observations and 16,384 internal-node encodings; the leaf memo of 65,536
+entries per kind was already in the base code and is used the same way there),
+but after 12 games it still ends 8 MiB below the base; 12 games are not enough
+to show where it levels off. The engine-load code was not changed; the warm-load
 difference above is not attributable to the branch. The first load of each
 configuration took 1.7 s (base) and 1.3 s (accelerated), probably a cold file
 cache (not recorded; the native data load inside it was 0.30 s and 0.25 s, as in
@@ -198,8 +217,10 @@ games/s). These games average 151 decisions; at 4 workers host B finishes about
 
 Native engine (C++, `engine/ExplorerRL`, `engine/NativeSession`, patch 0032):
 
-- Unchanged-view capture check. Most player-local captures in the map context
-  see the same view as the last one. The capture compares the current visible
+- Unchanged-view capture check. Many player-local captures in the map context
+  see the same view as the last one; the capture verification confirmed at
+  least 1,000 such skips in each 4- or 6-game embedded run, but the share of all
+  captures was not recorded. The capture compares the current visible
   state with the stored observation field by field, with the same engine
   queries and handle allocations in the same order as building it, and returns
   early only on an exact match on the same day. Any difference, window or other
@@ -208,7 +229,9 @@ Native engine (C++, `engine/ExplorerRL`, `engine/NativeSession`, patch 0032):
   combined state digest and its game-state part, instead of twice (patch 0032).
   The eight smaller handler parts (queries, randomizer, battles and so on) are
   still serialized inside the combined digest and again for their own part
-  digests. `vcmireplay` keeps its own independent recomputation.
+  digests. `vcmireplay` still recomputes the combined digest with the
+  unchanged `stateDigest` and each part with its own fresh serialization; it
+  compares the parts only when the combined digest differs.
 - Ledger and transport. Ledger records are written as one compact string
   without an intermediate copy; in-process policy messages are moved, not
   copied.
@@ -237,7 +260,10 @@ Frozen policy inference (`experiments/learner/contextual_model.py`,
 - Internal tree nodes and whole observations are memoized under the existing
   inference memo's validity rules: eval mode, no autograd or autocast, no hooks,
   same configuration and thread count, and bit-identical parameters of the
-  modules involved. Hits add exactly the cache entries the reference adds. The
+  modules involved. Hits add exactly the cache entries the reference adds,
+  except at the last root of a frame whose cache nothing reads afterwards (every
+  non-decision frame in `forward_step`), where a hit returns without visiting
+  its subtrees. The
   new memos are bounded (64 MiB of observations, charged for everything an entry
   keeps; 16,384 internal nodes) like the existing leaf memo (65,536 leaves per
   kind), and cleared whole when full, so a miss only recomputes.
@@ -315,8 +341,13 @@ the final code ran on host A.
   payloads, and memo hits against cold recomputation. One-walk sampling has no
   direct unit test; the behaviour audit checks it by resampling and
   re-evaluating every saved choice, in the collector tests and in every real
-  policy game. The native changes have no unit tests; they rest on the capture
-  verification, `vcmireplay` and the base comparisons above.
+  policy game. The native changes have no unit tests. They rest on the capture
+  verification, `vcmireplay` and the base comparisons of learner histories
+  above. `vcmireplay` checks every combined state digest the patched recorder
+  writes; it reads the recorded part digests only after a combined mismatch, to
+  name the diverging part. So the part digests that patch 0032 now derives from
+  the combined serialization are correct by construction, but no run checked
+  them.
 - Independent adversarial review (summarized in the record): reviewers for the
   native engine, decoding, inference, per-episode verification and tests read
   the diff at `89f377e`, and two skeptics tried to refute each finding. Native,
@@ -391,9 +422,9 @@ history verification, hashes the capture files and writes reconstruction and
 receipt files, which the probe does not time; and it audits with the collecting
 model object, so its reconstruction finds what collection left in the model's
 memos. The audit replays above show the size of that kind of saving: a second
-audit pass over games the model has already worked through takes about 55% of
-the first for the accelerated code (about 4 ms less per decision), against 93
-to 95% for the base. There the first pass, not collection, filled the memos; a
+audit pass over games the model has already worked through takes 52 to 56% of
+the first for the accelerated code (about 4 ms less per decision), against 90
+to 94% for the base. There the first pass, not collection, filled the memos; a
 collection pass encodes the same observations and trees, so it should leave the
 same encodings, but that path was not timed.
 
@@ -444,8 +475,8 @@ cd ROOT && .venv/bin/python -m validation.probes.validate_embedded_engine run \
 Use `--controller recorded --recorded BASE_POLICY_RUN` for recorded rows,
 `--backend cold` for the cold backend, `--interface adventure-capabilities-v1`
 for v8, and `HEROES_VERIFY_NATIVE_CAPTURE=1` for the native capture check.
-`validate_embedded_engine compare --left A --right B` compares histories, and
-`collect` builds a path-free compact record.
+`validate_embedded_engine compare --left A --right B --output COMPARISON.json`
+compares histories, and `collect` builds a path-free compact record.
 
 `tools/acceleration/` holds the scripts behind the records:
 
@@ -454,17 +485,25 @@ for v8, and `HEROES_VERIFY_NATIVE_CAPTURE=1` for the native capture check.
   (resubmitting the base code's policy games), `compare_base.sh` (each final run
   against the base code's run of the same name) and `capture_counts.py` (the
   path-free capture verification summary). The compact record was built with
-  `validate_embedded_engine collect --runs FINAL/* RESUBMITTED/* --attach
+  `validate_embedded_engine collect --runs FINAL/*/ RESUBMITTED/*/ --attach
   FINAL/compare-*.json FINAL/codec.json RESUBMITTED/compare-*.json
   BASE_COMPARISONS/compare-base-*.json capture-verification.json --output
-  RECORD`.
+  RECORD` (the trailing slashes select the run directories; the same folders
+  also hold the scripts' `.out`, `.err` and comparison files).
 - Acceleration record: `measure.sh` runs the host B measurements in the order
-  they ran and writes the directories and line files that
+  they ran there (cold A/B, soak, scaling, v7 controller replay, embedded A/B,
+  then, in later sessions, the two-pass, audit, v8 replay and review-fix
+  measurements) and writes the host B directories and line files that
   `record-notes-2026-10-26.json` names: `ab.sh` (interleaved A/B, embedded and
   cold), `soak.sh` (one reused environment per seat under `perf stat`),
   `scale.sh` (concurrent workers), `controller_replay.py` (engine-free
   controller replay, `--repeat 2` for the second pass), `audit_passes.py` (the
   policy audit twice with one model) and `review_fix_costs.py` (the costs of two
-  review fixes). Host A's embedded A/B (`ab.sh`) and scaling lines
-  (`scale.sh`, on `89f377e`) were made the same way before the restart.
-  `record.py NOTES RUNS_ROOT OUT` then builds the record.
+  review fixes). The v7 controller lines came from an earlier copy of
+  `controller_replay.py` that did not yet print per-pass times; the record uses
+  only their per-decision times. Host A's embedded A/B (`ab.sh`) and scaling
+  lines (`scale.sh`, on `89f377e`) were made the same way before the restart.
+  `record.py NOTES RUNS_ROOT OUT` then builds the record; RUNS_ROOT must hold
+  the host B outputs, host A's `ab-final/` and `scale-host-a/results.txt`, and
+  the `capture_counts.py` summary at
+  `accel-evidence-final/capture-verification.json`.

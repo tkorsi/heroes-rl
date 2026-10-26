@@ -7,6 +7,7 @@ set -u
 ROOT=${1:?root}; OUT=${2:?out}; BACKEND=${3:?backend}; N=${4:?episodes}; CTL=${5:-end_turn}
 shift $(( $# < 5 ? $# : 5 ))
 : ${GAME_DATA:?}
+OUT=$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT"); GAME_DATA=$(cd "$GAME_DATA" && pwd)  # before cd
 cd "$ROOT"
 ${PERF:-perf} stat -x, -o "$OUT.perfstat" -e raw_syscalls:sys_enter,context-switches,cpu-migrations,task-clock,page-faults -- \
   .venv/bin/python -m validation.probes.validate_embedded_engine run --binary vcmi/build/bin/vcmiclient \
