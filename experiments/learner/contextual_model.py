@@ -1048,7 +1048,8 @@ class ContextualActorCritic(nn.Module):
         wanted, result = set(stops), {}
         state = self.initial_state()
         use_cache = self._can_cache_prefix()
-        features, leaves = {}, {"text": {}, "number": {}}
+        # Internal-node entries obey the same exact-tree rule as the inference memo.
+        features, leaves = {}, {"text": {}, "number": {}, "node": {}}
         with torch.no_grad():
             if 0 in wanted:
                 result[0] = state.detach()

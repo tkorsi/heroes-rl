@@ -188,7 +188,23 @@ def _admit(rollouts, model, *, native=False):
 
 
 def _verify_behavior(model, rollouts, inputs):
-    """Recompute frozen old probabilities/values before the first parameter update."""
+    """Recompute frozen old probabilities/values before the first parameter update.
+
+    The modules ``_can_cache_prefix`` admits behave identically in training and
+    evaluation mode, so the check then runs them in evaluation mode, where the
+    exact inference memos apply, and restores every module's mode afterwards.
+    """
+    modes = [(module, module.training) for module in model.modules()] if model._can_cache_prefix() else None
+    if modes is not None:
+        model.eval()
+    try:
+        _verify_behavior_frames(model, rollouts, inputs)
+    finally:
+        for module, mode in modes or ():
+            module.training = mode
+
+
+def _verify_behavior_frames(model, rollouts, inputs):
     with torch.no_grad():
         for item, encoded in zip(rollouts, inputs):
             records = {record.decision_seq: record for record in item.decisions}
