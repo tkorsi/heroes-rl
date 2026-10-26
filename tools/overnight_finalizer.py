@@ -72,6 +72,10 @@ def finish(report_path,evaluate):
     restored=c.c.restore(journal['latest_verified_parent']['path'])
     require(restored.bindings==state.bindings,'Final evaluation changed learned state')
     receipt['after_restore']=c.restore_final_copies(journal,restored)
+    cleanup_errors=[]
+    for path in (report_path.parent/'batches').rglob('*deadline*.jsonl'):
+        try:cleanup_from_evidence(path,timeout=1)
+        except Exception as exc:cleanup_errors.append(str(exc))
     analysis=c.analysis(journal)
     analysis.update(finalizer_utc=utc(),final_checkpoint=restored.bindings,
         absolute_compute_cutoff_utc='2026-10-26T09:55:00Z',absolute_hard_stop_utc='2026-10-26T10:00:00Z',
@@ -79,7 +83,7 @@ def finish(report_path,evaluate):
     c.atomic(report_path.parent/'final-scientific-analysis.json',analysis)
     c.atomic(AUTHOR/'validation/overnight-cloud-final-2026-10-26.json',analysis)
     receipt.update(finished_utc=utc(),analysis=c.binding(report_path.parent/'final-scientific-analysis.json'),
-        latest_restore=restored.bindings,owned_cleanup_verified=True)
+        latest_restore=restored.bindings,owned_cleanup_verified=not cleanup_errors,cleanup_errors=cleanup_errors)
     c.atomic(report_path.parent/'finalizer-restore-receipt.json',receipt)
     folder=report_path.parent/'autonomous-final-preservation';folder.mkdir(exist_ok=False)
     for name in ('campaign-report.json','controller-result.json','before-finalizer-campaign-report.json',
@@ -92,8 +96,11 @@ def finish(report_path,evaluate):
         if path.is_file() and path.suffix in ('.json','.jsonl','.log') and path.stat().st_size<20_000_000:
             shutil.copy2(path,orchestration/path.name)
     receipt['private_final_preservation']=c.publish(folder,'autonomous-final-'+report_path.parent.name)
-    receipt['private_remote_acknowledged']=True # Exact API shim only returns after ref GET matches.
+    remote=c.git('ls-remote','origin','refs/heads/codex/teacher-overnight-20261026').split()[0]
+    require(remote==receipt['private_final_preservation']['commit'],'Final private remote acknowledgement differs')
+    receipt['private_remote_acknowledged']=True
     c.atomic(report_path.parent/'autonomous-final-result.json',receipt)
+    require(not cleanup_errors,'Final owned cleanup failed; evidence preserved')
     return receipt
 
 
