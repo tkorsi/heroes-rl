@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T02:16:20.431406+00:00",
+  "timestamp_utc": "2026-10-26T02:24:45.647120+00:00",
   "phase": "waiting_final_local_handoff",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
@@ -15,7 +15,7 @@
   "offline_control_tests": 15,
   "private_git_read_access": true,
   "canonical_build": "passed",
-  "remaining_compute_seconds": 27617.430234909058,
+  "remaining_compute_seconds": 27014.352865457535,
   "autonomous_controller_pid": 26663,
   "handoff_poller_pid": 26664,
   "autonomous_bootstrap_commit": "245e317b100fccb757f2ec620e0fdda2f652051c",
