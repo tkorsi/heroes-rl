@@ -16,8 +16,8 @@ from disposable copies of the final 629 checkpoint, exactly through ``run_local_
     X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
 
 Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds;
-exact campaigns (A, F, O, H) must produce identical games and bitwise-identical checkpoints, and
-``summary.json`` says whether they did. The default order AF is the acceptance check; AFFA (or
+each exact campaign (A, F, O, H) is compared with the first one, and wherever their games are
+identical their checkpoints must be bitwise identical; ``summary.json`` says whether they were. The default order AF is the acceptance check; AFFA (or
 AOOA) is a counterbalanced timing comparison.
 
 Safety and scope:
@@ -386,8 +386,10 @@ def main():
         record['interrupted'] = INTERRUPT['requested']
         for campaign in record['campaigns'].values():
             campaign['problems'] = problems(campaign, args.updates)
-        exact = {n: c for n, c in record['campaigns'].items() if c['letter'] in EXACT}
-        record['pairs'] = campaign_summary.compare(exact)
+        # Every other exact campaign against the first one, pair by pair.
+        exact = [n for n, c in record['campaigns'].items() if c['letter'] in EXACT]
+        record['pairs'] = [dict(pair, campaigns=[exact[0], other]) for other in exact[1:] for pair in
+                           campaign_summary.compare({n: record['campaigns'][n] for n in (exact[0], other)})]
         trained = [p for p in record['pairs'] if p['mode'] == 'training']
         # Identical games must give bitwise-identical learner state on every exact implementation.
         comparable = [p for p in trained if p['games_identical'] is True]

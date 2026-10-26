@@ -215,6 +215,17 @@ class MainTests(unittest.TestCase):
             code, summary = self.run_main(tmp, '--order', 'AF', campaign=campaign, batches=batches)
             self.assertEqual((code, summary['passed'], summary['problems']), (0, True, []))
 
+    def test_each_exact_campaign_is_compared_with_the_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first, other, second = self.campaign_result('A', 's'), self.campaign_result('F', 's'), self.campaign_result('F', 's')
+            other[1]['batches'][2]['games'] = ['different'] * 4  # this pair is not comparable; the next one is
+            campaign, batches = self.fake([first, other, second])
+            code, summary = self.run_main(tmp, '--order', 'AFF', campaign=campaign, batches=batches)
+            self.assertEqual((code, summary['exact_campaigns_identical']), (0, True))
+            trained = [p for p in summary['pairs'] if p['mode'] == 'training']
+            self.assertEqual([(p['campaigns'], p['games_identical']) for p in trained],
+                             [(['00-A', '01-F'], False), (['00-A', '02-F'], True)])
+
     def test_a_failed_or_divergent_campaign_fails(self):
         cases = [([self.campaign_result('A', 's'), self.campaign_result('F', 'other')], 'identical'),
                  ([self.campaign_result('A', 's'), self.campaign_result('F', 's', returncode=1)], 'exit status 1'),

@@ -76,9 +76,15 @@ seed namespace 60M/70M, and never touches the official lineage):
 
 `AF` (about MAC_AF_ESTIMATE on this Linux host's numbers; the Mac is unmeasured) plays the eight
 fixed baseline games and one training batch with the accepted implementation and then with the
-macOS fast-path default, from the same parent and seeds, and exits 0 only if every paired training
-batch with identical games produced bitwise-identical learner state. `summary.json` in the bench
-folder has per-batch times, game lengths, PPO times, peak memory and process counts. Optional:
+macOS fast-path default, from the same parent and seeds. It exits 0 only if both campaigns ended
+cleanly (every requested batch admitted, no bound reached, nothing interrupted or left running, the
+checkout unchanged) and every paired training batch with identical games produced bitwise-identical
+learner state; `summary.json` in the bench folder lists every problem and has per-batch times, game
+lengths, PPO times, peak memory and process counts. Games are compared on every observation and
+decision record. The engine delivers some notices asynchronously, so a faster learner can see two
+of them in the other order (once in 13 paired games on Linux, at the end of a game); such a pair is
+reported as not comparable rather than as a failure of exactness, and the check needs a pair with
+identical games (repeat with `--order AFF` if the first pair differs). Optional:
 `--order AOOA` tests forked verification on macOS (fork safety with Torch loaded is unverified
 there), `--order AHHA` adds two prefix helpers, `--order AFFA` gives a counterbalanced timing pair,
 `X` adds the numerical experiment (reported apart). Ctrl-C stops after the current batch as with
