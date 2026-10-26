@@ -1,0 +1,40 @@
+{
+  "schema": "heroes-overnight-readiness-audit-v1",
+  "recorded_at_utc": "2026-10-26T01:44:50.803339+00:00",
+  "verdict": "autonomous_transition_not_yet_verified",
+  "cloud_branch": "codex/teacher-overnight-20261026",
+  "cloud_status_timestamp_utc": "2026-10-26T01:34:45.517889+00:00",
+  "confirmed": [
+    "Cloud preparation turn active and Linux build in progress",
+    "Private Git read access and eight game asset hashes verified by cloud Teacher",
+    "Both seat-specific curriculum maps hash-verified",
+    "Detached watchdog and handoff polling reported running; fixed compute09:55UTC/hard10:00UTC",
+    "Local finalization helper committed with five gate tests"
+  ],
+  "gaps": [
+    {
+      "side": "cloud",
+      "source": "tools/overnight_cloud_supervisor.py",
+      "blob_sha": "22fc49b30331bb1feeafc164a42ce27ea7b31984",
+      "finding": "Published poller writes handoff-candidate.json but does not validate, restore or launch acceptance/PPO. Linux adapter is still under active development."
+    },
+    {
+      "side": "local",
+      "source": "tools/finalize_curriculum_handoff.py",
+      "commit": "7354f68",
+      "finding": "Prepared helper is not called by the immutable running controller. Invocation still depends on active Teacher unless a separate finalization watcher is installed."
+    }
+  ],
+  "coordination": [
+    "English continuation delivered through browser to existing cloud Teacher to complete and verify autonomous handoff-to-launch chain",
+    "English continuation delivered to local Teacher to arrange separate owned one-shot finalization without modifying live release"
+  ],
+  "cloud_training_started": false,
+  "local_campaign_interrupted": false,
+  "deadline_extended": false,
+  "requires_mac_awake_until": "Local campaign shutdown and verified final handoff publication",
+  "limitations": [
+    "This is an operational readiness audit, not a training or Linux acceptance result.",
+    "Newer unpublished work may resolve gaps; verify actual processes and receipts before claiming readiness."
+  ]
+}
