@@ -268,7 +268,7 @@ class DeliveredFramesTests(unittest.TestCase):
         self.assertIs(br._delivered(records, frames), frames)
         self.assertEqual(tuple(map(c.decode_frame, records)), frames)
 
-    def test_every_difference_is_rejected(self):
+    def test_every_difference_takes_the_original_path(self):
         frames, records = self.frames()
         other = tuple(history_at_armies(player=1).frames)
         changed = json.loads(json.dumps(records))
@@ -278,8 +278,29 @@ class DeliveredFramesTests(unittest.TestCase):
                                  (frames[::-1], records), (frames, records[::-1]), (other, records),
                                  (frames, changed), (frames, unencodable), (list(frames), records),
                                  (frames, tuple(records)), ((*frames[:-1], records[-1]), records)):
-            with self.subTest(typed=len(typed), delivered=len(delivered)), self.assertRaises(ValueError):
-                br._delivered(delivered, typed)
+            with self.subTest(typed=len(typed), delivered=len(delivered)):
+                self.assertIs(br._delivered(delivered, typed), delivered)
+
+    def test_records_with_the_same_text_but_not_exact_json_types_take_the_original_path(self):
+        class Text(str): pass
+        class Number(int): pass
+        class Record(dict): pass
+        frames, records = self.frames()
+        last = records[-1]
+        nested = next(key for key, value in last["observation"].items() if type(value) is list and value)
+        # The strict decoder of the original path rejects all but the text subclass.
+        for record, rejected in ((Record(last), True), ({**last, "seq": Number(last["seq"])}, True),
+                                 ({**last, "kind": Text(last["kind"])}, False),
+                                 ({**last, "observation": {**last["observation"], nested: tuple(last["observation"][nested])}}, True)):
+            delivered = [*records[:-1], record]
+            with self.subTest(rejected=rejected):
+                self.assertEqual(_wire_text(record), c.canonical_frame(frames[-1]))
+                self.assertIs(br._delivered(delivered, frames), delivered)
+                if rejected:
+                    with self.assertRaises(ValueError):
+                        c.decode_frame(record)
+                else:
+                    self.assertEqual(c.decode_frame(record), frames[-1])
 
 
 if __name__ == "__main__": unittest.main()

@@ -13,6 +13,7 @@ import hashlib
 import json
 from math import copysign, log1p, sqrt
 from operator import attrgetter
+from sys import getsizeof
 
 import torch
 from torch import Tensor, nn
@@ -193,7 +194,11 @@ def _joined_words(tensors, fresh):
         else:
             joined = torch.cat([tensor.view(-1) for tensor in tensors])
     size = tensors[0].element_size()
-    return joined.view(torch.int64 if joined.numel() * size % 8 == 0 else _WORD_DTYPES[size])
+    if joined.numel() * size % 8:
+        return joined.view(_WORD_DTYPES[size])
+    if joined.storage_offset() * size % 8:
+        joined = joined.clone()  # a view of one tensor can start inside a word; its copy cannot
+    return joined.view(torch.int64)
 
 
 def _typed_words(tensors):
@@ -266,7 +271,8 @@ class WeightsSnapshot:
 _LEAF_MEMO = object()
 _LEAF_MEMO_LIMIT = 65536
 _NODE_MEMO_LIMIT = 16384  # internal-node entries keep their (larger) trees alive
-_OBSERVATION_MEMO_BYTES = 64 << 20  # observation entries hold map cells, so bound their bytes
+_OBSERVATION_MEMO_BYTES = 64 << 20  # observation entries hold map cells and tree caches, so bound their bytes
+_OBSERVATION_TENSOR_BYTES = 512  # a CPU tensor beyond its data: object, implementation, storage (measured ~450)
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
@@ -385,6 +391,36 @@ def _record_key(value):
                 return None
             append(kind); extend(getter(item))
     return tuple(out)
+
+
+def _observation_entry_bytes(store, key, entry):
+    """An upper estimate of the memory one observation memo entry adds to ``store``.
+
+    It charges the record key with its strings and uncached integers, the entry
+    and its cache dict, every tree object the cache keys keep alive, once each,
+    and each tensor the store does not hold yet, with its data. The trees are
+    walked because a child equal to an earlier key is a different object that
+    only its parent keeps, with its whole subtree. A tree shared with an earlier
+    entry is charged again; a charged tensor stays alive in the entries until
+    they are cleared, which also forgets the charges.
+    """
+    charged, added = store["charged"], entry[3]
+    size = getsizeof(key) + getsizeof(entry) + getsizeof(added) + sum(
+        getsizeof(item) for item in key if type(item) is str or (type(item) is int and not -5 <= item <= 256))
+    seen, stack = set(), [tree for tree in added if type(tree) is tuple]
+    while stack:
+        tree = stack.pop()
+        if id(tree) not in seen:
+            seen.add(id(tree))
+            size += getsizeof(tree) + getsizeof(tree[1])
+            if len(tree) > 2:
+                size += getsizeof(tree[2])
+                stack.extend(tree[2])
+    for tensor in (*entry[:3], *added.values()):
+        if isinstance(tensor, Tensor) and id(tensor) not in charged:
+            charged.add(id(tensor))
+            size += tensor.element_size() * tensor.numel() + _OBSERVATION_TENSOR_BYTES
+    return size
 
 
 def _has_army_operation(armies, kind):
@@ -946,12 +982,14 @@ class ContextualActorCritic(nn.Module):
             cache.update(added)
             return global_map, own, cells
         global_map, own, cells = self._encode_observation(observation, cache)
-        size = cells.element_size() * cells.numel()
+        entry = (global_map, own, cells, {k: v for k, v in cache.items() if k is not _LEAF_MEMO})
+        size = _observation_entry_bytes(store, key, entry)
         if store["bytes"] + size > _OBSERVATION_MEMO_BYTES:
             entries.clear()  # bounded memory; a miss only recomputes
-            store["bytes"] = 0
+            store["bytes"], store["charged"] = 0, set()
+            size = _observation_entry_bytes(store, key, entry)
         store["bytes"] += size
-        entries[key] = (global_map, own, cells, {k: v for k, v in cache.items() if k is not _LEAF_MEMO})
+        entries[key] = entry
         return global_map, own, cells
 
     def _observation_memo(self, memo):
@@ -971,7 +1009,8 @@ class ContextualActorCritic(nn.Module):
         store = self.__dict__.get("_observation_memo_state")
         if (store is None or store["leaf"] is not memo or store["layout"] != layout or store["state"][0] != state[0]
                 or not torch.equal(store["state"][1], state[1])):
-            store = {"leaf": memo, "layout": layout, "referenced": referenced, "state": state, "entries": {}, "bytes": 0}
+            store = {"leaf": memo, "layout": layout, "referenced": referenced, "state": state, "entries": {}, "bytes": 0,
+                     "charged": set()}
             self.__dict__["_observation_memo_state"] = store
         return store
 

@@ -15,7 +15,7 @@ from experiments.headless import contextual_evidence as native
 from . import contextual as c
 from .contextual_model import ModelConfig, model_schema_for, weights_sha256
 from .contextual_rollout import (ContextualSession, BehaviorDecision, DecisionEstimate,
-                                 RecurrentPrefix, _frame_bytes, _wire_text)
+                                 RecurrentPrefix, _frame_bytes, _json_native, _wire_text)
 
 SCHEMA = "heroes-builtin-evaluation-rollout-v1"
 COLORS = evidence.COLORS
@@ -156,18 +156,18 @@ def load_builtin_episode(path):
 def _delivered(records, typed):
     """The frames to consume for these delivered records.
 
-    When the environment also hands over its own validated frames, each one
-    must have exactly the canonical text of its delivered record; the session
-    then consumes those frames instead of decoding a fresh copy of each from its
-    record. The decoder maps that text back to an equal frame of the same exact
-    types (canonical encoding round-trips), so the model input is unchanged.
+    When the environment also hands over its own validated frames, and each
+    delivered record has exact JSON types and exactly the canonical text of its
+    frame, the session consumes those frames instead of decoding a fresh copy of
+    each from its record. JSON text is injective over exact JSON types, so such
+    a record is the canonical record of that frame, which the strict decoder
+    maps back to an equal frame (canonical encoding round-trips); the model
+    input is unchanged. Anything else, valid or not, takes the original path.
     """
-    if typed is None:
+    if (typed is None or type(typed) is not tuple or type(records) is not list or len(typed) != len(records)
+            or not all(type(frame) is c.Frame and _wire_text(record) == c.canonical_frame(frame)
+                       and _json_native(record) for record, frame in zip(records, typed))):
         return records
-    evidence.require(type(typed) is tuple and type(records) is list and len(typed) == len(records)
-                     and all(type(frame) is c.Frame and _wire_text(record) == c.canonical_frame(frame)
-                             for record, frame in zip(records, typed)),
-                     "Delivered records and environment frames differ")
     return typed
 
 

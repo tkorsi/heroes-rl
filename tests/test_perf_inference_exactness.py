@@ -4,6 +4,7 @@ import hashlib
 import json
 import pickle
 import random
+import sys
 import unittest
 
 try:
@@ -597,6 +598,50 @@ class ObservationMemoTests(unittest.TestCase):
         finally:
             m._OBSERVATION_MEMO_BYTES = original
 
+    def test_memo_bytes_bound_the_memory_entries_keep(self):
+        for history in self.histories:
+            self.assertMatchesFresh(self.model, history)
+        store = observations(self.model)
+        self.assertTrue(store["entries"])
+        # Independent measurement: every object the entries keep, once, with a
+        # tensor's measured ~450 bytes beyond its data. Classes, markers and the
+        # tree tags' literals live in the program, not in the memo.
+        seen = {id(marker) for marker in (m._EXACT_CACHE, m._TRUE, m._FALSE, m._TUPLE, "node", "text", "number")}
+
+        def kept(value):
+            if (id(value) in seen or isinstance(value, type) or value is None or type(value) is bool
+                    or (type(value) is int and -5 <= value <= 256)):  # immortal singletons and cached integers
+                return 0
+            seen.add(id(value))
+            if isinstance(value, torch.Tensor):
+                return value.element_size() * value.numel() + 450
+            size = sys.getsizeof(value)
+            if type(value) in (tuple, list):
+                size += sum(kept(item) for item in value)
+            elif type(value) is dict:
+                size += sum(kept(k) + kept(v) for k, v in value.items())
+            return size
+        measured = sum(kept(key) + kept(entry) for key, entry in store["entries"].items())
+        self.assertGreaterEqual(store["bytes"], measured)
+        self.assertLessEqual(store["bytes"], 2 * measured)  # an estimate, not an arbitrary allowance
+        self.assertEqual(len(store["charged"]), len({id(value) for entry in store["entries"].values()
+                                                     for value in (*entry[:3], *entry[3].values())
+                                                     if isinstance(value, torch.Tensor)}))
+
+    def test_clearing_forgets_charges_and_stays_exact(self):
+        original = m._OBSERVATION_MEMO_BYTES
+        try:
+            m._OBSERVATION_MEMO_BYTES = 200_000
+            for history in self.histories:
+                self.assertMatchesFresh(self.model, history)
+                store = observations(self.model)
+                self.assertLessEqual(store["bytes"], m._OBSERVATION_MEMO_BYTES)
+                held = {id(value) for entry in store["entries"].values()
+                        for value in (*entry[:3], *entry[3].values()) if isinstance(value, torch.Tensor)}
+                self.assertEqual(store["charged"], held)
+        finally:
+            m._OBSERVATION_MEMO_BYTES = original
+
     def test_copies_never_carry_observation_entries(self):
         before = self.assertMatchesFresh(self.model)
         for copied in (deepcopy(self.model), pickle.loads(pickle.dumps(self.model))):
@@ -698,10 +743,6 @@ class WeightsSnapshotTests(unittest.TestCase):
         self.assertFalse(self.check(snapshot, model))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ArmyOperationPresenceTests(unittest.TestCase):
     """The early-stopping presence test must agree with the contract's choices."""
 
@@ -730,3 +771,7 @@ class ArmyOperationPresenceTests(unittest.TestCase):
                 seen.add((kind, expected))
         for kind in ("split_stack", "merge_stacks", "swap_stacks"):
             self.assertTrue({(kind, True), (kind, False)} <= seen)
+
+
+if __name__ == "__main__":
+    unittest.main()

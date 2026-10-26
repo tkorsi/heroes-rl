@@ -111,6 +111,21 @@ class TypedWordsTests(unittest.TestCase):
         self.assertIsNone(m._typed_words([torch.ones(2, dtype=torch.complex64)]))
         self.assertEqual(m._typed_words([torch.tensor([True, False])]).dtype, torch.uint8)
 
+    def test_a_single_view_starting_inside_a_word_decides_as_the_digest(self):
+        base = torch.arange(10.0)
+        net = Tensors(x=base[1:5])  # contiguous, four floats from storage offset 1: not on an int64 boundary
+        self.assertEqual(net.x.storage_offset() * net.x.element_size() % 8, 4)
+        snapshot = m.WeightsSnapshot(net)
+        self.assertIsNotNone(snapshot.typed)
+        self.assertTrue(snapshot.matches(net))
+        self.assertTrue(snapshot.unchanged(net))
+        words = m._joined_words([net.x], False)
+        self.assertEqual(words.dtype, torch.int64)
+        base.view(torch.int32)[2] ^= 1  # one bit of the second buffer element
+        self.assertFalse(snapshot.matches(net))
+        self.assertEqual(snapshot.unchanged(net), reference_weights_sha256(net) == snapshot.digest)
+        self.assertFalse(snapshot.unchanged(net))
+
     def test_bit_states_name_their_representation(self):
         uniform = [torch.ones(2), torch.zeros(3)]
         strided = [torch.ones(2), torch.zeros(3, 2).t()]
