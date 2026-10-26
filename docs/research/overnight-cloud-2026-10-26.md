@@ -839,3 +839,35 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T08:39:45.418185+00:00 campaign_batch_result: {"sequence": 232, "seat": 0, "mode": "training", "status": "passed"}
 
 - 2026-10-26T08:39:46.123580+00:00 campaign_batch_intent: {"sequence": 233, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:41:32.112279+00:00 campaign_batch_result: {"sequence": 233, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:41:32.790321+00:00 campaign_batch_intent: {"sequence": 234, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:42:52.661726+00:00 campaign_batch_result: {"sequence": 234, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:42:54.083370+00:00 campaign_batch_intent: {"sequence": 381, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T08:43:37.330156+00:00 campaign_batch_result: {"sequence": 381, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T08:43:38.040865+00:00 campaign_batch_intent: {"sequence": 381, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T08:44:24.072410+00:00 campaign_batch_result: {"sequence": 381, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T08:44:24.779369+00:00 campaign_batch_intent: {"sequence": 235, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:46:14.332496+00:00 campaign_batch_result: {"sequence": 235, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:46:15.016170+00:00 campaign_batch_intent: {"sequence": 236, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:47:50.630444+00:00 campaign_batch_result: {"sequence": 236, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:47:51.304690+00:00 campaign_batch_intent: {"sequence": 237, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:49:07.803612+00:00 campaign_batch_result: {"sequence": 237, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:49:08.484285+00:00 campaign_batch_intent: {"sequence": 238, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T08:50:29.393233+00:00 campaign_batch_result: {"sequence": 238, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T08:50:30.100651+00:00 campaign_batch_intent: {"sequence": 239, "seat": 1, "mode": "training", "status": "preparing"}
