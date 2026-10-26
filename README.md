@@ -451,3 +451,16 @@ the interface or weaken admission to make a failed cohort pass.
 VCMI and its dependencies retain their upstream licenses; VCMI is
 GPL-2.0-or-later. Original Heroes III assets are separately copyrighted,
 user-supplied, and not downloaded or redistributed by this repository.
+
+## Completed frozen transfer diagnostic:26October2026
+
+The[bounded Linux transfer study](docs/research/transfer-eval-2026-10-26.md)
+completed168 verified games with unchanged checkpoints146/254/412 and zero
+learning. On12 valid varied easy layouts per seat, natural wins were2/24,
+14/24 and24/24 respectively; every checkpoint lost all32 original-scenario
+games. Two invalid-hero-anchor startup failures remain unscored and22 affected
+entries unstarted; frozen starts were not moved after outcomes. The strict
+Linux acceleration gate passed, with cold fallback used after the fixture
+crashes. Full state restoration and owned shutdown passed within the original
+diagnostic window. See the[complete comparison and limitations](validation/transfer-eval-2026-10-26.json).
+No additional gameplay or PPO is authorized by this result.

@@ -725,3 +725,70 @@ Prospective diagnostic scope: checkpoints146,254,412 on exactly matched varied e
 - 2026-10-26T14:20:44.980382+00:00 game_cell_result: {"label": "transfer-192", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-192/report.json", "sha256": "09623d7955bd34e878e4d9342761a4da36c24dc9c7e8333c6f304115d743069f", "bytes": 9646}}
 
 - 2026-10-26T14:22:14.683970+00:00 frozen_transfer_stopped: {"status": "completed_valid_fixture_subset", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/final-report.json", "sha256": "960c36f7380a27a4b39ba44ea1cdaafbb5b15bbaa52167613109bc2306683898", "bytes": 50445}, "optimizer_steps": 0, "training_samples": 0}
+
+- 2026-10-26T14:42:37.815127+00:00 final_transfer_independent_audit_complete: {"timestamp_utc": "2026-10-26T14:42:37.815127+00:00", "event": "final_transfer_independent_audit_complete", "valid_transfer_games": 168, "natural_wins": 40, "natural_losses": 128, "failed_startups": 2, "unstarted_invalid_entries": 22, "gate_games": 8, "strict_original_cold_cross_reconstruction": 36, "full_state_restored": true, "original_checkpoint_hashes_unchanged": true, "live_owned_workers": 0, "clock_reset": false, "final_capture_private_commit": "d00675305595e62078f8c9bab85b22d67b990504", "independent_audit_private_commit": "24ae5b2ecb9ef035484887eb1ac9df47682ce347", "final_report": {"path": "/workspace/heroes-transfer/validation/transfer-eval-2026-10-26.json", "sha256": "72a355c3414ff7052e6d7343e5c83482127c5d8865f7bf2fbf1198c2f2c782c8", "bytes": 96506}, "minor_prelaunch_ref_correction": "Recovery002 worktree preparation initially used an invalid shorthand ref and failed before any checkout/game; corrected to actual aaff4ef before launch. No clock or input change."}
+
+## Completed valid-subset result
+
+The original192-entry schedule is preserved. Native hero anchors differ from
+visitable positions by(1,0,0); the original anchor-only preflight missed four
+invalid layouts. Both embedded attempt037 and cold attempt038 stopped with
+native SIGSEGV before a valid terminal capture. They remain unscored. All24
+affected entries were flagged by the same structural rule across models/seats;
+22 remained unstarted. No frozen map, seed, weight or rule was changed, and
+neither failed attempt was retried. The remaining cohort is balanced:12 valid
+varied-easy layouts per seat and16 original-scenario starts per seat.
+
+| Frozen checkpoint | Varied easy Red | Varied easy Blue | Original Red | Original Blue |
+| --- | ---: | ---: | ---: | ---: |
+|146|1/12|1/12|0/16|0/16|
+|254|9/12|5/12|0/16|0/16|
+|412|12/12|12/12|0/16|0/16|
+
+Cells show natural wins over valid games. Total168 valid games:40wins and128
+losses, zero horizon cutoffs, two failed startup attempts and22 unstarted invalid
+entries. Eight matched Linux gate games are separate. All valid games passed
+native replay and strict policy reconstruction. All36 initially embedded
+transfer captures additionally reconstructed exactly under original cold source.
+The first36 valid transfer games used embedded; the remaining132 used original
+cold. Exact-start model comparisons retain24 paired easy cases and32 original
+cases. Checkpoint412 added22 wins versus146 and10 versus254 on easy starts,
+with no reverse discordant wins; original outcomes were losses for every model.
+
+Checkpoint412 moved toward visible enemy towns at all four new coordinates
+(2,2),(5,2),(2,6),(5,6), none equal to the old fixed(4,5). This is positive
+spatial-transfer evidence on the tested authored subset, not original-map
+mastery. On the original board,412 recorded seven recruitment actions,25
+cross-army operations, seven attacker-role starts,34 defender-role starts and
+two town-capture evidence entries, but zero natural wins. Counts are not unique
+units or causal evidence of a recruit-then-attack strategy; attacker role alone
+does not identify the opponent rather than neutrals.
+
+The narrow Linux gate was exact for histories, decisions, estimates and terminal
+outcomes in both seats. Its four-game-per-backend timings showed3.50x collection,
+1.62x measured row and1.11x whole-wrapper speed ratios. This is a small current-host
+diagnostic, with optimized capture recomputation enabled, not PPO throughput.
+Observed self-process RSS peaked at342,208,512bytes for embedded, with five
+descriptors and five threads. Cold child-engine memory is excluded from its
+worker RSS; no total-memory or long-run plateau comparison is established.
+
+All three full model/Adam/Torch/Python/minibatch RNG/progress/sampler/pool states
+restored exactly from preserved and independent copies. Original checkpoint
+bytes are unchanged; no samples, PPO updates or Adam steps were admitted. Owned
+controllers/native processes are stopped, both locks are unheld, and the
+watchdog reports completed_early_no_live_owned. The original85/90minute clock
+was never reset through either recovery. All diagnostic work and preservation
+finished before its fixed compute/hard cutoffs.
+
+The complete raw capture seal is private commit d00675305595e62078f8c9bab85b22d67b990504;
+independent audits and stopped receipts are private24ae5b2ecb9ef035484887eb1ac9df47682ce347.
+Earlier failures remain at1ee9f60338f7a8d6c7caba5f38b7c86c45176228 and
+37b6b30f7102e238f8225c02e0908dde556cdc06. Hashes, timings, resource limitations,
+confidence intervals and restore bindings are in the[final report](../../validation/transfer-eval-2026-10-26.json).
+
+A proposed next stage adds an owned town and an active enemy hero to varied
+short-board starts, then gradually approaches original army/economy conditions.
+Keep original-map retention checks and terminal-only rewards. Any new cohort
+must use the corrected native-anchor validator; the old generator and failed
+fixture bytes remain historical evidence. No further gameplay or training is
+authorized by this completed study.

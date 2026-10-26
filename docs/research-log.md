@@ -250,3 +250,5 @@ varied easier positions and the original scenario. Its 85-minute compute and
 that assignment authorizes PPO. Preparation/delivery is not completed evaluation.
 
 - [Frozen-policy transfer study,26October2026](research/transfer-eval-2026-10-26.md): new bounded diagnostics only; no PPO.
+
+- Frozen transfer study completed:412 won24/24 valid varied-easy cases versus14/24 at254 and2/24 at146; all three0/32 original.168valid,2failed native startups,22invalid-fixture entries unstarted; zero learning. See[methods/failures](research/transfer-eval-2026-10-26.md) and[final comparison](../validation/transfer-eval-2026-10-26.json).
