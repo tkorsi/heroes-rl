@@ -25,3 +25,5 @@ Every complete batch receives an independent exact restore-tested backup outside
 ## Autonomous chain control
 
 Fourteen offline checks passed. Fake-marker controls rejected stale/incomplete ownership and wrong deadlines, retained failed acceptance without launch, required all gates before exactly one mocked launch, and rejected a duplicate controller before work. These controls launched no games and no PPO. The actual detached controller will wait for the real final marker, then validate/copy/restore its exact final state, measure platform drift, freeze a clean independent Linux release, run fresh acceptance, establish both heldout baselines and continue complete batches. Status and research writes occur in the author checkout. The independent cutoff guard allows preservation controllers through the five-minute reserve while stopping compute at09:55UTC; all owned roles stop at10:00UTC.
+
+- 2026-10-26T01:54:36.892054+00:00 autonomous_chain_started: {"pid": 26663, "bootstrap": "/workspace/releases/teacher-overnight-bootstrap-245e317"}
