@@ -327,3 +327,18 @@ all twelve. The turn-end/new-day order is therefore a property of the accepted s
 asynchronous notice delivery, not of the fast path. Consequence for the Mac check and for any
 reproduction: identical seeds do not guarantee identical games even on one implementation, so
 exactness is established on the batches whose games coincide (here 11 of 12).
+
+### O11. Optimizer-only exact PPO on batch 266, accepted against fast path (CPU 0, 20:17 to 22:22 UTC)
+
+Same restored 629 state and the same verified batch (3968 samples, 125 optimizer steps), one thread,
+one job at a time on CPU 0: accepted a8ac411 4214.9 s, fast path (7c4303f, no helpers) 3241.7 s,
+1.30x. Weights, model, gradients and Adam state are bitwise equal (weights fe1378ef...,
+Adam b9906834...). Breakdown, accepted against fast path: prefix reconstruction 1267.1 against
+461.8 s, behaviour verification 373.0 against 20.9, loss forward 858.0 against 911.2, backward and clip 1696.4
+against 1826.7, Adam 16.4 against 17.4 s. So on this batch the fast path removes almost all of what it can (prefix reconstruction with
+helpers goes further) and the unchanged forward and backward are 2600 to 2740 s of either total,
+0.65 to 0.69 s per decision. The fast path's forward and backward were 6% and 8% slower here;
+CPU 0 also carried short tests and read-only review agents during both jobs (and one campaign's
+compression during the accepted job), so this may be disturbance. A counterbalanced repeat (accepted, then fast path) is
+queued after the matrix, and a read-only analysis of the window path is checking for added
+overhead.
