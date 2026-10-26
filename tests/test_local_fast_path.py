@@ -114,6 +114,31 @@ class ExecutionChoiceTests(unittest.TestCase):
             local.apply_execution({'execution': {'implementation': 'exact-fast-path-v1'}})
 
 
+class LineageTests(unittest.TestCase):
+    exact = local.execution_choice(overlapped_verification=False)
+    shared = local.execution_choice(overlapped_verification=False, experiments=['shared_graph_encodings'])
+
+    def test_an_exact_session_refuses_an_experimental_parent(self):
+        experimental = {'checkpoint_metadata': {'numerical_experiments': ['shared_graph_encodings']}}
+        for parent in ({}, {'checkpoint_metadata': {}}, {'checkpoint_metadata': {'numerical_experiments': []}}):
+            local.check_lineage(parent, self.exact)
+            local.check_lineage(parent, self.shared)  # an experiment may start from an exact parent
+        local.check_lineage(experimental, self.shared)
+        with self.assertRaisesRegex(ValueError, 'numerical experiment this session does not run: shared_graph_encodings'):
+            local.check_lineage(experimental, self.exact)
+
+    def test_every_batch_and_the_launch_check_the_parent_lineage(self):
+        import ast
+        def calls(path, function):
+            tree = ast.parse(Path(path).read_text())
+            node = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == function)
+            return {getattr(c.func, 'attr', getattr(c.func, 'id', None)) for c in ast.walk(node) if isinstance(c, ast.Call)}
+        for path, function in ((local.__file__, 'prepare_batch'), (local.__file__, '_check_identity'),
+                               (ROOT/'tools/run_local_training.py', 'launch_owned')):
+            with self.subTest(function=function):
+                self.assertIn('check_lineage', calls(path, function))
+
+
 def _value(x):
     return x * 2
 

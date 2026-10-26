@@ -98,7 +98,7 @@ FAST_PATH_SOURCES = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '4c0b785e633c84a02ca5b457966df3fe5ce59fad617867eee0f1bc87306f29ad'
+LOCAL_ADAPTER_TRANSITION_AST = '759f6b0fbf4285073fdb7d866426f9412c79c4e6b7fed53fb88ca5eacc231a47'
 
 
 def write_new(path, value):
@@ -431,6 +431,17 @@ def schedule(session, sequence, seat, evaluate=False):
                  engine_seed=engine+i, policy_seed=policy+i) for i in range(4)]
 
 
+def check_lineage(parent_plan, execution):
+    """An exact session never continues a parent that a numerical experiment produced.
+
+    A session running an experiment may start from an exact parent or continue its own experiment;
+    the experiment that produced a checkpoint is named in its plan's checkpoint metadata.
+    """
+    produced = set((parent_plan.get('checkpoint_metadata') or {}).get('numerical_experiments', []))
+    require(produced <= set(check_execution(execution)['experiments']),
+            'Parent was produced by a numerical experiment this session does not run: ' + ', '.join(sorted(produced)))
+
+
 def check_identity(plan):
     # One identity check hashes each unchanged file once (experiments.headless.digest_scope).
     from experiments.headless.digest_scope import scope
@@ -463,6 +474,7 @@ def _check_identity(plan):
     for value in (plan['checkpoint'], plan['replay_binary'], *plan['parent_descriptor'].values()):
         _bound(value)
     parent_plan, parent_report = read_descriptor(plan['parent_descriptor'])
+    check_lineage(parent_plan, plan['execution'])
     progress, steps, _ = resume._completion(parent_plan, parent_report)
     require(all(plan['parent'][key] == plan['parent_descriptor'][key] for key in ('plan', 'report', 'policy', 'resume'))
             and plan['parent']['progress'] == vars(progress) and plan['parent']['optimizer_steps'] == steps,
@@ -475,6 +487,7 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     session_path = Path(session_path).resolve()
     session = read_session(session_path)
     state = restore_parent(parent_descriptor)
+    check_lineage(read_descriptor(parent_descriptor)[0], session['execution'])
     require(configuration(parent_descriptor) == session['configuration'], 'Parent PPO configuration differs')
     rows = schedule(session, sequence, seat, evaluate)
     label = label or ('eval' if evaluate else 'train')

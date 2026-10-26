@@ -427,6 +427,7 @@ def launch_owned(args):
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
               else read(latest)['parent'] if latest.exists() else config['parent'])
     initial = adapter.restore_parent(parent)
+    adapter.check_lineage(adapter.read_descriptor(parent)[0], execution)  # before any session or game
     parent_final_evidence = None
     if args.parent_final is not None:
         prior = read(args.parent_final / 'campaign-report.json')
