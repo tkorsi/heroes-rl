@@ -3,9 +3,11 @@ from contextlib import ExitStack, nullcontext
 from copy import deepcopy
 import json
 import math
+import os
 from pathlib import Path
 import random
 import tempfile
+import time
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock, patch
@@ -240,7 +242,9 @@ class PilotFrozenCheckpointTests(unittest.TestCase):
 
 
 class PilotAttemptCleanupTests(PilotPlanTests):
-    def run_attempt(self, *, env_close_error=False, cleanup_write_error=False, old_training_folder=False):
+    def run_attempt(self, *, env_close_error=False, cleanup_write_error=False, old_training_folder=False,
+                    identity_verified=False, verify=lambda *a, **k: {"verified": True},
+                    analyze=lambda *a, **k: {"synthetic": True}, started=None):
         from experiments.headless import builtin_env, builtin_replay, process_deadline
         from experiments.learner import builtin_behavior, builtin_gameplay, builtin_rollout, contextual_model
         from validation.probes import validate_hero_policy
@@ -278,7 +282,7 @@ class PilotAttemptCleanupTests(PilotPlanTests):
                 raise OSError("synthetic-progress-write-failure")
         with ExitStack() as stack:
             for owner, name, value in (
-                (pilot, "check_identity", lambda plan: None),
+                (pilot, "check_identity", lambda plan: calls.append("identity")),
                 (pilot, "native_opponent", lambda runtime, seat: {"synthetic": True}),
                 (contextual_model, "weights_sha256", lambda model: "b" * 64),
                 (process_deadline, "DeadlineVcmiLauncher", Launcher),
@@ -286,15 +290,63 @@ class PilotAttemptCleanupTests(PilotPlanTests):
                 (builtin_rollout, "BuiltinCollector", Collector),
                 (builtin_rollout, "audit_persisted_builtin_policy", lambda *a, **k: {"passed": True}),
                 (builtin_rollout, "retain_failed_builtin_evidence", lambda *a, **k: calls.append("retained")),
-                (builtin_replay, "verify_episode", lambda *a, **k: {"verified": True}),
-                (builtin_behavior, "analyze_episode", lambda *a, **k: {"synthetic": True}),
+                (builtin_replay, "verify_episode", verify),
+                (builtin_behavior, "analyze_episode", analyze),
                 (validate_hero_policy, "wall_limit", lambda *a, **k: nullcontext()),
             ):
                 stack.enter_context(patch.object(owner, name, value))
             fresh = stack.enter_context(patch.object(builtin_gameplay, "TrainingCollector"))
+            from experiments.headless.background_check import BackgroundCheck
+            start = BackgroundCheck.start
+            def recorded(check):
+                start(check)
+                (started if started is not None else []).append(check.pid)
+                return check
+            stack.enter_context(patch.object(BackgroundCheck, "start", recorded))
             result = pilot.run_attempt(plan, self.root / "plan.json", "a" * 64, index, object(), "synthetic-policy",
-                                       pilot.Budget(pilot.time.monotonic() + 240, pilot.time.time() + 240), save)
+                                       pilot.Budget(pilot.time.monotonic() + 240, pilot.time.time() + 240), save,
+                                       identity_verified=identity_verified)
         return result, calls, snapshots, fresh
+
+    def test_only_a_just_verified_identity_skips_the_opening_check_and_the_final_check_always_runs(self):
+        for verified, expected in ((False, 2), (True, 1)):
+            with self.subTest(identity_verified=verified):
+                self.setUp()  # a fresh output folder per attempt
+                (attempt, _), calls, _, _ = self.run_attempt(identity_verified=verified)
+                self.assertEqual(attempt["status"], "passed")
+                self.assertTrue(attempt["identity_verified"])
+                self.assertEqual(calls.count("identity"), expected)
+                self.assertEqual(calls[-1], "identity")  # the closing check follows cleanup
+
+    def test_overlapped_analysis_is_stopped_or_fails_the_attempt_and_writes_no_behavior_report(self):
+        def reaped(pid):
+            try:
+                os.waitpid(pid, os.WNOHANG)
+            except ChildProcessError:
+                return True
+            return False
+        def analysis_fails(*args, **kwargs):
+            raise ValueError("synthetic analysis failure")
+        cases = (
+            # Verification fails while the analysis still runs: the analysis is stopped at once.
+            (dict(verify=lambda *a, **k: {"verified": False}, analyze=lambda *a, **k: time.sleep(30)), "Independent native replay failed"),
+            # The analysis itself fails after verification passed.
+            (dict(analyze=analysis_fails), "ValueError: synthetic analysis failure"),
+        )
+        for options, message in cases:
+            with self.subTest(message):
+                self.setUp()
+                started, begun = [], time.monotonic()
+                (attempt, receipt), calls, _, _ = self.run_attempt(started=started, **options)
+                self.assertLess(time.monotonic() - begun, 20)
+                self.assertEqual(attempt["status"], "failed")
+                self.assertIn(message, attempt["error"])
+                self.assertIsNone(receipt)
+                self.assertIn("retained", calls)
+                self.assertEqual(len(started), 1)
+                self.assertTrue(reaped(started[0]))
+                folder = Path(attempt["episode_directory"])
+                self.assertFalse((folder / "behavior.json").exists())
 
     def test_environment_close_failure_does_not_skip_owned_group_cleanup(self):
         (attempt, receipt), calls, _, _ = self.run_attempt(env_close_error=True)

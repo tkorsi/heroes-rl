@@ -28,9 +28,9 @@ def require(condition, message):
 
 
 def binding(path):
+    from experiments.headless.digest_scope import sha256_file
     path = Path(path).expanduser().resolve()
-    with path.open("rb") as stream:
-        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    digest = sha256_file(path)[0]
     return {"path": str(path), "sha256": digest, "bytes": path.stat().st_size}
 
 

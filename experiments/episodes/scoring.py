@@ -24,8 +24,14 @@ ENGINE_RECIPE = ("dependencies/vcmi.json", "engine/patches", "engine/ExplorerRL"
 
 
 def digest(path: Path) -> str:
-    with path.open("rb") as source:
-        return hashlib.file_digest(source, "sha256").hexdigest()
+    # Also loaded by file path (heroes_episode_scoring); without the repository root on
+    # sys.path, hash directly as before.
+    try:
+        from experiments.headless.digest_scope import sha256_file
+    except ImportError:
+        with path.open("rb") as source:
+            return hashlib.file_digest(source, "sha256").hexdigest()
+    return sha256_file(path)[0]
 
 
 def git_state(path: Path) -> dict:

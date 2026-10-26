@@ -21,6 +21,11 @@ ADAPTER_SOURCES = {"experiments/headless/env.py", "experiments/headless/contextu
 
 
 def _unique(pairs):
+    # dict() keeps first insertion order and drops nothing unless a key repeats;
+    # only then does the loop name the first repeated key, as it always did.
+    result = dict(pairs)
+    if len(result) == len(pairs):
+        return result
     result = {}
     for key, value in pairs:
         if key in result:
@@ -36,8 +41,19 @@ def strict_json(data):
 
 
 def file_identity(path):
-    data = Path(path).read_bytes()
-    return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)}
+    digest, size = _sha256_file(path)
+    return {"sha256": digest, "bytes": size}
+
+
+def _sha256_file(path):
+    # Also imported as top-level ``contextual_evidence`` (contextual_env puts this directory on
+    # sys.path); without the repository root there, hash directly as before.
+    try:
+        from experiments.headless.digest_scope import sha256_file
+    except ImportError:
+        data = Path(path).read_bytes()
+        return hashlib.sha256(data).hexdigest(), len(data)
+    return sha256_file(path)
 
 
 def inside(root, name):

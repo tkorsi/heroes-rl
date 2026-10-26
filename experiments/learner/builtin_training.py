@@ -276,9 +276,11 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
             def save_attempt(value, index=index):
                 report['attempts'][index] = value; save()
             phase = 'evaluation' if plan['mode']=='evaluation' else 'training'
+            # A passed attempt ended with a passed identity check; nothing runs between it and the next.
             attempt, receipt = pilot.run_attempt(plan, args.plan, args.sha256, index, model, state.checkpoint,
-                budget(phase).capped(cfg['attempt_wall_seconds']), save_attempt)
-            pilot.require(attempt['status']=='passed', 'Attempt failed; batch stopped without replacement')
+                budget(phase).capped(cfg['attempt_wall_seconds']), save_attempt, identity_verified=index > 0)
+            pilot.require(attempt['status']=='passed' and attempt.get('identity_verified') is True,
+                          'Attempt failed; batch stopped without replacement')
             if phase == 'training':
                 pilot.require(receipt is not None, 'Missing fresh receipt'); receipts.append(receipt)
         if plan['mode'] == 'training':

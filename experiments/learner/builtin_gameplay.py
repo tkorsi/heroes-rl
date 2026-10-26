@@ -213,7 +213,8 @@ class TrainingCollector(BuiltinCollector):
         folder = Path(manifest_path).resolve().parent
         require(str(folder) == self.binding.folder, "Training finalization is outside its fresh directory")
         with (folder / "builtin-training-rollout.json").open("x") as stream:
-            json.dump(result.to_dict(), stream, sort_keys=True, separators=(",", ":"), allow_nan=False)
+            # json.dumps writes the same text as json.dump with the C encoder.
+            stream.write(json.dumps(result.to_dict(), sort_keys=True, separators=(",", ":"), allow_nan=False))
             stream.write("\n")
         _CAPTURES[id(result)] = result
         return result
@@ -371,27 +372,20 @@ def _capture_file_bindings(folder, manifest):
     return {name: native.file_identity(native.inside(folder, name)) for name in sorted(names)}
 
 
-def verify_training_capture(folder, collected, binding, model, *, replay_binary, data, remaining):
-    """Mint an in-memory receipt only after independent reconstruction and replay."""
-    from experiments.headless.builtin_replay_history import verify_history
-    from experiments.headless import builtin_replay
-    from validation.probes.validate_hero_policy import reconstruct_behavior
-    _time_left(remaining)
-    require(_BINDINGS.get(id(binding)) is binding and _CAPTURES.get(id(collected)) is collected,
-            "Only this worker's fresh training collector can request admission")
-    folder = Path(folder).resolve()
-    require(str(folder) == binding.folder, "Admission folder differs from fresh collection")
-    binding.recheck()
-    _check_capture(collected, binding)
+def _check_persisted(folder, collected, model, manifest):
+    """The persisted rollout and manifest checks, in their original order; returns the rebuilt episode."""
     raw = native.strict_json((folder / "builtin-training-rollout.json").read_bytes())
     require(canonical(raw) == canonical(collected.to_dict()), "Fresh training artifact changed after capture")
     rebuilt = load_builtin_episode(raw["experience"])
     require(rebuilt == collected.experience and rebuilt.weights_sha256 == weights_sha256(model)
             and json.loads(rebuilt.model_config_json) == model.config.to_dict(), "Behavior differs from current frozen model")
-    manifest = native.strict_json((folder / "manifest.json").read_bytes())
     require(canonical(manifest) == canonical(rebuilt.manifest) and manifest["status"] in ("completed", "truncated"),
             "Only an intact naturally ended or verified cutoff capture can be admitted")
-    original_files = _capture_file_bindings(folder, manifest)
+    return rebuilt
+
+
+def _check_rollout(folder, collected, binding, model, manifest, verify_history, reconstruct_behavior):
+    rebuilt = _check_persisted(folder, collected, model, manifest)
     final = evidence.read_finalization(folder, manifest)
     history_report = verify_history(folder, manifest, final)
     require(history_report.get("verified") is True and history_report.get("opponent_history") is None,
@@ -404,8 +398,44 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
             and policy_report.get("values_recomputed") == len(rebuilt.estimates), "Exact independent behavior reconstruction failed")
     _write_new(folder / "training-history-reconstruction.json", history_report)
     _write_new(folder / "training-policy-reconstruction.json", policy_report)
-    replay = builtin_replay.verify_episode(folder, binary=replay_binary, data=data,
-        output=folder / "training-verification", timeout=_time_left(remaining))
+    return history_report, policy_report, rebuilt, final
+
+
+def verify_training_capture(folder, collected, binding, model, *, replay_binary, data, remaining):
+    """Mint an in-memory receipt only after independent reconstruction and replay."""
+    from experiments.headless.background_check import BackgroundCheck
+    from experiments.headless.builtin_replay_history import verify_history
+    from experiments.headless import builtin_replay
+    from validation.probes.validate_hero_policy import reconstruct_behavior
+    _time_left(remaining)
+    require(_BINDINGS.get(id(binding)) is binding and _CAPTURES.get(id(collected)) is collected,
+            "Only this worker's fresh training collector can request admission")
+    folder = Path(folder).resolve()
+    require(str(folder) == binding.folder, "Admission folder differs from fresh collection")
+    binding.recheck()
+    _check_capture(collected, binding)
+    manifest = native.strict_json((folder / "manifest.json").read_bytes())
+    # Bind the capture first: the independent native replay reads it in its own interpreter
+    # while this process checks the rollout, history and policy; every check below still runs.
+    # The capture is bound from a manifest equal to the fresh capture's own, which the persisted
+    # checks require anyway. Otherwise, or if binding fails, it is bound in the serial order,
+    # after those checks, so any error raised is the one the serial order raised.
+    try:
+        require(canonical(manifest) == canonical(collected.experience.manifest)
+                and manifest["status"] in ("completed", "truncated"), "Manifest differs from the fresh capture")
+        original_files = _capture_file_bindings(folder, manifest)
+    except Exception:
+        _check_persisted(folder, collected, model, manifest)
+        original_files = _capture_file_bindings(folder, manifest)
+    replaying = BackgroundCheck(builtin_replay.verify_episode, folder, binary=replay_binary, data=data,
+                                output=folder / "training-verification", timeout=_time_left(remaining))
+    try:
+        replaying.start()
+        history_report, policy_report, rebuilt, final = _check_rollout(folder, collected, binding, model, manifest,
+                                                                       verify_history, reconstruct_behavior)
+        replay = replaying.result(timeout=_time_left(remaining))
+    finally:
+        replaying.stop()
     require(replay.get("schema") == builtin_replay.REPORT_SCHEMA and replay.get("verified") is True
             and replay.get("identity_check", {}).get("mode") == "exact_capture"
             and "diagnostic_verified" not in replay and replay.get("history") == history_report,

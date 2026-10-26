@@ -15,7 +15,7 @@ from experiments.headless import contextual_evidence as native
 from . import contextual as c
 from .contextual_model import ModelConfig, model_schema_for, weights_sha256
 from .contextual_rollout import (ContextualSession, BehaviorDecision, DecisionEstimate,
-                                 RecurrentPrefix, _frame_bytes)
+                                 RecurrentPrefix, _frame_bytes, _json_native, _wire_text)
 
 SCHEMA = "heroes-builtin-evaluation-rollout-v1"
 COLORS = evidence.COLORS
@@ -153,6 +153,24 @@ def load_builtin_episode(path):
         raw["weights_sha256"], raw["policy_seed"], _json(raw["opponent_identity"]), _json(raw["manifest"]), _json(raw["model_config"]))
 
 
+def _delivered(records, typed):
+    """The frames to consume for these delivered records.
+
+    When the environment also hands over its own validated frames, and each
+    delivered record has exact JSON types and exactly the canonical text of its
+    frame, the session consumes those frames instead of decoding a fresh copy of
+    each from its record. JSON text is injective over exact JSON types, so such
+    a record is the canonical record of that frame, which the strict decoder
+    maps back to an equal frame (canonical encoding round-trips); the model
+    input is unchanged. Anything else, valid or not, takes the original path.
+    """
+    if (typed is None or type(typed) is not tuple or type(records) is not list or len(typed) != len(records)
+            or not all(type(frame) is c.Frame and _wire_text(record) == c.canonical_frame(frame)
+                       and _json_native(record) for record, frame in zip(records, typed))):
+        return records
+    return typed
+
+
 class BuiltinCollector:
     """Exactly one unchanged frozen policy, own RNG and own recurrent history."""
     def __init__(self, model, checkpoint, *, learner_player, opponent_identity, policy_seed, interface=c.DIALOGS_ENVIRONMENT):
@@ -178,9 +196,11 @@ class BuiltinCollector:
             and request.player == self.learner_player and request.color == COLORS[self.learner_player]
             and not request.past_horizon and request.reward == 0 and request.frames,
             "Only the current own decision can be sampled")
-        self.session.consume(request.frames)
-        last = c.decode_frame(request.frames[-1])
-        evidence.require(last.kind == "decision" and c.decode_frame(request.record) == last,
+        # consume decoded request.frames[-1] (or matched its exact accepted text); the
+        # record is normally that same object, and is decoded only when it is not.
+        last = self.session.consume(_delivered(request.frames, getattr(request, "typed_frames", None)))
+        evidence.require(last.kind == "decision" and (request.record is request.frames[-1]
+                                                      or c.decode_frame(request.record) == last),
                          "Request record and actual own decision differ")
         return self.session.choose(last.seq).action
 
@@ -188,7 +208,7 @@ class BuiltinCollector:
         evidence.require(self.session is not None and end.done, "An actual episode boundary is required")
         color = COLORS[self.learner_player]
         evidence.require(set(end.final_frames) == {color}, "A native opponent cannot acquire a policy stream")
-        self.session.consume(end.final_frames[color])
+        self.session.consume(_delivered(end.final_frames[color], getattr(end, "final_typed_frames", {}).get(color)))
         manifest = native.strict_json(Path(manifest_path).read_bytes())
         evidence.require(manifest == end.manifest and manifest["opponent_identity"] == self.opponent_identity,
                          "Persisted episode or native opponent changed")
@@ -224,7 +244,7 @@ class BuiltinCollector:
                     # The environment already delivered these frames. Retain
                     # their memory and actual safe-decision value, without
                     # advancing the sampling RNG or choosing another action.
-                    self.session.consume(request.frames)
+                    self.session.consume(_delivered(request.frames, getattr(request, "typed_frames", None)))
                     request = env.truncate("collection_window")
             else:
                 request = env.step(self.act(request))

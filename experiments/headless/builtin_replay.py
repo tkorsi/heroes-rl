@@ -16,11 +16,13 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import threading
 import time
 
 from experiments.headless import builtin_evidence as builtin
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import contextual_replay as paired
+from experiments.headless import embedded_evidence as embedded
 from experiments.headless import replay as legacy
 from experiments.learner import contextual as contract
 
@@ -280,19 +282,28 @@ def verify_identity(manifest, binary, *, diagnostic_verifier_compatibility=False
     require(identity.get("bridge_source_sha256") == hashlib.sha256(
         json.dumps(bridge, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), "Captured adapter recipe digest differs")
     expected_sources = evidence.ADAPTER_SOURCES | {"experiments/headless/builtin_env.py", "experiments/headless/builtin_evidence.py"}
+    backend = None
+    if embedded.is_embedded(identity):
+        # The in-process backend runs the same rules from its extension module.
+        expected_sources |= embedded.ADAPTER_SOURCES
+        backend = embedded.verify_backend(identity, binary.parent, ROOT)
     require(set(identity.get("contextual_python_sha256", {})) == expected_sources, "Incomplete mixed adapter source inventory")
     for name, sha in identity["contextual_python_sha256"].items():
         require(evidence.file_identity(evidence.inside(ROOT, name))["sha256"] == sha, "Adapter source changed: " + name)
     lock = evidence.strict_json((ROOT / "dependencies/vcmi.json").read_bytes())
     require(identity.get("engine_revision") == lock["commit"] and identity.get("engine", {}).get("commit") == lock["commit"], "Pinned engine identity mismatch")
-    return {"mode": "diagnostic_verifier_only" if diagnostic_verifier_compatibility else "exact_capture",
-            "runtime_changes": runtime_changes, "recipe_changes": recipe_changes,
-            "nonverifier_runtime_unchanged": True, "client_unchanged": True,
-            "adapter_sources_unchanged": True, "nonverifier_recipe_unchanged": True}
+    result = {"mode": "diagnostic_verifier_only" if diagnostic_verifier_compatibility else "exact_capture",
+              "runtime_changes": runtime_changes, "recipe_changes": recipe_changes,
+              "nonverifier_runtime_unchanged": True, "client_unchanged": True,
+              "adapter_sources_unchanged": True, "nonverifier_recipe_unchanged": True}
+    if backend is not None:
+        result["embedded_backend"] = backend
+    return result
 
 
 def bound_evidence(episode, manifest, binary, *, diagnostic_verifier_compatibility=False, identity_report=None):
     from experiments.headless import builtin_evidence as builtin
+    in_process = embedded.is_embedded(manifest.get("identity"))
     final = builtin.read_finalization(episode, manifest)
     require(manifest.get("kind") == builtin.MANIFEST_KIND and manifest.get("replay", {}).get("schema") == SCHEMA,
             "Unsupported built-in recording")
@@ -323,12 +334,14 @@ def bound_evidence(episode, manifest, binary, *, diagnostic_verifier_compatibili
                 and manifest["termination_reason"] == "natural_terminal"
                 and final["socket_outcome"] == outcomes[learner]
                 and equal(final["engine_verified_outcomes"], manifest["outcomes_by_player"])
-                and equal(manifest["rewards_by_player"], {c: 1 if o == "win" else -1 for c, o in zip(COLORS, outcomes)}),
+                and equal(manifest["rewards_by_player"], {c: 1 if o == "win" else -1 for c, o in zip(COLORS, outcomes)})
+                and (not in_process or embedded.natural_closed(final)),
                 "Natural labels differ from actual native barrier")
     else:
         require(manifest["status"] == "truncated" and manifest["termination_reason"] in legacy.scoring.HEADLESS_TRUNCATIONS
                 and final.get("declared_stop") is True and final.get("shutdown_verified") is True
-                and manifest["returncode"] in (-15, -9) and final.get("socket_outcome") is None
+                and (embedded.truncation_closed(final) and manifest["returncode"] is None if in_process
+                     else manifest["returncode"] in (-15, -9)) and final.get("socket_outcome") is None
                 and final.get("engine_verified_outcomes") is None and final.get("terminal_barrier") is None
                 and all(manifest.get(key) == dict.fromkeys(COLORS) for key in ("outcomes_by_player", "rewards_by_player")),
                 "Failed, unverified or scored cutoff cannot be replay-verified")
@@ -369,6 +382,24 @@ def diagnostic_inputs(episode, manifest):
     return {name: evidence.file_identity(evidence.inside(episode, name)) for name in sorted(names)}
 
 
+def _started(function, *args):
+    """Run ``function`` on a daemon thread; the returned call waits, then returns or raises its result."""
+    result = {}
+    def run():
+        try:
+            result["value"] = function(*args)
+        except BaseException as error:
+            result["error"] = error
+    thread = threading.Thread(target=run, name="history-verification", daemon=True)
+    thread.start()
+    def wait():
+        thread.join()  # interruptible: the caller's alarm handler still runs here
+        if "error" in result:
+            raise result["error"]
+        return result["value"]
+    return wait
+
+
 def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnostic_verifier_compatibility=False):
     episode, binary, data = (Path(p).expanduser().resolve() for p in (episode, binary, data))
     manifest = evidence.strict_json((episode / "manifest.json").read_bytes())
@@ -387,7 +418,7 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnosti
         "inputs": {"manifest": evidence.file_identity(episode / "manifest.json"),
             "verifier_sources": {str(path.relative_to(ROOT)): evidence.file_identity(path) for path in
                 (Path(__file__), ROOT / "experiments/headless/builtin_replay_history.py", ROOT / "experiments/headless/builtin_evidence.py",
-                 Path(paired.__file__), Path(evidence.__file__), Path(legacy.__file__), Path(contract.__file__))}},
+                 Path(embedded.__file__), Path(paired.__file__), Path(evidence.__file__), Path(legacy.__file__), Path(contract.__file__))}},
         "training_performed": False, "training_samples": 0, "optimization_eligible": False, "opponent_policy_reexecuted": False,
         "scope": "Recorded native opponent commands, independently regenerated engine effects, exact learner adapter/wire/history."}
     if diagnostic_verifier_compatibility:
@@ -413,9 +444,22 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnosti
         environment, game_map = legacy.replay_profile(directory, episode, data, manifest["launch"]["requested_settings"])
         require(evidence.file_identity(game_map)["sha256"] == manifest["identity"].get("map_sha256"), "Replay map differs from recorded map")
         from experiments.headless.builtin_replay_history import verify_history
-        report["history"] = verify_history(episode, manifest, final)
-        report["native"] = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
-            directory / "native-report.json", cutoff=cutoff, timeout=timeout)
+        # The independent Python history check runs while this thread waits on the native
+        # verifier, which reads only the files written above. A history error, which the serial
+        # order raised first, is still the error raised; no result is recorded before both pass.
+        history = _started(verify_history, episode, manifest, final)
+        try:
+            native = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
+                directory / "native-report.json", cutoff=cutoff, timeout=timeout)
+        except (TimeoutError, KeyboardInterrupt, SystemExit):
+            # The caller's wall limit or a stop ends verification now; the history thread cannot
+            # be interrupted, so it is abandoned (it only reads) and records nothing.
+            raise
+        except BaseException:
+            report["history"] = history()
+            raise
+        report["history"] = history()
+        report["native"] = native
         validate_native_report(report["native"], report["wire"], final, cutoff=cutoff)
         if diagnostic_verifier_compatibility:
             require(equal(preserved, diagnostic_inputs(episode, manifest)), "Original evidence changed during supplemental diagnosis")
