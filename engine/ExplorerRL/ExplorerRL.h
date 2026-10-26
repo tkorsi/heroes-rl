@@ -139,7 +139,7 @@ private:
 	/// Builds and writes one message under sendMutex unless the episode has
 	/// ended, and returns whether it did. See the definition for the ordering.
 	bool buildAndSend(const std::function<JsonNode()> & build);
-	void writeMessage(const JsonNode & message); ///< requires sendMutex
+	void writeMessage(JsonNode message); ///< requires sendMutex
 	JsonNode receiveMessage();
 	JsonNode message(const std::string & type) const;
 	/// A shared lock on the game state that refuses to nest on one thread:
@@ -181,6 +181,8 @@ private:
 	void captureContextual(); ///< stable game state; acquires stateMutex
 	void captureContextualLocked(); ///< stable game state and stateMutex held
 	JsonNode contextualObservation(); ///< stable game state and stateMutex held
+	/// True only when contextualObservation() would equal lastObservation and change nothing; false when unknown.
+	bool contextualObservationUnchanged(); ///< stable game state and stateMutex held
 	JsonNode takeContextualRecords(); ///< acquires stateMutex
 	void contextualEvent(JsonNode event); ///< stable game state; acquires stateMutex
 	void contextualTerminal(const char * outcome); ///< network thread, under sendMutex

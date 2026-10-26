@@ -25,6 +25,21 @@ std::string line(const JsonNode & value)
 	return result;
 }
 
+/// Writes line(value) and a newline to output, copying the text only once.
+void writeLine(std::ostream & output, const JsonNode & value)
+{
+	const auto text = value.toCompactString();
+	size_t start = 0;
+	for(size_t index = 0; index <= text.size(); ++index)
+	{
+		if(index < text.size() && text[index] != '\n' && text[index] != '\r')
+			continue;
+		output.write(text.data() + start, index - start);
+		start = index + 1;
+	}
+	output << '\n';
+}
+
 JsonNode position()
 {
 	const auto value = experimentReceiptPosition();
@@ -136,7 +151,7 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	metadata["protocol_version"].Integer() = expanded ? 10 : dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4;
 	metadata["history_schema"].String() = expanded ? "heroes-player-history-v8" : dialogs ? "heroes-player-history-v7" : management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2";
 	metadata["action_schema"].String() = expanded ? "heroes-context-actions-v8" : dialogs ? "heroes-context-actions-v7" : management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
-	output << line(metadata) << '\n';
+	writeLine(output, metadata);
 	output.flush();
 	if(!output)
 		throw std::runtime_error("Cannot write contextual replay header");
@@ -242,11 +257,11 @@ void ContextualEvidence::finishNativeSession()
 	recorder.reset();
 }
 
-void ContextualEvidence::append(JsonNode record)
+void ContextualEvidence::append(JsonNode & record)
 {
 	if(sealed) throw std::runtime_error("Contextual evidence is sealed at its terminal barrier");
 	record["seq"].Integer() = nextSequence++;
-	output << line(record) << '\n';
+	writeLine(output, record);
 	output.flush();
 	if(!output)
 		throw std::runtime_error("Cannot flush contextual replay ledger");
@@ -280,7 +295,7 @@ void ContextualEvidence::drainAutomatic()
 	}
 }
 
-void ContextualEvidence::expect(JsonNode record)
+void ContextualEvidence::expect(JsonNode & record)
 {
 	drainAutomatic();
 	if(cursor == records.size())
@@ -412,14 +427,30 @@ void ContextualEvidence::terminalBarrierComplete(const ExperimentTerminalBarrier
 	pendingClose = record;
 }
 
-void ContextualEvidence::message(int player, const JsonNode & value)
+void ContextualEvidence::message(int player, JsonNode & value)
 {
 	std::lock_guard lock(mutex);
 	JsonNode record;
 	record["kind"].String() = "message";
 	record["player"].Integer() = player;
-	record["message"] = value;
-	if(replay) expect(record); else append(record);
+	// The record borrows the message instead of a copy and always returns it.
+	record["message"] = std::move(value);
+	try
+	{
+		if(replay) expect(record); else append(record);
+	}
+	catch(...)
+	{
+		value = std::move(record["message"]);
+		throw;
+	}
+	value = std::move(record["message"]);
+}
+
+void ContextualEvidence::message(int player, const JsonNode & value)
+{
+	JsonNode copy(value);
+	message(player, copy);
 }
 
 void ContextualEvidence::response(int player, const JsonNode & value)

@@ -40,7 +40,8 @@ public:
 	void nativeRequest(const CPackForServer & pack, PlayerColor player) override;
 	void callbacksComplete(const CPackForClient & pack, ExperimentReceiptPosition position) override;
 	void terminalBarrierComplete(const ExperimentTerminalBarrier & pack) override;
-	void message(int player, const JsonNode & value);
+	void message(int player, JsonNode & value); ///< value is unchanged on return or throw
+	void message(int player, const JsonNode & value); ///< records a copy of value
 	void response(int player, const JsonNode & value);
 	JsonNode replayResponse(int player);
 	/// Only the coordinator consumes automatic client requests or supplies
@@ -74,8 +75,8 @@ private:
 	JsonNode loaded;
 	JsonNode checked;
 	void rejectSealedEvent(const std::string & actor, const std::string & operation) const;
-	void append(JsonNode record);
-	void expect(JsonNode record);
+	void append(JsonNode & record); ///< sets the record's seq
+	void expect(JsonNode & record); ///< sets the record's seq
 	void drainAutomatic();
 	void advance();
 	void fail(const std::string & message);

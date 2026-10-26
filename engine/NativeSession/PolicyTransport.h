@@ -42,6 +42,8 @@ class DLL_LINKAGE PolicyTransport
 public:
 	virtual ~PolicyTransport() = default;
 	virtual WriteMetrics send(const JsonNode & message) = 0;
+	/// send, taking the message: a transport may keep it instead of a copy.
+	virtual WriteMetrics sendOwned(JsonNode && message) { return send(message); }
 	virtual JsonNode receive(Deadline deadline) = 0;
 	virtual void close() noexcept = 0;
 	virtual bool cancelled() const noexcept { return false; }
@@ -84,6 +86,7 @@ public:
 	explicit InProcessPolicy(uint64_t generation, size_t maxQueuedMessages = 64);
 	~InProcessPolicy() override;
 	WriteMetrics send(const JsonNode & message) override;
+	WriteMetrics sendOwned(JsonNode && message) override;
 	JsonNode receive(Deadline deadline) override;
 	void close() noexcept override;
 	bool cancelled() const noexcept override;

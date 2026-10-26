@@ -14,10 +14,25 @@
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
+#include <atomic>
+#include <cstdlib>
+#include <iostream>
 #include <set>
 
 namespace
 {
+/// Positive evidence that the diagnostic ran: counts confirmed skips at powers of ten.
+void reportVerifiedCapture()
+{
+	static std::atomic<uint64_t> confirmed{0};
+	const uint64_t count = ++confirmed;
+	uint64_t power = 1;
+	while(power * 10 <= count)
+		power *= 10;
+	if(count == power)
+		std::cerr << "ExplorerRL capture verification: " << count << " unchanged-view captures confirmed" << std::endl;
+}
+
 JsonNode coordinates(const int3 & position)
 {
 	JsonNode node;
@@ -61,6 +76,58 @@ void fields(const JsonNode & value, const std::set<std::string> & allowed, const
 bool integer(const JsonNode & value)
 {
 	return value.getType() == JsonNode::JsonType::DATA_INTEGER;
+}
+
+using JsonType = JsonNode::JsonType;
+
+// Exact comparisons, as JsonNode::operator== decides them, of a stored node
+// (nullptr when its key is absent) with a value the observation would hold.
+bool sameInteger(const JsonNode * node, int64_t value)
+{
+	return node && node->getType() == JsonType::DATA_INTEGER && node->Integer() == value;
+}
+
+bool sameBool(const JsonNode * node, bool value)
+{
+	return node && node->getType() == JsonType::DATA_BOOL && node->Bool() == value;
+}
+
+bool sameString(const JsonNode * node, const std::string & value)
+{
+	return node && node->getType() == JsonType::DATA_STRING && node->String() == value;
+}
+
+bool sameCoordinates(const JsonNode * node, const int3 & position)
+{
+	if(!node || node->getType() != JsonType::DATA_VECTOR || node->Vector().size() != 3)
+		return false;
+	const auto & values = node->Vector();
+	return sameInteger(&values[0], position.x) && sameInteger(&values[1], position.y) && sameInteger(&values[2], position.z);
+}
+
+/// The members of a struct node with exactly count keys, else nullptr. With
+/// count keys, finding each of count expected names means no other key exists.
+const JsonMap * members(const JsonNode * node, size_t count)
+{
+	return node && node->getType() == JsonType::DATA_STRUCT && node->Struct().size() == count ? &node->Struct() : nullptr;
+}
+
+const JsonNode * member(const JsonMap & map, const char * key)
+{
+	const auto found = map.find(key);
+	return found == map.end() ? nullptr : &found->second;
+}
+
+/// The elements of a vector node, else nullptr.
+const JsonVector * elements(const JsonNode * node)
+{
+	return node && node->getType() == JsonType::DATA_VECTOR ? &node->Vector() : nullptr;
+}
+
+/// The next stored element as a struct with exactly count keys, else nullptr.
+const JsonMap * nextStruct(const JsonVector & stored, size_t & index, size_t count)
+{
+	return index < stored.size() ? members(&stored[index++], count) : nullptr;
 }
 
 JsonNode resultNode(const char * status, bool accepted)
@@ -281,6 +348,94 @@ JsonNode ExplorerRL::contextualObservation()
 	return observation;
 }
 
+bool ExplorerRL::contextualObservationUnchanged()
+{
+	// Only the map context, where contextualObservation() builds no window and
+	// invalidates no subject: its only other effect is handle allocation, which
+	// the same queries in the same order perform here identically.
+	if(contextState.context != "map")
+		return false;
+	const auto * last = members(&contextState.lastObservation, 7);
+	if(!last)
+		return false;
+	const auto * window = member(*last, "window");
+	const auto * heroes = elements(member(*last, "heroes"));
+	const auto * towns = elements(member(*last, "towns"));
+	const auto * resources = elements(member(*last, "resources"));
+	const auto * tiles = elements(member(*last, "tiles"));
+	const auto * objects = elements(member(*last, "objects"));
+	if(!window || window->getType() != JsonType::DATA_NULL || !heroes || !towns || !resources || !tiles || !objects)
+		return false;
+	const auto size = callback->getMapSize();
+	if(size.z != 1 || size.x <= 0 || size.y <= 0 || !sameCoordinates(member(*last, "size"), size))
+		return false;
+	size_t index = 0;
+	for(const auto * hero : callback->getHeroesInfo())
+	{
+		if(hero->getOwner() != playerID)
+			continue;
+		const auto * item = nextStruct(*heroes, index, armyManagement ? 5 : 4);
+		if(!item || !sameString(member(*item, "handle"), contextState.handle(hero->id.getNum()))
+			|| !sameCoordinates(member(*item, "position"), hero->visitablePos())
+			|| !sameInteger(member(*item, "movement"), hero->movementPointsRemaining())
+			|| !sameInteger(member(*item, "movement_max"), hero->movementPointsLimit())
+			|| (armyManagement && !sameBool(member(*item, "in_garrison"), hero->isGarrisoned())))
+			return false;
+	}
+	if(index != heroes->size())
+		return false;
+	index = 0;
+	for(const auto * town : callback->getTownsInfo())
+	{
+		if(town->getOwner() != playerID)
+			continue;
+		const auto * item = nextStruct(*towns, index, 2);
+		if(!item || !sameString(member(*item, "handle"), contextState.handle(town->id.getNum()))
+			|| !sameCoordinates(member(*item, "position"), town->visitablePos()))
+			return false;
+	}
+	if(index != towns->size() || resources->size() != 7)
+		return false;
+	for(int resource = 0; resource < 7; ++resource)
+		if(!sameInteger(&(*resources)[resource], callback->getResourceAmount(GameResID(resource))))
+			return false;
+	size_t tileIndex = 0;
+	size_t objectIndex = 0;
+	std::set<int> seen;
+	for(int y = 0; y < size.y; ++y)
+		for(int x = 0; x < size.x; ++x)
+		{
+			const int3 position(x, y, 0);
+			if(!callback->isVisible(position))
+				continue;
+			const auto * tile = callback->getTile(position, false);
+			if(!tile)
+				return false;
+			const auto facts = explorer_rl::visibleTileFacts(*callback, *tile);
+			const auto * item = nextStruct(*tiles, tileIndex, 5);
+			if(!item || !sameCoordinates(member(*item, "position"), position)
+				|| !sameInteger(member(*item, "terrain"), facts.terrain)
+				|| !sameInteger(member(*item, "road"), tile->getRoadID().getNum())
+				|| !sameBool(member(*item, "blocked"), facts.blocked)
+				|| !sameBool(member(*item, "visitable"), facts.visitable))
+				return false;
+			for(const auto id : tile->visitableObjects)
+			{
+				const auto * object = explorer_rl::playerVisibleObject(*callback, id);
+				if(!object || !seen.insert(id.getNum()).second)
+					continue;
+				const auto * entry = nextStruct(*objects, objectIndex, 5);
+				if(!entry || !sameString(member(*entry, "handle"), contextState.handle(id.getNum()))
+					|| !sameCoordinates(member(*entry, "position"), position)
+					|| !sameInteger(member(*entry, "kind"), object->ID.getNum())
+					|| !sameInteger(member(*entry, "subtype"), object->subID.getNum())
+					|| !sameString(member(*entry, "owner"), relativeOwner(object->getOwner(), playerID)))
+					return false;
+			}
+		}
+	return tileIndex == tiles->size() && objectIndex == objects->size();
+}
+
 void ExplorerRL::captureContextual()
 {
 	std::lock_guard lock(stateMutex);
@@ -292,9 +447,23 @@ void ExplorerRL::captureContextualLocked()
 	const int day = callback->getDate(Date::DAY);
 	if(day < 1)
 		return;
+	// Most captures see an unchanged view: decide that without building it.
+	// HEROES_VERIFY_NATIVE_CAPTURE also builds it and fails on any disagreement.
+	// Launchers strip EXPLORER_RL_* from the engine environment, so this
+	// diagnostic uses a name they pass through; it can only fail a game.
+	static const bool verify = std::getenv("HEROES_VERIFY_NATIVE_CAPTURE") != nullptr;
+	const bool unchanged = day == contextState.lastDay && contextualObservationUnchanged();
+	if(unchanged && !verify)
+		return;
 	auto observation = contextualObservation();
 	if(observation == contextState.lastObservation && day == contextState.lastDay)
+	{
+		if(unchanged)
+			reportVerifiedCapture();
 		return;
+	}
+	if(unchanged)
+		throw std::runtime_error("Unchanged-view capture check disagrees with the built observation");
 	if(!contextState.executing)
 		contextState.supersede(day, "visible_state_changed");
 	if(!contextState.lastObservation.isNull())

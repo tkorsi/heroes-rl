@@ -16,7 +16,7 @@ from pathlib import Path
 import torch
 
 from . import contextual as c
-from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, distribution_schema_for, model_schema_for, weights_sha256
+from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, WeightsSnapshot, distribution_schema_for, model_schema_for, weights_sha256
 
 ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
 TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
@@ -398,7 +398,8 @@ class ContextualSession:
     def __init__(self, model, episode, player, checkpoint, opponent_checkpoint, *, schema=c.TOWN_SCHEMA, seed=0):
         _text(checkpoint, "checkpoint"); _text(opponent_checkpoint, "opponent checkpoint")
         self.model, self.checkpoint, self.opponent_checkpoint = model, checkpoint, opponent_checkpoint
-        self.weights_sha256 = weights_sha256(model)
+        self._weights = WeightsSnapshot(model)
+        self.weights_sha256 = self._weights.digest
         self.encoder = ContextualEncoder(episode, player, schema)
         self.history = c.PlayerHistory(episode, player, schema=schema)
         self._state = model.initial_state().detach().clone()
@@ -416,26 +417,29 @@ class ContextualSession:
 
     def _check_weights(self):
         if self._broken: raise ValueError("Session failed; partial collection cannot be resumed")
-        if weights_sha256(self.model) != self.weights_sha256:
+        if not self._weights.unchanged(self.model):
             self._broken = True
             raise ValueError("Behavior weights changed during collection")
 
     def consume(self, frames):
+        """Append the new frames; return the frame the last delivered record denotes."""
         if self.finished: raise ValueError("Session is finished")
         self._check_weights()
         try:
-            self._consume(frames)
+            last = self._consume(frames)
         except Exception:
             self._broken = True
             raise
         self._check_weights()
+        return last
 
     def _consume(self, frames):
-        known = list(self.history.frames)
+        known, last = list(self.history.frames), None
         for raw in frames:
             if type(raw) is not c.Frame and _repeats(raw, known, self._verbatim):
+                last = known[raw["seq"]]  # byte-identical redelivery of that accepted frame
                 continue
-            frame = raw if type(raw) is c.Frame else c.decode_frame(raw)
+            frame = last = raw if type(raw) is c.Frame else c.decode_frame(raw)
             if frame.seq < len(known):
                 if known[frame.seq] != frame: raise ValueError("Previously delivered history prefix changed")
                 continue
@@ -458,6 +462,7 @@ class ContextualSession:
                     self.weights_sha256, frame.seq, self._digest.hexdigest())
                 self._policies = {frame.seq: output.decision.distribution}
             elif output.decision is not None: raise ValueError("Only decisions may produce policy/value output")
+        return last
 
     def choose(self, decision_seq):
         self._check_weights()
@@ -466,8 +471,7 @@ class ContextualSession:
         if decision_seq in self._choices: return self._choices[decision_seq]
         distribution = self._policies[decision_seq]
         with torch.no_grad():
-            action = distribution.sample(generator=self.generator)
-            evaluated = distribution.evaluate(action)
+            action, evaluated = distribution.sample_evaluated(generator=self.generator)
         record = BehaviorDecision(decision_seq, action, distribution.support, float(evaluated.log_prob.detach().item()),
             self._values[decision_seq], tuple(ConditionalRecord(item.name, item.selected_index, item.support_size,
                 float(item.log_prob.detach().item())) for item in evaluated.conditionals),
