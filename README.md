@@ -20,7 +20,8 @@ Local training advanced update 146 to 254; cloud then reached **update 412**,
 adding **632 cloud training games and 158 PPO updates** (563 natural wins,
 69 losses, no horizon cutoffs). The final fixed Linux check improved from
 **2/8 to 8/8 wins** on the same eight starts. This is narrow easier8x8 evidence:
-original-map generalization and a recruit-then-attack strategy remain untested.
+the later transfer study below tests varied starts and the original board.
+A recruit-then-attack strategy has not been demonstrated.
 The expired window authorizes no further training. See the
 [overnight results and limitations](docs/research/overnight-results-2026-10-26.md).
 Operational curriculum/overnight source remains on its recorded immutable
@@ -31,10 +32,36 @@ The subsequent [checkpoint 412 acceleration diagnostic](docs/research/checkpoint
 passed 72 same-host Mac games with identical paired histories and no learning.
 Embedded collection was 3.64 times faster; complete probe rows with replay and
 policy checks were 2.09 times faster (1.69 times including wrapper startup).
-Linux acceptance, long-run memory stability and full PPO throughput remain
-unproven. The next authorized task is bounded frozen transfer evaluation of
-checkpoints 146/254/412 on varied positions and the original scenario; it grants
-no new PPO window. PR 29/30 code is not merged by this report update.
+The subsequent [frozen transfer study](docs/research/transfer-eval-2026-10-26.md)
+passed a narrow eight-game Linux gate and completed **168 valid transfer games**:
+40 natural wins and 128 losses, with no horizon cutoffs. Checkpoint 412 won
+**24/24 varied easy starts**, compared with 14/24 for update 254 and 2/24 for
+update 146; all three won **0/32 original-scenario games**.
+Four authored easy layouts placed a hero anchor at x=0, producing an off-board
+native visitable position at x=-1. The same fixture failed in embedded and cold
+runtimes: two startup failures remain unscored and 22 affected entries remain
+unstarted. This does not establish an acceleration-specific regression. The
+frozen schedule and map bytes were retained; no failed attempt was replayed.
+
+All valid transfer games passed replay and strict policy reconstruction. The
+first 36 used embedded execution and the remaining 132 used accepted original
+cold execution; the first 36 additionally reconstructed under original cold
+source. The study admitted no training data or optimizer updates, restored all
+three full checkpoint states, and verified owned-process shutdown. These
+results support spatial transfer on the tested easy subset, while original-map
+strategy remains unsuccessful. Long-run memory stability and full PPO throughput
+remain unproven. PR 29/30 executable code is not merged by this report update.
+
+The user now requests a **local script launched manually**, with an explicit
+configuration and run budget, instead of a persistent cloud LLM session. The
+script preparation and report synchronization have not started a new gameplay
+or PPO campaign. Closed cloud sessions and their deadlines remain closed.
+The completed [cloud-to-local handoff](docs/operations/teacher-cloud-to-local-handoff-20261026.md)
+at `7287573700a30aa67634f05e2acb786567c0e8fd` binds full checkpoint 412,
+its update-411 dependency, both maps and the original continuation seed ledger.
+Published closure receipts record no live owned workers/watchdogs, held locks
+or queued restart. A new manual run allocates a separate recorded seed namespace;
+it does not reopen the closed cloud session.
 
 The [consolidation check](validation/project-consolidation-2026-10-25.json)
 ran 1182 tests: 1156 passed and 26 required another platform or optional fixture.
@@ -50,10 +77,10 @@ also passed. Native gameplay acceptance is recorded separately below.
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
 | Actions | Native coordinate routing, construction/recruitment, Tavern, armies, dialogs, marketplace, artifacts, adventure spells and level-up choices | Supported object families only; no tactical battle policy or path-cost oracle |
-| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Fixed easier-start wins improved; original-map generalization is untested |
+| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Varied easy starts improved to 24/24; update 412 lost all 32 tested original-board games |
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
-| Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
+| Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Used in bounded diagnostics; not accepted as a general training runtime |
 
 The fixed opponent is **Nullkiller on Easy**, with BattleAI resolving battles.
 Earlier campaigns used the authored **hero-management-v1** scenario. The
@@ -63,6 +90,9 @@ map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Completed frozen transfer comparison](docs/research/transfer-eval-2026-10-26.md),
+  [source-bound results](validation/transfer-eval-2026-10-26.json) and
+  [final cloud transfer status](reports/cloud/teacher-transfer-status.json).
 - [Completed overnight curriculum results](docs/research/overnight-results-2026-10-26.md),
   [cloud analysis](validation/overnight-cloud-final-2026-10-26.json) and
   [local curriculum analysis](validation/curriculum-v3-final-2026-10-26.json).
@@ -150,6 +180,17 @@ retained separately. All six games passed native replay. These authored probes
 are excluded from training and are neither learned-policy wins nor proof of a
 globally shortest sequence. The Teacher's policy and campaign settings were not
 changed by this diagnostic.
+
+## Manual local execution
+
+Training is now launched by the user with a local script, without continuous
+cloud LLM supervision. Run `./train-local.sh check` for offline validation and
+`./train-local.sh --hours 2` to explicitly start a bounded session. The prepared
+state is checkpoint412; later invocations use the last verified local state.
+See the [launch and result instructions](docs/operations/local-script-training.md).
+This first preset preserves easier8x8 stage3; a harder owned-town/enemy-hero
+scenario is a separate configuration change, not an implicit part of the move
+to local execution. No new campaign was started during script preparation.
 
 ## Experiment agreement
 

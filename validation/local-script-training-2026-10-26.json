@@ -1,0 +1,84 @@
+{
+  "schema": "heroes-local-script-preparation-v1",
+  "date": "2026-10-26",
+  "status": "offline_checks_passed_native_launch_gate_required",
+  "mode": "User-invoked local script; no LLM supervision",
+  "checkpoint": {
+    "update": 412,
+    "rollouts": 1648,
+    "decisions": 95836,
+    "adam_steps": 3545,
+    "exact_full_state_restore": true
+  },
+  "runtime": "Accepted canonical Mac cold runtime; same engine recipe as the completed local curriculum",
+  "runtime_source_commit": "fe62a8096ef5dc445ebc5769794c94447b447421",
+  "cloud_handoff_public_commit": "7287573700a30aa67634f05e2acb786567c0e8fd",
+  "private_checkpoint_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+  "private_handoff_commit": "eb37149e06e751b6215fd4aad370badca94275cd",
+  "training_campaign_launched": false,
+  "native_games_launched": 0,
+  "new_admitted_ppo_updates": 0,
+  "scientific_configuration": {
+    "preset": "accepted easier8x8 stage3",
+    "terminal_only_reward": [
+      1,
+      -1,
+      0
+    ],
+    "demonstrations": false,
+    "shaping": false,
+    "max_days": 365,
+    "max_choices": 5120,
+    "opponent": "Nullkiller Easy",
+    "combat": "BattleAI",
+    "batch_games": 4,
+    "architecture_ppo_unchanged": true
+  },
+  "new_experiment_seed_namespace": {
+    "engine_base": 20000000,
+    "policy_base": 30000000,
+    "first_sequence": 266,
+    "heldout_engine": [
+      710001,
+      710002,
+      710003,
+      710004
+    ],
+    "heldout_policy": [
+      720001,
+      720002,
+      720003,
+      720004
+    ]
+  },
+  "tests": {
+    "note": "Offline unit and synthetic controller integration; native current-source acceptance runs only on explicit user invocation.",
+    "passed": 77,
+    "failed": 0,
+    "modules": [
+      "test_local_script_controller",
+      "test_local_script_integration",
+      "test_local_script_training",
+      "test_prepare_local_training",
+      "test_builtin_training",
+      "test_builtin_preservation",
+      "test_builtin_training_resume",
+      "test_process_deadline"
+    ],
+    "output_sha256": "6ecfda6d945a9b6639a27866ec21b25a9246ced67c53e58f405b430f040136ad"
+  },
+  "limitations": [
+    "This initial preset continues the validated easy distribution; a harder owned-town/active-enemy-hero scenario needs its own validated preset.",
+    "No new native game or trained-checkpoint PPO update was run during preparation.",
+    "Same-host replay/reconstruction gates precede PPO at manual launch.",
+    "Checkpoint copies are locally durable and restore-tested; private Git publication occurs separately during analysis."
+  ],
+  "authored_code_sha256": {
+    "experiments/learner/local_script_training.py": "d2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518",
+    "experiments/learner/builtin_first_run.py": "a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208",
+    "tools/prepare_local_training.py": "5286064e410e41fa892a25c0d6b986efba85d6cffcfab937ad47ebfefe3da7c3",
+    "train-local.sh": "44e789d9eb1c45f949469335c75c91302674a0c4c424193eb35ace3d2a9a0a5a",
+    "tools/run_local_training.py": "b34736aabf2ea4570a8549419eaa1cc9bb7292073d6d7a1c52f1a310f89eaa6b"
+  },
+  "timestamp_utc": "2026-10-26T15:51:00.167356+00:00"
+}

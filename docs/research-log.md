@@ -270,3 +270,87 @@ At 13:25 UTC (minute precision), Claude visibly acknowledged the additional
 twofold complete-cycle target in the existing Linux task and began reading
 the assignment and profiling prerequisites. The [dispatch receipt](../validation/claude-acceleration-phase2-dispatch-2026-10-26.json)
 records delivery and acknowledgment. No additional speedup has yet been measured.
+
+## Completed frozen transfer and local script decision
+
+The [finished transfer report](research/transfer-eval-2026-10-26.md) and its
+prospective manifest, append-only journal and final status were reviewed and
+imported byte-for-byte from Teacher commit
+`82e022e6145814ef2b96c9b21ec463f94e26ffc7`. No cloud executable controller or
+worker was imported by this report synchronization. The 192-entry transfer
+schedule yielded 168 verified games (40 wins, 128 losses, no cutoffs), two
+unscored startup failures and 22 unstarted invalid-fixture entries; the eight
+Linux gate games are separate. Independent accounting matched the 178 unique
+launch intents, cell totals and preserved schedule.
+
+The failure diagnosis corrects the preliminary embedded-backend suspicion:
+an authored hero anchor at x=0 gives native visitable x=-1, and both embedded
+and accepted cold runtimes failed on that invalid fixture. Four affected
+layouts were excluded by the same structural rule for all models and seats;
+map bytes, seeds, failed attempts and original hypotheses were retained.
+Checkpoint 412 won 24/24 valid varied easy starts, versus 14/24 for 254 and 2/24
+for 146. All three lost all 32 original-scenario games. This supports transfer
+between the tested easy positions, not success on the original board or a
+demonstrated recruit-then-attack strategy.
+
+The final report binds raw captures to private commit
+`d00675305595e62078f8c9bab85b22d67b990504` and independent audit/stop evidence to
+`24ae5b2ecb9ef035484887eb1ac9df47682ce347`. It records unchanged checkpoint
+bytes, exact full-state restoration, zero PPO/Adam/sample admission and no live
+owned workers. Root reviewed these published receipts; no gameplay or fresh
+cloud runtime audit was performed for this import.
+
+The user requested a manually launched local training script as the next
+operating mode, without a persistent cloud LLM session. This records a tooling
+decision and preparation work, not a new campaign launch or a reset of any
+closed cloud deadline. The manual script must bind its own explicit input
+configuration, checkpoint, budget and output evidence before a future run.
+
+### Completed Teacher handoff review
+
+The subsequent [cloud-to-local handoff](operations/teacher-cloud-to-local-handoff-20261026.md)
+and [machine receipt](../validation/teacher-cloud-to-local-handoff-20261026.json)
+were reviewed and imported exactly from
+`7287573700a30aa67634f05e2acb786567c0e8fd`. The status and append-only Teacher
+journal were refreshed from that same commit; the finished study report and
+prospective manifest remain unchanged from `82e022e`. Private handoff
+`eb37149e06e751b6215fd4aad370badca94275cd` binds checkpoint 412 and its
+update-411 initial dependency, original checkpoint metadata, both easier maps,
+and the original map. No raw private assets or cloud executable files were
+imported in this report synchronization.
+
+The published receipt records no live owned controllers, workers, native
+processes or watchdogs, unheld ownership locks, and no queued automatic restart
+or recurring cloud model supervision. Root reviewed these receipts without
+starting new games or a cloud process audit. Exact restoration is distinct from
+cross-platform numerical reconstruction: the previously recorded strict
+Linux-to-Mac reconstruction mismatch remains, with no relaxed tolerance.
+
+The original continuation ledger identifies sequence 266, Red, engine
+911065--911068 and policy 921065--921068. The proposed manual local experiment
+uses separately recorded 20,000,000/30,000,000 seed bases with an allocation
+ledger; this is an explicit new experiment namespace, not a claim that the
+original cloud schedule was continued unchanged. The handoff itself performs
+zero games, PPO updates or Adam steps and authorizes no new campaign.
+
+### Manual local runner: prospective design and offline validation
+
+The new [manual runner](operations/local-script-training.md) restores full
+checkpoint 412 and reuses the existing collector, replay verification and PPO.
+The first preset retains the accepted easier8x8 stage3 maps; the proposed harder
+owned-town/active-enemy-hero bridge is not silently substituted. Training seeds
+use the new namespace recorded above. Each manual invocation freezes source and
+records an explicit wall/monotonic budget before current-runtime baselines.
+Both four-game baseline seats must pass before training. Only complete verified
+four-game training batches advance a durable independently restored checkpoint.
+Evaluation, partial and failed attempts never enter PPO.
+
+[Offline validation](../validation/local-script-training-2026-10-26.json) passed
+77 tests, including synthetic controller admission/preservation failures,
+interruption and aggregate deadline cleanup. Exact model/Adam/RNG/progress/pool
+restoration of 412 passed on the prepared Mac. The cold runtime's canonical
+engine recipe and accepted historical identities match; first-launch native
+acceptance remains required. No native game or real campaign update was run
+during preparation. The script invokes no language-model service and stops on
+technical failure. Raw runs and two verified checkpoint copies stay local
+outside managed worktrees; remote archival is a separate analysis step.
