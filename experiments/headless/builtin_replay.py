@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -425,9 +426,19 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnosti
         environment, game_map = legacy.replay_profile(directory, episode, data, manifest["launch"]["requested_settings"])
         require(evidence.file_identity(game_map)["sha256"] == manifest["identity"].get("map_sha256"), "Replay map differs from recorded map")
         from experiments.headless.builtin_replay_history import verify_history
-        report["history"] = verify_history(episode, manifest, final)
-        report["native"] = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
-            directory / "native-report.json", cutoff=cutoff, timeout=timeout)
+        # The independent Python history check runs while this thread waits on the native
+        # verifier, which reads only the files written above. A history error, which the serial
+        # order raised first, is still the error raised; no result is recorded before both pass.
+        with ThreadPoolExecutor(1) as pool:
+            history = pool.submit(verify_history, episode, manifest, final)
+            try:
+                native = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
+                    directory / "native-report.json", cutoff=cutoff, timeout=timeout)
+            except BaseException:
+                report["history"] = history.result()
+                raise
+            report["history"] = history.result()
+        report["native"] = native
         validate_native_report(report["native"], report["wire"], final, cutoff=cutoff)
         if diagnostic_verifier_compatibility:
             require(equal(preserved, diagnostic_inputs(episode, manifest)), "Original evidence changed during supplemental diagnosis")
