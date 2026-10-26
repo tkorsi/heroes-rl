@@ -10,8 +10,9 @@ batches, preservation), with a frozen copy of ``bench_site/sitecustomize.py`` on
 That shim changes only the three machine bindings it documents; every source file of the frozen
 release stays byte-identical. Each campaign has its own run root, hence its own sequence ledger,
 in the benchmark seed namespace (never 40M/50M or 20M/30M); campaigns with the same first
-sequence play the same seeds. ``--stop-after-updates`` requests the runner's own manual stop once
-that many new checkpoints are verified, which skips the final evaluation pair. The driver samples
+sequence play the same seeds. ``--stop-after-updates K`` requests the runner's own manual stop
+while the K-th training batch runs, so exactly K checkpoints are admitted and the final evaluation
+pair is skipped. The driver samples
 every descendant through /proc and writes ``bench-run.json`` into the campaign folder.
 
 Nothing here touches the official lineage, a Mac path, or the private training-state repository.
@@ -105,22 +106,28 @@ class Sampler(threading.Thread):
 
 
 class Stopper(threading.Thread):
-    """Request the runner's own manual stop after K newly verified checkpoints."""
+    """Request the runner's own manual stop while its K-th training batch runs.
 
-    def __init__(self, run_root, first_updates, count):
-        super().__init__(daemon=True); self.run_root, self.target = run_root, first_updates + count
+    The runner checks the request only before a batch, so that batch completes and is admitted, and
+    the next batch (training or final evaluation) is not begun. A request after the K-th checkpoint
+    would race with the runner starting batch K+1.
+    """
+
+    def __init__(self, run_root, count):
+        super().__init__(daemon=True); self.run_root, self.count = run_root, count
         self.stop = threading.Event(); self.requested = None
 
     def run(self):
-        while not self.stop.wait(2.0):
+        while not self.stop.wait(1.0):
             try:
-                latest = json.loads((self.run_root / 'latest-checkpoint.json').read_text())
                 run_dir = Path(json.loads((self.run_root / 'latest-run.json').read_text())['run_dir'])
+                with (run_dir / 'research-log.jsonl').open() as log:
+                    started = sum(1 for line in log if '"batch_intent"' in line and '"mode": "training"' in line)
             except (OSError, ValueError, KeyError):
                 continue
-            if latest['progress']['updates'] >= self.target:
+            if started >= self.count:
                 (run_dir / 'stop-requested').touch(exist_ok=True)
-                self.requested = dict(utc=utc(), updates=latest['progress']['updates'])
+                self.requested = dict(utc=utc(), training_batches_started=started)
                 return
 
 
@@ -221,7 +228,7 @@ def main():
     sampler = Sampler(process.pid, campaign / 'resources.jsonl'); sampler.start()
     stopper = None
     if a.stop_after_updates:
-        stopper = Stopper(run_root, config['checkpoint_restore']['progress']['updates'], a.stop_after_updates); stopper.start()
+        stopper = Stopper(run_root, a.stop_after_updates); stopper.start()
     returncode = process.wait()
     sampler.stop.set(); sampler.join()
     if stopper: stopper.stop.set(); stopper.join()

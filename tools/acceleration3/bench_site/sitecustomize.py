@@ -16,6 +16,10 @@ Mac-only preparation pins, identically for the baseline and the candidate:
 3. Seed namespace. The original profile uses the benchmark namespace from the specification, never
    the official 40M/50M (original) or 20M/30M (easy) bases.
 
+With ``"mode": "namespace"`` in the specification (``tools/acceleration3/mac_acceptance.py`` on
+the accepted Mac machine) only patch 3 applies: the Mac runs its pinned runtime, Torch and
+machine check unchanged, and only the seed namespace differs from an official original run.
+
 So that the patches also reach the adapter's ``python -m`` entry, such an entry imports the
 module under its own name (patched) and calls its ``main()``, which is all its ``__main__`` block
 does.
@@ -94,6 +98,9 @@ def _patch_prepare(module):
 PATCHES = {'experiments.learner.checkpoints': _patch_checkpoints,
            'experiments.learner.local_script_training': _patch_namespace,
            'prepare_local_training': _patch_prepare}
+if SPEC and _spec().get('mode') == 'namespace':
+    PATCHES = {'experiments.learner.local_script_training': _patch_namespace,
+               'prepare_local_training': _patch_namespace}
 
 
 class _Loader(importlib.abc.Loader):

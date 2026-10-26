@@ -1,0 +1,357 @@
+#!/usr/bin/env python3
+"""Bounded Mac acceptance benchmark of the opt-in fast path. Run by the user, never by an agent.
+
+    "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --dry-run
+    "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py [--order AFFA]
+        [--updates 1] [--hours 2] [--parent-run RUN] [--bench-root DIR]
+
+Campaign letters (each plays the eight fixed baseline games, then ``--updates`` training batches,
+from disposable copies of the final 629 checkpoint, exactly through ``run_local_training.py start``):
+
+    A  the default command (main's accepted implementation, released from ACCEPTED_IMPLEMENTATION)
+    F  ``--fast-path`` with the macOS defaults (serial verification, no prefix helpers)
+    O  ``--fast-path --overlap-verification`` (forked verification; fork safety on macOS is what
+       this campaign tests)
+    H  ``--fast-path --overlap-verification --prefix-helpers 2``
+    X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
+
+Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds;
+exact campaigns (A, F, O, H) must produce identical games and bitwise-identical checkpoints, and
+``summary.json`` says whether they did. The default order AF is the acceptance check; AFFA (or
+AOOA) is a counterbalanced timing comparison.
+
+Safety and scope:
+- Refuses unless this checkout is clean and contains both the accepted implementation and the fast
+  path, no ``run_local_training.py`` process is running, and the official owner lock is free. It
+  then holds that lock (read-only descriptor, exclusive) until it exits, so the manual 5,000-game
+  run cannot start alongside it (it would refuse immediately with "Another local training script
+  owns this artifact root") and this tool cannot start alongside that run.
+- Writes only into a fresh benchmark root outside the official artifact root. Official files are
+  read, never written: the parent run (selected by the runner's own final-parent rule), the pinned
+  preparation inputs, the validation prerequisites, the machine description and the runtime. The
+  runner's frozen releases are git worktrees of this checkout under the benchmark root.
+- Seeds: benchmark namespace 60M/70M with one ledger per campaign, never 40M/50M (original) or
+  20M/30M (easier8x8). The only change to the unmodified code, applied in memory through
+  ``bench_site/sitecustomize.py`` in its namespace mode, is that namespace. Nothing it produces is
+  a continuation of the official lineage.
+- Bounded: each runner has its own ``--hours`` hard stop; this tool additionally sends SIGTERM (the
+  runner's manual stop) ten minutes after it and kills the campaign's process tree two minutes
+  later. Ctrl-C works as with ``train-local.sh`` (stop after the current batch) and starts no
+  further campaign; the summary is still written. After ``--updates`` checkpoints it requests the runner's own stop while the last batch
+  runs, so the final evaluation pair is skipped.
+"""
+import argparse
+from datetime import datetime, timezone
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import signal
+import subprocess
+import sys
+import threading
+import time
+
+import campaign_summary
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+OFFICIAL = Path.home() / 'Projects/Heroes-artifacts'
+OFFICIAL_LOCK = OFFICIAL / 'local-script-training' / 'owner.lock'
+OFFICIAL_CONFIG = OFFICIAL / 'local-script-training' / 'machine-original.json'
+PARENT_RUN = OFFICIAL / 'local-script-training' / 'run-20261026T160706Z-0be8eb77'
+NAMESPACE = {'engine_base': 60_000_000, 'policy_base': 70_000_000}
+EXPECTED_PARENT = {'policy': '8be3d31b51edc11bd6affe45d4276cde56b97688f00fb9fa113c13f490577520',
+                   'resume': '1b86fcedc1ad9eda8a9a56d03783ff70761205fa88045896dbe8f6d74029d487'}
+PARENT_FILES = {'plan': 'plan.json', 'report': 'report.json', 'policy': 'after-policy.pt', 'resume': 'after-resume.pt',
+                'initial_checkpoint': 'initial-checkpoint-update628.pt'}
+CAMPAIGNS = {'A': [], 'F': ['--fast-path', '--serial-verification'],
+             'O': ['--fast-path', '--overlap-verification'],
+             'H': ['--fast-path', '--overlap-verification', '--prefix-helpers', '2'],
+             'X': ['--fast-path', '--serial-verification', '--experiment', 'shared_graph_encodings']}
+EXACT = set('AFOH')
+
+
+def utc(value=None):
+    return datetime.fromtimestamp(time.time() if value is None else value, timezone.utc).isoformat()
+
+
+def binding(path):
+    path = Path(path).resolve()
+    with path.open('rb') as stream:
+        digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+    return {'path': str(path), 'sha256': digest, 'bytes': path.stat().st_size}
+
+
+def write_new(path, value):
+    with Path(path).open('x') as stream:
+        json.dump(value, stream, indent=2, sort_keys=True)
+        stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
+
+
+def git(*args):
+    return subprocess.check_output(['git', '-C', str(ROOT), *args], text=True).strip()
+
+
+def refuse(message):
+    raise SystemExit('Refused: ' + message)
+
+
+def preflight():
+    if git('status', '--porcelain'):
+        refuse('commit or remove local changes first; the runner releases only committed code')
+    head = git('rev-parse', 'HEAD')
+    sys.path.insert(0, str(ROOT / 'tools'))
+    import run_local_training as runner
+    if subprocess.run(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', runner.ACCEPTED_IMPLEMENTATION, head]).returncode:
+        refuse('the accepted implementation is not in this checkout')
+    rows = subprocess.check_output(['ps', '-A', '-o', 'pid=,command='], text=True).splitlines()
+    others = [r.strip() for r in rows if 'run_local_training.py' in r and int(r.split()[0]) != os.getpid()]
+    if others:
+        refuse('a local training script is running: ' + '; '.join(others))
+    return runner, head
+
+
+def hold_official_lock():
+    """Exclusive lock on the official owner lock for this process's lifetime (never created or written)."""
+    if not OFFICIAL_LOCK.exists():
+        return None, 'absent'
+    descriptor = os.open(OFFICIAL_LOCK, os.O_RDONLY)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        refuse('the official local training lock is held; is the manual run active?')
+    return descriptor, 'held'
+
+
+def copy_pinned(source, destination):
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, destination)
+    a, b = binding(source), binding(destination)
+    if (a['sha256'], a['bytes']) != (b['sha256'], b['bytes']):
+        refuse(f'copy of {source} differs')
+    return b
+
+
+def prepare_inputs(runner, bench, parent_run):
+    """Disposable copies of every official input a benchmark campaign reads."""
+    sys.path.insert(0, str(ROOT / 'tools'))
+    import prepare_local_training as prep
+    inputs = bench / 'art' / 'inputs'
+    official_parent = runner.final_parent(parent_run)  # the runner's own rule; reads only
+    for name, sha in EXPECTED_PARENT.items():
+        if official_parent[name]['sha256'] != sha:
+            refuse(f'parent run {parent_run} is not the published final 629 checkpoint ({name})')
+    # The official policy and its initial dependency are both named after-policy.pt; copies are named by role.
+    if set(official_parent) != set(PARENT_FILES):
+        refuse('unexpected parent descriptor fields: ' + ', '.join(sorted(official_parent)))
+    parent = {name: copy_pinned(item['path'], inputs / 'parent629' / PARENT_FILES[name])
+              for name, item in official_parent.items()}
+    write_new(inputs / 'parent629.json', dict(parent=parent, official_source=official_parent,
+              parent_run=str(parent_run), note='Disposable benchmark copy; never official lineage.'))
+    for name, (relative, sha) in prep.INPUT_PINS.items():
+        if copy_pinned(prep.DEFAULT_INPUT / relative, inputs / 'input412' / relative)['sha256'] != sha:
+            refuse('preparation input differs from its pin: ' + name)
+    for name, sha in prep.PREREQUISITE_PINS.items():
+        if copy_pinned(OFFICIAL / 'inputs/validation' / name, inputs / 'validation' / name)['sha256'] != sha:
+            refuse('validation prerequisite differs from its pin: ' + name)
+    return inputs, official_parent
+
+
+def frozen_site(bench):
+    source = HERE / 'bench_site' / 'sitecustomize.py'
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    folder = bench / 'site' / digest[:16]
+    folder.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, folder / 'sitecustomize.py')
+    return folder, digest
+
+
+def machine_config(python, inputs, data, art, run_root, env):
+    """The unchanged preparation code (imported, so the namespace mode applies), benchmark paths."""
+    code = ('import json, sys; from pathlib import Path; sys.path.insert(0, "tools")\n'
+            'import prepare_local_training as p\n'
+            f'v = p.build_configuration(Path({str(inputs / "input412")!r}), p.DEFAULT_RUNTIME, Path({str(data)!r}),'
+            f' Path({str(art)!r}), Path({str(run_root)!r}), "original")\n'
+            'print(json.dumps(v))')
+    out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+    value = json.loads(out.stdout.strip().splitlines()[-1])
+    if value['seed_namespace'] != NAMESPACE:
+        refuse('benchmark namespace did not apply; nothing was started')
+    return value
+
+
+def tree(root):
+    rows = {}
+    for line in subprocess.run(['ps', '-A', '-o', 'pid=,ppid=,rss=,time='], capture_output=True, text=True).stdout.splitlines():
+        pid, ppid, rss, cpu = line.split()[:4]
+        rows[int(pid)] = (int(ppid), int(rss) * 1024, cpu)
+    found, frontier = {root} if root in rows else set(), [root]
+    while frontier:
+        current = frontier.pop()
+        for pid, (ppid, _, _) in rows.items():
+            if ppid == current and pid not in found:
+                found.add(pid); frontier.append(pid)
+    return {pid: rows[pid] for pid in found}
+
+
+class Sampler(threading.Thread):
+    def __init__(self, root, path, period=5.0):
+        super().__init__(daemon=True); self.root, self.path, self.period = root, path, period
+        self.stop = threading.Event(); self.peak = dict(total_rss=0, processes=0)
+
+    def run(self):
+        with open(self.path, 'w') as out:
+            while not self.stop.is_set():
+                rows = tree(self.root)
+                total = sum(r[1] for r in rows.values())
+                out.write(json.dumps(dict(utc=time.time(), total_rss=total, processes=len(rows),
+                                          rows={p: r for p, r in rows.items()})) + '\n'); out.flush()
+                self.peak.update(total_rss=max(self.peak['total_rss'], total), processes=max(self.peak['processes'], len(rows)))
+                self.stop.wait(self.period)
+
+
+def request_stop_during(run_root, count, stop):
+    """Touch the runner's own stop file while its count-th training batch runs (it then completes)."""
+    while not stop.wait(1.0):
+        try:
+            run_dir = Path(json.loads((run_root / 'latest-run.json').read_text())['run_dir'])
+            with (run_dir / 'research-log.jsonl').open() as log:
+                started = sum(1 for line in log if '"batch_intent"' in line and '"mode": "training"' in line)
+        except (OSError, ValueError, KeyError):
+            continue
+        if started >= count:
+            (run_dir / 'stop-requested').touch(exist_ok=True)
+            return
+
+
+INTERRUPT = dict(requested=None, runner=None)
+
+
+def interrupted(signum, frame):
+    """First Ctrl-C or SIGTERM: the runner stops after its current batch; no further campaign starts."""
+    INTERRUPT['requested'] = INTERRUPT['requested'] or dict(signal=signum, utc=utc())
+    runner = INTERRUPT['runner']
+    if signum == signal.SIGTERM and runner is not None and runner.poll() is None:
+        runner.send_signal(signal.SIGTERM)  # a terminal Ctrl-C already reached the runner itself
+
+
+def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
+    name = f'{index:02d}-{letter}'
+    campaign = bench / 'art' / 'campaigns' / name
+    campaign.mkdir(parents=True)
+    run_root = bench / 'art' / 'runs' / name
+    spec = campaign / 'bench-spec.json'
+    write_new(spec, dict(schema='heroes-local-mac-bench-spec-v1', mode='namespace', seed_namespace=NAMESPACE,
+                         created_utc=utc(), purpose='Mac benchmark campaign; disposable copies; not official training.'))
+    env = {**env_base, 'HEROES_LOCAL_BENCH_SPEC': str(spec)}
+    config = machine_config(args.python, inputs, data, bench / 'art', run_root, env)
+    write_new(campaign / 'machine.json', config)
+    command = [args.python, 'tools/run_local_training.py', 'start', '--config', str(campaign / 'machine.json'),
+               '--profile', 'original', '--parent', str(inputs / 'parent629.json'), '--hours', str(args.hours),
+               '--eval-every', '100', '--max-updates', str(args.updates), *CAMPAIGNS[letter]]
+    record = dict(name=name, letter=letter, command=command, started_utc=utc())
+    started = time.monotonic()
+    with (campaign / 'runner.log').open('x') as log:
+        # Same process group as this tool: Ctrl-C reaches the runner exactly as with train-local.sh
+        # (a manual stop after the current batch).
+        process = subprocess.Popen(command, cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=log,
+                                   stderr=subprocess.STDOUT)
+    INTERRUPT['runner'] = process
+    sampler = Sampler(process.pid, campaign / 'resources.jsonl'); sampler.start()
+    stop = threading.Event()
+    threading.Thread(target=request_stop_during, args=(run_root, args.updates, stop), daemon=True).start()
+    bound = args.hours * 3600 + 600
+    try:
+        returncode = process.wait(timeout=bound)
+        record['bound'] = 'not_reached'
+    except subprocess.TimeoutExpired:
+        process.send_signal(signal.SIGTERM)  # the runner's manual stop
+        try:
+            returncode = process.wait(timeout=120)
+            record['bound'] = 'stopped_by_sigterm'
+        except subprocess.TimeoutExpired:
+            for pid in tree(process.pid):
+                try: os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError: pass
+            returncode = process.wait()
+            record['bound'] = 'killed'
+    INTERRUPT['runner'] = None
+    stop.set(); sampler.stop.set(); sampler.join()
+    left = tree(process.pid)
+    record.update(returncode=returncode, launch_seconds=time.monotonic() - started, finished_utc=utc(),
+                  peaks=sampler.peak, leftover_processes=sorted(left))
+    write_new(campaign / 'bench-run.json', record)
+    return name, run_root
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument('--order', default='AF', help='campaign letters, e.g. AF (acceptance) or AFFA (timing)')
+    p.add_argument('--updates', type=int, default=1, help='training batches per campaign (1 to 4)')
+    p.add_argument('--hours', type=float, default=2.0, help="each runner's own hard stop (0.25 to 6)")
+    p.add_argument('--parent-run', type=Path, default=PARENT_RUN)
+    p.add_argument('--bench-root', type=Path)
+    p.add_argument('--python', default=sys.executable)
+    p.add_argument('--dry-run', action='store_true', help='checks and input copies only; no game')
+    args = p.parse_args()
+    if not args.order or set(args.order) - set(CAMPAIGNS) or len(args.order) > 6:
+        p.error('--order takes one to six letters from ' + ''.join(CAMPAIGNS))
+    if not 1 <= args.updates <= 4 or not 0.25 <= args.hours <= 6:
+        p.error('--updates 1 to 4 and --hours 0.25 to 6')
+    if sys.platform != 'darwin':
+        refuse('this is the Mac acceptance tool; Linux benchmarks use run_local_bench.py')
+    runner, head = preflight()
+    lock, lock_state = hold_official_lock()
+    bench = (args.bench_root or Path.home() / 'Projects/Heroes-bench' /
+             ('original5000-acceleration-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))).expanduser().resolve()
+    if bench.is_relative_to(OFFICIAL.resolve()):
+        refuse('the benchmark root must be outside the official artifact root')
+    bench.mkdir(parents=True, exist_ok=False)
+    inputs, official_parent = prepare_inputs(runner, bench, args.parent_run.expanduser().resolve())
+    site, site_digest = frozen_site(bench)
+    data = Path(json.loads(OFFICIAL_CONFIG.read_text())['data']) if OFFICIAL_CONFIG.exists() else \
+        Path.home() / 'Library/Application Support/vcmi'
+    env = {**os.environ, 'PYTHONPATH': str(site), 'HEROES_ARTIFACT_ROOT': str(bench / 'art')}
+    record = dict(schema='heroes-mac-fast-path-acceptance-v1', started_utc=utc(), checkout=str(ROOT), git_head=head,
+                  accepted_implementation=runner.ACCEPTED_IMPLEMENTATION, order=args.order, updates=args.updates,
+                  hours=args.hours, official_lock=lock_state, parent_run=str(args.parent_run),
+                  official_parent={k: v['sha256'] for k, v in official_parent.items()}, shim_sha256=site_digest,
+                  seed_namespace=NAMESPACE, python=args.python, platform=os.uname()._asdict(), campaigns={})
+    if args.dry_run:
+        record['dry_run'] = True
+        write_new(bench / 'summary.json', record)
+        print(json.dumps(dict(bench=str(bench), dry_run=True, official_lock=lock_state)))
+        return 0
+    signal.signal(signal.SIGINT, interrupted); signal.signal(signal.SIGTERM, interrupted)
+    for index, letter in enumerate(args.order):
+        if INTERRUPT['requested']:
+            record['interrupted'] = INTERRUPT['requested']; break
+        name, run_root = run_campaign(args, bench, inputs, site, letter, index, env, data)
+        try:
+            record['campaigns'][name] = dict(letter=letter, **campaign_summary.batches(run_root))
+        except (OSError, ValueError, KeyError) as error:
+            record['campaigns'][name] = dict(letter=letter, status='no_session', error=repr(error), batches=[])
+        print(json.dumps({name: record['campaigns'][name]['status']}), flush=True)
+    exact = {n: c for n, c in record['campaigns'].items() if c['letter'] in EXACT}
+    record['pairs'] = campaign_summary.compare(exact)
+    trained = [p for p in record['pairs'] if p['mode'] == 'training']
+    # Identical games must give bitwise-identical learner state on every exact implementation.
+    comparable = [p for p in trained if p['games_identical']]
+    record['exact_campaigns_identical'] = (all(p['states_identical'] for p in comparable) if comparable
+                                           else 'not_comparable: no paired training batch had identical games')
+    record['paired_training_batches'] = dict(total=len(trained), identical_games=sum(p['games_identical'] for p in trained))
+    if 'X' in args.order:
+        record['experiment_pairs'] = campaign_summary.compare(record['campaigns'])
+    record['finished_utc'] = utc()
+    write_new(bench / 'summary.json', record)
+    print(json.dumps(dict(bench=str(bench), exact_campaigns_identical=record['exact_campaigns_identical'])))
+    if lock is not None:
+        os.close(lock)
+    return 0 if record['exact_campaigns_identical'] is True else 1
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
