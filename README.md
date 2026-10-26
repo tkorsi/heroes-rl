@@ -495,3 +495,7 @@ isolated release, with canonical patch agreement verified. Study4 and campaign-v
 preserve prior failed evidence and keep one immutable two-hour campaign clock,
 including any in-window recovery. No campaign has launched during preparation.
 See the updated [research protocol](docs/research/curriculum-v1.md).
+
+## Overnight cloud preparation —26October2026
+
+Renewed user authorization permits isolated Linux preparation now and PPO only after the final local Teacher Git ownership handoff. Compute stops at09:55UTC and all owned work stops by10:00UTC on26October2026. See the [protocol](docs/research/overnight-cloud-2026-10-26.md) and [cloud status](reports/cloud/teacher-overnight-status.json).
