@@ -1,11 +1,14 @@
 """Per-episode verification shortcuts must produce exactly the reference bytes and errors."""
 from collections import namedtuple
 from dataclasses import dataclass, fields, replace
+import ast
 import enum
 import json
+from pathlib import Path
+import re
 import unittest
 
-from experiments.headless import contextual_evidence, contextual_protocol
+from experiments.headless import contextual_evidence, contextual_protocol, embedded_env
 from experiments.headless import contextual_replay_history as replay_history
 from experiments.learner import contextual as c
 from tests.test_builtin_v8_cutoff import mandatory_history, spell_target_history
@@ -219,6 +222,30 @@ class StrictJsonTests(unittest.TestCase):
                     self.assertEqual(actual, expected)
                     if actual[0] == "value":
                         self.assertEqual(json.dumps(actual[1]), json.dumps(expected[1]))  # key order too
+
+
+ROOT = Path(__file__).resolve().parents[1]
+LAUNCHERS = ("experiments/headless/env.py", "experiments/headless/replay.py", "experiments/headless/builtin_replay.py",
+             "experiments/headless/contextual_replay.py")
+
+
+class NativeCaptureVerificationSwitchTests(unittest.TestCase):
+    """The opt-in check of the native unchanged-view capture must reach every engine it is meant for."""
+
+    def test_the_switch_guards_the_skip_and_survives_every_launcher_environment(self):
+        source = (ROOT / "engine/ExplorerRL/Contextual.cpp").read_text()
+        names = set(re.findall(r'std::getenv\("(HEROES_[A-Z_]+)"\)', source))
+        self.assertEqual(names, {"HEROES_VERIFY_NATIVE_CAPTURE"})
+        self.assertIn("if(unchanged && !verify)", source)
+        self.assertIn("Unchanged-view capture check disagrees with the built observation", source)
+        stripped = [embedded_env.STRIPPED_PREFIXES]
+        for launcher in LAUNCHERS:
+            found = re.findall(r"key\.startswith\((\([^()]*\))\)", (ROOT / launcher).read_text())
+            self.assertTrue(found, launcher)
+            stripped += [ast.literal_eval(prefixes) for prefixes in found]
+        for prefixes in stripped:
+            self.assertIn("EXPLORER_RL_", prefixes)  # the name the first version read, which never arrived
+            self.assertFalse("HEROES_VERIFY_NATIVE_CAPTURE".startswith(prefixes))
 
 
 if __name__ == "__main__":
