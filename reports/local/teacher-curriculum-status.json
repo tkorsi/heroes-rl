@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T03:03:55.695372+00:00",
-  "phase": "finished_budget_reserve",
+  "timestamp_utc": "2026-10-26T03:04:41.130674+00:00",
+  "phase": "local_complete_ownership_transferred_to_cloud",
   "campaign_launched": true,
   "actual_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
   "release_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/release.json",
@@ -91,5 +91,21 @@
     "sha256": "af0781ab32fddf889191d27c419ad25db2fdf7679fe785d781f2e53317b5e457",
     "bytes": 2554
   },
-  "owned_cleanup_verified": true
+  "owned_cleanup_verified": true,
+  "handoff": {
+    "ready_commit": "91ec9598ff216c0732daaab1c50fe8f023d9c44f",
+    "ready_path": "handoffs/2026-10-26-local-to-cloud/ready.json",
+    "ready_sha256": "c7f12edaf195d66c81ba26227f6fdeb300b2a495d0dbb8f71b251b1cade43a98",
+    "archive_commit": "208ebad9ebacd91163bf583ee6aa9b13a64f79a0",
+    "final_update": 254,
+    "ownership_transfer": "local -> cloud",
+    "finalizer_receipt_commit": "bcdee6ecc3609f3024f304c15ef8ccba7e605404"
+  },
+  "local_auto_resume": false,
+  "no_local_training_after_readiness": true,
+  "automatic_finalization_receipt": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/automatic-finalization-v3/execution.json",
+    "sha256": "11754155e4662aedf9ed41f3d09deeddea51aaed7bd4456919ae78fe33361bb8",
+    "bytes": 709
+  }
 }
