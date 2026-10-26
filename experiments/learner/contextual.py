@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, fields, replace
 import hashlib
 import json
+import marshal
 import re
 
 SCHEMA = "heroes-player-history-v2"
@@ -2148,6 +2149,11 @@ class PlayerHistory:
         return tuple(self._frames)
 
     @property
+    def frame_count(self):
+        """len(self.frames), without copying them."""
+        return len(self._frames)
+
+    @property
     def requires_choice(self):
         return self.context.kind == "dialog" or (self.context.kind == "capability"
             and self.active_capability is not None and self.active_capability.mandatory)
@@ -2970,6 +2976,58 @@ def decode_capability_panel(raw, *, schema=EXPANDED_SCHEMA):
     return CapabilityPanel(**data)
 
 
+_TILE_FIELDS = frozenset(("position", "terrain", "road", "blocked", "visitable"))
+_TILE_CACHE = {}
+_TILE_CACHE_LIMIT = 65536
+_LAST_TILES = [None, None]  # marshal bytes of the last decoded raw tile list, and its tiles
+
+
+def _decode_tile(raw):
+    """_decode_simple(raw, Tile, ("position",)), sharing one frozen Tile per exact value.
+
+    Only a dict of exactly the Tile fields, with a list of three exact ints as
+    position, exact int terrain and road and exact bool flags, is shared: its
+    decoding is a function of those seven values, and the key keeps every
+    value's exact type in a fixed place, so 1 and True never share. Anything
+    else takes the unchanged path, and failures are never cached.
+    """
+    if type(raw) is dict and len(raw) == 5 and _TILE_FIELDS.issuperset(raw):
+        position, terrain, road, blocked, visitable = (raw["position"], raw["terrain"], raw["road"],
+                                                       raw["blocked"], raw["visitable"])
+        if (type(position) is list and len(position) == 3 and type(position[0]) is int and type(position[1]) is int
+                and type(position[2]) is int and type(terrain) is int and type(road) is int
+                and type(blocked) is bool and type(visitable) is bool):
+            key = (position[0], position[1], position[2], terrain, road, blocked, visitable)
+            tile = _TILE_CACHE.get(key)
+            if tile is None:
+                tile = _decode_simple(raw, Tile, ("position",))
+                if len(_TILE_CACHE) >= _TILE_CACHE_LIMIT:
+                    _TILE_CACHE.clear()  # bounded memory; a miss only decodes again
+                _TILE_CACHE[key] = tile
+            return tile
+    return _decode_simple(raw, Tile, ("position",))
+
+
+def _decode_tiles(raw):
+    """The decoded tiles of a raw tile list, reusing the previous list's when it is the same.
+
+    Equal marshal bytes mean equal values of identical exact types (marshal
+    refuses subclasses and keeps bool, int and float apart), and the previous
+    list decoded successfully, so its tiles are exactly what decoding returns.
+    """
+    items = _array(raw)
+    try:
+        blob = marshal.dumps(raw)
+    except ValueError:
+        blob = None
+    if blob is not None and blob == _LAST_TILES[0]:
+        return _LAST_TILES[1]
+    tiles = tuple(_decode_tile(item) for item in items)
+    if blob is not None:
+        _LAST_TILES[:] = blob, tiles
+    return tiles
+
+
 def decode_observation(raw, *, schema=SCHEMA):
     profile = profile_for(schema)
     if schema != profile.history_schema:
@@ -2978,7 +3036,9 @@ def decode_observation(raw, *, schema=SCHEMA):
     for name in ("size", "resources"):
         if name in data:
             data[name] = _array(data[name])
-    for name, cls in (("tiles", Tile), ("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
+    if "tiles" in data:
+        data["tiles"] = _decode_tiles(data["tiles"])
+    for name, cls in (("objects", ObjectView), ("heroes", Hero), ("towns", Town)):
         if name in data:
             data[name] = tuple(_decode_simple(item, cls, ("position",)) for item in _array(data[name]))
     if data.get("window") is not None:
@@ -3155,7 +3215,10 @@ def release_canonical(frames):
         frame.__dict__.pop("_canonical_json", None)
 
 
-def decode_frame(raw):
+def decode_frame(raw, *, observation=None):
+    """The typed frame of raw. ``observation``, when given, must be
+    decode_observation(raw["observation"], schema=raw["schema"]) of this very
+    raw, already computed by the caller; it is used instead of decoding again."""
     data = _record(raw, Frame)
     if not {"schema", "episode", "player", "seq", "day", "kind"} <= data.keys():
         raise ValueError("History JSON requires explicit schema and base fields")
@@ -3163,7 +3226,10 @@ def decode_frame(raw):
     if data["schema"] != profile.history_schema:
         raise ValueError("Expected a history schema")
     if data.get("observation") is not None:
-        data["observation"] = decode_observation(data["observation"], schema=profile.history_schema)
+        data["observation"] = (observation if observation is not None
+                               else decode_observation(data["observation"], schema=profile.history_schema))
+    elif observation is not None:
+        raise ValueError("A decoded observation requires the raw observation it decodes")
     if data.get("context") is not None:
         data["context"] = _decode_context(data["context"], profile)
     if data.get("action") is not None and profile == WINDOWS_PROFILE:

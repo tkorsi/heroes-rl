@@ -116,11 +116,13 @@ class ContextualProducer:
                     raise ValueError("Unknown native decision reference")
                 else:
                     raw["decision_seq"] = self.decision_ids[native_id]
-            raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=len(self.live.frames))
+            raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=self.live.frame_count)
+            observation = None
             if record_kind == "decision":
                 observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
                 raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
-            frame = contract.decode_frame(raw)
+            # The decision's observation is decoded once, from this same raw dict and schema.
+            frame = contract.decode_frame(raw, observation=observation)
             self.live.append(frame)
             appended.append(frame)
             if record_kind == "decision":

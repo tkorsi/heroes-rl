@@ -447,7 +447,7 @@ class ContextualMixin:
         if not frames:
             raise ValueError("Empty contextual request history")
         if not continuation:
-            side.unread_frames_from = len(history.frames)
+            side.unread_frames_from = history.frame_count
         self.request = Request(side.color, player, "contextual", frames[-1], frames, frames,
                                past_horizon=continuation, typed_frames=typed)
         self.request_time = time.monotonic()
