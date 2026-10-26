@@ -75,6 +75,13 @@ def main():
         elif now >= next_poll:
             next_poll = now + 120
             try:
+                available = subprocess.run(['git','-C',str(args.repository),'rev-parse','--verify','refs/remotes/origin/'+BRANCH],capture_output=True,timeout=5)
+                if available.returncode:
+                    remote=subprocess.check_output(['git','-C',str(args.repository),'ls-remote','origin','refs/heads/'+BRANCH],text=True,timeout=30).strip()
+                    status.update(access=bool(remote),remote_ref=remote,phase='waiting_initial_private_fetch',last_poll_unix=now)
+                    atomic(args.state/'poller-status.json',status)
+                    time.sleep(5)
+                    continue
                 subprocess.run(['git','-C',str(args.repository),'fetch','--no-tags','origin',BRANCH],
                     check=True, capture_output=True, timeout=min(75, COMPUTE-now))
                 commit = subprocess.check_output(['git','-C',str(args.repository),'rev-parse','FETCH_HEAD'], text=True, timeout=10).strip()

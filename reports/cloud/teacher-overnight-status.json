@@ -1,0 +1,15 @@
+{
+  "timestamp_utc": "2026-10-26T01:34:45.517889+00:00",
+  "phase": "preparing_linux_waiting_final_local_handoff",
+  "ownership": "local",
+  "compute_deadline_utc": "2026-10-26T09:55:00Z",
+  "hard_deadline_utc": "2026-10-26T10:00:00Z",
+  "cloud_training_started": false,
+  "new_admitted_games": 0,
+  "new_ppo_updates": 0,
+  "checkpoint": null,
+  "verified_asset_files": 8,
+  "watchdog_pid": 22133,
+  "blocker": "Final local ownership handoff required",
+  "next_step": "Prepare canonical Linux runtime and portable curriculum adapter"
+}
