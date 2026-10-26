@@ -19,6 +19,8 @@ SOURCE='cb3d324cb09919383dac7e97a97bc0696dcd588d'
 LOCAL_START=datetime.fromisoformat('2026-10-26T01:10:53.815159+00:00').timestamp()
 HARD=datetime(2026,10,26,10,tzinfo=timezone.utc).timestamp()
 COMPUTE=HARD-300
+DATA_COMMIT='c7257a047373a55901e04bd9fa024dbb6df964d3'
+DATA_MANIFEST_SHA256='66c1291c5ff79c1967d64f304c52527c155ce5daadf586566424d195cc105130'
 
 
 def require(value,message):
@@ -232,3 +234,29 @@ provenance only; never query or signal them on Linux.
     target=receipt_path.parent/'dependency-closure-audit.json'
     put(target,(json.dumps(result,indent=2)+'\n').encode())
     return binding(target)
+
+
+def verify_assets(repository,artifact_root,output):
+    """Rehash the actual eight original files against immutable private Git."""
+    raw=git(repository,'show',DATA_COMMIT+':upload-manifest.json')
+    require(digest(raw)==DATA_MANIFEST_SHA256,'Original private transfer manifest differs')
+    manifest=json.loads(raw);root=Path(artifact_root).resolve();rows=[]
+    for item in manifest['files']:
+        relative=Path(item['output_relative_path'])
+        if not relative.is_relative_to('game-data'):continue
+        require(not relative.is_absolute() and '..' not in relative.parts,'Unsafe original Data path')
+        path=root/relative
+        require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(root),'Original asset is not an ordinary private file')
+        before=path.stat()
+        with path.open('rb') as stream:observed=hashlib.file_digest(stream,'sha256').hexdigest()
+        after=path.stat()
+        signature=lambda s:dict(bytes=s.st_size,mtime_ns=s.st_mtime_ns,ctime_ns=s.st_ctime_ns)
+        require(signature(before)==signature(after) and observed==item['sha256']
+            and after.st_size==item['size_bytes'],'Actual original asset hash/size differs')
+        rows.append(dict(path=str(path),sha256=observed,**signature(after)))
+    require(len(rows)==8,'Expected all eight original Data files')
+    result=dict(schema='heroes-overnight-original-assets-verification-v1',passed=True,
+        transfer_commit=DATA_COMMIT,manifest_sha256=DATA_MANIFEST_SHA256,files=rows,
+        original_assets_copied_to_public_git=False)
+    put(output,(json.dumps(result,indent=2)+'\n').encode())
+    return binding(output)

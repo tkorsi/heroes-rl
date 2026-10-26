@@ -242,9 +242,10 @@ def freeze():
     engine_preflight=check_engine_checkout()
     private_preflight()
     require(ROOT != AUTHOR and not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip(), 'Freeze only a separate clean checkout')
-    from tools.overnight_handoff import audit_materialized
+    from tools.overnight_handoff import audit_materialized,verify_assets
     handoff=c.context()['handoff_verification'];require(binding(handoff['path'])==handoff,'Handoff verification bytes changed')
     handoff_audit=audit_materialized(handoff['path'],Path('/workspace/heroes-rl-training-state'))
+    assets=verify_assets(Path('/workspace/heroes-rl-training-state'),Path('/workspace/Heroes-artifacts'),c.SESSION.parent/'assets-verification.json')
     state=c.restore(c.PARENT)
     require(c.context()['ownership_transfer_verified'] is True,'Final local ownership transfer required')
     require([c.map_identity(c.BASE/f'maps/curriculum-3-{seat}.vmap',seat)['sha256'] for seat in (0,1)]==c.context()['map_sha256_by_seat'],'Final handed-off map bytes differ')
@@ -267,7 +268,7 @@ def freeze():
         c.VcmiLauncher(Path(runtime_bin)/'vcmiclient',Path('/workspace/Heroes-artifacts/game-data'),c.BASE/f'maps/curriculum-3-{seat}.vmap').preflight()
     names=['tools/overnight_curriculum_campaign.py','tools/run_overnight_acceptance.py','tools/overnight_cloud_supervisor.py','configs/teacher-overnight-linux-v1.json',
            'configs/teacher-curriculum-v3.json','experiments/explorer/create_curriculum_scenario.py']
-    frozen=dict(handoff_dependency_audit=handoff_audit,checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
+    frozen=dict(assets_verification=assets,handoff_dependency_audit=handoff_audit,checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
         capability_implementation=capability_implementation_identity(),bound_files={n:binding(ROOT/n) for n in names},
         parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,runtime_files=all_files,runtime_report=ready['check'],
         data='/workspace/Heroes-artifacts/game-data',

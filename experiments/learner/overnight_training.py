@@ -106,6 +106,10 @@ def check_frozen():
     frozen=json.loads((SESSION.parent/'frozen.json').read_text())
     require(dependency_identity()==frozen['dependency'],'Generated dependency drift')
     require(binding(frozen['handoff_dependency_audit']['path'])==frozen['handoff_dependency_audit'],'Final handoff dependency audit drift')
+    asset_proof=frozen['assets_verification'];require(binding(asset_proof['path'])==asset_proof,'Private asset verification receipt drift')
+    for asset in json.loads(Path(asset_proof['path']).read_text())['files']:
+        path=Path(asset['path']);stat=path.stat()
+        require(not path.is_symlink() and {'bytes':stat.st_size,'mtime_ns':stat.st_mtime_ns,'ctime_ns':stat.st_ctime_ns}=={k:asset[k] for k in ('bytes','mtime_ns','ctime_ns')},'Original private asset changed since full hash verification')
     require(str(ROOT)==frozen['checkout'], 'Run only from the frozen checkout')
     require(source_identity(INTERFACE)==frozen['source'] and not frozen['source']['tracked_worktree_dirty'], 'Frozen source drift')
     require(pilot.implementation()==frozen['implementation'], 'Frozen implementation drift')
