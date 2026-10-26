@@ -195,3 +195,135 @@ Prospective diagnostic scope: checkpoints146,254,412 on exactly matched varied e
 - 2026-10-26T13:56:33.141773+00:00 native_hero_anchor_fixture_error_valid_subset_preregistered: {"timestamp_utc": "2026-10-26T13:56:33.141773+00:00", "event": "native_hero_anchor_fixture_error_valid_subset_preregistered", "cause": "Native hero visitable position = anchor-(1,0,0). Preflight incorrectly checked anchor; four layouts at x=0 are off-map.", "native_source": "CGHeroInstance.cpp:convertToVisitablePos; CGObjectInstance.cpp:getVisitableOffset", "independent_observed_mapping": "Original gate authored hero(5,6), manifest-bound player view hero(4,6); cold crash log rejected(-1,7,0)", "affected_layouts": [3, 7, 10, 13], "affected_seat_specific_maps": 8, "affected_planned_entries": 24, "failed_entries_retained": ["transfer-037", "transfer-038"], "remaining_invalid_entries_unstarted": 22, "unstarted_reason": "Deterministic structural fixture exclusion independent of policy outcomes", "remaining_valid_starts_unchanged": true, "maps_rewritten": false, "failed_attempts_retried": false, "expected_valid_completed_subset": 168, "expected_total_native_transfer_attempts": 170, "expected_original_games": 96, "expected_varied_easy_games": 72, "gate_games_unchanged": 8, "clock_reset": false, "window_sha256": "16de3c9b5e75946dfe8c7583bc2ce19d93580398ca4bb2d88dbd7d3e3bd92b3e", "failed_cold_raw_private_commit": "37b6b30f7102e238f8225c02e0908dde556cdc06", "all_states_restored_after_both_failures": true, "interpretation": "Both native backends crash on the invalid authored fixture; not evidence of an acceleration-specific regression. Retain original narrow gate pass, conservatively use accepted cold runtime for remaining valid starts. No replay/corruption check relaxed."}
 
 - 2026-10-26T13:58:17.716358+00:00 cold_fallback_recovery_started: {"recovery": {"prior_report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/attempts/stopped-002/result.json", "sha256": "a33b52c59dc2cc27146f95566fa63222a7a5b7ecf628f89eac558a287fcb1971", "bytes": 413949}, "window": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/window.json", "sha256": "16de3c9b5e75946dfe8c7583bc2ce19d93580398ca4bb2d88dbd7d3e3bd92b3e", "bytes": 369}, "orchestration": {"path": "/workspace/releases/teacher-transfer-valid-subset-aaff4ef/tools/run_transfer_eval.py", "sha256": "c38773778188b289962e4c41aaa66982a454193298cad693ae65f1eb9de6a9c6", "bytes": 28397}, "new_harness_commit": "aaff4ef632d4ba110d4eb8a1c2b3b32688a32c73", "clock_reset": false}, "backend_withdrawal": {"reason": "Embedded SIGSEGV at transfer037 after narrow gate passed; no replay/reconstruction completion, unscored", "failed_attempt": "transfer-037", "same_model_and_game_semantics": true, "no_failed_attempt_retry": true, "remaining_rows_only": true}}
+
+- 2026-10-26T13:58:21.720907+00:00 game_cell_launch_intent: {"label": "transfer-043", "schedule": [{"checkpoint": 254, "engine_seed": 830007, "id": "transfer-043", "layout": null, "map_key": "original", "policy_seed": 840007, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:58:30.478939+00:00 game_cell_result: {"label": "transfer-043", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-043/report.json", "sha256": "c7d8fb41a791999bba0c6fce203fa5cc3fac2ab60305124e82e7987945668fdb", "bytes": 10321}}
+
+- 2026-10-26T13:58:30.491782+00:00 game_cell_launch_intent: {"label": "transfer-044", "schedule": [{"checkpoint": 412, "engine_seed": 830007, "id": "transfer-044", "layout": null, "map_key": "original", "policy_seed": 840007, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:58:45.803986+00:00 game_cell_result: {"label": "transfer-044", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-044/report.json", "sha256": "c322cdb09514ff815a2044a21ce1a5ca33da3f6f790e73e65e37e04e5ca2f6ee", "bytes": 10325}}
+
+- 2026-10-26T13:58:45.817036+00:00 game_cell_launch_intent: {"label": "transfer-045", "schedule": [{"checkpoint": 146, "engine_seed": 830007, "id": "transfer-045", "layout": null, "map_key": "original", "policy_seed": 840007, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:58:50.138104+00:00 game_cell_result: {"label": "transfer-045", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-045/report.json", "sha256": "376bdbe25a1bb678767b7f438402cc0c0641704197c849ffcd4c78b2479f8100", "bytes": 9677}}
+
+- 2026-10-26T13:58:50.151419+00:00 game_cell_launch_intent: {"label": "transfer-046", "schedule": [{"checkpoint": 412, "engine_seed": 830008, "id": "transfer-046", "layout": null, "map_key": "original", "policy_seed": 840008, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:58:55.833579+00:00 game_cell_result: {"label": "transfer-046", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-046/report.json", "sha256": "4365ee8a8de5fdf6f9249ac408f4045a446d80d236e5893cae729e3df5b75bbf", "bytes": 10022}}
+
+- 2026-10-26T13:58:55.848488+00:00 game_cell_launch_intent: {"label": "transfer-047", "schedule": [{"checkpoint": 146, "engine_seed": 830008, "id": "transfer-047", "layout": null, "map_key": "original", "policy_seed": 840008, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:09.748656+00:00 game_cell_result: {"label": "transfer-047", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-047/report.json", "sha256": "b3c6b8effb9c12c147dd782c59a65c8e3b9366321cea7f17ed23853f89ccb195", "bytes": 10350}}
+
+- 2026-10-26T13:59:09.763087+00:00 game_cell_launch_intent: {"label": "transfer-048", "schedule": [{"checkpoint": 254, "engine_seed": 830008, "id": "transfer-048", "layout": null, "map_key": "original", "policy_seed": 840008, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:18.406052+00:00 game_cell_result: {"label": "transfer-048", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-048/report.json", "sha256": "93990a5cedc10bb82ec0d79febfb19f3006a1f3209f25381a0b03edfc2328b47", "bytes": 10255}}
+
+- 2026-10-26T13:59:18.420114+00:00 game_cell_launch_intent: {"label": "transfer-049", "schedule": [{"checkpoint": 254, "engine_seed": 810009, "id": "transfer-049", "layout": 4, "map_key": "easy-4-0", "policy_seed": 820009, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:26.303366+00:00 game_cell_result: {"label": "transfer-049", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-049/report.json", "sha256": "b1bed620bf45765d0b76cb2eab373653e5aac8fe6176710e5965bfb81a008a28", "bytes": 10015}}
+
+- 2026-10-26T13:59:26.318148+00:00 game_cell_launch_intent: {"label": "transfer-050", "schedule": [{"checkpoint": 412, "engine_seed": 810009, "id": "transfer-050", "layout": 4, "map_key": "easy-4-0", "policy_seed": 820009, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:31.098862+00:00 game_cell_result: {"label": "transfer-050", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-050/report.json", "sha256": "41dd07d4ea612c5baae9d98961a26a853d31c02b31a014bd3c94fe23ee2139b8", "bytes": 9848}}
+
+- 2026-10-26T13:59:31.112848+00:00 game_cell_launch_intent: {"label": "transfer-051", "schedule": [{"checkpoint": 146, "engine_seed": 810009, "id": "transfer-051", "layout": 4, "map_key": "easy-4-0", "policy_seed": 820009, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:41.745570+00:00 game_cell_result: {"label": "transfer-051", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-051/report.json", "sha256": "53a5a315471255a9f315ca721f643b2c83ced365beaacb774d49e34bb7f74786", "bytes": 10088}}
+
+- 2026-10-26T13:59:41.760947+00:00 game_cell_launch_intent: {"label": "transfer-052", "schedule": [{"checkpoint": 412, "engine_seed": 810010, "id": "transfer-052", "layout": 4, "map_key": "easy-4-1", "policy_seed": 820010, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:46.221170+00:00 game_cell_result: {"label": "transfer-052", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-052/report.json", "sha256": "a84932b8dd3bbd6589b70a917bc1700159540e4e1165c8ab74c25523ccf1c333", "bytes": 9841}}
+
+- 2026-10-26T13:59:46.236464+00:00 game_cell_launch_intent: {"label": "transfer-053", "schedule": [{"checkpoint": 146, "engine_seed": 810010, "id": "transfer-053", "layout": 4, "map_key": "easy-4-1", "policy_seed": 820010, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:53.353834+00:00 game_cell_result: {"label": "transfer-053", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-053/report.json", "sha256": "a83f146dc267e6d030eeda2a4393d1f6a36c0a74bdb2940cd5b00d5df3b65246", "bytes": 10010}}
+
+- 2026-10-26T13:59:53.368483+00:00 game_cell_launch_intent: {"label": "transfer-054", "schedule": [{"checkpoint": 254, "engine_seed": 810010, "id": "transfer-054", "layout": 4, "map_key": "easy-4-1", "policy_seed": 820010, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T13:59:57.932364+00:00 game_cell_result: {"label": "transfer-054", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-054/report.json", "sha256": "1fcb6ce185b01aab2370e3e5b5ce3dc1ffb5ba54c71bdef93dfb432fa5c1f230", "bytes": 9860}}
+
+- 2026-10-26T14:00:06.470846+00:00 game_cell_launch_intent: {"label": "transfer-055", "schedule": [{"checkpoint": 412, "engine_seed": 830009, "id": "transfer-055", "layout": null, "map_key": "original", "policy_seed": 840009, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:00:15.598986+00:00 game_cell_result: {"label": "transfer-055", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-055/report.json", "sha256": "8bacf93828295f81184e5c7cb1cbb8ac1c55b39d17710006e497ff93bedcf6bf", "bytes": 10112}}
+
+- 2026-10-26T14:00:15.613938+00:00 game_cell_launch_intent: {"label": "transfer-056", "schedule": [{"checkpoint": 146, "engine_seed": 830009, "id": "transfer-056", "layout": null, "map_key": "original", "policy_seed": 840009, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:00:31.314177+00:00 game_cell_result: {"label": "transfer-056", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-056/report.json", "sha256": "04de2c968d73c7c1b6a05bbfef3db7ffd09d08628829cee58ecac690b3a4b8d9", "bytes": 10417}}
+
+- 2026-10-26T14:00:31.328936+00:00 game_cell_launch_intent: {"label": "transfer-057", "schedule": [{"checkpoint": 254, "engine_seed": 830009, "id": "transfer-057", "layout": null, "map_key": "original", "policy_seed": 840009, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:00:43.823168+00:00 game_cell_result: {"label": "transfer-057", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-057/report.json", "sha256": "b350ad5f21f3690cccaa4a89ff4c10fdd11cb5cd91a0f0b664c2d3d1333f28ac", "bytes": 10454}}
+
+- 2026-10-26T14:00:43.838022+00:00 game_cell_launch_intent: {"label": "transfer-058", "schedule": [{"checkpoint": 146, "engine_seed": 830010, "id": "transfer-058", "layout": null, "map_key": "original", "policy_seed": 840010, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:00:49.750093+00:00 game_cell_result: {"label": "transfer-058", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-058/report.json", "sha256": "cfef45a234cfdea64ba134cbceb9b22f1f0211e418b5b43e82db4cd82a99de10", "bytes": 10124}}
+
+- 2026-10-26T14:00:49.765450+00:00 game_cell_launch_intent: {"label": "transfer-059", "schedule": [{"checkpoint": 254, "engine_seed": 830010, "id": "transfer-059", "layout": null, "map_key": "original", "policy_seed": 840010, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:00:58.038908+00:00 game_cell_result: {"label": "transfer-059", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-059/report.json", "sha256": "b0f05fb0bf4c155431200e89962a31b0287b2dacd48f9e1298fd6153f8b0accc", "bytes": 10346}}
+
+- 2026-10-26T14:00:58.054932+00:00 game_cell_launch_intent: {"label": "transfer-060", "schedule": [{"checkpoint": 412, "engine_seed": 830010, "id": "transfer-060", "layout": null, "map_key": "original", "policy_seed": 840010, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:02.517983+00:00 game_cell_result: {"label": "transfer-060", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-060/report.json", "sha256": "922a8dae522c4c880d2ffbebda54deecde9cf3fe7f56c460b0a61196c2fd7488", "bytes": 9837}}
+
+- 2026-10-26T14:01:02.533612+00:00 game_cell_launch_intent: {"label": "transfer-061", "schedule": [{"checkpoint": 412, "engine_seed": 810011, "id": "transfer-061", "layout": 5, "map_key": "easy-5-0", "policy_seed": 820011, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:11.078746+00:00 game_cell_result: {"label": "transfer-061", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-061/report.json", "sha256": "5404b58b922ac6e8b6c57fca9dafde60a67fd34f086c5076acb1556f470984e0", "bytes": 10103}}
+
+- 2026-10-26T14:01:11.094099+00:00 game_cell_launch_intent: {"label": "transfer-062", "schedule": [{"checkpoint": 146, "engine_seed": 810011, "id": "transfer-062", "layout": 5, "map_key": "easy-5-0", "policy_seed": 820011, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:16.570178+00:00 game_cell_result: {"label": "transfer-062", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-062/report.json", "sha256": "b949821a116664475b59918280f78bb29bbe4511430921760499fa6383ab5a9f", "bytes": 9880}}
+
+- 2026-10-26T14:01:16.586059+00:00 game_cell_launch_intent: {"label": "transfer-063", "schedule": [{"checkpoint": 254, "engine_seed": 810011, "id": "transfer-063", "layout": 5, "map_key": "easy-5-0", "policy_seed": 820011, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:20.501407+00:00 game_cell_result: {"label": "transfer-063", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-063/report.json", "sha256": "dc32267e4e4c868822638f31709fae7f91dbad1ac4b3e058da3c3ca9e9aa66e1", "bytes": 9471}}
+
+- 2026-10-26T14:01:20.518934+00:00 game_cell_launch_intent: {"label": "transfer-064", "schedule": [{"checkpoint": 146, "engine_seed": 810012, "id": "transfer-064", "layout": 5, "map_key": "easy-5-1", "policy_seed": 820012, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:28.744582+00:00 game_cell_result: {"label": "transfer-064", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-064/report.json", "sha256": "3ee5f304dde55397ba035a49d1d4e9894fdaf24dada2ae13a59782fd9fc49c86", "bytes": 10011}}
+
+- 2026-10-26T14:01:28.761452+00:00 game_cell_launch_intent: {"label": "transfer-065", "schedule": [{"checkpoint": 254, "engine_seed": 810012, "id": "transfer-065", "layout": 5, "map_key": "easy-5-1", "policy_seed": 820012, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:36.986248+00:00 game_cell_result: {"label": "transfer-065", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-065/report.json", "sha256": "6558160b9403f583d70a55c02ebd75968fe93fa8f89691b6f00f3dcdfbfc1db3", "bytes": 9961}}
+
+- 2026-10-26T14:01:37.006278+00:00 game_cell_launch_intent: {"label": "transfer-066", "schedule": [{"checkpoint": 412, "engine_seed": 810012, "id": "transfer-066", "layout": 5, "map_key": "easy-5-1", "policy_seed": 820012, "scenario": "easy", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:01:49.714028+00:00 game_cell_result: {"label": "transfer-066", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-066/report.json", "sha256": "05bec541753d4f415ae42ebbe11a784785f387668fa8ee9f1b6a0a416b4c7ca0", "bytes": 10123}}
+
+- 2026-10-26T14:01:59.111248+00:00 game_cell_launch_intent: {"label": "transfer-067", "schedule": [{"checkpoint": 146, "engine_seed": 830011, "id": "transfer-067", "layout": null, "map_key": "original", "policy_seed": 840011, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:05.548037+00:00 game_cell_result: {"label": "transfer-067", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-067/report.json", "sha256": "94c22781f7211b0e168afd4b5cfd290b3a187961b5fc29b0ad328ace5ab0cd3a", "bytes": 10050}}
+
+- 2026-10-26T14:02:05.566987+00:00 game_cell_launch_intent: {"label": "transfer-068", "schedule": [{"checkpoint": 254, "engine_seed": 830011, "id": "transfer-068", "layout": null, "map_key": "original", "policy_seed": 840011, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:12.751546+00:00 game_cell_result: {"label": "transfer-068", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-068/report.json", "sha256": "ff5bc328c8b019034bcd12f511cfc38571ee5634ebe9e0a9f42fbfa687634a8e", "bytes": 10256}}
+
+- 2026-10-26T14:02:12.770740+00:00 game_cell_launch_intent: {"label": "transfer-069", "schedule": [{"checkpoint": 412, "engine_seed": 830011, "id": "transfer-069", "layout": null, "map_key": "original", "policy_seed": 840011, "scenario": "original", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:17.345830+00:00 game_cell_result: {"label": "transfer-069", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-069/report.json", "sha256": "9d2b18fd5428e23a0fb7bbcce187033fcab58ab6da118b7a8f37aa7df13c0aa7", "bytes": 9631}}
+
+- 2026-10-26T14:02:17.365308+00:00 game_cell_launch_intent: {"label": "transfer-070", "schedule": [{"checkpoint": 254, "engine_seed": 830012, "id": "transfer-070", "layout": null, "map_key": "original", "policy_seed": 840012, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:22.079787+00:00 game_cell_result: {"label": "transfer-070", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-070/report.json", "sha256": "c00d446877517c9075f05da9003c3e7b4e09237223f973b1f0de6a75ff95c997", "bytes": 9817}}
+
+- 2026-10-26T14:02:22.098116+00:00 game_cell_launch_intent: {"label": "transfer-071", "schedule": [{"checkpoint": 412, "engine_seed": 830012, "id": "transfer-071", "layout": null, "map_key": "original", "policy_seed": 840012, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:51.587867+00:00 game_cell_result: {"label": "transfer-071", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-071/report.json", "sha256": "9c76c1b973527df619df3be68db21094bd7fd029c94f8aae125ed0fd8bb17d24", "bytes": 10345}}
+
+- 2026-10-26T14:02:51.605851+00:00 game_cell_launch_intent: {"label": "transfer-072", "schedule": [{"checkpoint": 146, "engine_seed": 830012, "id": "transfer-072", "layout": null, "map_key": "original", "policy_seed": 840012, "scenario": "original", "seat": 1}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:02:56.284845+00:00 game_cell_result: {"label": "transfer-072", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-072/report.json", "sha256": "2bd101e4d86bfd7f6761462bf76080e06c99c1926df0738f2fa8803068d520e4", "bytes": 9815}}
+
+- 2026-10-26T14:02:56.303604+00:00 game_cell_launch_intent: {"label": "transfer-073", "schedule": [{"checkpoint": 146, "engine_seed": 810013, "id": "transfer-073", "layout": 6, "map_key": "easy-6-0", "policy_seed": 820013, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:03:07.831710+00:00 game_cell_result: {"label": "transfer-073", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-073/report.json", "sha256": "e76e2a3388d17bec167c9afd17b20871b4c547745ad311ca3a1691285159d511", "bytes": 10089}}
+
+- 2026-10-26T14:03:07.850274+00:00 game_cell_launch_intent: {"label": "transfer-074", "schedule": [{"checkpoint": 254, "engine_seed": 810013, "id": "transfer-074", "layout": 6, "map_key": "easy-6-0", "policy_seed": 820013, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:03:15.541629+00:00 game_cell_result: {"label": "transfer-074", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-074/report.json", "sha256": "5b473401c049a80e414f6d99a4e705096ce73c58779be446e328ecd9bc3297c3", "bytes": 10168}}
+
+- 2026-10-26T14:03:15.562108+00:00 game_cell_launch_intent: {"label": "transfer-075", "schedule": [{"checkpoint": 412, "engine_seed": 810013, "id": "transfer-075", "layout": 6, "map_key": "easy-6-0", "policy_seed": 820013, "scenario": "easy", "seat": 0}], "source": "30629a84bc3048ee64ae4f91186fbc0832e4ca25", "backend": "cold"}
+
+- 2026-10-26T14:03:22.934546+00:00 game_cell_result: {"label": "transfer-075", "status": "passed", "report": {"path": "/workspace/Heroes-artifacts/transfer-eval-20261026/runs/transfer-075/report.json", "sha256": "c10822d71c6c165388891f75b70ef01155fa810ec18acf8d68d1e72471d37205", "bytes": 9905}}
