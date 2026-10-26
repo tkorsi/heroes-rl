@@ -21,6 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = Path.home() / 'Projects/Heroes-artifacts/local-script-training/machine.json'
 ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original.json')
+# The default path releases this accepted implementation unchanged. Only an explicit --fast-path
+# releases the current commit, whose reviewed exact fast path the session then records.
+ACCEPTED_IMPLEMENTATION = 'a8ac411d32658387598376c792136bc586edc5f9'
 
 
 class StopRequested(Exception):
@@ -173,13 +176,20 @@ def final_parent(run):
     return report['latest_parent']
 
 
-def release_checkout(artifact_root):
-    """Freeze code in a separate checkout so editing main cannot change a run."""
+def release_checkout(artifact_root, commit=None):
+    """Freeze code in a separate checkout so editing main cannot change a run.
+
+    ``commit`` selects an accepted ancestor of the current commit; otherwise the current commit.
+    """
     def git(*args):
         return subprocess.check_output(['git', '-C', str(ROOT), *args], text=True).strip()
     if git('status', '--porcelain'):
         raise ValueError('Commit the trainer source before launch; the source checkout is dirty')
-    commit = git('rev-parse', 'HEAD')
+    head = git('rev-parse', 'HEAD')
+    if commit is None:
+        commit = head
+    elif subprocess.run(['git', '-C', str(ROOT), 'merge-base', '--is-ancestor', commit, head]).returncode:
+        raise ValueError('The accepted implementation is not part of this checkout\'s history')
     destination = Path(artifact_root) / 'releases' / ('local-script-' + commit)
     if not destination.exists():
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -378,11 +388,15 @@ def start(args):
     run_root = Path(config['run_root'])
     with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
         if args.parent_final is not None: final_parent(args.parent_final)
-        release, commit = release_checkout(config['artifact_root'])
+        release, commit = release_checkout(config['artifact_root'], None if args.fast_path else ACCEPTED_IMPLEMENTATION)
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
                    '--config', str(args.config.resolve()), '--hours', str(args.hours),
                    '--profile', args.profile, '--eval-every', str(args.eval_every)]
+        if args.fast_path:
+            command += ['--fast-path', '--prefix-helpers', str(args.prefix_helpers),
+                        '--overlap-verification' if args.overlap_verification else '--serial-verification',
+                        *(x for name in args.experiment for x in ('--experiment', name))]
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
         if args.games is not None: command += ['--games', str(args.games)]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
@@ -404,6 +418,10 @@ def launch_owned(args):
     from experiments.learner.builtin_training_resume import binding, require
     from prepare_local_training import validate_config
     config = read(args.config); validate_config(config)
+    # This release is the opt-in fast path; the default path releases ACCEPTED_IMPLEMENTATION instead.
+    require(args.fast_path, 'This release runs only as the explicit fast path; launch with start')
+    execution = adapter.execution_choice(overlapped_verification=args.overlap_verification,
+                                         prefix_helpers=args.prefix_helpers, experiments=args.experiment)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
@@ -420,7 +438,7 @@ def launch_owned(args):
     run.mkdir(exist_ok=False)
     session = dict(schema='heroes-local-script-session-v1', scope='heroes-local-script-training-v1',
         source=source_identity('adventure-capabilities-v1'), implementation=pilot.implementation(), prerequisites=pilot.prerequisites(),
-        configuration=adapter.configuration(parent), asset_config=binding(args.config),
+        configuration=adapter.configuration(parent), execution=execution, asset_config=binding(args.config),
         runtime_bin=config['runtime_bin'], runtime=config['runtime'], data=config['data'], maps=config['maps'],
         artifact_root=config['artifact_root'], run_root=str(run_root), run_dir=str(run), initial_parent=parent,
         next_sequence=config.get('next_sequence', 266), supervisor_pid=os.getpid(),
@@ -440,6 +458,9 @@ def launch_owned(args):
                   if session['profile'] == 'original' else
                   'Continue the accepted easier8x8 distribution; measure fixed paired outcomes without claiming original-map transfer.')
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
+    print(f"Implementation: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
+          f"verification, {execution['prefix_helpers']} prefix helpers"
+          + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)
     return supervise(session_path)
@@ -518,7 +539,21 @@ def main():
     parents.add_argument('--parent', type=Path, help='Explicit latest-checkpoint.json; otherwise continue the last verified profile state')
     parents.add_argument('--parent-final', type=Path, help='Restore only the fully finalized state of this prior run')
     parser.add_argument('--session', type=Path)
+    fast = parser.add_argument_group('opt-in exact fast path (default: the accepted implementation)')
+    fast.add_argument('--fast-path', action='store_true', help='Run the reviewed exact fast path of this commit')
+    overlap = fast.add_mutually_exclusive_group()
+    overlap.add_argument('--overlap-verification', dest='overlap_verification', action='store_true', default=None,
+                         help='Overlap per-game verification in forked children (default except on macOS)')
+    overlap.add_argument('--serial-verification', dest='overlap_verification', action='store_false',
+                         help='Run every verification step serially in the worker (default on macOS)')
+    fast.add_argument('--prefix-helpers', type=int, default=0, help='Exact forked PPO prefix helpers (0 to 8; default 0)')
+    fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
+                      help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
     args = parser.parse_args()
+    if not args.fast_path and (args.overlap_verification is not None or args.prefix_helpers or args.experiment):
+        parser.error('Fast-path options require --fast-path')
+    if not 0 <= args.prefix_helpers <= 8: parser.error('--prefix-helpers must be between 0 and 8')
+    if args.overlap_verification is None: args.overlap_verification = sys.platform != 'darwin'
     args.config = args.config or (ORIGINAL_CONFIG if args.profile == 'original' else DEFAULT_CONFIG)
     args.hours = args.hours if args.hours is not None else (48 if args.games is not None else 2)
     args.eval_every = args.eval_every if args.eval_every is not None else (100 if args.games is not None else 5)

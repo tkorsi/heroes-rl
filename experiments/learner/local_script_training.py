@@ -47,11 +47,58 @@ ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
                    SCOPE: 'local_script_training'}
 # The initial manual runner predates explicit map profiles. Only these released
 # bytes may cross that orchestration transition; learner/PPO source stays exact.
+ACCEPTED_ADAPTER_COMMIT = 'a8ac411d32658387598376c792136bc586edc5f9'
 LOCAL_ADAPTER_ORIGINS = {
     'cf2021cd3b2225ced440b1459ad9220581a028c0': 'd2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518',
     '3268f2f8cae6a01277c1629c5d0a9fb8958b5786': 'd2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518',
+    # The accepted implementation (run_local_training.ACCEPTED_IMPLEMENTATION) that the default path releases.
+    ACCEPTED_ADAPTER_COMMIT: '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
 }
-LOCAL_ADAPTER_TRANSITION_AST = 'b3be747906bc37b5bd19080b3adc7b993af215a8985c8f4178fafb920131e5c2'
+# Reviewed exact fast path: for each replaced learner/collector file, the accepted digests it may
+# replace (3268f2f and a8ac411 hold the same bytes) and the exact digest it must have here. Policy,
+# PPO and optimizer mathematics are unchanged (bitwise differential tests); a parent recorded with
+# an accepted digest may continue under these bytes, and the proof names every such file.
+FAST_PATH_SOURCES = {
+    'experiments/learner/builtin_first_run.py': (
+        ('a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
+        '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
+    'experiments/learner/builtin_gameplay.py': (
+        ('fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
+        'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d'),
+    'experiments/learner/builtin_rollout.py': (
+        ('c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
+        'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b'),
+    'experiments/learner/builtin_training.py': (
+        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768',),
+        '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600'),
+    'experiments/learner/builtin_training_resume.py': (
+        ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb',),
+        '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
+    'experiments/learner/contextual.py': (
+        ('fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
+        '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
+    'experiments/learner/contextual_model.py': (
+        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f',),
+        '7d6903819e54ba0ccb5eaeb4146f7bef364b4c0cb3ab7c338d24cf7b63d7a215'),
+    'experiments/learner/contextual_rollout.py': (
+        ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637',),
+        'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205'),
+    'experiments/learner/evaluate_builtin_opponent.py': (
+        ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0',),
+        '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
+    'experiments/learner/first_run.py': (
+        ('8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c',),
+        '645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a'),
+    'experiments/learner/inference.py': (
+        ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54',),
+        'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14'),
+    'experiments/learner/ppo.py': (
+        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60',),
+        'e25fb4b06d1f1297d5f3f5589ce749b04073aa6367ce322ce09e1348d4748cea'),
+}
+# The only execution choices a session may bind (``execution``); never an environment variable.
+NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
+LOCAL_ADAPTER_TRANSITION_AST = '4c0b785e633c84a02ca5b457966df3fe5ce59fad617867eee0f1bc87306f29ad'
 
 
 def write_new(path, value):
@@ -140,14 +187,23 @@ def local_adapter_transition(commit, expected, historical, current):
             'Unreviewed historical local adapter')
     require(_adapter_ast_digest(current) == LOCAL_ADAPTER_TRANSITION_AST,
             'Local adapter differs from the reviewed profile transition')
-    return {'transition': 'explicit_map_profile_and_seed_namespace',
+    return {'transition': ('reviewed_exact_fast_path_adapter' if commit == ACCEPTED_ADAPTER_COMMIT
+                           else 'explicit_map_profile_and_seed_namespace'),
             'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
             'current_ast_sha256': LOCAL_ADAPTER_TRANSITION_AST,
             'historical_code_executed': False, 'historical_metadata_rewritten': False}
 
 
+def fast_path_transition(name, expected, current):
+    accepted, fast = FAST_PATH_SOURCES.get(name, ((), None))
+    require(expected in accepted and hashlib.sha256(current).hexdigest() == fast,
+            'Policy, PPO or collector implementation changed: ' + name)
+    return {'transition': 'reviewed_exact_fast_path', 'historical_sha256': expected, 'current_sha256': fast,
+            'policy_ppo_mathematics_unchanged': True, 'historical_code_executed': False}
+
+
 def source_compatibility(parent):
-    """Every learner/PPO byte remains exact except recognized routing glue."""
+    """Every learner/PPO byte remains exact except recognized routing glue and the reviewed fast path."""
     require(parent['interface'] == INTERFACE, 'Interface transition forbidden')
     require(parent['torch'].split('+')[0] == str(torch.__version__).split('+')[0],
             'Unreviewed PyTorch version transition')
@@ -167,12 +223,17 @@ def source_compatibility(parent):
         if name == 'experiments/learner/local_script_training.py':
             changes[name] = local_adapter_transition(parent['git_commit'], expected, historical, current)
             continue
+        if name in FAST_PATH_SOURCES:
+            changes[name] = fast_path_transition(name, expected, current)
+            continue
         require(name == 'experiments/learner/builtin_first_run.py'
                 and _without_scope_routes(historical) == _without_scope_routes(current),
                 'Policy, PPO or collector implementation changed: ' + name)
         changes[name] = 'Recognized check_identity scope routing only; remaining AST exact'
+    fast = sorted(k for k, v in changes.items() if type(v) is dict and v['transition'] == 'reviewed_exact_fast_path')
     return {'historical_commit': parent['git_commit'], 'changes': changes,
-            'policy_ppo_unchanged': True, 'historical_metadata_rewritten': False}
+            'policy_ppo_unchanged': not fast, 'reviewed_exact_fast_path': fast,
+            'historical_metadata_rewritten': False}
 
 
 def configuration(descriptor):
@@ -290,6 +351,32 @@ def check_clock(session, *, active=True):
                 'Campaign compute window expired or not started')
 
 
+def check_execution(value):
+    """The session's execution choices: exact by default; a numerical experiment only when named."""
+    require(type(value) is dict and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'experiments'}
+            and value['implementation'] == 'exact-fast-path-v1' and type(value['overlapped_verification']) is bool
+            and type(value['prefix_helpers']) is int and 0 <= value['prefix_helpers'] <= 8
+            and type(value['experiments']) is list and value['experiments'] == sorted(set(value['experiments']))
+            and set(value['experiments']) <= set(NUMERICAL_EXPERIMENTS), 'Unknown execution choice')
+    return value
+
+
+def execution_choice(*, overlapped_verification, prefix_helpers=0, experiments=()):
+    return check_execution({'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped_verification,
+                            'prefix_helpers': prefix_helpers, 'experiments': sorted(set(experiments))})
+
+
+def apply_execution(plan):
+    """Set this process's execution choices from a plan whose identity check passed."""
+    from experiments.headless import background_check
+    from . import ppo
+    value = check_execution(plan['execution'])
+    background_check.FORK = value['overlapped_verification']
+    ppo.PREFIX_HELPERS = value['prefix_helpers']
+    ppo.EXPERIMENTS = frozenset(value['experiments'])
+    return value
+
+
 def check_profile(session, assets):
     require(session['profile'] in PROFILES and session['profile'] == assets['default_profile'],
             'Explicit campaign profile differs from its machine configuration')
@@ -345,13 +432,24 @@ def schedule(session, sequence, seat, evaluate=False):
 
 
 def check_identity(plan):
+    # One identity check hashes each unchanged file once (experiments.headless.digest_scope).
+    from experiments.headless.digest_scope import scope
+    with scope():
+        return _check_identity(plan)
+
+
+def _check_identity(plan):
     _bound(plan['local_session'])
     session = read_session(plan['local_session']['path'])
     evaluate = plan['mode'] == 'evaluation'
     require(plan['mode'] in ('training', 'evaluation') and plan['scope'] == SCOPE
             and plan['schema'] == (batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', 'Unknown batch scope')
-    for key in ('profile', 'source', 'runtime', 'implementation', 'prerequisites', 'configuration', 'absolute_deadline_unix', 'compute_deadline_unix'):
+    for key in ('profile', 'source', 'runtime', 'implementation', 'prerequisites', 'configuration', 'execution',
+                'absolute_deadline_unix', 'compute_deadline_unix'):
         require(plan[key] == session[key], 'Batch/session identity differs: ' + key)
+    experiments = check_execution(plan['execution'])['experiments']
+    require(plan['checkpoint_metadata'].get('numerical_experiments', []) == experiments,
+            'Numerical experiment selection differs from its checkpoint metadata')
     require(plan['schedule'] == schedule(session, plan['batch_sequence'], plan['seat'], evaluate), 'Schedule changed')
     require(plan['game_map'] == session['maps'][plan['seat']]['path']
             and plan['map'] == map_identity(plan['game_map'], plan['seat'], session['profile']), 'Seat map changed')
@@ -396,7 +494,7 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     plan = dict(schema=(batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', scope=SCOPE, profile=session['profile'],
         mode='evaluation' if evaluate else 'training', seat=seat, batch_sequence=sequence,
         source=session['source'], implementation=session['implementation'], prerequisites=session['prerequisites'],
-        configuration=session['configuration'], runtime=session['runtime'], binary=str(binary), data=session['data'],
+        configuration=session['configuration'], execution=session['execution'], runtime=session['runtime'], binary=str(binary), data=session['data'],
         game_map=str(game_map), map=map_identity(game_map, seat, session['profile']), native=launcher.identity(),
         replay_binary=binding(binary.parent/'vcmireplay'), native_opponents=[pilot.native_opponent(session['runtime'], s) for s in (0, 1)],
         schedule=rows, execution_output=str(output/'execution'), parent=state.bindings,
@@ -411,18 +509,30 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
         'native_opponent': {k: v for k, v in plan['native_opponents'][0].items() if k != 'player'},
         'archived_neural_pool_executed': False}
+    if session['execution']['experiments']:
+        # The plan, and through its metadata every checkpoint it produces, names the experiment.
+        plan['checkpoint_metadata']['numerical_experiments'] = list(session['execution']['experiments'])
     check_identity(plan)
     write_new(output/'plan.json', plan)
     return output/'plan.json'
 
 
-def read_plan(path, sha):
+def read_plan(path, sha, *, check=True):
+    """The plan at ``path``; ``check=False`` only for a caller whose next action is the full identity check."""
     path = durable_path(path)
     require(binding(path)['sha256'] == sha, 'Immutable batch plan changed')
     plan = json.loads(path.read_text())
     require(plan['execution_output'] == str(path.parent/'execution'), 'Batch execution path changed')
-    check_identity(plan)
+    require(plan.get('scope') == SCOPE, 'Unknown batch scope')
+    if check:
+        check_identity(plan)
     return plan
+
+
+def worker_state(plan):
+    """Runs right after builtin_training.worker's identity check of ``plan``, before any game."""
+    apply_execution(plan)
+    return restore_parent(plan['parent_descriptor'])
 
 
 def valid_evaluation(plan, report):
@@ -476,8 +586,9 @@ def main():
     args = parser.parse_args()
     if args.command == 'worker':
         require(args.started is not None and args.wall_started is not None, 'Worker clock required')
-        result = batches.worker(args, plan_reader=read_plan,
-            state_reader=lambda plan: restore_parent(plan['parent_descriptor']),
+        # builtin_training.worker checks the plan's identity as its first action after reading it.
+        result = batches.worker(args, plan_reader=lambda path, sha: read_plan(path, sha, check=False),
+            state_reader=worker_state,
             heldout_checker=lambda *_: require_baselines(read_plan(args.plan, args.sha256)))
     else:
         result = pilot.execute(args, plan_reader=read_plan, worker_module=__spec__.name)

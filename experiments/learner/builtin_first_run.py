@@ -168,9 +168,6 @@ def check_identity(plan):
     if plan.get("scope") == "heroes-local-script-training-v1":
         from .local_script_training import check_identity as check_local_script
         return check_local_script(plan)
-    if plan.get("scope") == "heroes-benchmark-phase2-20261026":
-        from .bench_training import check_identity as check_benchmark
-        return check_benchmark(plan)
     from experiments.headless.env import VcmiLauncher
     from experiments.headless.contextual_evidence import runtime_identity
     from .inference import source_identity

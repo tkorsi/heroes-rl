@@ -7,6 +7,10 @@ function and returns its value, or the exception it raised, pickled. The step re
 its arguments name. ``result`` returns that value, or raises that exception, exactly as an
 in-process call would; ``stop`` ends a step that is still running (SIGTERM unwinds the child's
 own subprocesses, then SIGKILL) and reaps it. Callers keep every check they apply to the result.
+
+``FORK = False`` is the serial fallback: nothing is forked, and ``result`` calls the step in this
+process when the caller asks for it, after the caller's own checks, which is the order the steps
+had before they overlapped. Only an execution choice bound in the caller's plan may set it.
 """
 from __future__ import annotations
 
@@ -17,6 +21,8 @@ import signal
 import time
 
 _CHUNK = 1 << 20
+# Overlap the step in a forked child (True), or run it serially in this process (False).
+FORK = True
 
 
 def _terminate(signum, frame):
@@ -56,10 +62,14 @@ class BackgroundCheck:
     def __init__(self, function, *args, **kwargs):
         self.call = function, args, kwargs
         self.pid, self.read, self.reaped = None, None, True
+        self.serial = not FORK
 
     def start(self):
         if self.pid is not None:
             raise RuntimeError("A background check starts once")
+        if self.serial:
+            self.pid = 0  # started; the step runs in ``result``
+            return self
         function, args, kwargs = self.call
         mask = signal.pthread_sigmask(signal.SIG_BLOCK, _DEFERRED)
         try:
@@ -88,6 +98,9 @@ class BackgroundCheck:
     def result(self, *, timeout):
         if self.pid is None:
             raise RuntimeError("A background check returns a result only after it started")
+        if self.serial:
+            function, args, kwargs = self.call
+            return function(*args, **kwargs)
         deadline, chunks = time.monotonic() + timeout, []
         try:
             while True:
