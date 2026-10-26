@@ -15,6 +15,18 @@ The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate
 experiment branches and their PRs describe the history.
 
+The authorized **26 October easier-start curriculum campaign is complete**.
+Local training advanced update 146 to 254; cloud then reached **update 412**,
+adding **632 cloud training games and 158 PPO updates** (563 natural wins,
+69 losses, no horizon cutoffs). The final fixed Linux check improved from
+**2/8 to 8/8 wins** on the same eight starts. This is narrow easier8x8 evidence:
+original-map generalization and a recruit-then-attack strategy remain untested.
+The expired window authorizes no further training. See the
+[overnight results and limitations](docs/research/overnight-results-2026-10-26.md).
+Operational curriculum/overnight source remains on its recorded immutable
+experiment commits; this report synchronization does not merge that code or
+Claude's separate experimental engine work.
+
 The [consolidation check](validation/project-consolidation-2026-10-25.json)
 ran 1182 tests: 1156 passed and 26 required another platform or optional fixture.
 A fresh nine-target macOS native build and the Swift viewer build also passed.
@@ -29,7 +41,7 @@ also passed. Native gameplay acceptance is recorded separately below.
 | --- | --- | --- |
 | Environment | Real headless VCMI, fog-filtered structured history, explicit map/hero/town windows | Unsupported actions/dialog grammars fail explicitly |
 | Actions | Native coordinate routing, construction/recruitment, Tavern, armies, dialogs, marketplace, artifacts, adventure spells and level-up choices | Supported object families only; no tactical battle policy or path-cost oracle |
-| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | A learned winning strategy has not been demonstrated |
+| Learning | Recurrent PyTorch actor/critic, hierarchical action probabilities, PPO, model/Adam/RNG/progress restoration | Fixed easier-start wins improved; original-map generalization is untested |
 | Evidence | Native capture, independent request/state replay, policy reconstruction and strict sample admission | A seed alone does not reproduce all built-in AI randomness |
 | Performance | Exact inference/cache optimizations and bounded benchmark tools | Workload timings are not universal whole-game/PPO throughput |
 | Native reuse | Opt-in C++ EngineSession with load/reset/observe/step/close | Experimental; not enabled in Teacher or accepted as a general training runtime |
@@ -42,6 +54,9 @@ map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Completed overnight curriculum results](docs/research/overnight-results-2026-10-26.md),
+  [cloud analysis](validation/overnight-cloud-final-2026-10-26.json) and
+  [local curriculum analysis](validation/curriculum-v3-final-2026-10-26.json).
 - [Research log for the seminar](docs/research-log.md), with a source-bound
   [experiment index](validation/research-experiment-index.jsonl).
 - [Completed v8 Teacher analysis](validation/local-v8-final-analysis-2026-10-26.json)
@@ -267,10 +282,10 @@ explicit migration preserving tensors, Adam slots, RNG and progress. Additional
 actions can change probabilities even when all tensors remain equal. The new
 both-seat baseline therefore belongs to a separate v8 cohort.
 
-The authorized next campaign is **one fresh local session of at most two hours**,
+The historical v8 authorization was **one fresh local session of at most two hours**,
 with 365 days, 5120 total choices, Nullkiller Easy/BattleAI, complete four-game
 PPO batches, terminal-only rewards and both-seat held-out evaluation. Launch
-remains gated on all requested native feature checks, exact capture/replay,
+was gated on all requested native feature checks, exact capture/replay,
 checkpoint migration and a separate deadline/watchdog. Preparation is not
 training; see [the migration preparation](docs/update92-v8-prelaunch.md). The old
 session is consumed and must never be restarted.

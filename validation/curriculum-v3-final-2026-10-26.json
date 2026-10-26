@@ -1,0 +1,115 @@
+{
+  "schema": "heroes-curriculum-campaign-v3-analysis",
+  "timestamp_utc": "2026-10-26T03:03:55.693828+00:00",
+  "status": "finished_budget_reserve",
+  "new_updates": 108,
+  "progress": {
+    "updates": 254,
+    "rollouts": 1016,
+    "decisions": 73345
+  },
+  "training_outcomes_by_seat": {
+    "red": {
+      "loss": 186,
+      "win": 30
+    },
+    "blue": {
+      "loss": 182,
+      "win": 34
+    }
+  },
+  "heldout_by_seat": {
+    "red": {
+      "baseline": [
+        {
+          "parent": {
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json",
+            "sha256": "13725f81344b43113749e576edccb6bdc18544d0a1455246aedd46ea4aee28d6",
+            "bytes": 56924
+          },
+          "outcomes": [
+            "loss",
+            "loss",
+            "loss",
+            "loss"
+          ],
+          "status": "passed"
+        }
+      ],
+      "final": [
+        {
+          "parent": {
+            "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+            "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+            "bytes": 57870
+          },
+          "outcomes": [
+            "loss",
+            "win",
+            "win",
+            "loss"
+          ],
+          "status": "passed"
+        }
+      ]
+    },
+    "blue": {
+      "baseline": [
+        {
+          "parent": {
+            "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json",
+            "sha256": "13725f81344b43113749e576edccb6bdc18544d0a1455246aedd46ea4aee28d6",
+            "bytes": 56924
+          },
+          "outcomes": [
+            "loss",
+            "loss",
+            "loss",
+            "loss"
+          ],
+          "status": "passed"
+        }
+      ],
+      "final": [
+        {
+          "parent": {
+            "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+            "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+            "bytes": 57870
+          },
+          "outcomes": [
+            "loss",
+            "win",
+            "loss",
+            "loss"
+          ],
+          "status": "passed"
+        }
+      ]
+    }
+  },
+  "scope": "Open8x8 easier-start distribution, not original full-map performance",
+  "interpretation": "Four fixed games per seat are descriptive paired checks, not evidence of general strategic improvement.",
+  "session": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
+    "sha256": "22bebbe928ea4011de0df67fbd1907cf7f0034b68e3205bb69a17de6ebdcbcee",
+    "bytes": 5823
+  },
+  "controller": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/controller-result.json",
+    "sha256": "f84b2ec07c2ec966e7d184d46eb3584dd2ec7de4460342a0dd2f36171d7715c1",
+    "bytes": 2377
+  },
+  "private_final_preservation": {
+    "commit": "de5d60455b75a2c8ec16c8df778566a6efafc517",
+    "archive": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-curriculum-update146/campaign-v3-campaign-v3-final-session/evidence.tar.gz",
+      "sha256": "cbda480a4001db2985b09f0818d5ebb65b618b3160b01903ba1d1aaec51688c4",
+      "bytes": 182064
+    },
+    "verified_files": 12,
+    "verified_symlinks": 0,
+    "external_data_dereferenced": false
+  },
+  "owned_local_training_shutdown_verified": true
+}

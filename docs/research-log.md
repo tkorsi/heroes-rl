@@ -195,3 +195,41 @@ The seminar narrative should retain negative results and infrastructure
 failures. At present, the defensible conclusion is that the environment and
 bounded training/evidence pipeline work, a short Red winning path exists, and
 the completed network training has **not yet demonstrated learned winning play**.
+
+
+## Completed curriculum and overnight continuation, 26 October 2026
+
+This entry is retrospective. The prospective protocols, every failed preparation
+study, the source-integrity incident, and subsequent technical corrections remain
+in the immutable Teacher journals linked from the
+[completed results](research/overnight-results-2026-10-26.md). Earlier authorization
+and readiness paragraphs above retain what was known when they were written.
+
+Local training added 432 games and 108 PPO updates (64 wins, 368 losses), moving
+146 to 254. Cloud then added 632 games and 158 PPO updates (563 wins, 69 losses),
+reaching update 412: 1,648 cumulative training rollouts, 95,836 decisions and
+3,545 Adam steps. There were no horizon cutoffs in these two campaigns. Their
+combined new training is 1,064 games, 266 updates, 55,195 decisions and 2,070 Adam
+steps. Diagnostic/control/held-out and failed/partial experience stay excluded.
+
+Fixed Linux evaluation improved from 1/4 wins per seat at update 254 to 4/4 per
+seat at final update 412. The full nonmonotonic trajectory is retained: an earlier
+8/8 had regressed to 2/8 at update 311 before recovering. The 272 cloud evaluation
+games reuse the same eight starts; they are not 272 independent test cases.
+Improvement on this easier open8x8 cohort does not establish original-map
+generalization or a particular learned strategy. Cloud behavior counts combine
+training and evaluation histories and show zero recruitment/army transfers; no
+buy-army-then-attack claim is supported.
+
+The cloud campaign stopped at 09:48:38 UTC, its controller at 09:49:22, final
+held-out gameplay at 09:52:25, and preservation at 09:53:26, before the unchanged
+09:55/10:00 cutoffs. Final checkpoint 412 and failed-attempt evidence are privately
+preserved with exact model/Adam/RNG/progress/pool restoration. Publication faults
+are retained separately from gameplay: sequence 118's operational record remains
+failed while its complete valid update was subsequently acknowledged. The Blue
+evaluation 286 publication fault was reconciled without replay or PPO admission.
+
+The [final root audit](../validation/overnight-root-final-audit-2026-10-26.json)
+binds imported report hashes, private receipts, independent counter/sequence
+checks and the separate post-deadline owned-process verification. No games were
+launched for the root audit and the expired authorization permits no restart.

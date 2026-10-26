@@ -1,0 +1,208 @@
+{
+  "schema": "heroes-root-overnight-final-audit-v1",
+  "timestamp_utc": "2026-10-26T10:13:42.044334+00:00",
+  "audit_type": "Retrospective evidence and publication audit; no new gameplay, PPO, restore execution or repair",
+  "status": "shutdown_preservation_and_final_analysis_verified",
+  "source_artifacts": [
+    {
+      "path": "validation/curriculum-v3-final-2026-10-26.json",
+      "repository": "tkorsi/heroes-rl",
+      "git_commit": "6dd709821fb10a377aa856d80113074b3056f1c3",
+      "sha256": "cf33973cbb47618c1f3db8a8fab79ab85f1be2c8b5120f506344523ee15290c3"
+    },
+    {
+      "path": "reports/local/teacher-curriculum-status.json",
+      "repository": "tkorsi/heroes-rl",
+      "git_commit": "6dd709821fb10a377aa856d80113074b3056f1c3",
+      "sha256": "b121ae1530daf0702f90b141a1d1ef13381eabfce855adddff35b8e37e1f5166"
+    },
+    {
+      "path": "validation/overnight-cloud-final-2026-10-26.json",
+      "repository": "tkorsi/heroes-rl",
+      "git_commit": "d75de47355426c2f0a7165b13db6c52f75671ee3",
+      "sha256": "3c90e723c84222a3936cf9040322c5aae4dd06a13f6372627f66f62edc750b55"
+    },
+    {
+      "path": "reports/cloud/teacher-overnight-status.json",
+      "repository": "tkorsi/heroes-rl",
+      "git_commit": "d75de47355426c2f0a7165b13db6c52f75671ee3",
+      "sha256": "f1d7a8d350fe478266b836161cedb1c3277733270289acaa5ba67b82035f015a"
+    },
+    {
+      "path": "validation/overnight-cloud-shutdown-2026-10-26.json",
+      "repository": "tkorsi/heroes-rl",
+      "git_commit": "81480c1d9e996c3052f0ef49c4139983d368c8b0",
+      "sha256": "7ce5862286ae5d1b481b3f33ba21c3d182c1259baef12fe0bb6ce98dfc5550b8"
+    }
+  ],
+  "append_only_journal": {
+    "repository": "tkorsi/heroes-rl",
+    "git_commit": "d75de47355426c2f0a7165b13db6c52f75671ee3",
+    "path": "validation/overnight-cloud-2026-10-26.jsonl",
+    "sha256": "f0694ba951d7017291a6111288322f9d765b9592bef502581b99fd5e54fe4f97"
+  },
+  "independent_reviews": [
+    "Root read and cross-checked public final reports, immutable imports and owner post-deadline process receipt.",
+    "Independent scientific reviewer checked counts, seed schedules, held-out exclusion, behavior scope and final paired comparison.",
+    "Independent private evidence reviewer verified checkpoint reachability, exact-restore receipts, both final evaluation archives and recomputed final archive SHA256."
+  ],
+  "verification_boundary": "Existing restoration and native replay receipts were inspected; root did not rerun gameplay or tensor restoration after cutoff. Cloud live process evidence comes from the owning environment at10:11UTC, not a local PID scan.",
+  "local_process_audit": {
+    "timestamp_utc": "2026-10-26T10:12:32.596255+00:00",
+    "command_scope": [
+      "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3",
+      "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/automatic-finalization-v3"
+    ],
+    "matching_processes": [],
+    "automations": [
+      {
+        "id": "heroes-teacher-autonomous-repair-and-ppo",
+        "status": "ACTIVE",
+        "rrule": "FREQ=MINUTELY;INTERVAL=30;UNTIL=20261026T094633Z"
+      },
+      {
+        "id": "heroes-overnight-final-shutdown-and-analysis",
+        "status": "ACTIVE",
+        "rrule": "FREQ=DAILY;BYHOUR=12;BYMINUTE=5;BYSECOND=0;COUNT=1"
+      },
+      {
+        "id": "continue-heroes-ppo-after-mac-handback",
+        "status": "PAUSED",
+        "rrule": "FREQ=DAILY;BYHOUR=18;BYMINUTE=0;BYSECOND=0;COUNT=1"
+      }
+    ]
+  },
+  "cloud_shutdown": {
+    "source": "validation/overnight-cloud-shutdown-2026-10-26.json",
+    "timestamp_utc": "2026-10-26T10:11:18.253035+00:00",
+    "current_live_owned_count": 0,
+    "current_live_native_count": 0,
+    "all_ownership_locks_unheld": true,
+    "registry_stopped_utc": "2026-10-26T10:00:00.075968+00:00",
+    "original_watchdog_signal_utc": "2026-10-26T10:00:00.075838+00:00",
+    "note": "Registry SIGKILL stopped the original watchdog at10:00:00.075838 UTC before its own terminal status write. Its last status remains preservation_shutdown. Registry final status reports no live owned processes; current scan confirms shutdown.",
+    "audit_signals_sent": []
+  },
+  "cloud_training": {
+    "initial_update": 254,
+    "final_update": 412,
+    "complete_admitted_batches": 158,
+    "games": 632,
+    "natural_wins": 563,
+    "natural_losses": 69,
+    "cutoffs": 0,
+    "admitted_decisions": 22491,
+    "adam_steps": 919,
+    "training_sequence_range": [
+      108,
+      265
+    ],
+    "unique_contiguous_training_intents": true,
+    "historical_result_statuses": {
+      "passed": 157,
+      "publication_failed_then_preserved": 1
+    },
+    "publication_incidents": 2,
+    "failed_gameplay_attempts": 0,
+    "unstarted_campaign_games": 0,
+    "failed_preparation_retained": true
+  },
+  "local_training": {
+    "initial_update": 146,
+    "final_update": 254,
+    "updates": 108,
+    "games": 432,
+    "natural_wins": 64,
+    "natural_losses": 368,
+    "cutoffs": 0,
+    "decisions": 32704,
+    "adam_steps": 1151
+  },
+  "combined_new_curriculum": {
+    "updates": 266,
+    "games": 1064,
+    "natural_wins": 627,
+    "natural_losses": 437,
+    "decisions": 55195,
+    "adam_steps": 2070
+  },
+  "final_cumulative": {
+    "updates": 412,
+    "rollouts": 1648,
+    "decisions": 95836,
+    "adam_steps": 3545
+  },
+  "evaluation": {
+    "cloud_games": 272,
+    "natural_wins": 225,
+    "natural_losses": 47,
+    "training_samples": 0,
+    "adam_steps": 0,
+    "repeated_fixed_starts_per_seat": 4,
+    "linux_baseline_wins_by_seat": [
+      1,
+      1
+    ],
+    "final_wins_by_seat": [
+      4,
+      4
+    ],
+    "final_checkpoint": 412,
+    "final_parent_plan_sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23",
+    "paired_final_passed": true,
+    "native_replay_identity_reconstruction_cleanup_passed": true
+  },
+  "preservation": {
+    "private_repository": "tkorsi/heroes-rl-training-state",
+    "checkpoint_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+    "final_archive_commit": "2f8d587c7a4a82f6b08bb752a1322ea31fd100df",
+    "final_archive_sha256": "a8526fb7519bedb6c7959b726bd8841b894675322b907e2379390c4541c45f45",
+    "final_archive_bytes": 244584,
+    "independently_recomputed_archive_hash_matches": true,
+    "exact_model_adam_rng_progress_pool_receipts": true,
+    "policy_sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88",
+    "resume_sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321"
+  },
+  "next_unused_training": {
+    "sequence": 266,
+    "seat": 0,
+    "engine_seeds": [
+      911065,
+      911066,
+      911067,
+      911068
+    ],
+    "policy_seeds": [
+      921065,
+      921066,
+      921067,
+      921068
+    ],
+    "not_authorization_to_resume": true
+  },
+  "behavior": {
+    "scope": "Verified training and heldout own player-visible histories only; controls, diagnostic and failed/partial games excluded.",
+    "totals": {
+      "recruitment_completed_actions": 0,
+      "across_army_operations": 0,
+      "visible_net_army_redistribution": 0,
+      "movement_attempts": 3706,
+      "movement_endpoint_changes": 1347,
+      "moves_toward_visible_opponent_town": 919,
+      "town_capture_evidence": 788
+    },
+    "battle_start_roles": {
+      "attacker": 79
+    },
+    "comparison_available": false
+  },
+  "limitations": [
+    "Small repeated easier8x8 cohort; original-map generalization untested.",
+    "Prior8/8 fell back to2/8 at update311; retain full nonmonotonic trajectory.",
+    "No recruitment or army transfer actions recorded; a recruit-then-attack strategy is not demonstrated.",
+    "Behavior totals combine training and held-out histories, are not unique town/game counts and do not establish before/after improvement.",
+    "Native opponent randomness is not fully determined by engine seeds."
+  ],
+  "scope_of_main_sync": "Compact report/documentation import only; operational curriculum/overnight source and Claude experimental engine PRs not merged.",
+  "restart_authorized": false
+}

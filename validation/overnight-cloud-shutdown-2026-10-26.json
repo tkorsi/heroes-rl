@@ -1,0 +1,703 @@
+{
+  "schema": "heroes-overnight-post-deadline-shutdown-v1",
+  "timestamp_utc": "2026-10-26T10:11:18.253035+00:00",
+  "timestamp_kyiv": "2026-10-26T12:11:18.253052+02:00",
+  "scope": "Post-deadline read-only process/evidence/hash audit and report publication only; no gameplay, PPO, acceptance, repair, new restore execution or clock change",
+  "status": "shutdown_verified",
+  "compute_cutoff_utc": "2026-10-26T09:55:00Z",
+  "hard_stop_utc": "2026-10-26T10:00:00Z",
+  "current_campaign_owned_live_processes": [],
+  "registered_process_identities": [
+    {
+      "expected": {
+        "pid": 26662,
+        "state": "S",
+        "parent_pid": 1,
+        "start_ticks": 3830485,
+        "command": [
+          "python",
+          "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+          "--state",
+          "/workspace/Heroes-artifacts/overnight-20261026",
+          "--repository",
+          "/workspace/heroes-rl-training-state"
+        ],
+        "role": "original_watchdog"
+      },
+      "current": {
+        "pid": 26662,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 3830485,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 26664,
+        "parent_pid": 26662,
+        "start_ticks": 3830489,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+          "--poller",
+          "--state",
+          "/workspace/Heroes-artifacts/overnight-20261026",
+          "--repository",
+          "/workspace/heroes-rl-training-state"
+        ],
+        "role": "compute",
+        "registered_by_parent": 26662
+      },
+      "current": {
+        "pid": 26664,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 3830489,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 81883,
+        "state": "S",
+        "parent_pid": 1,
+        "start_ticks": 4921922,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-transport-c06a432/tools/overnight_transport_watch.py",
+          "--from-report",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "detached_watcher"
+      },
+      "current": {
+        "pid": 81883,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4921922,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 81927,
+        "state": "S",
+        "parent_pid": 81883,
+        "start_ticks": 4923925,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "recover",
+          "--recover-from",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "actual_recovery_controller"
+      },
+      "current": null,
+      "same_kernel_start": false,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 81929,
+        "parent_pid": 81927,
+        "start_ticks": 4923928,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-transport-c06a432/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67338.0409810543",
+          "--deadline-wall",
+          "1793008710.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/http-transport-003-outer-supervisor-deadline.jsonl",
+          "--owner-pipe",
+          "5",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "recover",
+          "--recover-from",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/publication-reconciled-input-001.json"
+        ],
+        "role": "preservation",
+        "registered_by_parent": 81927
+      },
+      "current": {
+        "pid": 81929,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4923928,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 82228,
+        "parent_pid": 81927,
+        "start_ticks": 4924878,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "worker"
+        ],
+        "role": "compute",
+        "registered_by_parent": 81927
+      },
+      "current": null,
+      "same_kernel_start": false,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 82229,
+        "parent_pid": 82228,
+        "start_ticks": 4924881,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67128.04098343849",
+          "--deadline-wall",
+          "1793008500.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/controller-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-30629a84bc30/tools/overnight_curriculum_campaign.py",
+          "worker"
+        ],
+        "role": "compute",
+        "registered_by_parent": 82228
+      },
+      "current": {
+        "pid": 82229,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4924881,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 85347,
+        "state": "S",
+        "parent_pid": 1,
+        "start_ticks": 4966436,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-finalizer-8776a59/tools/overnight_finalizer.py"
+        ],
+        "role": "detached_finalizer"
+      },
+      "current": {
+        "pid": 85347,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4966436,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 87931,
+        "state": "S",
+        "parent_pid": 1,
+        "start_ticks": 4989367,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "/workspace/releases/teacher-overnight-registry-b9c5d30/tools/overnight_registry_guard.py"
+        ],
+        "role": "registered_identity_watchdog"
+      },
+      "current": {
+        "pid": 87931,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4989367,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 88047,
+        "parent_pid": 82228,
+        "start_ticks": 4989893,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "execute",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be"
+        ],
+        "role": "compute",
+        "registered_by_parent": 82228
+      },
+      "current": null,
+      "same_kernel_start": false,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 88048,
+        "parent_pid": 88047,
+        "start_ticks": 4989896,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "67128.04098343849",
+          "--deadline-wall",
+          "1793008500.0",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/supervisor-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "execute",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88047
+      },
+      "current": {
+        "pid": 88048,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4989896,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 88070,
+        "parent_pid": 88047,
+        "start_ticks": 4990091,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "worker",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be",
+          "--started",
+          "49900.915670906",
+          "--wall-started",
+          "1792991272.8746886"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88047
+      },
+      "current": null,
+      "same_kernel_start": false,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    },
+    {
+      "expected": {
+        "pid": 88071,
+        "parent_pid": 88070,
+        "start_ticks": 4990095,
+        "command": [
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-I",
+          "/workspace/releases/teacher-overnight-30629a84bc30/experiments/headless/process_deadline.py",
+          "--guarded-exec",
+          "--deadline-monotonic",
+          "53498.915670906",
+          "--deadline-wall",
+          "1792994870.8746886",
+          "--evidence",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/execution/worker-deadline.jsonl",
+          "--owner-pipe",
+          "4",
+          "--",
+          "/workspace/heroes-rl/.venv/bin/python",
+          "-m",
+          "experiments.learner.overnight_training",
+          "worker",
+          "--plan",
+          "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0145-seat1/plan.json",
+          "--sha256",
+          "605dbe870d1801bb3a562e939ba7f156ac1956a2d98fb6eec5f6ec8f2741e5be",
+          "--started",
+          "49900.915670906",
+          "--wall-started",
+          "1792991272.8746886"
+        ],
+        "role": "compute",
+        "registered_by_parent": 88070
+      },
+      "current": {
+        "pid": 88071,
+        "state": "Z",
+        "parent_pid": 1,
+        "start_ticks": 4990095,
+        "command": []
+      },
+      "same_kernel_start": true,
+      "currently_live": false,
+      "current_argv_matches": false,
+      "identity_note": "Exited process or stopped zombie; empty zombie argv is not treated as live identity"
+    }
+  ],
+  "current_native_processes": [],
+  "locks": {
+    "autocontinue.lock": "unheld",
+    "finalizer.lock": "unheld",
+    "registry-guard.lock": "unheld",
+    "supervisor.lock": "unheld",
+    "poller.lock": "unheld"
+  },
+  "processes_signalled_by_this_audit": [],
+  "unrelated_processes_touched": false,
+  "cutoff_receipts": {
+    "registry": {
+      "pid": 87931,
+      "command": [
+        "/workspace/heroes-rl/.venv/bin/python",
+        "/workspace/releases/teacher-overnight-registry-b9c5d30/tools/overnight_registry_guard.py"
+      ],
+      "phase": "stopped_absolute_deadline",
+      "compute_deadline_utc": "2026-10-26T09:55:00Z",
+      "hard_deadline_utc": "2026-10-26T10:00:00Z",
+      "identity": "kernel PID+start_ticks+exact argv and registered ancestry; no environment reads",
+      "timestamp_utc": "2026-10-26T10:00:00.075968+00:00",
+      "live_owned": [],
+      "signals_sent": 1,
+      "restart_authorized": false
+    },
+    "registry_signals": [
+      {
+        "timestamp_utc": "2026-10-26T10:00:00.075838+00:00",
+        "signal": 9,
+        "process": {
+          "pid": 26662,
+          "parent_pid": 1,
+          "start_ticks": 3830485,
+          "command": [
+            "python",
+            "/workspace/releases/teacher-overnight-bootstrap-245e317/tools/overnight_cloud_supervisor.py",
+            "--state",
+            "/workspace/Heroes-artifacts/overnight-20261026",
+            "--repository",
+            "/workspace/heroes-rl-training-state"
+          ],
+          "role": "preservation"
+        }
+      }
+    ],
+    "original_watchdog_last_status": {
+      "pid": 26662,
+      "phase": "preservation_shutdown",
+      "compute_deadline_utc": "2026-10-26T09:55:00Z",
+      "hard_deadline_utc": "2026-10-26T10:00:00Z",
+      "owned_process_marker": "HEROES_OVERNIGHT_OWNER=teacher-20261026",
+      "timestamp_utc": "2026-10-26T10:00:00.012619+00:00",
+      "poller_pid": 26664
+    },
+    "original_watchdog_terminal_note": "Registry SIGKILL stopped the original watchdog at10:00:00.075838 UTC before its own terminal status write. Its last status remains preservation_shutdown. Registry final status reports no live owned processes; current scan confirms shutdown.",
+    "final_preservation_completed_utc": "2026-10-26T09:53:26.540204+00:00"
+  },
+  "final_checkpoint": {
+    "plan": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/plan.json",
+      "sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23",
+      "bytes": 58426
+    },
+    "report": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/report.json",
+      "sha256": "20c070ce2390315176073db880498ad1a7c86ddca2f4451bd82ad2c979327110",
+      "bytes": 11258
+    },
+    "policy": {
+      "bytes": 638195,
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-policy.pt",
+      "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88"
+    },
+    "resume": {
+      "bytes": 1266293,
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-resume.pt",
+      "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321"
+    },
+    "progress": {
+      "updates": 412,
+      "rollouts": 1648,
+      "decisions": 95836
+    },
+    "optimizer_steps": 3545,
+    "source_proof": {
+      "explicit_platform_transition": false,
+      "policy_ppo_unchanged": true
+    },
+    "runtime_proof": {
+      "runtime_unchanged": true
+    }
+  },
+  "weights_sha256": "c310ae6b0b295149641802577fa4469c7a1662d530108c0289e3ce8f9c726d84",
+  "preservation_hash_audit": {
+    "timestamp_utc": "2026-10-26T10:09:42.677110+00:00",
+    "checkpoint_byte_hashes": [
+      {
+        "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-policy.pt",
+        "kind": "policy",
+        "bytes": 638195,
+        "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88",
+        "byte_hash_matches_final_restore": true
+      },
+      {
+        "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-resume.pt",
+        "kind": "resume",
+        "bytes": 1266293,
+        "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321",
+        "byte_hash_matches_final_restore": true
+      },
+      {
+        "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/checkpoints/train-0265-seat1/after-policy.pt",
+        "kind": "policy",
+        "bytes": 638195,
+        "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88",
+        "byte_hash_matches_final_restore": true
+      },
+      {
+        "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/checkpoints/train-0265-seat1/after-resume.pt",
+        "kind": "resume",
+        "bytes": 1266293,
+        "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321",
+        "byte_hash_matches_final_restore": true
+      },
+      {
+        "path": "/workspace/heroes-overnight-private/checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0265-seat1/after-policy.pt",
+        "kind": "policy",
+        "bytes": 638195,
+        "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88",
+        "byte_hash_matches_final_restore": true
+      },
+      {
+        "path": "/workspace/heroes-overnight-private/checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0265-seat1/after-resume.pt",
+        "kind": "resume",
+        "bytes": 1266293,
+        "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321",
+        "byte_hash_matches_final_restore": true
+      }
+    ],
+    "private_git_bytes_equal": true,
+    "private_commit": "2f8d587c7a4a82f6b08bb752a1322ea31fd100df",
+    "private_archive_path": "results/overnight-20261026/autonomous-final-http-transport-003/evidence.tar.gz",
+    "private_archive_sha256": "a8526fb7519bedb6c7959b726bd8841b894675322b907e2379390c4541c45f45",
+    "restore_receipt_archive_member": "autonomous-final-preservation/finalizer-restore-receipt.json",
+    "restore_receipt_sha256": "7f7e95e241f503dd10bdfb75347a126b18e558855a2167ac211dbb98216cd946",
+    "archived_restore_receipt_matches": true,
+    "all_final_evaluation_checks_passed": true,
+    "canonical_training_plan_count": 158,
+    "training_sequence_range": [
+      108,
+      265
+    ],
+    "duplicate_backup_plans_identical": true,
+    "next_unused_sequence": 266,
+    "next_seat": 0,
+    "next_engine_seeds": [
+      911065,
+      911066,
+      911067,
+      911068
+    ],
+    "next_policy_seeds": [
+      921065,
+      921066,
+      921067,
+      921068
+    ],
+    "new_restore_execution_performed": false,
+    "existing_restore_proofs_checked": true,
+    "audit_correction": "Initial audit counted immutable checkpoint backup plan copies as extra attempts; canonical batch paths and SHA-identical copies now checked separately. No experiment rerun."
+  },
+  "private_preservation": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "remote_head_verified": "2f8d587c7a4a82f6b08bb752a1322ea31fd100df",
+    "final_snapshot": {
+      "commit": "2f8d587c7a4a82f6b08bb752a1322ea31fd100df",
+      "archive": {
+        "path": "/workspace/heroes-overnight-private/results/overnight-20261026/autonomous-final-http-transport-003/evidence.tar.gz",
+        "sha256": "a8526fb7519bedb6c7959b726bd8841b894675322b907e2379390c4541c45f45",
+        "bytes": 244584
+      },
+      "verified_files": 103,
+      "verified_symlinks": 0,
+      "external_data_dereferenced": false
+    },
+    "final_training_checkpoint_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+    "restore_receipt_archive_member": "autonomous-final-preservation/finalizer-restore-receipt.json",
+    "restore_receipt_sha256": "7f7e95e241f503dd10bdfb75347a126b18e558855a2167ac211dbb98216cd946",
+    "restore_receipts_exact_model_adam_rng_progress_pool": true
+  },
+  "final_paired_evaluation": {
+    "checkpoint_update": 412,
+    "training_samples": 0,
+    "optimizer_steps": 0,
+    "passed": true,
+    "seats": [
+      {
+        "seat": 0,
+        "natural_wins": 4,
+        "natural_losses": 0,
+        "valid_cutoffs": 0,
+        "finished_utc": "2026-10-26T09:51:32.600202+00:00",
+        "report": {
+          "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/final-0412-seat0/execution/report.json",
+          "sha256": "befde16fff330431dc24e3b3beb9cfb7a04f90ecfef491f0aa85fc03f59a910c",
+          "bytes": 12446
+        },
+        "private_commit": "7454f509ea132e2f9a40e8470d48a75ebdebe115"
+      },
+      {
+        "seat": 1,
+        "natural_wins": 4,
+        "natural_losses": 0,
+        "valid_cutoffs": 0,
+        "finished_utc": "2026-10-26T09:52:25.005992+00:00",
+        "report": {
+          "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/final-0412-seat1/execution/report.json",
+          "sha256": "0ea17281a944b8ed6fba1bf6c3e5b857c125b2c1fd6a429da58aa6400fa7d86c",
+          "bytes": 12449
+        },
+        "private_commit": "3a19cecce3b08a83990a75dcd4d4d22417c4f9ea"
+      }
+    ],
+    "same_four_fixed_seeds_per_seat": true,
+    "replay_identity_policy_reconstruction_cleanup_verified": true
+  },
+  "accounting": {
+    "new_complete_ppo_updates": 158,
+    "new_training_games": 632,
+    "new_admitted_decisions": 22491,
+    "new_adam_steps": 919,
+    "natural_wins": 563,
+    "natural_losses": 69,
+    "valid_cutoffs": 0,
+    "evaluation_games": 272,
+    "failed_game_attempts": 0,
+    "unstarted_game_attempts": 0,
+    "publication_incidents": 2,
+    "publication_note": "Completed checkpoint at sequence118 was retained despite initial HTTP503 publication failure; all four games/PPO complete, exact restoration and later private acknowledgement verified. Completed zero-training evaluation at286 was later publication-reconciled. Original errors remain unchanged.",
+    "pre_game_preparation_failure_receipt": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/autocontinue-finished.json",
+      "sha256": "44b847736fd6d9ef133ca45135654215ada39e962f4d0b13b940430c8b709138",
+      "bytes": 523
+    },
+    "recovery_001_note": "Outer cleanup guard scope refusal before session/game/PPO; failed attempt retained, recovery002 used a fresh namespace."
+  },
+  "next_unused_training": {
+    "sequence": 266,
+    "seat": 0,
+    "engine_seeds": [
+      911065,
+      911066,
+      911067,
+      911068
+    ],
+    "policy_seeds": [
+      921065,
+      921066,
+      921067,
+      921068
+    ],
+    "not_authorization_to_resume": true
+  },
+  "resume": {
+    "cloud_restart_authorized": false,
+    "cloud_live_controller_or_watcher": false,
+    "cloud_controller_locks_unheld": true,
+    "existing_sessions_and_absolute_deadlines_consumed": true,
+    "local_auto_resume": false,
+    "local_shutdown_proof": {
+      "commit": "208ebad9ebacd91163bf583ee6aa9b13a64f79a0",
+      "path": "handoffs/2026-10-26-local-to-cloud/bundle/shutdown-proof.json",
+      "sha256": "a791c803a2dfdc82d361bbccbf26b8930b240dda31677d60d0288e18841b109d"
+    },
+    "local_scope": "Immutable final Git handoff attests local owned shutdown and disabled auto-resume. Current Mac process/scheduler state is not observable from this cloud environment; no claim of a new live Mac audit."
+  },
+  "prior_reports_preserved": {
+    "public_final_status": {
+      "path": "/workspace/heroes-overnight/reports/cloud/teacher-overnight-status.json",
+      "sha256": "f1d7a8d350fe478266b836161cedb1c3277733270289acaa5ba67b82035f015a",
+      "bytes": 13842
+    },
+    "public_final_analysis": {
+      "path": "/workspace/heroes-overnight/validation/overnight-cloud-final-2026-10-26.json",
+      "sha256": "3c90e723c84222a3936cf9040322c5aae4dd06a13f6372627f66f62edc750b55",
+      "bytes": 36350
+    },
+    "private_final_analysis": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/final-scientific-analysis.json",
+      "sha256": "3c90e723c84222a3936cf9040322c5aae4dd06a13f6372627f66f62edc750b55",
+      "bytes": 36350
+    },
+    "private_final_result": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/autonomous-final-result.json",
+      "sha256": "db539d57405d5987092cc2b4e1b71995671d3e7e225667dc6eeddc89520cd600",
+      "bytes": 5174
+    }
+  },
+  "scientific_limit": "Easier open8x8 curriculum; final paired wins do not establish improvement on original-map play."
+}
