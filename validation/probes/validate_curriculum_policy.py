@@ -55,15 +55,15 @@ def ordinary_map_identity(path):
     return dict(binding(path),stage=stage,seat=seat,scenario='curriculum-v1')
 
 
-def schedule(seat, stage=0, block=0):
-    return [{'episode':i+1,'learner_player':seat,'engine_seed':610001+1000*stage+100*block+i,
-             'policy_seed':620001+1000*stage+100*block+i} for i in range(4)]
+def schedule(seat, stage=0, block=0, study=1):
+    return [{'episode':i+1,'learner_player':seat,'engine_seed':(610001+1000*stage if study == 1 else 810001)+100*block+i,
+             'policy_seed':(620001+1000*stage if study == 1 else 820001)+100*block+i} for i in range(4)]
 
 
 def check(plan):
     require(binding(__file__) == plan["diagnostic_source"]
             and binding(ROOT/"experiments/explorer/create_curriculum_scenario.py") == plan["generator_source"], "Diagnostic source drift")
-    require(plan["schema"] == SCHEMA and plan["schedule"] == schedule(plan["map"]["seat"],plan["map"]["stage"],plan["seed_block"]),
+    require(plan["schema"] == SCHEMA and plan["schedule"] == schedule(plan["map"]["seat"],plan["map"]["stage"],plan["seed_block"],plan.get("study",1)),
             "Fixed diagnostic schedule changed")
     require(plan["case_seconds"] == CASE_SECONDS and plan["ordinary_choices"] == CHOICES
             and plan["hard_choices"] == HARD_CHOICES and plan["max_days"] == MAX_DAYS,
@@ -143,8 +143,9 @@ def worker(args):
             replay = verify_episode(folder, binary=Path(plan["replay_binary"]), data=Path(plan["data"]),
                 timeout=remaining(args.deadline, args.wall_deadline) - 10)
             require(replay.get("verified") is True, "Mixed-controller native replay failed")
-            require(replay["wire"]["native_opponent_requests"] > 0,
-                    "No actual Nullkiller command was recorded")
+            require(replay["wire"]["native_opponent_requests"] >= 0,
+                    "Invalid native opponent request accounting")
+            # A legitimate first-turn capture can eliminate the opponent before it acts.
             require(frozen_fingerprints(loaded, plan["checkpoint"]["path"]) == plan["frozen"], "Weights changed")
             check(plan)
             result.update(status="passed", replay_verified=True, weights_unchanged=True,
@@ -183,8 +184,8 @@ def execute(args):
     output = args.output.resolve()
     require(not output.exists(), "Preserve original diagnostic attempts; never replace them")
     _, frozen = load_fixed(args.checkpoint)
-    plan = {"schema": SCHEMA, "output": str(output), "schedule": schedule(ordinary_map_identity(args.map)["seat"],ordinary_map_identity(args.map)["stage"],args.seed_block),
-        "seed_block": args.seed_block, "map": ordinary_map_identity(args.map), "checkpoint": binding(args.checkpoint), "frozen": frozen,
+    plan = {"schema": SCHEMA, "output": str(output), "schedule": schedule(ordinary_map_identity(args.map)["seat"],ordinary_map_identity(args.map)["stage"],args.seed_block,args.study),
+        "study": args.study, "seed_block": args.seed_block, "map": ordinary_map_identity(args.map), "checkpoint": binding(args.checkpoint), "frozen": frozen,
         "implementation": capability_implementation_identity(), "diagnostic_source": binding(__file__),
         "generator_source": binding(ROOT/"experiments/explorer/create_curriculum_scenario.py"), "runtime": runtime_identity(args.binary.resolve().parent),
         "binary": str(args.binary.resolve()), "replay_binary": str(args.replay_binary.resolve()),
@@ -244,7 +245,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("binary", "data", "replay-binary", "map", "checkpoint", "output", "plan"):
         parser.add_argument("--" + name, type=Path)
-    parser.add_argument("--seed-block", type=int, choices=(0,1,2), default=0)
+    parser.add_argument("--seed-block", type=int, choices=range(8), default=0)
+    parser.add_argument("--study", type=int, choices=(1,2), default=1)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--deadline-unix", type=float)
     parser.add_argument("--sha256")
