@@ -280,6 +280,9 @@ _EXACT_CACHE = object()
 # Key of the per-frame cache entry that holds the experiment-only encodings
 # shared by every frame of one autograd graph (see shared_graph_encodings).
 _GRAPH_MEMO = object()
+# Key of the per-frame cache entry that holds the text leaves of one autograd graph whose
+# forward is computed once and whose backward is replayed per occurrence (see replayed_text_leaves).
+_LEAF_REPLAY = object()
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
 # The other submodules an observation encoding reads.
@@ -320,6 +323,91 @@ def _leaf_key(kind, value):
     if type(value) is float:
         return None if value != value else (float, value, copysign(1.0, value))
     return (type(value), value) if type(value) in (int, bool) else None
+
+
+class _ReplayedText:
+    """One text leaf's reference graph, built once per autograd graph on detached parameter aliases.
+
+    ``value`` is the encoding ``text_gru(byte(...))`` returns: the same operations on the same
+    inputs and parameters. ``replay(grad)`` runs this leaf's own backward graph again for one
+    occurrence and returns every gradient contribution it delivers to the leaf parameters,
+    each separately and in the order the reference chain delivers them, so that each
+    parameter's gradient sums exactly the same terms in exactly the same order.
+    """
+
+    def __init__(self, model, raw):
+        byte, gru = model.byte, model.text_gru
+        self.params = (byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names))
+        self.alias = [param.detach().requires_grad_() for param in self.params]
+        index = model._long([value + 1 for value in raw])
+        with torch.enable_grad():
+            embedding = nn.functional.embedding(index, self.alias[0], byte.padding_idx, byte.max_norm, byte.norm_type,
+                                                byte.scale_grad_by_freq, byte.sparse).unsqueeze(0)
+            hx = torch.zeros(gru.num_layers, 1, gru.hidden_size, dtype=embedding.dtype, device=embedding.device)
+            self.out = torch._VF.gru(embedding, hx, self.alias[1:], gru.bias, gru.num_layers, gru.dropout,
+                                     gru.training, gru.bidirectional, gru.batch_first)[1][0, 0]
+        self.value = self.out.detach()
+        # Every edge from this graph to an alias is one contribution; hooks record them as they run.
+        slot = {id(alias): position for position, alias in enumerate(self.alias)}
+        self.counts, self._captured, seen, pending = [0] * len(self.alias), None, set(), [self.out.grad_fn]
+        while pending:
+            node = pending.pop()
+            if node is None or node in seen:
+                continue
+            seen.add(node)
+            targets = []
+            for edge, (child, _) in enumerate(node.next_functions):
+                if child is not None and type(child).__name__ == "AccumulateGrad" and id(child.variable) in slot:
+                    targets.append((edge, slot[id(child.variable)]))
+                    self.counts[slot[id(child.variable)]] += 1
+                elif child is not None:
+                    pending.append(child)
+            if targets:
+                node.register_hook(self._recorder(targets))
+        self.arguments = tuple(param for param, count in zip(self.params, self.counts) for _ in range(count))
+
+    def _recorder(self, targets):
+        def record(grad_inputs, grad_outputs):
+            for edge, position in targets:
+                self._captured[position].append(grad_inputs[edge])
+        return record
+
+    def replay(self, grad):
+        captured = self._captured = [[] for _ in self.alias]
+        try:
+            torch.autograd.grad(self.out, self.alias, grad, retain_graph=True)
+        finally:
+            self._captured = None
+        if [len(values) for values in captured] != self.counts:
+            raise RuntimeError("A replayed text leaf delivered other gradient contributions than its graph has")
+        return [value for values in captured for value in values]
+
+    def release(self):
+        self.out = self.alias = None
+
+
+class _TextOccurrence(torch.autograd.Function):
+    """One occurrence of a replayed text leaf: the shared value forward, its own replayed backward.
+
+    Each parameter is an input once per contribution, so autograd adds the contributions to the
+    parameter's gradient one by one, where the reference chain of this occurrence would.
+    """
+
+    @staticmethod
+    def forward(ctx, leaf, *parameters):
+        ctx.set_materialize_grads(False)
+        ctx.leaf = leaf
+        return leaf.value.clone()
+
+    @staticmethod
+    def backward(ctx, grad):
+        if torch.is_grad_enabled():
+            raise RuntimeError("Replayed text leaves do not support higher-order gradients")
+        leaf, ctx.leaf = ctx.leaf, None
+        if grad is None:
+            # The reference chain receives no gradient and delivers none.
+            return (None,) * (1 + len(leaf.arguments))
+        return (None, *leaf.replay(grad))
 
 
 def _exact_tree(tree):
@@ -785,7 +873,48 @@ class ContextualActorCritic(nn.Module):
         state.pop("_leaf_memo_state", None)  # copies and pickles start without a memo
         state.pop("_observation_memo_state", None)
         state.pop("_graph_memo_state", None)
+        state.pop("_leaf_replay_state", None)
         return state
+
+    @contextmanager
+    def replayed_text_leaves(self):
+        """Exact: encode each distinct text leaf once per autograd graph, replay its backward per occurrence.
+
+        Under autograd, the first occurrence of a text (by its exact string) builds the
+        leaf's reference graph, ``text_gru(byte(bytes))``, on detached aliases of the leaf
+        parameters; every occurrence, the first included, is one autograd node whose
+        forward value is that graph's output and whose backward runs that graph again
+        with the occurrence's own incoming gradient. A leaf's graph reads only constant
+        byte indices and the leaf parameters, so in the reference each occurrence's chain
+        runs as one uninterrupted sequence when its output's gradient is complete; the
+        replay returns the same contributions, computed by the same operations on the
+        same operands, to the same parameters in the same order (each parameter is an
+        input once per contribution). Losses, values, log-probabilities, gradients and
+        therefore optimizer states are bit-identical to separate recomputation; only the
+        repeated forward work is saved. Within a frame the reference cache is unchanged.
+        Callers must leave the context before any parameter change (a change in place
+        makes the replay raise, as the aliases share the parameters' version counters).
+        Yields False, replaying nothing, unless the model and leaf modules are the plain
+        modules this argument covers, without hooks of any kind.
+        """
+        byte, gru = self.byte, self.text_gru
+        module = nn.modules.module
+        plain = (self._can_cache_prefix() and type(byte) is nn.Embedding and type(gru) is nn.GRU
+                 and byte.padding_idx == 0 and byte.max_norm is None and not byte.scale_grad_by_freq and not byte.sparse
+                 and gru.num_layers == 1 and gru.bias and gru.batch_first and not gru.bidirectional and gru.dropout == 0
+                 and gru.proj_size == 0
+                 and not (module._global_backward_hooks or module._global_backward_pre_hooks)
+                 and not any(m._backward_hooks or m._backward_pre_hooks for m in self.modules()))
+        if not plain:
+            yield False
+            return
+        state = self.__dict__["_leaf_replay_state"] = {}
+        try:
+            yield True
+        finally:
+            self.__dict__.pop("_leaf_replay_state", None)
+            for leaf in state.values():
+                leaf.release()
 
     @contextmanager
     def shared_graph_encodings(self):
@@ -911,8 +1040,16 @@ class ContextualActorCritic(nn.Module):
             return result
         if kind == "text":
             raw = tree[1].encode("utf-8")
+            replay = cache.get(_LEAF_REPLAY) if raw and type(tree[1]) is str and torch.is_grad_enabled() else None
             if not raw:
                 result = self.byte.weight.new_zeros(self.config.feature_size)
+            elif replay is not None:
+                leaf = replay.get(tree[1])
+                if leaf is None:
+                    leaf = replay[tree[1]] = _ReplayedText(self, raw)
+                if any(a is not b for a, b in zip(leaf.params, (self.byte.weight, *self.text_gru._flat_weights))):
+                    raise RuntimeError("Text leaf parameters changed inside a replay context")
+                result = _TextOccurrence.apply(leaf, *leaf.arguments)
             else:
                 embedding = self.byte(self._long([value + 1 for value in raw])).unsqueeze(0)
                 result = self.text_gru(embedding)[1][0, 0]
@@ -1144,6 +1281,9 @@ class ContextualActorCritic(nn.Module):
         graph = self.__dict__.get("_graph_memo_state")
         if graph is not None and torch.is_grad_enabled():
             cache[_GRAPH_MEMO] = graph
+        replay = self.__dict__.get("_leaf_replay_state")
+        if replay is not None and graph is None and torch.is_grad_enabled():
+            cache[_LEAF_REPLAY] = replay
         vector, cells = self._frame_features(frame, cache, final=frame.frame.kind != "decision")
         state = self.gru(vector, state)
         decision = None

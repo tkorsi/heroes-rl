@@ -252,6 +252,10 @@ EXPERIMENTS = frozenset()
 # Exact, opt-in: forked helpers compute prefix frame encodings bit for bit (``prefix_pool``).
 # Zero keeps every encoding in this process. Set the same way as ``EXPERIMENTS``.
 PREFIX_HELPERS = 0
+# Exact: each distinct text leaf of a minibatch graph is encoded once and every occurrence
+# replays that leaf's own backward (``ContextualActorCritic.replayed_text_leaves``). False
+# keeps every occurrence's separate computation; both give bit-identical updates.
+REPLAY_TEXT_LEAVES = True
 
 
 @dataclass(frozen=True)
@@ -282,8 +286,10 @@ def _update(model, optimizer, rollouts, **options):
         # Prefix helpers end with the update, whatever its outcome.
         for pool in pools:
             pool.close()
-        # The experiment's shared encodings never outlive their minibatch graph.
+        # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text leaves.
         model.__dict__.pop("_graph_memo_state", None)
+        for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
+            leaf.release()
 
 
 def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,
@@ -358,7 +364,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             # All selected windows see identical parameters. Reconstruct each
             # episode once up to its furthest boundary, then retain the original
             # selected-window order and separate detached autograd graphs.
-            sharing = model.shared_graph_encodings() if shared else nullcontext()
+            sharing = (model.shared_graph_encodings() if shared
+                       else model.replayed_text_leaves() if REPLAY_TEXT_LEAVES else nullcontext())
             sharing.__enter__()
             phase = perf_counter()
             boundaries = {}
