@@ -205,3 +205,13 @@ capture controls won and wait controls lost in both seats. No diagnostic
 experience was admitted. Private acceptance archive commit is
 92c6b4333d667916ff90521eaaabf1b5c3747ddd. This establishes the clean
 preparation gate; it does not show learning. Campaign baseline remains pending.
+
+
+Finalization is now assigned to a separate owned one-shot watcher, outside the
+immutable active release. It waits for controller exit and finalized evidence,
+checks owned shutdown and exact restore, publishes the scientific results, then
+invokes the checked Git-only handoff helper. Exclusive launch/worker locks and
+the unique readiness path exclude duplicates. Its command/source identities and
+execution receipts are retained. Its independent watchdog shares the original
+local hard deadline; it cannot start training or extend the window. Nine offline
+handoff/watcher guard tests passed before arming it.

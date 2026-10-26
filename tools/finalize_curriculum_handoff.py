@@ -44,7 +44,7 @@ def validate_final(session,controller,journal,now,mono):
     require(session['compute_deadline_unix']==session['started_unix']+6900,'Finalization reserve changed')
 
 
-def main(session_root):
+def main(session_root,finalization_proof=None):
     session_root=Path(session_root).resolve();require(session_root.is_relative_to(BASE/'campaign-v3'),'Wrong campaign namespace')
     require(not (PRIVATE/REL/'ready.json').exists(),'Unique readiness manifest already published; never overwrite it')
     require(git('remote','get-url','origin')=='https://github.com/tkorsi/heroes-rl-training-state.git'
@@ -92,6 +92,7 @@ def main(session_root):
         'window.json':BASE/'campaign-v3/window.json'}
     for name in ('session.json','release.json','frozen.json','campaign-report.json','controller-result.json','analysis.json','research-log.jsonl'):
         sources[name]=session_root/name
+    if finalization_proof is not None:sources['automatic-finalization-proof.json']=Path(finalization_proof)
     index={}
     for name,source in sources.items():
         require(source.is_file() and not source.is_symlink(),'Handoff inputs must be ordinary files')
@@ -151,4 +152,4 @@ def main(session_root):
     print(json.dumps(receipt))
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--session-root',type=Path,required=True);a=p.parse_args();main(a.session_root)
+    p=argparse.ArgumentParser();p.add_argument('--session-root',type=Path,required=True);p.add_argument('--finalization-proof',type=Path);a=p.parse_args();main(a.session_root,a.finalization_proof)
