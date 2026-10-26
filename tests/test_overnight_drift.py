@@ -1,5 +1,8 @@
 """Cross-platform sampling is descriptive; probability/support drift still blocks."""
 from types import SimpleNamespace as N
+import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import MagicMock,patch
 import torch
@@ -7,6 +10,20 @@ from tools import measure_overnight_platform_drift as drift
 
 
 class DriftControls(unittest.TestCase):
+    def test_training_envelope_is_decoded_offline_without_relabeling_or_fallback(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);path=root/'builtin-training-rollout.json'
+            envelope=dict(schema='heroes-builtin-training-capture-v1',purpose='training',
+                optimization_eligible=False,experience={'original':'excluded experience'})
+            path.write_text(json.dumps(envelope));before=path.read_bytes()
+            with patch.object(drift,'load_builtin_episode',return_value='decoded') as load:
+                record,episode=drift.episode_record(root)
+                self.assertEqual(record,path);self.assertEqual(episode,'decoded')
+                load.assert_called_once_with(envelope['experience'])
+                self.assertEqual(path.read_bytes(),before)
+                (root/'builtin-rollout.json').write_text('{}')
+                with self.assertRaisesRegex(ValueError,'exactly one'):drift.episode_record(root)
+
     def test_platform_samples_do_not_override_numeric_or_support_gate(self):
         for difference,support,passed in [(0.,('same',),True),(.01,('same',),False),(0.,('changed',),None)]:
             with self.subTest(difference=difference,support=support):

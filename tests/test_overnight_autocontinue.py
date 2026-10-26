@@ -174,7 +174,7 @@ class HandoffControls(unittest.TestCase):
             with (base/'autocontinue.lock').open('a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 with patch.object(chain,'BASE',base),patch.object(chain,'wait_for_handoff') as wait:
-                    with self.assertRaises(BlockingIOError):chain.main()
+                    with self.assertRaises(BlockingIOError):chain.main([])
                     wait.assert_not_called()
 
 

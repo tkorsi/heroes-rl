@@ -1,16 +1,37 @@
 {
-  "timestamp_utc": "2026-10-26T03:06:10.936002+00:00",
-  "phase": "stopped_stopped_before_training",
+  "timestamp_utc": "2026-10-26T03:16:45.450386+00:00",
+  "phase": "offline_preparation_repair",
   "ownership": "cloud",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
   "hard_deadline_utc": "2026-10-26T10:00:00Z",
   "cloud_training_started": false,
   "new_admitted_games": 0,
   "new_ppo_updates": 0,
-  "checkpoint": null,
+  "checkpoint": {
+    "plan": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+      "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+      "bytes": 57870
+    },
+    "report": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/report.json",
+      "sha256": "4814e4539ceb8d442c43d0018d436e29c9686adc473302adf53456ee49c9e79f",
+      "bytes": 11137
+    },
+    "policy": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-policy.pt",
+      "sha256": "4820f656835e4a339f5b2364fe842f09e8fcf815b5474c7c2b6b611c867c8204",
+      "bytes": 638131
+    },
+    "resume": {
+      "path": "/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/after-resume.pt",
+      "sha256": "0899a4a9845ceeef213510c8cd383a0c3ecd7f4ab7440a0c2ae07afe5c2b65fa",
+      "bytes": 1266165
+    }
+  },
   "verified_asset_files": 8,
   "watchdog_pid": 26662,
-  "blocker": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
+  "blocker": "Repairing offline rollout-envelope lookup; no native game has started",
   "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
   "offline_control_tests": 15,
   "private_git_read_access": true,
@@ -50,5 +71,14 @@
     "hard_deadline_unix": 1793008800.0,
     "compute_deadline_unix": 1793008500.0,
     "restart_authorized": false
-  }
+  },
+  "latest_complete_progress": {
+    "updates": 254,
+    "rollouts": 1016,
+    "decisions": 73345
+  },
+  "cumulative_adam_steps": 2626,
+  "next_unused_training_sequence": 108,
+  "exact_final_restore": "passed_three_copies",
+  "repair_attempt": "preparation-repair-002"
 }

@@ -23,6 +23,19 @@ ABSOLUTE=1e-5
 RELATIVE=1e-4
 
 
+def episode_record(directory):
+    directory=Path(directory)
+    evaluation=directory/'builtin-rollout.json'
+    training=directory/'builtin-training-rollout.json'
+    require(evaluation.is_file()!=training.is_file(),'Expected exactly one original rollout envelope')
+    if evaluation.is_file():return evaluation,load_builtin_episode(evaluation)
+    raw=json.loads(training.read_text())
+    require(raw.get('schema')=='heroes-builtin-training-capture-v1' and raw.get('purpose')=='training'
+        and raw.get('optimization_eligible') is False,'Unexpected historical capture envelope')
+    # Decode the original excluded experience; never create admission objects.
+    return training,load_builtin_episode(raw['experience'])
+
+
 def measure(episode,model):
     require(weights_sha256(model)==episode.weights_sha256,'Wrong historical behavior weights')
     encoder=ContextualEncoder(episode.history[0].episode,episode.player,episode.history[0].schema)
@@ -77,8 +90,8 @@ def main():
     loaded=cp.load_policy_checkpoint(a.checkpoint,expected_source_metadata=_metadata(plan,report['plan_sha256']),
         interface=plan['source']['interface'],allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,),
         historical_torch_version=plan['source']['torch'])
-    episode=load_builtin_episode(a.episode/'builtin-rollout.json')
-    result=dict(diagnostic_source=binding(__file__),python=sys.version,torch=str(torch.__version__),episode=binding(a.episode/'builtin-rollout.json'),checkpoint=binding(a.checkpoint),
+    record,episode=episode_record(a.episode)
+    result=dict(diagnostic_source=binding(__file__),python=sys.version,torch=str(torch.__version__),episode=binding(record),checkpoint=binding(a.checkpoint),
         historical_plan=binding(a.plan),**measure(episode,loaded.model))
     with a.output.open('x') as f:json.dump(result,f,indent=2);f.write('\n')
     print(json.dumps(dict(passed=result['passed'],output=str(a.output))))

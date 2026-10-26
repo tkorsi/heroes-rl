@@ -149,13 +149,21 @@ def prepare_context(receipt,runtime):
     proofs=[verify_pair(parent['resume']['path'],parent['policy']['path'],plan,report,migration=migration)]
     backups=[]
     for dest in (BASE/'checkpoints/imported-final-local',PRIVATE/'checkpoints/overnight-20261026/imported-final-local'):
-        dest.mkdir(parents=True,exist_ok=False)
+        already=dest.exists()
+        dest.mkdir(parents=True,exist_ok=True)
         for name,key in [('after-policy.pt','policy'),('after-resume.pt','resume'),('plan.json','plan'),('report.json','report')]:
-            shutil.copy2(parent[key]['path'],dest/name)
+            if already:
+                observed=binding(dest/name)
+                if any(observed[k]!=parent[key][k] for k in ('sha256','bytes')):raise ValueError('Existing imported backup differs; quarantine instead of overwriting')
+            else:shutil.copy2(parent[key]['path'],dest/name)
         proof=verify_pair(dest/'after-resume.pt',dest/'after-policy.pt',plan,report,migration=migration)
-        atomic(dest/'restore-receipt.json',proof);backups.append(str(dest));proofs.append(proof)
+        if already:
+            if json.loads((dest/'restore-receipt.json').read_text())!=proof:raise ValueError('Existing restore receipt differs; preserve it for diagnosis')
+        else:atomic(dest/'restore-receipt.json',proof)
+        backups.append(str(dest));proofs.append(proof)
     git(PRIVATE,'add','--','checkpoints/overnight-20261026/imported-final-local')
-    git(PRIVATE,'commit','-m','Preserve exact final local handoff before cloud acceptance')
+    if git(PRIVATE,'diff','--cached','--name-only'):
+        git(PRIVATE,'commit','-m','Preserve exact final local handoff before cloud acceptance')
     git(PRIVATE,'push','origin','HEAD:refs/heads/'+PUBLIC_BRANCH)
     # Identical historical inputs with their original behavior checkpoint, not
     # the changed final weights. This is offline portability evidence only.
@@ -166,8 +174,10 @@ def prepare_context(receipt,runtime):
     previous_policy=relocate(plan['checkpoint_metadata']['initial_checkpoint']['path'])
     episode=relocate(report['attempts'][0]['episode_directory'])
     drift=BASE/'platform-drift.json'
+    from tools.measure_overnight_platform_drift import episode_record
+    record,_=episode_record(episode)
     event('platform_drift_preregistered',absolute_tolerance=1e-5,relative_tolerance=1e-4,
-        original_behavior_checkpoint=binding(previous_policy),episode=binding(episode/'builtin-rollout.json'),training_samples=0)
+        original_behavior_checkpoint=binding(previous_policy),episode=binding(record),training_samples=0)
     run([sys.executable,str(BOOTSTRAP/'tools/measure_overnight_platform_drift.py'),'--episode',str(episode),
         '--checkpoint',str(previous_policy),'--plan',str(previous_plan),'--report',str(previous_report),'--output',str(drift)],
         'platform-drift',BOOTSTRAP,maximum=300)
@@ -248,13 +258,23 @@ def campaign(release):
         cleanup_from_evidence(BASE/'automatic-campaign-deadline.jsonl',timeout=1)
 
 
-def main():
+def main(argv=None):
+    import argparse
+    parser=argparse.ArgumentParser();parser.add_argument('--repair-preparation',default=None);args=parser.parse_args(argv)
+    repair=args.repair_preparation
     BASE.mkdir(parents=True,exist_ok=True)
     lock=(BASE/'autocontinue.lock').open('a')
     try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     except BlockingIOError:
         lock.close();raise
-    if (BASE/'autocontinue-finished.json').exists():raise ValueError('Consumed autonomous chain cannot restart')
+    prior=BASE/'autocontinue-finished.json'
+    if repair is None:
+        if prior.exists():raise ValueError('Consumed autonomous chain cannot restart')
+    else:
+        if repair!='preparation-repair-002':raise ValueError('Explicit unique repair identity required')
+        failed=json.loads(prior.read_text())
+        if failed['status']!='stopped_before_training' or failed['training_started'] is not False or (BASE/'campaign-v1/session.json').exists() or (BASE/'study4').exists():raise ValueError('Preparation-only repair cannot reuse any gameplay attempt')
+        if (BASE/(repair+'-finished.json')).exists():raise ValueError('Repair attempt already consumed')
     atomic(BASE/'autocontinue-command.json',dict(pid=os.getpid(),started_utc=utc(),bootstrap=str(BOOTSTRAP),
         command=[sys.executable,*sys.argv],duplicate_exclusion='exclusive flock autocontinue.lock plus immutable claim and session lock',
         compute_deadline_unix=COMPUTE,hard_deadline_unix=HARD))
@@ -262,10 +282,15 @@ def main():
     result=dict(status='stopped_before_training',training_started=False)
     try:
         ready_commit=wait_for_handoff();runtime=verify_runtime()
-        if (BASE/'handoff-consumed.json').exists():raise ValueError('Final handoff already consumed by a chain')
+        if repair is None and (BASE/'handoff-consumed.json').exists():raise ValueError('Final handoff already consumed by a chain')
+        if repair is not None:
+            claimed=json.loads((BASE/'handoff-consumed.json').read_text())
+            if claimed['ready_commit']!=ready_commit:raise ValueError('Preparation repair must retain the exact same verified handoff')
+            event('preparation_repair_intent',attempt=repair,prior_failure=binding(prior),same_handoff=ready_commit,deadline_extended=False)
         git(AUTHOR,'fetch','origin','codex/teacher-curriculum-v1')
         receipt=materialize(IMPORT_REPO,ready_commit,BASE/'imports'/ready_commit,AUTHOR)
-        with (BASE/'handoff-consumed.json').open('x') as f:json.dump(dict(ready_commit=ready_commit,pid=os.getpid(),at_utc=utc()),f)
+        if repair is None:
+            with (BASE/'handoff-consumed.json').open('x') as f:json.dump(dict(ready_commit=ready_commit,pid=os.getpid(),at_utc=utc()),f)
         commit=prepare_context(receipt,runtime)
         release=create_release(commit)
         campaign(release)
@@ -279,7 +304,7 @@ def main():
         event('autonomous_chain_stopped',result=result)
     finally:
         result.update(stopped_utc=utc(),hard_deadline_unix=HARD,compute_deadline_unix=COMPUTE,restart_authorized=False)
-        atomic(BASE/'autocontinue-finished.json',result)
+        atomic(BASE/((repair+'-finished.json') if repair else 'autocontinue-finished.json'),result)
         status('stopped_'+result['status'],ownership='cloud' if (BASE/'handoff-consumed.json').exists() else 'local',
             blocker=result.get('error'),autonomous_result=result)
         if time.time()<HARD-20:public_push('Publish overnight automatic continuation result')
