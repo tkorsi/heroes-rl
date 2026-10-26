@@ -1,0 +1,45 @@
+{
+  "schema": "heroes-cloud-dispatch-status-v1",
+  "recorded_at_utc": "2026-10-26T01:31:04.506734+00:00",
+  "dispatch_observed_at_utc": "2026-10-26T01:29:00Z",
+  "dispatch_time_precision": "minute, observed in browser UI",
+  "phase": "instruction_delivered_active_turn_context_compaction",
+  "delivery_route": "authenticated Chrome UI after user completed sign-in",
+  "existing_cloud_task": {
+    "thread_id": "01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+    "host": "durable",
+    "url": "https://chatgpt.com/local/01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+    "message_delivered": true,
+    "observed_activity": [
+      "Working",
+      "Thinking",
+      "Compacting context"
+    ]
+  },
+  "new_cloud_task_created": false,
+  "cloud_training_started": false,
+  "cloud_preparation_completed": false,
+  "cloud_hard_stop_utc": "2026-10-26T10:00:00Z",
+  "cloud_compute_cutoff_utc": "2026-10-26T09:55:00Z",
+  "local_campaign": {
+    "interrupted": false,
+    "source_commit": "cb3d324cb09919383dac7e97a97bc0696dcd588d",
+    "session": "campaign-v3/session.json",
+    "started_at_utc": "2026-10-26T01:10:53.815159Z",
+    "compute_cutoff_utc": "2026-10-26T03:05:53.815159Z",
+    "hard_stop_utc": "2026-10-26T03:10:53.815159Z"
+  },
+  "handoff": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local365-teacher-results",
+    "path": "handoffs/2026-10-26-local-to-cloud/ready.json",
+    "status_at_0128_utc": "absent; local campaign still owns checkpoint",
+    "cloud_ppo_gate": "verified final checkpoint restoration, local owned shutdown and explicit ownership transfer, followed by frozen Linux acceptance"
+  },
+  "supersedes_operational_blocker_record": "validation/overnight-cloud-access-2026-10-26.json",
+  "limitations": [
+    "Purpose-built thread tools still returned 403 or Cloudflare errors; browser access success does not establish their recovery.",
+    "Visible delivery and an active turn do not prove runtime readiness, independent overnight waiting, or any cloud PPO update.",
+    "Historical access failures are retained rather than rewritten."
+  ]
+}
