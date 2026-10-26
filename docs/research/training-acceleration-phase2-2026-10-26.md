@@ -326,3 +326,19 @@ measurement set was stopped and the candidate changed:
   share (tests poison only later rows).
 - New tests for each item, for overlapped failure combinations, for the analysis child's failure
   paths, and an overlap test that fails under the serial order.
+
+### A18. Final measurement set (from 16:56 UTC)
+
+Candidate refrozen at a9304eb after a passing functional smoke (`func-XH-easy-3`, the A1 batch: same
+340 samples, compute 46.7 s, durable 48.6 s). Baseline 3cb6a78 unchanged. Schedule
+(`schedules/v2.json` in the private root, run by `tools/acceleration2/run_rounds.py`, one campaign at
+a time, nothing else heavy on the host):
+
+- easy round a, sequences 30 to 33: B, XH, CH, X; easy round b, sequences 40 to 43: X, CH, XH, B;
+- publication emulation, sequences 60 to 63: XH and B with an 18.3 s delay before each push, then B
+  and XH with 4.5 s;
+- original workload, sequences 0 to 3 (the A6 batch first): XH, CH, then B, with a four-hour window.
+
+The first launch of `a-B-easy` was stopped during its setup when I moved the driver out of the tool
+session (a two-hour limit there would have killed a running campaign); the partial directory is kept
+and the campaign ran as `a-B-easy2`.

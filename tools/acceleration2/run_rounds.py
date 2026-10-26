@@ -3,9 +3,9 @@
     run_rounds.py SCHEDULE.json [--runner tools/run_campaign.py] [--only NAME...]
 
 SCHEDULE.json is a list of campaigns, each {name, variant, checkout, runtime, workload,
-first_sequence, seats, push_delay?, experiments?, prefix_helpers?}. Campaigns run strictly in
-order, one at a time, each through ``run_campaign.py``; a failed campaign is recorded and kept, and
-the next one still runs. Before each campaign the measured checkout must be clean and at the
+first_sequence, seats, push_delay?, hours?, experiments?, prefix_helpers?}. Campaigns run
+strictly in order, one at a time, each through ``run_campaign.py``; a failed campaign is recorded
+and kept, and the next one still runs. Before each campaign the measured checkout must be clean and at the
 commit the schedule names (``head``), so nothing changes under a measurement set.
 ``rounds.jsonl`` next to the schedule records start, end, exit status and the host load.
 """
@@ -43,7 +43,7 @@ def main():
             command = [sys.executable, str(a.runner), '--checkout', str(checkout), '--runtime', item['runtime'],
                        '--variant', item['variant'], '--workload', item['workload'], '--name', item['name'],
                        '--first-sequence', str(item['first_sequence']), '--seats', item['seats'],
-                       '--push-delay', str(item.get('push_delay', 0.0)),
+                       '--push-delay', str(item.get('push_delay', 0.0)), '--hours', str(item.get('hours', 2.0)),
                        *(x for e in item.get('experiments', []) for x in ('--experiment', e)),
                        *(('--prefix-helpers', str(item['prefix_helpers'])) if item.get('prefix_helpers') else ())]
             with open(a.schedule.with_name(item['name'] + '.out'), 'w') as out:
