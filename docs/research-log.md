@@ -397,3 +397,11 @@ and verified rejection while the existing owner lock is held. No original-map
 gameplay or training was launched during preparation; the active frozen release
 and its state were not modified. Final-parent selection remains deferred until
 the user's later manual invocation after clean shutdown.
+
+The original-map adapter and controller were then frozen at
+`dd819e6f89929b1f2c4db3a39c4e225229da6f01`. Canonical dependency preparation and
+exact checking passed. A read-only immutable intermediate snapshot567 restored
+exactly (2,268rollouts,121,485decisions,4,578Adamsteps), and both original-map
+baseline plans passed full identity checks without execution. This snapshot is
+**not** the selected final parent. The [frozen receipt](../validation/local-original5000-frozen-check-2026-10-26.json)
+binds the offline evidence; no training sequence or native game was consumed.

@@ -1,0 +1,43 @@
+{
+  "schema": "heroes-original5000-offline-preflight-v1",
+  "timestamp_utc": "2026-10-26T17:31:40.213825+00:00",
+  "source_commit": "dd819e6f89929b1f2c4db3a39c4e225229da6f01",
+  "clean_source": true,
+  "status": "passed",
+  "checkpoint": {
+    "updates": 567,
+    "rollouts": 2268,
+    "decisions": 121485
+  },
+  "adam_steps": 4578,
+  "weights_sha256": "f7bef2b7fce22821607bb0de6f08494621aa1bbb6397c978fb95721b03f4d626",
+  "source_compatibility": {
+    "historical_commit": "3268f2f8cae6a01277c1629c5d0a9fb8958b5786",
+    "changes": {
+      "experiments/learner/local_script_training.py": {
+        "transition": "explicit_map_profile_and_seed_namespace",
+        "historical_sha256": "d2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518",
+        "current_sha256": "499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3",
+        "current_ast_sha256": "b3be747906bc37b5bd19080b3adc7b993af215a8985c8f4178fafb920131e5c2",
+        "historical_code_executed": false,
+        "historical_metadata_rewritten": false
+      }
+    },
+    "policy_ppo_unchanged": true,
+    "historical_metadata_rewritten": false
+  },
+  "baseline_plans_executed": 0,
+  "gameplay_performed": false,
+  "ppo_updates": 0,
+  "sequence_ledger_mutated": false,
+  "note": "Offline original-map plan check from an immutable intermediate snapshot; final campaign parent remains deferred until prior shutdown. These validation plans are not campaign sessions and were never executed.",
+  "raw_receipt_sha256": "c0d9308e44330f92c89cd46667c8ad833eafbc66bc9c5a90a773ac901e9ba19c",
+  "baseline_plan_sha256": [
+    "c71a19dfab12c1a585992763def310fd13c7920dc8caae1040d2e38fd954bf58",
+    "ba02511c39bb16d9fbbbae1eba37d1615f8323d847d6b83dbba5be4d22a47eda"
+  ],
+  "canonical_vcmi_check_passed": true,
+  "canonical_prepare_log_sha256": "5978f0f9c14cf4cd7a4bcbdc95dc39fe52e6c2bf82e3de5ed38fdf01f0392014",
+  "selected_final_parent": false,
+  "meaning": "This intermediate checkpoint tested migration and both original-map plan identities only. The manual wrapper selects the actual final parent after prior clean shutdown."
+}
