@@ -85,6 +85,16 @@ def dependency_identity():
         untracked={p:binding(repo/p)['sha256'] for p in sorted(untracked)})
 
 
+def runtime_files(directory):
+    directory=Path(directory).resolve()
+    files={}
+    for path in sorted(directory.rglob('*')):
+        require(not path.is_symlink(),'Frozen Linux runtime cannot retain mutable external links')
+        if path.is_file():files[str(path.relative_to(directory))]=binding(path)
+    require(all(name in files for name in ('vcmiclient','vcmiserver','vcmireplay','libvcmi.so','AI/libExplorerRL.so','AI/libNullkiller.so','AI/libBattleAI.so')),'Incomplete executable runtime')
+    return files
+
+
 def check_frozen():
     frozen=json.loads((SESSION.parent/'frozen.json').read_text())
     require(dependency_identity()==frozen['dependency'],'Generated dependency drift')
@@ -95,6 +105,8 @@ def check_frozen():
     for name,value in frozen['bound_files'].items():require(binding(ROOT/name)==value,'Frozen tool/config drift')
     require(configuration()==frozen['configuration'], 'Frozen configuration drift')
     require(runtime_identity(Path(frozen['runtime_bin']))==frozen['runtime'], 'Frozen runtime drift')
+    require(runtime_files(frozen['runtime_bin'])==frozen['runtime_files'],'Frozen client/server/module/resource tree drift')
+    require(binding(frozen['runtime_report']['path'])==frozen['runtime_report'],'Native build/check receipt drift')
     require([map_identity(BASE/f'maps/curriculum-3-{seat}.vmap',seat) for seat in (0,1)]==frozen['maps'],'Frozen map drift')
     for key in ('plan','report','policy','resume'):require(binding(frozen['parent'][key]['path'])==frozen['parent'][key],'Frozen initial checkpoint drift')
     return frozen

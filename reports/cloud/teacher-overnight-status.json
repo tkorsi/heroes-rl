@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T02:04:39.918303+00:00",
+  "timestamp_utc": "2026-10-26T02:05:31.024221+00:00",
   "phase": "waiting_final_local_handoff",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
@@ -25,5 +25,10 @@
   ],
   "duplicate_exclusion": "exclusive live flock plus immutable handoff claim and session lock",
   "second_real_controller_rejected": true,
-  "absolute_child_guard_control_passed": true
+  "absolute_child_guard_control_passed": true,
+  "private_git_write_access": true,
+  "runtime_startup_checks": "passed",
+  "builtin_regression_tests": 234,
+  "overnight_controls": 15,
+  "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220"
 }

@@ -243,6 +243,12 @@ def freeze():
     from validation.probes.validate_overnight_policy import schedule as diagnostic_schedule
     runtime_bin='/workspace/Heroes-artifacts/runtime/overnight-20261026/bin'
     runtime=runtime_identity(Path(runtime_bin))
+    ready=json.loads((c.BASE/'runtime-ready.json').read_text())
+    require(binding(ready['check']['path'])==ready['check'],'Runtime build receipt differs')
+    build=json.loads(Path(ready['check']['path']).read_text());require(build['passed'] is True,'Failed Linux runtime check')
+    all_files=c.runtime_files(runtime_bin)
+    for name,expected in build['artifacts'].items():
+        require({k:all_files[name][k] for k in ('sha256','bytes')}==expected,'Executable differs from built/checked Linux runtime')
     require(runtime==c.context()['linux_runtime'],'Unpinned Linux runtime')
     require(json.loads(c.PARENT.read_text())['runtime']==c.context()['historical_runtime'],'Historical runtime changed')
     for module in ('Nullkiller','BattleAI','ExplorerRL'):
@@ -253,7 +259,7 @@ def freeze():
            'configs/teacher-curriculum-v3.json','experiments/explorer/create_curriculum_scenario.py']
     frozen=dict(checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
         capability_implementation=capability_implementation_identity(),bound_files={n:binding(ROOT/n) for n in names},
-        parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,
+        parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,runtime_files=all_files,runtime_report=ready['check'],
         data='/workspace/Heroes-artifacts/game-data',
         maps=[c.map_identity(c.BASE/f'maps/curriculum-3-{seat}.vmap',seat) for seat in (0,1)],
         diagnostic_schedule=[r for block in range(8) for seat in (0,1) for r in diagnostic_schedule(seat,3,block,4)],
