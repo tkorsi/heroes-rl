@@ -7,7 +7,7 @@ from experiments.explorer.create_capability_scenarios import ordinary_payloads
 
 
 def payloads(stage=0, seat=0):
-    if stage not in (0, 1, 2) or seat not in (0, 1):
+    if stage not in (0, 1, 2, 3) or seat not in (0, 1):
         raise ValueError('Unknown curriculum stage or seat')
     value = ordinary_payloads()
     if stage == 2:
@@ -23,6 +23,14 @@ def payloads(stage=0, seat=0):
     hero['options']['army'] = [{'type':'core:pikeman','amount':100 if stage == 0 else 50}]
     value['objects.json'] = [x for x in objects if x['instanceName'] not in
                             (f'town_{seat}', f'hero_{opponent}')]
+    if stage == 3:
+        # Smaller open authored board, without impassable corridors or filtered actions.
+        value['objects.json'] = [hero,town]
+        town.update(x=6,y=5);hero.update(x=5,y=6)
+        hero['options']['army']=[{'type':'core:pikeman','amount':100}]
+        value['surface_terrain.json']=[row[:8] for row in value['surface_terrain.json'][:8]]
+        value['header.json']['mapLevels']['surface'].update(width=8,height=8)
+        value['header.json']['players'][('red','blue')[opponent]]['mainTown'].update(x=4,y=5)
     players = value['header.json']['players']
     players[color].pop('mainTown',None)
     other = players[('red','blue')[opponent]]
