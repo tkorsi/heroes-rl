@@ -225,3 +225,33 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T04:16:15.964148+00:00 campaign_batch_result: {"sequence": 126, "seat": 0, "mode": "training", "status": "passed"}
 
 - 2026-10-26T04:16:16.227580+00:00 campaign_batch_intent: {"sequence": 127, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:18:53.566960+00:00 campaign_batch_result: {"sequence": 127, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:18:53.857812+00:00 campaign_batch_intent: {"sequence": 128, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:19:57.868315+00:00 campaign_batch_result: {"sequence": 128, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:19:58.136069+00:00 campaign_batch_intent: {"sequence": 129, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:20:58.658090+00:00 campaign_batch_result: {"sequence": 129, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:20:59.213151+00:00 campaign_batch_intent: {"sequence": 276, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:21:22.852624+00:00 campaign_batch_result: {"sequence": 276, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:21:23.124268+00:00 campaign_batch_intent: {"sequence": 276, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:21:46.171313+00:00 campaign_batch_result: {"sequence": 276, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:21:46.429629+00:00 campaign_batch_intent: {"sequence": 130, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:22:32.007298+00:00 campaign_batch_result: {"sequence": 130, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:22:32.268548+00:00 campaign_batch_intent: {"sequence": 131, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:23:12.650798+00:00 campaign_batch_result: {"sequence": 131, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:23:12.913918+00:00 campaign_batch_intent: {"sequence": 132, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:23:17.858049+00:00 The fixed curriculum baseline at254 was1/4wins in each seat;256and261 remained1/4. At266and271 both seats reached4/4, then276returned3/4 in both seats. Every check was complete, replayed and independently reconstructed. This is descriptive improvement on repeated fixed8x8 curriculum seeds, with nonmonotonic results and no original-map evaluation. At276the campaign had22complete cloud updates and88fresh games (65wins/23losses, zero cutoffs). Source/runtime/rewards/settings remain unchanged;18GBdisk remains free.
