@@ -44,5 +44,14 @@
     ],
     "process_identity_independently_audited": false,
     "watchdog_test_status": "Owner UI reports passed; raw process/test receipt not independently read by root"
+  },
+  "checkpoint_handoff_message": {
+    "observed_local_time": "2026-10-26T20:32:00+02:00",
+    "timestamp_precision": "UI minute precision",
+    "public_receipt_commit": "b858a72006da7f8e3df8ad0989572c931ea44fe5",
+    "private_package_commit": "3f507507afde652c61def59a994a816d12cb0170",
+    "private_restore_receipt_commit": "8ab78fea6e7dfb023a5daf38b8fcc10d0e89de51",
+    "acknowledgment": "Got it: 629 package is published. I will fetch it into a disposable copy, verify a Linux relocation, and use it alongside 412.",
+    "linux_relocation_confirmed": false
   }
 }

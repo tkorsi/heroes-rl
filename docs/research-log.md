@@ -445,3 +445,19 @@ Checkpoint publication is confirmed; full-archive publication is tracked
 separately and is not yet claimed. This transport failure occurred after clean
 training shutdown and invalidates no admitted experience. No games or PPO were
 started by this synchronization.
+
+The full archive was subsequently published successfully without force pushes
+or omitted evidence. Eight bounded metadata/chunk stages retained remote
+acknowledgements; the original complete package commit is
+`87e814e6d2de8a0690fed7e158d2e50f87b59267`, with publication receipt
+`78afd6f27b589a71414f143f6f866d6ded0cca49` on the private branch
+`codex/local-script-final629`. All 13 archive-part Git blobs match the locally
+verified SHA256-bound archive of 38,337 regular files. Game-data symlinks were
+recorded without copying their targets. The full archive was not redownloaded;
+the smaller final checkpoint was downloaded and restored independently.
+The original HTTP408 publication failure remains in the receipt and Git history.
+
+Claude acknowledged the immutable629 handoff at 20:32 Kyiv and will validate
+Linux relocation on disposable copies. This is not evidence of completed Linux
+acceptance or a measured speedup for629. The deadline and manual launch remain
+unchanged.

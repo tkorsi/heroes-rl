@@ -1,6 +1,6 @@
 {
   "schema": "heroes-local-script-final-sync-v1",
-  "timestamp_utc": "2026-10-26T18:30:06.867971+00:00",
+  "timestamp_utc": "2026-10-26T18:35:48.052556+00:00",
   "run_id": "run-20261026T160706Z-0be8eb77",
   "frozen_source_commit": "3268f2f8cae6a01277c1629c5d0a9fb8958b5786",
   "checkpoint_update": 629,
@@ -65,8 +65,8 @@
   },
   "full_raw_archive": {
     "local_complete": true,
-    "remote_publication_confirmed": false,
-    "upload_status": "First single535MB push failed with HTTP408; remote branch absent. Local verified archive and every source file remain intact.",
+    "remote_publication_confirmed": true,
+    "upload_status": "Complete after bounded transport recovery; the initial HTTP408 failure is retained below.",
     "intended_branch": "codex/local-script-final629",
     "local_package_commit": "87e814e6d2de8a0690fed7e158d2e50f87b59267",
     "compressed_bytes": 534988500,
@@ -75,7 +75,28 @@
     "regular_files": 38337,
     "all_contents_verified": true,
     "symlinks_recorded_not_dereferenced": 1220,
-    "copyrighted_data_copied": false
+    "copyrighted_data_copied": false,
+    "private_repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local-script-final629",
+    "complete_package_commit": "87e814e6d2de8a0690fed7e158d2e50f87b59267",
+    "publication_receipt_commit": "78afd6f27b589a71414f143f6f866d6ded0cca49",
+    "remote_tree": "f528690034054055f1907347879418fd60bfb80e",
+    "remote_blob_entries_verified": 45,
+    "all_parts_remote_acknowledged": true,
+    "initial_publication_failure": {
+      "error": "HTTP408; remote disconnected during one535MB push",
+      "full_branch_absent_after_failure": true,
+      "source_bytes_or_game_state_changed": false
+    },
+    "recovery": {
+      "transport_branch": "codex/local-script-final629-upload",
+      "acknowledged_stages": 8,
+      "push_elapsed_seconds_total": 195.88410762607236,
+      "method": "Sequential metadata and two40MiB-part pushes; HTTP/1.1 with128MiBPOSTbuffer; each stage acknowledged before next; final original complete commit published without force"
+    },
+    "remote_integrity_method": "All13GitblobIDs independently read from remote immutable tree and matched local SHA1 objects; the local objects are also bound by SHA256 manifests and full decompressed-file verification.",
+    "raw_archive_redownloaded": false,
+    "private_publication_receipt": "local-script/run-20261026T160706Z-0be8eb77/publication-receipt.json"
   },
   "source_summary_sha256": "77d2a6eecf1664561263334f745f8bdca88519260214facf7ee086130d8785a7",
   "source_report_sha256": "ace694b3d2f836585d1e1be12c3a1a8f6558dc96a96a0b8df3af437abebd60fe",
@@ -85,6 +106,6 @@
   "limitations": [
     "The run used the easier8x8 distribution. These results do not establish original-map wins.",
     "The final629 checkpoint has no dedicated final paired evaluation; the latest pair belongs to627.",
-    "At this receipt timestamp the exact final checkpoint is remotely preserved, but the full raw archive has not yet completed remote publication."
+    "Remote archive publication was verified by immutable commit/tree/blob acknowledgements matched to the locally fully verified archive; the full535MBarchive was not downloaded a second time. The small final checkpoint was independently downloaded and restored exactly."
   ]
 }

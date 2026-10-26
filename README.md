@@ -66,6 +66,8 @@ it does not reopen the closed cloud session.
 The first manually launched local easy-map series has now finished at
 **update 629** (868 new training games and 217 PPO updates), with exact final
 restoration and owned shutdown recorded at 17:58:39 UTC on 26 October.
+Its [final checkpoint and full raw archive](validation/local-script-final629-sync-2026-10-26.json)
+are privately published; the downloaded checkpoint restored exactly.
 The prepared original-map 5,000-game script continues that finalized state;
 its launch remains manual. The user renewed Claude's optimization assignment
 through **27 October 2026, 13:00 Europe/Kiev (11:00 UTC)**, prioritizing the
