@@ -7,6 +7,7 @@ retains earlier information: there is no accumulated last-seen world cache.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from copy import copy
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
@@ -276,6 +277,9 @@ _OBSERVATION_TENSOR_BYTES = 512  # a CPU tensor beyond its data: object, impleme
 # Key of the per-frame cache entry that is False once the cache may hold a tree
 # equal to, but not identical with, a later one (see _encode_root).
 _EXACT_CACHE = object()
+# Key of the per-frame cache entry that holds the experiment-only encodings
+# shared by every frame of one autograd graph (see shared_graph_encodings).
+_GRAPH_MEMO = object()
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
 # The other submodules an observation encoding reads.
@@ -767,7 +771,32 @@ class ContextualActorCritic(nn.Module):
         state = super().__getstate__()
         state.pop("_leaf_memo_state", None)  # copies and pickles start without a memo
         state.pop("_observation_memo_state", None)
+        state.pop("_graph_memo_state", None)
         return state
+
+    @contextmanager
+    def shared_graph_encodings(self):
+        """Experiment only: share exact tree encodings across every frame of one autograd graph.
+
+        Under autograd, a text or number leaf (by ``_leaf_key``) or an exact
+        internal tree (``_exact_tree``) is encoded once per context and the
+        same tensor, with its graph, serves every later frame. Forward values,
+        losses, log-probabilities and values are bit-identical to separate
+        recomputation, because each reuse is the tensor the same operations on
+        the same inputs and parameters would return. Gradients are not: every
+        reuse sums its incoming gradients before backpropagating them once, so
+        parameter gradients differ from the reference in floating-point
+        summation order. Callers must leave the context before any parameter
+        change. Yields False, sharing nothing, outside ``_can_cache_prefix``.
+        """
+        if not self._can_cache_prefix():
+            yield False
+            return
+        self.__dict__["_graph_memo_state"] = {"text": {}, "number": {}, "node": {}}
+        try:
+            yield True
+        finally:
+            self.__dict__.pop("_graph_memo_state", None)
 
     def _walk_modules(self, names):
         """(layout, references, tensors) of these submodules in eval mode without hooks, else None.
@@ -836,6 +865,9 @@ class ContextualActorCritic(nn.Module):
         """
         memo = cache.get(_LEAF_MEMO)
         nodes = memo.get("node") if memo is not None and not torch.is_grad_enabled() else None
+        graph = cache.get(_GRAPH_MEMO) if nodes is None and torch.is_grad_enabled() else None
+        if graph is not None:
+            nodes = graph["node"]
         if nodes is not None and cache.get(_EXACT_CACHE, True) and _exact_tree(tree):
             cache[_EXACT_CACHE] = True
             # The last root of a cache that nothing reads afterwards needs no visit.
@@ -849,7 +881,11 @@ class ContextualActorCritic(nn.Module):
             return cache[tree]
         kind = tree[0]
         memo = cache.get(_LEAF_MEMO) if kind in ("text", "number") else None
-        key = None if memo is None or torch.is_grad_enabled() else _leaf_key(kind, tree[1])
+        if kind in ("text", "number") and torch.is_grad_enabled() and _GRAPH_MEMO in cache:
+            memo = cache[_GRAPH_MEMO]
+            key = _leaf_key(kind, tree[1])
+        else:
+            key = None if memo is None or torch.is_grad_enabled() else _leaf_key(kind, tree[1])
         if key is not None:
             entries = memo[kind]
             result = entries.get(key)
@@ -1083,6 +1119,9 @@ class ContextualActorCritic(nn.Module):
         memo = self._leaf_memo()
         if memo is not None:
             cache[_LEAF_MEMO] = memo
+        graph = self.__dict__.get("_graph_memo_state")
+        if graph is not None and torch.is_grad_enabled():
+            cache[_GRAPH_MEMO] = graph
         vector, cells = self._frame_features(frame, cache, final=frame.frame.kind != "decision")
         state = self.gru(vector, state)
         decision = None

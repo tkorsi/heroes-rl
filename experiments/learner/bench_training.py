@@ -31,6 +31,8 @@ INTERFACE = 'adventure-capabilities-v1'
 SCOPE = 'heroes-benchmark-phase2-20261026'
 PERIODIC_ORIGIN = 146
 PERIODIC_EVERY = 5
+# Separate numerical experiments a benchmark campaign may select; never defaults (see ppo.EXPERIMENTS).
+EXPERIMENTS = ('shared_graph_encodings',)
 CORE = ('contextual.py', 'contextual_model.py', 'contextual_rollout.py', 'checkpoints.py', 'ppo.py',
         'builtin_gameplay.py', 'builtin_rollout.py', 'trajectory.py', 'contract.py')
 require = resume.require
@@ -48,6 +50,12 @@ def latest_periodic_update(update):
 def write_new(path, value):
     path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
     with path.open('x') as f: json.dump(value, f, indent=2); f.write('\n')
+
+
+def experiments():
+    chosen = context().get('experiments', [])
+    require(type(chosen) is list and chosen == sorted(set(chosen)) and set(chosen) <= set(EXPERIMENTS), 'Unknown numerical experiment')
+    return chosen
 
 
 def historical_plan():
@@ -210,6 +218,8 @@ def check_identity(plan):
     for key in ('plan', 'report', 'policy', 'resume'): require(binding(plan['parent'][key]['path']) == plan['parent'][key], 'Parent artifact drift')
     require(plan['absolute_deadline_unix'] == v['absolute_deadline_unix'], 'Extended batch deadline')
     require(plan['compute_deadline_unix'] == v['compute_deadline_unix'], 'Changed compute budget')
+    require(plan.get('experiments', []) == experiments() and plan['checkpoint_metadata'].get('numerical_experiments', []) == experiments(),
+            'Numerical experiment selection changed')
 
 
 def prepare(parent, sequence, seat):
@@ -237,6 +247,9 @@ def prepare(parent, sequence, seat):
     plan['checkpoint_metadata'] = {**v['source'], 'parent_plan_sha256': state.bindings['plan']['sha256'],
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
         'native_opponent': {k: x for k, x in plan['native_opponents'][0].items() if k != 'player'}, 'archived_neural_pool_executed': False}
+    if experiments():
+        # The plan, and through its metadata every checkpoint it produces, names the experiment.
+        plan['experiments'] = plan['checkpoint_metadata']['numerical_experiments'] = experiments()
     check_identity(plan); write_new(output/'plan.json', plan); return output/'plan.json'
 
 
@@ -255,7 +268,13 @@ def heldout(state, runtime, native):
 def main():
     p = argparse.ArgumentParser(); p.add_argument('command', choices=['execute', 'worker']); p.add_argument('--plan', type=Path, required=True); p.add_argument('--sha256', required=True)
     p.add_argument('--started', type=float); p.add_argument('--wall-started', type=float); a = p.parse_args()
-    if a.command == 'worker': result = batches.worker(a, plan_reader=read_plan, state_reader=lambda plan: restore(plan['parent']['plan']['path']), heldout_checker=heldout)
+    if a.command == 'worker':
+        def reader(path, sha):
+            plan = read_plan(path, sha)
+            from . import ppo
+            ppo.EXPERIMENTS = frozenset(plan.get('experiments', ()))
+            return plan
+        result = batches.worker(a, plan_reader=reader, state_reader=lambda plan: restore(plan['parent']['plan']['path']), heldout_checker=heldout)
     else:
         result = pilot.execute(a, plan_reader=read_plan, worker_module=__spec__.name)
         if result['status'] == 'finished' and result['training_performed']:

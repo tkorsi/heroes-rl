@@ -8,6 +8,7 @@ before using the shared numerical kernel.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 import math
 from time import perf_counter
@@ -235,6 +236,11 @@ def _verify_behavior_frames(model, rollouts, inputs):
                     raise ValueError("Bootstrap value differs from the actual own decision under behavior weights")
 
 
+# Separate numerical experiments, never defaults. Only a caller that binds the choice into
+# its immutable plan (the benchmark harness) sets this; no environment variable can.
+EXPERIMENTS = frozenset()
+
+
 @dataclass(frozen=True)
 class PPOReport:
     samples: int
@@ -255,7 +261,15 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
     return _update(model, optimizer, rollouts, config=config, generator=generator)
 
 
-def _update(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None):
+def _update(model, optimizer, rollouts, **options):
+    try:
+        return _update_kernel(model, optimizer, rollouts, **options)
+    finally:
+        # The experiment's shared encodings never outlive their minibatch graph.
+        model.__dict__.pop("_graph_memo_state", None)
+
+
+def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None):
     """Shared numerical kernel; callers must establish admission before entering.
 
     The public default entry point remains synthetic-only. The separately gated
@@ -303,6 +317,11 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
         raise ValueError("Complete PPO update exceeds its predeclared optimizer-step cap")
     totals = [0.0] * 4
     weighted_count = steps = 0
+    # Separate numerical experiment, never a default: exact encodings shared within each
+    # minibatch graph change parameter gradients in floating-point summation order only.
+    shared = "shared_graph_encodings" in EXPERIMENTS
+    if shared:
+        timings["experiment_shared_graph_encodings"] = 1.0
     for _ in range(config.epochs):
         order = torch.randperm(len(windows), generator=generator).tolist()
         for batch_start in range(0, len(order), config.windows_per_minibatch):
@@ -310,6 +329,8 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
             # All selected windows see identical parameters. Reconstruct each
             # episode once up to its furthest boundary, then retain the original
             # selected-window order and separate detached autograd graphs.
+            sharing = model.shared_graph_encodings() if shared else nullcontext()
+            sharing.__enter__()
             phase = perf_counter()
             boundaries = {}
             if model._can_cache_prefix():
@@ -357,6 +378,7 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
             timings["backward_and_clip"] += perf_counter() - phase
+            sharing.__exit__(None, None, None)
             if before_step is not None:
                 before_step()
             phase = perf_counter()

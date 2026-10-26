@@ -265,7 +265,7 @@ def init(args):
                reviewed_source_changes=changes, historical_plans_root=str(args.historical_plans.resolve()),
                seed_origin=dict(engine=5100001, policy=5200001), durable_repo=str(durable/'repo'),
                durable_remote=str(durable/'remote.git'), durable_branch=branch,
-               hours=args.hours, created_utc=utc(),
+               hours=args.hours, created_utc=utc(), **({'experiments': sorted(set(args.experiment))} if args.experiment else {}),
                note='Benchmark-only disposable lineage; never official progress.')
     if not (durable/'remote.git').exists():
         subprocess.run(['git', 'init', '-q', '--bare', str(durable/'remote.git')], check=True)
@@ -366,6 +366,8 @@ def main():
         i.add_argument('--'+name, type=Path, required=True)
     i.add_argument('--variant', required=True); i.add_argument('--workload', choices=['easy', 'original'], required=True)
     i.add_argument('--hours', type=float, default=3.0)
+    i.add_argument('--experiment', action='append', default=[], choices=['shared_graph_encodings'],
+                   help='select a separate numerical experiment for this campaign (never a default)')
     for name in ('freeze', 'release'): sub.add_parser(name)
     for name in ('launch', 'worker'):
         x = sub.add_parser(name); x.add_argument('--seats', type=lambda s: [int(v) for v in s.split(',')], required=True)
