@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-26T19:04:00Z",
+ "generated_utc": "2026-10-26T19:37:51Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,115 +20,95 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-26T19:03:32.762157Z",
-  "seconds_to_heavy_stop": 56787.2,
+  "heartbeat_utc": "2026-10-26T19:37:32.993325Z",
+  "seconds_to_heavy_stop": 54747.0,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": []
  },
  "owned_processes": [
   {
-   "label": "bench-chk-B-1",
-   "pid": 8833,
-   "starttime": 1955427,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "check",
-    "--config",
-    "/home/claude/bench3/art/campaigns/chk-B-1/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-26T18:51:10.229403Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-s1-B",
-   "pid": 8953,
-   "starttime": 1957264,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/s1-B/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-26T18:51:28.600974Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-s2-B",
-   "pid": 9960,
-   "starttime": 1966276,
+   "label": "bench-s4-B",
+   "pid": 15036,
+   "starttime": 2067987,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
     "start",
     "--config",
-    "/home/claude/bench3/art/campaigns/s2-B/machine.json",
+    "/home/claude/bench3/art/campaigns/s4-B/machine.json",
     "--profile"
    ],
-   "registered_utc": "2026-10-26T18:52:58.721068Z",
+   "registered_utc": "2026-10-26T19:09:55.835501Z",
    "live_descendants": 6
   },
   {
-   "label": "build-base",
-   "pid": 31196,
-   "starttime": 1816012,
-   "alive": false,
+   "label": "bench-s4-C",
+   "pid": 15038,
+   "starttime": 2067987,
+   "alive": true,
    "command": [
-    "/bin/sh",
-    "/home/claude/overnight/build-base.sh"
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3c/art/campaigns/s4-C/machine.json",
+    "--profile"
    ],
-   "registered_utc": "2026-10-26T18:27:57.109364Z",
-   "live_descendants": 0
+   "registered_utc": "2026-10-26T19:09:55.828807Z",
+   "live_descendants": 6
   },
   {
-   "label": "build-base",
-   "pid": 32244,
-   "starttime": 1827877,
-   "alive": false,
-   "command": [
-    "/bin/sh",
-    "/home/claude/overnight/build-base.sh"
-   ],
-   "registered_utc": "2026-10-26T18:29:55.745310Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-s2-B-actual",
-   "pid": 9918,
-   "starttime": 1965854,
+   "label": "driver-s4-B",
+   "pid": 14950,
+   "starttime": 2067560,
    "alive": true,
    "command": [
     "python3",
     "run_local_bench.py",
     "--name",
-    "s2-B",
+    "s4-B",
     "--checkout",
     "/home/claude/o5k-main"
    ],
-   "registered_utc": "2026-10-26T18:53:58.651650Z",
+   "registered_utc": "2026-10-26T19:09:51.611912Z",
    "live_descendants": 7
   },
   {
-   "label": "o-XH-original-driver",
-   "pid": 26535,
-   "starttime": 1739888,
-   "alive": false,
+   "label": "driver-s4-C",
+   "pid": 14952,
+   "starttime": 2067560,
+   "alive": true,
    "command": [
-    "/bin/sh",
-    "./run-oxh.sh"
+    "python3",
+    "run_local_bench.py",
+    "--name",
+    "s4-C",
+    "--checkout",
+    "/home/claude/o5k-cand"
    ],
-   "registered_utc": "2026-10-26T18:16:34.530699Z",
+   "registered_utc": "2026-10-26T19:09:51.611486Z",
+   "live_descendants": 7
+  },
+  {
+   "label": "ppo-r0b0-C",
+   "pid": 16549,
+   "starttime": 2077511,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/bench3/tools/ppo_bench.py",
+    "--checkout",
+    "/home/claude/o5k-cand",
+    "--parent-plan",
+    "/home/claude/private629/local-script/run-20261026T160706Z-0be8eb77/initial-update412/plan.json"
+   ],
+   "registered_utc": "2026-10-26T19:11:33.101752Z",
    "live_descendants": 0
   }
  ],
- "phase": "measurement setup: Linux port of main's local runner validated; baseline smoke from a disposable 629 copy running; opt-in fast path implemented (tests passing), candidate smoke next",
+ "phase": "paired smokes from 629 finishing (first training batch, 3,968 decisions, in PPO on both paths); sequential counterbalanced measurement schedule ready (B, CH, F, XH, two blocks, CPUs 1-3)",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -167,15 +147,19 @@
  "measurements": {
   "pr30_comparison_original_map": "Earlier (412 parent): PR30 baseline B cannot finish the first original-map batch (games of 2, 60, 93 and 2525 decisions): its PPO alone took 3779 s optimizer-only against a 3540 s update budget. The opt-in experiment with three exact helpers completed the same complete verified batch in 543.6 s compute.",
   "pr30_comparison_easy_map": "Steady-state ratio of medians over 6 paired batches: exact with helpers 1.22x compute; opt-in experiment 3.89x compute, 3.77x durable (local push).",
-  "local_runner_original_map_629": "running: accepted path baseline smoke; first baseline evaluation games from 629 took 19 to 150 s each (200 to 1315 choices)"
+  "local_runner_original_map_629": "Smokes (concurrent, not timed comparisons): the eight fixed baseline evaluation games from 629 had 301/1315/896/536 and 200/238/4464/17 choices; the fast path played decision-identical games (same decisions, observations, contexts, terminal results) 2.6x faster per game; first training batch (sequence 266, seat 0) games of 246/1066/1091/1565 decisions took 492 s (accepted) and 170 s (fast path)."
  },
  "completed_checks": [
   "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",
   "main's local runner offline check on this host: exact 629 restore through the benchmark shim",
-  "fast-path unit tests: reviewed transition pins, tampered or unlisted sources rejected, execution choices bound, serial fallback never forks, default path releases the accepted commit"
+  "fast-path unit tests: reviewed transition pins, tampered or unlisted sources rejected, execution choices bound, serial fallback never forks, default path releases the accepted commit",
+  "Mac acceptance tool guard tests on Linux (lock exclusion both ways, role-named parent copies, final-parent refusal, stop during last batch)",
+  "lineage guard: an exact session refuses a parent produced by a numerical experiment (tests)",
+  "raw episode compression with per-file SHA-256 verification before removal (benchmark disk allowance)"
  ],
  "blockers": [],
  "official_lineage_touched": false,
  "official_run_launched": false,
- "teacher_touched": false
+ "teacher_touched": false,
+ "candidate_commit": "7c4303f"
 }
