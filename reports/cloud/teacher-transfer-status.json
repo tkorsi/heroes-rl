@@ -1,24 +1,18 @@
 {
-  "controller_pid": 232384,
-  "deterministically_excluded_unstarted_entries": 22,
-  "error": "ValueError: Transfer integrity/technical failure; preserve and stop, never admit or resample",
-  "final_report": "validation/transfer-eval-2026-10-26.json",
-  "fixture_failure": "Native hero visitable position = anchor-(1,0,0). Preflight incorrectly checked anchor; four layouts at x=0 are off-map.",
+  "controller_pid": 232622,
   "games_attempted": 46,
   "games_passed": 44,
   "gate_game_cap": 8,
   "gate_status": "passed_narrow_gate_later_embedded_backend_withdrawn",
   "optimizer_steps": 0,
   "ownership": "cloud-transfer-only",
-  "phase": "preparing_unchanged_valid_frozen_starts",
+  "phase": "remaining_transfer_cold_fallback",
   "ppo_updates": 0,
-  "preservation_error": null,
-  "remaining_compute_seconds": 3863.2577612400055,
-  "restart_authorized": false,
+  "remaining_compute_seconds": 3516.1745274066925,
   "runs_report": "/workspace/Heroes-artifacts/transfer-eval-20261026/result.json",
   "scope": "Frozen diagnostics only; overnight PPO closed",
-  "selected_backend": "original-cold-after-embedded-SIGSEGV",
-  "timestamp_utc": "2026-10-26T13:56:33.141773+00:00",
+  "selected_backend": "original-cold-valid-frozen-fixture-subset",
+  "timestamp_utc": "2026-10-26T13:58:17.719822+00:00",
   "training_samples": 0,
   "transfer_game_cap": 192,
   "window": {
@@ -29,6 +23,5 @@
     "scope": "First new game launch intent; imports/launch overhead conservatively included; never reset",
     "started_monotonic": 80141.935462651,
     "started_unix": 1793021513.894478
-  },
-  "window_reset": false
+  }
 }
