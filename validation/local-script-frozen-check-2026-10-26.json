@@ -1,0 +1,49 @@
+{
+  "schema": "heroes-local-script-offline-preflight-v1",
+  "timestamp_utc": "2026-10-26T15:52:11.082385+00:00",
+  "source_commit": "cf2021cd3b2225ced440b1459ad9220581a028c0",
+  "clean_source": true,
+  "status": "passed",
+  "checkpoint": {
+    "updates": 412,
+    "rollouts": 1648,
+    "decisions": 95836
+  },
+  "adam_steps": 3545,
+  "weights_sha256": "c310ae6b0b295149641802577fa4469c7a1662d530108c0289e3ce8f9c726d84",
+  "source_compatibility": {
+    "historical_commit": "30629a84bc3048ee64ae4f91186fbc0832e4ca25",
+    "changes": {
+      "experiments/learner/builtin_first_run.py": "Recognized check_identity scope routing only; remaining AST exact",
+      "experiments/learner/curriculum_training.py": "Historical orchestration is not executed by this local adapter",
+      "experiments/learner/overnight_training.py": "Historical orchestration is not executed by this local adapter"
+    },
+    "policy_ppo_unchanged": true,
+    "historical_metadata_rewritten": false
+  },
+  "baseline_plans_executed": 0,
+  "gameplay_performed": false,
+  "ppo_updates": 0,
+  "sequence_ledger_mutated": false,
+  "note": "Offline input restoration and plan identity checks only. These validation plans are not campaign sessions and were never executed.",
+  "raw_receipt_sha256": "e475fee4678fcf3945142990699afa6d25c6a174fbe9426896fc05a134a27a34",
+  "baseline_plan_sha256": [
+    "402221e3f1f7b257b17594c7ed02758cb6b2b0de8f2120ead6b6073082163109",
+    "b936c072e5cccb613170bf118b2d3185662a668363fbe93bc1adb5bd2732f02f"
+  ],
+  "canonical_dependency": {
+    "upstream_commit": "6901839ae9760dfcd1d5ff2c4aa4ef6968fee752",
+    "prepare_and_check_passed": true,
+    "log_sha256": "997a50de65d5b9097f6a3dd2af76e87b52b14f747e6b8b7180a21df230f87a4f"
+  },
+  "tests": {
+    "controller_adapter_preservation_and_deadline": 77,
+    "existing_first_run_compatibility": 26,
+    "total_passed": 103,
+    "failed": 0,
+    "compatibility_log_sha256": "8cfde502f479df244b10dc267218f20f101ba9731deb455f2acdeedafa4a50e3"
+  },
+  "teacher_handoff_exact_copy_verified": true,
+  "obsolete_paused_automation_deleted": "continue-heroes-ppo-after-mac-handback",
+  "local_campaign_started": false
+}

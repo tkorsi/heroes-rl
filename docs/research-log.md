@@ -354,3 +354,16 @@ acceptance remains required. No native game or real campaign update was run
 during preparation. The script invokes no language-model service and stops on
 technical failure. Raw runs and two verified checkpoint copies stay local
 outside managed worktrees; remote archival is a separate analysis step.
+
+### Frozen local release check
+
+Executable commit `cf2021cd3b2225ced440b1459ad9220581a028c0` was copied to a
+durable release. Canonical VCMI preparation and `prepare_vcmi.py --check` passed.
+Both seat-specific baseline plans passed actual source/runtime/map/checkpoint
+identity checks without execution. Full checkpoint 412 restored exactly:
+1,648 rollouts, 95,836 decisions and 3,545 cumulative Adam steps. The checks
+created no campaign, consumed no training seed, and invoked no native game.
+A further 26 existing first-run compatibility tests passed, for 103 targeted
+passes in total. The [frozen check](../validation/local-script-frozen-check-2026-10-26.json)
+binds these receipts and the source commit. The obsolete paused handback
+automation was deleted; future training starts only on manual invocation.
