@@ -1,17 +1,27 @@
 {
   "controller_pid": 230239,
-  "games_attempted": 0,
-  "games_passed": 0,
+  "games_attempted": 8,
+  "games_passed": 8,
   "gate_game_cap": 8,
-  "gate_status": null,
+  "gate_status": "passed",
   "optimizer_steps": 0,
   "ownership": "cloud-transfer-only",
-  "phase": "inputs_preserved_before_first_game",
+  "phase": "transfer_running",
   "ppo_updates": 0,
+  "remaining_compute_seconds": 5072.556754827499,
   "runs_report": "/workspace/Heroes-artifacts/transfer-eval-20261026/result.json",
   "scope": "Frozen diagnostics only; overnight PPO closed",
-  "selected_backend": null,
-  "timestamp_utc": "2026-10-26T13:31:50.766831+00:00",
+  "selected_backend": "accelerated-embedded",
+  "timestamp_utc": "2026-10-26T13:32:21.337544+00:00",
   "training_samples": 0,
-  "transfer_game_cap": 192
+  "transfer_game_cap": 192,
+  "window": {
+    "compute_deadline_monotonic": 85241.935462651,
+    "compute_deadline_unix": 1793026613.894478,
+    "hard_deadline_monotonic": 85541.935462651,
+    "hard_deadline_unix": 1793026913.894478,
+    "scope": "First new game launch intent; imports/launch overhead conservatively included; never reset",
+    "started_monotonic": 80141.935462651,
+    "started_unix": 1793021513.894478
+  }
 }
