@@ -14,11 +14,25 @@
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
+#include <atomic>
 #include <cstdlib>
+#include <iostream>
 #include <set>
 
 namespace
 {
+/// Positive evidence that the diagnostic ran: counts confirmed skips at powers of ten.
+void reportVerifiedCapture()
+{
+	static std::atomic<uint64_t> confirmed{0};
+	const uint64_t count = ++confirmed;
+	uint64_t power = 1;
+	while(power * 10 <= count)
+		power *= 10;
+	if(count == power)
+		std::cerr << "ExplorerRL capture verification: " << count << " unchanged-view captures confirmed" << std::endl;
+}
+
 JsonNode coordinates(const int3 & position)
 {
 	JsonNode node;
@@ -434,14 +448,20 @@ void ExplorerRL::captureContextualLocked()
 	if(day < 1)
 		return;
 	// Most captures see an unchanged view: decide that without building it.
-	// EXPLORER_RL_VERIFY_CAPTURE also builds it and fails on any disagreement.
-	static const bool verify = std::getenv("EXPLORER_RL_VERIFY_CAPTURE") != nullptr;
+	// HEROES_VERIFY_NATIVE_CAPTURE also builds it and fails on any disagreement.
+	// Launchers strip EXPLORER_RL_* from the engine environment, so this
+	// diagnostic uses a name they pass through; it can only fail a game.
+	static const bool verify = std::getenv("HEROES_VERIFY_NATIVE_CAPTURE") != nullptr;
 	const bool unchanged = day == contextState.lastDay && contextualObservationUnchanged();
 	if(unchanged && !verify)
 		return;
 	auto observation = contextualObservation();
 	if(observation == contextState.lastObservation && day == contextState.lastDay)
+	{
+		if(unchanged)
+			reportVerifiedCapture();
 		return;
+	}
 	if(unchanged)
 		throw std::runtime_error("Unchanged-view capture check disagrees with the built observation");
 	if(!contextState.executing)
