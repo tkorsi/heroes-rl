@@ -1,6 +1,6 @@
 {
-  "phase": "preparation",
-  "timestamp": "2026-10-26T00:07:41.745043+00:00",
+  "phase": "diagnostic_gate_pending",
+  "timestamp": "2026-10-26T00:11:47.552159+00:00",
   "branch": "codex/teacher-curriculum-v1",
   "parent_update": 146,
   "training_launched": false,
@@ -46,5 +46,16 @@
   "campaign_session": null,
   "launch": null,
   "compute_deadline": null,
-  "hard_deadline": null
+  "hard_deadline": null,
+  "confirmed_diagnostic_games": 16,
+  "diagnostic_wins": 0,
+  "diagnostic_losses": 16,
+  "ppo_updates": 0,
+  "latest_preserved_checkpoint": {
+    "update": 146,
+    "private_commit": "ce61fb66c73adef250e780ec205b9196f288f9e5"
+  },
+  "source_commit": "3e138f95e5d3cc9124b660b6edf9da1b48bef0cd",
+  "active_stage": "open8x8 additional predeclared seed blocks",
+  "actual_session_path": null
 }
