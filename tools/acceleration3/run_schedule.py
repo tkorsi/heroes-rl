@@ -3,8 +3,9 @@
 
     run_schedule.py SCHEDULE.json
 
-SCHEDULE.json: {"cpus": "1-3", "updates": 2, "hours": 3.5, "not_after_utc": "...",
-                "campaigns": [{"name": ..., "variant": ..., "checkout": ..., "start_args": [...]}, ...]}
+SCHEDULE.json: {"cpus": "1-3", "updates": 2, "hours": 12, "not_after_utc": "...",
+                "campaigns": [{"name": ..., "variant": ..., "checkout": ..., "start_args": [...],
+                               "updates": K (optional; 0 = the baseline evaluation games only)}, ...]}
 
 Every campaign runs ``run_local_bench.py`` (the manual runner from 629 copies, benchmark namespace,
 own run root, first sequence 266, stop requested during the K-th training batch) confined to the
@@ -59,7 +60,8 @@ def main():
             log(event='checkout_moved', name=campaign['name']); break
         command = ['taskset', '-c', schedule['cpus'], PYTHON, str(HERE / 'run_local_bench.py'),
                    '--name', campaign['name'], '--checkout', campaign['checkout'], '--variant', campaign['variant'],
-                   '--max-updates', str(schedule['updates']), '--stop-after-updates', str(schedule['updates']),
+                   '--max-updates', str(max(1, campaign.get('updates', schedule['updates']))),
+                   '--stop-after-updates', str(campaign.get('updates', schedule['updates'])),
                    '--hours', str(schedule['hours']), '--', *campaign.get('start_args', [])]
         log(event='campaign_started', name=campaign['name'], command=command)
         started = time.monotonic()

@@ -71,7 +71,7 @@ seed namespace 60M/70M, and never touches the official lineage):
 
 ```sh
 "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --dry-run
-"$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --order AF --updates 1 --hours 2
+"$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --order AF --updates 1 --hours 4
 ```
 
 `AF` (about MAC_AF_ESTIMATE on this Linux host's numbers; the Mac is unmeasured) plays the eight

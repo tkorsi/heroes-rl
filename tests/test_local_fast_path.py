@@ -82,6 +82,43 @@ class ReviewedTransitionTests(unittest.TestCase):
             local.source_compatibility(parent)
 
 
+class ReviewedTreeTests(unittest.TestCase):
+    """Collector, game-interface and runner code may differ from a8ac411 only by the reviewed pins."""
+    def test_tree_pins_equal_the_tree(self):
+        self.assertEqual(local.FAST_PATH_TREE, pins.expected_tree())
+        self.assertEqual(local.reviewed_tree(), sorted(local.FAST_PATH_TREE))
+        self.assertIn('experiments/headless/builtin_replay.py', local.FAST_PATH_TREE)
+        self.assertIn('reviewed_fast_path_tree', local.source_compatibility(accepted_parent()))
+
+    def test_an_unpinned_or_altered_collector_file_is_refused(self):
+        name = 'experiments/headless/builtin_replay.py'
+        unpinned = {k: v for k, v in local.FAST_PATH_TREE.items() if k != name}
+        altered = dict(local.FAST_PATH_TREE, **{name: (local.FAST_PATH_TREE[name][0], '0' * 64)})
+        for tree in (unpinned, altered):
+            with self.subTest(pinned=name in tree), patch.object(local, 'FAST_PATH_TREE', tree), \
+                    self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: ' + name):
+                local.source_compatibility(accepted_parent())
+
+    def test_a_changed_accepted_file_or_new_module_is_refused(self):
+        original = Path.read_bytes
+        def tampered(path):
+            data = original(path)
+            return data + b'\n' if path.as_posix().endswith('experiments/headless/contextual_replay.py') else data
+        self.assertTrue((ROOT/'experiments/headless/contextual_replay.py').is_file())
+        with patch.object(Path, 'read_bytes', tampered), \
+                self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: experiments/headless/contextual_replay.py'):
+            local.reviewed_tree()
+        probe = ROOT/'experiments/headless/unreviewed_probe_for_test.py'
+        probe.write_text('X = 1\n')
+        self.addCleanup(probe.unlink)
+        with self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: experiments/headless/unreviewed_probe_for_test.py'):
+            local.reviewed_tree()
+
+    def test_the_adapter_is_bound_by_its_ast_pin(self):
+        with patch.object(local, 'LOCAL_ADAPTER_TRANSITION_AST', '0' * 64), self.assertRaisesRegex(ValueError, 'Unreviewed local adapter'):
+            local.reviewed_tree()
+
+
 class ExecutionChoiceTests(unittest.TestCase):
     def setUp(self):
         saved = background_check.FORK, ppo.PREFIX_HELPERS, ppo.EXPERIMENTS

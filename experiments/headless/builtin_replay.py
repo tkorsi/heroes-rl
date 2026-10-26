@@ -19,6 +19,7 @@ import subprocess
 import threading
 import time
 
+from experiments.headless import background_check
 from experiments.headless import builtin_evidence as builtin
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import contextual_replay as paired
@@ -444,10 +445,15 @@ def verify_episode(episode, *, binary, data, output=None, timeout=300, diagnosti
         environment, game_map = legacy.replay_profile(directory, episode, data, manifest["launch"]["requested_settings"])
         require(evidence.file_identity(game_map)["sha256"] == manifest["identity"].get("map_sha256"), "Replay map differs from recorded map")
         from experiments.headless.builtin_replay_history import verify_history
-        # The independent Python history check runs while this thread waits on the native
-        # verifier, which reads only the files written above. A history error, which the serial
-        # order raised first, is still the error raised; no result is recorded before both pass.
-        history = _started(verify_history, episode, manifest, final)
+        if background_check.FORK:
+            # The independent Python history check runs while this thread waits on the native
+            # verifier, which reads only the files written above. A history error, which the serial
+            # order raised first, is still the error raised; no result is recorded before both pass.
+            history = _started(verify_history, episode, manifest, final)
+        else:
+            # Serial fallback: the accepted order, the history check first and no thread.
+            checked = verify_history(episode, manifest, final)
+            history = lambda: checked
         try:
             native = run_native(binary, environment, directory / "replay.jsonl", directory / "contextual-replay.jsonl",
                 directory / "native-report.json", cutoff=cutoff, timeout=timeout)

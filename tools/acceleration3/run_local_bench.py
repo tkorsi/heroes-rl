@@ -12,7 +12,7 @@ release stays byte-identical. Each campaign has its own run root, hence its own 
 in the benchmark seed namespace (never 40M/50M or 20M/30M); campaigns with the same first
 sequence play the same seeds. ``--stop-after-updates K`` requests the runner's own manual stop
 while the K-th training batch runs, so exactly K checkpoints are admitted and the final evaluation
-pair is skipped. The driver samples
+pair is skipped; ``--stop-after-updates 0`` stops after the eight baseline evaluation games. The driver samples
 every descendant through /proc and writes ``bench-run.json`` into the campaign folder.
 
 Nothing here touches the official lineage, a Mac path, or the private training-state repository.
@@ -116,18 +116,20 @@ class Stopper(threading.Thread):
     def __init__(self, run_root, count):
         super().__init__(daemon=True); self.run_root, self.count = run_root, count
         self.stop = threading.Event(); self.requested = None
+        # Zero: stop while the second baseline evaluation batch runs, so no training batch begins.
+        self.mode, self.target = ('"mode": "baseline"', 2) if count == 0 else ('"mode": "training"', count)
 
     def run(self):
         while not self.stop.wait(1.0):
             try:
                 run_dir = Path(json.loads((self.run_root / 'latest-run.json').read_text())['run_dir'])
                 with (run_dir / 'research-log.jsonl').open() as log:
-                    started = sum(1 for line in log if '"batch_intent"' in line and '"mode": "training"' in line)
+                    started = sum(1 for line in log if '"batch_intent"' in line and self.mode in line)
             except (OSError, ValueError, KeyError):
                 continue
-            if started >= self.count:
+            if started >= self.target:
                 (run_dir / 'stop-requested').touch(exist_ok=True)
-                self.requested = dict(utc=utc(), training_batches_started=started)
+                self.requested = dict(utc=utc(), batches_started=started, mode=self.mode)
                 return
 
 
@@ -227,7 +229,7 @@ def main():
     subprocess.run(['python3', WATCHDOG, 'own', str(process.pid), 'bench-' + a.name], check=False)
     sampler = Sampler(process.pid, campaign / 'resources.jsonl'); sampler.start()
     stopper = None
-    if a.stop_after_updates:
+    if a.stop_after_updates is not None:
         stopper = Stopper(run_root, a.stop_after_updates); stopper.start()
     returncode = process.wait()
     sampler.stop.set(); sampler.join()

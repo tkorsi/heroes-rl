@@ -3,7 +3,7 @@
 
     "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --dry-run
     "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py [--order AFFA]
-        [--updates 1] [--hours 2] [--parent-run RUN] [--bench-root DIR]
+        [--updates 1] [--hours 4] [--parent-run RUN] [--bench-root DIR]
 
 Campaign letters (each plays the eight fixed baseline games, then ``--updates`` training batches,
 from disposable copies of the final 629 checkpoint, exactly through ``run_local_training.py start``):
@@ -291,7 +291,9 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--order', default='AF', help='campaign letters, e.g. AF (acceptance) or AFFA (timing)')
     p.add_argument('--updates', type=int, default=1, help='training batches per campaign (1 to 4)')
-    p.add_argument('--hours', type=float, default=2.0, help="each runner's own hard stop (0.25 to 6)")
+    p.add_argument('--hours', type=float, default=4.0,
+                   help="each runner's own hard stop (0.25 to 12); the runner begins a training batch only while "
+                        "more than six times its slowest recent batch remains, so --updates 2 or more needs a larger value")
     p.add_argument('--parent-run', type=Path, default=PARENT_RUN)
     p.add_argument('--bench-root', type=Path)
     p.add_argument('--python', default=sys.executable)
@@ -299,8 +301,8 @@ def main():
     args = p.parse_args()
     if not args.order or set(args.order) - set(CAMPAIGNS) or len(args.order) > 6:
         p.error('--order takes one to six letters from ' + ''.join(CAMPAIGNS))
-    if not 1 <= args.updates <= 4 or not 0.25 <= args.hours <= 6:
-        p.error('--updates 1 to 4 and --hours 0.25 to 6')
+    if not 1 <= args.updates <= 4 or not 0.25 <= args.hours <= 12:
+        p.error('--updates 1 to 4 and --hours 0.25 to 12')
     if sys.platform != 'darwin':
         refuse('this is the Mac acceptance tool; Linux benchmarks use run_local_bench.py')
     runner, head = preflight()
