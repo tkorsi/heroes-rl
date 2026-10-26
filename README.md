@@ -425,3 +425,24 @@ the interface or weaken admission to make a failed cohort pass.
 VCMI and its dependencies retain their upstream licenses; VCMI is
 GPL-2.0-or-later. Original Heroes III assets are separately copyrighted,
 user-supplied, and not downloaded or redistributed by this repository.
+
+### Local update146 curriculum preparation
+
+The new `codex/teacher-curriculum-v1` experiment resumes exact update146 and
+changes only the declared initial-state distribution. Stage0 places a townless
+learner with100 Pikemen one row below an opponent town; that opponent starts
+without a hero. Stage1 increases distance to four rows and reduces the learner
+army to50. Stage2 returns to the original hero-management-v2 start. Native
+recruitment, fog, elimination, seven-day townless defeat, action choices,
+Nullkiller Easy/BattleAI and terminal-only rewards are unchanged. No authored
+rush demonstration is used. These are curriculum results, not original-start
+performance. Both seats are evaluated separately because turn order matters.
+
+Before any PPO campaign, the unchanged update146 policy must sample verified
+natural wins and losses on a bounded multi-seed diagnostic. Four seed pairs per
+seat are predeclared in `configs/teacher-curriculum-v1.json`, separately from
+held-out evaluation seeds. Diagnostics, failed attempts and do-nothing controls
+are excluded from learning. No campaign window has started during preparation.
+A fresh two-hour campaign is authorized only after this gate, using full
+four-game batches, exact state restoration and a five-minute finalization
+reserve. There is no automatic retry or additional campaign after that window.
