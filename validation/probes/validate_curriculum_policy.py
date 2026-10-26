@@ -55,15 +55,15 @@ def ordinary_map_identity(path):
     return dict(binding(path),stage=stage,seat=seat,scenario='curriculum-v1')
 
 
-def schedule(seat, stage=0):
-    return [{'episode':i+1,'learner_player':seat,'engine_seed':610001+1000*stage+i,
-             'policy_seed':620001+1000*stage+i} for i in range(4)]
+def schedule(seat, stage=0, block=0):
+    return [{'episode':i+1,'learner_player':seat,'engine_seed':610001+1000*stage+100*block+i,
+             'policy_seed':620001+1000*stage+100*block+i} for i in range(4)]
 
 
 def check(plan):
     require(binding(__file__) == plan["diagnostic_source"]
             and binding(ROOT/"experiments/explorer/create_curriculum_scenario.py") == plan["generator_source"], "Diagnostic source drift")
-    require(plan["schema"] == SCHEMA and plan["schedule"] == schedule(plan["map"]["seat"],plan["map"]["stage"]),
+    require(plan["schema"] == SCHEMA and plan["schedule"] == schedule(plan["map"]["seat"],plan["map"]["stage"],plan["seed_block"]),
             "Fixed diagnostic schedule changed")
     require(plan["case_seconds"] == CASE_SECONDS and plan["ordinary_choices"] == CHOICES
             and plan["hard_choices"] == HARD_CHOICES and plan["max_days"] == MAX_DAYS,
@@ -183,8 +183,8 @@ def execute(args):
     output = args.output.resolve()
     require(not output.exists(), "Preserve original diagnostic attempts; never replace them")
     _, frozen = load_fixed(args.checkpoint)
-    plan = {"schema": SCHEMA, "output": str(output), "schedule": schedule(ordinary_map_identity(args.map)["seat"],ordinary_map_identity(args.map)["stage"]),
-        "map": ordinary_map_identity(args.map), "checkpoint": binding(args.checkpoint), "frozen": frozen,
+    plan = {"schema": SCHEMA, "output": str(output), "schedule": schedule(ordinary_map_identity(args.map)["seat"],ordinary_map_identity(args.map)["stage"],args.seed_block),
+        "seed_block": args.seed_block, "map": ordinary_map_identity(args.map), "checkpoint": binding(args.checkpoint), "frozen": frozen,
         "implementation": capability_implementation_identity(), "diagnostic_source": binding(__file__),
         "generator_source": binding(ROOT/"experiments/explorer/create_curriculum_scenario.py"), "runtime": runtime_identity(args.binary.resolve().parent),
         "binary": str(args.binary.resolve()), "replay_binary": str(args.replay_binary.resolve()),
@@ -244,6 +244,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("binary", "data", "replay-binary", "map", "checkpoint", "output", "plan"):
         parser.add_argument("--" + name, type=Path)
+    parser.add_argument("--seed-block", type=int, choices=(0,1,2), default=0)
     parser.add_argument("--worker", action="store_true")
     parser.add_argument("--deadline-unix", type=float)
     parser.add_argument("--sha256")
