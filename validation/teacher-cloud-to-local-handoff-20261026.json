@@ -1,0 +1,200 @@
+{
+  "checkpoint": {
+    "backup": "/workspace/Heroes-artifacts/transfer-eval-20261026/independent-checkpoint-backup/update412",
+    "dependencies": {
+      "checkpoint": {
+        "original_binding": {
+          "bytes": 638195,
+          "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0264-seat0/execution/after-policy.pt",
+          "sha256": "9aeac52025a9bd0cd307303e8b06f732aefa640795ccf9e4fd9d7ba1f0ba65bd"
+        },
+        "relocated": {
+          "bytes": 638195,
+          "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/checkpoint-policy.pt",
+          "sha256": "9aeac52025a9bd0cd307303e8b06f732aefa640795ccf9e4fd9d7ba1f0ba65bd"
+        }
+      },
+      "metadata_initial": {
+        "original_binding": {
+          "bytes": 638195,
+          "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0264-seat0/execution/after-policy.pt",
+          "sha256": "9aeac52025a9bd0cd307303e8b06f732aefa640795ccf9e4fd9d7ba1f0ba65bd"
+        },
+        "relocated": {
+          "bytes": 638195,
+          "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/metadata_initial-policy.pt",
+          "sha256": "9aeac52025a9bd0cd307303e8b06f732aefa640795ccf9e4fd9d7ba1f0ba65bd"
+        }
+      }
+    },
+    "files": {
+      "after-policy.pt": {
+        "bytes": 638195,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/after-policy.pt",
+        "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88"
+      },
+      "after-resume.pt": {
+        "bytes": 1266293,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/after-resume.pt",
+        "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321"
+      },
+      "plan.json": {
+        "bytes": 58426,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/plan.json",
+        "sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23"
+      },
+      "report.json": {
+        "bytes": 11258,
+        "path": "/workspace/Heroes-artifacts/transfer-eval-20261026/inputs/update412/report.json",
+        "sha256": "20c070ce2390315176073db880498ad1a7c86ddca2f4451bd82ad2c979327110"
+      }
+    },
+    "metadata_rewritten": false,
+    "private_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+    "private_path": "checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0265-seat1",
+    "progress": {
+      "decisions": 95836,
+      "rollouts": 1648,
+      "updates": 412
+    }
+  },
+  "closed_diagnostic_seed_reservations": {
+    "easy_engine": [
+      810001,
+      810032
+    ],
+    "easy_policy": [
+      820001,
+      820032
+    ],
+    "invalid_unstarted_entries_quarantined": true,
+    "next_outside_reserved_ranges": {
+      "easy_engine": 810033,
+      "easy_policy": 820033,
+      "original_engine": 830033,
+      "original_policy": 840033
+    },
+    "not_authorization": true,
+    "original_engine": [
+      830001,
+      830032
+    ],
+    "original_policy": [
+      840001,
+      840032
+    ]
+  },
+  "findings": {
+    "both_host_strict_gate_passed": true,
+    "cutoffs": 0,
+    "easy_valid_games_per_seat": 12,
+    "easy_wins": {
+      "update146": [
+        1,
+        1
+      ],
+      "update254": [
+        9,
+        5
+      ],
+      "update412": [
+        12,
+        12
+      ]
+    },
+    "failed_startups": 2,
+    "first36_embedded_policy_records_also_reconstructed_exactly_under_original_cold": true,
+    "fixture_cause": "Native hero visitable position is anchor-(1,0,0); authored anchor x=0 yields off-map x=-1. Both embedded and cold native startup crashed; not an acceleration-specific regression. No frozen map moved; failed cases unscored.",
+    "gate_games": 8,
+    "original_valid_games_per_checkpoint_per_seat": 16,
+    "original_wins_all_checkpoints_all_seats": 0,
+    "unstarted_invalid_entries": 22,
+    "valid_games": 168,
+    "zero_learning": true
+  },
+  "finished_study_changed_files": [
+    "README.md",
+    "configs/teacher-transfer-eval-20261026.json",
+    "docs/research-log.md",
+    "docs/research/transfer-eval-2026-10-26.md",
+    "reports/cloud/teacher-transfer-status.json",
+    "tests/test_transfer_eval.py",
+    "tests/test_transfer_geometry.py",
+    "tools/freeze_transfer_manifest.py",
+    "tools/prepare_transfer_eval.py",
+    "tools/run_transfer_eval.py",
+    "tools/summarize_transfer_eval.py",
+    "tools/transfer_eval_watchdog.py",
+    "tools/transfer_eval_worker.py",
+    "tools/validate_transfer_geometry.py",
+    "validation/transfer-eval-2026-10-26.json",
+    "validation/transfer-eval-2026-10-26.jsonl"
+  ],
+  "finished_study_commit": "82e022e6145814ef2b96c9b21ec463f94e26ffc7",
+  "initial_dependency_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+  "initial_dependency_git_prefix": "checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0264-seat0",
+  "mac_restore_sources": {
+    "accelerated": "941f60b91b34e601d44e01a7659120df3fa6e2e1",
+    "base": "278322fbbf48b68dbc2d1d9e6c77712e87f61192"
+  },
+  "maps": {
+    "gate-0": {
+      "bytes": 1644,
+      "private_handoff_path": "handoffs/2026-10-26-cloud-to-local-frozen412/maps/curriculum-3-0.vmap",
+      "sha256": "7d88860234664580c564fc2c71554fd813519ace9904ff368dc30eef3c352019"
+    },
+    "gate-1": {
+      "bytes": 1645,
+      "private_handoff_path": "handoffs/2026-10-26-cloud-to-local-frozen412/maps/curriculum-3-1.vmap",
+      "sha256": "75303cc2b19c1d0ddc5fbac35315a951dfc9bb6e780b4245508f8a2a78e691f1"
+    },
+    "original": {
+      "bytes": 2354,
+      "private_handoff_path": "handoffs/2026-10-26-cloud-to-local-frozen412/maps/hero-management-v2.vmap",
+      "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+    }
+  },
+  "next_unused_training": {
+    "engine_seeds": [
+      911065,
+      911066,
+      911067,
+      911068
+    ],
+    "next_periodic_update": 416,
+    "periodic_every_updates": 5,
+    "periodic_origin": 146,
+    "policy_seeds": [
+      921065,
+      921066,
+      921067,
+      921068
+    ],
+    "seat": 0,
+    "sequence": 266
+  },
+  "ownership": {
+    "cloud_model_supervision_stopped": true,
+    "current_owned_workers_controllers_watchdogs_live": 0,
+    "no_training_resume_authorization": true,
+    "operating_model": "Root reviews/syncs; local script is user-invoked; root analyzes after it exits; no competing cloud runner.",
+    "overnight_campaign_closed_at_update412": true,
+    "owner_and_watchdog_locks_unheld": true,
+    "queued_automatic_restart_created": false,
+    "watchdog_final_phase": "completed_early_no_live_owned"
+  },
+  "private_evidence": {
+    "checkpoint": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+    "independent_audit": "24ae5b2ecb9ef035484887eb1ac9df47682ce347",
+    "overnight_final": "2f8d587c7a4a82f6b08bb752a1322ea31fd100df",
+    "root_mac_acceleration": "be0313b756675acf8d55723c010653f7ff5e87a8",
+    "transfer_captures": "d00675305595e62078f8c9bab85b22d67b990504"
+  },
+  "private_handoff_commit": "eb37149e06e751b6215fd4aad370badca94275cd",
+  "private_handoff_manifest": "handoffs/2026-10-26-cloud-to-local-frozen412/manifest.json",
+  "public_base": "deddbf934675a768bd49d677762ae0622d51a3f7",
+  "public_branch": "codex/teacher-transfer-eval-20261026",
+  "schema": "heroes-compact-cloud-local-handoff-v1",
+  "scope": "Report/byte-reference handoff only; no game, PPO, recovery, runner implementation, provisioned resource or model supervision.",
+  "timestamp_utc": "2026-10-26T15:26:15.114280+00:00"
+}
