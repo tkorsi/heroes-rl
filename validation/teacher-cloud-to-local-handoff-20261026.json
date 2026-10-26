@@ -1,4 +1,24 @@
 {
+  "all_branch_changed_files": [
+    "README.md",
+    "configs/teacher-transfer-eval-20261026.json",
+    "docs/operations/teacher-cloud-to-local-handoff-20261026.md",
+    "docs/research-log.md",
+    "docs/research/transfer-eval-2026-10-26.md",
+    "reports/cloud/teacher-transfer-status.json",
+    "tests/test_transfer_eval.py",
+    "tests/test_transfer_geometry.py",
+    "tools/freeze_transfer_manifest.py",
+    "tools/prepare_transfer_eval.py",
+    "tools/run_transfer_eval.py",
+    "tools/summarize_transfer_eval.py",
+    "tools/transfer_eval_watchdog.py",
+    "tools/transfer_eval_worker.py",
+    "tools/validate_transfer_geometry.py",
+    "validation/teacher-cloud-to-local-handoff-20261026.json",
+    "validation/transfer-eval-2026-10-26.json",
+    "validation/transfer-eval-2026-10-26.jsonl"
+  ],
   "checkpoint": {
     "backup": "/workspace/Heroes-artifacts/transfer-eval-20261026/independent-checkpoint-backup/update412",
     "dependencies": {
@@ -131,6 +151,12 @@
     "validation/transfer-eval-2026-10-26.jsonl"
   ],
   "finished_study_commit": "82e022e6145814ef2b96c9b21ec463f94e26ffc7",
+  "handoff_changed_files": [
+    "docs/operations/teacher-cloud-to-local-handoff-20261026.md",
+    "validation/teacher-cloud-to-local-handoff-20261026.json",
+    "validation/transfer-eval-2026-10-26.jsonl",
+    "reports/cloud/teacher-transfer-status.json"
+  ],
   "initial_dependency_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
   "initial_dependency_git_prefix": "checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0264-seat0",
   "mac_restore_sources": {
@@ -175,6 +201,7 @@
   },
   "ownership": {
     "cloud_model_supervision_stopped": true,
+    "current_owned_native_processes": [],
     "current_owned_workers_controllers_watchdogs_live": 0,
     "no_training_resume_authorization": true,
     "operating_model": "Root reviews/syncs; local script is user-invoked; root analyzes after it exits; no competing cloud runner.",
