@@ -271,3 +271,37 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T04:26:18.871726+00:00 campaign_batch_result: {"sequence": 281, "seat": 0, "mode": "periodic", "status": "passed"}
 
 - 2026-10-26T04:26:19.144418+00:00 campaign_batch_intent: {"sequence": 281, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:26:43.000128+00:00 campaign_batch_result: {"sequence": 281, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:26:43.282787+00:00 campaign_batch_intent: {"sequence": 135, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:27:46.479231+00:00 campaign_batch_result: {"sequence": 135, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:27:46.753245+00:00 campaign_batch_intent: {"sequence": 136, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:29:13.788744+00:00 campaign_batch_result: {"sequence": 136, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:29:14.060446+00:00 campaign_batch_intent: {"sequence": 137, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:29:50.065455+00:00 campaign_batch_result: {"sequence": 137, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:29:50.328758+00:00 campaign_batch_intent: {"sequence": 138, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:30:28.312668+00:00 campaign_batch_result: {"sequence": 138, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:30:28.591913+00:00 campaign_batch_intent: {"sequence": 139, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T04:31:46.535837+00:00 campaign_batch_result: {"sequence": 139, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T04:31:47.062816+00:00 campaign_batch_intent: {"sequence": 286, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:32:10.751933+00:00 campaign_batch_result: {"sequence": 286, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T04:32:11.012000+00:00 campaign_batch_intent: {"sequence": 286, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T04:32:33.360536+00:00 campaign_batch_result: {"sequence": 286, "seat": 1, "mode": "periodic", "status": "failed"}
+
+- 2026-10-26T04:32:39.747143+00:00 campaign_stopped: {"result": {"session": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/session.json", "sha256": "08ca55057340bfe52f88eeb20604fd94b3439aa785a535742bcd34549c153676", "bytes": 5875}, "returncode": 0, "cleanup_errors": [], "owned_cleanup_verified": true, "stopped_utc": "2026-10-26T04:32:38.069056+00:00", "within_budget": true, "latest_restore": {"plan": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/plan.json", "sha256": "2062213d932b8b8898b07b2e4f54a65f5636b26f4b0c3f2af5b1573258f72e15", "bytes": 58426}, "report": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/execution/report.json", "sha256": "7086733b6c5e59cda2c75e53e097bc5b49950e1d5308724e54b1a656b1da0147", "bytes": 11250}, "policy": {"bytes": 638195, "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/execution/after-policy.pt", "sha256": "41b56d5d30d8d80bac3e77cf34b7d3254ecda9b5c6ad7c775b70b98ca2960ce9"}, "resume": {"bytes": 1266293, "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/batches/train-0139-seat1/execution/after-resume.pt", "sha256": "80451101ace1046e7805485a2597c413556c775bd40044836cd13de92686e396"}, "progress": {"updates": 286, "rollouts": 1144, "decisions": 77321}, "optimizer_steps": 2790, "source_proof": {"explicit_platform_transition": false, "policy_ppo_unchanged": true}, "runtime_proof": {"runtime_unchanged": true}}, "final_independent_restores": [{"directory": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/checkpoints/train-0139-seat1", "restore": {"checkpoint": "builtin-pilot-after-fdf095034f4fa1ee", "weights_sha256": "fdf095034f4fa1ee947c5f32ae5a86538e0f333fe258d81bee856551600fb30b", "progress": {"updates": 286, "rollouts": 1144, "decisions": 77321}, "exact_model_adam_rng_progress_pool": true}}, {"directory": "/workspace/heroes-overnight-private/checkpoints/overnight-20261026/campaign-v1/http-transport-002/train-0139-seat1", "restore": {"checkpoint": "builtin-pilot-after-fdf095034f4fa1ee", "weights_sha256": "fdf095034f4fa1ee947c5f32ae5a86538e0f333fe258d81bee856551600fb30b", "progress": {"updates": 286, "rollouts": 1144, "decisions": 77321}, "exact_model_adam_rng_progress_pool": true}}]}}
+
+- 2026-10-26T04:32:46.151502+00:00 transport_watch_blocked: {"result": {"status": "stopped_transport_watch", "new_updates": 32, "progress": {"updates": 286, "rollouts": 1144, "decisions": 77321}, "report": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/campaign-report.json", "sha256": "e4d2bc1b9076b8709388155c0f2138d574b8bb5f18f57bc8dff1640b5f7a2bd6", "bytes": 97750}, "error": "ValueError: No replay/gameplay/PPO/integrity failure may use transport recovery"}, "current_report": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/campaign-report.json"}
