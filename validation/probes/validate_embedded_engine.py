@@ -338,14 +338,16 @@ def run(args):
         loaded, fixed = (load_fixed(args.checkpoint) if args.checkpoint
                          else random_policy(args.random_policy_seed, args.interface))
     output.mkdir(parents=True)
-    limits = Limits(max_days=args.max_days, max_actions=args.choices + 8, startup_seconds=60,
+    reserve = getattr(args, "dialog_reserve", 8)
+    require(type(reserve) is int and reserve >= 0, "Dialog reserve must be a nonnegative integer")
+    limits = Limits(max_days=args.max_days, max_actions=args.choices + reserve, startup_seconds=60,
                     watchdog_seconds=args.watchdog, shutdown_seconds=15, bridge_timeout=args.bridge_timeout)
     plan = {"schema": SCHEMA, "backend": args.backend, "controller": args.controller, "rows": rows,
             "interface": args.interface,
             "map": binding(args.map), "binary": str(args.binary), "replay_binary": str(args.replay_binary),
             "data": str(args.data), "runtime": runtime, "checkpoint": binding(args.checkpoint) if args.checkpoint else None,
             "random_policy_seed": args.random_policy_seed,
-            "frozen": fixed, "limits": {"max_days": args.max_days, "choices": args.choices, "hard_choices": args.choices + 8,
+            "frozen": fixed, "limits": {"max_days": args.max_days, "choices": args.choices, "hard_choices": args.choices + reserve,
             "watchdog_seconds": args.watchdog, "bridge_timeout": args.bridge_timeout, "row_seconds": args.row_seconds},
             "visit_kind": args.visit_kind, "stall_seconds": args.stall_seconds, "replay": args.replay,
             "audit": args.audit,
@@ -512,6 +514,9 @@ def run(args):
         if engine is not None and engine.poisoned:
             report["poisoned"] = refusal_check(engine, launcher, output, row, limits)
             break
+        if getattr(args, "stop_on_failure", False) and result["status"] != "passed":
+            break
+    report["unstarted_rows"] = rows[len(report["rows"]):]
     for env, _ in environments.values():
         close_environment(env, report.setdefault("final_close", {}))
     report["summary"] = summarize(report["rows"], args.backend)
@@ -752,6 +757,9 @@ def local_roots(*paths):
 def scrub(value, roots=()):
     """Replace absolute paths in free text; the record names runs, never machine locations."""
     if isinstance(value, str):
+        # Error messages quote filenames that may contain spaces. Remove the
+        # whole quoted absolute path before the unquoted-token fallback.
+        value = re.sub(r"(['\"])/[^\r\n]*?\1", lambda match: match[1] + "<path>" + match[1], value)
         for root in roots:
             value = value.replace(root, "<path>")
         return ABSOLUTE_PATH.sub("<path>", value)
