@@ -1,0 +1,41 @@
+{
+  "assignment_path": "docs/operations/teacher-transfer-eval-20261026.txt",
+  "assignment_sha256": "c2f224c73a86c175987525478eb376730565a52394bc0043e7fc42322bbfefe5",
+  "browser_fallback": {
+    "assistant_acknowledgment": "I’ll run this as a new frozen-policy diagnostic study; the overnight PPO campaign will stay closed. I’ll fetch the exact assignment, prepare an isolated checkout, and freeze the starts and stop controls before any new game.",
+    "message_visibly_posted": true,
+    "new_turn_active": true,
+    "obsolete_queued_upload_retried": false,
+    "posted_at_utc_minute": "2026-10-26T12:58Z",
+    "url": "https://chatgpt.com/local/01a173a2-1bee-73c4-9f71-ef0a1ab9c050"
+  },
+  "host": "durable",
+  "limitations": [
+    "This is delivery and acknowledgment evidence, not completed Linux acceptance or transfer evaluation.",
+    "The new diagnostic clock begins at the first actual new game, not at this message.",
+    "No new periodic monitor was created; expired overnight automations stay closed."
+  ],
+  "new_game_count_confirmed": 0,
+  "public_assignment_commit": "deddbf934675a768bd49d677762ae0622d51a3f7",
+  "purpose_built_attempt": {
+    "confirmed_delivery": false,
+    "result": "ASB HTTP read failed (403)"
+  },
+  "recorded_utc": "2026-10-26T12:59:40.699085+00:00",
+  "schema": "heroes-teacher-transfer-dispatch-v1",
+  "scope": {
+    "compute_minutes_from_first_game": 85,
+    "frozen_checkpoints": [
+      146,
+      254,
+      412
+    ],
+    "hard_minutes_from_first_game": 90,
+    "max_gate_games": 8,
+    "max_transfer_games": 192,
+    "training_authorized": false
+  },
+  "status": "acknowledged_preparation",
+  "teacher_thread": "01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+  "teacher_title": "Учитель — облако"
+}

@@ -248,3 +248,9 @@ is a new bounded frozen comparison of checkpoints 146, 254 and 412 across
 varied easier positions and the original scenario. Its 85-minute compute and
 90-minute hard limits begin at the first new game. Neither this report nor
 that assignment authorizes PPO. Preparation/delivery is not completed evaluation.
+
+At 12:58 UTC the existing cloud Teacher visibly received the English assignment
+and acknowledged the new frozen scope. The direct message tool returned403;
+the already authenticated browser route succeeded. This is preparation, not
+completed Linux acceptance or evaluation. See the
+[dispatch receipt](../validation/teacher-transfer-dispatch-2026-10-26.json).
