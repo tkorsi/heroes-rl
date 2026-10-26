@@ -22,6 +22,10 @@ DEFAULT_ARTIFACT_ROOT = Path.home() / "Projects/Heroes-artifacts"
 DEFAULT_INPUT = DEFAULT_ARTIFACT_ROOT / "acceleration-update412-2026-10-26/input"
 DEFAULT_RUNTIME = DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-update92-artifact-fix2/bin"
 DEFAULT_RUN_ROOT = DEFAULT_ARTIFACT_ROOT / "local-script-training"
+DEFAULT_ORIGINAL_MAP = DEFAULT_RUNTIME.parent / "maps/hero-management-v2.vmap"
+ORIGINAL_MAP_SHA256 = "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+SEED_NAMESPACES = {"easier8x8": {"engine_base": 20_000_000, "policy_base": 30_000_000},
+                   "original": {"engine_base": 40_000_000, "policy_base": 50_000_000}}
 ORIGIN_FILES = {
     "freeze": DEFAULT_RUNTIME.parent / "freeze-receipt.json",
     "release": DEFAULT_ARTIFACT_ROOT / "local-curriculum-update146/campaign-v3/release.json",
@@ -131,7 +135,22 @@ def runtime_origin(runtime_bin, runtime):
             "meaning": "Historical cold acceptance only; checkpoint412/current adapter needs fresh launch acceptance."}
 
 
-def build_configuration(input_root, runtime_bin, data, artifact_root, run_root):
+def original_map_identity(path):
+    from experiments.learner.builtin_v8_migration import map_identity
+    map_identity(path)
+    return pinned(path, ORIGINAL_MAP_SHA256)
+
+
+def profile_maps(input_root, profile):
+    require(profile in SEED_NAMESPACES, "Unknown explicit map profile")
+    if profile == "original":
+        result = original_map_identity(DEFAULT_ORIGINAL_MAP)
+        return [dict(result), dict(result)]
+    return [pinned(input_root / "maps" / ("curriculum-3-" + seat + ".vmap"), MAP_PINS[seat])
+            for seat in ("0", "1")]
+
+
+def build_configuration(input_root, runtime_bin, data, artifact_root, run_root, profile="easier8x8"):
     import torch
     from experiments.headless.contextual_evidence import runtime_identity
     input_root, runtime_bin = [Path(p).expanduser().resolve() for p in (input_root, runtime_bin)]
@@ -139,8 +158,7 @@ def build_configuration(input_root, runtime_bin, data, artifact_root, run_root):
             "This preparation recipe pins the accepted Mac cold runtime in place; a different build needs a new recipe/gate")
     require(str(torch.__version__) in ("2.9.1", "2.9.1+cpu"), "Use the existing Torch2.9.1 environment")
     parent = {name: pinned(input_root / path, sha) for name, (path, sha) in INPUT_PINS.items()}
-    maps = [pinned(input_root / "maps" / ("curriculum-3-" + seat + ".vmap"), MAP_PINS[seat])
-            for seat in ("0", "1")]
+    maps = profile_maps(input_root, profile)
     runtime_files = {name: pinned(runtime_bin / name, sha) for name, sha in RUNTIME_PINS.items()}
     data = Path(data).expanduser().resolve()
     require(data.is_dir() and (data / "Data").is_dir(), "Expected an existing VCMI user data directory with Data/")
@@ -161,8 +179,8 @@ def build_configuration(input_root, runtime_bin, data, artifact_root, run_root):
         "prerequisites": prerequisites,
         "python": {"executable": str(Path(sys.executable).absolute()), "version": sys.version,
                    "torch": str(torch.__version__)},
-        "checkpoint_restore": proof, "next_sequence": 266,
-        "default_profile": "easier8x8", "backend": "cold", "gameplay_performed": False,
+        "checkpoint_restore": proof, "next_sequence": 266, "seed_namespace": dict(SEED_NAMESPACES[profile]),
+        "default_profile": profile, "backend": "cold", "gameplay_performed": False,
         "ppo_updates": 0, "training_authorized_by_preparation": False,
         "scope": "Machine-local inputs only. The explicit user launch creates a fresh bounded session and runs current-source acceptance before PPO."}
 
@@ -172,14 +190,25 @@ def validate_config(value):
     require(value.get("schema") == SCHEMA and value.get("backend") == "cold", "Unsupported machine configuration")
     for name, (_, sha) in INPUT_PINS.items():
         require(pinned(value["parent"][name]["path"], sha) == value["parent"][name], "Parent binding changed")
-    for seat, sha in MAP_PINS.items():
-        require(pinned(value["maps"][int(seat)]["path"], sha) == value["maps"][int(seat)], "Map binding changed")
+    profile = value.get("default_profile")
+    require(profile in SEED_NAMESPACES, "Unknown explicit map profile")
+    if profile == "original":
+        require(len(value["maps"]) == 2 and value["maps"][0] == value["maps"][1],
+                "Original profile requires the same exact map for both seats")
+        require(original_map_identity(value["maps"][0]["path"]) == value["maps"][0], "Map binding changed")
+    else:
+        for seat, sha in MAP_PINS.items():
+            require(pinned(value["maps"][int(seat)]["path"], sha) == value["maps"][int(seat)], "Map binding changed")
     for name, sha in RUNTIME_PINS.items():
         require(pinned(Path(value["runtime_bin"]) / name, sha) == value["runtime_files"][name], "Runtime binding changed")
     require(Path(value["runtime_bin"]).resolve() == DEFAULT_RUNTIME.resolve(), "Runtime relocation not accepted")
     input_root = Path(value["parent"]["plan"]["path"]).parent.parent
     expected = build_configuration(input_root, value["runtime_bin"], value["data"],
-                                   value["artifact_root"], value["run_root"])
+                                   value["artifact_root"], value["run_root"], profile)
+    # Existing easier8x8 descriptors predate the explicit namespace field. Their
+    # only permitted implicit namespace remains the original 20M/30M values.
+    if profile == "easier8x8" and "seed_namespace" not in value:
+        expected.pop("seed_namespace")
     require(set(value) == set(expected), "Machine configuration fields changed")
     for key in expected.keys() - {"created_utc"}:
         require(value[key] == expected[key], "Machine configuration changed: " + key)
@@ -196,7 +225,8 @@ def main():
     parser.add_argument("--runtime-bin", type=Path, default=DEFAULT_RUNTIME)
     parser.add_argument("--data", type=Path, default=Path.home() / "Library/Application Support/vcmi")
     parser.add_argument("--artifact-root", type=Path, default=DEFAULT_ARTIFACT_ROOT)
-    parser.add_argument("--run-root", type=Path, default=DEFAULT_RUN_ROOT)
+    parser.add_argument("--run-root", type=Path)
+    parser.add_argument("--profile", choices=tuple(SEED_NAMESPACES), default="easier8x8")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--check", action="store_true", help="Check an existing descriptor; never rewrite it")
     args = parser.parse_args()
@@ -204,13 +234,15 @@ def main():
     if args.check:
         value = check_configuration(output)
     else:
-        value = build_configuration(args.input, args.runtime_bin, args.data, args.artifact_root, args.run_root)
+        run_root = args.run_root or (DEFAULT_RUN_ROOT / "original" if args.profile == "original" else DEFAULT_RUN_ROOT)
+        value = build_configuration(args.input, args.runtime_bin, args.data, args.artifact_root, run_root, args.profile)
         output.parent.mkdir(parents=True, exist_ok=True)
         with output.open("x") as stream:
             json.dump(value, stream, indent=2, sort_keys=True); stream.write("\n")
             stream.flush(); os.fsync(stream.fileno())
     print(json.dumps({"configuration": str(output), "checkpoint": value["checkpoint_restore"]["progress"],
-                      "checked": args.check, "gameplay_performed": False, "ppo_updates": 0}, sort_keys=True))
+                      "profile": value["default_profile"], "checked": args.check,
+                      "gameplay_performed": False, "ppo_updates": 0}, sort_keys=True))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,9 @@
 """Offline controller tests. No native game or real PPO update is launched."""
 import importlib.util
+from contextlib import redirect_stderr
+from copy import deepcopy
+import io
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -27,8 +31,14 @@ class ControllerTests(unittest.TestCase):
             self.assertLess(c.left(session), 0)
 
     def test_invalid_budgets(self):
-        for hours in (0, -1, float('nan'), float('inf'), 25):
+        for hours in (0, -1, float('nan'), float('inf'), 49):
             with self.subTest(hours=hours), self.assertRaises(ValueError): c.budget(hours)
+
+    def test_48_hour_cap_retains_five_minute_finalization_reserve(self):
+        session = c.budget(48)
+        self.assertEqual(session['absolute_deadline_unix']-session['started_unix'], 172800)
+        self.assertAlmostEqual(session['hard_deadline_monotonic']-session['started_monotonic'], 172800)
+        self.assertEqual(session['absolute_deadline_unix']-session['compute_deadline_unix'], 300)
 
     def test_failed_attempt_consumes_sequence_across_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -95,6 +105,149 @@ class ControllerTests(unittest.TestCase):
             self.assertEqual(summary['admitted_training_games'],0)
             self.assertEqual(summary['status'],'stopped_failure')
             self.assertFalse((root/'latest-checkpoint.json').exists())
+
+
+class CampaignOwnershipTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.easy = dict(artifact_root=str(self.root), run_root=str(self.root/'local-script-training'))
+        self.original = dict(artifact_root=str(self.root), run_root=str(self.root/'original-training'))
+
+    def second_process(self, config):
+        code = ('import json,sys\nfrom tools.run_local_training import campaign_locks\n'
+                'try:\n with campaign_locks(json.loads(sys.argv[1])): pass\n'
+                'except RuntimeError: sys.exit(72)\n')
+        return subprocess.run([sys.executable, '-c', code, json.dumps(config)],
+                              cwd=ROOT, capture_output=True, text=True, timeout=10)
+
+    def test_running_easy_profile_blocks_original_in_a_separate_process(self):
+        with c.campaign_locks(self.easy):
+            blocked = self.second_process(self.original)
+        self.assertEqual(blocked.returncode, 72, blocked.stderr)
+        allowed = self.second_process(self.original)
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+
+    def test_original_profile_blocks_easy_and_another_original(self):
+        with c.campaign_locks(self.original):
+            for other in (self.easy, self.original):
+                result = self.second_process(other)
+                self.assertEqual(result.returncode, 72, result.stderr)
+
+    def test_failed_profile_lock_releases_the_shared_lock(self):
+        with c.exclusive_lock(Path(self.original['run_root'])/'owner.lock'):
+            with self.assertRaisesRegex(RuntimeError, 'owns'):
+                with c.campaign_locks(self.original): pass
+            # The second acquisition failed; ExitStack must release the first one.
+            result = self.second_process(self.easy)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+
+class FinalParentTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.run = self.root/'finished-easy-run'; self.run.mkdir()
+        self.parent = {'policy': {'path': 'synthetic-final-policy'}, 'resume': {'path': 'synthetic-final-resume'}}
+        self.session = dict(run_dir=str(self.run))
+        self.report = dict(status='finished', latest_parent=self.parent, latest_progress={'updates': 600},
+            owned_cleanup_verified=True, initial_state_unchanged=True,
+            full_final_restore={'exact': True, 'progress': {'updates': 600}})
+        self.shutdown = dict(owned_cleanup_verified=True, worker_returncode=0, within_hard_deadline=True)
+        self.write()
+
+    def write(self):
+        for name, value in [('session.json', self.session), ('campaign-report.json', self.report),
+                            ('shutdown.json', self.shutdown)]:
+            c.atomic(self.run/name, value)
+
+    def test_uses_final_report_and_ignores_stale_or_moving_latest_pointer(self):
+        for pointer in ({'parent': {'checkpoint': 412}}, {'parent': {'checkpoint': 700}}):
+            c.atomic(self.root/'latest-checkpoint.json', pointer)
+            self.assertEqual(c.final_parent(self.run), self.parent)
+            self.assertEqual(c.read(self.root/'latest-checkpoint.json'), pointer)
+
+    def test_clean_requested_stop_is_a_finalized_parent(self):
+        self.report['status'] = 'stopped_requested'; self.write()
+        self.assertEqual(c.final_parent(self.run), self.parent)
+
+    def test_active_or_failed_parent_cannot_use_a_stale_successful_shutdown(self):
+        for status in ('running', 'stopped_failure', 'interrupted'):
+            self.report['status'] = status; self.write()
+            with self.subTest(status=status), self.assertRaisesRegex(ValueError, 'finalized'):
+                c.final_parent(self.run)
+
+    def test_requires_complete_cleanup_and_restore_proofs(self):
+        report = deepcopy(self.report); shutdown = deepcopy(self.shutdown)
+        cases = [('report', 'owned_cleanup_verified'), ('report', 'initial_state_unchanged'),
+                 ('report', 'full_final_restore'), ('shutdown', 'owned_cleanup_verified'),
+                 ('shutdown', 'within_hard_deadline')]
+        for area, key in cases:
+            for invalid in (False, None, 'missing'):
+                self.report, self.shutdown = deepcopy(report), deepcopy(shutdown)
+                target = self.report if area == 'report' else self.shutdown
+                if invalid == 'missing': target.pop(key)
+                elif key == 'full_final_restore': target[key] = {'exact': invalid}
+                else: target[key] = invalid
+                self.write()
+                with self.subTest(area=area, key=key, invalid=invalid), self.assertRaisesRegex(ValueError, 'finalized'):
+                    c.final_parent(self.run)
+
+    def test_missing_shutdown_or_nonzero_worker_exit_never_falls_back_to_latest(self):
+        c.atomic(self.root/'latest-checkpoint.json', {'parent': self.parent})
+        (self.run/'shutdown.json').unlink()
+        with self.assertRaises(FileNotFoundError): c.final_parent(self.run)
+        self.shutdown['worker_returncode'] = 1; self.write()
+        with self.assertRaisesRegex(ValueError, 'finalized'): c.final_parent(self.run)
+
+    def test_session_must_bind_the_requested_campaign_directory(self):
+        self.session['run_dir'] = str(self.root/'another-run'); self.write()
+        with self.assertRaisesRegex(ValueError, 'path differs'): c.final_parent(self.run)
+
+
+class CountArgumentTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.config = self.root/'machine.json'
+        c.atomic(self.config, {'artifact_root': str(self.root), 'default_profile': 'original'})
+
+    def arguments(self, *extra):
+        return ['run_local_training.py', '--config', str(self.config), '--profile', 'original', *extra]
+
+    def test_count_mode_defaults_to_48_hours_and_100_update_evaluation(self):
+        argv = self.arguments('--games', '5000', '--parent-final', str(self.root/'previous-run'))
+        with patch.object(c.sys, 'argv', argv), patch.dict(c.os.environ), patch.object(c, 'start', return_value=0) as start:
+            self.assertEqual(c.main(), 0)
+        args = start.call_args.args[0]
+        self.assertEqual((args.games, args.hours, args.eval_every), (5000, 48, 100))
+        self.assertEqual(args.parent_final, self.root/'previous-run')
+        self.assertEqual(args.profile, 'original')
+
+    def test_legacy_time_mode_and_explicit_count_caps_remain_distinct(self):
+        for extra, expected in [((), (2, 5)), (('--games', '5000', '--hours', '48', '--eval-every', '50'), (48, 50))]:
+            with self.subTest(extra=extra), patch.object(c.sys, 'argv', self.arguments(*extra)), \
+                    patch.dict(c.os.environ), patch.object(c, 'start', return_value=0) as start:
+                self.assertEqual(c.main(), 0)
+                args = start.call_args.args[0]
+                self.assertEqual((args.hours, args.eval_every), expected)
+
+    def test_invalid_count_or_conflicting_controls_fail_before_start(self):
+        cases = [('--games', '0'), ('--games', '-4'), ('--games', '4999'), ('--games', '4.0'),
+                 ('--games', '5000', '--max-updates', '1250'), ('--eval-every', '0'),
+                 ('--parent', 'a', '--parent-final', 'b')]
+        for extra in cases:
+            with self.subTest(extra=extra), patch.object(c.sys, 'argv', self.arguments(*extra)), \
+                    patch.object(c, 'start') as start, redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as stopped: c.main()
+                self.assertEqual(stopped.exception.code, 2)
+                start.assert_not_called()
+
+    def test_count_mode_cannot_exceed_48_hour_safety_limit(self):
+        with patch.object(c.sys, 'argv', self.arguments('--games', '5000', '--hours', '49')), \
+                patch.dict(c.os.environ), patch.object(c, 'start') as start:
+            with self.assertRaisesRegex(ValueError, '48'): c.main()
+            start.assert_not_called()
 
 
 class BoundedCleanupTests(unittest.TestCase):

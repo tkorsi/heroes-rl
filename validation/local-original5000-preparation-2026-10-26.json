@@ -1,0 +1,29 @@
+{
+  "schema": "heroes-original5000-preparation-v1",
+  "timestamp_utc": "2026-10-26T17:29:30.769647+00:00",
+  "status": "offline_preparation_passed_manual_launch_pending",
+  "tests_passed": 126,
+  "tests_failed": 0,
+  "test_log_sha256": "110473f4c4d6c97773efb5b9ff83db68258d15dce314b30a064e61284afc3493",
+  "machine_config_sha256": "84b6153fc6d6614be537f093d70213b6a5fb31929a44cf232452e2591330c1b4",
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "parent_selection": "Final verified state from run-20261026T160706Z-0be8eb77, resolved only after its clean shutdown",
+  "current_snapshot_restore_test": {
+    "checkpoint": 539,
+    "rollouts": 2156,
+    "decisions": 118064,
+    "adam_steps": 4427,
+    "meaning": "Read-only compatibility check of an immutable intermediate snapshot; not the selected final parent"
+  },
+  "cross_profile_launch_refused_while_current_run_active": true,
+  "blocked_check_log_sha256": "fdf83a3284c8265b3984f52d233ec590b84f5365e52c4b121e0581a0bd202309",
+  "new_native_games": 0,
+  "new_admitted_ppo_updates": 0,
+  "original_seed_ledger_created": false,
+  "live_release_changed": false,
+  "scientific_scope": "Original20x20 hero-management-v2;5000 newly admitted sampled on-policy games;terminal-only reward;no demonstrations or shaping",
+  "known_adapter_migration": "Only exact local runner cf2021c/3268f2f adapter bytes; reviewed replacement AST pinned; other learner/PPO source byte exact",
+  "launch_gate": "Both seats must pass native completion/replay/policy reconstruction; all losses can still pass technical acceptance",
+  "target_success_not_guaranteed": true,
+  "safety_cap_hours": 48
+}

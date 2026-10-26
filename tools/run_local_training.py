@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from contextlib import contextmanager
+from contextlib import contextmanager, ExitStack
 from datetime import datetime, timezone
 import fcntl
 import json
@@ -20,6 +20,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = Path.home() / 'Projects/Heroes-artifacts/local-script-training/machine.json'
+ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original.json')
 
 
 class StopRequested(Exception):
@@ -66,8 +67,8 @@ def exclusive_lock(path):
 
 
 def budget(hours):
-    if not math.isfinite(hours) or not 0.25 <= hours <= 24:
-        raise ValueError('--hours must be between 0.25 and 24')
+    if not math.isfinite(hours) or not 0.25 <= hours <= 48:
+        raise ValueError('--hours must be between 0.25 and 48')
     seconds = int(hours * 3600)
     wall, mono = time.time(), time.monotonic()
     return dict(started_unix=wall, started_monotonic=mono,
@@ -130,17 +131,46 @@ def enough(session, durations, gamesets=1):
     return left(session) > gamesets * max(90, 2 * max(durations[-5:], default=60)) + 60
 
 
-def reserve_sequence(root, floor=266):
+def reserve_sequence(root, floor=266, engine_base=20_000_000, policy_base=30_000_000):
     """Consume before launch, including failed or never-started reserved attempts."""
     path = Path(root) / 'sequence-ledger.json'
     old = read(path) if path.exists() else {'next_sequence': floor, 'consumed': []}
     sequence = max(floor, old['next_sequence'])
-    if 30_000_000 + 4 * sequence + 3 >= 2**31:
+    if max(engine_base, policy_base) + 4 * sequence + 3 >= 2**31:
         raise ValueError('Training seed namespace exhausted')
     old['next_sequence'] = sequence + 1
     old['consumed'].append({'sequence': sequence, 'reserved_utc': utc()})
     atomic(path, old)
     return sequence
+
+
+@contextmanager
+def campaign_locks(config):
+    # The first easy runner already holds this path. Share it across profiles.
+    shared = Path(config['artifact_root']) / 'local-script-training' / 'owner.lock'
+    paths = [shared, Path(config['run_root']) / 'owner.lock']
+    with ExitStack() as stack:
+        for path in dict.fromkeys(p.resolve() for p in paths):
+            stack.enter_context(exclusive_lock(path))
+        yield
+
+
+def final_parent(run):
+    """Select the final verified state, never the moving latest pointer."""
+    run = Path(run).expanduser().resolve()
+    session, report, shutdown = [read(run / name) for name in
+        ('session.json', 'campaign-report.json', 'shutdown.json')]
+    if Path(session['run_dir']).resolve() != run:
+        raise ValueError('Parent campaign path differs from its session')
+    if (report.get('status') not in ('finished', 'stopped_requested')
+            or report.get('owned_cleanup_verified') is not True
+            or report.get('initial_state_unchanged') is not True
+            or report.get('full_final_restore', {}).get('exact') is not True
+            or shutdown.get('owned_cleanup_verified') is not True
+            or shutdown.get('worker_returncode') != 0
+            or shutdown.get('within_hard_deadline') is not True):
+        raise ValueError('Parent campaign is not cleanly finalized with a verified full checkpoint')
+    return report['latest_parent']
 
 
 def release_checkout(artifact_root):
@@ -176,7 +206,12 @@ def verified_batch(report, returncode):
 def summarize(value):
     training = [b for b in value['batches'] if b.get('checkpoint_verified')]
     evaluation = [b for b in value['batches'] if b['mode'] != 'training' and b.get('status') == 'passed']
+    target = value.get('target_games')
+    profile = value.get('profile', 'easier8x8')
     return dict(schema='heroes-local-script-summary-v1', timestamp_utc=utc(), status=value['status'],
+        profile=profile, target_games=target, target_games_met=None if target is None else 4*len(training) == target,
+        remaining_training_games=None if target is None else max(0, target-4*len(training)),
+        stop_reason=value.get('stop_reason'),
         new_ppo_updates=len(training), admitted_training_games=4 * len(training),
         training_outcomes=dict(Counter(o for b in training for o in b.get('outcomes', []))),
         evaluation_games=4 * len(evaluation),
@@ -188,7 +223,8 @@ def summarize(value):
         error=value.get('error'), owned_cleanup_verified=value.get('owned_cleanup_verified', False),
         initial_state_unchanged=value.get('initial_state_unchanged', False),
         full_final_restore=value.get('full_final_restore'),
-        limitations=['Same accepted easier8x8 distribution; this is not an original-map experiment.',
+        limitations=[('Original hero-management-v2 map; results apply to this authored scenario.' if profile == 'original'
+                     else 'Same accepted easier8x8 distribution; this is not an original-map experiment.'),
                      'Fixed held-out starts are repeated; evaluations never supply PPO samples.',
                      'Local checkpoint durability is separate from any subsequent private Git publication.'])
 
@@ -203,13 +239,15 @@ def write_markdown(run, summary):
             f"Status: {summary['status']}\n\n"
             f"New PPO updates: {summary['new_ppo_updates']}. "
             f"Admitted training games: {summary['admitted_training_games']}.\n\n"
+            f"Profile: {summary['profile']}. Target: {summary['target_games']}. "
+            f"Target met: {summary['target_games_met']}. Stop reason: {summary['stop_reason']}.\n\n"
             f"Training outcomes: {summary['training_outcomes']}. "
             f"Evaluation outcomes: {summary['evaluation_outcomes']}.\n\n"
             f"Last progress: {summary['latest_progress']}.\n\n"
             f"Error: {summary['error'] or 'none'}.\n\n"
             'See summary.json, campaign-report.json, research-log.jsonl and batches/ for the full record. '
             'Only complete verified four-game batches were admitted. Fixed evaluation games are excluded. '
-            'This run uses the accepted easier8x8 distribution, not the original map.\n')
+            + summary['limitations'][0] + '\n')
     (Path(run) / 'RESULTS.md').write_text(text)
 
 
@@ -281,31 +319,42 @@ def worker(session_path):
     if os.getppid() != session['supervisor_pid']:
         raise RuntimeError('Worker must be launched by its live owned supervisor')
     state = adapter.restore_parent(parent)
-    value = dict(status='running', batches=[], latest_parent=parent, latest_progress=vars(state.progress))
+    value = dict(status='running', batches=[], latest_parent=parent, latest_progress=vars(state.progress),
+                 profile=session.get('profile', 'easier8x8'), target_games=session.get('target_games'))
     save(run, value)
     durations = [60.0]
     try:
         for seat in (0, 1):
             execute_batch(session_path, parent, state.progress.updates, seat, 'baseline', value)
-        while enough(session, durations, gamesets=3) and not (run / 'stop-requested').exists():
+        while True:
             updates = sum(b.get('checkpoint_verified', False) for b in value['batches'])
-            if session.get('max_updates') is not None and updates >= session['max_updates']: break
-            sequence = reserve_sequence(session['run_root'], session['next_sequence'])
+            if (run / 'stop-requested').exists():
+                value['stop_reason'] = 'manual_stop'; break
+            if session.get('target_games') is not None and 4*updates >= session['target_games']:
+                value['stop_reason'] = 'training_game_target_reached'; break
+            if session.get('max_updates') is not None and updates >= session['max_updates']:
+                value['stop_reason'] = 'update_limit_reached'; break
+            if not enough(session, durations, gamesets=3):
+                value['stop_reason'] = 'compute_budget_reserve'; break
+            sequence = reserve_sequence(session['run_root'], session['next_sequence'],
+                session.get('training_engine_seed_base', 20_000_000), session.get('training_policy_seed_base', 30_000_000))
             started = time.monotonic()
             parent = execute_batch(session_path, parent, sequence, sequence % 2, 'training', value)
             durations.append(time.monotonic() - started)
             updates += 1
             print(f"PPO +{updates} | games {4*updates} | checkpoint {value['latest_progress']['updates']} | "
                   f"remaining {max(0, int(left(session)))}s", flush=True)
-            if updates % 5 == 0 and enough(session, durations, gamesets=2):
+            reached = session.get('target_games') is not None and 4*updates >= session['target_games']
+            if not reached and updates % session.get('evaluation_interval_updates', 5) == 0 and enough(session, durations, gamesets=2):
                 for seat in (0, 1):
                     execute_batch(session_path, parent, value['latest_progress']['updates'], seat, 'periodic', value)
         if enough(session, durations, gamesets=2):
             for seat in (0, 1):
                 execute_batch(session_path, parent, value['latest_progress']['updates'], seat, 'final', value)
-        value['status'] = 'stopped_requested' if (run / 'stop-requested').exists() else 'finished'
+        value['status'] = ('stopped_requested' if (run / 'stop-requested').exists() else
+            'stopped_budget' if value.get('stop_reason') == 'compute_budget_reserve' else 'finished')
     except StopRequested:
-        value['status'] = 'stopped_requested'
+        value.update(status='stopped_requested', stop_reason='manual_stop')
     except BaseException as error:
         value.update(status='stopped_failure', error=f'{type(error).__name__}: {error}')
     finally:
@@ -318,7 +367,7 @@ def worker(session_path):
             value.update(status='stopped_failure', error=f'Final preservation: {error}')
         value['stopped_utc'] = utc(); save(run, value)
         summary = summarize(value); write_markdown(run, summary); event(run, 'campaign_finished', summary=summary)
-    return 0 if value['status'] in ('finished', 'stopped_requested') else 1
+    return 0 if value['status'] in ('finished', 'stopped_requested', 'stopped_budget') else 1
 
 
 def start(args):
@@ -327,20 +376,24 @@ def start(args):
     from prepare_local_training import validate_config
     validate_config(config)
     run_root = Path(config['run_root'])
-    with exclusive_lock(run_root / 'preparation.lock'):
+    with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
+        if args.parent_final is not None: final_parent(args.parent_final)
         release, commit = release_checkout(config['artifact_root'])
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
-                   '--config', str(args.config.resolve()), '--hours', str(args.hours)]
+                   '--config', str(args.config.resolve()), '--hours', str(args.hours),
+                   '--profile', args.profile, '--eval-every', str(args.eval_every)]
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
+        if args.games is not None: command += ['--games', str(args.games)]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
+        if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
     os.chdir(release)
     os.execv(sys.executable, command)
     raise AssertionError("exec returned")
 
 
 def launch(args):
-    with exclusive_lock(Path(read(args.config)['run_root']) / 'owner.lock'):
+    with campaign_locks(read(args.config)):
         return launch_owned(args)
 
 
@@ -353,8 +406,16 @@ def launch_owned(args):
     config = read(args.config); validate_config(config)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
     latest = run_root / 'latest-checkpoint.json'
-    parent = read(args.parent)['parent'] if args.parent else read(latest)['parent'] if latest.exists() else config['parent']
+    parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
+              else read(latest)['parent'] if latest.exists() else config['parent'])
     initial = adapter.restore_parent(parent)
+    parent_final_evidence = None
+    if args.parent_final is not None:
+        prior = read(args.parent_final / 'campaign-report.json')
+        require(vars(initial.progress) == prior['full_final_restore']['progress'],
+                'Final parent counters differ from the restored checkpoint')
+        parent_final_evidence = {name: binding(args.parent_final / name) for name in
+                                ('session.json', 'campaign-report.json', 'shutdown.json')}
     run = run_root / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8])
     run.mkdir(exist_ok=False)
     session = dict(schema='heroes-local-script-session-v1', scope='heroes-local-script-training-v1',
@@ -362,15 +423,23 @@ def launch_owned(args):
         configuration=adapter.configuration(parent), asset_config=binding(args.config),
         runtime_bin=config['runtime_bin'], runtime=config['runtime'], data=config['data'], maps=config['maps'],
         artifact_root=config['artifact_root'], run_root=str(run_root), run_dir=str(run), initial_parent=parent,
-        next_sequence=config.get('next_sequence', 266), supervisor_pid=os.getpid(), training_engine_seed_base=20_000_000,
-        training_policy_seed_base=30_000_000, max_updates=args.max_updates,
+        next_sequence=config.get('next_sequence', 266), supervisor_pid=os.getpid(),
+        training_engine_seed_base=config.get('seed_namespace', {}).get('engine_base', 20_000_000),
+        training_policy_seed_base=config.get('seed_namespace', {}).get('policy_base', 30_000_000),
+        max_updates=args.max_updates, target_games=args.games, profile=config['default_profile'],
+        evaluation_interval_updates=args.eval_every,
+        parent_final_run=str(args.parent_final.resolve()) if args.parent_final else None,
+        parent_final_evidence=parent_final_evidence,
         frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py', 'train-local.sh')},
         authorization='Manual user invocation; no agent/model calls, no automatic retry or post-deadline restart',
         **budget(args.hours))
     require(not session['source']['tracked_worktree_dirty'], 'Frozen source is dirty')
     session_path = run / 'session.json'; atomic(session_path, session)
     atomic(run_root / 'latest-run.json', dict(run_dir=str(run), session=binding(session_path)))
-    event(run, 'preregistered', session=session, hypothesis='Continue the accepted easier8x8 distribution; measure fixed paired outcomes without claiming original-map transfer.')
+    hypothesis = ('Continue the final easy-trained state on original hero-management-v2; test whether stochastic on-policy PPO discovers wins within the declared game budget. A first win is not proof of reliable strategy.'
+                  if session['profile'] == 'original' else
+                  'Continue the accepted easier8x8 distribution; measure fixed paired outcomes without claiming original-map transfer.')
+    event(run, 'preregistered', session=session, hypothesis=hypothesis)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)
     return supervise(session_path)
@@ -433,18 +502,29 @@ def supervise(session_path):
     print(f"Run status: {value['status']}. Read {run / 'RESULTS.md'}", flush=True)
     if (run_root / 'latest-checkpoint.json').exists():
         print(f"Latest verified state: {run_root / 'latest-checkpoint.json'}", flush=True)
-    return 0 if rc == 0 and value['status'] in ('finished', 'stopped_requested') else 1
+    return 0 if rc == 0 and value['status'] in ('finished', 'stopped_requested', 'stopped_budget') else 1
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('command', nargs='?', choices=('start', 'check', 'status', '_launch', '_worker'), default='start')
-    parser.add_argument('--config', type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument('--hours', type=float, default=2)
+    parser.add_argument('--profile', choices=('easier8x8', 'original'), default='easier8x8')
+    parser.add_argument('--config', type=Path)
+    parser.add_argument('--hours', type=float, help='Safety cap: default 2 hours, or 48 hours with --games')
+    parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
+    parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
-    parser.add_argument('--parent', type=Path, help='Explicit latest-checkpoint.json; otherwise continue the last verified local state')
+    parents = parser.add_mutually_exclusive_group()
+    parents.add_argument('--parent', type=Path, help='Explicit latest-checkpoint.json; otherwise continue the last verified profile state')
+    parents.add_argument('--parent-final', type=Path, help='Restore only the fully finalized state of this prior run')
     parser.add_argument('--session', type=Path)
     args = parser.parse_args()
+    args.config = args.config or (ORIGINAL_CONFIG if args.profile == 'original' else DEFAULT_CONFIG)
+    args.hours = args.hours if args.hours is not None else (48 if args.games is not None else 2)
+    args.eval_every = args.eval_every if args.eval_every is not None else (100 if args.games is not None else 5)
+    if args.games is not None and (args.games <= 0 or args.games % 4): parser.error('--games must be a positive multiple of four')
+    if args.games is not None and args.max_updates is not None: parser.error('Choose --games or --max-updates, not both')
+    if args.eval_every < 1: parser.error('--eval-every must be positive')
     if args.max_updates is not None and args.max_updates < 1: parser.error('--max-updates must be positive')
     if args.command == '_worker': return worker(args.session)
     if args.command == 'status':
@@ -453,6 +533,7 @@ def main():
     if not args.config.exists():
         raise FileNotFoundError(f'Prepare local assets first: {sys.executable} tools/prepare_local_training.py --output {args.config}')
     config = read(args.config); os.environ['HEROES_ARTIFACT_ROOT'] = config['artifact_root']
+    if config['default_profile'] != args.profile: parser.error('--profile differs from the selected machine configuration')
     if args.command == 'check':
         from prepare_local_training import validate_config
         checked = validate_config(config)

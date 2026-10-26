@@ -17,7 +17,7 @@ from tools import run_local_training as runner
 class ControllerIntegrationTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        self.root = Path(temporary.name).resolve()
         self.run = self.root / "run"; self.run.mkdir()
         initial = self.root / "initial"; initial.mkdir()
         for name in ("plan", "report", "policy", "resume", "initial_checkpoint"):
@@ -26,11 +26,13 @@ class ControllerIntegrationTests(unittest.TestCase):
                        for name in ("plan", "report", "policy", "resume", "initial_checkpoint")}
         self.session = dict(run_dir=str(self.run), run_root=str(self.root), artifact_root=str(self.root),
             initial_parent=self.parent, supervisor_pid=os.getppid(), next_sequence=266,
-            max_updates=1, **runner.budget(1))
+            max_updates=1, target_games=None, evaluation_interval_updates=5,
+            profile="easier8x8", **runner.budget(1))
         self.session_path = self.run / "session.json"; runner.atomic(self.session_path, self.session)
         self.started = []; self.preserved = []; self.restore_calls = []
         self.bad_training = False; self.preservation_failure = False; self.restore_copy_failure = False
         self.stop_after = None; self.plans = {}
+        self.progress_by_policy = {self.parent["policy"]["path"]: 412}
         self.addCleanup(patch.stopall)
         patch.object(adapter, "prepare_batch", side_effect=self.prepare).start()
         patch.object(adapter, "restore_parent", side_effect=self.restore).start()
@@ -39,11 +41,11 @@ class ControllerIntegrationTests(unittest.TestCase):
         patch.object(process_deadline, "guarded_popen", side_effect=self.spawn).start()
         self.close = patch.object(process_deadline, "close_owned_process").start()
         patch.object(process_deadline, "cleanup_from_evidence").start()
-        patch.object(runner, "enough", return_value=True).start()
+        self.enough = patch.object(runner, "enough", return_value=True).start()
 
     def restore(self, parent):
         self.restore_calls.append(deepcopy(parent))
-        updates = 412 if parent == self.parent else 413
+        updates = self.progress_by_policy[parent["policy"]["path"]]
         return SimpleNamespace(progress=SimpleNamespace(updates=updates, rollouts=updates * 4,
                                decisions=95836 + (updates - 412) * 20), optimizer_steps=3000 + updates - 412)
 
@@ -52,8 +54,10 @@ class ControllerIntegrationTests(unittest.TestCase):
         execution = folder / "execution"; execution.mkdir()
         for name in ("after-policy.pt", "after-resume.pt"):
             (execution / name).write_text("synthetic resulting state " + name)
+        updates = self.progress_by_policy[parent["policy"]["path"]] + (0 if evaluate else 1)
+        self.progress_by_policy[str(execution / "after-policy.pt")] = updates
         plan = {"checkpoint_metadata": {"initial_checkpoint": self.parent["policy"]},
-                "mode": "evaluation" if evaluate else "training"}
+                "mode": "evaluation" if evaluate else "training", "synthetic_updates": updates}
         path = folder / "plan.json"; runner.atomic(path, plan)
         report = dict(status="finished", worker_complete=True, supervisor_cleanup_verified=True,
             within_shared_budget=True, attempts=[dict(status="passed", completion_receipt=True,
@@ -86,7 +90,9 @@ class ControllerIntegrationTests(unittest.TestCase):
         destination.mkdir(parents=True)
         for name in ("after-policy.pt", "after-resume.pt"):
             (destination / name).write_bytes((plan_path.parent / "execution" / name).read_bytes())
-        return {"restore": {"progress": {"updates": 413, "rollouts": 1652, "decisions": 95856}}}
+        updates = runner.read(plan_path)["synthetic_updates"]
+        return {"restore": {"progress": {"updates": updates, "rollouts": updates * 4,
+                "decisions": 95836 + (updates - 412) * 20}}}
 
     def verify_copy(self, *args, **kwargs):
         if self.restore_copy_failure:
@@ -95,6 +101,12 @@ class ControllerIntegrationTests(unittest.TestCase):
 
     def result(self):
         return runner.read(self.run / "summary.json")
+
+    def target(self, games, evaluation_interval_updates=5):
+        self.session.update(target_games=games, max_updates=None,
+                            evaluation_interval_updates=evaluation_interval_updates,
+                            profile="original")
+        runner.atomic(self.session_path, self.session)
 
     def test_baseline_then_training_preservation_and_latest_pointer(self):
         self.assertEqual(runner.worker(self.session_path), 0)
@@ -169,6 +181,67 @@ class ControllerIntegrationTests(unittest.TestCase):
         self.assertEqual(self.result()["new_ppo_updates"], 1)
         self.assertEqual(self.result()["final"], [])
         self.assertEqual(runner.read(self.root / "latest-checkpoint.json")["progress"]["updates"], 413)
+
+    def test_eight_game_target_excludes_evaluation_and_skips_periodic_at_target(self):
+        self.target(8, evaluation_interval_updates=2)
+        self.assertEqual(runner.worker(self.session_path), 0)
+        summary = self.result()
+        self.assertEqual(summary["status"], "finished")
+        self.assertEqual(summary["stop_reason"], "training_game_target_reached")
+        self.assertTrue(summary["target_games_met"])
+        self.assertEqual(summary["target_games"], 8)
+        self.assertEqual(summary["profile"], "original")
+        self.assertEqual(summary["new_ppo_updates"], 2)
+        self.assertEqual(summary["admitted_training_games"], 8)
+        self.assertEqual(summary["evaluation_games"], 16)
+        self.assertEqual([r["mode"] for r in self.started],
+                         ["baseline", "baseline", "train", "train", "final", "final"])
+        self.assertEqual(len(self.preserved), 2)
+        self.assertEqual(runner.read(self.root / "sequence-ledger.json")["next_sequence"], 268)
+        self.assertEqual(runner.read(self.root / "latest-checkpoint.json")["progress"]["updates"], 414)
+        final_parents = [r["parent"] for r in summary["final"]]
+        self.assertEqual(final_parents, [summary["latest_parent"], summary["latest_parent"]])
+
+    def test_twelve_game_target_uses_configured_periodic_interval_without_extra_ppo(self):
+        self.target(12, evaluation_interval_updates=1)
+        self.assertEqual(runner.worker(self.session_path), 0)
+        summary = self.result()
+        self.assertEqual(summary["stop_reason"], "training_game_target_reached")
+        self.assertTrue(summary["target_games_met"])
+        self.assertEqual(summary["new_ppo_updates"], 3)
+        self.assertEqual(summary["admitted_training_games"], 12)
+        self.assertEqual(summary["evaluation_games"], 32)
+        self.assertEqual([r["mode"] for r in self.started], [
+            "baseline", "baseline", "train", "periodic", "periodic",
+            "train", "periodic", "periodic", "train", "final", "final"])
+        self.assertEqual([r["sequence"] for r in self.started if r["mode"] == "train"], [266, 267, 268])
+        self.assertEqual(runner.read(self.root / "latest-checkpoint.json")["progress"]["updates"], 415)
+
+    def test_budget_stop_before_target_reports_partial_progress_without_extra_training(self):
+        self.target(12)
+        self.enough.side_effect = lambda session, durations, gamesets=1: (
+            gamesets != 3 or sum(row["mode"] == "train" for row in self.started) < 1)
+        runner.worker(self.session_path)
+        summary = self.result()
+        self.assertEqual(summary["status"], "stopped_budget")
+        self.assertEqual(summary["stop_reason"], "compute_budget_reserve")
+        self.assertFalse(summary["target_games_met"])
+        self.assertEqual(summary["target_games"], 12)
+        self.assertEqual(summary["admitted_training_games"], 4)
+        self.assertEqual(summary["new_ppo_updates"], 1)
+        self.assertEqual(sum(row["mode"] == "train" for row in self.started), 1)
+        self.assertEqual(runner.read(self.root / "sequence-ledger.json")["next_sequence"], 267)
+
+    def test_failed_target_batch_never_counts_partial_games_toward_target(self):
+        self.target(8); self.bad_training = True
+        self.assertEqual(runner.worker(self.session_path), 1)
+        summary = self.result()
+        self.assertEqual(summary["status"], "stopped_failure")
+        self.assertFalse(summary["target_games_met"])
+        self.assertEqual(summary["admitted_training_games"], 0)
+        self.assertEqual(summary["new_ppo_updates"], 0)
+        self.assertEqual(summary["failed_batches"][0]["completed_games"], 3)
+        self.assertEqual(summary["evaluation_games"], 8)
 
 
 if __name__ == "__main__":

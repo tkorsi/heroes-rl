@@ -1,0 +1,58 @@
+{
+  "schema": "heroes-original-map-training-preregistration-v1",
+  "timestamp_utc": "2026-10-26T17:26:38.679625+00:00",
+  "status": "prepared_manual_launch_only",
+  "hypothesis": "Stochastic on-policy PPO from the final easy-trained state may discover original-map wins within 5000 admitted training games; neither a win nor reliable strategy is guaranteed.",
+  "profile": "original",
+  "map": "hero-management-v2",
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "size": [
+    20,
+    20,
+    1
+  ],
+  "initial_state_from_final_run": "run-20261026T160706Z-0be8eb77",
+  "initial_checkpoint_bound_at_launch": true,
+  "initial_full_model_adam_rng_progress_pool": true,
+  "new_training_games": 5000,
+  "batch_games": 4,
+  "new_ppo_updates_max": 1250,
+  "per_seat_training_games": 2500,
+  "terminal_only_rewards": {
+    "win": 1,
+    "loss": -1,
+    "cutoff": 0
+  },
+  "sampling": "Existing stochastic policy distribution; updated after each verified complete batch",
+  "opponent": "Nullkiller Easy",
+  "battle_ai": "BattleAI",
+  "max_days": 365,
+  "max_choices": 5120,
+  "demos_or_scripted_learner": false,
+  "reward_shaping": false,
+  "architecture_or_ppo_change": false,
+  "evaluation": {
+    "baseline_games": 8,
+    "interval_updates": 100,
+    "periodic_games_per_check": 8,
+    "final_games": 8,
+    "full_run_expected_evaluation_games": 112,
+    "training_samples": 0
+  },
+  "seed_namespace": {
+    "engine_base": 40000000,
+    "policy_base": 50000000,
+    "first_sequence": 266,
+    "ledger_persisted_before_launch": true
+  },
+  "budget": {
+    "safety_cap_hours": 48,
+    "finalization_reserve_seconds": 300,
+    "start": "At new manual campaign launch after preparation",
+    "stop_on_target_failure_budget_or_user": true,
+    "automatic_restart": false
+  },
+  "current_active_run_untouched": true,
+  "games_launched_during_preparation": 0,
+  "interpretation": "Any training wins are evidence of successful sampled trajectories. Compare fixed before/after evaluations separately; training wins alone do not prove stable strategy or generalization."
+}

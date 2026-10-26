@@ -65,10 +65,35 @@ class MachineConfigurationTests(unittest.TestCase):
         self.assertEqual(prep.validate_config(self.config), self.config)
         self.assertEqual(len(self.config["maps"]), 2)
         self.assertEqual(self.config["next_sequence"], 266)
+        self.assertEqual(self.config["seed_namespace"], {"engine_base": 20_000_000, "policy_base": 30_000_000})
         self.assertIn("initial_checkpoint", self.config["parent"])
         self.assertFalse(self.config["gameplay_performed"])
         self.assertEqual(self.config["ppo_updates"], 0)
         self.assertEqual(before, {str(p): p.read_bytes() for p in self.root.rglob("*") if p.is_file()})
+
+    def test_existing_easy_descriptor_keeps_its_original_namespace(self):
+        old = deepcopy(self.config); old.pop('seed_namespace')
+        self.assertEqual(prep.validate_config(old), old)
+
+    def test_original_profile_has_same_exact_map_both_seats_and_separate_seeds(self):
+        path = self.root/'original-map.vmap'
+        expected = self.file(path, 'original map fixture')
+        with patch.object(prep, 'DEFAULT_ORIGINAL_MAP', path), \
+             patch.object(prep, 'original_map_identity', side_effect=lambda p: prep.pinned(p, expected['sha256'])):
+            value = prep.build_configuration(self.inputs, self.runtime, self.data, self.root,
+                                             self.output/'original', 'original')
+            self.assertEqual(value['maps'], [expected, expected])
+            self.assertEqual(value['default_profile'], 'original')
+            self.assertEqual(value['seed_namespace'], {'engine_base': 40_000_000, 'policy_base': 50_000_000})
+            self.assertEqual(prep.validate_config(value), value)
+            bad = deepcopy(value); bad.pop('seed_namespace')
+            with self.assertRaisesRegex(ValueError, 'fields changed'): prep.validate_config(bad)
+            bad = deepcopy(value); bad['maps'][1] = self.config['maps'][1]
+            with self.assertRaisesRegex(ValueError, 'same exact map'): prep.validate_config(bad)
+            bad = deepcopy(value); bad['seed_namespace'] = self.config['seed_namespace']
+            with self.assertRaisesRegex(ValueError, 'configuration changed'): prep.validate_config(bad)
+            path.write_text('changed original map')
+            with self.assertRaisesRegex(ValueError, 'accepted identity'): prep.validate_config(value)
 
     def test_input_dependency_map_and_historical_evidence_changes_are_rejected(self):
         paths = [self.inputs / relative for relative, _ in prep.INPUT_PINS.values()]

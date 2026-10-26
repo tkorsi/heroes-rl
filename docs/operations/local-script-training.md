@@ -5,6 +5,46 @@ The script makes **no language-model API calls**, starts no cloud agent and crea
 scheduled task. The cloud Teacher has finished and handed back the full state;
 see [its final handoff](teacher-cloud-to-local-handoff-20261026.md).
 
+## Next original-map experiment: 5,000 training games
+
+The user will invoke this after the current easier8x8 run finishes:
+
+```sh
+cd /Users/orsi/Projects/Heroes
+./train-original-5000.sh
+```
+
+This one-shot wrapper selects the unchanged original two-Castle 20x20
+hero-management-v2 map and the final full state from
+`run-20261026T160706Z-0be8eb77`. It does not read a moving checkpoint pointer.
+Clean shutdown, full restoration, unchanged initial inputs and original deadline
+completion must be recorded before it can start. Both presets share the existing
+execution lock, so the current run is never overlapped or interrupted.
+
+`--games 5000` means **newly admitted training games**, 1,250 complete PPO batches,
+2,500 games per seat. All complete valid training games contribute, including
+losses; a win is not guaranteed, and one win does not establish reliable learning.
+Sampling remains the current policy distribution, not an external uniform random
+action generator. Model, Adam, RNG, sampler and pool continue from the final
+parent. Rewards, architecture, PPO, day/choice bounds and native rules are unchanged.
+
+Baseline/final games and paired checks every 100 updates are excluded from the
+5,000: a completed run ordinarily has 112 additional evaluation games. The exact
+same final checkpoint is used for both final seats. The wrapper has a **48-hour
+safety cap**, with five minutes for finalization; it stops earlier at the game
+target or on failure/manual stop. `target_games_met`, `remaining_training_games`
+and `stop_reason` distinguish reaching 5,000 from an incomplete stop. No automatic
+restart, recovery, model supervision or deadline extension is scheduled.
+
+Original-map outputs use `Heroes-artifacts/local-script-training/original/` and
+`machine-original.json`. Engine/policy seed bases are 40,000,000/50,000,000,
+separate from the current easy run. At sequence266 the first seeds are40,001,064
+and50,001,064; reservations persist before launch, including failed attempts.
+The fixed evaluation seeds remain710001--710004 and720001--720004 on the original
+map. Their map binding distinguishes them from earlier easy-map comparisons.
+The asset bundle still retains checkpoint412 as historical input provenance;
+the wrapper's selected parent is the final current run, never this seed fallback.
+
 ## Run on the prepared Mac
 
 ```sh
@@ -16,13 +56,13 @@ cd /Users/orsi/Projects/Heroes
 `check` restores and verifies existing files without launching a game. The second
 command is the explicit launch. It starts from exact checkpoint 412 on the first
 run and from the last fully verified local checkpoint on subsequent runs. The
-user can choose another duration with `--hours` (0.25–24). The final five minutes
+user can choose another duration with `--hours` (0.25–48). The final five minutes
 are reserved for preservation and cleanup. Preparation happens before the clock;
 the baseline games, training, evaluations and preservation share one immutable
 wall/monotonic budget. A new manual invocation creates a new experiment window,
 never an extension of an old session.
 
-This initial preset keeps the accepted **easier8x8 stage3** distribution, both
+The default easier preset keeps the accepted **easier8x8 stage3** distribution, both
 seats, Nullkiller Easy, BattleAI, 365 days, 5120 choices, the existing architecture
 and PPO settings, and terminal-only rewards. It does not silently introduce the
 proposed harder owned-town/enemy-hero scenario. That scenario needs its own

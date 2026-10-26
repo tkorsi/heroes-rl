@@ -367,3 +367,33 @@ A further 26 existing first-run compatibility tests passed, for 103 targeted
 passes in total. The [frozen check](../validation/local-script-frozen-check-2026-10-26.json)
 binds these receipts and the source commit. The obsolete paused handback
 automation was deleted; future training starts only on manual invocation.
+
+## Original-map 5,000-game manual experiment: preregistration
+
+The user requested training, rather than a frozen-policy probability estimate:
+5,000 stochastic games on the original two-Castle map, launched manually after
+the current easy run, continuing its **final** complete state. The
+[prospective configuration](../configs/local-original-5000-20261026.json) fixes
+the original hero-management-v2 map, native opponent/rules, terminal-only rewards
+and unchanged PPO. A positive outcome may supply useful advantage estimates;
+neither obtaining a win nor learning a reliable strategy is assumed. The
+previous offline likelihood of one scripted prefix is not used as an estimate
+of whole-game win probability, a demonstration or training data.
+
+The new script targets 1,250 complete four-game updates, alternates seats and
+uses a separate40M/50M seed namespace. It excludes baseline/evaluation/failed
+experience from the5,000 training count. Paired evaluation every100updates plus
+baseline/final yields112evaluationgames for full completion. A48-hour safety
+cap includes evaluation, verification and preservation; an early budget or
+technical stop must be reported as a shortfall, never as completing5,000.
+
+A shared lock rejects overlap with the existing easy run. The wrapper binds
+its parent to the closed run's report and shutdown evidence, not a moving
+latest pointer or rollback to412. The narrow adapter transition is pinned to
+known old/current source identities; model, PPO and optimizer mathematics are
+unchanged. [Offline checks](../validation/local-original5000-preparation-2026-10-26.json)
+passed126tests, restored an immutable intermediate state only for compatibility,
+and verified rejection while the existing owner lock is held. No original-map
+gameplay or training was launched during preparation; the active frozen release
+and its state were not modified. Final-parent selection remains deferred until
+the user's later manual invocation after clean shutdown.

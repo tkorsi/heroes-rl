@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import tempfile
 import time
+import subprocess
 import unittest
 from unittest.mock import patch
 import zipfile
@@ -65,6 +66,51 @@ class ClockAndScheduleTests(unittest.TestCase):
 
 
 class ExactSourceAndMapTests(unittest.TestCase):
+    def test_only_reviewed_local_adapter_transition_is_accepted(self):
+        path = 'experiments/learner/local_script_training.py'
+        current = (local.ROOT/path).read_bytes()
+        for commit, digest in local.LOCAL_ADAPTER_ORIGINS.items():
+            previous = subprocess.check_output(['git', 'show', commit+':'+path], cwd=local.ROOT, timeout=10)
+            proof = local.local_adapter_transition(commit, digest, previous, current)
+            self.assertEqual(proof['transition'], 'explicit_map_profile_and_seed_namespace')
+            with self.assertRaisesRegex(ValueError, 'historical local adapter'):
+                local.local_adapter_transition('0'*40, digest, previous, current)
+            with self.assertRaisesRegex(ValueError, 'historical local adapter'):
+                local.local_adapter_transition(commit, digest, previous+b'\n# changed', current)
+            with self.assertRaisesRegex(ValueError, 'historical local adapter'):
+                local.local_adapter_transition(commit, '0'*64, previous, current)
+            with self.assertRaisesRegex(ValueError, 'reviewed profile transition'):
+                local.local_adapter_transition(commit, digest, previous,
+                    current.replace(b'original_torch, original_python =', b'changed_torch, original_python ='))
+
+    def test_explicit_original_map_profile_uses_exact_authored_map(self):
+        path = local.ROOT/'experiments/explorer/maps/hero-management-v2.vmap'
+        for seat in (0, 1):
+            result = local.map_identity(path, seat, 'original')
+            self.assertEqual(result['scenario'], 'hero-management-v2')
+            self.assertEqual(result['sha256'], 'ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3')
+            self.assertTrue(result['semantics_verified'])
+        with self.assertRaises(ValueError): local.map_identity(path, 0, 'easier8x8')
+        with self.assertRaises(ValueError): local.map_identity(path, 0, 'unregistered')
+        with tempfile.TemporaryDirectory() as folder:
+            changed = Path(folder)/'map.vmap'
+            with zipfile.ZipFile(changed, 'w') as stream:
+                for name, value in local._map_payloads(0).items(): stream.writestr(name, json.dumps(value))
+            with self.assertRaises(ValueError): local.map_identity(changed, 0, 'original')
+
+    def test_session_cannot_switch_profile_maps_or_seed_namespace(self):
+        assets = dict(default_profile='original', maps=['map', 'map'],
+                      seed_namespace=dict(engine_base=40_000_000, policy_base=50_000_000))
+        session = dict(profile='original', maps=['map', 'map'],
+                       training_engine_seed_base=40_000_000, training_policy_seed_base=50_000_000)
+        local.check_profile(session, assets)
+        for field, value in [('profile', 'easier8x8'), ('maps', ['map', 'other']),
+                             ('training_engine_seed_base', 20_000_000)]:
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                local.check_profile({**session, field: value}, assets)
+        with self.assertRaisesRegex(ValueError, 'namespace'):
+            local.check_profile(session, {k: v for k, v in assets.items() if k != 'seed_namespace'})
+
     def test_scope_route_removal_does_not_mask_collector_edits(self):
         original = 'def check_identity(plan):\n    return plan["source"]\n'
         routed = ('def check_identity(plan):\n'

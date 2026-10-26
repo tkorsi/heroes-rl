@@ -33,6 +33,9 @@ ROOT = Path(__file__).resolve().parents[2]
 INTERFACE = 'adventure-capabilities-v1'
 SCOPE = 'heroes-local-script-training-v1'
 SESSION_SCHEMA = 'heroes-local-script-session-v1'
+PROFILES = ('easier8x8', 'original')
+SEED_NAMESPACES = {'easier8x8': {'engine_base': 20_000_000, 'policy_base': 30_000_000},
+                   'original': {'engine_base': 40_000_000, 'policy_base': 50_000_000}}
 require = resume.require
 DESCRIPTOR_KEYS = frozenset(('plan', 'report', 'policy', 'resume', 'initial_checkpoint'))
 HISTORICAL_ADAPTERS = frozenset(('experiments/learner/curriculum_training.py',
@@ -42,6 +45,13 @@ ROUTING_SCOPES = frozenset(('heroes-update146-curriculum-v3',
 ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
                    'heroes-overnight-curriculum-20261026': 'overnight_training',
                    SCOPE: 'local_script_training'}
+# The initial manual runner predates explicit map profiles. Only these released
+# bytes may cross that orchestration transition; learner/PPO source stays exact.
+LOCAL_ADAPTER_ORIGINS = {
+    'cf2021cd3b2225ced440b1459ad9220581a028c0': 'd2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518',
+    '3268f2f8cae6a01277c1629c5d0a9fb8958b5786': 'd2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518',
+}
+LOCAL_ADAPTER_TRANSITION_AST = 'b3be747906bc37b5bd19080b3adc7b993af215a8985c8f4178fafb920131e5c2'
 
 
 def write_new(path, value):
@@ -116,6 +126,26 @@ def _without_scope_routes(contents):
     return ast.dump(tree, include_attributes=False)
 
 
+def _adapter_ast_digest(contents):
+    tree = ast.parse(contents)
+    tree.body = [node for node in tree.body if not (isinstance(node, ast.Assign)
+        and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+        and node.targets[0].id == 'LOCAL_ADAPTER_TRANSITION_AST')]
+    return hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest()
+
+
+def local_adapter_transition(commit, expected, historical, current):
+    require(LOCAL_ADAPTER_ORIGINS.get(commit) == expected
+            and hashlib.sha256(historical).hexdigest() == expected,
+            'Unreviewed historical local adapter')
+    require(_adapter_ast_digest(current) == LOCAL_ADAPTER_TRANSITION_AST,
+            'Local adapter differs from the reviewed profile transition')
+    return {'transition': 'explicit_map_profile_and_seed_namespace',
+            'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
+            'current_ast_sha256': LOCAL_ADAPTER_TRANSITION_AST,
+            'historical_code_executed': False, 'historical_metadata_rewritten': False}
+
+
 def source_compatibility(parent):
     """Every learner/PPO byte remains exact except recognized routing glue."""
     require(parent['interface'] == INTERFACE, 'Interface transition forbidden')
@@ -133,6 +163,9 @@ def source_compatibility(parent):
         require(current_path.is_file(), 'Missing learner source: ' + name)
         current = current_path.read_bytes()
         if hashlib.sha256(current).hexdigest() == expected:
+            continue
+        if name == 'experiments/learner/local_script_training.py':
+            changes[name] = local_adapter_transition(parent['git_commit'], expected, historical, current)
             continue
         require(name == 'experiments/learner/builtin_first_run.py'
                 and _without_scope_routes(historical) == _without_scope_routes(current),
@@ -225,7 +258,12 @@ def _map_payloads(seat):
     return result
 
 
-def map_identity(path, seat):
+def map_identity(path, seat, profile='easier8x8'):
+    require(type(seat) is int and seat in (0, 1) and profile in PROFILES,
+            'Unknown map profile or seat')
+    if profile == 'original':
+        from .builtin_v8_migration import map_identity as original_identity
+        return {**original_identity(path), **binding(path), 'profile': profile, 'seat': seat}
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
         require(len(names) == len(set(names)) == 3, 'Unexpected map archive members')
@@ -252,6 +290,19 @@ def check_clock(session, *, active=True):
                 'Campaign compute window expired or not started')
 
 
+def check_profile(session, assets):
+    require(session['profile'] in PROFILES and session['profile'] == assets['default_profile'],
+            'Explicit campaign profile differs from its machine configuration')
+    namespace = assets.get('seed_namespace', SEED_NAMESPACES['easier8x8'])
+    require(namespace == SEED_NAMESPACES[session['profile']]
+            and session['training_engine_seed_base'] == namespace['engine_base']
+            and session['training_policy_seed_base'] == namespace['policy_base'], 'Profile seed namespace changed')
+    require(session['maps'] == assets['maps'], 'Campaign maps differ from its explicit machine configuration')
+    require(len(session['maps']) == 2, 'Both seat maps required')
+    if session['profile'] == 'original':
+        require(session['maps'][0] == session['maps'][1], 'Original profile requires the same map for both seats')
+
+
 def read_session(path, *, active=True):
     path = durable_path(path)
     session = json.loads(path.read_text())
@@ -264,6 +315,8 @@ def read_session(path, *, active=True):
             'Frozen implementation or acceptance evidence drift')
     require(configuration(session['initial_parent']) == session['configuration'], 'PPO configuration changed')
     _bound(session['asset_config'])
+    assets = json.loads(Path(session['asset_config']['path']).read_text())
+    check_profile(session, assets)
     for name, value in session.get('frozen_files', {}).items():
         require((ROOT/name).resolve().is_relative_to(ROOT) and binding(ROOT/name) == value,
                 'Frozen controller file changed')
@@ -271,7 +324,7 @@ def read_session(path, *, active=True):
     require(len(session['maps']) == 2, 'Both seat maps required')
     for seat, value in enumerate(session['maps']):
         _bound(value)
-        map_identity(value['path'], seat)
+        map_identity(value['path'], seat, session['profile'])
     return session
 
 
@@ -297,11 +350,11 @@ def check_identity(plan):
     evaluate = plan['mode'] == 'evaluation'
     require(plan['mode'] in ('training', 'evaluation') and plan['scope'] == SCOPE
             and plan['schema'] == (batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', 'Unknown batch scope')
-    for key in ('source', 'runtime', 'implementation', 'prerequisites', 'configuration', 'absolute_deadline_unix', 'compute_deadline_unix'):
+    for key in ('profile', 'source', 'runtime', 'implementation', 'prerequisites', 'configuration', 'absolute_deadline_unix', 'compute_deadline_unix'):
         require(plan[key] == session[key], 'Batch/session identity differs: ' + key)
     require(plan['schedule'] == schedule(session, plan['batch_sequence'], plan['seat'], evaluate), 'Schedule changed')
     require(plan['game_map'] == session['maps'][plan['seat']]['path']
-            and plan['map'] == map_identity(plan['game_map'], plan['seat']), 'Seat map changed')
+            and plan['map'] == map_identity(plan['game_map'], plan['seat'], session['profile']), 'Seat map changed')
     require(plan['binary'] == str(Path(session['runtime_bin'])/'vcmiclient') and plan['data'] == session['data'],
             'Runtime location changed')
     launcher = VcmiLauncher(Path(plan['binary']), Path(plan['data']), Path(plan['game_map']))
@@ -340,18 +393,20 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     game_map = Path(session['maps'][seat]['path'])
     binary = Path(session['runtime_bin'])/'vcmiclient'
     launcher = VcmiLauncher(binary, Path(session['data']), game_map)
-    plan = dict(schema=(batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', scope=SCOPE,
+    plan = dict(schema=(batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', scope=SCOPE, profile=session['profile'],
         mode='evaluation' if evaluate else 'training', seat=seat, batch_sequence=sequence,
         source=session['source'], implementation=session['implementation'], prerequisites=session['prerequisites'],
         configuration=session['configuration'], runtime=session['runtime'], binary=str(binary), data=session['data'],
-        game_map=str(game_map), map=map_identity(game_map, seat), native=launcher.identity(),
+        game_map=str(game_map), map=map_identity(game_map, seat, session['profile']), native=launcher.identity(),
         replay_binary=binding(binary.parent/'vcmireplay'), native_opponents=[pilot.native_opponent(session['runtime'], s) for s in (0, 1)],
         schedule=rows, execution_output=str(output/'execution'), parent=state.bindings,
         parent_descriptor=parent_descriptor, checkpoint=parent_descriptor['policy'], local_session=binding(session_path),
         absolute_deadline_unix=session['absolute_deadline_unix'], compute_deadline_unix=session['compute_deadline_unix'],
         authorization={'scope': SCOPE, 'instruction': 'Explicit manual local script launch; no LLM supervision or automatic restart'},
         wall_scope='The immutable manual session includes evaluation, collection, checks, PPO, preservation and cleanup.',
-        comparison_scope='Same easier8x8 state distribution; fixed paired held-out seeds are not original-map generalization.')
+        comparison_scope=('Original hero-management-v2 map; fixed paired held-out seeds are excluded from PPO and do not establish broader map generalization.'
+            if session['profile'] == 'original' else
+            'Same easier8x8 state distribution; fixed paired held-out seeds are not original-map generalization.'))
     plan['checkpoint_metadata'] = {**session['source'], 'parent_plan_sha256': state.bindings['plan']['sha256'],
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
         'native_opponent': {k: v for k, v in plan['native_opponents'][0].items() if k != 'player'},
@@ -393,6 +448,7 @@ def require_baselines(plan):
         br = json.loads(_bound(row['report']).read_text())
         require(br['plan_sha256'] == row['plan']['sha256'], 'Baseline report/plan mismatch')
         require(bp['local_session'] == plan['local_session'] and bp['checkpoint'] == session['initial_parent']['policy']
+                and bp['profile'] == session['profile']
                 and bp['configuration'] == session['configuration'] and bp['runtime'] == session['runtime']
                 and bp['source'] == session['source'] and bp['schedule'] == schedule(session, bp['batch_sequence'], bp['seat'], True)
                 and valid_evaluation(bp, br), 'Unverified or foreign baseline')

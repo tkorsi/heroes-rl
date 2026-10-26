@@ -183,14 +183,29 @@ changed by this diagnostic.
 
 ## Manual local execution
 
-Training is now launched by the user with a local script, without continuous
-cloud LLM supervision. Run `./train-local.sh check` for offline validation and
-`./train-local.sh --hours 2` to explicitly start a bounded session. The prepared
-state is checkpoint412; later invocations use the last verified local state.
-See the [launch and result instructions](docs/operations/local-script-training.md).
-This first preset preserves easier8x8 stage3; a harder owned-town/enemy-hero
-scenario is a separate configuration change, not an implicit part of the move
-to local execution. No new campaign was started during script preparation.
+Training is launched by the user with a local script, without continuous cloud
+LLM supervision. The current easier8x8 run continues in its frozen checkout.
+The next authorized experiment is **5,000 newly admitted training games on the
+original two-Castle 20x20 map**, starting from the fully finalized state of that
+current run. Use `./train-original-5000.sh` after it finishes. This command
+refuses an active/unverified parent and shares its execution lock across profiles.
+It does not roll back to checkpoint 412 or start a parallel trainer.
+
+The policy samples its own current distribution and PPO updates every complete
+four-game batch: at most 1,250 updates and 2,500 training games per seat. Rewards
+remain terminal-only; every verified training game counts, not only wins.
+Separate paired evaluation occurs before training, every 100 updates and at the
+end. A 48-hour safety cap, manual stop, or technical failure may end the run short
+of 5,000; reports distinguish target completion from an incomplete stop. The
+source map is unchanged hero-management-v2, including its original small set of
+mines, gold and neutrals, native Tavern support and normal hero leveling.
+
+`./train-local.sh check --profile original` checks the prepared asset bundle
+without gameplay. The actual final-parent restore and native baseline gate happen
+at manual launch. The old `./train-local.sh --hours 2` remains the easier8x8
+preset. See the [launch and result instructions](docs/operations/local-script-training.md)
+and [prospective original-map experiment](configs/local-original-5000-20261026.json).
+Preparing this next experiment does not start games or alter the active release.
 
 ## Experiment agreement
 
