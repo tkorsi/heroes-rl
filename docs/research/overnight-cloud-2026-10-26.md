@@ -1007,3 +1007,25 @@ Transport recovery is limited to explicit HTTP429/502/503/504 publication faults
 - 2026-10-26T09:41:06.050714+00:00 campaign_batch_result: {"sequence": 262, "seat": 0, "mode": "training", "status": "passed"}
 
 - 2026-10-26T09:41:06.741915+00:00 campaign_batch_intent: {"sequence": 263, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T09:43:34.151456+00:00 campaign_batch_result: {"sequence": 263, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T09:43:34.857663+00:00 campaign_batch_intent: {"sequence": 264, "seat": 0, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T09:45:57.730228+00:00 campaign_batch_result: {"sequence": 264, "seat": 0, "mode": "training", "status": "passed"}
+
+- 2026-10-26T09:45:59.079374+00:00 campaign_batch_intent: {"sequence": 411, "seat": 0, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T09:46:47.297482+00:00 campaign_batch_result: {"sequence": 411, "seat": 0, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T09:46:48.006645+00:00 campaign_batch_intent: {"sequence": 411, "seat": 1, "mode": "periodic", "status": "preparing"}
+
+- 2026-10-26T09:47:37.348863+00:00 campaign_batch_result: {"sequence": 411, "seat": 1, "mode": "periodic", "status": "passed"}
+
+- 2026-10-26T09:47:38.037071+00:00 campaign_batch_intent: {"sequence": 265, "seat": 1, "mode": "training", "status": "preparing"}
+
+- 2026-10-26T09:48:37.496977+00:00 campaign_batch_result: {"sequence": 265, "seat": 1, "mode": "training", "status": "passed"}
+
+- 2026-10-26T09:49:29.573511+00:00 campaign_stopped: {"result": {"session": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/session.json", "sha256": "902a91ad5f9bf9f6f82308e26759112bb1bea6915d05de613ada8b4934589b3a", "bytes": 5923}, "returncode": 0, "cleanup_errors": [], "owned_cleanup_verified": true, "stopped_utc": "2026-10-26T09:49:22.141074+00:00", "within_budget": true, "latest_restore": {"plan": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/plan.json", "sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23", "bytes": 58426}, "report": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/report.json", "sha256": "20c070ce2390315176073db880498ad1a7c86ddca2f4451bd82ad2c979327110", "bytes": 11258}, "policy": {"bytes": 638195, "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-policy.pt", "sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88"}, "resume": {"bytes": 1266293, "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/execution/after-resume.pt", "sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321"}, "progress": {"updates": 412, "rollouts": 1648, "decisions": 95836}, "optimizer_steps": 3545, "source_proof": {"explicit_platform_transition": false, "policy_ppo_unchanged": true}, "runtime_proof": {"runtime_unchanged": true}}, "final_independent_restores": [{"directory": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/checkpoints/train-0265-seat1", "restore": {"checkpoint": "builtin-pilot-after-c310ae6b0b295149", "weights_sha256": "c310ae6b0b295149641802577fa4469c7a1662d530108c0289e3ce8f9c726d84", "progress": {"updates": 412, "rollouts": 1648, "decisions": 95836}, "exact_model_adam_rng_progress_pool": true}}, {"directory": "/workspace/heroes-overnight-private/checkpoints/overnight-20261026/campaign-v1/http-transport-003/train-0265-seat1", "restore": {"checkpoint": "builtin-pilot-after-c310ae6b0b295149", "weights_sha256": "c310ae6b0b295149641802577fa4469c7a1662d530108c0289e3ce8f9c726d84", "progress": {"updates": 412, "rollouts": 1648, "decisions": 95836}, "exact_model_adam_rng_progress_pool": true}}]}}
+
+- 2026-10-26T09:49:41.438588+00:00 transport_watch_stopped: {"result": {"status": "finished_budget_reserve", "new_updates": 158, "progress": {"updates": 412, "rollouts": 1648, "decisions": 95836}, "report": {"path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/campaign-report.json", "sha256": "d318626a121e100fb418cd33911566862abcd27b933de1804a0627e56bb15eb0", "bytes": 470247}}}

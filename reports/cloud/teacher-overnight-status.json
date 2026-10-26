@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T09:41:17.804554+00:00",
-  "phase": "running",
+  "timestamp_utc": "2026-10-26T09:49:29.572247+00:00",
+  "phase": "finished_budget_reserve",
   "campaign_launched": true,
   "actual_session_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/session.json",
   "release_path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/release.json",
@@ -58,21 +58,21 @@
   },
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
-  "heldout_games": 256,
-  "admitted_training_games": 620,
-  "ppo_updates": 155,
+  "heldout_games": 264,
+  "admitted_training_games": 632,
+  "ppo_updates": 158,
   "latest_verified_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0262-seat0/plan.json",
-    "sha256": "d31f9084fb623a35256084e98dca152c9d973a987c073d508a35fd1d5af6fc40",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/plan.json",
+    "sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23",
     "bytes": 58426
   },
   "latest_preserved_checkpoint": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0262-seat0/plan.json",
-    "sha256": "d31f9084fb623a35256084e98dca152c9d973a987c073d508a35fd1d5af6fc40",
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/batches/train-0265-seat1/plan.json",
+    "sha256": "4ceb55e2f477c8406e90eaa9a2b79c4a13514bd37b984b626e2ea79f24f95e23",
     "bytes": 58426
   },
   "ownership": "cloud",
-  "remaining_compute_seconds": 822.1953692436218,
+  "remaining_compute_seconds": 330.42767548561096,
   "launch_utc": "2026-10-26T03:26:51.744627+00:00",
   "compute_deadline_utc": "2026-10-26T09:55:00+00:00",
   "hard_deadline_utc": "2026-10-26T10:00:00+00:00",
@@ -88,35 +88,35 @@
   },
   "error": null,
   "final_analysis": {
-    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-002/analysis.json",
-    "sha256": "d5c7cdf31f45b5eedcbb0f3aa6e7dbb323f6a98cc938588242d5af428250b6ff",
-    "bytes": 11366
+    "path": "/workspace/Heroes-artifacts/overnight-20261026/campaign-v1/recoveries/http-transport-003/analysis.json",
+    "sha256": "7ad8c16b7f0ee737c7102d3b0d858567c045e45d4866f2553941fb867bcc9ee4",
+    "bytes": 33564
   },
   "owned_cleanup_verified": true,
   "cloud_training_started": true,
-  "new_admitted_games": 620,
-  "new_ppo_updates": 155,
+  "new_admitted_games": 632,
+  "new_ppo_updates": 158,
   "latest_complete_progress": {
-    "updates": 409,
-    "rollouts": 1636,
-    "decisions": 95411
+    "updates": 412,
+    "rollouts": 1648,
+    "decisions": 95836
   },
-  "next_periodic_update": 411,
+  "next_periodic_update": 416,
   "current_activity": {
     "mode": "training",
-    "sequence": 263,
+    "sequence": 265,
     "seat": 1,
-    "status": "running",
-    "started_utc": "2026-10-26T09:41:06.731215+00:00",
-    "finished_utc": null
+    "status": "passed",
+    "started_utc": "2026-10-26T09:47:38.025526+00:00",
+    "finished_utc": "2026-10-26T09:48:37.485404+00:00"
   },
   "evaluation_natural_outcomes": {
     "loss": 47,
-    "win": 209
+    "win": 217
   },
   "natural_outcomes": {
     "loss": 69,
-    "win": 551
+    "win": 563
   },
   "cutoffs": 0,
   "failed_batches": 1
