@@ -13,10 +13,11 @@ from experiments.explorer.create_curriculum_scenario import verify
 
 ROOT=Path(__file__).resolve().parents[2]
 BASE=Path('/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146')
-SESSION=BASE/'campaign-v2/session.json'
+WINDOW=BASE/'campaign-v3/window.json'
+SESSION=Path(os.environ.get('HEROES_CURRICULUM_SESSION',str(BASE/'campaign-v3/session.json'))).resolve()
 PARENT=Path('/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json')
 INTERFACE='adventure-capabilities-v1'
-SCOPE='heroes-update146-curriculum-v2'
+SCOPE='heroes-update146-curriculum-v3'
 require=resume.require
 CORE=('contextual.py','contextual_model.py','contextual_rollout.py','checkpoints.py','ppo.py',
       'builtin_gameplay.py','builtin_rollout.py','trajectory.py','contract.py')
@@ -46,8 +47,21 @@ def schedule(sequence,seat,evaluate=False):
         policy_seed=720001+i if evaluate else 920001+4*sequence+i) for i in range(4)]
 
 
+def dependency_identity():
+    import hashlib
+    repo=ROOT/'vcmi'
+    require(repo.is_dir() and not repo.is_symlink(),'Independent generated engine required')
+    def git(*args):return subprocess.check_output(['git','-C',str(repo),*args])
+    head=git('rev-parse','HEAD').decode().strip()
+    require(head==json.loads((ROOT/'dependencies/vcmi.json').read_text())['commit'],'Pinned engine HEAD changed')
+    untracked=[p for p in git('ls-files','--others','--exclude-standard','-z').decode().split('\0') if p]
+    return dict(head=head,diff_sha256=hashlib.sha256(git('diff','HEAD','--binary')).hexdigest(),
+        untracked={p:binding(repo/p)['sha256'] for p in sorted(untracked)})
+
+
 def check_frozen():
-    frozen=json.loads((BASE/'campaign-v2/frozen.json').read_text())
+    frozen=json.loads((SESSION.parent/'frozen.json').read_text())
+    require(dependency_identity()==frozen['dependency'],'Generated dependency drift')
     require(str(ROOT)==frozen['checkout'], 'Run only from the frozen checkout')
     require(source_identity(INTERFACE)==frozen['source'] and not frozen['source']['tracked_worktree_dirty'], 'Frozen source drift')
     require(pilot.implementation()==frozen['implementation'], 'Frozen implementation drift')
@@ -62,7 +76,7 @@ def check_frozen():
 
 def check_gate(path):
     frozen=check_frozen()
-    gate=json.loads(Path(path).read_text());require(binding(BASE/'campaign-v2/frozen.json')==gate['frozen'],'Gate belongs to another release')
+    gate=json.loads(Path(path).read_text());require(binding(SESSION.parent/'frozen.json')==gate['frozen'],'Gate belongs to another release')
     require(len(gate['attempts'])==20,'Complete64game/fourcontrol acceptance required')
     require(gate['status']=='finished' and gate['within_20_minutes']
         and gate['owned_cleanup_verified'],'Preparation study incomplete')
@@ -76,7 +90,7 @@ def check_gate(path):
         else:
             from validation.probes.validate_curriculum_policy import schedule as diagnostic_schedule
             dp=json.loads(Path(r['plan']['path']).read_text())
-            require(binding(r['plan']['path'])==r['plan'] and dp['study']==3 and dp['schedule']==diagnostic_schedule(row['seat'],3,row['block'],3),'Acceptance seeds/plan changed')
+            require(binding(r['plan']['path'])==r['plan'] and dp['study']==4 and dp['schedule']==diagnostic_schedule(row['seat'],3,row['block'],4),'Acceptance seeds/plan changed')
             require(dp['implementation']==frozen['capability_implementation'] and dp['runtime']==frozen['runtime'],'Acceptance source/runtime differ from frozen release')
             require(dp['checkpoint']==frozen['parent']['policy'] and len(r['attempts'])==4,'Acceptance checkpoint/game count changed')
             require(r['status']=='passed' and r['training_samples']==r['optimizer_steps']==0,'Diagnostic admitted or failed')
@@ -92,7 +106,11 @@ def check_gate(path):
 
 def session():
     check_frozen()
-    v=json.loads(SESSION.read_text());require(v['scope']==SCOPE and v['source']==source_identity(INTERFACE),'Campaign source drift')
+    require(SESSION.is_relative_to(BASE/'campaign-v3'),'Foreign session namespace')
+    v=json.loads(SESSION.read_text());require(binding(WINDOW)==v['window'],'Original clock binding changed')
+    clock=json.loads(WINDOW.read_text())
+    require(all(v[k]==clock[k] for k in ('started_unix','started_monotonic','compute_deadline_unix','absolute_deadline_unix')),'Recovery cannot reset or extend the original clock')
+    require(v['scope']==SCOPE and v['source']==source_identity(INTERFACE),'Campaign source drift')
     require(v['absolute_deadline_unix']==v['started_unix']+7200 and v['compute_deadline_unix']==v['started_unix']+6900,'Budget extension forbidden')
     require(time.time()<v['absolute_deadline_unix'] and 0<=time.monotonic()-v['started_monotonic']<7200,'Campaign expired')
     require(binding(v['release']['path'])==v['release'],'Release drift')
@@ -108,7 +126,7 @@ def restore(path):
     if path==PARENT:
         require(report['after_checkpoint']['policy']['sha256']=='5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023'
             and report['after_checkpoint']['resume']['sha256']=='50252db8da1a505ab5174cadef2489707783b44c4811d373581f7beec87b94e9','Exact update146 required')
-    else:require(path.is_relative_to(BASE/'campaign-v2/batches') and plan['scope']==SCOPE,'Foreign campaign parent')
+    else:require(path.is_relative_to(BASE/'campaign-v3') and plan['scope']==SCOPE,'Foreign campaign parent')
     require(plan['source']['torch']==str(torch.__version__) and plan['source']['python']==sys.version,'Python/PyTorch runtime changed')
     for name in CORE:require(binding(ROOT/'experiments/learner'/name)['sha256']==plan['source']['source_sha256']['experiments/learner/'+name], 'Policy/PPO implementation changed')
     saved=report['after_checkpoint'];verify_pair(saved['resume']['path'],saved['policy']['path'],plan,report)
@@ -153,13 +171,15 @@ def check_identity(plan):
 
 
 def prepare(parent,sequence,seat,evaluate=False,final=False):
-    v=session();state=restore(parent);release=json.loads(Path(v['release']['path']).read_text())
-    output=BASE/'campaign-v2/batches'/f"{'final' if final else 'eval' if evaluate else 'train'}-{sequence:04d}-seat{seat}"
+    v=session()
+    subprocess.run([sys.executable,str(ROOT/'tools/prepare_vcmi.py'),'--check'],cwd=ROOT,check=True,capture_output=True,timeout=60)
+    state=restore(parent);release=json.loads(Path(v['release']['path']).read_text())
+    output=SESSION.parent/'batches'/f"{'final' if final else 'eval' if evaluate else 'train'}-{sequence:04d}-seat{seat}"
     require(not output.exists(),'No retry or overwrite')
     rows=schedule(sequence,seat,evaluate)
     if not evaluate:
         keys={(r['engine_seed'],r['policy_seed'],r['learner_player']) for r in rows}
-        for f in (BASE/'campaign-v2/batches').glob('*/plan.json'):
+        for f in (BASE/'campaign-v3').rglob('plan.json'):
             old=json.loads(f.read_text());require(not keys & {(r['engine_seed'],r['policy_seed'],r['learner_player']) for r in old['schedule'] if r['phase']=='training'},'Consumed seeds')
     game_map=BASE/f'maps/curriculum-3-{seat}.vmap';binary=Path(release['runtime_bin'])/'vcmiclient'
     native=VcmiLauncher(binary,Path(release['data']),game_map).identity()
@@ -181,7 +201,7 @@ def prepare(parent,sequence,seat,evaluate=False,final=False):
 
 
 def read_plan(path,sha):
-    path=Path(path);require(path.is_relative_to(BASE/'campaign-v2/batches') and binding(path)['sha256']==sha,'Plan changed')
+    path=Path(path);require(path.is_relative_to(SESSION.parent/'batches') and binding(path)['sha256']==sha,'Plan changed')
     plan=json.loads(path.read_text());require(plan['execution_output']==str(path.parent/'execution'),'Output drift');check_identity(plan);return plan
 
 
@@ -200,7 +220,7 @@ def main():
     else:
         result=pilot.execute(a,plan_reader=read_plan,worker_module=__spec__.name)
         if result['status']=='finished' and result['training_performed']:
-            preserve(a.plan,a.plan.parent/'execution/report.json',BASE/'campaign-v2/checkpoints'/a.plan.parent.name)
+            preserve(a.plan,a.plan.parent/'execution/report.json',SESSION.parent/'checkpoints'/a.plan.parent.name)
     print(json.dumps({k:result.get(k) for k in ('status','stop_reason','optimizer_updates','optimizer_steps','training_samples')}))
 
 if __name__=='__main__':main()

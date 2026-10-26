@@ -1,30 +1,12 @@
 {
-  "timestamp_utc": "2026-10-26T00:45:15.425156+00:00",
-  "phase": "stopped_acceptance_missing_engine_source_identity",
-  "campaign_launched": false,
-  "ppo_updates": 0,
-  "admitted_training_games": 0,
-  "parent_update": 146,
+  "timestamp_utc": "2026-10-26T01:05:24.545489+00:00",
+  "phase": "independent_dependency_verified_offline_preparation",
+  "source_branch": "codex/teacher-curriculum-v1",
+  "dependency": "/Users/orsi/Projects/Heroes-artifacts/releases/curriculum-v3/vcmi",
+  "dependency_verification": "canonical recipe and pinned HEAD passed",
+  "new_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
   "actual_session_path": null,
-  "new_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v2/session.json",
-  "frozen_release_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v2/frozen.json",
-  "acceptance_study_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study3/study-report.json",
-  "source_commit": "c74de7ae59b10af5c67488662e293b97a97dec06",
-  "verified_policy_games": 0,
-  "failed_controls": 1,
-  "unstarted_policy_games": 64,
-  "unstarted_controls": 3,
-  "owned_cleanup_verified": true,
-  "blocker": "First capture control rejected as missing_source_identity; independent replay: Pinned engine identity mismatch",
-  "private_preservation": {
-    "commit": "c17acdbdf554a2ed7939b20cb343ba9d9d6be802",
-    "archive": {
-      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-curriculum-update146/study3-failed-acceptance/evidence.tar.gz",
-      "sha256": "1f08a20fe9ae3e187f45a9df3782a3f2c80f0b9a69559669441667e2106ad63b",
-      "bytes": 91766
-    },
-    "verified_files": 28,
-    "verified_symlinks": 1,
-    "external_data_dereferenced": false
-  }
+  "ppo_updates": 0,
+  "campaign_launched": false,
+  "parent_update": 146
 }

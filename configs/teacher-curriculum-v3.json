@@ -1,0 +1,11 @@
+{
+  "scope": "heroes-update146-curriculum-v3",
+  "stage": 3,
+  "distribution": "Alternating four-game same-seat batches on the already audited open8x8 easier start",
+  "acceptance": {"study": 4, "blocks": 8, "games_per_block_per_seat": 4, "seats": [0, 1], "engine_seed_base": 1110001, "policy_seed_base": 1120001, "block_stride": 100, "control_engine_seeds": [1130001, 1130002], "maximum_seconds": 1200},
+  "heldout": {"games_per_seat": 4, "engine_seed_base": 710001, "policy_seed_base": 720001, "seats": [0, 1]},
+  "training": {"games_per_batch": 4, "engine_seed_base": 910001, "policy_seed_base": 920001, "sequence_stride": 4, "initial_update": 146, "whole_wall_seconds": 7200, "finalization_reserve_seconds": 300},
+  "changes": ["initial-state distribution", "frozen isolated execution checkout", "controller lifecycle and explicit curriculum plan validation"],
+  "unchanged": ["model architecture and weights at start", "Adam and RNG continuation", "native rules", "all legal policy action support", "PPO configuration", "Nullkiller Easy", "BattleAI", "365 days", "5120 total choices", "terminal-only reward"],
+  "stop": "Any material correctness failure stops; quarantine rejected experience; technical recovery uses a fresh subordinate attempt inside the same original clock; never partial batches or budget extension"
+}

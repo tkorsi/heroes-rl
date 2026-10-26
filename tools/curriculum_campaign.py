@@ -42,8 +42,8 @@ def remaining(session, reserve=0):
 
 
 def command_timeout(maximum=60):
-    if not c.SESSION.exists(): return maximum
-    value = remaining(json.loads(c.SESSION.read_text()), 3)
+    if not c.WINDOW.exists(): return maximum
+    value = remaining(json.loads(c.WINDOW.read_text()), 3)
     if value <= 0: raise TimeoutError('Campaign deadline reached')
     return min(maximum, value)
 
@@ -64,7 +64,7 @@ def event(kind, **values):
     row = dict(timestamp_utc=utc(), event=kind, **values)
     # Authoring checkout is separate from the executable release checkout.
     require(ROOT != AUTHOR, 'Research writing must not dirty the frozen checkout')
-    for path in (c.BASE/'campaign-v2/research-log.jsonl', AUTHOR/'validation/curriculum-v1-research-log.jsonl'):
+    for path in (c.SESSION.parent/'research-log.jsonl', AUTHOR/'validation/curriculum-v1-research-log.jsonl'):
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open('a') as f: f.write(json.dumps(row) + '\n'); f.flush(); os.fsync(f.fileno())
 
@@ -103,7 +103,7 @@ def publish(folder, label, checkpoint=False):
     if checkpoint:
         plan=json.loads((folder/'plan.json').read_text()); report=json.loads((folder/'execution/report.json').read_text())
         backup=c.SESSION.parent/'checkpoints'/folder.name
-        target=REPO/'checkpoints/local-curriculum-update146/campaign-v2'/folder.name
+        target=REPO/'checkpoints/local-curriculum-update146/campaign-v3'/c.SESSION.parent.name/folder.name
         require(not target.exists(),'Private checkpoint exists'); target.parent.mkdir(parents=True,exist_ok=True)
         shutil.copytree(backup,target)
         receipt['checkpoint_restore']=verify_pair(target/'after-resume.pt',target/'after-policy.pt',plan,report)
@@ -164,7 +164,7 @@ def run(v,parent,seq,seat,mode):
         save(v)
         if plan_path:
             try:
-                row['private_preservation']=publish(plan_path.parent,'campaign-v2-'+plan_path.parent.name,
+                row['private_preservation']=publish(plan_path.parent,'campaign-v3-'+c.SESSION.parent.name+'-'+plan_path.parent.name,
                     checkpoint=row.get('checkpoint_verified',False))
                 if row.get('checkpoint_verified'):v['latest_private_parent']=binding(plan_path)
             except Exception as exc: row['preservation_error']=str(exc);error=error or exc
@@ -184,9 +184,16 @@ def worker():
     with (c.SESSION.parent/'worker.lock').open('x') as f:f.write(str(os.getpid()))
     parent=c.PARENT;v=dict(status='running',batches=[],new_updates=0,latest_verified_parent=binding(parent),
         latest_private_parent=binding(parent),latest_progress=dict(updates=146,rollouts=584,decisions=40641))
-    save(v);durations=[60.];seq=0
+    if s.get('recovery_from'):
+        require(binding(s['recovery_from']['path'])==s['recovery_from'],'Recovery journal drift')
+        v=json.loads(Path(s['recovery_from']['path']).read_text());v.update(status='running',error=None)
+        parent=Path(v['latest_verified_parent']['path'])
+        c.restore(parent)
+    save(v);durations=[60.];seq=1+max((b['sequence'] for b in v['batches'] if b['mode']=='training'),default=-1)
     try:
-        for seat in (0,1):run(v,parent,146,seat,'baseline')
+        for seat in (0,1):
+            if not any(b['mode']=='baseline' and b['seat']==seat and b['status']=='passed' for b in v['batches']):
+                run(v,c.PARENT,146,seat,'baseline')
         while enough_for_batch(c.session(),durations):
             started=time.monotonic();parent=run(v,parent,seq,seq%2,'training');seq+=1;durations.append(time.monotonic()-started)
             if v['new_updates']%5==0 and enough_for_batch(c.session(),durations):
@@ -220,15 +227,19 @@ def freeze():
     runtime_bin='/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/bin'
     runtime=runtime_identity(Path(runtime_bin))
     require(runtime==json.loads(c.PARENT.read_text())['runtime'],'Stable runtime changed')
-    names=['tools/curriculum_campaign.py','tools/run_curriculum_study3.py',
-           'configs/teacher-curriculum-v2.json','experiments/explorer/create_curriculum_scenario.py']
-    frozen=dict(checkout=str(ROOT),engine_preflight=engine_preflight,source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
+    for module in ('Nullkiller','BattleAI','ExplorerRL'):
+        require((Path(runtime_bin)/'AI'/f'lib{module}.dylib').is_file(),'Required AI module missing')
+    for seat in (0,1):
+        c.VcmiLauncher(Path(runtime_bin)/'vcmiclient',Path('/Users/orsi/Projects/Heroes-artifacts/game-data'),c.BASE/f'maps/curriculum-3-{seat}.vmap').preflight()
+    names=['tools/curriculum_campaign.py','tools/run_curriculum_study4.py',
+           'configs/teacher-curriculum-v3.json','experiments/explorer/create_curriculum_scenario.py']
+    frozen=dict(checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
         capability_implementation=capability_implementation_identity(),bound_files={n:binding(ROOT/n) for n in names},
         parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,
         data='/Users/orsi/Projects/Heroes-artifacts/game-data',
         maps=[c.map_identity(c.BASE/f'maps/curriculum-3-{seat}.vmap',seat) for seat in (0,1)],
-        diagnostic_schedule=[r for block in range(8) for seat in (0,1) for r in diagnostic_schedule(seat,3,block,3)],
-        control_seeds=[1030001,1030002],heldout={str(seat):c.schedule(146,seat,True) for seat in (0,1)},
+        diagnostic_schedule=[r for block in range(8) for seat in (0,1) for r in diagnostic_schedule(seat,3,block,4)],
+        control_seeds=[1130001,1130002],heldout={str(seat):c.schedule(146,seat,True) for seat in (0,1)},
         distribution='Alternating four-game same-seat batches on open8x8 stage3; no difficulty transition in this campaign',
         success_criteria='Clean64game acceptance with natural wins and losses in each seat; capture/wait controls separately; descriptive fixed heldout win-rate change after PPO',
         hypothesis='The unchanged policy can sample wins on the easier start; terminal feedback may increase fixed heldout wins.',
@@ -242,7 +253,7 @@ def freeze():
 
 def prepare_release():
     private_preflight();frozen=c.check_frozen();require(not c.SESSION.exists(),'Consumed campaign cannot restart')
-    counts=c.check_gate(c.BASE/'study3/study-report.json');state=c.restore(c.PARENT)
+    counts=c.check_gate(c.BASE/'study4/study-report.json');state=c.restore(c.PARENT)
     require(state.bindings==frozen['parent'],'Parent drift')
     # Both durable and private checkpoint copies must restore before the campaign clock starts.
     plan=json.loads(c.PARENT.read_text());report=json.loads(Path(state.bindings['report']['path']).read_text())
@@ -251,8 +262,8 @@ def prepare_release():
                    REPO/'checkpoints/local-v8-update92'/c.PARENT.parent.name):
         for kind in ('policy','resume'):require(binding(folder/f'after-{kind}.pt')['sha256']==state.bindings[kind]['sha256'],'Backup changed')
         proofs.append(verify_pair(folder/'after-resume.pt',folder/'after-policy.pt',plan,report))
-    release=dict(frozen,scope=c.SCOPE,authorization='Renewed user authorization: clean acceptance then one two-hour local curriculum PPO session; no automatic restart.',
-        gate=binding(c.BASE/'study3/study-report.json'),validation_outcomes=counts,independent_parent_restores=proofs,
+    release=dict(frozen,scope=c.SCOPE,authorization='Renewed user authorization: clean acceptance then one two-hour local curriculum PPO session; technical recovery uses fresh attempt identities and the unchanged original two-hour clock.',
+        gate=binding(c.BASE/'study4/study-report.json'),validation_outcomes=counts,independent_parent_restores=proofs,
         whole_wall_seconds=7200,finalization_reserve_seconds=300,diagnostic_admission=False)
     path=c.SESSION.parent/'release.json';c.write_new(path,release)
     event('campaign_release_ready',release=binding(path),gate_counts=counts)
@@ -260,7 +271,7 @@ def prepare_release():
 
 
 def analysis(v):
-    result=dict(schema='heroes-curriculum-campaign-v2-analysis',timestamp_utc=utc(),status=v['status'],
+    result=dict(schema='heroes-curriculum-campaign-v3-analysis',timestamp_utc=utc(),status=v['status'],
         new_updates=v['new_updates'],progress=v['latest_progress'],training_outcomes_by_seat={},heldout_by_seat={},
         scope='Open8x8 easier-start distribution, not original full-map performance',
         interpretation='Four fixed games per seat are descriptive paired checks, not evidence of general strategic improvement.')
@@ -272,15 +283,29 @@ def analysis(v):
     return result
 
 
-def launch():
+def launch(recover_from=None):
     private_preflight();path=c.SESSION.parent/'release.json';r=json.loads(path.read_text());frozen=c.check_frozen()
     require(r['source']==frozen['source'] and r['parent']==c.restore(c.PARENT).bindings,'Release source/parent drift')
     require(binding(r['gate']['path'])==r['gate'] and json.loads(json.dumps(c.check_gate(r['gate']['path'])))==r['validation_outcomes'],'Gate drift')
     require(not c.SESSION.exists(),'One campaign only')
     with c.SESSION.with_suffix('.lock').open('x') as f:f.write(str(os.getpid()))
-    now=time.time();mono=time.monotonic();s=dict(scope=c.SCOPE,source=r['source'],runtime=r['runtime'],release=binding(path),
-        started_unix=now,started_monotonic=mono,compute_deadline_unix=now+6900,absolute_deadline_unix=now+7200,
-        compute_deadline_monotonic=mono+6900,hard_deadline_monotonic=mono+7200,controller_pid=os.getpid(),validation_outcomes=r['validation_outcomes'])
+    if recover_from is None:
+        require(not c.WINDOW.exists(),'Original campaign window already consumed; use explicit recovery')
+        now=time.time();mono=time.monotonic()
+        clock=dict(started_unix=now,started_monotonic=mono,compute_deadline_unix=now+6900,absolute_deadline_unix=now+7200)
+        c.write_new(c.WINDOW,clock);previous=None
+    else:
+        require(c.SESSION!=c.BASE/'campaign-v3/session.json','Recovery requires a fresh subordinate session path')
+        clock=json.loads(c.WINDOW.read_text());now=clock['started_unix'];mono=clock['started_monotonic']
+        require(remaining(clock,600)>0,'Insufficient original window for safe recovery')
+        old=Path(recover_from);require(old.is_relative_to(c.BASE/'campaign-v3'),'Foreign recovery journal')
+        final=json.loads((old.parent/'controller-result.json').read_text())
+        require(final['owned_cleanup_verified'],'Previous attempt cleanup required')
+        for p in old.parent.rglob('*deadline*.jsonl'):cleanup_from_evidence(p,timeout=2)
+        previous=binding(old)
+    s=dict(scope=c.SCOPE,source=r['source'],runtime=r['runtime'],release=binding(path),window=binding(c.WINDOW),**clock,
+        compute_deadline_monotonic=mono+6900,hard_deadline_monotonic=mono+7200,controller_pid=os.getpid(),
+        validation_outcomes=r['validation_outcomes'],recovery_from=previous,attempt_started_utc=utc())
     c.write_new(c.SESSION,s);event('campaign_launched',session=binding(c.SESSION),launch_utc=utc(now),compute_utc=utc(now+6900),hard_utc=utc(now+7200))
     proc=None;result=dict(session=binding(c.SESSION))
     try:
@@ -303,17 +328,19 @@ def launch():
         report=analysis(v);atomic(c.SESSION.parent/'analysis.json',report);v['analysis']=binding(c.SESSION.parent/'analysis.json');save(v)
         atomic(c.SESSION.parent/'controller-result.json',result)
         event('campaign_stopped',result=result,analysis=report)
-        folder=c.BASE/'campaign-v2-final-evidence';folder.mkdir(exist_ok=False)
+        folder=c.SESSION.parent/'final-evidence';folder.mkdir(exist_ok=False)
         for p in c.SESSION.parent.iterdir():
             if p.is_file():shutil.copy2(p,folder/p.name)
-        try:result['private_final_preservation']=publish(folder,'campaign-v2-final-session')
+        try:result['private_final_preservation']=publish(folder,'campaign-v3-'+c.SESSION.parent.name+'-final-session')
         except Exception as exc:result['final_preservation_error']=str(exc)
         result.update(finalized_utc=utc(),within_budget=remaining(s)>=0)
         atomic(c.SESSION.parent/'controller-result.json',result)
-        atomic(c.BASE/'campaign-v2-final-preservation.json',result)
+        atomic(c.SESSION.parent/'final-preservation.json',result)
         event('campaign_finalized',result=result)
     print(json.dumps(result))
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('mode',choices=['freeze','prepare-release','launch','worker']);a=p.parse_args()
-    {'freeze':freeze,'prepare-release':prepare_release,'launch':launch,'worker':worker}[a.mode]()
+    p=argparse.ArgumentParser();p.add_argument('mode',choices=['freeze','prepare-release','launch','worker','recover']);p.add_argument('--recover-from',type=Path);a=p.parse_args()
+    if a.mode=='recover':
+        require(a.recover_from is not None,'Explicit prior journal required');launch(a.recover_from)
+    else:{'freeze':freeze,'prepare-release':prepare_release,'launch':launch,'worker':worker}[a.mode]()

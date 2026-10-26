@@ -487,3 +487,11 @@ new two-hour clock started. All evidence is preserved and update146 remains
 exact. An offline preflight now rejects missing/wrong engine checkouts before
 freezing; the failed release remains unchanged. See the
 [study3 failure record](validation/curriculum-v3-acceptance-failure-2026-10-26.json).
+
+
+The latest authorization permits autonomous technical recovery with fresh attempt
+identities. An independent pinned VCMI dependency is now prepared in the new
+isolated release, with canonical patch agreement verified. Study4 and campaign-v3
+preserve prior failed evidence and keep one immutable two-hour campaign clock,
+including any in-window recovery. No campaign has launched during preparation.
+See the updated [research protocol](docs/research/curriculum-v1.md).

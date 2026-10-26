@@ -13,7 +13,7 @@ from validation.probes.validate_curriculum_policy import schedule
 class CampaignTests(unittest.TestCase):
     def test_seed_cohorts_disjoint(self):
         cohorts=[]
-        for study in (1,2,3):
+        for study in (1,2,3,4):
             cohorts.append({(r['engine_seed'],r['policy_seed']) for b in range(8) for r in schedule(0,3,b,study)})
         cohorts.append({(r['engine_seed'],r['policy_seed']) for r in c.schedule(146,0,True)})
         cohorts.append({(r['engine_seed'],r['policy_seed']) for b in range(500) for r in c.schedule(b,b%2)})
@@ -21,10 +21,10 @@ class CampaignTests(unittest.TestCase):
             for b in cohorts[i+1:]:self.assertFalse(a & b)
 
     def fixture(self,root):
-        (root/'campaign-v2').mkdir();c.write_new(root/'campaign-v2/frozen.json',{})
+        (root/'campaign-v3').mkdir();c.write_new(root/'campaign-v3/frozen.json',{})
         frozen={'capability_implementation':{'test':'fixed'},'runtime':{'fixed':True},'parent':{'policy':{'sha256':'fixed'}}}
         gate={'status':'finished','within_20_minutes':True,'owned_cleanup_verified':True,
-              'frozen':c.binding(root/'campaign-v2/frozen.json'),'attempts':[]}
+              'frozen':c.binding(root/'campaign-v3/frozen.json'),'attempts':[]}
         def add(kind,seat,index,report,**kw):
             p=root/f'{kind}-{seat}-{index}.json';c.write_new(p,report)
             gate['attempts'].append(dict(kind=kind,seat=seat,status='finished',owned_cleanup_verified=True,report=c.binding(p),**kw))
@@ -33,7 +33,7 @@ class CampaignTests(unittest.TestCase):
                 termination_reason='natural_terminal',outcomes={('red','blue')[seat]:'win' if mode=='capture' else 'loss'}),mode=mode)
         for block in range(8):
             for seat in (0,1):
-                p=root/f'plan-{block}-{seat}.json';c.write_new(p,dict(study=3,schedule=schedule(seat,3,block,3),
+                p=root/f'plan-{block}-{seat}.json';c.write_new(p,dict(study=4,schedule=schedule(seat,3,block,4),
                     implementation=frozen['capability_implementation'],runtime=frozen['runtime'],checkpoint=frozen['parent']['policy']))
                 a=[dict(status='passed',replay_verified=True,weights_unchanged=True,finished=True,
                     reconstruction={'passed':True,'weights_unchanged':True},termination_reason='natural_terminal',
@@ -58,7 +58,7 @@ class CampaignTests(unittest.TestCase):
                         q.write_text(json.dumps(r))
                         if failure!='altered_report':row['report']=c.binding(q)
                 p.write_text(json.dumps(g))
-                with patch.object(c,'BASE',root),patch.object(c,'check_frozen',return_value=f):
+                with patch.object(c,'BASE',root),patch.object(c,'SESSION',root/'campaign-v3/session.json'),patch.object(c,'check_frozen',return_value=f):
                     if failure is None:self.assertEqual(c.check_gate(p),{0:{'win':8,'loss':24},1:{'win':8,'loss':24}})
                     else:
                         with self.assertRaises(ValueError):c.check_gate(p)
@@ -82,7 +82,7 @@ class CampaignTests(unittest.TestCase):
             v={'batches':[],'new_updates':0,'latest_private_parent':{'old':True}}
             with patch.object(c,'prepare',return_value=p),patch.object(c,'session',return_value={'absolute_deadline_unix':9999999999,'compute_deadline_unix':9999999699,'started_monotonic':9999999999}),patch.object(ctl,'save'),patch.object(ctl,'event'),patch.object(ctl,'guarded_popen',return_value=fake),patch.object(ctl,'close_owned_process') as close,patch.object(ctl,'command_timeout',return_value=2),patch.object(ctl,'publish',return_value={'commit':'saved'}) as publish:
                 with self.assertRaises(RuntimeError):ctl.run(v,p,0,0,'training')
-                publish.assert_called_once_with(root,'campaign-v2-'+root.name,checkpoint=False)
+                publish.assert_called_once_with(root,'campaign-v3-'+c.SESSION.parent.name+'-'+root.name,checkpoint=False)
                 close.assert_called_once();self.assertEqual(v['new_updates'],0);self.assertEqual(v['batches'][0]['status'],'failed')
 
     def test_no_partial_admission_after_verification_failure(self):
@@ -140,3 +140,19 @@ class CampaignTests(unittest.TestCase):
             with patch.object(ctl,'ROOT',root),patch.object(ctl.subprocess,'check_output',return_value='other'),patch.object(ctl.subprocess,'run') as run:
                 with self.assertRaisesRegex(ValueError,'HEAD differs'):ctl.check_engine_checkout()
                 run.assert_not_called()
+
+    def test_recovery_session_cannot_reset_or_extend_original_window(self):
+        with tempfile.TemporaryDirectory() as td:
+            base=Path(td).resolve();root=base/'campaign-v3';root.mkdir()
+            window=root/'window.json';clock=dict(started_unix=0,started_monotonic=0,compute_deadline_unix=6900,absolute_deadline_unix=7200)
+            c.write_new(window,clock);sp=root/'recoveries/r1/session.json';release=root/'release.json'
+            source={'frozen':'source'};c.write_new(release,{'source':source,'configuration':{}})
+            v=dict(clock,scope=c.SCOPE,source=source,window=c.binding(window),release=c.binding(release))
+            c.write_new(sp,v)
+            with patch.object(c,'BASE',base),patch.object(c,'SESSION',sp),patch.object(c,'WINDOW',window),patch.object(c,'check_frozen'),patch.object(c,'source_identity',return_value=source),patch.object(c,'configuration',return_value={}),patch.object(c.time,'time',return_value=100),patch.object(c.time,'monotonic',return_value=100):
+                self.assertEqual(c.session()['absolute_deadline_unix'],7200)
+                for name in ('started_unix','started_monotonic','compute_deadline_unix','absolute_deadline_unix'):
+                    wrong=dict(v);wrong[name]+=60;sp.write_text(json.dumps(wrong))
+                    with self.assertRaisesRegex(ValueError,'cannot reset or extend'):c.session()
+                sp.write_text(json.dumps(v));window.write_text(json.dumps(dict(clock,absolute_deadline_unix=8000)))
+                with self.assertRaisesRegex(ValueError,'clock binding changed'):c.session()

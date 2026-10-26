@@ -165,7 +165,7 @@ def read_plan(path, sha):
 
 
 def check_identity(plan):
-    if plan.get("scope") == "heroes-update146-curriculum-v2":
+    if plan.get("scope") == "heroes-update146-curriculum-v3":
         from .curriculum_training import check_identity as check_curriculum
         return check_curriculum(plan)
     from experiments.headless.env import VcmiLauncher

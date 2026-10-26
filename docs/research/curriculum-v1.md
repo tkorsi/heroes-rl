@@ -151,3 +151,39 @@ author checkout passed the actual recipe check. This fix does not mutate the
 failed frozen release or validate its rejected control. Any future acceptance
 requires a correctly prepared isolated dependency and a fresh declared study.
 See [failure evidence](../../validation/curriculum-v3-acceptance-failure-2026-10-26.json).
+
+
+## Autonomous technical recovery and independent dependency: release v3
+
+The latest user instruction authorizes routine technical recovery without another
+confirmation, superseding earlier blanket no-retry/stop-after-acceptance-failure
+instructions. Failed or partial attempts remain rejected. Preparation may repair
+and use fresh declared identities; after the first campaign launch, all training,
+evaluation and recovery share the original immutable two-hour wall/monotonic
+window. Recovery never extends or resets it and never overlaps workers.
+
+An independent generated VCMI checkout was cloned from the pinned upstream lock
+inside `Heroes-artifacts/releases/curriculum-v3/vcmi`. Canonical preparation and
+`tools/prepare_vcmi.py --check` pass at6901839ae9760dfcd1d5ff2c4aa4ef6968fee752.
+It shares no mutable source checkout with another worker. Freeze additionally
+binds its revision, binary diff and untracked canonical overlay hashes. Native
+client/replay/AI binary hashes must match the existing artifact-fix runtime;
+launcher preflight checks required modules, data and each map before acceptance.
+The native runtime is reused without rebuild or embedded-engine changes.
+
+Study4 preregisters fresh engine/policy seed bases1110001/1120001, with100 per
+block and0–3 per game, for eight blocks in each seat (64 policy games). Separate
+capture/wait controls use1130001/1130002. Its1200-second gate requires natural
+policy wins and losses in both seats, exact replay/reconstruction, unchanged
+update146 and clean shutdown. All earlier studies remain excluded. Exact frozen
+bindings and seeds are logged by the freeze command before any new game.
+
+The new campaign namespace is `campaign-v3`. `window.json` is written once at
+actual first launch; subordinate recovery sessions bind that same immutable
+clock. Complete source is committed before freezing. Research/status writing
+stays outside the execution checkout. A recovery records its predecessor,
+verifies shutdown, restores the latest fully verified checkpoint, consumes fresh
+batch slots and preserves failed evidence; it cannot admit a partial batch.
+The original five-minute finalization reserve remains. The prior scientific
+configuration, four-game batches, terminal-only rewards, fixed held-out seeds
+and easier-start interpretation are unchanged.
