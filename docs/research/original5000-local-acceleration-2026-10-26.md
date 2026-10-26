@@ -305,3 +305,25 @@ recipe pins govern it), and an absent PSS reading counted as zero (no such data 
 
 The measured candidate (o5k-cand3, 15ed404) differs from the reviewed head only by these checks and
 tools; no game, verification, PPO or optimizer code changed.
+
+### O10. The accepted path alone cannot finish batch 266, and the event order varies within it (m1-B, 20:33 to 21:47 UTC)
+
+m1-B ran main's accepted a8ac411 alone on CPUs 1 to 3 (nothing else on them). Baseline evaluation
+batches took 318 s (seat 0) and 557 s (seat 1). Training batch 266 played the same four games in
+474 s (27.2, 113.4, 125.8 and 208.2 s) and was again stopped inside PPO by the update wall limit,
+this time after 83 of 125 optimizer steps (worker 3519 s); the update was rolled back and the run
+ended `stopped_failure`. So H7 holds on this host without any contention: the accepted local
+implementation cannot complete the first training batch of the original-map run from 629 (3,968
+decisions) within the fixed update budget, and the manual run would stop at it.
+
+The optimizer-only fast path (`ppo266` job C, 7c4303f, no helpers, CPU 0 alone) needed 3241.7 s for
+the same update (prefix reconstruction 461.8, loss forward 911.2, backward 1826.7, behaviour
+verification 20.9, Adam 17.4 s; 0.82 s per decision), with identical tensors across repetitions.
+
+Event order. m1-B and s4-B are both the accepted implementation with the same seeds. Comparing all
+twelve games on every observation and decision frame: they differ in exactly one, baseline seat 0
+game 4, the same game in which s4-B and the fast-path smoke s4-C differed (O7); m1-B equals s4-C in
+all twelve. The turn-end/new-day order is therefore a property of the accepted system's
+asynchronous notice delivery, not of the fast path. Consequence for the Mac check and for any
+reproduction: identical seeds do not guarantee identical games even on one implementation, so
+exactness is established on the batches whose games coincide (here 11 of 12).
