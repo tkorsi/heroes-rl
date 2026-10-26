@@ -254,3 +254,14 @@ and acknowledged the new frozen scope. The direct message tool returned403;
 the already authenticated browser route succeeded. This is preparation, not
 completed Linux acceptance or evaluation. See the
 [dispatch receipt](../validation/teacher-transfer-dispatch-2026-10-26.json).
+
+## Additional acceleration assignment
+
+The user requested another twofold training speedup over Claude's current
+optimized implementation. The [English task](operations/claude-acceleration-phase2-20261026.txt)
+targets complete verified four-game PPO batches, including restoration and
+durability, with component timings and fixed resource budgets. Isolated
+disposable-state optimizer benchmarks are allowed; official checkpoint412 and
+the active Teacher transfer study remain unchanged. Any numerical alternatives
+are separate experiments, not silently accepted replacements. This records an
+engineering objective, not a measured speedup or a new learning campaign.
