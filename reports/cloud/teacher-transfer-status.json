@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T13:00:14.151702+00:00",
-  "phase": "preparing_isolated_linux_build_and_checkpoints",
+  "timestamp_utc": "2026-10-26T13:09:41.897084+00:00",
+  "phase": "canonical_build_in_progress_checkpoints_and_layouts_prepared",
   "source_base": "deddbf934675a768bd49d677762ae0622d51a3f7",
   "branch": "codex/teacher-transfer-eval-20261026",
   "scope": "Frozen146/254/412 transfer diagnostics only; overnight PPO remains closed",
@@ -14,5 +14,15 @@
   "compute_minutes_from_first_game": 85,
   "hard_minutes_from_first_game": 90,
   "blocker": null,
-  "next_step": "Restore checkpoint dependencies, canonical accelerated build, prospective matched layout/seed manifest, independent watchdog"
+  "next_step": "Restore checkpoint dependencies, canonical accelerated build, prospective matched layout/seed manifest, independent watchdog",
+  "immutable_checkpoints": [
+    "146",
+    "254",
+    "412"
+  ],
+  "varied_layout_maps": 32,
+  "original_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "matched_schedule_entries": 192,
+  "accelerated_recipe_check_passed": true,
+  "pre_game_target_correction": "Initial non-existent vcmi_engine target rejected before compilation; corrected to canonical heroes_embedded_engine, original log preserved."
 }
