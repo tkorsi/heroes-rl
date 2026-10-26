@@ -42,6 +42,8 @@ map bytes and reports remain unchanged.
 
 Latest evidence is timestamped, not a live activity guarantee:
 
+- [Research log for the seminar](docs/research-log.md), with a source-bound
+  [experiment index](validation/research-experiment-index.jsonl).
 - [Completed v8 Teacher analysis](validation/local-v8-final-analysis-2026-10-26.json)
   and [local Teacher status](reports/local/teacher-status.json).
 - [Completed local365 Teacher analysis](validation/local365-final-analysis-2026-10-25.json).
