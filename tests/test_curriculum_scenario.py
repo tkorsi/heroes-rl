@@ -26,3 +26,21 @@ class CurriculumTests(unittest.TestCase):
             self.assertEqual(a.read_bytes(),b.read_bytes())
             with self.assertRaises(FileExistsError):create(a,0,0)
             with self.assertRaises(ValueError):verify(a,0,1)
+
+    def test_small_open_board_keeps_all_actions_and_native_town_rules(self):
+        for seat in (0,1):
+            v=payloads(3,seat)
+            self.assertEqual(v['header.json']['mapLevels']['surface']['width'],8)
+            self.assertEqual(len(v['surface_terrain.json']),8)
+            self.assertEqual(v['header.json']['triggeredEvents'],ordinary_payloads()['header.json']['triggeredEvents'])
+            self.assertEqual(len(v['objects.json']),2)
+            self.assertEqual(next(x for x in v['objects.json'] if x['type']=='town')['options']['buildings']['noneOf'],[])
+
+    def test_diagnostic_seeds_disjoint_from_heldout(self):
+        from validation.probes.validate_curriculum_policy import schedule
+        pairs=[]
+        for stage,blocks in [(0,[0]),(3,[0,1,2])]:
+            for block in blocks:
+                pairs.extend((r['engine_seed'],r['policy_seed']) for r in schedule(0,stage,block))
+        self.assertEqual(len(pairs),len(set(pairs)))
+        self.assertFalse(set(pairs)&{(710001+i,720001+i) for i in range(4)})

@@ -1,6 +1,6 @@
 {
-  "phase": "diagnostic_gate_pending",
-  "timestamp": "2026-10-26T00:11:47.552159+00:00",
+  "phase": "stopped_before_ppo_gate_not_met",
+  "timestamp": "2026-10-26T00:15:49.951467+00:00",
   "branch": "codex/teacher-curriculum-v1",
   "parent_update": 146,
   "training_launched": false,
@@ -47,15 +47,55 @@
   "launch": null,
   "compute_deadline": null,
   "hard_deadline": null,
-  "confirmed_diagnostic_games": 16,
+  "confirmed_diagnostic_games": 32,
   "diagnostic_wins": 0,
-  "diagnostic_losses": 16,
+  "diagnostic_losses": 32,
   "ppo_updates": 0,
   "latest_preserved_checkpoint": {
     "update": 146,
-    "private_commit": "ce61fb66c73adef250e780ec205b9196f288f9e5"
+    "rollouts": 584,
+    "decisions": 40641,
+    "adam_steps": 1475,
+    "policy_sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023"
   },
   "source_commit": "3e138f95e5d3cc9124b660b6edf9da1b48bef0cd",
-  "active_stage": "open8x8 additional predeclared seed blocks",
-  "actual_session_path": null
+  "active_stage": null,
+  "actual_session_path": null,
+  "owned_cleanup_verified": true,
+  "blocker": "No unchanged-policy natural victory in either candidate or seat; mixed-outcome gate unmet.",
+  "selection_result": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/selection-result.json",
+  "validation_outcomes": {
+    "native_replay_and_reconstruction": "32 passed",
+    "mixed_outcome_gate": "failed: zero wins",
+    "scenario_tests": "4 passed",
+    "do_nothing_control": "not run",
+    "heldout_comparison": "not run"
+  },
+  "runtime_root": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2",
+  "private_preservation": {
+    "schema": "heroes-curriculum-selection-preservation-v1",
+    "archive_sha256": "4e3c45a4547fd9b2b8a740b1dd9c4fd0160fcdeb3397a8928040f42c9b3948c3",
+    "archive_bytes": 9353293,
+    "inventory_sha256": "a2793187da7ac6ee223e5dafab7d77d35be57c9af0d8dbfdba163c154592e9c0",
+    "regular_files": 955,
+    "symlinks": 32,
+    "all_regular_hashes_and_symlink_targets_verified": true,
+    "proprietary_external_symlink_targets_copied": false,
+    "games": 32,
+    "training_samples": 0,
+    "optimizer_steps": 0,
+    "gate_passed": false,
+    "private_commit": "713cae0ed9c51afdd9e88a95655253f604e985b0",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "git_directory": "results/local-curriculum-update146"
+  },
+  "runtime_identity": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  }
 }

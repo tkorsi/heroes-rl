@@ -1,8 +1,8 @@
-"""Bounded v8 mixed-controller startup and terminal replay checks on the ordinary map.
+"""Bounded initial-state selection using unchanged update146 stochastic actions.
 
-Both seats use the supplied unchanged migrated policy against actual Nullkiller
-Easy. No optimizer is constructed, no samples are admitted, and prior failed
-startup attempts remain separate. Both native terminal barriers must complete.
+Every predeclared seed is retained. Natural outcomes require native terminal,
+policy reconstruction and replay evidence. No optimizer or training admission
+is constructed; a passed technical report does not imply the mixed-outcome gate.
 """
 from __future__ import annotations
 

@@ -1,0 +1,649 @@
+{
+  "schema": "heroes-curriculum-selection-result-v1",
+  "timestamp_utc": "2026-10-26T00:14:12.771502+00:00",
+  "phase": "stopped_before_ppo_gate_not_met",
+  "source_commit": "aa0b2fa6c074eefcbd778eca83a04fcf971013a6",
+  "preflight_errors": {
+    "checkpoint_metadata_loader": 2,
+    "games_started": 0,
+    "corrected": true
+  },
+  "completed_games": 32,
+  "admitted_training_games": 0,
+  "wins": 0,
+  "losses": 32,
+  "sampled_choices": 2490,
+  "optimizer_steps": 0,
+  "ppo_updates": 0,
+  "per_stage_seat": {
+    "0-red": {
+      "games": 4,
+      "wins": 0
+    },
+    "0-blue": {
+      "games": 4,
+      "wins": 0
+    },
+    "3-red": {
+      "games": 12,
+      "wins": 0
+    },
+    "3-blue": {
+      "games": 12,
+      "wins": 0
+    }
+  },
+  "sampled_moves_by_stage": {
+    "0": 80,
+    "3": 144
+  },
+  "town_target_moves_by_stage": {
+    "0": 0,
+    "3": 0
+  },
+  "all_native_replay_and_policy_reconstruction_passed": true,
+  "attempts": [
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage0-seat0-01/plan.json",
+        "sha256": "aa2efeabbbf79c92036bd47311b75977f8298973e8e75817a9ce0e7dad3fb7ba",
+        "bytes": 26162
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage0-seat0-01/report.json",
+        "sha256": "ecad710320a52121485efe81f09f6b9f490cb4423f7c5eb0ba0ad18e91b7f6c8",
+        "bytes": 28495
+      },
+      "stage": 0,
+      "seat": 0,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage0-seat1-01/plan.json",
+        "sha256": "6522847b14521eb1f8832f89fda3ba36e022980e53a8981ffa965d244ca7d7b6",
+        "bytes": 26162
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage0-seat1-01/report.json",
+        "sha256": "2886bc280476a87655934abc392738dc95b411e20576c44e45eb5c19a48faba5",
+        "bytes": 28444
+      },
+      "stage": 0,
+      "seat": 1,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-01/plan.json",
+        "sha256": "f7581a574a61ed20b9fdb332c4d0f8e520b614f2a253cbb5c5ef39714d895de2",
+        "bytes": 26162
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-01/report.json",
+        "sha256": "7b6c619c5ea2622d3472da5069b9a321cb866d9d83af9d549833b0e1c2ed9dbd",
+        "bytes": 28467
+      },
+      "stage": 3,
+      "seat": 0,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-block1/plan.json",
+        "sha256": "ab24c68bc1b45947847f313976d91414b4bd9370571feb388dd6f1573d5356b4",
+        "bytes": 26185
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-block1/report.json",
+        "sha256": "b9e6aebc2ac096eecbc12fc1e98da95b878e6709aa9c49da202bcba3b636886b",
+        "bytes": 28531
+      },
+      "stage": 3,
+      "seat": 0,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-block2/plan.json",
+        "sha256": "14d8368d0b3896c67ee61b8aa61a72829857c740b2cec9dd5a44e538a1073132",
+        "bytes": 26186
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat0-block2/report.json",
+        "sha256": "dfdb81ab840b5abefcfa4eb45c0315ebaa7293e0f940eec6a49eedf98f34304b",
+        "bytes": 28528
+      },
+      "stage": 3,
+      "seat": 0,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-01/plan.json",
+        "sha256": "62951f729c7a8a07203980ea4faf064eb8afb62215c906060d148ac666e73b8c",
+        "bytes": 26162
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-01/report.json",
+        "sha256": "5df390a956048c3a021059e659d71be07dacf4b551a43a3f5dca59ab1959f74f",
+        "bytes": 28468
+      },
+      "stage": 3,
+      "seat": 1,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-block1/plan.json",
+        "sha256": "40079e2141415ffc57b46fbfbbc8d2dbc65cd81efcbc7c5e279834a3714c472b",
+        "bytes": 26185
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-block1/report.json",
+        "sha256": "af30f1e657ae08fe73093caae71684493fda90452e49c3e251c1431513b1f4cd",
+        "bytes": 28531
+      },
+      "stage": 3,
+      "seat": 1,
+      "games": 4
+    },
+    {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-block2/plan.json",
+        "sha256": "883c72001fbaa5282647fa954b1779939e21a0c3b1d7a300b75379b3833e30d4",
+        "bytes": 26186
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/diagnostics/stage3-seat1-block2/report.json",
+        "sha256": "53daa1ba9ece7064c4d50532069f3246a8cc3a1578c56bc782c86fd222f7edd5",
+        "bytes": 28522
+      },
+      "stage": 3,
+      "seat": 1,
+      "games": 4
+    }
+  ],
+  "games": [
+    {
+      "candidate_stage": 0,
+      "seat": "red",
+      "engine_seed": 610001,
+      "policy_seed": 620001,
+      "outcome": "loss",
+      "sampled_choices": 65,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.487752749992069,
+      "native_opponent_requests": 40,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "red",
+      "engine_seed": 610002,
+      "policy_seed": 620002,
+      "outcome": "loss",
+      "sampled_choices": 132,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.1792969590169378,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "red",
+      "engine_seed": 610003,
+      "policy_seed": 620003,
+      "outcome": "loss",
+      "sampled_choices": 60,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.9289531249960419,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "red",
+      "engine_seed": 610004,
+      "policy_seed": 620004,
+      "outcome": "loss",
+      "sampled_choices": 103,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.120489833992906,
+      "native_opponent_requests": 27,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "blue",
+      "engine_seed": 610001,
+      "policy_seed": 620001,
+      "outcome": "loss",
+      "sampled_choices": 65,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.9529249579936732,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "blue",
+      "engine_seed": 610002,
+      "policy_seed": 620002,
+      "outcome": "loss",
+      "sampled_choices": 83,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.3226085839851294,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "blue",
+      "engine_seed": 610003,
+      "policy_seed": 620003,
+      "outcome": "loss",
+      "sampled_choices": 97,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.5633720829791855,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 0,
+      "seat": "blue",
+      "engine_seed": 610004,
+      "policy_seed": 620004,
+      "outcome": "loss",
+      "sampled_choices": 74,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.1594632500200532,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613001,
+      "policy_seed": 623001,
+      "outcome": "loss",
+      "sampled_choices": 138,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.1093282919900957,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613002,
+      "policy_seed": 623002,
+      "outcome": "loss",
+      "sampled_choices": 72,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.9394575839978643,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613003,
+      "policy_seed": 623003,
+      "outcome": "loss",
+      "sampled_choices": 22,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.2362671250011772,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613004,
+      "policy_seed": 623004,
+      "outcome": "loss",
+      "sampled_choices": 66,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.8933132090023719,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613101,
+      "policy_seed": 623101,
+      "outcome": "loss",
+      "sampled_choices": 20,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.2232433749886695,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613102,
+      "policy_seed": 623102,
+      "outcome": "loss",
+      "sampled_choices": 134,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.909895416989457,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613103,
+      "policy_seed": 623103,
+      "outcome": "loss",
+      "sampled_choices": 111,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.4561548339843284,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613104,
+      "policy_seed": 623104,
+      "outcome": "loss",
+      "sampled_choices": 108,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.6190428329864517,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613201,
+      "policy_seed": 623201,
+      "outcome": "loss",
+      "sampled_choices": 15,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.0568784169736318,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613202,
+      "policy_seed": 623202,
+      "outcome": "loss",
+      "sampled_choices": 70,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.9158359580032993,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613203,
+      "policy_seed": 623203,
+      "outcome": "loss",
+      "sampled_choices": 52,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.7019516669970471,
+      "native_opponent_requests": 8,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "red",
+      "engine_seed": 613204,
+      "policy_seed": 623204,
+      "outcome": "loss",
+      "sampled_choices": 128,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.031263625016436,
+      "native_opponent_requests": 26,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613001,
+      "policy_seed": 623001,
+      "outcome": "loss",
+      "sampled_choices": 138,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.097224750003079,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613002,
+      "policy_seed": 623002,
+      "outcome": "loss",
+      "sampled_choices": 72,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.926916624972364,
+      "native_opponent_requests": 10,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613003,
+      "policy_seed": 623003,
+      "outcome": "loss",
+      "sampled_choices": 22,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.2442757500102744,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613004,
+      "policy_seed": 623004,
+      "outcome": "loss",
+      "sampled_choices": 66,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.8141236249939539,
+      "native_opponent_requests": 10,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613101,
+      "policy_seed": 623101,
+      "outcome": "loss",
+      "sampled_choices": 30,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.3846747080096975,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613102,
+      "policy_seed": 623102,
+      "outcome": "loss",
+      "sampled_choices": 74,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.9299250000040047,
+      "native_opponent_requests": 31,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613103,
+      "policy_seed": 623103,
+      "outcome": "loss",
+      "sampled_choices": 111,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.5570535419974476,
+      "native_opponent_requests": 31,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613104,
+      "policy_seed": 623104,
+      "outcome": "loss",
+      "sampled_choices": 108,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.562860250007361,
+      "native_opponent_requests": 10,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613201,
+      "policy_seed": 623201,
+      "outcome": "loss",
+      "sampled_choices": 15,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.2120847910118755,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613202,
+      "policy_seed": 623202,
+      "outcome": "loss",
+      "sampled_choices": 70,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 2.1254204169963486,
+      "native_opponent_requests": 10,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613203,
+      "policy_seed": 623203,
+      "outcome": "loss",
+      "sampled_choices": 41,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 1.7408966249786317,
+      "native_opponent_requests": 31,
+      "replay_verified": true,
+      "training_samples": 0
+    },
+    {
+      "candidate_stage": 3,
+      "seat": "blue",
+      "engine_seed": 613204,
+      "policy_seed": 623204,
+      "outcome": "loss",
+      "sampled_choices": 128,
+      "latest_sampled_day": 7,
+      "elapsed_seconds": 3.3432522079965565,
+      "native_opponent_requests": 9,
+      "replay_verified": true,
+      "training_samples": 0
+    }
+  ],
+  "campaign_launched": false,
+  "campaign_session": null,
+  "launch": null,
+  "compute_deadline": null,
+  "hard_deadline": null,
+  "checkpoint_unchanged": {
+    "update": 146,
+    "rollouts": 584,
+    "decisions": 40641,
+    "adam_steps": 1475,
+    "policy_sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023"
+  },
+  "gate_passed": false,
+  "blocker": "No unchanged-policy natural victory in either candidate or seat; mixed-outcome gate unmet.",
+  "controls_not_run": "Do-nothing controls and heldout comparison were not run because selection already failed; no automatic-win empirical claim.",
+  "limitations": [
+    "Finite diagnostic selection is not proof victory is impossible.",
+    "No PPO campaign or trained-checkpoint comparison was conducted.",
+    "Stage1 and original-start return remain untested hypotheses.",
+    "No reward, model, legal-action or native-rule changes were made."
+  ],
+  "assessment": "Do not launch another all-loss campaign. No learned strategic improvement claim.",
+  "private_preservation": {
+    "schema": "heroes-curriculum-selection-preservation-v1",
+    "archive_sha256": "4e3c45a4547fd9b2b8a740b1dd9c4fd0160fcdeb3397a8928040f42c9b3948c3",
+    "archive_bytes": 9353293,
+    "inventory_sha256": "a2793187da7ac6ee223e5dafab7d77d35be57c9af0d8dbfdba163c154592e9c0",
+    "regular_files": 955,
+    "symlinks": 32,
+    "all_regular_hashes_and_symlink_targets_verified": true,
+    "proprietary_external_symlink_targets_copied": false,
+    "games": 32,
+    "training_samples": 0,
+    "optimizer_steps": 0,
+    "gate_passed": false,
+    "private_commit": "713cae0ed9c51afdd9e88a95655253f604e985b0",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "git_directory": "results/local-curriculum-update146"
+  },
+  "cleanup": {
+    "owned_cleanup_verified": true,
+    "native_evidence_files": 32,
+    "receipt_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/cleanup-and-parent-restore.json",
+    "receipt_sha256": "ed9b9d361ceb68587814d60dc6785ed1a52ba9441cbeafc64073e82d40a40c79"
+  },
+  "exact_final_restore": {
+    "checkpoint": "builtin-pilot-after-97c2b2f265b1949c",
+    "weights_sha256": "97c2b2f265b1949c5fe25d3d7bc4c81255c3aa56a5d3e62ab9320bf77e2c187a",
+    "progress": {
+      "updates": 146,
+      "rollouts": 584,
+      "decisions": 40641
+    },
+    "exact_model_adam_rng_progress_pool": true
+  },
+  "runtime_identity": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  }
+}

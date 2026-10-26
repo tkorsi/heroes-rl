@@ -446,3 +446,13 @@ are excluded from learning. No campaign window has started during preparation.
 A fresh two-hour campaign is authorized only after this gate, using full
 four-game batches, exact state restoration and a five-minute finalization
 reserve. There is no automatic retry or additional campaign after that window.
+
+The bounded curriculum selection study is now stopped before PPO:8 games on
+the20x20 candidate and24 on an open8x8 candidate produced32 verified natural
+losses and zero wins, with2490 sampled choices. All native replay and policy
+reconstruction checks passed. The unchanged policy never targeted the town
+entrance in224 sampled moves. This is a finite negative result, not proof that
+winning is impossible. The mixed-outcome gate was not met; no campaign/session
+or new two-hour window started. Update146 remains unchanged. See the
+[research record](docs/research/curriculum-v1.md) and
+[selection results](validation/curriculum-v1-selection-2026-10-26.json).
