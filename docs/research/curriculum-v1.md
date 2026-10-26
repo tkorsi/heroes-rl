@@ -28,3 +28,43 @@ the canonical checkpoint metadata binding was corrected before the 32 games.
 Stage 1 (farther/weaker start) and return to original difficulty remain untested
 hypotheses. No failed diagnostic, previous scripted rush sequence or evaluation
 was admitted to PPO. See [compact results](../../validation/curriculum-v1-selection-2026-10-26.json).
+
+
+## Additional study: mixed outcomes, integrity stop
+
+The separately authorized additional study ran for 172.7 seconds and stopped
+on its first failed four-game report. The unchanged update146 policy produced
+57 fully verified games: Red had 7 wins and 22 losses; Blue had 5 wins and
+23 losses. Each counted outcome passed native replay and exact policy
+reconstruction. These are results on the easier 8×8 initial state, not evidence
+of learning or improvement on the original map.
+
+The four controls passed: one visible town-capture move won naturally in each
+seat, while waiting lost under the native seven-day townless rule in each seat.
+Control wins are excluded from policy results. The offline target audit found
+an initial joint capture-action probability of about 0.00512 in each seat;
+reachability was established separately by the native controls.
+
+The agent began editing campaign preparation while the diagnostic was running.
+Adding `curriculum_training.py` and changing `builtin_first_run.py` changed the
+bound capability implementation identity. Red block7 game2 completed gameplay
+but failed its source-integrity check before outcome admission. Its outcome is
+unscored. The remaining two Red entries failed before gameplay, and all four
+Blue block7 entries were never started. This was an agent workflow error. It
+must not be represented as a policy loss or repaired by retrospective admission.
+The original preregistration contains stale top-level seed fields copied from
+study1; its explicit 64-entry `seeds` schedule and the immutable runner/plans
+correctly specify study2 seeds 810001/820001 plus block and episode offsets.
+
+The mixed-outcome observation is positive, but the overall preparation gate
+failed. No PPO, held-out campaign evaluation, release or two-hour session was
+started, and no retry is being performed. Update146 restores exactly, including
+Adam, RNG, progress and opponent pool. Owned-process closure was rechecked.
+All raw evidence, failed and unstarted entries, audit and unfinished controller
+work are privately preserved. The unpublished controller is retained as a
+non-executable patch; it is incomplete and has not been validated for launch.
+The runtime dispatch was restored and draft executable modules removed.
+
+See [study2 evidence](../../validation/curriculum-v1-study2-2026-10-26.json).
+Future work must keep all bound source files frozen throughout a diagnostic;
+prepare a controller before the study or in a separate checkout.

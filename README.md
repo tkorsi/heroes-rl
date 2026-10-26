@@ -456,3 +456,15 @@ winning is impossible. The mixed-outcome gate was not met; no campaign/session
 or new two-hour window started. Update146 remains unchanged. See the
 [research record](docs/research/curriculum-v1.md) and
 [selection results](validation/curriculum-v1-selection-2026-10-26.json).
+
+
+A separately authorized additional study then found mixed natural outcomes on
+the open8×8 start: **57 verified policy games, 12 wins and 45 losses** (Red7/22,
+Blue5/23). Capture controls won and waiting controls lost in both seats. However,
+the agent edited bound source while the diagnostic was running, causing a
+source-integrity failure: one further played game is unscored, two entries
+failed before gameplay and four were not started. The study stopped after
+172.7 seconds; its overall gate failed. **No PPO or two-hour campaign started.**
+Update146 remains exact and all evidence is privately preserved. The unfinished
+controller is archived as a non-executable patch, not a release. See the
+[study2 record](validation/curriculum-v1-study2-2026-10-26.json).

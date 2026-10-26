@@ -1,0 +1,147 @@
+{
+  "schema": "heroes-curriculum-study2-analysis-v1",
+  "timestamp_utc": "2026-10-26T00:30:41.799790+00:00",
+  "study": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/study-report.json",
+    "sha256": "7681330f3012e76d7efb858cfb26fd5b19232789797530d3511bf865cd82c05c",
+    "bytes": 12852
+  },
+  "elapsed_seconds": 172.65821290016174,
+  "status": "stopped_source_integrity_failure",
+  "gate_passed": false,
+  "policy_results_by_seat": {
+    "red": {
+      "loss": 22,
+      "win": 7,
+      "failed_after_game": 1,
+      "failed_before_game": 2
+    },
+    "blue": {
+      "loss": 23,
+      "win": 5,
+      "not_started": 4
+    }
+  },
+  "verified_policy_games": 57,
+  "verified_policy_choices": 3991,
+  "controls": [
+    {
+      "mode": "capture",
+      "seat": 0,
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/control-capture-0/report.json",
+        "sha256": "58c4548fc66a3d4d39563a90abd19744a2368300ccfb7904973f110915553a67",
+        "bytes": 5700
+      },
+      "status": "completed"
+    },
+    {
+      "mode": "capture",
+      "seat": 1,
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/control-capture-1/report.json",
+        "sha256": "e3e073e2db95a043aeee2028cc042d9dc6db32d51fab984fd1dd752a5463c737",
+        "bytes": 5724
+      },
+      "status": "completed"
+    },
+    {
+      "mode": "wait",
+      "seat": 0,
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/control-wait-0/report.json",
+        "sha256": "5b709fd6705d95ccfe58595029c5015665983c65097b5e2ab22eefe9df18702f",
+        "bytes": 7243
+      },
+      "status": "completed"
+    },
+    {
+      "mode": "wait",
+      "seat": 1,
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/control-wait-1/report.json",
+        "sha256": "e4128838067f4138d193eafd5d93b9e285e93c42625a917f7baf0d0ef62a117b",
+        "bytes": 7245
+      },
+      "status": "completed"
+    }
+  ],
+  "failures": [
+    {
+      "engine_seed": 810702,
+      "policy_seed": 820702,
+      "learner_player": 0,
+      "error": "ValueError: Diagnostic source changed",
+      "sampled_choices": 82,
+      "manifest": {
+        "bytes": 18911,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study2/policy-block7-seat0/episode-000002/manifest.json",
+        "sha256": "0996a2d97ef13909ef993d77c142a450994016402d16d03455bea8c191ea4094"
+      },
+      "termination_reason": "natural_terminal"
+    },
+    {
+      "engine_seed": 810703,
+      "policy_seed": 820703,
+      "learner_player": 0,
+      "error": "ValueError: Diagnostic source changed",
+      "sampled_choices": null,
+      "manifest": null,
+      "termination_reason": null
+    },
+    {
+      "engine_seed": 810704,
+      "policy_seed": 820704,
+      "learner_player": 0,
+      "error": "ValueError: Diagnostic source changed",
+      "sampled_choices": null,
+      "manifest": null,
+      "termination_reason": null
+    }
+  ],
+  "source_drift": {
+    "experiments/learner/curriculum_training.py": {
+      "expected": null,
+      "observed": "7c9992c960d7f15b7d8b1d4facb5d87a22c99838bb821c63ae7e2fec3cb29bd0"
+    },
+    "experiments/learner/builtin_first_run.py": {
+      "expected": "6bb520f201ba95dd5491e56c3ddfc59d22d026a683dce983f86d14b43dd4c746",
+      "observed": "637f3ee9d5f05fae67d4d51221ee6fa3b8e59f02bfd04d33a682b0a75382521a"
+    }
+  },
+  "cause": "Agent edited builtin_first_run.py and added curriculum_training.py while the frozen diagnostic was running; capability identity includes both. This is an agent workflow error, not a gameplay failure.",
+  "unreleased_draft": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/unreleased-controller.patch",
+    "sha256": "95bcd1d920d13d4ae2ddad6a295bdf54fa853888ecbcaa28f067f2101b45a7fb",
+    "bytes": 25616
+  },
+  "draft_disposition": "Retained as non-executable patch; production dispatch restored and new draft modules removed. No retry or retrospective admission.",
+  "owned_cleanup_verified": true,
+  "checked_process_receipts": 141,
+  "exact_parent_restore": {
+    "checkpoint": "builtin-pilot-after-97c2b2f265b1949c",
+    "weights_sha256": "97c2b2f265b1949c5fe25d3d7bc4c81255c3aa56a5d3e62ab9320bf77e2c187a",
+    "progress": {
+      "updates": 146,
+      "rollouts": 584,
+      "decisions": 40641
+    },
+    "exact_model_adam_rng_progress_pool": true
+  },
+  "ppo_updates": 0,
+  "training_samples": 0,
+  "campaign_launched": false,
+  "two_hour_window_started": false,
+  "unresolved": "Study ended on integrity failure despite verified mixed outcomes; future execution requires separately authorized preparation.",
+  "private_preservation": {
+    "archive_sha256": "8ebb5fe4790bb536b3bfe43e2f77a013f8c3f8e8570fb09b862070cc609bd946",
+    "archive_bytes": 14903099,
+    "verified_files": 1865,
+    "verified_symlinks": 62,
+    "dereferenced_external_data": false,
+    "all_archived_files_verified": true,
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local365-teacher-results",
+    "private_commit": "49fe296094a83ec225918f9058a0a6ed59e38b9d"
+  }
+}

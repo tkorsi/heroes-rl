@@ -1,0 +1,351 @@
+diff --git a/experiments/learner/builtin_first_run.py b/experiments/learner/builtin_first_run.py
+index f6565a5..3131a76 100644
+--- a/experiments/learner/builtin_first_run.py
++++ b/experiments/learner/builtin_first_run.py
+@@ -165,6 +165,9 @@ def read_plan(path, sha):
+ 
+ 
+ def check_identity(plan):
++    if plan.get("scope") == "heroes-update146-curriculum-v1":
++        from .curriculum_training import check_identity as check_curriculum
++        return check_curriculum(plan)
+     from experiments.headless.env import VcmiLauncher
+     from experiments.headless.contextual_evidence import runtime_identity
+     from .inference import source_identity
+diff --git a/experiments/learner/curriculum_training.py b/experiments/learner/curriculum_training.py
+new file mode 100644
+index 0000000..e397ccb
+--- /dev/null
++++ b/experiments/learner/curriculum_training.py
+@@ -0,0 +1,178 @@
++"""Explicit initial-state distribution continuation; unchanged PPO/admission worker."""
++import argparse
++from copy import deepcopy
++import json,os,random,subprocess,sys,time
++from pathlib import Path
++import torch
++from . import builtin_first_run as pilot,builtin_training as batches,builtin_training_resume as resume,checkpoints as cp
++from .builtin_preservation import binding,verify_pair,preserve
++from .inference import source_identity
++from experiments.headless.contextual_evidence import runtime_identity
++from experiments.headless.env import VcmiLauncher
++from experiments.explorer.create_curriculum_scenario import verify
++
++ROOT=Path(__file__).resolve().parents[2]
++BASE=Path('/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146')
++SESSION=BASE/'campaign-v1/session.json'
++PARENT=Path('/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json')
++INTERFACE='adventure-capabilities-v1'
++SCOPE='heroes-update146-curriculum-v1'
++require=resume.require
++CORE=('contextual.py','contextual_model.py','contextual_rollout.py','checkpoints.py','ppo.py',
++      'builtin_gameplay.py','builtin_rollout.py','trajectory.py','contract.py')
++
++
++def write_new(path,value):
++    path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
++    with path.open('x') as f:json.dump(value,f,indent=2);f.write('\n')
++
++
++def configuration():
++    original=json.loads(PARENT.read_text())['configuration']
++    return deepcopy(original)
++
++
++def map_identity(path,seat):
++    path=Path(path).resolve()
++    require(path==BASE/f'maps/curriculum-3-{seat}.vmap','Only preregistered small-board state')
++    verify(path,3,seat)
++    return dict(binding(path),scenario='curriculum-v1-open8x8',stage=3,seat=seat)
++
++
++def schedule(sequence,seat,evaluate=False):
++    require(type(sequence) is int and sequence>=0 and seat in (0,1),'Invalid schedule')
++    return [dict(episode=i+1,phase='evaluation' if evaluate else 'training',learner_player=seat,
++        engine_seed=710001+i if evaluate else 910001+4*sequence+i,
++        policy_seed=720001+i if evaluate else 920001+4*sequence+i) for i in range(4)]
++
++
++def check_gate(path):
++    gate=json.loads(Path(path).read_text());require(gate['status']=='finished' and gate['within_20_minutes']
++        and gate['owned_cleanup_verified'],'Preparation study incomplete')
++    counts={seat:{'win':0,'loss':0} for seat in (0,1)};controls={}
++    for row in gate['attempts']:
++        require(row['status']=='finished' and row['owned_cleanup_verified'],'Unfinished gate attempt')
++        b=row['report'];require(binding(b['path'])==b,'Gate report changed');r=json.loads(Path(b['path']).read_text())
++        if row['kind']=='control':
++            require(r['replay']['verified'] and r['owned_processes_closed'] and r['termination_reason']=='natural_terminal','Control unverified')
++            controls[(row['mode'],row['seat'])]=r['outcomes'][('red','blue')[row['seat']]]
++        else:
++            require(r['status']=='passed' and r['training_samples']==r['optimizer_steps']==0,'Diagnostic admitted or failed')
++            for a in r['attempts']:
++                require(a['status']=='passed' and a['replay_verified'] and a['weights_unchanged'] and a['finished'], 'Policy gate unverified')
++                counts[a['learner_player']][a['outcomes'][('red','blue')[a['learner_player']]]+=1
++    for seat in (0,1):
++        require(counts[seat]['win']>0 and counts[seat]['loss']>0,'Mixed outcomes required in each seat')
++        require(controls[('capture',seat)]=='win' and controls[('wait',seat)]=='loss','Reachability/wait gate failed')
++    return counts
++
++
++def session():
++    v=json.loads(SESSION.read_text());require(v['scope']==SCOPE and v['source']==source_identity(INTERFACE),'Campaign source drift')
++    require(v['absolute_deadline_unix']==v['started_unix']+7200 and v['compute_deadline_unix']==v['started_unix']+6900,'Budget extension forbidden')
++    require(time.time()<v['absolute_deadline_unix'] and 0<=time.monotonic()-v['started_monotonic']<7200,'Campaign expired')
++    require(binding(v['release']['path'])==v['release'],'Release drift')
++    release=json.loads(Path(v['release']['path']).read_text())
++    require(release['source']==v['source'] and release['configuration']==configuration(),'Release source/config drift')
++    return v
++
++
++def restore(path):
++    """Restore historical bytes exactly; initial-state distribution changes only in new plans."""
++    path=Path(path);plan=json.loads(path.read_text());report_path=Path(plan['execution_output'])/'report.json'
++    report=json.loads(report_path.read_text());require(report['plan_sha256']==binding(path)['sha256'],'Parent report mismatch')
++    if path==PARENT:
++        require(report['after_checkpoint']['policy']['sha256']=='5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023'
++            and report['after_checkpoint']['resume']['sha256']=='50252db8da1a505ab5174cadef2489707783b44c4811d373581f7beec87b94e9','Exact update146 required')
++    else:require(path.is_relative_to(BASE/'campaign-v1/batches') and plan['scope']==SCOPE,'Foreign campaign parent')
++    for name in CORE:require(binding(ROOT/'experiments/learner'/name)['sha256']==plan['source']['source_sha256']['experiments/learner/'+name], 'Policy/PPO implementation changed')
++    saved=report['after_checkpoint'];verify_pair(saved['resume']['path'],saved['policy']['path'],plan,report)
++    for value in (saved['policy'],saved['resume']):require(binding(value['path'])==value,'Parent checkpoint changed')
++    metadata=resume._metadata(plan,report['plan_sha256']);progress,steps,sampler=resume._completion(plan,report)
++    policy=cp.load_policy_checkpoint(saved['policy']['path'],expected_source_metadata=metadata,
++        allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,),interface=INTERFACE)
++    model=policy.model.requires_grad_(True);optimizer=torch.optim.Adam(model.parameters(),**plan['configuration']['adam']);generator=torch.Generator()
++    state=cp.load_checkpoint(saved['resume']['path'],model,optimizer,expected_ppo_config=plan['configuration']['ppo'],
++        expected_source_metadata=metadata,allowed_provenance=(cp.BUILTIN_GAMEPLAY_PROVENANCE,),interface=INTERFACE,
++        generators={'minibatch':generator},at_rollout_boundary=True)
++    raw=torch.load(saved['resume']['path'],map_location='cpu',weights_only=True)
++    for a,b in [(dict(model.state_dict()),raw['model_state']),(optimizer.state_dict(),raw['resume']['optimizer_state']),
++                (torch.get_rng_state(),raw['rng']['torch_cpu']),(random.getstate(),raw['rng']['python']),
++                (generator.get_state(),raw['rng']['torch_generators']['minibatch']),
++                (state.opponent_pool.state_dict(),policy.opponent_pool.state_dict())]:resume._exact(a,b)
++    require(state.progress==progress and state.sampler_state==sampler,'Parent progress drift')
++    links=dict(plan=binding(path),report=binding(report_path),policy=saved['policy'],resume=saved['resume'],
++               progress=vars(progress),optimizer_steps=steps,source_proof={'explicit_curriculum_transition':True,'policy_ppo_unchanged':True},
++               runtime_proof={'runtime_unchanged':True,'initial_state_distribution_changes_only':True})
++    model.eval().requires_grad_(False)
++    return resume.ParentState(model,optimizer,generator,state.opponent_pool,progress,sampler,metadata,policy.checkpoint,policy.weights_sha256,links,steps)
++
++
++def check_identity(plan):
++    v=session();require(plan['scope']==SCOPE and plan['source']==v['source'] and not v['source']['tracked_worktree_dirty'],'Unreleased source')
++    require(plan['implementation']==pilot.implementation() and plan['prerequisites']==pilot.prerequisites(),'Implementation drift')
++    require(plan['configuration']==configuration(),'PPO/configuration drift')
++    seat=plan['curriculum']['seat'];require(plan['map']==map_identity(plan['game_map'],seat),'Map drift')
++    require(plan['schedule']==schedule(plan['batch_sequence'],seat,plan['mode']=='evaluation'),'Schedule drift')
++    require(plan['local_session']==binding(SESSION),'Wrong session')
++    for k in ('checkpoint','replay_binary'):require(binding(plan[k]['path'])==plan[k], 'Artifact changed')
++    launcher=VcmiLauncher(Path(plan['binary']),Path(plan['data']),Path(plan['game_map']))
++    require(launcher.identity()==plan['native'] and runtime_identity(Path(plan['binary']).parent)==plan['runtime'],'Native drift')
++    release=json.loads(Path(v['release']['path']).read_text());require(plan['runtime']==release['runtime'],'Unreleased runtime')
++    require(plan['absolute_deadline_unix']==v['absolute_deadline_unix'],'Extended batch deadline')
++    expected=v['absolute_deadline_unix']-20 if plan.get('final_evaluation') else v['compute_deadline_unix']
++    require(plan['compute_deadline_unix']==expected,'Changed compute budget')
++
++
++def prepare(parent,sequence,seat,evaluate=False,final=False):
++    v=session();state=restore(parent);release=json.loads(Path(v['release']['path']).read_text())
++    output=BASE/'campaign-v1/batches'/f"{'final' if final else 'eval' if evaluate else 'train'}-{sequence:04d}-seat{seat}"
++    require(not output.exists(),'No retry or overwrite')
++    rows=schedule(sequence,seat,evaluate)
++    if not evaluate:
++        keys={(r['engine_seed'],r['policy_seed'],r['learner_player']) for r in rows}
++        for f in (BASE/'campaign-v1/batches').glob('*/plan.json'):
++            old=json.loads(f.read_text());require(not keys & {(r['engine_seed'],r['policy_seed'],r['learner_player']) for r in old['schedule'] if r['phase']=='training'},'Consumed seeds')
++    game_map=BASE/f'maps/curriculum-3-{seat}.vmap';binary=Path(release['runtime_bin'])/'vcmiclient'
++    native=VcmiLauncher(binary,Path(release['data']),game_map).identity()
++    from .builtin_first_run import native_opponent
++    plan=dict(schema=(batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan',scope=SCOPE,mode='evaluation' if evaluate else 'training',
++        source=v['source'],runtime=release['runtime'],native=native,map=map_identity(game_map,seat),binary=str(binary),data=release['data'],
++        game_map=str(game_map),replay_binary=binding(binary.parent/'vcmireplay'),native_opponents=[native_opponent(release['runtime'],s) for s in (0,1)],
++        configuration=configuration(),schedule=rows,batch_sequence=sequence,execution_output=str(output/'execution'),
++        parent=state.bindings,checkpoint=state.bindings['policy'],local_session=binding(SESSION),authorization=release['authorization'],
++        absolute_deadline_unix=v['absolute_deadline_unix'],compute_deadline_unix=v['absolute_deadline_unix']-20 if final else v['compute_deadline_unix'],
++        implementation=pilot.implementation(),prerequisites=pilot.prerequisites(),
++        wall_scope='One fresh7200second wall/monotonic session;300second finalization reserve',
++        comparison_scope='Same8x8 initial-state distribution, separate seats, fixed heldout seeds; not original-start performance',
++        curriculum={'stage':3,'seat':seat,'map_change_explicit':True},final_evaluation=final)
++    plan['checkpoint_metadata']={**v['source'],'parent_plan_sha256':state.bindings['plan']['sha256'],
++        'parent_report_sha256':state.bindings['report']['sha256'],'initial_checkpoint':state.bindings['policy'],
++        'native_opponent':{k:x for k,x in plan['native_opponents'][0].items() if k!='player'},'archived_neural_pool_executed':False}
++    check_identity(plan);write_new(output/'plan.json',plan);return output/'plan.json'
++
++
++def read_plan(path,sha):
++    path=Path(path);require(path.is_relative_to(BASE/'campaign-v1/batches') and binding(path)['sha256']==sha,'Plan changed')
++    plan=json.loads(path.read_text());check_identity(plan);return plan
++
++
++def heldout(state,runtime,native):
++    # Every campaign starts with both frozen seats. Periodic/final checks are controller-owned.
++    v=session();journal=json.loads((SESSION.parent/'campaign-report.json').read_text())
++    for seat in (0,1):
++        require(any(b.get('mode')=='baseline' and b.get('seat')==seat and b.get('status')=='passed'
++                    for b in journal['batches']),'Both frozen baselines required')
++
++
++def main():
++    p=argparse.ArgumentParser();p.add_argument('command',choices=['execute','worker']);p.add_argument('--plan',type=Path,required=True);p.add_argument('--sha256',required=True)
++    p.add_argument('--started',type=float);p.add_argument('--wall-started',type=float);a=p.parse_args()
++    if a.command=='worker':result=batches.worker(a,plan_reader=read_plan,state_reader=lambda plan:restore(plan['parent']['plan']['path']),heldout_checker=heldout)
++    else:
++        result=pilot.execute(a,plan_reader=read_plan,worker_module=__spec__.name)
++        if result['status']=='finished' and result['training_performed']:
++            preserve(a.plan,a.plan.parent/'execution/report.json',BASE/'campaign-v1/checkpoints'/a.plan.parent.name)
++    print(json.dumps({k:result.get(k) for k in ('status','stop_reason','optimizer_updates','optimizer_steps','training_samples')}))
++
++if __name__=='__main__':main()
+diff --git a/tools/curriculum_campaign.py b/tools/curriculum_campaign.py
+new file mode 100644
+index 0000000..ca9ff0d
+--- /dev/null
++++ b/tools/curriculum_campaign.py
+@@ -0,0 +1,147 @@
++"""Single-use local curriculum campaign with exact continuation and owned watchdog."""
++import argparse,json,os,shutil,subprocess,sys,tarfile,time
++from pathlib import Path
++ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT))
++from experiments.learner import curriculum_training as c
++from experiments.learner.builtin_training_resume import binding,require
++from experiments.learner.builtin_preservation import verify_pair
++from experiments.learner.inference import source_identity
++from experiments.headless.contextual_evidence import runtime_identity
++from experiments.headless.process_deadline import guarded_popen,close_owned_process,cleanup_from_evidence
++REPO=Path('/Users/orsi/Projects/Heroes-artifacts/private-local365-state')
++
++
++def git(*a):return subprocess.check_output(['git','-C',str(REPO),*a],text=True,timeout=60).strip()
++
++def private_preflight():
++    require(git('remote','get-url','origin')=='https://github.com/tkorsi/heroes-rl-training-state.git'
++        and git('branch','--show-current')=='codex/local365-teacher-results' and git('status','--porcelain')=='','Private repository not ready')
++
++def save(v):
++    path=c.SESSION.parent/'campaign-report.json';tmp=path.with_suffix('.tmp');tmp.write_text(json.dumps(v,indent=2)+'\n');os.replace(tmp,path)
++    s=json.loads(c.SESSION.read_text())
++    status=dict(timestamp_utc=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat(),
++        phase=v['status'],actual_session_path=str(c.SESSION),source=s['source'],runtime=s['runtime'],
++        confirmed_games=sum(b.get('completed_games',0) for b in v['batches']),ppo_updates=v.get('new_updates',0),
++        latest_preserved_checkpoint=v.get('latest_private_parent'),latest_verified_checkpoint=v['latest_verified_parent'],
++        launch=s['started_unix'],compute_deadline=s['compute_deadline_unix'],hard_deadline=s['absolute_deadline_unix'],
++        validation_outcomes=s['validation_outcomes'])
++    p=c.BASE/'campaign-status.json';tmp=p.with_suffix('.tmp');tmp.write_text(json.dumps(status,indent=2)+'\n');os.replace(tmp,p)
++
++def publish(folder,label,checkpoint=False):
++    private_preflight();dest=REPO/'results/local-curriculum-update146'/label
++    require(not dest.exists(),'Private attempt already exists');dest.mkdir()
++    archive=dest/'evidence.tar.gz'
++    with tarfile.open(archive,'x:gz',dereference=False) as t:t.add(folder,arcname=folder.name)
++    c.write_new(dest/'receipt.json',{'archive':binding(archive),'external_data_dereferenced':False})
++    if checkpoint:
++        plan=json.loads((folder/'plan.json').read_text());report=json.loads((folder/'execution/report.json').read_text())
++        backup=c.SESSION.parent/'checkpoints'/folder.name
++        target=REPO/'checkpoints/local-curriculum-update146'/folder.name;require(not target.exists(),'Private checkpoint exists')
++        target.parent.mkdir(parents=True,exist_ok=True);shutil.copytree(backup,target)
++        proof=verify_pair(target/'after-resume.pt',target/'after-policy.pt',plan,report)
++        require(proof['exact_model_adam_rng_progress_pool'],'Private restore failed')
++        git('add','--',str(target.relative_to(REPO)))
++    git('add','--',str(dest.relative_to(REPO)));git('commit','-m','Preserve curriculum '+label);git('push','origin','HEAD:refs/heads/codex/local365-teacher-results')
++    return git('rev-parse','HEAD')
++
++
++def run(v,parent,seq,seat,mode):
++    final=mode=='final';evaluate=mode!='training'
++    row={'sequence':seq,'seat':seat,'mode':mode,'status':'preparing','parent':binding(parent)};v['batches'].append(row);save(v)
++    plan_path=c.prepare(parent,seq,seat,evaluate,final);row['plan']=binding(plan_path);row['status']='running';save(v)
++    deadline=c.session()['absolute_deadline_unix']-15 if final else c.session()['compute_deadline_unix']
++    with (c.SESSION.parent/f'{plan_path.parent.name}.log').open('x') as log:
++        proc=subprocess.run([sys.executable,'-m','experiments.learner.curriculum_training','execute','--plan',str(plan_path),'--sha256',row['plan']['sha256']],cwd=ROOT,stdout=log,stderr=subprocess.STDOUT,timeout=max(1,deadline-time.time()))
++    report_path=plan_path.parent/'execution/report.json';report=json.loads(report_path.read_text());row['report']=binding(report_path)
++    row['completed_games']=sum(a['status']=='passed' for a in report['attempts']);row['outcomes']=[a['outcomes'][('red','blue')[seat]] for a in report['attempts']]
++    row['optimizer_steps']=report['optimizer_steps'];row['training_samples']=report['training_samples']
++    ok=proc.returncode==0 and report['status']=='finished' and report['worker_complete'] and report['supervisor_cleanup_verified'] and report['within_shared_budget']
++    row['status']='verified' if ok else 'failed';save(v)
++    if ok and not evaluate:
++        backup=c.SESSION.parent/'checkpoints'/plan_path.parent.name;plan=json.loads(plan_path.read_text())
++        proof=verify_pair(backup/'after-resume.pt',backup/'after-policy.pt',plan,report)
++        v['latest_verified_parent']=binding(plan_path);v['latest_progress']=proof['progress'];v['new_updates']+=1;save(v)
++    row['private_commit']=publish(plan_path.parent,plan_path.parent.name,checkpoint=ok and not evaluate)
++    if ok and not evaluate:v['latest_private_parent']=binding(plan_path)
++    row['status']='passed' if ok else 'failed';save(v)
++    require(ok,'Technical failure; no retry or additional gameplay')
++    return plan_path if not evaluate else parent
++
++
++def worker():
++    s=c.session();require(os.getppid()==s['controller_pid'],'Wrong supervisor')
++    with (c.SESSION.parent/'worker.lock').open('x') as f:f.write(str(os.getpid()))
++    parent=c.PARENT;v={'status':'running','batches':[],'new_updates':0,'latest_verified_parent':binding(parent),'latest_private_parent':binding(parent),'latest_progress':{'updates':146,'rollouts':584,'decisions':40641}}
++    save(v);durations=[120.];seq=0
++    try:
++        for seat in (0,1):run(v,parent,146,seat,'baseline')
++        while True:
++            s=c.session()
++            if min(s['compute_deadline_unix']-time.time(),s['started_monotonic']+6900-time.monotonic()) < max(300,2*max(durations[-5:])+120):break
++            started=time.monotonic();parent=run(v,parent,seq,seq%2,'training');seq+=1;durations.append(time.monotonic()-started)
++            if v['new_updates']%5==0:
++                for seat in (0,1):run(v,parent,v['latest_progress']['updates'],seat,'periodic')
++        for seat in (0,1):run(v,parent,v['latest_progress']['updates'],seat,'final')
++        v['status']='finished_budget_reserve'
++    except Exception as error:
++        v.update(status='stopped_failure',error=f'{type(error).__name__}: {error}')
++    finally:
++        v['stopped_unix']=time.time();save(v)
++
++
++def prepare_release():
++    require(not c.SESSION.exists(),'Consumed campaign cannot restart')
++    counts=c.check_gate(c.BASE/'study2/study-report.json');state=c.restore(c.PARENT)
++    require(vars(state.progress)=={'updates':146,'rollouts':584,'decisions':40641} and state.optimizer_steps==1475,'Wrong initial progress')
++    runtime_bin='/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/bin'
++    source=source_identity(c.INTERFACE);require(not source['tracked_worktree_dirty'],'Commit preparation before release')
++    original=json.loads(c.PARENT.read_text());runtime=runtime_identity(Path(runtime_bin));require(runtime==original['runtime'],'Runtime changed')
++    release={'scope':c.SCOPE,'authorization':'User authorized fresh two-hour local curriculum campaign after mixed natural outcomes; no diagnostics admitted.',
++        'source':source,'configuration':c.configuration(),'parent':state.bindings,'runtime_bin':runtime_bin,'runtime':runtime,
++        'data':'/Users/orsi/Projects/Heroes-artifacts/game-data','gate':binding(c.BASE/'study2/study-report.json'),'validation_outcomes':counts,
++        'maps':[c.map_identity(c.BASE/f'maps/curriculum-3-{s}.vmap',s) for s in (0,1)],
++        'distribution':'Alternating four-game same-seat batches; same open8x8 state, no transition to harder stages in this campaign',
++        'heldout':{'seats':[0,1],'engine_seeds':[710001,710002,710003,710004],'policy_seeds':[720001,720002,720003,720004]},
++        'whole_wall_seconds':7200,'finalization_reserve_seconds':300,'diagnostic_admission':False}
++    path=c.BASE/'campaign-v1/release.json';c.write_new(path,release);print(json.dumps(binding(path)))
++
++
++def launch():
++    private_preflight();path=c.BASE/'campaign-v1/release.json';r=json.loads(path.read_text())
++    require(r['source']==source_identity(c.INTERFACE) and not r['source']['tracked_worktree_dirty'],'Release source drift')
++    require(binding(r['gate']['path'])==r['gate'] and c.check_gate(r['gate']['path'])==r['validation_outcomes'],'Gate drift')
++    require(c.restore(c.PARENT).bindings==r['parent'],'Exact initial state changed')
++    require(runtime_identity(Path(r['runtime_bin']))==r['runtime'],'Runtime changed')
++    require([c.map_identity(c.BASE/f'maps/curriculum-3-{s}.vmap',s) for s in (0,1)]==r['maps'],'Map changed')
++    require(not c.SESSION.exists(),'One campaign only')
++    with c.SESSION.with_suffix('.lock').open('x') as f:f.write(str(os.getpid()))
++    now=time.time();mono=time.monotonic();s={'scope':c.SCOPE,'source':r['source'],'runtime':r['runtime'],'release':binding(path),
++        'started_unix':now,'started_monotonic':mono,'compute_deadline_unix':now+6900,'absolute_deadline_unix':now+7200,
++        'controller_pid':os.getpid(),'validation_outcomes':r['validation_outcomes']}
++    c.write_new(c.SESSION,s);proc=None;result={'session':binding(c.SESSION)}
++    try:
++        with (c.SESSION.parent/'controller.log').open('x') as log:
++            proc=guarded_popen([sys.executable,str(Path(__file__).resolve()),'worker'],deadline_monotonic=mono+7180,deadline_wall=now+7180,
++                evidence_path=c.SESSION.parent/'controller-deadline.jsonl',cwd=ROOT,stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT)
++            result['returncode']=proc.wait(timeout=max(1,min(now+7180-time.time(),mono+7180-time.monotonic())))
++    except Exception as e:result['error']=str(e)
++    finally:
++        errors=[]
++        try:
++            if proc is not None:close_owned_process(proc,timeout=2)
++            for p in (c.SESSION.parent/'batches').glob('*/execution/*deadline*.jsonl'):cleanup_from_evidence(p,timeout=1)
++        except Exception as e:errors.append(str(e))
++        result.update(cleanup_errors=errors,owned_cleanup_verified=not errors,stopped_unix=time.time(),within_budget=time.time()<=now+7200)
++        c.write_new(c.SESSION.parent/'controller-result.json',result)
++        # Compact final session metadata; per-batch archives/checkpoints were already published.
++        folder=c.BASE/'campaign-v1-final-evidence';folder.mkdir(exist_ok=False)
++        for p in c.SESSION.parent.iterdir():
++            if p.is_file():shutil.copy2(p,folder/p.name)
++        result['private_session_commit']=publish(folder,'campaign-v1-final-session')
++        c.write_new(c.BASE/'campaign-v1-final-preservation.json',result)
++    print(json.dumps(result))
++
++if __name__=='__main__':
++    p=argparse.ArgumentParser();p.add_argument('mode',choices=['prepare-release','launch','worker']);a=p.parse_args()
++    {'prepare-release':prepare_release,'launch':launch,'worker':worker}[a.mode]()
