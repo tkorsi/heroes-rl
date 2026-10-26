@@ -1,0 +1,137 @@
+--- a/server/ExperimentReplay.cpp
++++ b/server/ExperimentReplay.cpp
+@@ -291,9 +291,10 @@ uint64_t stateDigest(CGameHandler & gameHandler)
+ 	return writer.state;
+ }
+ 
+-std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler)
++namespace
++{
++void addHandlerParts(CGameHandler & gameHandler, std::vector<std::pair<const char *, uint64_t>> & parts)
+ {
+-	std::vector<std::pair<const char *, uint64_t>> parts;
+ 	auto part = [&parts](const char * name, const auto & value)
+ 	{
+ 		DigestWriter writer;
+@@ -301,7 +302,6 @@ std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & g
+ 		serializer & value;
+ 		parts.emplace_back(name, writer.state);
+ 	};
+-	part("game_state", gameHandler.gameState());
+ 	part("queries", gameHandler.QID);
+ 	part("ui_ready_for_dialogs", gameHandler.uiReadyForDialogs);
+ 	part("randomizer", *gameHandler.randomizer);
+@@ -310,9 +310,40 @@ std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & g
+ 	part("player_messages", *gameHandler.playerMessages);
+ 	part("turn_order", *gameHandler.turnOrder);
+ 	part("turn_timers", *gameHandler.turnTimerHandler);
++}
++}
++
++std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler)
++{
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	DigestWriter writer;
++	BinarySerializer serializer(&writer);
++	serializer & gameHandler.gameState();
++	parts.emplace_back("game_state", writer.state);
++	addHandlerParts(gameHandler, parts);
+ 	return parts;
+ }
+ 
++uint64_t stateDigestWithParts(CGameHandler & gameHandler, std::vector<std::pair<const char *, uint64_t>> & parts)
++{
++	parts.clear();
++	DigestWriter writer;
++	BinarySerializer serializer(&writer);
++	serializer & gameHandler.gameState();
++	// Until here this is exactly the fresh serializer and digest of the game_state part.
++	parts.emplace_back("game_state", writer.state);
++	serializer & gameHandler.QID;
++	serializer & gameHandler.uiReadyForDialogs;
++	serializer & *gameHandler.randomizer;
++	serializer & *gameHandler.battles;
++	serializer & *gameHandler.heroPool;
++	serializer & *gameHandler.playerMessages;
++	serializer & *gameHandler.turnOrder;
++	serializer & *gameHandler.turnTimerHandler;
++	addHandlerParts(gameHandler, parts);
++	return writer.state;
++}
++
+ void Outgoing::note(const CPackForClient & pack, int target, int clientConnection)
+ {
+ 	const auto type = CTypeList::getInstance().getTypeID(&pack);
+@@ -347,10 +378,10 @@ std::string sentJson(const Outgoing & outgoing)
+ 	return result + "]";
+ }
+ 
+-std::string partsJson(CGameHandler & gameHandler)
++std::string partsJson(const std::vector<std::pair<const char *, uint64_t>> & parts)
+ {
+ 	std::string result = "{";
+-	for(const auto & [name, digest] : stateDigestParts(gameHandler))
++	for(const auto & [name, digest] : parts)
+ 		result += (result.size() > 1 ? ",\"" : "\"") + std::string(name) + "\":\"" + digestHex(digest) + "\"";
+ 	return result + "}";
+ }
+@@ -430,6 +461,8 @@ void Recorder::afterInit(CGameHandler & gameHandler, int seed, const char * noCh
+ 	int humans = 0;
+ 	for(const auto & player : start->playerInfos)
+ 		humans += player.second.isControlledByHuman();
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	const uint64_t digest = stateDigestWithParts(gameHandler, parts);
+ 	line(std::string("{\"kind\":\"init\",\"schema\":\"") + SCHEMA + "\",\"vcmi_version\":" + quoted(GameConstants::VCMI_VERSION)
+ 		+ ",\"serialization_version\":" + std::to_string(static_cast<int>(ESerializationVersion::CURRENT))
+ 		+ ",\"platform\":" + quoted(platform()) + ",\"seed\":" + std::to_string(seed)
+@@ -437,15 +470,17 @@ void Recorder::afterInit(CGameHandler & gameHandler, int seed, const char * noCh
+ 		+ ",\"turn_timers\":" + (start->turnTimerInfo.isEnabled() ? "true" : "false") + ",\"human_players\":" + std::to_string(humans)
+ 		+ ",\"map\":" + quoted(start->fileURI) + ",\"connections\":" + connections
+ 		+ ",\"client_connection\":" + std::to_string(clientConnection) + ",\"hosts\":[" + hosts + "]"
+-		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
+-		+ ",\"parts\":" + partsJson(gameHandler) + "}");
++		+ ",\"start_info\":\"" + toHex(startInfo) + "\",\"digest\":\"" + digestHex(digest) + "\""
++		+ ",\"parts\":" + partsJson(parts) + "}");
+ }
+ 
+ void Recorder::afterStart(CGameHandler & gameHandler, IGameServer &)
+ {
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	const uint64_t digest = stateDigestWithParts(gameHandler, parts);
+ 	line("{\"kind\":\"start\",\"out\":" + std::to_string(outgoing.count) + ",\"client_out\":" + std::to_string(outgoing.clientCount)
+-		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(stateDigest(gameHandler)) + "\""
+-		+ ",\"parts\":" + partsJson(gameHandler) + ",\"sent\":" + sentJson(outgoing) + "}");
++		+ ",\"chain\":\"" + digestHex(outgoing.chain) + "\",\"digest\":\"" + digestHex(digest) + "\""
++		+ ",\"parts\":" + partsJson(parts) + ",\"sent\":" + sentJson(outgoing) + "}");
+ 	outgoing.clearFlags();
+ }
+ 
+@@ -465,12 +500,14 @@ void Recorder::applied(CGameHandler & gameHandler, const CPackForServer & pack,
+ 	for(const auto & [player, victory] : outgoing.terminals)
+ 		terminals += (terminals.size() > 1 ? "," : "") + std::string("{\"player\":") + std::to_string(player) + ",\"victory\":" + (victory ? "true" : "false") + "}";
+ 	terminals += "]";
++	std::vector<std::pair<const char *, uint64_t>> parts;
++	const uint64_t digest = boundary ? stateDigestWithParts(gameHandler, parts) : 0;
+ 	line("{\"kind\":\"applied\",\"seq\":" + std::to_string(sequence) + ",\"blocked\":" + (blocked ? "true" : "false")
+ 		+ ",\"result\":" + (result ? "true" : "false") + ",\"out\":" + std::to_string(outgoing.count)
+ 		+ ",\"client_out\":" + std::to_string(outgoing.clientCount) + ",\"chain\":\"" + digestHex(outgoing.chain) + "\""
+ 		+ ",\"boundary\":" + (boundary ? quoted(boundary) : std::string("null"))
+-		+ ",\"digest\":" + (boundary ? "\"" + digestHex(stateDigest(gameHandler)) + "\"" : std::string("null"))
+-		+ ",\"parts\":" + (boundary ? partsJson(gameHandler) : std::string("null"))
++		+ ",\"digest\":" + (boundary ? "\"" + digestHex(digest) + "\"" : std::string("null"))
++		+ ",\"parts\":" + (boundary ? partsJson(parts) : std::string("null"))
+ 		+ ",\"sent\":" + sentJson(outgoing) + ",\"terminals\":" + terminals + "}");
+ 	++sequence;
+ }
+--- a/server/ExperimentReplay.h
++++ b/server/ExperimentReplay.h
+@@ -51,6 +51,9 @@ std::string platform();
+ uint64_t stateDigest(CGameHandler & gameHandler);
+ /// Digests of the same parts one by one, to name the part a divergence is in.
+ std::vector<std::pair<const char *, uint64_t>> stateDigestParts(CGameHandler & gameHandler);
++/// stateDigest, with stateDigestParts in parts, serializing the game state once:
++/// the combined digest starts with exactly the bytes the game_state part digests.
++uint64_t stateDigestWithParts(CGameHandler & gameHandler, std::vector<std::pair<const char *, uint64_t>> & parts);
+ 
+ /// What the server has sent since its game handler was created.
+ struct Outgoing

@@ -273,7 +273,7 @@ bool ExplorerRL::buildAndSend(const std::function<JsonNode()> & build)
 	return true;
 }
 
-void ExplorerRL::writeMessage(const JsonNode & message)
+void ExplorerRL::writeMessage(JsonNode message)
 {
 	if(auto * evidence = explorer_rl::ContextualEvidence::current())
 	{
@@ -283,7 +283,7 @@ void ExplorerRL::writeMessage(const JsonNode & message)
 	}
 	const auto endpoint = std::atomic_load(&policyTransport);
 	if(!endpoint) throw std::runtime_error("Policy transport is not connected");
-	const auto metrics = endpoint->send(message);
+	const auto metrics = endpoint->sendOwned(std::move(message));
 	lastEncodeMicros = metrics.encodeMicros;
 	lastSendMicros = metrics.sendMicros;
 	lastMessageBytes = metrics.wireBytes;
@@ -406,7 +406,7 @@ void ExplorerRL::run() noexcept
 					// state after an unsupported interaction.
 					auto pending = takeContextualRecords();
 					if(!pending["records"].Vector().empty())
-						writeMessage(pending);
+						writeMessage(std::move(pending));
 				}
 				auto result = message("error");
 				result["message"].String() = error.what();
@@ -670,7 +670,7 @@ void ExplorerRL::visibleChangeTrigger() noexcept
 			captureContextual();
 			auto envelope = takeContextualRecords();
 			if(!envelope["records"].Vector().empty())
-				writeMessage(envelope);
+				writeMessage(std::move(envelope));
 			return;
 		}
 		noteVisibleChanges();
@@ -1104,7 +1104,7 @@ void ExplorerRL::gameOver(PlayerColor player, const EVictoryLossCheckResult & re
 		record["events"] = takeEvents();
 		record["state"] = playerState();
 		noteLedgerMessage("terminal");
-		writeMessage(record);
+		writeMessage(std::move(record));
 		std::lock_guard lock(stateMutex);
 		if(observationLedger)
 			std::fflush(observationLedger);

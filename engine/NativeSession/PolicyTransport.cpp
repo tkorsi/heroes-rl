@@ -53,6 +53,11 @@ InProcessPolicy::~InProcessPolicy() = default;
 
 WriteMetrics InProcessPolicy::send(const JsonNode & message)
 {
+	return sendOwned(JsonNode(message));
+}
+
+WriteMetrics InProcessPolicy::sendOwned(JsonNode && owned)
+{
 	const auto start = std::chrono::steady_clock::now();
 	std::lock_guard lock(impl->mutex);
 	// Like a socket peer that stopped reading: a closed channel refuses. A
@@ -66,7 +71,8 @@ WriteMetrics InProcessPolicy::send(const JsonNode & message)
 		throw std::runtime_error(impl->failure);
 	}
 	// Never block a packet callback while it owns the event/game-state locks.
-	impl->messages.push_back(message);
+	impl->messages.push_back(std::move(owned));
+	const JsonNode & message = impl->messages.back();
 	bool terminal = message["type"].String() == "terminal";
 	if(message["type"].String() == "contextual" && message["records"].isVector())
 		for(const auto & record : message["records"].Vector())
