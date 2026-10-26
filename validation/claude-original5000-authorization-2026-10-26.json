@@ -1,0 +1,14 @@
+{
+  "schema": "heroes-optimization-authorization-v1",
+  "timestamp_utc": "2026-10-26T18:07:13.387778+00:00",
+  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt",
+  "assignment_sha256": "8b9e1ef61e07fb12ecb8dd5131db7e052ad3a4c93b6d56e60f022b671ca01851",
+  "code_baseline": "a79a75e05ce5252eeb2024de901b83e5654bdd45",
+  "deadline_kyiv": "2026-10-27T13:00:00+02:00",
+  "compute_cutoff_utc": "2026-10-27T10:50:00Z",
+  "hard_stop_utc": "2026-10-27T11:00:00Z",
+  "scope": "Continue the same Claude Linux optimization task; deliver verified speedup and a reviewable manual-local-run integration",
+  "manual_5000_launch_preserved": true,
+  "production_training_launched_by_root": false,
+  "delivery_status": "prepared_not_yet_sent"
+}

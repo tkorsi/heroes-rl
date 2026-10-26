@@ -405,3 +405,19 @@ exactly (2,268rollouts,121,485decisions,4,578Adamsteps), and both original-map
 baseline plans passed full identity checks without execution. This snapshot is
 **not** the selected final parent. The [frozen receipt](../validation/local-original5000-frozen-check-2026-10-26.json)
 binds the offline evidence; no training sequence or native game was consumed.
+
+## 26 October 2026 — overnight original-map throughput assignment
+
+The user renewed Claude's existing performance task until 27 October 13:00
+Europe/Kiev (11:00 UTC). Heavy benchmarks stop at 10:50 UTC for preservation.
+The prospective target is substantially less wall time for the manual original-map
+5,000-game experiment, including replay, policy audit, PPO and durable restoration.
+The phase-2 additional 2x target remains a target, not a result. The local runner
+does not publish every batch to GitHub; local and network costs must stay separate.
+
+The easy local series has closed at update629; the original-map parent remains
+its exact final full state. Isolated disposable benchmarks do not enter that
+lineage. The user retains manual launch of the 5,000-game campaign. The previous
+opted-in reordered-gradient experiment remains separate from the exact default.
+See [the prospective assignment](operations/claude-original5000-overnight-20261026.txt)
+and [authorization](../validation/claude-original5000-authorization-2026-10-26.json).

@@ -63,6 +63,17 @@ Published closure receipts record no live owned workers/watchdogs, held locks
 or queued restart. A new manual run allocates a separate recorded seed namespace;
 it does not reopen the closed cloud session.
 
+The first manually launched local easy-map series has now finished at
+**update 629** (868 new training games and 217 PPO updates), with exact final
+restoration and owned shutdown recorded at 17:58:39 UTC on 26 October.
+The prepared original-map 5,000-game script continues that finalized state;
+its launch remains manual. The user renewed Claude's optimization assignment
+through **27 October 2026, 13:00 Europe/Kiev (11:00 UTC)**, prioritizing the
+complete verified local PPO cycle on the original map. See the
+[overnight performance assignment](docs/operations/claude-original5000-overnight-20261026.txt).
+This authorizes isolated performance benchmarks and implementation, not automatic
+launch of the 5,000-game experiment or promotion of experimental learner changes.
+
 The [consolidation check](validation/project-consolidation-2026-10-25.json)
 ran 1182 tests: 1156 passed and 26 required another platform or optional fixture.
 A fresh nine-target macOS native build and the Swift viewer build also passed.
