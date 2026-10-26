@@ -1,6 +1,6 @@
 {
-  "timestamp_utc": "2026-10-26T02:58:00.545446+00:00",
-  "phase": "running",
+  "timestamp_utc": "2026-10-26T03:03:55.695372+00:00",
+  "phase": "finished_budget_reserve",
   "campaign_launched": true,
   "actual_session_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/session.json",
   "release_path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/release.json",
@@ -59,18 +59,18 @@
   },
   "diagnostic_games": 64,
   "diagnostic_training_samples": 0,
-  "heldout_games": 168,
-  "admitted_training_games": 404,
-  "ppo_updates": 101,
+  "heldout_games": 184,
+  "admitted_training_games": 432,
+  "ppo_updates": 108,
   "latest_verified_checkpoint": {
-    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0100-seat0/plan.json",
-    "sha256": "bcd587f910404b451095e059bfd6a3d564144ac4ff40425e094f1ca3e1333f7e",
-    "bytes": 57869
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+    "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+    "bytes": 57870
   },
   "latest_preserved_checkpoint": {
-    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0099-seat1/plan.json",
-    "sha256": "2e9e2d1dae84e7f0b00f86fde510ff4356ef21401d4eb7d9634d46546dd3ee60",
-    "bytes": 57868
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/plan.json",
+    "sha256": "223897effce6f63399f538dd34b9bb95f4a540cf33603f215a6af40acac02352",
+    "bytes": 57870
   },
   "launch_utc": "2026-10-26T01:10:53.815159+00:00",
   "compute_deadline_utc": "2026-10-26T03:05:53.815159+00:00",
@@ -86,6 +86,10 @@
     }
   },
   "error": null,
-  "final_analysis": null,
-  "owned_cleanup_verified": null
+  "final_analysis": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v3/analysis.json",
+    "sha256": "af0781ab32fddf889191d27c419ad25db2fdf7679fe785d781f2e53317b5e457",
+    "bytes": 2554
+  },
+  "owned_cleanup_verified": true
 }

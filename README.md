@@ -505,3 +505,6 @@ held-out baselines were0/4 wins. Real PPO is running from exact update146 in
 `local-curriculum-update146/campaign-v3`; see the timestamped
 [local status](reports/local/teacher-curriculum-status.json). Final ownership
 transfer to cloud is gated on complete preservation and verified local shutdown.
+
+
+The local curriculum campaign is complete at update254 after 108 new PPO updates. Owned local training shutdown and final preservation are verified. See [final results](validation/curriculum-v3-final-2026-10-26.json) and the timestamped local handoff status.

@@ -215,3 +215,8 @@ the unique readiness path exclude duplicates. Its command/source identities and
 execution receipts are retained. Its independent watchdog shares the original
 local hard deadline; it cannot start training or extend the window. Nine offline
 handoff/watcher guard tests passed before arming it.
+
+
+## Completed local campaign
+
+Local campaign status: `finished_budget_reserve`. It completed 108 PPO updates, advancing update146 to254. Cumulative progress is 1016 admitted rollouts and 73345 decisions. The final controller archive and exact checkpoint restore are verified; all owned local training processes are stopped. Per-seat training outcomes and baseline/final held-out results are recorded in [the final analysis](../../validation/curriculum-v3-final-2026-10-26.json). These are easier8x8 curriculum results, not original-map performance. The separate one-shot watcher now performs the Git-only cloud handoff.
