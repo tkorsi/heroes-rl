@@ -197,7 +197,20 @@ def worker():
     finally:v['stopped_utc']=utc();save(v)
 
 
+def check_engine_checkout():
+    """Reject incomplete release preparation before any control or policy game."""
+    lock=json.loads((ROOT/'dependencies/vcmi.json').read_text())
+    repo=ROOT/lock['directory']
+    require(repo.is_dir() and not repo.is_symlink(), 'Generated VCMI dependency missing: run tools/prepare_vcmi.py before freezing')
+    head=subprocess.check_output(['git','-C',str(repo),'rev-parse','HEAD'],text=True,timeout=10).strip()
+    require(head==lock['commit'], 'Generated VCMI HEAD differs from pinned engine')
+    checked=subprocess.run([sys.executable,str(ROOT/'tools/prepare_vcmi.py'),'--check'],
+        cwd=ROOT,capture_output=True,text=True,timeout=60,check=True)
+    return dict(engine_revision=head,check=checked.stdout.strip())
+
+
 def freeze():
+    engine_preflight=check_engine_checkout()
     private_preflight()
     require(ROOT != AUTHOR and not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip(), 'Freeze only a separate clean checkout')
     state=c.restore(c.PARENT)
@@ -209,7 +222,7 @@ def freeze():
     require(runtime==json.loads(c.PARENT.read_text())['runtime'],'Stable runtime changed')
     names=['tools/curriculum_campaign.py','tools/run_curriculum_study3.py',
            'configs/teacher-curriculum-v2.json','experiments/explorer/create_curriculum_scenario.py']
-    frozen=dict(checkout=str(ROOT),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
+    frozen=dict(checkout=str(ROOT),engine_preflight=engine_preflight,source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
         capability_implementation=capability_implementation_identity(),bound_files={n:binding(ROOT/n) for n in names},
         parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,
         data='/Users/orsi/Projects/Heroes-artifacts/game-data',

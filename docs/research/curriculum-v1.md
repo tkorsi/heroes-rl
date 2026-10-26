@@ -122,3 +122,32 @@ namespaces, private backup restoration and wall/monotonic deadline checks. The
 unfinished earlier patch remains retained for provenance. No embedded-engine or
 PR29 path is used. A campaign correctness failure stops and preserves evidence;
 there is no automatic restart, extension, overlap or cloud campaign.
+
+
+## Study3 failure: missing generated engine identity
+
+Pinned release `c74de7a` ran from the separate clean checkout. Study3 stopped
+on its first capture control after0.627 seconds. The native terminal appeared
+to be a capture victory, but it is **unscored**: the isolated checkout had no
+`vcmi/` generated dependency. Episode identity recorded `engine=null` and
+`engine_revision=unavailable`, causing `missing_source_identity`; independent
+replay rejected it with `Pinned engine identity mismatch`. The runtime bytes
+and bound authored source did not drift. The omitted dependency-preparation
+preflight was an agent setup error, not a policy failure.
+
+No policy game ran. Three controls and64 policy games remained unstarted.
+No PPO release/session or two-hour clock began. The material acceptance failure
+blocks launch under the renewed instructions; no replacement or retrospective
+revalidation was performed. Both process-supervision receipts confirm closure,
+and exact update146 model/Adam/RNG/progress/pool restoration passed again.
+Raw evidence, frozen bindings and research records are privately preserved at
+`c17acdbdf554a2ed7939b20cb343ba9d9d6be802` in the training-state repository.
+
+The authoring checkout now adds an offline preflight before `freeze`: require
+a real generated VCMI checkout, exact pinned engine revision, and successful
+`tools/prepare_vcmi.py --check`. Nine focused controller tests passed, including
+missing-checkout and wrong-revision rejection before gameplay. The existing
+author checkout passed the actual recipe check. This fix does not mutate the
+failed frozen release or validate its rejected control. Any future acceptance
+requires a correctly prepared isolated dependency and a fresh declared study.
+See [failure evidence](../../validation/curriculum-v3-acceptance-failure-2026-10-26.json).

@@ -478,3 +478,12 @@ fresh diagnostic seeds. Campaign-v2 keeps exact update146 state, full four-game
 batches and native terminal-only rewards on the easier8×8 start. The campaign
 clock has not started during repair. See the prospective protocol in the
 [curriculum research record](docs/research/curriculum-v1.md).
+
+
+The frozen study3 acceptance stopped on its first control: the new isolated
+checkout lacked the generated VCMI dependency needed for pinned engine identity.
+Replay rejected the control; it is unscored. No policy game or PPO ran, and no
+new two-hour clock started. All evidence is preserved and update146 remains
+exact. An offline preflight now rejects missing/wrong engine checkouts before
+freezing; the failed release remains unchanged. See the
+[study3 failure record](validation/curriculum-v3-acceptance-failure-2026-10-26.json).

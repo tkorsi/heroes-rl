@@ -1,0 +1,80 @@
+{
+  "schema": "heroes-curriculum-study3-result-v1",
+  "timestamp_utc": "2026-10-26T00:45:13.574329+00:00",
+  "status": "stopped_material_acceptance_failure",
+  "study": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/study3/study-report.json",
+    "sha256": "c978e8bf5b79b92e67228e2337a0e763748a6b6dcdbabf2d690c56e00333e380",
+    "bytes": 3907
+  },
+  "frozen": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-curriculum-update146/campaign-v2/frozen.json",
+    "sha256": "f2ec9440c9757edbfb2daf34f8d92189bd2d32c19a90cfa0d58f0743b7fe5dde",
+    "bytes": 82966
+  },
+  "elapsed_seconds": 0.6271796226501465,
+  "source_commit": "c74de7ae59b10af5c67488662e293b97a97dec06",
+  "source_unchanged": true,
+  "checkpoint_unchanged": {
+    "plan": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/plan.json",
+      "sha256": "13725f81344b43113749e576edccb6bdc18544d0a1455246aedd46ea4aee28d6",
+      "bytes": 56924
+    },
+    "report": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/report.json",
+      "sha256": "8066f444fa2b3de13829f854319b48305d39ecd216daa1b65e062cdf673cf432",
+      "bytes": 10957
+    },
+    "policy": {
+      "bytes": 637939,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/after-policy.pt",
+      "sha256": "5ca61dfcfe35e36e6075bd0690abad6414ff084b0935b703f571b2a63e1bf023"
+    },
+    "resume": {
+      "bytes": 1266037,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runs/v8-update92-repair3-continuation-148/execution/after-resume.pt",
+      "sha256": "50252db8da1a505ab5174cadef2489707783b44c4811d373581f7beec87b94e9"
+    },
+    "progress": {
+      "updates": 146,
+      "rollouts": 584,
+      "decisions": 40641
+    },
+    "optimizer_steps": 1475,
+    "source_proof": {
+      "explicit_curriculum_transition": true,
+      "policy_ppo_unchanged": true
+    },
+    "runtime_proof": {
+      "runtime_unchanged": true,
+      "initial_state_distribution_changes_only": true
+    }
+  },
+  "verified_policy_games": 0,
+  "failed_controls": 1,
+  "unstarted_controls": 3,
+  "unstarted_policy_games": 64,
+  "gate_passed": false,
+  "campaign_launched": false,
+  "two_hour_clock_started": false,
+  "ppo_updates": 0,
+  "training_samples": 0,
+  "owned_cleanup_verified": true,
+  "checked_process_receipts": 2,
+  "failure": "First capture control rejected as missing_source_identity; independent replay: Pinned engine identity mismatch",
+  "cause": "New isolated checkout lacked generated vcmi dependency. Manifest engine=null and engine_revision=unavailable. Freeze checked runtime binaries and authored source but omitted generated dependency identity/preparation preflight.",
+  "interpretation": "Apparent native control victory is unscored. No policy game ran. No retrospective revalidation or launch bypass.",
+  "next_required_preparation": "Prepare an independent generated VCMI dependency from the pinned lock and canonical recipe, verify tools/prepare_vcmi.py --check and engine HEAD before freeze; any future acceptance needs a fresh preregistered namespace.",
+  "private_preservation": {
+    "commit": "c17acdbdf554a2ed7939b20cb343ba9d9d6be802",
+    "archive": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/private-local365-state/results/local-curriculum-update146/study3-failed-acceptance/evidence.tar.gz",
+      "sha256": "1f08a20fe9ae3e187f45a9df3782a3f2c80f0b9a69559669441667e2106ad63b",
+      "bytes": 91766
+    },
+    "verified_files": 28,
+    "verified_symlinks": 1,
+    "external_data_dereferenced": false
+  }
+}

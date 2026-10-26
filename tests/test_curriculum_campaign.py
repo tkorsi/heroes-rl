@@ -123,3 +123,20 @@ class CampaignTests(unittest.TestCase):
                     bound.recheck()
                     ep=c.prepare(c.PARENT,146,seat,evaluate=True)
                     self.assertEqual(c.read_plan(ep,c.binding(ep)['sha256'])['mode'],'evaluation')
+
+
+    def test_freeze_rejects_missing_engine_before_artifact_or_game_work(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'dependencies').mkdir()
+            (root/'dependencies/vcmi.json').write_text(json.dumps({'directory':'vcmi','commit':'pinned'}))
+            with patch.object(ctl,'ROOT',root),patch.object(ctl,'private_preflight') as private:
+                with self.assertRaisesRegex(ValueError,'Generated VCMI dependency missing'):ctl.freeze()
+                private.assert_not_called()
+
+    def test_engine_preflight_rejects_wrong_revision_without_preparation(self):
+        with tempfile.TemporaryDirectory() as td:
+            root=Path(td);(root/'dependencies').mkdir();(root/'vcmi').mkdir()
+            (root/'dependencies/vcmi.json').write_text(json.dumps({'directory':'vcmi','commit':'pinned'}))
+            with patch.object(ctl,'ROOT',root),patch.object(ctl.subprocess,'check_output',return_value='other'),patch.object(ctl.subprocess,'run') as run:
+                with self.assertRaisesRegex(ValueError,'HEAD differs'):ctl.check_engine_checkout()
+                run.assert_not_called()
