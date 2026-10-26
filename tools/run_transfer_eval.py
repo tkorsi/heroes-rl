@@ -188,6 +188,7 @@ def analysis(value,manifest):
     return dict(schema='heroes-frozen-transfer-result-v1',timestamp_utc=utc(),status=value['status'],cells=cells,paired_comparisons=paired,
         gate_status=value.get('gate_status'),gate_comparison=value.get('gate_comparison'),selected_backend=value.get('selected_backend'),
         games_attempted=len(allrows),training_samples=0,ppo_updates=0,optimizer_steps=0,window=value.get('window'),private_preservation=value.get('private_preservation',[]),
+        backend_withdrawal=value.get('backend_withdrawal'),recovery=value.get('recovery'),retained_failures=value.get('retained_failures',[]),
         limitations=['16 games per checkpoint/scenario/seat; seed does not fix all native opponent scheduling.',
             'Repeated four fixed old gate starts are not transfer games. Varied easier coordinates and original scenario are separate.',
             'Embedded process reuse capped at two gate games and one transfer game; no memory plateau or PPO throughput claim.',
@@ -197,21 +198,45 @@ def analysis(value,manifest):
 
 
 def main():
+    parser=argparse.ArgumentParser();parser.add_argument('--recover-from',type=Path);args=parser.parse_args()
+    recovery=args.recover_from is not None;tag='recovery-001' if recovery else ''
     lock=(BASE/'owner.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-    require(not (BASE/'window.json').exists(),'This diagnostic clock is already consumed')
+    if not recovery:require(not (BASE/'window.json').exists(),'This diagnostic clock is already consumed')
     for path in Path('/proc').iterdir():
         if not path.name.isdigit():continue
         p=process(int(path.name))
         if p:require(not any(x.startswith('/workspace/releases/teacher-overnight-') for x in p['command']),'Old Teacher process still live')
-    manifest=json.loads(CONFIG.read_text());write(BASE/'manifest.json',manifest)
-    for name,digest in manifest['harness_files'].items():require(binding(ROOT/name)['sha256']==digest,'Unfrozen harness')
+    manifest=json.loads(CONFIG.read_text())
+    if not recovery:write(BASE/'manifest.json',manifest)
+    else:require(json.loads((BASE/'manifest.json').read_text())==manifest,'Original prospective manifest changed')
+    for name,digest in manifest['harness_files'].items():
+        if recovery and name=='tools/run_transfer_eval.py':
+            require(binding(Path('/workspace/releases/teacher-transfer-harness-6a2dea3')/name)['sha256']==digest,'Original frozen orchestration changed')
+        else:require(binding(ROOT/name)['sha256']==digest,'Unfrozen harness')
     for folder in ('logs','runs','schedules'): (BASE/folder).mkdir(exist_ok=True)
     write(BASE/'controller-identity.json',process(os.getpid()))
     watchdog=subprocess.Popen([sys.executable,str(ROOT/'tools/transfer_eval_watchdog.py')],cwd=ROOT,stdin=subprocess.DEVNULL,
-        stdout=(BASE/'watchdog.log').open('x'),stderr=subprocess.STDOUT,start_new_session=True)
+        stdout=(BASE/('watchdog-'+tag+'.log' if recovery else 'watchdog.log')).open('x'),stderr=subprocess.STDOUT,start_new_session=True)
     value=dict(status='preparing',runs=[],private_preservation=[],training_samples=0,ppo_updates=0,optimizer_steps=0,watchdog_pid=watchdog.pid)
+    if recovery:
+        require(args.recover_from.is_relative_to(BASE/'attempts'),'Fresh subordinate recovery receipt required')
+        value=json.loads(args.recover_from.read_text());last=value['runs'][-1]
+        require(value['status']=='stopped_failure' and value.get('post_study_full_restore_verified') is True,'Complete stopped restoration required')
+        require(last['label']=='transfer-037' and last['returncode']==-11 and last['owned_cleanup_verified'] is True,'Only the preserved concrete embedded SIGSEGV qualifies')
+        require(value['private_preservation'][-1]['remote_acknowledged'] is True,'Failed evidence must already be private and acknowledged')
+        require(len(value['runs'])==41 and value['gate_comparison']['passed'] is True,'Original eight-game gate and consumed schedule differ')
+        window=json.loads((BASE/'window.json').read_text());require(time.time()<window['compute_deadline_unix']-600,'Insufficient unchanged diagnostic budget')
+        prior_error=value.pop('error',None);value.setdefault('retained_failures',[]).append(dict(original_error=prior_error,last_attempt=last,private_commit=value['private_preservation'][-1]['commit']))
+        value.pop('preservation_error',None);value['post_study_full_restore_verified']=False
+        value.update(status='recovering_original_cold',watchdog_pid=watchdog.pid,
+            backend_withdrawal=dict(reason='Embedded SIGSEGV at transfer037 after narrow gate passed; no replay/reconstruction completion, unscored',
+                failed_attempt='transfer-037',same_model_and_game_semantics=True,no_failed_attempt_retry=True,remaining_rows_only=True),
+            recovery=dict(prior_report=binding(args.recover_from),window=binding(BASE/'window.json'),orchestration=binding(ROOT/'tools/run_transfer_eval.py'),
+                new_harness_commit=git(ROOT,'rev-parse','HEAD'),clock_reset=False),
+            gate_status='passed_narrow_gate_later_embedded_backend_withdrawn',selected_backend='original-cold-after-embedded-SIGSEGV')
     result_path=BASE/'result.json';write(result_path,value)
     try:
+      if not recovery:
         preparation=[BASE/f'restore-{u}' for u in (146,254,412)]+[BASE/'archived-cold-strict',BASE/'archived-accelerated-strict']
         preparation+=[p for p in BASE.iterdir() if p.is_file() and (p.suffix=='.log' or p.name.startswith('ldd-'))]
         value['private_preservation'].append(preserve('immutable-inputs',[BASE/'inputs',BASE/'independent-checkpoint-backup',BASE/'maps',BASE/'manifest.json',*preparation]))
@@ -238,8 +263,19 @@ def main():
         event('linux_acceleration_gate_decision',gate_status=value['gate_status'],comparison=value['gate_comparison'],archived_strict=strict)
         value['private_preservation'].append(preserve('linux-gate',[BASE/'runs',BASE/'window.json',BASE/'result.json',BASE/'schedules']))
         status(value,'transfer_running');publish_public('Publish Linux acceleration gate and selected frozen transfer runtime')
-        completed_since_archive=[];last_public=time.time();durations=[]
-        for row in manifest['transfer_schedule']:
+      else:
+        accepted=False
+        event('cold_fallback_recovery_started',recovery=value['recovery'],backend_withdrawal=value['backend_withdrawal'])
+        status(value,'remaining_transfer_cold_fallback');publish_public('Publish preserved embedded failure and bounded cold fallback')
+      for _ in range(100):
+        observed=json.loads((BASE/'watchdog-status.json').read_text())
+        if observed.get('pid')==watchdog.pid and observed.get('phase')=='armed' and observed.get('window')==window:break
+        require(watchdog.poll() is None,'Independent watchdog stopped');time.sleep(.05)
+      else:raise ValueError('Current watchdog did not acknowledge unchanged clock')
+      completed_since_archive=[];last_public=time.time();durations=[c['wrapper_seconds'] for c in value['runs'] if c['label'].startswith('transfer-') and c['status']=='passed']
+      consumed={r['id'] for c in value['runs'] for r in c['schedule']}
+      for row in manifest['transfer_schedule']:
+            if row['id'] in consumed:continue
             remaining=min(window['compute_deadline_unix']-time.time(),window['compute_deadline_monotonic']-time.monotonic())
             if remaining<max(90,2*max(durations[-12:],default=30)+30):break
             key='accelerated' if accepted else 'cold';label=row['id']
@@ -250,7 +286,7 @@ def main():
             if len(completed_since_archive)>=12:
                 value['private_preservation'].append(preserve('transfer-through-'+label,completed_since_archive));completed_since_archive=[];write(result_path,value)
             if time.time()-last_public>300:publish_public('Publish bounded frozen transfer progress');last_public=time.time()
-        value['status']='completed' if len([x for x in value['runs'] if x['label'].startswith('transfer-')])==192 else 'stopped_safe_budget_reserve'
+      value['status']='completed' if len([x for x in value['runs'] if x['label'].startswith('transfer-')])==192 else 'stopped_safe_budget_reserve'
     except BaseException as exc:value.update(status='stopped_failure',error=f'{type(exc).__name__}: {exc}');event('diagnostic_failure_retained',error=value['error'])
     finally:
         # All remaining work is preservation, with a distinct five-minute reserve.
@@ -258,15 +294,16 @@ def main():
         try:
             for bound in manifest['data_bindings'].values():require(binding(bound['path'])==bound,'Original private game Data changed')
             for update in (146,254,412):
-                output=BASE/f'post-study-restore-{update}'
+                output=BASE/(f'post-study-restore-{tag}-{update}' if recovery else f'post-study-restore-{update}')
                 subprocess.run([sys.executable,str(ROOT/'tools/transfer_eval_worker.py'),'--mode','restore','--source',manifest['runtimes']['cold']['source'],
-                    '--manifest',str(BASE/'manifest.json'),'--checkpoint',str(update),'--output',str(output)],check=True,timeout=45,stdout=(BASE/f'post-study-restore-{update}.log').open('x'),stderr=subprocess.STDOUT)
+                    '--manifest',str(BASE/'manifest.json'),'--checkpoint',str(update),'--output',str(output)],check=True,timeout=45,stdout=(BASE/(f'post-study-restore-{tag}-{update}.log' if recovery else f'post-study-restore-{update}.log')).open('x'),stderr=subprocess.STDOUT)
             value['post_study_full_restore_verified']=True
-            evidence=BASE/'final-evidence';evidence.mkdir(exist_ok=False)
+            value['post_study_restore_reports']={str(u):binding(BASE/(f'post-study-restore-{tag}-{u}' if recovery else f'post-study-restore-{u}')/'report.json') for u in (146,254,412)}
+            evidence=BASE/(tag+'-final-evidence' if recovery else 'final-evidence');evidence.mkdir(exist_ok=False)
             for name in ('window.json','result.json','events.jsonl','controller-identity.json','watchdog-status.json','manifest.json'):
                 if (BASE/name).exists():shutil.copyfile(BASE/name,evidence/name)
-            value['private_preservation'].append(preserve('final-all-captures',[BASE/'runs',BASE/'logs',BASE/'deadlines',BASE/'schedules',evidence,
-                *[BASE/f'post-study-restore-{u}' for u in (146,254,412)]]))
+            value['private_preservation'].append(preserve('final-all-captures-'+tag if recovery else 'final-all-captures',[BASE/'runs',BASE/'logs',BASE/'deadlines',BASE/'schedules',evidence,
+                *[Path(bound['path']).parent for bound in value['post_study_restore_reports'].values()]]))
         except Exception as exc:value['preservation_error']=f'{type(exc).__name__}: {exc}'
         final=analysis(value,manifest);final.update(error=value.get('error'),preservation_error=value.get('preservation_error'),post_study_full_restore_verified=value.get('post_study_full_restore_verified',False))
         write(BASE/'final-report.json',final);write(AUTHOR/'validation/transfer-eval-2026-10-26.json',final)

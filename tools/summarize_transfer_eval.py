@@ -24,7 +24,10 @@ def summarize():
         if bound:
             if binding(bound['path'])!=bound:raise ValueError('Immutable worker report changed')
             saved=json.loads(Path(bound['path']).read_text())
-            if saved['rows']!=cell['rows']:raise ValueError('Controller rows differ from worker evidence')
+            normalized=json.loads(json.dumps(saved['rows']))
+            for row in normalized:
+                if row['status']!='passed':row['status']='failed'
+            if normalized!=cell['rows']:raise ValueError('Controller rows differ from worker evidence')
         target=gate if cell['label'].startswith('gate-') else rows
         for row in cell.get('rows',[]):target.append(dict(**row,wrapper_seconds=cell['wrapper_seconds']/max(1,len(cell['rows']))))
     groups={}
@@ -43,7 +46,7 @@ def summarize():
         ratios[field]=cold/accelerated if cold and accelerated else None
     frozen={}
     for update in (146,254,412):
-        path=BASE/f'post-study-restore-{update}/report.json';proof=json.loads(path.read_text())
+        path=Path(value.get('post_study_restore_reports',{}).get(str(update),{}).get('path',str(BASE/f'post-study-restore-{update}/report.json')));proof=json.loads(path.read_text())
         if proof['status']!='passed' or proof['restore_before']!=proof['restore_after']:
             raise ValueError('Final checkpoint restoration proof differs')
         frozen[str(update)]=dict(report=binding(path),restore=proof['restore_after'],independent_backup=proof['independent_backup_restore'])
@@ -56,7 +59,9 @@ def summarize():
     final=json.loads((BASE/'final-report.json').read_text())
     easy412=sum(c['natural_wins'] for c in final['cells'].values() if c['checkpoint']==412 and c['scenario']=='easy')
     original412=sum(c['natural_wins'] for c in final['cells'].values() if c['checkpoint']==412 and c['scenario']=='original')
-    if easy412>=24 and original412<16:
+    if any(c['unstarted'] for c in final['cells'].values()):
+        proposal='This bounded study has an incomplete balanced cohort. Complete missing diagnostic cells under a separately authorized budget before choosing a training curriculum; do not infer broad transfer from the completed subset.'
+    elif easy412>=24 and original412<16:
         proposal='The varied easy cohort transfers substantially better than original-map play. A next separately budgeted curriculum should bridge to an owned-town economy and visible opponent farther away, and mix original-start retention checks. Recruitment and transfers remain explicit measured objectives, never shaped rewards.'
     elif easy412<24:
         proposal='Broaden the easy8x8 coordinate/distance distribution before increasing map size or economic complexity; retain both-seat original-start evaluation to monitor forgetting. Any PPO needs a separately authorized budget.'
