@@ -53,3 +53,5 @@ Before reading any final checkpoint or running any real platform comparison, the
 - 2026-10-26T02:57:34.217484+00:00 autonomous_chain_started: {"pid": 35462, "bootstrap": "/workspace/releases/teacher-overnight-bootstrap-18a6b19"}
 
 - 2026-10-26T02:59:10.303084+00:00 Corrected committed bootstrap18a6b19 is now waiting asPID35462. Idle controller26663 exited before replacement startup; its original command/status receipts remain preserved. The exclusive lease is held by the replacement. Watchdog26662 and poller26664 continued without restart, so their absolute09:55/10:00UTC deadlines were never reset. No handoff was consumed, no real weight inspected and no cloud game/update occurred. Nineteen focused controls passed.
+
+- 2026-10-26T03:06:10.933672+00:00 autonomous_chain_stopped: {"result": {"status": "stopped_before_training", "training_started": false, "error": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'"}}

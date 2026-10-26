@@ -1,7 +1,7 @@
 {
-  "timestamp_utc": "2026-10-26T02:59:10.303084+00:00",
-  "phase": "waiting_final_local_handoff",
-  "ownership": "local",
+  "timestamp_utc": "2026-10-26T03:06:10.936002+00:00",
+  "phase": "stopped_stopped_before_training",
+  "ownership": "cloud",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
   "hard_deadline_utc": "2026-10-26T10:00:00Z",
   "cloud_training_started": false,
@@ -10,12 +10,12 @@
   "checkpoint": null,
   "verified_asset_files": 8,
   "watchdog_pid": 26662,
-  "blocker": "Final verified local ownership transfer not yet published",
+  "blocker": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
   "next_step": "Cloud-owned wait for real final local ready.json; then immutable restore, drift, fresh Linux gates and PPO automatically",
   "offline_control_tests": 15,
   "private_git_read_access": true,
   "canonical_build": "passed",
-  "remaining_compute_seconds": 25045.780311107635,
+  "remaining_compute_seconds": 24529.063990831375,
   "autonomous_controller_pid": 35462,
   "handoff_poller_pid": 26664,
   "autonomous_bootstrap_commit": "18a6b199ea663646d3e6066a051807b661903f87",
@@ -41,5 +41,14 @@
   "previous_wait_controller_pid": 26663,
   "previous_wait_controller_exited": true,
   "real_handoff_received": false,
-  "real_weights_inspected": false
+  "real_weights_inspected": false,
+  "autonomous_result": {
+    "status": "stopped_before_training",
+    "training_started": false,
+    "error": "FileNotFoundError: [Errno 2] No such file or directory: '/workspace/Heroes-artifacts/overnight-20261026/imports/bcdee6ecc3609f3024f304c15ef8ccba7e605404/historical/local-curriculum-update146/campaign-v3/batches/train-0107-seat1/execution/episode-000001/builtin-rollout.json'",
+    "stopped_utc": "2026-10-26T03:06:10.935669+00:00",
+    "hard_deadline_unix": 1793008800.0,
+    "compute_deadline_unix": 1793008500.0,
+    "restart_authorized": false
+  }
 }
