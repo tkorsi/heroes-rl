@@ -1,0 +1,293 @@
+{
+  "checkpoint": {
+    "model_optimizer_rng_progress_pool_exact_restore": true,
+    "policy_sha256": "1803823cab4a2d74f436e8425e31a1dbe1892e58844955945e2c963d176d9b88",
+    "private_commit": "5577155c0b9e9d859d795edc0831d9d8e800d9d6",
+    "resume_sha256": "09eee900a5fbff507a05c39e8ad4379e5b95177608b38cb69390a3cb56fee321",
+    "unchanged": true,
+    "update": 412
+  },
+  "checks": {
+    "canonical_dependency_checks_passed": 2,
+    "focused_tests_passed": 100,
+    "history_frames": 33615,
+    "independent_checks": 1822,
+    "independent_errors": 0,
+    "native_contract_tests_passed": 6,
+    "owned_process_cleanup_passed": true,
+    "paired_history_decision_estimate_equality": true,
+    "policy_reconstruction_passed": 72,
+    "replay_passed": 72,
+    "total_recorded_decisions": 5013,
+    "unchecked_native_transactions": 0,
+    "warmup_capture_verification_observed": true
+  },
+  "configuration": {
+    "battle": "BattleAI",
+    "days": 365,
+    "dialog_reserve": 160,
+    "engine_seeds": [
+      710001,
+      710002,
+      710003,
+      710004
+    ],
+    "historical_torch": "2.9.1+cpu",
+    "interface": "adventure-capabilities-v1",
+    "opponent": "Nullkiller Easy",
+    "ordinary_choices": 4960,
+    "platform": "macOS arm64",
+    "policy_seeds": [
+      720001,
+      720002,
+      720003,
+      720004
+    ],
+    "python": "3.13.5",
+    "scenario": "final easier8x8 seat-specific maps",
+    "three_variants_three_rounds_two_seats_four_games": true,
+    "torch": "2.9.1",
+    "torch_threads": 1,
+    "total_choices": 5120
+  },
+  "evidence": {
+    "independent-study2-audit.json": "4508ec4f7d698c8a623be16cc79d0e68d16e06c179add2fdf7b0bc0a2e4b35c1",
+    "offline-recorded-412-same-host-comparison.json": "c5e2d4894c2e0d704273e2462991e0d31d81c0e06018718e8733274ab5bd6a08",
+    "study2/plan.json": "f0d51fd087c5bbadda7b8a4fd628786f02c540988cc18e04be7ab5ccfbfb542a",
+    "study2/result.json": "ff2c5d85c36238a23fca7652f989ccae652c9719537c010da077142ce288cacd"
+  },
+  "failures_retained": [
+    {
+      "attempt": "study1",
+      "games": 0,
+      "ppo_updates": 0,
+      "reason": "Virtual-environment interpreter symlink resolved to a different Anaconda Torch installation; strict checkpoint loader rejected it before gameplay.",
+      "repair": "Preserve the venv interpreter path; fresh study2 retained the original deadline.",
+      "unstarted_games": 72
+    },
+    {
+      "failed": 1,
+      "passed": 99,
+      "reason": "Quoted path with spaces was not fully sanitized in probe report metadata.",
+      "repair": "Narrow metadata sanitizer correction;100 passed on repeat.",
+      "stage": "focused_tests_first_run"
+    },
+    {
+      "new_games": 0,
+      "reason": "Strict value/log-probability equality failed in7 of8 archived games identically in base and accelerated Mac execution; no tolerance relaxed.",
+      "same_host_numeric_comparison": "exact across291 recorded decisions",
+      "stage": "archived_Linux_to_Mac_numeric_reconstruction"
+    }
+  ],
+  "finished_utc": "2026-10-26T12:40:51.283505+00:00",
+  "hard_deadline_utc": "2026-10-26T13:21:20.318085Z",
+  "limitations": [
+    "Eight repeated starts and two timed rounds;72 wins are not72 independent held-out positions.",
+    "No full PPO/update/admission/private-publication throughput measurement.",
+    "Mac timing and same-host equivalence do not establish Linux acceptance or cross-platform bitwise equality.",
+    "Embedded reuse tested only4 games per process; RSS grew from369197056 to554074112 bytes in one timed Red run, so no memory plateau claim.",
+    "PR29/30 executable code is not merged by this report-only synchronization."
+  ],
+  "next_assignment": {
+    "checkpoints": [
+      146,
+      254,
+      412
+    ],
+    "compute_minutes_from_first_new_game": 85,
+    "hard_minutes_from_first_new_game": 90,
+    "linux_gate_games_max": 8,
+    "prompt": "docs/operations/teacher-transfer-eval-20261026.txt",
+    "scope": "Bounded frozen transfer diagnostics, no PPO",
+    "teacher_thread": "01a173a2-1bee-73c4-9f71-ef0a1ab9c050",
+    "transfer_games_max": 192
+  },
+  "offline_archived_linux_comparison": {
+    "archived_action_and_prefix_preserved": true,
+    "linux_to_mac_strict_passed": false,
+    "max_linux_to_mac_abs_numeric_drift": 7.152557373046875e-07,
+    "max_linux_to_mac_rel_numeric_drift": 1.59475393762955e-05,
+    "strict_same_host_passed": true
+  },
+  "outcomes": {
+    "adam_steps": 0,
+    "cutoffs": 0,
+    "games": 72,
+    "natural_losses": 0,
+    "natural_wins": 72,
+    "ppo_updates": 0,
+    "technical_game_failures": 0,
+    "training_samples": 0,
+    "unique_seat_seed_starts": 8,
+    "unstarted": 0
+  },
+  "private_preservation": {
+    "all_seven_remote_blobs_exact": true,
+    "branch": "codex/validate-acceleration-412",
+    "commit": "be0313b756675acf8d55723c010653f7ff5e87a8",
+    "paths": [
+      {
+        "bytes": 444408,
+        "git_blob": "60b6c97b2240c40f91c6a2eaffd20b184f4bc0cb",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/manifest.json",
+        "sha256": "f514bc22dcb29c39a37f7a53f188887728cb8863a51fc8f3ffa9300e9fc73869"
+      },
+      {
+        "bytes": 69469,
+        "git_blob": "697a4e7c2c709d180c68c36a91e7f51098656571",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/study1-evidence.tar.gz",
+        "sha256": "f42064bf5dccca5e6f2db7d6b4f2abee2f0c36c4fd3b57fc42625c78297a91e8"
+      },
+      {
+        "bytes": 17778755,
+        "git_blob": "1fb7d19644025a78be133c52b425012f828fa5cc",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/study2-evidence.tar.gz",
+        "sha256": "05da56e71e8e1326483bd3ed4dbf09974e863947bd5070b85e1efebce2d1c7c5"
+      },
+      {
+        "bytes": 178592,
+        "git_blob": "ff1b0644aa96a47f0004bc01cc79349e58d71649",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/metadata-evidence.tar.gz",
+        "sha256": "919874634e40cd5fc9083cefa1ee4c67bb648a4558d3b56a009c62b4109c8c40"
+      },
+      {
+        "bytes": 2259,
+        "git_blob": "4387e351f4a21bd81f5fa5d5dfcb36758613d73e",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/post-study-restore.json",
+        "sha256": "29a47f79606d650a7e458eead03500e6399b7f9deec1566d3c6d6758da986d5f"
+      },
+      {
+        "bytes": 590,
+        "git_blob": "33186746c4dc791d9f69f4505d6347a03d808765",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/shutdown-audit.json",
+        "sha256": "cdd4edea01e0ee36ea33c8962eb10f9013fd350cd2a3dec20916630604761be3"
+      },
+      {
+        "bytes": 341,
+        "git_blob": "8871981bb48b74a6a45f93a97fab035e01633b1e",
+        "path": "validations/checkpoint412-acceleration-2026-10-26/publication-attempts.jsonl",
+        "sha256": "0c1ca6d287ac155cd0bda206507e72cf7f96a9c7c11c4bce742f3b5e2fe7770f"
+      }
+    ],
+    "remote_acknowledged": true,
+    "remote_ref_commit": "be0313b756675acf8d55723c010653f7ff5e87a8",
+    "remote_verified_utc": "2026-10-26T12:55:29.130792+00:00",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "tree": "e654f4d74edbf505ede31cb47f7deda864cc34a5"
+  },
+  "recorded_utc": "2026-10-26T12:50:35.266290+00:00",
+  "schema": "heroes-checkpoint412-acceleration-v1",
+  "source": {
+    "accelerated_branch": "codex/validate-acceleration-412",
+    "accelerated_runtime": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+    "base_branch": "codex/validate-acceleration-412-base",
+    "base_runtime": "b70442d2466fb2b9f309e56d52aeaaab25dcc445",
+    "frozen_accelerated_with_harness": "941f60b91b34e601d44e01a7659120df3fa6e2e1",
+    "frozen_base_with_harness": "278322fbbf48b68dbc2d1d9e6c77712e87f61192",
+    "tracked_files_unchanged": true
+  },
+  "speedups_vs_base": {
+    "accelerated-cold": {
+      "0": {
+        "audit": 2.072792811191698,
+        "collection": 1.7485384272949913,
+        "full": 1.6525145398686525,
+        "replay": 1.2951137741851904
+      },
+      "1": {
+        "audit": 1.7950261377090473,
+        "collection": 1.4075973998008406,
+        "full": 1.3420979181491353,
+        "replay": 1.1135977384006361
+      },
+      "both": {
+        "audit": 1.9841700386510706,
+        "collection": 1.608419028899468,
+        "full": 1.525840355505827,
+        "replay": 1.2141270945247964
+      }
+    },
+    "accelerated-embedded": {
+      "0": {
+        "audit": 2.0833371264367746,
+        "collection": 3.4065191254058527,
+        "full": 2.1586986409556204,
+        "replay": 1.232803375772493
+      },
+      "1": {
+        "audit": 1.8333476427787478,
+        "collection": 4.161153214242845,
+        "full": 1.984590506264463,
+        "replay": 1.0514772148244418
+      },
+      "both": {
+        "audit": 2.0044459645142387,
+        "collection": 3.644216938940621,
+        "full": 2.092797399725399,
+        "replay": 1.1515386796209652
+      }
+    }
+  },
+  "started_utc": "2026-10-26T12:38:41.494600+00:00",
+  "status": "passed_same_host_mac_diagnostic",
+  "timing_definitions": {
+    "collection": "Game collection including reset/stepping; excludes replay and policy audit.",
+    "full": "Measured probe row duration including collection, verification and policy audit.",
+    "ppo": "Not measured; zero PPO/Adam updates.",
+    "replay": "Whole verify_episode call, including Python identity/wire/history checks and native replay.",
+    "wrapper": "Entire process elapsed time, including imports, input restoration, startup/load and final checks."
+  },
+  "timing_rounds_2_3": {
+    "accelerated-cold": {
+      "collection_decisions_per_second": 107.6237278050185,
+      "decisions": 1114,
+      "games": 16,
+      "outcomes": {
+        "win": 16
+      },
+      "seconds_per_game": {
+        "audit": 0.17195340100261092,
+        "collection": 0.6469298306237761,
+        "full": 1.256247377687032,
+        "replay": 0.41643136994025554
+      },
+      "wrapper_seconds_per_game": 1.520949927125912,
+      "wrapper_seconds_total": 24.33519883401459,
+      "wrapper_speedup_vs_base": 1.4338427260050564
+    },
+    "accelerated-embedded": {
+      "collection_decisions_per_second": 243.8445484988709,
+      "decisions": 1114,
+      "games": 16,
+      "outcomes": {
+        "win": 16
+      },
+      "seconds_per_game": {
+        "audit": 0.17021401043166406,
+        "collection": 0.28553027093948913,
+        "full": 0.9159190209356893,
+        "replay": 0.4390652421861887
+      },
+      "wrapper_seconds_per_game": 1.2895994505615818,
+      "wrapper_seconds_total": 20.633591208985308,
+      "wrapper_speedup_vs_base": 1.6910700362641558
+    },
+    "base-cold": {
+      "collection_decisions_per_second": 66.91274218426656,
+      "decisions": 1114,
+      "games": 16,
+      "outcomes": {
+        "win": 16
+      },
+      "seconds_per_game": {
+        "audit": 0.34118478631353355,
+        "collection": 1.0405342499379913,
+        "full": 1.916832945373244,
+        "replay": 0.5056006092545431
+      },
+      "wrapper_seconds_per_game": 2.1808029896274093,
+      "wrapper_seconds_total": 34.89284783403855,
+      "wrapper_speedup_vs_base": 1.0
+    }
+  }
+}

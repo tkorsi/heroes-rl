@@ -233,3 +233,18 @@ The [final root audit](../validation/overnight-root-final-audit-2026-10-26.json)
 binds imported report hashes, private receipts, independent counter/sequence
 checks and the separate post-deadline owned-process verification. No games were
 launched for the root audit and the expired authorization permits no restart.
+
+## Frozen checkpoint 412 acceleration and transfer preparation
+
+The [prospective protocol and completed result](research/checkpoint412-acceleration-2026-10-26.md)
+bind the isolated source revisions, repeated starts and unchanged checkpoint.
+All 72 diagnostic games passed with identical paired histories; no training
+samples or updates were admitted. Complete probe rows improved 2.09 times, or
+1.69 times including wrapper startup, on the same Mac. The startup interpreter
+failure and Linux/Mac numerical reconstruction difference are retained.
+
+The [English Teacher assignment](operations/teacher-transfer-eval-20261026.txt)
+is a new bounded frozen comparison of checkpoints 146, 254 and 412 across
+varied easier positions and the original scenario. Its 85-minute compute and
+90-minute hard limits begin at the first new game. Neither this report nor
+that assignment authorizes PPO. Preparation/delivery is not completed evaluation.

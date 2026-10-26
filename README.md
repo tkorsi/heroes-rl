@@ -27,6 +27,15 @@ Operational curriculum/overnight source remains on its recorded immutable
 experiment commits; this report synchronization does not merge that code or
 Claude's separate experimental engine work.
 
+The subsequent [checkpoint 412 acceleration diagnostic](docs/research/checkpoint412-acceleration-2026-10-26.md)
+passed 72 same-host Mac games with identical paired histories and no learning.
+Embedded collection was 3.64 times faster; complete probe rows with replay and
+policy checks were 2.09 times faster (1.69 times including wrapper startup).
+Linux acceptance, long-run memory stability and full PPO throughput remain
+unproven. The next authorized task is bounded frozen transfer evaluation of
+checkpoints 146/254/412 on varied positions and the original scenario; it grants
+no new PPO window. PR 29/30 code is not merged by this report update.
+
 The [consolidation check](validation/project-consolidation-2026-10-25.json)
 ran 1182 tests: 1156 passed and 26 required another platform or optional fixture.
 A fresh nine-target macOS native build and the Swift viewer build also passed.
