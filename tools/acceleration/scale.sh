@@ -5,7 +5,7 @@
 set -u
 ROOT=${1:?root}; OUT=${2:?out}; K=${3:?workers}; N=${4:?episodes}; IFACE=${5:-adventure-dialogs-v1}
 : ${GAME_DATA:?}
-mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd); GAME_DATA=$(cd "$GAME_DATA" && pwd)  # before cd
+mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd) || exit 1; GAME_DATA=$(cd "$GAME_DATA" && pwd) || exit 1  # before cd
 cd "$ROOT"
 start=$(date +%s.%N)
 for k in $(seq 1 "$K"); do

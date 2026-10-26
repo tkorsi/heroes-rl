@@ -14,9 +14,10 @@ set -u
 OUT=${1:?out}
 : ${BASE_ROOT:?} ${ACCEL_ROOT:?} ${GAME_DATA:?} ${POLICY_V7:?} ${POLICY_V8:?}
 mkdir -p "$OUT"  # the scripts below change directory, so every path is made absolute
-OUT=$(cd "$OUT" && pwd); GAME_DATA=$(cd "$GAME_DATA" && pwd)
-POLICY_V7=$(cd "$POLICY_V7" && pwd); POLICY_V8=$(cd "$POLICY_V8" && pwd)
-BASE_ROOT=$(cd "$BASE_ROOT" && pwd); ACCEL_ROOT=$(cd "$ACCEL_ROOT" && pwd)
+OUT=$(cd "$OUT" && pwd) || exit 1; GAME_DATA=$(cd "$GAME_DATA" && pwd) || exit 1
+POLICY_V7=$(cd "$POLICY_V7" && pwd) || exit 1; POLICY_V8=$(cd "$POLICY_V8" && pwd) || exit 1
+BASE_ROOT=$(cd "$BASE_ROOT" && pwd) || exit 1; ACCEL_ROOT=$(cd "$ACCEL_ROOT" && pwd) || exit 1
+case ${PERF:-perf} in */*) D=$(cd "$(dirname "$PERF")" && pwd) || exit 1; PERF=$D/$(basename "$PERF"); export PERF;; esac
 T=$(cd "$(dirname "$0")" && pwd)
 export GAME_DATA RECORDED_V7=$POLICY_V7 RECORDED_V8=$POLICY_V8 BASE_ROOT ACCEL_ROOT
 mkdir -p "$OUT/soak-final" "$OUT/scale-final"
@@ -51,10 +52,10 @@ BACKEND=embedded "$T/ab.sh" "$OUT/ab-final-b" 3; prune "$OUT/ab-final-b"
 for i in 1 2 3; do for n in base accel; do
   line "$OUT/scale-final/controller-passes.txt" $n controller_replay.py --repeat 2 $E7
 done; done
-for i in 1 2 3; do for n in base accel; do
-  line "$OUT/scale-final/audit-passes.txt" $n audit_passes.py $E7
-  line "$OUT/scale-final/controller-v8.txt" $n controller_replay.py $V8 $E8
-  line "$OUT/scale-final/audit-passes-v8.txt" $n audit_passes.py $V8 $E8
-done; done
+for i in 1 2 3; do
+  for n in base accel; do line "$OUT/scale-final/audit-passes.txt" $n audit_passes.py $E7; done
+  for n in base accel; do line "$OUT/scale-final/controller-v8.txt" $n controller_replay.py $V8 $E8; done
+  for n in base accel; do line "$OUT/scale-final/audit-passes-v8.txt" $n audit_passes.py $V8 $E8; done
+done
 HEROES_ROOT=$ACCEL_ROOT "$ACCEL_ROOT/.venv/bin/python" "$T/review_fix_costs.py" $E7 2>/dev/null | tail -1 \
   > "$OUT/scale-final/review-fix-costs.json"

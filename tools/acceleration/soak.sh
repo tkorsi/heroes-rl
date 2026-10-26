@@ -7,7 +7,9 @@ set -u
 ROOT=${1:?root}; OUT=${2:?out}; BACKEND=${3:?backend}; N=${4:?episodes}; CTL=${5:-end_turn}
 shift $(( $# < 5 ? $# : 5 ))
 : ${GAME_DATA:?}
-OUT=$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT"); GAME_DATA=$(cd "$GAME_DATA" && pwd)  # before cd
+mkdir -p "$(dirname "$OUT")"  # paths are made absolute before cd
+D=$(cd "$(dirname "$OUT")" && pwd) || exit 1; OUT=$D/$(basename "$OUT"); GAME_DATA=$(cd "$GAME_DATA" && pwd) || exit 1
+case ${PERF:-perf} in */*) D=$(cd "$(dirname "$PERF")" && pwd) || exit 1; PERF=$D/$(basename "$PERF");; esac
 cd "$ROOT"
 ${PERF:-perf} stat -x, -o "$OUT.perfstat" -e raw_syscalls:sys_enter,context-switches,cpu-migrations,task-clock,page-faults -- \
   .venv/bin/python -m validation.probes.validate_embedded_engine run --binary vcmi/build/bin/vcmiclient \

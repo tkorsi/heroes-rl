@@ -11,12 +11,15 @@ diverge after 34 identical frames on maps where the base code's own runs
 diverge the same way (see [Exactness evidence](#exactness-evidence)).
 Replaying the base code's recorded v7 and v8 policy games through the
 accelerated collector reproduces every choice, log-probability, value and
-recurrent prefix exactly. Every ended game's replay verifies under
-`vcmireplay`. Replay files themselves were not compared with the base: they
-embed the wall-clock start time, and the contextual replay tape records the
-learner's sends and the opponent's requests in an order that varies between
-runs of the same code, so no two runs' files are byte-equal, base runs
-included. Every
+recurrent prefix exactly. Every ended game of the revalidation, resubmission,
+A/B and scaling runs verifies under `vcmireplay` (the soak runs without
+replay). The replay files themselves were not compared with the base. The
+engine replay file embeds the wall-clock start time, in its start record and so
+in every game-state and combined digest, so no two runs' files are byte-equal,
+base runs included. The contextual replay tape's interleaving of the learner's
+sends and the opponent's requests can vary between runs of the same code, so
+tapes match only sometimes (11 of the 74 final-code tapes equal the base run's
+byte for byte). Every
 correctness check still runs, including the four frozen-weights checks per
 decision. No training, PPO update, Teacher work or Mac time was used.
 
@@ -135,11 +138,14 @@ decisions) and 11.3 against 41.9 for v8 (×3.7, 342 decisions).
 When the same model works through the same games twice, the second pass finds
 what the first left in its inference memos. In the policy audit
 (`reconstruct_behavior`, as training's admission check runs it), the
-accelerated code's second pass takes 52 to 56% of its first (medians of 3
-repeats: v7 8.9 then 5.0 ms per decision, v8 9.0 then 4.7), the base code's 90
-to 94% (v7 25.8 then 23.1, v8 23.9 then 22.4). Through the collector the
-accelerated second pass takes 67% of its first (10.6 then 7.1 ms) and the base
-code's 96% (41.8 then 40.2).
+accelerated code's second pass takes 52 to 56% of its first (ratios of the
+medians of 3 repeats: v7 8.9 then 5.0 ms per decision, v8 9.0 then 4.7), the
+base code's 90 to 94% (v7 25.8 then 23.1, v8 23.9 then 22.4). Through the
+collector the accelerated second pass takes 67% of its first (10.6 then 7.1 ms)
+and the base code's 96% (41.8 then 40.2). The record's
+`second_over_first_median` is the median of the per-repeat ratios instead:
+55 to 56% accelerated and 93 to 95% base in the audit, 67% and 95% through the
+collector.
 
 ### Resets, CPU, system calls and memory
 
@@ -176,7 +182,7 @@ of it in the first game and 7 to 12 MiB over the other 23; at the end it is
 still growing by about 0.1 to 0.25 MiB per game on average over the last 12
 games, mostly in steps under 0.1 MiB with occasional jumps of up to 2.3 MiB.
 Over the 12 policy games, from about 542 MiB after load, it grows by 159 MiB for
-the base and 151 MiB for the accelerated code. The first game adds 136 and 108
+the base and 151 MiB for the accelerated code. The first game adds 135 and 108
 MiB; games 2 to 12 add 23 MiB for the base (678 → 701 MiB) and 42 MiB for the
 accelerated code (651 → 693 MiB), 5 MiB of that in its last game. The
 accelerated code's faster later growth fits the memos it adds (up to 64 MiB of
@@ -230,8 +236,8 @@ Native engine (C++, `engine/ExplorerRL`, `engine/NativeSession`, patch 0032):
   The eight smaller handler parts (queries, randomizer, battles and so on) are
   still serialized inside the combined digest and again for their own part
   digests. `vcmireplay` still recomputes the combined digest with the
-  unchanged `stateDigest` and each part with its own fresh serialization; it
-  compares the parts only when the combined digest differs.
+  unchanged `stateDigest`; only when it differs does it recompute each part
+  with its own fresh serialization and compare them.
 - Ledger and transport. Ledger records are written as one compact string
   without an intermediate copy; in-process policy messages are moved, not
   copied.
@@ -345,9 +351,9 @@ the final code ran on host A.
   verification, `vcmireplay` and the base comparisons of learner histories
   above. `vcmireplay` checks every combined state digest the patched recorder
   writes; it reads the recorded part digests only after a combined mismatch, to
-  name the diverging part. So the part digests that patch 0032 now derives from
-  the combined serialization are correct by construction, but no run checked
-  them.
+  name the diverging part. So the game-state part digest, which patch 0032 now
+  takes from the combined serialization, is correct by construction, but no run
+  checked any recorded part digest.
 - Independent adversarial review (summarized in the record): reviewers for the
   native engine, decoding, inference, per-episode verification and tests read
   the diff at `89f377e`, and two skeptics tried to refute each finding. Native,
@@ -424,7 +430,7 @@ model object, so its reconstruction finds what collection left in the model's
 memos. The audit replays above show the size of that kind of saving: a second
 audit pass over games the model has already worked through takes 52 to 56% of
 the first for the accelerated code (about 4 ms less per decision), against 90
-to 94% for the base. There the first pass, not collection, filled the memos; a
+to 94% for the base (ratios of the medians). There the first pass, not collection, filled the memos; a
 collection pass encodes the same observations and trees, so it should leave the
 same encodings, but that path was not timed.
 
