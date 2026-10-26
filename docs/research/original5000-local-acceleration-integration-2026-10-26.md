@@ -87,10 +87,11 @@ expected commit released, the checkout unchanged) and every exact campaign had a
 training batch with identical games from the same parent as A, each with bitwise-identical learner
 state; `summary.json` in the bench folder lists every problem and has per-batch times, game
 lengths, PPO times, peak memory and process counts. Games are compared on every observation and
-decision record. The engine delivers some notices asynchronously, so a faster learner can see two
-of them in the other order (once in 13 paired games on Linux, at the end of a game); such a pair is
-reported as not comparable rather than as a failure of exactness, and the check needs a pair with
-identical games (repeat with `--order AFF` if the first pair differs). If the A campaign's training
+decision record. The engine delivers some notices asynchronously, so two runs with the same seeds
+can see two of them in the other order even on the accepted implementation (on Linux, two accepted
+runs differed in one of twelve games, the same game in which accepted and fast path once differed);
+such a batch is reported as not comparable rather than as a failure of exactness, and the check
+needs one batch with identical games (repeat with `--order AFF` if the first pair differs). If the A campaign's training
 batch is stopped by the update wall limit (on this Linux host the accepted path could not finish
 that batch, sequence 266 from 629, within the fixed 3,540 s worker budget), the summary reports it
 as a problem: it means the accepted implementation cannot run that batch on the Mac either, which
