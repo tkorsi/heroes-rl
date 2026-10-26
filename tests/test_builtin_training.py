@@ -50,7 +50,7 @@ class ContinuationTests(unittest.TestCase):
             args=SimpleNamespace(plan=output/'plan.json',sha256='a'*64,started=time.monotonic(),wall_started=time.time())
             state=SimpleNamespace(model=object(),checkpoint='fixture',progress=SimpleNamespace(updates=21))
             failed={**report['attempts'][0], 'status':'failed'}
-            def attempt(*args):
+            def attempt(*args, **kwargs):
                 args[-1](failed)
                 return failed,None
             with patch.object(runner,'read_plan',return_value=plan), patch.object(runner,'parent_state',return_value=state), \
@@ -60,6 +60,29 @@ class ContinuationTests(unittest.TestCase):
             self.assertEqual(result['status'],'stopped');self.assertEqual(collect.call_count,1)
             update.assert_not_called();self.assertEqual(result['optimizer_updates'],0)
             self.assertEqual([r['status'] for r in result['attempts']],['failed']+['not_started']*3)
+
+    def test_later_attempts_reuse_only_the_previous_attempts_passed_final_identity_check(self):
+        with tempfile.TemporaryDirectory() as d:
+            output=Path(d); rows=runner.schedule(1)
+            plan={'configuration':runner.configuration(),'execution_output':d,'parent':{},'mode':'training','schedule':rows,'runtime':{},'native':{},'compute_deadline_unix':runner.COMPUTE_DEADLINE}
+            report={'attempts':[runner.pilot.empty_attempt(r) for r in rows], 'update_status':'not_started',
+                    'optimizer_updates':0,'optimizer_steps':0,'training_performed':False}
+            (output/'report.json').write_text(json.dumps(report))
+            args=SimpleNamespace(plan=output/'plan.json',sha256='a'*64,started=time.monotonic(),wall_started=time.time())
+            state=SimpleNamespace(model=object(),checkpoint='fixture',progress=SimpleNamespace(updates=21))
+            flags=[]
+            def attempt(*args, identity_verified):
+                flags.append(identity_verified)
+                # Passed, but without the final identity check: the batch must stop.
+                row={**report['attempts'][args[3]], 'status':'passed', 'identity_verified': len(flags) < 2}
+                args[-1](row)
+                return row,object()
+            with patch.object(runner,'read_plan',return_value=plan), patch.object(runner,'parent_state',return_value=state), \
+                 patch.object(runner,'require_heldout'), patch.object(runner.pilot,'check_identity'), \
+                 patch.object(runner.pilot,'run_attempt',side_effect=attempt), patch.object(gameplay,'native_update') as update:
+                result=runner.worker(args)
+            self.assertEqual(flags,[False,True])
+            self.assertEqual(result['status'],'stopped'); update.assert_not_called()
 
 
 class AbsoluteDeadlineTests(unittest.TestCase):

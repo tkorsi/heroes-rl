@@ -240,7 +240,8 @@ class PilotFrozenCheckpointTests(unittest.TestCase):
 
 
 class PilotAttemptCleanupTests(PilotPlanTests):
-    def run_attempt(self, *, env_close_error=False, cleanup_write_error=False, old_training_folder=False):
+    def run_attempt(self, *, env_close_error=False, cleanup_write_error=False, old_training_folder=False,
+                    identity_verified=False):
         from experiments.headless import builtin_env, builtin_replay, process_deadline
         from experiments.learner import builtin_behavior, builtin_gameplay, builtin_rollout, contextual_model
         from validation.probes import validate_hero_policy
@@ -278,7 +279,7 @@ class PilotAttemptCleanupTests(PilotPlanTests):
                 raise OSError("synthetic-progress-write-failure")
         with ExitStack() as stack:
             for owner, name, value in (
-                (pilot, "check_identity", lambda plan: None),
+                (pilot, "check_identity", lambda plan: calls.append("identity")),
                 (pilot, "native_opponent", lambda runtime, seat: {"synthetic": True}),
                 (contextual_model, "weights_sha256", lambda model: "b" * 64),
                 (process_deadline, "DeadlineVcmiLauncher", Launcher),
@@ -293,8 +294,19 @@ class PilotAttemptCleanupTests(PilotPlanTests):
                 stack.enter_context(patch.object(owner, name, value))
             fresh = stack.enter_context(patch.object(builtin_gameplay, "TrainingCollector"))
             result = pilot.run_attempt(plan, self.root / "plan.json", "a" * 64, index, object(), "synthetic-policy",
-                                       pilot.Budget(pilot.time.monotonic() + 240, pilot.time.time() + 240), save)
+                                       pilot.Budget(pilot.time.monotonic() + 240, pilot.time.time() + 240), save,
+                                       identity_verified=identity_verified)
         return result, calls, snapshots, fresh
+
+    def test_only_a_just_verified_identity_skips_the_opening_check_and_the_final_check_always_runs(self):
+        for verified, expected in ((False, 2), (True, 1)):
+            with self.subTest(identity_verified=verified):
+                self.setUp()  # a fresh output folder per attempt
+                (attempt, _), calls, _, _ = self.run_attempt(identity_verified=verified)
+                self.assertEqual(attempt["status"], "passed")
+                self.assertTrue(attempt["identity_verified"])
+                self.assertEqual(calls.count("identity"), expected)
+                self.assertEqual(calls[-1], "identity")  # the closing check follows cleanup
 
     def test_environment_close_failure_does_not_skip_owned_group_cleanup(self):
         (attempt, receipt), calls, _, _ = self.run_attempt(env_close_error=True)

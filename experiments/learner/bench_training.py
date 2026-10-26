@@ -257,7 +257,22 @@ def _check_identity(plan):
 
 def prepare(parent, sequence, seat):
     v = session()
-    subprocess.run([sys.executable, str(ROOT/'tools/prepare_vcmi.py'), '--check'], cwd=ROOT, check=True, capture_output=True, timeout=60)
+    # The canonical prepared-checkout check runs while the plan is built; no plan is written unless it passed.
+    canonical = subprocess.Popen([sys.executable, str(ROOT/'tools/prepare_vcmi.py'), '--check'], cwd=ROOT,
+                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        plan = _prepare(v, parent, sequence, seat)
+        out, err = canonical.communicate(timeout=60)
+        if canonical.returncode:
+            raise subprocess.CalledProcessError(canonical.returncode, canonical.args, out, err)
+    finally:
+        if canonical.poll() is None:
+            canonical.kill(); canonical.wait()
+    output = BASE/'batches'/f'train-{sequence:04d}-seat{seat}'
+    write_new(output/'plan.json', plan); return output/'plan.json'
+
+
+def _prepare(v, parent, sequence, seat):
     state = restore(parent); release = json.loads(Path(v['release']['path']).read_text())
     output = BASE/'batches'/f'train-{sequence:04d}-seat{seat}'
     require(not output.exists(), 'No retry or overwrite')
@@ -285,12 +300,14 @@ def prepare(parent, sequence, seat):
         plan['experiments'] = plan['checkpoint_metadata']['numerical_experiments'] = experiments()
     if prefix_helpers():
         plan['prefix_helpers'] = prefix_helpers()
-    check_identity(plan); write_new(output/'plan.json', plan); return output/'plan.json'
+    check_identity(plan); return plan
 
 
-def read_plan(path, sha):
+def read_plan(path, sha, *, check=True):
     path = Path(path); require(path.is_relative_to(BASE/'batches') and binding(path)['sha256'] == sha, 'Plan changed')
-    plan = json.loads(path.read_text()); require(plan['execution_output'] == str(path.parent/'execution'), 'Output drift'); check_identity(plan); return plan
+    plan = json.loads(path.read_text()); require(plan['execution_output'] == str(path.parent/'execution'), 'Output drift')
+    if check: check_identity(plan)
+    return plan
 
 
 def heldout(state, runtime, native):
@@ -305,7 +322,8 @@ def main():
     p.add_argument('--started', type=float); p.add_argument('--wall-started', type=float); a = p.parse_args()
     if a.command == 'worker':
         def reader(path, sha):
-            plan = read_plan(path, sha)
+            # builtin_training.worker checks the identity first thing, before any use of the plan.
+            plan = read_plan(path, sha, check=False)
             from . import ppo
             ppo.EXPERIMENTS = frozenset(plan.get('experiments', ()))
             ppo.PREFIX_HELPERS = plan.get('prefix_helpers', 0)

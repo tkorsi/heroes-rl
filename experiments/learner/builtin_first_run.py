@@ -204,7 +204,12 @@ def empty_attempt(row):
         "rewards": dict.fromkeys(COLORS), "training_samples": 0, "optimizer_steps": 0, "completion_receipt": False}
 
 
-def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
+def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save, *, identity_verified=False):
+    """One scheduled game, its verification and cleanup.
+
+    ``identity_verified`` means the caller's last action was a passed ``check_identity(plan)``
+    (the previous attempt's final check), so the identical opening check is not repeated.
+    """
     from experiments.headless.env import Limits
     from experiments.headless.builtin_env import BuiltinHeadlessEnv
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
@@ -228,7 +233,8 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
         save(attempt)
     try:
         with wall_limit(budget.remaining(cfg["cleanup_reserve_seconds"])):
-            check_identity(plan)
+            if not identity_verified:
+                check_identity(plan)
             opponent = native_opponent(plan["runtime"], seat)
             launcher = DeadlineVcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["game_map"]),
                 deadline_monotonic=budget.deadline - 2, deadline_wall=budget.wall_deadline - 2,
