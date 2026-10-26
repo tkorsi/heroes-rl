@@ -50,7 +50,8 @@ class HandoffControls(unittest.TestCase):
         saved=dict(policy=bound(folder/'execution/after-policy.pt',b'final-policy'),
             resume=bound(folder/'execution/after-resume.pt',b'final-resume'),weights_sha256='f'*64)
         plan=dict(source=source,runtime=m['runtime'],configuration=m['configuration'],
-            checkpoint_metadata={'initial_checkpoint':m['initial_checkpoint_dependency']})
+            checkpoint_metadata={'initial_checkpoint':m['initial_checkpoint_dependency']},
+            parent=dict(plan=bound(previous/'plan.json',b'previous-plan'),report=bound(previous/'execution/report.json',b'previous-report'),resume=bound(previous/'execution/after-resume.pt',b'previous-resume')))
         add('plan.json',folder/'plan.json',encoded(plan))
         plan_binding=bound(folder/'plan.json',encoded(plan))
         report=dict(plan_sha256=plan_binding['sha256'],after_checkpoint=saved)
@@ -81,9 +82,12 @@ class HandoffControls(unittest.TestCase):
         for seat in (0,1):add(f'maps/curriculum-3-{seat}.vmap',h.OLD/f'local-curriculum-update146/maps/curriculum-3-{seat}.vmap',bytes([seat]))
         inventory={name:dict(original=bound(path,data),committed_path=h.PREFIX+'bundle/'+name,sha256=h.digest(data),bytes=len(data)) for name,(path,data) in original.items()}
         files={'bundle/'+name:data for name,(path,data) in original.items()}
-        files['bundle/shutdown-proof.json']=encoded(dict(local_auto_resume=False,controllers=[{'owned_command_absent':True}]))
+        files['bundle/shutdown-proof.json']=encoded(dict(local_auto_resume=False,verified_utc='2026-10-26T03:10:56+00:00',receipts=[{'closed_groups':[123]}],controllers=[{'owned_command_absent':True,'session':inventory['session.json']['original']}]))
         restore=dict(exact_model_adam_rng_progress_pool=True,progress=m['progress'])
         files['bundle/restore-receipt.json']=encoded(dict(canonical=restore,copied=restore))
+        final_raw=archive({'final-evidence/session.json':encoded(session)})
+        final_path='results/local-curriculum-update146/final/evidence.tar.gz'
+        m['final_controller_archive']=dict(commit='e'*40,archive=bound(h.OLD/'private-local365-state'/final_path,final_raw))
         bundle=archive(files)
         m.update(files=inventory,checkpoint=saved,local_session=inventory['session.json']['original'],
             archive=dict(path=h.PREFIX+'bundle.tar.gz',sha256=h.digest(bundle),bytes=len(bundle)),
@@ -92,7 +96,7 @@ class HandoffControls(unittest.TestCase):
             m[key]=dict(commit='c'*40,path=h.PREFIX+'bundle/'+name,sha256=h.digest(files['bundle/'+name]))
         blobs={'d'*40+':'+h.PREFIX+'ready.json':encoded(m),'c'*40+':'+h.PREFIX+'bundle.tar.gz':bundle,
             'c'*40+':'+h.PREFIX+'inventory.json':encoded(inventory),'b'*40+':'+raw_path:raw,
-            h.SOURCE+':experiments/learner/example.py':b'unchanged source'}
+            h.SOURCE+':experiments/learner/example.py':b'unchanged source','e'*40+':'+final_path:final_raw}
         blobs.update({'c'*40+':'+h.PREFIX+name:data for name,data in files.items()})
         def git(repo,*args):
             if args[0]=='merge-base':return b''
@@ -101,6 +105,8 @@ class HandoffControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td,patch.object(h,'git',side_effect=git),patch.object(h.time,'time',return_value=h.LOCAL_START+7500):
             root=Path(td)/'valid';receipt=h.materialize('private','d'*40,root,'public')
             self.assertTrue(receipt['ownership_transfer_verified'])
+            proof=h.audit_materialized(root/'handoff/verification.json','private')
+            self.assertTrue(json.loads(Path(proof['path']).read_text())['passed'])
             self.assertEqual(Path(receipt['parent']['plan']['path']).read_bytes(),encoded(plan))
             self.assertEqual(receipt['marker']['clock']['started_monotonic'],999999999)
             self.assertFalse(receipt['historical_metadata_rewritten'])

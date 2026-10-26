@@ -1,5 +1,5 @@
 {
-  "timestamp_utc": "2026-10-26T02:14:42.569750+00:00",
+  "timestamp_utc": "2026-10-26T02:16:20.431406+00:00",
   "phase": "waiting_final_local_handoff",
   "ownership": "local",
   "compute_deadline_utc": "2026-10-26T09:55:00Z",
@@ -30,5 +30,11 @@
   "runtime_startup_checks": "passed",
   "builtin_regression_tests": 234,
   "overnight_controls": 15,
-  "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220"
+  "private_preparation_commit": "c1567ea743c5d1e37048daeab0f7204f13959220",
+  "full_offline_suite": {
+    "run": 1309,
+    "passed": 1301,
+    "skipped": 8
+  },
+  "dependency_closure_release_gate": "implemented_and_fake_bundle_tested"
 }

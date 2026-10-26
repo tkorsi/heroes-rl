@@ -98,6 +98,7 @@ def runtime_files(directory):
 def check_frozen():
     frozen=json.loads((SESSION.parent/'frozen.json').read_text())
     require(dependency_identity()==frozen['dependency'],'Generated dependency drift')
+    require(binding(frozen['handoff_dependency_audit']['path'])==frozen['handoff_dependency_audit'],'Final handoff dependency audit drift')
     require(str(ROOT)==frozen['checkout'], 'Run only from the frozen checkout')
     require(source_identity(INTERFACE)==frozen['source'] and not frozen['source']['tracked_worktree_dirty'], 'Frozen source drift')
     require(pilot.implementation()==frozen['implementation'], 'Frozen implementation drift')

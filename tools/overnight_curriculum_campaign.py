@@ -87,6 +87,12 @@ def save(v):
         launch_utc=utc(s['started_unix']), compute_deadline_utc=utc(s['compute_deadline_unix']),
         hard_deadline_utc=utc(s['absolute_deadline_unix']), validation_outcomes=s['validation_outcomes'],
         error=v.get('error'), final_analysis=v.get('analysis'), owned_cleanup_verified=v.get('owned_cleanup_verified'))
+    status['cloud_training_started'] = any(b['mode']=='training' and b.get('plan') for b in v['batches'])
+    status['new_admitted_games'] = status['admitted_training_games']
+    status['new_ppo_updates'] = v['new_updates']
+    status['latest_complete_progress'] = v['latest_progress']
+    status['current_activity'] = {k:v['batches'][-1].get(k) for k in ('mode','sequence','seat','status','started_utc','finished_utc')} if v['batches'] else {'mode':'initializing'}
+    status['evaluation_natural_outcomes'] = dict(Counter(o for b in v['batches'] if b['mode']!='training' and b.get('status')=='passed' for o in b.get('outcomes',[]) if o in ('win','loss')))
     status['natural_outcomes'] = dict(Counter(o for b in admitted for o in b.get('outcomes',[]) if o in ('win','loss')))
     status['cutoffs'] = sum(o is None for b in admitted for o in b.get('outcomes',[]))
     status['failed_batches'] = sum(b.get('status')=='failed' for b in v['batches'])
@@ -235,6 +241,9 @@ def freeze():
     engine_preflight=check_engine_checkout()
     private_preflight()
     require(ROOT != AUTHOR and not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip(), 'Freeze only a separate clean checkout')
+    from tools.overnight_handoff import audit_materialized
+    handoff=c.context()['handoff_verification'];require(binding(handoff['path'])==handoff,'Handoff verification bytes changed')
+    handoff_audit=audit_materialized(handoff['path'],Path('/workspace/heroes-rl-training-state'))
     state=c.restore(c.PARENT)
     require(c.context()['ownership_transfer_verified'] is True,'Final local ownership transfer required')
     require([c.map_identity(c.BASE/f'maps/curriculum-3-{seat}.vmap',seat)['sha256'] for seat in (0,1)]==c.context()['map_sha256_by_seat'],'Final handed-off map bytes differ')
@@ -257,7 +266,7 @@ def freeze():
         c.VcmiLauncher(Path(runtime_bin)/'vcmiclient',Path('/workspace/Heroes-artifacts/game-data'),c.BASE/f'maps/curriculum-3-{seat}.vmap').preflight()
     names=['tools/overnight_curriculum_campaign.py','tools/run_overnight_acceptance.py','tools/overnight_cloud_supervisor.py','configs/teacher-overnight-linux-v1.json',
            'configs/teacher-curriculum-v3.json','experiments/explorer/create_curriculum_scenario.py']
-    frozen=dict(checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
+    frozen=dict(handoff_dependency_audit=handoff_audit,checkout=str(ROOT),engine_preflight=engine_preflight,dependency=c.dependency_identity(),source=source_identity(c.INTERFACE),implementation=c.pilot.implementation(),
         capability_implementation=capability_implementation_identity(),bound_files={n:binding(ROOT/n) for n in names},
         parent=state.bindings,configuration=c.configuration(),runtime_bin=runtime_bin,runtime=runtime,runtime_files=all_files,runtime_report=ready['check'],
         data='/workspace/Heroes-artifacts/game-data',

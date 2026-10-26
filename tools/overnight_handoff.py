@@ -172,3 +172,63 @@ def materialize(repository,ready_commit,root,public_repository):
         raw_batch_root=str(relocate(original_parent)),marker=m)
     put(root/'handoff/verification.json',(json.dumps(receipt,indent=2)+'\n').encode())
     return receipt
+
+
+def audit_materialized(receipt_path,repository):
+    """Independent release gate for dependency closure and all local archives.
+
+The preparation bootstrap may copy evidence, but this gate runs from the final
+committed release before native acceptance. Mac process numbers/clocks are
+provenance only; never query or signal them on Linux.
+"""
+    receipt_path=Path(receipt_path);receipt=json.loads(receipt_path.read_text())
+    m=receipt['marker'];bundle=receipt_path.parent/'bundle';index=m['files']
+    plan=json.loads((bundle/'plan.json').read_text())
+    for kind,name in [('plan','parent-plan.json'),('report','parent-report.json'),('resume','parent-resume.pt')]:
+        require(index['dependencies/'+name]['original']==plan['parent'][kind],
+            'Final metadata parent dependency differs: '+kind)
+    for kind,name in [('policy','after-policy.pt'),('resume','after-resume.pt')]:
+        require(index[name]['original']==m['checkpoint'][kind],'Final checkpoint inventory differs')
+    restores=json.loads((bundle/'restore-receipt.json').read_text())
+    require(set(restores)=={'canonical','copied'},'Both original local restore receipts required')
+    for proof in restores.values():
+        require(proof['exact_model_adam_rng_progress_pool'] is True and proof['progress']==m['progress'],
+            'Local restore receipt is incomplete')
+    shutdown=json.loads((bundle/'shutdown-proof.json').read_text())
+    require(shutdown['local_auto_resume'] is False and shutdown['receipts']
+        and all(isinstance(row['closed_groups'],list) for row in shutdown['receipts'])
+        and all(row['owned_command_absent'] is True for row in shutdown['controllers'])
+        and any(row['session']==m['local_session'] for row in shutdown['controllers']),
+        'Current local controller/shutdown evidence absent')
+    require(stamp(m['local_stop'])<=stamp(shutdown['verified_utc'])<=stamp(m['ready_utc']),
+        'Shutdown proof is not final')
+    for key,name in [('shutdown_proof','shutdown-proof.json'),('restore_evidence','restore-receipt.json')]:
+        payload=git(repository,'show',m[key]['commit']+':'+m[key]['path'])
+        require(payload==(bundle/name).read_bytes() and digest(payload)==m[key]['sha256'],
+            'Private proof blob differs from handed-off archive')
+    journal=json.loads((bundle/'campaign-report.json').read_text())
+    preserved=[row['private_preservation'] for row in journal['batches'] if row.get('private_preservation')]
+    require([row['commit'] for row in preserved]==m['prior_batch_archives'],'Private historical batch sequence differs')
+    final=m['final_controller_archive']
+    require(isinstance(final,dict) and set(('commit','archive'))<=set(final),'Final controller private preservation absent')
+    verified=[]
+    for item in [*preserved,final]:
+        archive=item['archive'];relative=Path(archive['path']).relative_to(OLD/'private-local365-state').as_posix()
+        require(git(repository,'merge-base','--is-ancestor',item['commit'],m['archive_commit'])==b'',
+            'Historical archive is not immutable handoff ancestry')
+        payload=git(repository,'show',item['commit']+':'+relative)
+        require(digest(payload)==archive['sha256'] and len(payload)==archive['bytes'],
+            'Historical/final controller private archive differs')
+        # Check path safety without applying historical symlinks or editing JSON.
+        contents,links=safe_files(payload)
+        verified.append(dict(commit=item['commit'],path=relative,sha256=digest(payload),
+            bytes=len(payload),regular_files=len(contents),preserved_link_metadata=links))
+    result=dict(schema='heroes-cloud-local-dependency-closure-audit-v1',passed=True,
+        ready_commit=receipt['ready_commit'],final_checkpoint=m['checkpoint'],
+        parent_metadata_dependencies_verified=True,both_local_restore_receipts_verified=True,
+        current_local_controller_shutdown_verified=True,local_auto_resume=False,
+        private_archives=verified,mac_monotonic_clocks_imported_as_live_clocks=False,
+        historical_training_samples_admitted=0)
+    target=receipt_path.parent/'dependency-closure-audit.json'
+    put(target,(json.dumps(result,indent=2)+'\n').encode())
+    return binding(target)
