@@ -3116,37 +3116,47 @@ def _field_set(cls):
     return names
 
 
+# Exact JSON leaf types: neither tuples nor dataclasses, so _wire returns them unchanged.
+_WIRE_LEAVES = frozenset((str, int, bool, float, type(None)))
+
+
 def _wire(value):
     """Detached canonical JSON, omitting additive fields from their older schema."""
+    kind = type(value)
+    if kind in _WIRE_LEAVES:
+        return value
     if isinstance(value, tuple):
-        return [_wire(item) for item in value]
+        return [item if type(item) in _WIRE_LEAVES else _wire(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
-        data = {name: _wire(getattr(value, name)) for name in _field_names(type(value))}
-        if type(value) is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
+        data = {}
+        for name in _field_names(kind):
+            item = getattr(value, name)
+            data[name] = item if type(item) in _WIRE_LEAVES else _wire(item)
+        if kind is Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
-        elif type(value) is Action and value.schema == ACTION_SCHEMA:
+        elif kind is Action and value.schema == ACTION_SCHEMA:
             for name in ("panel", "selection", "count", "destination"):
                 del data[name]
-        elif type(value) is Window:
+        elif kind is Window:
             for name in ("town_panel", "armies", "stack_panel", "dialog_panel", "capability_controls", "capability_panel"):
                 if getattr(value, name) is None:
                     del data[name]
-        elif type(value) is Hero and value.in_garrison is None:
+        elif kind is Hero and value.in_garrison is None:
             del data["in_garrison"]
-        elif type(value) is VisibleEvent:
+        elif kind is VisibleEvent:
             for name in ("partner", "dialog", "capability"):
                 if getattr(value, name) is None:
                     del data[name]
-        elif type(value) is Offers:
+        elif kind is Offers:
             del data["schema"]  # bound by the enclosing frame's explicit schema
             for name in ("panel", "armies", "stack_panel", "movable_hero_refs", "dialog_panel", "capability_controls", "capability_panel"):
                 if getattr(value, name) is None:
                     del data[name]
-        elif type(value) is TownPanel:
+        elif kind is TownPanel:
             for name in ("recruitment", "armies", "tavern"):
                 if getattr(value, name) is None:
                     del data[name]
-        elif type(value) is NoticeComponent:
+        elif kind is NoticeComponent:
             for name in ("content_id", "skill"):
                 if getattr(value, name) is None:
                     del data[name]
