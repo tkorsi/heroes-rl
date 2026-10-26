@@ -73,3 +73,7 @@ The first offline preparation attempt then failed before native gameplay: the dr
 - 2026-10-26T03:19:19.427880+00:00 linux_acceptance_intent: {"executable_release": "/workspace/releases/teacher-overnight-30629a84bc30", "policy_games": 64, "controls": 4, "training_samples": 0}
 
 - 2026-10-26T03:21:33.293385+00:00 Update254 restored exactly; the platform comparison passed with maximum critic-value drift1.79e-7, joint-log-probability drift4.77e-7 and zero sampled-action differences. The complete local dependency-closure audit and fresh original-asset hashes passed. Frozen executable release30629a8 is running fresh Linux acceptance under controller35903. Capture and wait controls passed naturally in both seats with replay/cleanup. Policy diagnostics remain excluded from PPO.
+
+- 2026-10-26T03:26:42.225095+00:00 linux_acceptance_retained: {"private_preservation": {"commit": "150ca3284f8fb87aaac9058b328d0f04c0c8d560", "archive": {"path": "/workspace/heroes-overnight-private/results/overnight-20261026/linux-acceptance-001/evidence.tar.gz", "sha256": "790f9c2370416b1c1077f2af859467fb9acbf941dc5f93dad9600ace78bc9f1a", "bytes": 12976026}}, "error": null}
+
+- 2026-10-26T03:26:47.264140+00:00 automatic_campaign_launch_intent: {"release": "/workspace/releases/teacher-overnight-30629a84bc30", "compute_cutoff": 1793008500.0, "hard_stop": 1793008800.0}
