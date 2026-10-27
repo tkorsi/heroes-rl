@@ -15,9 +15,13 @@ The user has authorized a **visible-history interaction budget** to prevent
 repeated window, army/artifact and no-effect movement loops. This is an explicit
 policy-support intervention, not another exact acceleration. Terminal-only
 rewards and the PPO/model architecture stay unchanged. The
-[prospective protocol](docs/research/interaction-guard-2026-10-27.md) requires
-isolated frozen-policy acceptance before the manual continuation is enabled;
-no official training is launched by preparation.
+[prospective protocol and results](docs/research/interaction-guard-2026-10-27.md)
+record eight individually verified games with frozen checkpoint 717: 2–117 choices,
+all natural losses. Postcollection harness bookkeeping failed and was separately
+corrected and audited; its original failure is retained. Full restoration and owned
+shutdown are verified. The manual continuation now uses this guard, starts from
+717 with 4,648 games remaining and fresh sequence 355. Preparation launched no
+official games or PPO updates; improvement in winning has not been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate

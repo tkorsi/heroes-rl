@@ -34,6 +34,23 @@ def write(path, value):
     os.replace(temporary, path)
 
 
+def state_snapshot(state):
+    import torch
+    return deepcopy(dict(model=dict(state.model.state_dict()), optimizer=state.optimizer.state_dict(),
+                         generator=state.generator.get_state(), pool=state.pool.state_dict(),
+                         torch_rng=torch.get_rng_state(), python_rng=random.getstate(),
+                         sampler=state.sampler_state, progress=vars(state.progress)))
+
+
+def verify_state_snapshot(before, state):
+    from experiments.learner.gameplay import assert_same_state
+    assert_same_state(before, state_snapshot(state))
+
+
+def write_shutdown(output, rc, cleanup):
+    write(output/'shutdown.json', dict(returncode=rc, **cleanup))
+
+
 def execute(plan_path, sha):
     import torch
     from experiments.learner import builtin_first_run as pilot
@@ -63,10 +80,7 @@ def execute(plan_path, sha):
     report_path = output / 'report.json'
     write(report_path, report)
     state = local.restore_parent(plan['parent_descriptor'])
-    before = deepcopy(dict(model=state.model.state_dict(), optimizer=state.optimizer.state_dict(),
-                           generator=state.generator.get_state(), pool=state.pool.state_dict(),
-                           torch_rng=torch.get_rng_state(), python_rng=random.getstate(),
-                           sampler=state.sampler_state, progress=vars(state.progress)))
+    before = state_snapshot(state)
     # ParentState's pool field is checked again by the exact historical loader.
     try:
         for i, row in enumerate(plan['schedule']):
@@ -90,14 +104,7 @@ def execute(plan_path, sha):
             attempt['guard_invariants_verified'] = True
             attempt['guarded_decisions'] = len(episode.decisions)
             save(attempt)
-        assert_same_state(before['model'], dict(state.model.state_dict()))
-        assert_same_state(before['optimizer'], state.optimizer.state_dict())
-        assert_same_state(before['generator'], state.generator.get_state())
-        assert_same_state(before['pool'], state.pool.state_dict())
-        assert_same_state(before['torch_rng'], torch.get_rng_state())
-        assert_same_state(before['python_rng'], random.getstate())
-        assert_same_state(before['sampler'], state.sampler_state)
-        assert_same_state(before['progress'], vars(state.progress))
+        verify_state_snapshot(before, state)
         restored = local.restore_parent(plan['parent_descriptor'])
         assert_same_state(before['model'], dict(restored.model.state_dict()))
         assert_same_state(before['optimizer'], restored.optimizer.state_dict())
@@ -200,7 +207,7 @@ def main():
         finally:
             from run_local_training import cleanup_owned
             cleanup = cleanup_owned(plan, process=process, evidence_root=output)
-            write(output/'shutdown.json', dict(finished_utc=utc(), returncode=rc, **cleanup))
+            write_shutdown(output, rc, cleanup)
             if not cleanup['owned_cleanup_verified']: rc = 1
     return rc
 

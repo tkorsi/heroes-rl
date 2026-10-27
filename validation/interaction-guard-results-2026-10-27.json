@@ -1,0 +1,236 @@
+{
+  "architecture_change": false,
+  "choices": 352,
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "allow_verified_training_prefix": false,
+    "attempt_wall_seconds": 600,
+    "cleanup_reserve_seconds": 30,
+    "evaluation_engine_seed": 160101,
+    "evaluation_policy_seeds": [
+      160201,
+      160202
+    ],
+    "hard_stop_reserve_seconds": 2,
+    "interface": "adventure-capabilities-v1",
+    "max_days": 365,
+    "max_optimizer_steps": 640,
+    "max_total_choices": 5120,
+    "max_updates": 1,
+    "minibatch_seed": 160403,
+    "ordinary_choice_limit": 4960,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "python_seed": 160402,
+    "reserved_dialog_choices": 160,
+    "schema": "heroes-builtin-ppo-pilot-config-v1",
+    "shared_wall_seconds": 10800,
+    "torch_seed": 160401,
+    "torch_threads": 1,
+    "training_engine_seeds": [
+      160111,
+      160112
+    ],
+    "training_policy_seeds": [
+      160211,
+      160212,
+      160213,
+      160214
+    ]
+  },
+  "continuation": {
+    "checkpoint": 717,
+    "launched": false,
+    "manual_command": "./continue-original-4720.sh",
+    "next_sequence": 355,
+    "remaining_games": 4648
+  },
+  "cutoffs": 0,
+  "diagnostic_games": 8,
+  "diagnostic_source": "decec45a1d87ef8d41519f58b608440e35c24d01",
+  "episodes": [
+    {
+      "choices": 34,
+      "cleanup_verified": true,
+      "episode": 1,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 0,
+      "status": "passed"
+    },
+    {
+      "choices": 79,
+      "cleanup_verified": true,
+      "episode": 2,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 0,
+      "status": "passed"
+    },
+    {
+      "choices": 47,
+      "cleanup_verified": true,
+      "episode": 3,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 0,
+      "status": "passed"
+    },
+    {
+      "choices": 117,
+      "cleanup_verified": true,
+      "episode": 4,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 0,
+      "status": "passed"
+    },
+    {
+      "choices": 21,
+      "cleanup_verified": true,
+      "episode": 5,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 1,
+      "status": "passed"
+    },
+    {
+      "choices": 42,
+      "cleanup_verified": true,
+      "episode": 6,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 1,
+      "status": "passed"
+    },
+    {
+      "choices": 10,
+      "cleanup_verified": true,
+      "episode": 7,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 1,
+      "status": "passed"
+    },
+    {
+      "choices": 2,
+      "cleanup_verified": true,
+      "episode": 8,
+      "guard_verified": true,
+      "identity_verified": true,
+      "native_replay_verified": true,
+      "outcome": "loss",
+      "seat": 1,
+      "status": "passed"
+    }
+  ],
+  "guard_audit": {
+    "current_tile_move_choices": 0,
+    "maximum_management_actor_consumptions_per_day": 17,
+    "maximum_navigation_key_consumptions_per_progress_epoch": 2,
+    "zero_movement_choices": 0
+  },
+  "limitations": [
+    "The original harness failed during postcollection bookkeeping; its failed report is retained unchanged.",
+    "The original worker did not complete its final in-memory model/Adam/RNG/pool assertion chain. Each game separately proved unchanged model weights; the full persisted official717 and copied parent were restored and compared exactly afterward.",
+    "The eight diagnostic games are valid individually and excluded from PPO. Eight losses provide no demonstrated strategic improvement.",
+    "Existing replay and reconstruction proofs were inspected and bound; no games or native replay were rerun during this audit.",
+    "The guard is a disclosed policy-support intervention; the historical comparison is not a paired speedup.",
+    "No native PPO update was run in this diagnostic; synthetic PPO/support/prefix tests passed.",
+    "Limits address the observed loop families and do not prove absence of every possible repetitive action."
+  ],
+  "losses": 8,
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "max_choices": 117,
+  "mean_choices": 44,
+  "min_choices": 2,
+  "native": {
+    "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/bin/vcmiclient",
+    "binary_sha256": "79e527665872bed791f2a3fed88e5087880964211dcbedebd0ba57917c541540",
+    "explorer_rl_sha256": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "log_level": "info",
+    "map": {
+      "name": "hero-management-v2.vmap",
+      "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+    }
+  },
+  "native_replay": {
+    "checked_transactions": 6923,
+    "client_packets": 4500,
+    "requests": 758,
+    "unchecked_transactions": 0
+  },
+  "official_training_launched": false,
+  "optimizer_steps": 0,
+  "original_harness_status": "failed",
+  "parent_checkpoint": 717,
+  "parent_preservation_receipt": "validation/local-script-final717-sync-2026-10-27.json",
+  "policy_support": "visible-interaction-budget-v1",
+  "postcollection_correction": {
+    "explanation": "Model OrderedDict/dict type mismatch, then duplicate finished_utc in supervisor receipt. Corrected harness; three offline regression tests passed. No games replayed.",
+    "original_in_memory_final_assertions_completed": false,
+    "original_report_unchanged": true,
+    "owned_shutdown_verified": true,
+    "persisted_full_parent_restored_exactly": true,
+    "reconciliation_sha256": "8c502a48ab853f4de2c7c5109af80bc1d5182f9b4399e8bf14b3cdf04caf05f1"
+  },
+  "ppo_formula_change": false,
+  "preparation_failure": {
+    "attempt": 1,
+    "native_games": 0,
+    "reason": "Wrong invocation artifact root; corrected before attempt2."
+  },
+  "raw_preservation_receipt": "validation/interaction-guard-native-preservation-2026-10-27.json",
+  "reconstruction": {
+    "actions": 352,
+    "conditionals": 945,
+    "maximum_difference": 0
+  },
+  "reward_change": false,
+  "runtime": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  },
+  "schema": "heroes-interaction-guard-results-v1",
+  "status": "passed_with_postcollection_harness_correction",
+  "timestamp_utc": "2026-10-27T19:38:36.270374+00:00",
+  "training_samples": 0,
+  "wins": 0
+}

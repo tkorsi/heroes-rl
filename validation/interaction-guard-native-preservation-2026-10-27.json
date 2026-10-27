@@ -1,0 +1,309 @@
+{
+  "schema": "heroes-interaction-guard-native-preservation-v1",
+  "timestamp_utc": "2026-10-27T19:39:52.054655+00:00",
+  "status": "passed_with_postcollection_harness_correction",
+  "diagnostic_source_commit": "decec45a1d87ef8d41519f58b608440e35c24d01",
+  "original_harness_status": "failed",
+  "original_harness_report_unchanged": true,
+  "original_harness_report_sha256": "58365174a7bb3d171641c7250404da815879ba7b0c8b3bb17844f2b72094404c",
+  "original_global_in_memory_state_assertion_chain_completed": false,
+  "original_shutdown_receipt_missing": true,
+  "valid_individual_games": 8,
+  "outcomes": {
+    "loss": 8
+  },
+  "guarded_decisions": 352,
+  "saved_reconstruction_conditionals": 945,
+  "saved_policy_reconstruction_maximum_difference": 0,
+  "all_guard_supports_and_actions_independently_rederived": true,
+  "all_behavior_reports_independently_recomputed": true,
+  "native_replay_checked": {
+    "client_packets": 4500,
+    "messages": 720,
+    "native_opponent_requests": 436,
+    "requests": 758,
+    "responses": 352,
+    "transactions": 6923
+  },
+  "native_unchecked_total": 0,
+  "zero_movement_choices": 0,
+  "current_tile_move_choices": 0,
+  "maximum_navigation_key_consumptions_per_progress_epoch": 2,
+  "maximum_management_actor_consumptions_per_day": 17,
+  "games": [
+    {
+      "episode": 1,
+      "learner_player": 0,
+      "choices": 34,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 33,
+          "max_management_actor_consumptions": 6,
+          "max_navigation_key_consumptions": 2
+        },
+        "2": {
+          "consumed_choices": 1,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    },
+    {
+      "episode": 2,
+      "learner_player": 0,
+      "choices": 79,
+      "last_day": 5,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 67,
+          "max_management_actor_consumptions": 17,
+          "max_navigation_key_consumptions": 2
+        },
+        "2": {
+          "consumed_choices": 5,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        },
+        "3": {
+          "consumed_choices": 3,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 1
+        },
+        "4": {
+          "consumed_choices": 3,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 1
+        },
+        "5": {
+          "consumed_choices": 1,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    },
+    {
+      "episode": 3,
+      "learner_player": 0,
+      "choices": 47,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 38,
+          "max_management_actor_consumptions": 12,
+          "max_navigation_key_consumptions": 2
+        },
+        "2": {
+          "consumed_choices": 9,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 2
+        }
+      }
+    },
+    {
+      "episode": 4,
+      "learner_player": 0,
+      "choices": 117,
+      "last_day": 3,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 34,
+          "max_management_actor_consumptions": 7,
+          "max_navigation_key_consumptions": 2
+        },
+        "2": {
+          "consumed_choices": 39,
+          "max_management_actor_consumptions": 11,
+          "max_navigation_key_consumptions": 2
+        },
+        "3": {
+          "consumed_choices": 44,
+          "max_management_actor_consumptions": 3,
+          "max_navigation_key_consumptions": 2
+        }
+      }
+    },
+    {
+      "episode": 5,
+      "learner_player": 1,
+      "choices": 21,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 21,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        },
+        "2": {
+          "consumed_choices": 0,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    },
+    {
+      "episode": 6,
+      "learner_player": 1,
+      "choices": 42,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 42,
+          "max_management_actor_consumptions": 6,
+          "max_navigation_key_consumptions": 2
+        },
+        "2": {
+          "consumed_choices": 0,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    },
+    {
+      "episode": 7,
+      "learner_player": 1,
+      "choices": 10,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 10,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        },
+        "2": {
+          "consumed_choices": 0,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    },
+    {
+      "episode": 8,
+      "learner_player": 1,
+      "choices": 2,
+      "last_day": 2,
+      "outcome": "loss",
+      "termination_reason": "natural_terminal",
+      "budget_maxima_by_day": {
+        "1": {
+          "consumed_choices": 2,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        },
+        "2": {
+          "consumed_choices": 0,
+          "max_management_actor_consumptions": 0,
+          "max_navigation_key_consumptions": 0
+        }
+      }
+    }
+  ],
+  "action_counts": {
+    "back": 15,
+    "close": 25,
+    "close_capability": 21,
+    "end_turn": 16,
+    "move_to": 152,
+    "open_capability": 21,
+    "open_hero": 17,
+    "open_stack": 15,
+    "open_town": 8,
+    "split_stack": 26,
+    "swap_stacks": 36
+  },
+  "movement": {
+    "attempts": 152,
+    "endpoint_changes": 31,
+    "known_targets": 40,
+    "missing_endpoints": 6,
+    "results": {
+      "hero_unavailable": 6,
+      "interaction": 19,
+      "movement_limit": 5,
+      "no_route_known": 114,
+      "reached": 8
+    },
+    "targets_visible_opponent_town": 0,
+    "unknown_targets": 112,
+    "while_opponent_town_visible": 0
+  },
+  "recruitment": {
+    "attempts": 0,
+    "completed": 0
+  },
+  "hiring": {
+    "attempts": 0,
+    "completed": 0
+  },
+  "upgrading": {
+    "attempts": 0,
+    "completed": 0
+  },
+  "town_capture_evidence": 0,
+  "parent_checkpoint": 717,
+  "persisted_full_parent_restore_exact": true,
+  "official717_bytes_unchanged": true,
+  "parent_progress": {
+    "decisions": 471200,
+    "rollouts": 2868,
+    "updates": 717
+  },
+  "parent_optimizer_steps": 15717,
+  "parent_weights_sha256": "4bcc92d182e4f5f2e9af085c9815f07cc929a7a607c628e5d3d23bacf1b2bffc",
+  "owned_shutdown_verified": true,
+  "shutdown_pid_count": 19,
+  "shutdown_pgid_count": 9,
+  "owner_locks_available": true,
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_verified": true,
+  "private_branch": "codex/interaction-guard717-native-20261027",
+  "package_commit": "dc348347f0baad4c887087012f503028f199e166",
+  "publication_receipt_commit": "3acdb81fcfeca449c47197b52b63bf01393c1f8c",
+  "package_manifest_sha256": "97dfa2e875fa6b8a840ec527e6fb977ee4e8b35d461efa678c2e58489f5be924",
+  "archive": {
+    "bytes": 7293033,
+    "path": "diagnostics.tar.gz",
+    "sha256": "a26fef4d7747ba73db2adf8277082c12977ad44099d819db97814135e33ac16c"
+  },
+  "full_raw_attempt1_and_attempt2_preserved": true,
+  "full_remote_archive_downloaded_and_decompressed": true,
+  "all_236_regular_files_sha256_verified": true,
+  "symlink_targets_verified": 8,
+  "archive_entries": 338,
+  "copyrighted_game_data_dereferenced": false,
+  "remote_publication_receipt_read_back": true,
+  "reconciliation": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/diagnostics/interaction-guard717-20261027-attempt2/postcollection-reconciliation.json",
+    "sha256": "8c502a48ab853f4de2c7c5109af80bc1d5182f9b4399e8bf14b3cdf04caf05f1",
+    "bytes": 3200
+  },
+  "independent_audit": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/diagnostics/interaction-guard717-20261027-attempt2/posthoc-audits/independent-game-audit.json",
+    "sha256": "ca03671b9ca608a2d2b8f4b7d6de2667e54db98910865ef18679f2d42a543506",
+    "bytes": 39261
+  },
+  "new_games_during_audit_or_preservation": 0,
+  "new_replays_during_audit_or_preservation": 0,
+  "new_optimizer_updates": 0,
+  "training_samples": 0,
+  "limitations": [
+    "The original harness failed during postcollection bookkeeping; its failed report is retained unchanged.",
+    "The original worker did not complete its final in-memory model/Adam/RNG/pool assertion chain. Each game separately proved unchanged model weights; the full persisted official717 and copied parent were restored and compared exactly afterward.",
+    "The eight diagnostic games are valid individually and excluded from PPO. Eight losses provide no demonstrated strategic improvement.",
+    "Existing replay and reconstruction proofs were inspected and bound; no games or native replay were rerun during this audit."
+  ]
+}

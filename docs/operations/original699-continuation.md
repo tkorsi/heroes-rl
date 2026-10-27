@@ -1,4 +1,25 @@
-# Continue the original 5,000-game target from checkpoint 699
+# Continue the original 5,000-game target from the latest verified checkpoint
+
+Current manual parent: **717**, with **4,648 games remaining** and next unused
+training sequence 355. The second user-launched run stopped cleanly at 19:15:13 UTC
+on 27 October after 72 games /18 updates. Its full state is privately preserved and
+restore-tested. The command below audits this descendant; it does not reset 699.
+
+The wrapper now explicitly enables `visible-interaction-budget-v1`: two optional
+opens/selections per semantic target per visible-progress epoch, 32 reversible
+army/artifact operations per actor/day, and no zero-MP/current-tile/repeated
+unchanged failed-target moves. Mandatory answers, closing/back and end-turn remain.
+This changes policy support, while rewards remain terminal-only and PPO/model
+settings stay fixed. Eight separate native games passed replay/reconstruction and
+used 2–117 choices; all were losses. The retained postcollection harness failure
+and separate reconciliation are in the
+[guard research record](../research/interaction-guard-2026-10-27.md).
+
+The script name `continue-original-4720.sh` is retained for compatibility; its
+remaining-game target is recomputed from the verified lineage at every launch.
+No new official training was started by this preparation.
+
+## Historical timeout and acceleration preparation
 
 The user-launched run `run-20261026T181133Z-062cd75a` stopped on 27 October 2026
 at 08:55:28 UTC. It admitted 280 games / 70 complete PPO updates, with 0 wins, 275 losses

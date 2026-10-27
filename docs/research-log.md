@@ -517,3 +517,27 @@ versioned policy-support intervention, its management limits and mandatory-choic
 escapes. It requires frozen-policy native replay/reconstruction and unchanged
 full checkpoint state before enabling a manual continuation. This is not an
 exact-performance claim; no official launch is part of preparation.
+
+## 27 October 2026 — guarded diagnostics and manual checkpoint717 continuation
+
+The previous user-launched run closed cleanly at checkpoint717 (72 new admitted
+games,18 updates,62 losses and10 collection cutoffs). Its full state is privately
+published and independently restored. The original target has4,648 games left,
+with fresh training sequence355; no automatic continuation was launched.
+
+Eight fresh frozen717 diagnostics with the visible interaction budget individually
+passed native replay and strict policy reconstruction:352 choices in total,
+2–117 per game, all natural losses. No zero-MP/current-tile move was selected;
+optional navigation stayed within two uses per semantic target/progress epoch.
+No diagnostic data entered PPO. This is a policy-support intervention with
+terminal-only reward, not demonstrated improvement in winning or a paired speedup.
+
+The original diagnostic report remains failed: after all games passed, a strict
+OrderedDict/dict comparison and a duplicate shutdown-timestamp keyword broke
+final bookkeeping. The missing in-memory assertion chain is not claimed to have
+passed. Three regression tests cover the corrected harness; separate read-only
+audits verify persisted full state, every saved game proof and actual shutdown.
+The earlier zero-game preparation path error is also retained. Full raw evidence
+and these corrections are privately preserved. See the [complete results and
+limitations](research/interaction-guard-2026-10-27.md) and
+[compact report](../validation/interaction-guard-results-2026-10-27.json).
