@@ -885,7 +885,7 @@ extrapolated accepted batch is about 3,790 s (3,786.8 s, including the 6.5 s aft
 execution), not 3,780 s (no stated ratio changes at its precision except the macOS default's upper
 "about" figure, 1.88x); m3-REF's batch started at 09:15 UTC; RAF's lower bound is 1.74x.
 
-### Outcome against the assignment (10:15 UTC)
+### Outcome against the assignment (10:12 UTC)
 
 - Target "at least 2x end to end against the accepted local cold path (a8ac411)": met on this Linux
   host by the exact fast path with prefix helpers and replay threads (batch 266 at least 2.65x, about
