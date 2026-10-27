@@ -7,4 +7,4 @@ ORIGINAL_RUN="$HOME/Projects/Heroes-artifacts/local-script-training/original/run
 exec "$SCRIPT_DIR/train-local.sh" --profile original --fast-path \
     --serial-verification --prefix-helpers 0 \
     --continue-original "$ORIGINAL_RUN" --batch-wall-seconds 10800 \
-    --hours 48 --eval-every 100 "$@"
+    --hours 336 --eval-every 100 "$@"

@@ -2,6 +2,8 @@
 from copy import deepcopy
 import importlib.util
 import json
+import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,6 +16,44 @@ from experiments.learner.builtin_training_resume import binding as runner_bindin
 
 runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
+
+
+class ManualWindowTests(unittest.TestCase):
+    def test_generic_cap_stays48_and_only_continuation_allows336(self):
+        with patch.object(runner.time, 'time', return_value=1000), patch.object(runner.time, 'monotonic', return_value=2000):
+            ordinary = runner.budget(48)
+            continuation = runner.budget(336, continuation=True)
+        self.assertEqual(ordinary['absolute_deadline_unix'], 1000+48*3600)
+        self.assertEqual(continuation['absolute_deadline_unix'], 1000+336*3600)
+        self.assertEqual(continuation['hard_deadline_monotonic'], 2000+336*3600)
+        self.assertEqual(continuation['compute_deadline_unix'], continuation['absolute_deadline_unix']-300)
+        self.assertEqual(continuation['compute_deadline_monotonic'], continuation['hard_deadline_monotonic']-300)
+        runner.budget(48, continuation=True)  # Explicit shorter manual window remains possible.
+        for invalid in (49, 336):
+            with self.assertRaises(ValueError):
+                runner.budget(invalid)
+        for invalid in (0, 337, float('nan'), float('inf')):
+            with self.assertRaises(ValueError):
+                runner.budget(invalid, continuation=True)
+
+    def test_legacy_wrapper_cannot_reset_an_existing_official_run(self):
+        source = Path(__file__).parents[1]/'train-original-5000.sh'
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            wrapper = root/'train-original-5000.sh'; wrapper.write_bytes(source.read_bytes())
+            child = root/'train-local.sh'
+            child.write_text('#!/bin/sh\nprintf launched > "$SENTINEL"\n'); child.chmod(0o755)
+            original = root/'Projects/Heroes-artifacts/local-script-training/original'
+            original.mkdir(parents=True)
+            for name in ('latest-run.json', 'latest-checkpoint.json', 'sequence-ledger.json'):
+                with self.subTest(name=name):
+                    marker = original/name; marker.write_text('{}')
+                    result = subprocess.run(['sh', str(wrapper)], env={**os.environ, 'HOME':str(root),
+                        'SENTINEL':str(root/'launched')}, text=True, capture_output=True, timeout=5)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn('continue-original-4720.sh', result.stderr)
+                    self.assertFalse((root/'launched').exists())
+                    marker.unlink()
 
 
 class OperationalBudgetTests(unittest.TestCase):

@@ -5,9 +5,18 @@ The script makes **no language-model API calls**, starts no cloud agent and crea
 scheduled task. The cloud Teacher has finished and handed back the full state;
 see [its final handoff](teacher-cloud-to-local-handoff-20261026.md).
 
-## Next original-map experiment: 5,000 training games
+## Current original-map continuation
 
-The user will invoke this after the current easier8x8 run finishes:
+The first original-map run stopped at checkpoint 699 after 280 admitted games.
+Its remaining 4,720 games use `./continue-original-4720.sh` after the Mac 699
+validation; see [the continuation instructions](original699-continuation.md).
+The legacy wrapper now refuses an existing original-map run, preventing a reset
+to 629. The continuation keeps its own bounded 14-day manual window; no automatic
+restart is scheduled.
+
+## Historical first original-map launch: 5,000 training games
+
+The user invoked this after the easier8x8 run finished; do not repeat it for the continuation:
 
 ```sh
 cd /Users/orsi/Projects/Heroes

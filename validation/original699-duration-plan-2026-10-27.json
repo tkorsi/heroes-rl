@@ -1,0 +1,98 @@
+{
+  "schema": "heroes-original699-duration-and-window-v1",
+  "timestamp_utc": "2026-10-27T12:27:52.377262+00:00",
+  "purpose": "Prospective fresh manual continuation budget; no campaign or benchmark deadline is changed",
+  "source": {
+    "run_dir": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a",
+    "report_sha256": "39cfb1580dd3c3527f6c24cdc646d45323ddc0a3d60e3d114f580ba7ae376355",
+    "measurement": "batch_intent started_utc through batch_result finished_utc; includes admission and local durable checkpoint restore"
+  },
+  "accepted": {
+    "all": {
+      "batches": 70,
+      "games": 280,
+      "total_seconds": 49177.507513000004,
+      "mean_seconds": 702.5358216142857,
+      "median_seconds": 340.84789950000004,
+      "min_seconds": 10.511822,
+      "max_seconds": 2920.876684
+    },
+    "red": {
+      "batches": 35,
+      "games": 140,
+      "total_seconds": 46171.359897,
+      "mean_seconds": 1319.1817113428572,
+      "median_seconds": 1238.771588,
+      "min_seconds": 230.405113,
+      "max_seconds": 2920.876684
+    },
+    "blue": {
+      "batches": 35,
+      "games": 140,
+      "total_seconds": 3006.147616,
+      "mean_seconds": 85.88993188571429,
+      "median_seconds": 31.243933,
+      "min_seconds": 10.511822,
+      "max_seconds": 400.649606
+    }
+  },
+  "excluded": [
+    {
+      "mode": "baseline",
+      "sequence": 629,
+      "status": "passed",
+      "seconds": 164.443468
+    },
+    {
+      "mode": "baseline",
+      "sequence": 629,
+      "status": "passed",
+      "seconds": 168.147127
+    },
+    {
+      "mode": "training",
+      "sequence": 336,
+      "status": "failed",
+      "seconds": 3515.935581
+    }
+  ],
+  "remaining_games": 4720,
+  "remaining_complete_batches": 1180,
+  "historical_extrapolation": {
+    "all70": {
+      "observed_mean_batch_seconds": 702.5358216142857,
+      "remaining1180_batches_hours": 230.27563041801588,
+      "full1250_batches_hours": 243.936049171627
+    },
+    "last20": {
+      "observed_mean_batch_seconds": 983.6147834,
+      "remaining1180_batches_hours": 322.40706789222224,
+      "full1250_batches_hours": 341.53291090277776
+    },
+    "last10": {
+      "observed_mean_batch_seconds": 1069.3943117,
+      "remaining1180_batches_hours": 350.5236910572222,
+      "full1250_batches_hours": 371.31746934027774
+    }
+  },
+  "uncertainty": [
+    "Not a forecast confidence interval; policy and game lengths evolve.",
+    "No Mac acceleration ratio is asserted here; the independent disposable699 comparison is still pending.",
+    "The old one-hour failure is censored and excluded from accepted throughput; it may understate long-tail work."
+  ],
+  "decision": {
+    "generic_maximum_hours_unchanged": 48,
+    "original699_continuation_default_and_maximum_hours": 336,
+    "shorter_manual_hours_allowed": true,
+    "finalization_reserve_seconds": 300,
+    "reason": "The unchanged observed rate suggests 230 to351hours remaining;48hours is likely insufficient even under a hypothetical2x acceleration.",
+    "automatic_retry": false,
+    "automatic_new_window": false,
+    "frozen_benchmark_budget_unchanged": true
+  },
+  "validation": {
+    "lightweight_tests": "tests.test_original_continuation.ManualWindowTests",
+    "passed": 2,
+    "gameplay_performed": false
+  }
+}

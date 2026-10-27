@@ -208,7 +208,8 @@ recalculates the remaining target after each manually stopped/restarted session.
 It does not select 629 or a disposable performance checkpoint. Before manual use,
 complete the separately authorized Mac 699 acceleration validation. The wrapper
 uses the reviewed exact fast path with a three-hour batch allowance, unchanged
-PPO/native collection limits and the existing 48-hour session cap. The user starts
+PPO/native collection limits and a bounded 14-day manual session cap. The generic
+runner retains its 48-hour maximum; `--hours 48` selects a shorter continuation. The user starts
 training; preparing or checking the wrapper starts no games. See
 [continuation details](docs/operations/original699-continuation.md).
 
@@ -216,7 +217,7 @@ The policy samples its own current distribution and PPO updates every complete
 four-game batch: at most 1,250 updates and 2,500 training games per seat. Rewards
 remain terminal-only; every verified training game counts, not only wins.
 Separate paired evaluation occurs before training, every 100 updates and at the
-end. A 48-hour safety cap, manual stop, or technical failure may end the run short
+end. The declared session cap, manual stop, or technical failure may end the run short
 of 5,000; reports distinguish target completion from an incomplete stop. The
 source map is unchanged hero-management-v2, including its original small set of
 mines, gold and neutrals, native Tavern support and normal hero leveling.

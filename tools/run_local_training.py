@@ -69,9 +69,10 @@ def exclusive_lock(path):
         finally: fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def budget(hours):
-    if not math.isfinite(hours) or not 0.25 <= hours <= 48:
-        raise ValueError('--hours must be between 0.25 and 48')
+def budget(hours, *, continuation=False):
+    maximum = 336 if continuation else 48
+    if not math.isfinite(hours) or not 0.25 <= hours <= maximum:
+        raise ValueError(f'--hours must be between 0.25 and {maximum}')
     seconds = int(hours * 3600)
     wall, mono = time.time(), time.monotonic()
     return dict(started_unix=wall, started_monotonic=mono,
@@ -606,7 +607,7 @@ def launch_owned(args):
         parent_final_evidence=parent_final_evidence,
         frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py', 'train-local.sh')},
         authorization='Manual user invocation; no agent/model calls, no automatic retry or post-deadline restart',
-        **budget(args.hours))
+        **budget(args.hours, continuation=args.continue_original is not None))
     require(not session['source']['tracked_worktree_dirty'], 'Frozen source is dirty')
     session_path = run / 'session.json'; atomic(session_path, session)
     atomic(run_root / 'latest-run.json', dict(run_dir=str(run), session=binding(session_path)))
@@ -619,6 +620,10 @@ def launch_owned(args):
           + ('off' if not execution['text_leaf_replay'] else 'not used by the experiment' if execution['experiments']
              else f"on {execution['replay_threads']} threads" if execution['replay_threads'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
+    if continuation:
+        print(f"Original target: {continuation['target_games']} games; admitted before this session: "
+              f"{continuation['admitted_before_session']}; remaining: {args.games}.", flush=True)
+    print(f"Session safety cap: {args.hours:g} hours; no automatic retry or new window.", flush=True)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)
     return supervise(session_path)
@@ -689,7 +694,8 @@ def main():
     parser.add_argument('command', nargs='?', choices=('start', 'check', 'status', '_launch', '_worker'), default='start')
     parser.add_argument('--profile', choices=('easier8x8', 'original'), default='easier8x8')
     parser.add_argument('--config', type=Path)
-    parser.add_argument('--hours', type=float, help='Safety cap: default 2 hours, or 48 hours with --games')
+    parser.add_argument('--hours', type=float,
+                        help='Fresh-session safety cap: 2h default, 48h with --games; original699 continuation defaults/maxes at336h')
     parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
     parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
@@ -734,7 +740,8 @@ def main():
     if args.replay_threads is None: args.replay_threads = args.prefix_helpers if args.text_leaf_replay else 0
     if args.overlap_verification is None: args.overlap_verification = sys.platform != 'darwin'
     args.config = args.config or (ORIGINAL_CONFIG if args.profile == 'original' else DEFAULT_CONFIG)
-    args.hours = args.hours if args.hours is not None else (48 if args.games is not None or args.continue_original is not None else 2)
+    args.hours = args.hours if args.hours is not None else (336 if args.continue_original is not None
+                                                        else 48 if args.games is not None else 2)
     args.eval_every = args.eval_every if args.eval_every is not None else (100 if args.games is not None or args.continue_original is not None else 5)
     if args.games is not None and (args.games <= 0 or args.games % 4): parser.error('--games must be a positive multiple of four')
     if args.games is not None and args.max_updates is not None: parser.error('Choose --games or --max-updates, not both')
@@ -753,6 +760,7 @@ def main():
         if args.config.resolve() in (DEFAULT_CONFIG.resolve(), ORIGINAL_CONFIG.resolve()) \
                 or Path(config['run_root']).resolve() in official:
             parser.error('A numerical experiment needs its own --config and run root, never the official ones')
+    budget(args.hours, continuation=args.continue_original is not None)  # Validate before filesystem/session mutation.
     if args.command == 'check':
         from prepare_local_training import validate_config
         checked = validate_config(config)
@@ -764,14 +772,13 @@ def main():
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
                 exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
-                shared_wall_seconds=operational['shared_wall_seconds'],
+                session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],
                 gameplay_performed=False, ppo_updates=0), indent=2))
         else:
             print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],
                                   exact_restore=True, backend=checked['backend'], gameplay_performed=False, ppo_updates=0), indent=2))
         return 0
-    budget(args.hours)  # Validate before filesystem/session mutation.
     return launch(args) if args.command == '_launch' else start(args)
 
 
