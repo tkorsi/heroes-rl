@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T02:20:40Z",
+ "generated_utc": "2026-10-27T02:50:53Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,8 +20,8 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T02:20:11.135869Z",
-  "seconds_to_heavy_stop": 30588.9,
+  "heartbeat_utc": "2026-10-27T02:50:41.776569Z",
+  "seconds_to_heavy_stop": 28758.2,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -89,7 +89,7 @@
    "label": "bench-m2-B",
    "pid": 10549,
    "starttime": 908921,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
@@ -99,7 +99,7 @@
     "--profile"
    ],
    "registered_utc": "2026-10-27T02:20:32.913809Z",
-   "live_descendants": 1
+   "live_descendants": 0
   },
   {
    "label": "bench-m3-R5H",
@@ -150,6 +150,22 @@
    "live_descendants": 0
   },
   {
+   "label": "bench-m3-RBN",
+   "pid": 16385,
+   "starttime": 980595,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m3-RBN/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T02:32:29.652316Z",
+   "live_descendants": 0
+  },
+  {
    "label": "bench-m3-RH",
    "pid": 1237,
    "starttime": 35175,
@@ -164,6 +180,38 @@
    ],
    "registered_utc": "2026-10-26T23:54:55.450331Z",
    "live_descendants": 0
+  },
+  {
+   "label": "bench-m6-RBH",
+   "pid": 18987,
+   "starttime": 1020421,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m6-RBH/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T02:39:07.904680Z",
+   "live_descendants": 8
+  },
+  {
+   "label": "bench-m6-RBH-driver",
+   "pid": 18943,
+   "starttime": 1020084,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m6-RBH",
+    "--checkout",
+    "/home/claude/o5k-cand12"
+   ],
+   "registered_utc": "2026-10-27T02:49:33.107669Z",
+   "live_descendants": 9
   },
   {
    "label": "campaign-m3-R5H-driver",
@@ -185,7 +233,7 @@
    "label": "driver-m2-B",
    "pid": 10504,
    "starttime": 908572,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
@@ -195,7 +243,7 @@
     "/home/claude/o5k-main"
    ],
    "registered_utc": "2026-10-27T02:20:29.458025Z",
-   "live_descendants": 2
+   "live_descendants": 0
   },
   {
    "label": "driver-m3-R5H",
@@ -246,6 +294,22 @@
    "live_descendants": 0
   },
   {
+   "label": "driver-m3-RBN",
+   "pid": 16312,
+   "starttime": 980249,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m3-RBN",
+    "--checkout",
+    "/home/claude/o5k-cand12"
+   ],
+   "registered_utc": "2026-10-27T02:32:26.251778Z",
+   "live_descendants": 0
+  },
+  {
    "label": "driver-m3-RH",
    "pid": 1190,
    "starttime": 34427,
@@ -260,6 +324,22 @@
    ],
    "registered_utc": "2026-10-26T23:54:48.011238Z",
    "live_descendants": 0
+  },
+  {
+   "label": "driver-m6-RBH",
+   "pid": 18943,
+   "starttime": 1020084,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m6-RBH",
+    "--checkout",
+    "/home/claude/o5k-cand12"
+   ],
+   "registered_utc": "2026-10-27T02:39:04.586301Z",
+   "live_descendants": 9
   },
   {
    "label": "ppo-B267",
@@ -281,7 +361,7 @@
    "label": "ppo-P266",
    "pid": 349,
    "starttime": 727447,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/bench3/tools/ppo_bench.py",
@@ -326,6 +406,22 @@
    "live_descendants": 0
   },
   {
+   "label": "ppo-R267d",
+   "pid": 22641,
+   "starttime": 1053679,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/bench3/tools/ppo_bench.py",
+    "--checkout",
+    "/home/claude/o5k-cand4",
+    "--parent-plan",
+    "/home/claude/bench3/ppo267/parent630/plan.json"
+   ],
+   "registered_utc": "2026-10-27T02:50:08.404559Z",
+   "live_descendants": 0
+  },
+  {
    "label": "ppo-R8H267",
    "pid": 18814,
    "starttime": 451672,
@@ -364,6 +460,18 @@
    ],
    "registered_utc": "2026-10-27T00:30:19.832641Z",
    "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix10",
+   "pid": 23603,
+   "starttime": 1086674,
+   "alive": true,
+   "command": [
+    "/bin/bash",
+    "./run_matrix10.sh"
+   ],
+   "registered_utc": "2026-10-27T02:50:10.446334Z",
+   "live_descendants": 1
   },
   {
    "label": "ppo-matrix5",
@@ -453,13 +561,13 @@
    "label": "ppo-matrix9",
    "pid": 9489,
    "starttime": 878592,
-   "alive": true,
+   "alive": false,
    "command": [
     "/bin/bash",
     "./run_matrix9.sh"
    ],
    "registered_utc": "2026-10-27T02:15:29.627382Z",
-   "live_descendants": 1
+   "live_descendants": 0
   },
   {
    "label": "schedule-after-m3r5h",
@@ -489,13 +597,13 @@
    "label": "schedule-after-m3raf",
    "pid": 890,
    "starttime": 737718,
-   "alive": true,
+   "alive": false,
    "command": [
     "/bin/bash",
     "./after_m3raf.sh"
    ],
    "registered_utc": "2026-10-27T01:52:00.885248Z",
-   "live_descendants": 3
+   "live_descendants": 0
   },
   {
    "label": "schedule-after-m3rh",
@@ -508,6 +616,18 @@
    ],
    "registered_utc": "2026-10-27T00:28:46.822332Z",
    "live_descendants": 0
+  },
+  {
+   "label": "schedule-after-m6rbh",
+   "pid": 23537,
+   "starttime": 1083146,
+   "alive": true,
+   "command": [
+    "/bin/bash",
+    "./after_m6rbh.sh"
+   ],
+   "registered_utc": "2026-10-27T02:49:35.164797Z",
+   "live_descendants": 1
   },
   {
    "label": "schedule-m4",
@@ -552,14 +672,14 @@
    "label": "schedule-m7",
    "pid": 890,
    "starttime": 737718,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
     "/home/claude/bench3/schedules/m7.json"
    ],
    "registered_utc": "2026-10-27T02:20:29.327691Z",
-   "live_descendants": 3
+   "live_descendants": 0
   },
   {
    "label": "tests-cand6",
@@ -578,7 +698,7 @@
    "live_descendants": 0
   }
  ],
- "phase": "schedule m7 on CPUs 1-3 (m3-RAF on a5b3568 finished 02:20): m2-B (accepted cold start, baselines only), m3-RBN (fallback switch, baselines only), m6-RBH (eight training batches 266-273 on the integration candidate 20b20f9 with two replay threads), then m4-RBH, m2-XH, m2-CH, m5-RBH, m3-RBF; CPU 0 queue runs PR30 on batches 266/267 (P266, P267), then the accepted and fast-path repeats on 266 (B2, C2)",
+ "phase": "schedule m8 on CPUs 1-3 takes over after m6-RBH (eight training batches 266-273 on 2ba42ac, running): m4-RDH, m3-RDT, m3-RDF, m2-XH, m5-RDH, m2-CH on the final learner candidate 480aa1a (worktree at 579043e) and 15ed404; CPU 0 queue 10: batch 267 A/B (R267d, RB267, RB267b, R267e), RBN267, RD267, P267, RD266, B2, C2, P266b, RD266b",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -732,6 +852,34 @@
    },
    "checkpoint_digest_equal_to_every_exact_campaign": true,
    "note": "batch 266 at least 1.75x the censored accepted batch (3,523 s) on the same single-CPU PPO; the accepted batch is estimated at about 4,600 to 4,900 s, about 2.3 to 2.4x"
+  },
+  "m2_B": {
+   "commit": "a8ac411",
+   "baselines_seconds": [
+    219.2,
+    417.1
+   ],
+   "note": "accepted path, baselines only; m1-B took 318.1 and 557.7 s for the same games (host drift)"
+  },
+  "m3_RBN": {
+   "commit": "2ba42ac",
+   "start_args": "--fast-path --serial-verification --no-text-replay",
+   "baselines_seconds": [
+    109.4,
+    225.4
+   ],
+   "execution_recorded": {
+    "text_leaf_replay": false,
+    "prefix_helpers": 0,
+    "overlapped_verification": false
+   }
+  },
+  "optimizer_only_batch266_pr30_cpu0": {
+   "pr30_4d7688b_seconds": 3243.7,
+   "replay_1721220_seconds": 1750.7,
+   "ratio": 1.85,
+   "weights": "both fe1378ef (equal to the accepted path)",
+   "note": "one CPU each; PR30 prefix 953.4 s, loss forward 698.0 s, backward 1363.5 s, behaviour check 211.7 s"
   }
  },
  "completed_checks": [
@@ -746,17 +894,20 @@
   "Mac tool: exit status covers failed, bounded, interrupted, incomplete or leftover campaigns and a moved checkout; summary always written; main() tested end to end with the game replaced",
   "numerical experiment refuses the official configuration and run root",
   "game digests cover every observation and decision frame; missing digests are reported as not comparable",
-  "test suites: test_local_fast_path, test_local_script_training (32), test_prefix_pool, test_parallel_verification, test_ppo_phase2_acceleration (33), local script controller/integration and builtin evaluation (51), Mac tool (14)"
+  "test suites: test_local_fast_path, test_local_script_training (32), test_prefix_pool, test_parallel_verification, test_ppo_phase2_acceleration (33), local script controller/integration and builtin evaluation (51), Mac tool (14)",
+  "fourth independent review of the deferred replays (13 agents, 10 verified findings): fixed in 480aa1a or stated as limitations; mutation checks of the new gating tests",
+  "480aa1a: 104 unit tests of the fast path, learner, replay, prefix pool, parallel verification and phase-2 acceleration, and 25 Mac tool and bench tool tests pass; fast_path_pins reports pins match"
  ],
  "blockers": [],
  "official_lineage_touched": false,
  "official_run_launched": false,
  "teacher_touched": false,
- "candidate_commit": "20b20f9 (integration candidate: exact replayed text leaves, deferred replays on the declared helper CPUs only inside a bracketed backward, fail-closed lifecycle and parameter checks after three reviews); measured predecessors 1721220 (m3-RH), 4f02a10 (m3-R5H), a5b3568 (m3-RAH, m3-RAF), 15ed404 (m1-CH/m1-XH)",
+ "candidate_commit": "480aa1a (final learner candidate: 20b20f9 plus the fourth review fixes, deferral gated on the bracket's graph task and intra-op thread count, and --replay-threads); 579043e adds the log. Measured predecessors: 2ba42ac (learner of 20b20f9: m3-RBN, m6-RBH), a5b3568 (m3-RAH, m3-RAF), 4f02a10 (m3-R5H), 1721220 (m3-RH), 15ed404 (m1-CH, m1-XH)",
  "incidents": [
   "20:0x UTC: a pkill -f pattern matched my own waiting shell and killed only my tool shells (drivers verified alive); standing rule violated, waits now use kill -0 on recorded pids",
   "about 23:15Z: the host rebooted (boot 3b357b50 -> b9c386f7); every process died. m1-XH had already finished; its summary and lossless compression were redone by hand. The watchdog refused to restart on a new boot; it was changed to re-anchor its monotonic deadlines to the unchanged UTC deadlines and to retire all registrations of the previous boot (tested), then restarted. Optimizer-only job P (PR30) was lost and rerun from the start; the remaining five campaigns run unchanged as schedule m3b.",
-  "about 23:48:50Z: second host restart (boot b9c386f7 -> 72fdd1aa); lost m1-F (26 min in) and the second PR30 optimizer-only attempt; watchdog restarted through the reboot path with the same UTC deadlines; the optimizer-only queue now skips finished jobs"
+  "about 23:48:50Z: second host restart (boot b9c386f7 -> 72fdd1aa); lost m1-F (26 min in) and the second PR30 optimizer-only attempt; watchdog restarted through the reboot path with the same UTC deadlines; the optimizer-only queue now skips finished jobs",
+  "02:45Z: the session disk allowance was down to 2.8 GB while m6-RBH (eight training batches, about 0.6 GB of raw episodes per batch) ran; freed to 6.6 GB by lossless, verified compression of older benchmark episodes (bench2 o-XH/r0-B, runs/final, reval-final, vsbase-final), deleting scratch files and removing three unused release worktrees; a low-disk alarm now watches the allowance"
  ],
  "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)"
 }
