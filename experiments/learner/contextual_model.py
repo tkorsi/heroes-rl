@@ -18,6 +18,7 @@ from math import copysign, log1p, sqrt
 from operator import attrgetter
 from sys import getsizeof
 import threading
+import weakref
 
 import torch
 from torch import Tensor, nn
@@ -379,9 +380,11 @@ class _ReplayedText:
         self.arguments = tuple(param for param, count in zip(self.params, self.counts) for _ in range(count))
 
     def _recorder(self, targets):
+        owner = weakref.ref(self)  # no reference cycle through the graph's hook storage, which the collector cannot see
+
         def record(grad_inputs, grad_outputs):
             leaf, captured = getattr(_REPLAY_CAPTURE, "current", (None, None))
-            if leaf is not self:
+            if leaf is None or leaf is not owner():
                 raise RuntimeError("A text leaf graph ran outside its own replay")
             grad_inputs = list(grad_inputs)
             for edge, position in targets:

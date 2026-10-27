@@ -2,9 +2,11 @@
 from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import replace
+import gc
 import pickle
 import threading
 import unittest
+import weakref
 from unittest.mock import patch
 
 try:
@@ -267,6 +269,34 @@ class ReplayedTextLeafTests(unittest.TestCase):
             changed = self.window_gradients(self.model.replayed_text_leaves())
         self.assertTrue(bits_equal(changed[0], reference[0]))  # forward values are shared exactly
         self.assertFalse(bits_equal(changed[1], reference[1]))
+
+    def test_reordered_contributions_are_detected(self):
+        # Negative control: each parameter's contributions of one occurrence, added in reverse order, change the bits.
+        replay = cm._ReplayedText.replay
+
+        def reversed_order(leaf, grad):
+            values, result, start = replay(leaf, grad), [], 0
+            for count in leaf.counts:
+                result.extend(reversed(values[start:start + count]))
+                start += count
+            return result
+        reference = self.window_gradients(torch.enable_grad())
+        with patch.object(cm._ReplayedText, "replay", reversed_order):
+            changed = self.window_gradients(self.model.replayed_text_leaves())
+        self.assertTrue(bits_equal(changed[0], reference[0]))
+        self.assertFalse(bits_equal(changed[1], reference[1]))
+
+    def test_an_unreleased_leaf_is_freed_without_the_cycle_collector(self):
+        enabled = gc.isenabled()
+        gc.disable()
+        try:
+            leaf = cm._ReplayedText(self.model, "abc".encode())
+            probe = weakref.ref(leaf)
+            del leaf
+            self.assertIsNone(probe())
+        finally:
+            if enabled:
+                gc.enable()
 
     def test_replay_is_inert_with_any_hook_and_never_pickled(self):
         module = torch.nn.modules.module
