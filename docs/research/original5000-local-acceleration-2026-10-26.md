@@ -635,7 +635,7 @@ through `.data` is not detected (it keeps the data pointer and the version), con
 a signal at the entry of `finish` could leave the bracket active; `close` did not mark the object
 broken.
 
-Fixes (candidate cand13, the commit after c71fb44's successors on this branch). The bracket now
+Fixes (480aa1a). The bracket now
 records its own graph task: a pre-hook on the loss's node, which the engine runs first, stores
 `torch._C._current_graph_task_id()`, and an occurrence defers only when it runs in that task and
 on the bracket's intra-op thread count. Every other backward, nested or on another thread, replays
