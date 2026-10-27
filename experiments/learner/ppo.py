@@ -8,6 +8,7 @@ before using the shared numerical kernel.
 """
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 import math
 from time import perf_counter
@@ -188,7 +189,33 @@ def _admit(rollouts, model, *, native=False):
 
 
 def _verify_behavior(model, rollouts, inputs):
-    """Recompute frozen old probabilities/values before the first parameter update."""
+    """Recompute frozen old probabilities/values before the first parameter update.
+
+    The modules ``_can_cache_prefix`` admits behave identically in training and
+    evaluation mode, so the check then runs them in evaluation mode, where the
+    exact inference memos apply, and restores every module's mode afterwards.
+    It starts from empty memos and discards them afterwards: nothing the
+    collector or the policy reconstruction cached is reused, so the check stays
+    an independent recomputation of every stored probability and value.
+    """
+    modes = [(module, module.training) for module in model.modules()] if model._can_cache_prefix() else None
+    if modes is not None:
+        model.eval()
+    try:
+        _drop_inference_memos(model)
+        _verify_behavior_frames(model, rollouts, inputs)
+    finally:
+        _drop_inference_memos(model)
+        for module, mode in modes or ():
+            module.training = mode
+
+
+def _drop_inference_memos(model):
+    for name in ("_leaf_memo_state", "_observation_memo_state"):
+        model.__dict__.pop(name, None)
+
+
+def _verify_behavior_frames(model, rollouts, inputs):
     with torch.no_grad():
         for item, encoded in zip(rollouts, inputs):
             records = {record.decision_seq: record for record in item.decisions}
@@ -219,6 +246,21 @@ def _verify_behavior(model, rollouts, inputs):
                     raise ValueError("Bootstrap value differs from the actual own decision under behavior weights")
 
 
+# Separate numerical experiments, never defaults. Only a caller that binds the choice into
+# its immutable plan (the benchmark harness) sets this; no environment variable can.
+EXPERIMENTS = frozenset()
+# Exact, opt-in: forked helpers compute prefix frame encodings bit for bit (``prefix_pool``).
+# Zero keeps every encoding in this process. Set the same way as ``EXPERIMENTS``.
+PREFIX_HELPERS = 0
+# Exact: each distinct text leaf of a minibatch graph is encoded once and every occurrence
+# replays that leaf's own backward (``ContextualActorCritic.replayed_text_leaves``). False
+# keeps every occurrence's separate computation; both give bit-identical updates.
+REPLAY_TEXT_LEAVES = True
+# Threads that replay text-leaf occurrences while the backward continues, None: as many as
+# PREFIX_HELPERS (the extra CPUs the caller declared). Zero replays them in the backward itself.
+TEXT_REPLAY_WORKERS = None
+
+
 @dataclass(frozen=True)
 class PPOReport:
     samples: int
@@ -239,13 +281,36 @@ def ppo_update(model, optimizer, rollouts, *, config=PPOConfig(), generator):
     return _update(model, optimizer, rollouts, config=config, generator=generator)
 
 
-def _update(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None):
+def _update(model, optimizer, rollouts, **options):
+    pools = []
+    try:
+        return _update_kernel(model, optimizer, rollouts, pools=pools, **options)
+    finally:
+        try:
+            # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text
+            # leaves; replay threads stop before the prefix helpers do.
+            model.__dict__.pop("_graph_memo_state", None)
+            deferred = model.__dict__.pop("_text_replay_deferred", None)
+            try:
+                if deferred is not None:
+                    deferred.close()
+            finally:
+                for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
+                    leaf.release()
+        finally:
+            # Prefix helpers end with the update, whatever its outcome.
+            for pool in pools:
+                pool.close()
+
+
+def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,
+                   pools=None):
     """Shared numerical kernel; callers must establish admission before entering.
 
     The public default entry point remains synthetic-only. The separately gated
     gameplay runner verifies native artifacts and replay before using this kernel.
     """
-    from .contextual_model import encode_history
+    from .contextual_model import encode_history, frame_keys_until
     started = perf_counter()
     timings = dict(history_encoding=0.0, behavior_verification=0.0, prefix_reconstruction=0.0,
                    loss_forward=0.0, backward_and_clip=0.0, optimizer_step=0.0)
@@ -287,6 +352,22 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
         raise ValueError("Complete PPO update exceeds its predeclared optimizer-step cap")
     totals = [0.0] * 4
     weighted_count = steps = 0
+    # Separate numerical experiment, never a default: exact encodings shared within each
+    # minibatch graph change parameter gradients in floating-point summation order only.
+    shared = "shared_graph_encodings" in EXPERIMENTS
+    if shared:
+        timings["experiment_shared_graph_encodings"] = 1.0
+    # Memo keys of the unchanged histories, computed once per update instead of once per minibatch.
+    # A caller's own replacement of prefix_states keeps the original call.
+    prefix_keys = None if "prefix_states" in model.__dict__ else [[] for _ in inputs]
+    pool = None
+    if PREFIX_HELPERS and pools is not None and prefix_keys is not None and model._can_cache_prefix():
+        from .prefix_pool import PrefixPool
+        phase = perf_counter()
+        pool = PrefixPool(model, inputs, PREFIX_HELPERS)
+        pools.append(pool)
+        timings["prefix_helpers"] = float(PREFIX_HELPERS)
+        timings["prefix_helper_start"] = perf_counter() - phase
     for _ in range(config.epochs):
         order = torch.randperm(len(windows), generator=generator).tolist()
         for batch_start in range(0, len(order), config.windows_per_minibatch):
@@ -294,12 +375,24 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
             # All selected windows see identical parameters. Reconstruct each
             # episode once up to its furthest boundary, then retain the original
             # selected-window order and separate detached autograd graphs.
+            replaying = REPLAY_TEXT_LEAVES and not shared
+            workers = PREFIX_HELPERS if TEXT_REPLAY_WORKERS is None else TEXT_REPLAY_WORKERS
+            sharing = (model.shared_graph_encodings() if shared
+                       else model.replayed_text_leaves(workers) if replaying else nullcontext())
+            sharing.__enter__()
             phase = perf_counter()
             boundaries = {}
             if model._can_cache_prefix():
                 for window in selected:
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
-            prefixes = {index: model.prefix_states(inputs[index], stops) for index, stops in boundaries.items()}
+            prefixes = {}
+            for index, stops in boundaries.items():
+                if prefix_keys is None:
+                    prefixes[index] = model.prefix_states(inputs[index], stops)
+                    continue
+                keys = frame_keys_until(prefix_keys[index], inputs[index], max(stops))
+                vectors = None if pool is None else pool.vectors(index, max(stops), keys)
+                prefixes[index] = model.prefix_states(inputs[index], stops, vectors=vectors, keys=keys)
             timings["prefix_reconstruction"] += perf_counter() - phase
             phase = perf_counter()
             new_log_probs, new_values, old_log_probs, old_values, batch_advantages, returns = [], [], [], [], [], []
@@ -338,9 +431,13 @@ def _update(model, optimizer, rollouts, *, config, generator, before_step=None, 
                 before_step()
             phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
-            loss.backward()
+            if replaying:
+                model.backward_with_text_replays(loss)
+            else:
+                loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
             timings["backward_and_clip"] += perf_counter() - phase
+            sharing.__exit__(None, None, None)
             if before_step is not None:
                 before_step()
             phase = perf_counter()

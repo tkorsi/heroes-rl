@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import asdict
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -36,8 +35,8 @@ def require(condition, message):
 
 
 def digest(path):
-    with Path(path).open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
+    from experiments.headless.digest_scope import sha256_file
+    return sha256_file(Path(path))[0]
 
 
 def write(path, value):

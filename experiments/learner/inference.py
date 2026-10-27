@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import asdict
-import hashlib
 import json
 from pathlib import Path
 import random
@@ -35,7 +34,8 @@ BASELINE_SHA256 = "6fc3f50ac769ed6030a21e6ed7c4ba3b0a1341b3d16e9ec72e8a330ba91db
 
 
 def digest(path):
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    from experiments.headless.digest_scope import sha256_file
+    return sha256_file(Path(path))[0]
 
 
 def source_identity(interface=contract.TOWN_ENVIRONMENT):

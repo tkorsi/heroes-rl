@@ -1,0 +1,844 @@
+{
+ "schema": "claude-original5000-final-receipt-v2",
+ "generated_utc": "2026-10-27T12:01:39Z",
+ "correction": {
+  "dated": "2026-10-27",
+  "summary": "Post-deadline correction. The hard-stop receipt is null and stays null: the session host of boot 3eb80ab8-76bf-45e4-95c9-18b3b5583a54 was shut down about 4 minutes before the 11:00:00Z hard stop. The idle session process received SIGTERM at 10:55:54.081Z, the environment recorded its exit (143) at 10:55:54.316Z and the end of the task run at 10:55:54.318Z; that record is the last durable write on the disk (its file's coarse mtime reads 10:55:54.31Z). The watchdog had last written its heartbeat at 2026-10-27T10:55:30.039184Z and the next was due by about 10:56:00Z, so the host stopped writing between 10:55:54Z and about 10:56:00Z and the hard-stop branch never ran. The next boot f1754ffc-e0ec-4bc4-bee8-7286580a28ad started at 2026-10-27T11:06:55.000000Z. The heavy-work stop at 10:50:00.005Z had already found no registered benchmark root alive. After the new boot, read-only scans found none of the 92 registrations alive by pid and kernel start ticks, and by boot id where one was recorded (67 of 92); none of their pids was in use, and no benchmark or game process existed. No signal was sent and the watchdog was not restarted (a restart would retire registrations and run its stop branch). The raw evidence that v1 kept only on the host is now also preserved in the private repository below; the host copies are retained.",
+  "superseded_fields": {
+   "watchdog.hard_stop_receipt": "null because the host was shut down at 10:55:54Z, before 11:00:00Z; no hard stop is pending",
+   "private_data.note": "v1 said nothing raw was pushed; the raw evidence is now in the private branch below",
+   "deliverables": "v1 hashes are of the files at dfd55d5; the log and the guide changed with this correction, see deliverables below",
+   "generated_utc": "v1 was generated at 10:50:37Z, before the hard stop"
+  }
+ },
+ "shutdown_proof": {
+  "path": "reports/cloud/claude-original5000-shutdown-proof-20261027.json",
+  "sha256": "344575b6ac0f89b54fd6c1f7f135ad38f01880888b3c97c79cc464a2c6f29403",
+  "generated_utc": "2026-10-27T11:11:36.495235Z",
+  "previous_boot": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+  "previous_boot_started_utc_approx": "2026-10-27T04:05:00.894432Z",
+  "last_heartbeat": {
+   "utc": "2026-10-27T10:55:30.039184Z",
+   "monotonic": 24629.144752544,
+   "pid": 238,
+   "starttime": 6029,
+   "seconds_to_hard_stop": 270.0,
+   "owned_alive": []
+  },
+  "heavy_stop_receipt": {
+   "reason": "heavy-work deadline",
+   "utc": "2026-10-27T10:50:00.004932Z",
+   "monotonic": 24299.110452384,
+   "targets": [],
+   "signals": [],
+   "remaining": [],
+   "all_stopped": true
+  },
+  "hard_stop_receipt": null,
+  "current_boot": {
+   "boot_id": "f1754ffc-e0ec-4bc4-bee8-7286580a28ad",
+   "btime_unix": 1793099215,
+   "btime_utc": "2026-10-27T11:06:55.000000Z",
+   "clk_tck": 100
+  },
+  "watchdog_state_sha256": "b418624506f758b79c8a49d59638140aae23fb7d99ea535a307c853dab1340d8",
+  "watchdog_heartbeat_sha256": "7ce31236972594f6eb507a34e1c1ab0702401b507f2dae0f38c9d6a38b70b19d",
+  "registrations": {
+   "checked": 92,
+   "alive_by_identity": [],
+   "from_previous_boots": 92,
+   "with_recorded_previous_boot_id": 67,
+   "without_boot_id": 25,
+   "pids_in_use": 0,
+   "by_location": {
+    "owned": 19,
+    "retired_by_watchdog_at_reboots": 62,
+    "set_aside_by_hand_20261026T1914Z": 11
+   },
+   "note": "every registration predates the current boot; those without a boot id (registered 18:16 to 22:59Z on 26 October) were compared by pid and kernel start ticks, and none of the 92 pids is in use on the current boot"
+  },
+  "argv_sha256_method": "sha256 of the UTF-8 argv elements joined by NUL bytes, computed on the exact argv before any shortening",
+  "benchmark_or_game_processes": [],
+  "signals_sent": [],
+  "end_of_previous_boot": {
+   "path_private": "shutdown-addendum-20261027.json",
+   "sha256": "2eb59a27967e465f5e9dd8709f477c776502e29a68c0436f06e184d9cfccb537",
+   "git_blob": "d679b3cdddac1da8b3314e25881f4d919d3f87c5",
+   "last_durable_writes": [
+    {
+     "path": "/home/claude/overnight/watchdog-heartbeat.json",
+     "mtime_utc": "2026-10-27T10:55:30.040855655Z",
+     "bytes": 1563
+    },
+    {
+     "path": "/tmp/claude-code-2137664893.diag.log",
+     "mtime_utc": "2026-10-27T10:55:54.106598690Z",
+     "bytes": 1206048
+    },
+    {
+     "count": 10,
+     "kind": "session client log files under /root/.cache/claude-cli-nodejs/, one per attached tool server",
+     "mtime_utc": "2026-10-27T10:55:54.250598699Z",
+     "bytes_total": 50897,
+     "note": "exact paths in the private shutdown-addendum-20261027.json (sha256 2eb59a27967e465f5e9dd8709f477c776502e29a68c0436f06e184d9cfccb537, blob d679b3cdddac1da8b3314e25881f4d919d3f87c5)"
+    },
+    {
+     "path": "/tmp/environment-manager-2623659603.diag.log",
+     "mtime_utc": "2026-10-27T10:55:54.310598703Z",
+     "bytes": 1796
+    }
+   ],
+   "session_diagnostics": {
+    "environment_manager": [
+     {
+      "data": null,
+      "event": "claude_code_start",
+      "source": "env_manager",
+      "timestamp": "2026-10-27T04:05:04.783633198Z"
+     },
+     {
+      "data": {
+       "cgroup_oom_kills": 0,
+       "duration_ms": 24649531,
+       "exit_code": 143,
+       "is_error": true
+      },
+      "event": "claude_code_end",
+      "source": "env_manager",
+      "timestamp": "2026-10-27T10:55:54.315516177Z"
+     },
+     {
+      "data": null,
+      "event": "end_task_run",
+      "source": "env_manager",
+      "timestamp": "2026-10-27T10:55:54.318373674Z"
+     }
+    ],
+    "claude_code": [
+     {
+      "timestamp": "2026-10-27T10:51:43.200Z",
+      "level": "info",
+      "event": "session_idle_30s",
+      "data": {}
+     },
+     {
+      "timestamp": "2026-10-27T10:55:54.081Z",
+      "level": "info",
+      "event": "shutdown_signal",
+      "data": {
+       "signal": "SIGTERM",
+       "uptime_s": 24650,
+       "ppid_changed": false,
+       "stdin_at_eof": true,
+       "stdin_destroyed": true,
+       "is_tty": false
+      }
+     },
+     {
+      "timestamp": "2026-10-27T10:55:54.090Z",
+      "level": "info",
+      "event": "exited",
+      "data": {}
+     },
+     {
+      "timestamp": "2026-10-27T10:55:54.099Z",
+      "level": "info",
+      "event": "run_state_at_shutdown",
+      "data": {
+       "run_active": false,
+       "run_phase": "finally_post_flush",
+       "worker_status": "idle",
+       "internal_events_pending": 0,
+       "bg_tasks": {}
+      }
+     }
+    ]
+   },
+   "conclusion": "The previous boot received its shutdown at 10:55:54Z: the session process got SIGTERM at 10:55:54.081Z (exit 143 recorded at 10:55:54.316Z, task run ended 10:55:54.318Z), and the last durable write on the disk is 2026-10-27T10:55:54.310598703Z. The watchdog's last heartbeat is 10:55:30.040Z and its next was due by about 10:56:00Z; nothing later was written, so the host ended about 246 s before the 11:00:00Z hard stop and the hard-stop branch never ran."
+  },
+  "recheck": {
+   "path_private": "shutdown-recheck-20261027.json",
+   "generated_utc": "2026-10-27T11:29:10.624786Z",
+   "boot_id": "f1754ffc-e0ec-4bc4-bee8-7286580a28ad",
+   "registrations": {
+    "checked": 92,
+    "alive_by_identity": [],
+    "from_previous_boots": 92,
+    "with_recorded_previous_boot_id": 67,
+    "without_boot_id": 25,
+    "pids_in_use": 0,
+    "by_location": {
+     "owned": 19,
+     "retired_by_watchdog_at_reboots": 62,
+     "set_aside_by_hand_20261026T1914Z": 11
+    },
+    "note": "every registration predates the current boot; those without a boot id (registered 18:16 to 22:59Z on 26 October) were compared by pid and kernel start ticks, and none of the 92 pids is in use on the current boot"
+   },
+   "user_processes": [
+    {
+     "pid": 1,
+     "ppid": 0,
+     "starttime": 24,
+     "start_utc": "2026-10-27T11:06:55.240000Z",
+     "argv": [
+      "/process_api",
+      "--firecracker-init",
+      "--addr",
+      "0.0.0.0:2024",
+      "--max-ws-buffer-size",
+      "32768",
+      "--block-local-connections",
+      "--control-vsock-port",
+      "5001",
+      "--listen-vsock-port",
+      "2024",
+      "--log-vsock-port",
+      "5002"
+     ],
+     "argv_sha256": "cb9fb7ecde5dd62764f5c9f60ff2ca7ae2d35c96d33dd3e99ece3553d0631510"
+    },
+    {
+     "pid": 83,
+     "ppid": 1,
+     "starttime": 241,
+     "start_utc": "2026-10-27T11:06:57.410000Z",
+     "argv": [
+      "sbx-telemetry-collector"
+     ],
+     "argv_sha256": "87a40918b670481cff95947d4e19db4028d9e68af1413d33675090370c9838a8"
+    },
+    {
+     "pid": 84,
+     "ppid": 1,
+     "starttime": 241,
+     "start_utc": "2026-10-27T11:06:57.410000Z",
+     "argv": [
+      "/opt/rclone/rclone-filestore",
+      "multimount",
+      "--config",
+      "/dev/shm/rclone-boot/config.json"
+     ],
+     "argv_sha256": "f76b1118d150123a0dbd97554ad7895386bce8cbd79085ab7f3a6c5d2787370a"
+    },
+    {
+     "pid": 98,
+     "ppid": 1,
+     "starttime": 314,
+     "start_utc": "2026-10-27T11:06:58.140000Z",
+     "argv": [
+      "/bin/sh",
+      "... (36256 characters; exact argv in the private shutdown-recheck-20261027.json)"
+     ],
+     "argv_sha256": "3dc7f70efca9505317ed3d6cb73604a3e663e90f223cfbe151c24882d7c60fc0"
+    },
+    {
+     "pid": 99,
+     "ppid": 98,
+     "starttime": 318,
+     "start_utc": "2026-10-27T11:06:58.180000Z",
+     "argv": [
+      "/usr/local/bin/environment-manager",
+      "task-run",
+      "--stdin",
+      "--session",
+      "cse_01669LGyxN7rozKbC83MAydZ",
+      "--session-mode",
+      "resume",
+      "--upgrade-claude-code=False"
+     ],
+     "argv_sha256": "6baaf2ecdb5016b1666431b3b6a7d807a0deb905aa0a093d551e9b1fd917b44a"
+    },
+    {
+     "pid": 116,
+     "ppid": 99,
+     "starttime": 400,
+     "start_utc": "2026-10-27T11:06:59.000000Z",
+     "argv": [
+      "/opt/claude-code/bin/claude",
+      "--preload",
+      "/home/claude/.claude/remote/spare.sock"
+     ],
+     "argv_sha256": "6ba8db7107eca430b0523f0b8b61cfaf2a79fea95282c05169619b033e1b126c"
+    },
+    {
+     "pid": 1751,
+     "ppid": 116,
+     "starttime": 133526,
+     "start_utc": "2026-10-27T11:29:10.260000Z",
+     "argv": [
+      "/bin/bash",
+      "... (984 characters; exact argv in the private shutdown-recheck-20261027.json)"
+     ],
+     "argv_sha256": "9767218cecbbab67ed372c92e9ab0557912370b09056fea986e2ad494acf8b03"
+    },
+    {
+     "pid": 1752,
+     "ppid": 1751,
+     "starttime": 133531,
+     "start_utc": "2026-10-27T11:29:10.310000Z",
+     "argv": [
+      "python3",
+      "-I",
+      "shutdown_proof.py",
+      "shutdown-recheck.json"
+     ],
+     "argv_sha256": "ddb68c96cb626e5412f151766d546808ee0b6da33946bff11f57feebb1a1f1cc"
+    },
+    {
+     "pid": 1753,
+     "ppid": 1751,
+     "starttime": 133531,
+     "start_utc": "2026-10-27T11:29:10.310000Z",
+     "argv": [
+      "python3",
+      "-c",
+      "import sys,json; d=json.load(sys.stdin); print(d['conclusion']['owned_benchmark_work_absent'], d['regs'], d['matches'], [u[0] for u in d['user']])"
+     ],
+     "argv_sha256": "a6e79a7a20a5c6063911163135bd7c4ab6cc99b94e7f9c4e7c3bbfbec9a79188"
+    }
+   ],
+   "benchmark_or_game_processes": [],
+   "sha256": "74301d88073d9f055ba47c011175a1737f0ea1d018ec2c2ec18ea502d4b2c836"
+  }
+ },
+ "private_preservation": {
+  "repository": "tkorsi/heroes-rl-training-state",
+  "visibility": "private",
+  "branch": "claude/original5000-benchmark-evidence-20261027",
+  "final_commit": "f5a9a3bdb2b16c5227dd4ac18fa72605c7c4ac1c",
+  "final_tree": "10a5cb89203b2ed153c536a86189905dd1b52716",
+  "remote_head": "f5a9a3bdb2b16c5227dd4ac18fa72605c7c4ac1c",
+  "remote_verification": {
+   "remote_head_equals_final": true,
+   "remote_tree_equals_local": true,
+   "commit_chain_equal": true,
+   "commits": 19,
+   "stage_trees_equal": true,
+   "tree_entries": 7064,
+   "manifest_files": 7057,
+   "missing_from_remote_tree": [],
+   "blob_or_mode_mismatch": [],
+   "root_files": [
+    "README.md",
+    "SHA256SUMS",
+    "evidence-manifest.json",
+    "preservation-receipt.json",
+    "shutdown-addendum-20261027.json",
+    "shutdown-proof-20261027.json",
+    "shutdown-recheck-20261027.json"
+   ],
+   "method": "blobless clone of the branch from GitHub: every commit and tree id compared with the local build, every manifest path compared by blob id and mode; GitHub accepted each push only after its connectivity check, so every referenced blob is stored remotely",
+   "github_api": {
+    "repository_private": true,
+    "visibility": "private",
+    "branch_ref_root_entries": {
+     "README.md": "3f7bc27c3b799ec2e38a4345403e76369252bd08",
+     "SHA256SUMS": "f029c7e348dd0b59b340b4611beac7c73bed32c5",
+     "bench": "52f7ecabf8f078ba94234100d23220cace3511af",
+     "bench2": "f39ac9fe77f4038463ae15bd50a2e357673c2b82",
+     "bench3": "db7a3c67ab896986a2e490c00b1d5efa8408ccaa",
+     "bench3c": "920e9a52806d0eedb54d4181d213057817e8818f",
+     "evidence-manifest.json": "c8e0dd05ea736e3f9112926f90ed8d38035856b4",
+     "overnight": "e7727366d01140d6fb42e15ec5da495ed39d5766",
+     "preservation-receipt.json": "c1dc91ae214c2da959568f94866977ccddd4ec86",
+     "shutdown-addendum-20261027.json": "d679b3cdddac1da8b3314e25881f4d919d3f87c5",
+     "shutdown-proof-20261027.json": "abd18e58fbc66612097380e656169c310f8bcaf1",
+     "shutdown-recheck-20261027.json": "7d45443a10208d29e8e5cf814be83d4677739fba"
+    },
+    "root_entries_equal_local": true,
+    "checked_utc": "2026-10-27T12:00:53Z"
+   },
+   "github_api_at_8bb6082": {
+    "repository_private": true,
+    "visibility": "private",
+    "branch_head": "8bb6082aa6800b9bca84f16d1a03eb89590d04d2",
+    "head_commit_files": [
+     "shutdown-addendum-20261027.json (added)",
+     "shutdown-recheck-20261027.json (added)"
+    ],
+    "root_entries": {
+     "README.md": "09336a6dab231259e17b29b11d76a31d77e2734e",
+     "SHA256SUMS": "f029c7e348dd0b59b340b4611beac7c73bed32c5",
+     "bench": "52f7ecabf8f078ba94234100d23220cace3511af",
+     "bench2": "f39ac9fe77f4038463ae15bd50a2e357673c2b82",
+     "bench3": "db7a3c67ab896986a2e490c00b1d5efa8408ccaa",
+     "bench3c": "920e9a52806d0eedb54d4181d213057817e8818f",
+     "evidence-manifest.json": "c8e0dd05ea736e3f9112926f90ed8d38035856b4",
+     "overnight": "e7727366d01140d6fb42e15ec5da495ed39d5766",
+     "preservation-receipt.json": "c1dc91ae214c2da959568f94866977ccddd4ec86",
+     "shutdown-addendum-20261027.json": "d679b3cdddac1da8b3314e25881f4d919d3f87c5",
+     "shutdown-proof-20261027.json": "abd18e58fbc66612097380e656169c310f8bcaf1",
+     "shutdown-recheck-20261027.json": "7d45443a10208d29e8e5cf814be83d4677739fba"
+    },
+    "root_entries_equal_local": true
+   },
+   "github_api_at_941cdba": {
+    "repository_private": true,
+    "visibility": "private",
+    "permissions_push": true,
+    "final_commit_found": true,
+    "final_commit_files": [
+     "preservation-receipt.json (added)"
+    ],
+    "root_entries_equal_local": true,
+    "root_entries": {
+     "README.md": "09336a6dab231259e17b29b11d76a31d77e2734e",
+     "SHA256SUMS": "f029c7e348dd0b59b340b4611beac7c73bed32c5",
+     "bench": "52f7ecabf8f078ba94234100d23220cace3511af",
+     "bench2": "f39ac9fe77f4038463ae15bd50a2e357673c2b82",
+     "bench3": "db7a3c67ab896986a2e490c00b1d5efa8408ccaa",
+     "bench3c": "920e9a52806d0eedb54d4181d213057817e8818f",
+     "evidence-manifest.json": "c8e0dd05ea736e3f9112926f90ed8d38035856b4",
+     "overnight": "e7727366d01140d6fb42e15ec5da495ed39d5766",
+     "preservation-receipt.json": "c1dc91ae214c2da959568f94866977ccddd4ec86",
+     "shutdown-proof-20261027.json": "abd18e58fbc66612097380e656169c310f8bcaf1"
+    },
+    "repository_size_kb_reported": 3186663,
+    "pushed_at": "2026-10-27T11:28:17Z",
+    "checked_utc": "2026-10-27T11:28:50Z"
+   },
+   "remote_blob_downloads": [
+    {
+     "path": "bench3c/art/runs/s4-C/run-20261026T191006Z-03d515c8/batches/train-000266-seat0/execution/episode-000004/engine/contextual-replay.jsonl",
+     "bytes": 73512948,
+     "remote_sha256": "c7c1e9867ab8ad0893173f32c44906173bd3a32279d36d82bef57f0b3bc9e858",
+     "manifest_sha256": "c7c1e9867ab8ad0893173f32c44906173bd3a32279d36d82bef57f0b3bc9e858",
+     "host_sha256_now": "c7c1e9867ab8ad0893173f32c44906173bd3a32279d36d82bef57f0b3bc9e858",
+     "equal": true
+    },
+    {
+     "path": "bench3/art/runs/m4-RDH/run-20261027T040851Z-300b3377/batches/train-000266-seat0/execution/after-resume.pt",
+     "bytes": 1266229,
+     "remote_sha256": "8941e9985ce82d7f24bae797b9f1763fde1cfcb914727c21d3a463e60fe315df",
+     "manifest_sha256": "8941e9985ce82d7f24bae797b9f1763fde1cfcb914727c21d3a463e60fe315df",
+     "host_sha256_now": "8941e9985ce82d7f24bae797b9f1763fde1cfcb914727c21d3a463e60fe315df",
+     "equal": true
+    },
+    {
+     "path": "overnight/watchdog.json",
+     "bytes": 4440,
+     "remote_sha256": "b418624506f758b79c8a49d59638140aae23fb7d99ea535a307c853dab1340d8",
+     "manifest_sha256": "b418624506f758b79c8a49d59638140aae23fb7d99ea535a307c853dab1340d8",
+     "host_sha256_now": "b418624506f758b79c8a49d59638140aae23fb7d99ea535a307c853dab1340d8",
+     "equal": true
+    },
+    {
+     "path": "bench2/durable/repo/_dot_git/objects/00/0d7cbdb2c40395b420a1f9980ca34fd843f050",
+     "bytes": 176,
+     "remote_sha256": "6e66bd05c965174627ff30c580c29570f2997a38b1bc8896e5dc36b53ccc87cc",
+     "manifest_sha256": "6e66bd05c965174627ff30c580c29570f2997a38b1bc8896e5dc36b53ccc87cc",
+     "host_sha256_now": "6e66bd05c965174627ff30c580c29570f2997a38b1bc8896e5dc36b53ccc87cc",
+     "equal": true
+    }
+   ]
+  },
+  "stages": [
+   {
+    "stage": "1/16",
+    "commit": "1569b5e4a79fdbd704960261a8291ed982014aeb",
+    "tree": "38f87e089f564050ad83198996fa4e6042f4a77f"
+   },
+   {
+    "stage": "2/16",
+    "commit": "47e6a4f9a13c6e3a7577e5d7a5bccfa52ca2bf5b",
+    "tree": "190d8c972a24682cdfcef23e16a45fa8479495d8"
+   },
+   {
+    "stage": "3/16",
+    "commit": "3bfa68269b7791b0f193f387397aa27efb0206b5",
+    "tree": "e1802dfa8b5fd3b71a4841135559cf593495ef91"
+   },
+   {
+    "stage": "4/16",
+    "commit": "a7cfad52425484f4fad297fa886c3c5bc28014df",
+    "tree": "8770a86740f85562ffcce2be59ac45d9af25882d"
+   },
+   {
+    "stage": "5/16",
+    "commit": "80c6193b4716928ff38ccc216580ac6ec230d8a8",
+    "tree": "b4246d3d8228387b667134be48958458f721ec8e"
+   },
+   {
+    "stage": "6/16",
+    "commit": "916af38974cb7fb7c2f3cbbcaa8443602f1ecdb2",
+    "tree": "3dc543eb8c74cf9e5591e466c92bac011aacd3ba"
+   },
+   {
+    "stage": "7/16",
+    "commit": "3aae0225ba3f1b0278ad217ef60141ceeb4a49d8",
+    "tree": "399054130f7ca6e53ce45e8af92c09780d0a59aa"
+   },
+   {
+    "stage": "8/16",
+    "commit": "b6a2f7cb62434a51f4d2bb1e2c437c1f6e9bb64f",
+    "tree": "aea58e0576e5b24de7f571eb155097e8afa6771f"
+   },
+   {
+    "stage": "9/16",
+    "commit": "1fc417c1cb658f5c7e52f119e90883461aa21c29",
+    "tree": "fd9305eef3de96bb0f03c19c875b5c7a090c6a34"
+   },
+   {
+    "stage": "10/16",
+    "commit": "e17e8123241290c03798567a00c1c052a80b70e8",
+    "tree": "c5b5562bac4ada1d5e72d6e8b8c019cc558e945e"
+   },
+   {
+    "stage": "11/16",
+    "commit": "e53b4fe0b72273ee64dcc1d87d1d29087728b1cf",
+    "tree": "fad05074d86c588552f071402b0df278c2c8d511"
+   },
+   {
+    "stage": "12/16",
+    "commit": "5e51dce894624a15e587603c804628cab27f8505",
+    "tree": "9da87a69692c59971a4e5dbf1ed70c576e5d74e2"
+   },
+   {
+    "stage": "13/16",
+    "commit": "c428c492033aa2de1634ba13751eccbfb948c01d",
+    "tree": "bfb7cd7f4a09b826cc815dede846b70afcdd4a20"
+   },
+   {
+    "stage": "14/16",
+    "commit": "c775cf45acc53974a7c7b6b9eefbea193e140bc0",
+    "tree": "0e36490260c51b6704722d710f0f9f92df546213"
+   },
+   {
+    "stage": "15/16",
+    "commit": "37bd3324c4b814be7198a3607222c0b86f4189e4",
+    "tree": "d91750bbdcef1795f53b86fcce99e87d41746c27"
+   },
+   {
+    "stage": "16/16",
+    "commit": "09de4197f69cf27afad23849946d828e3a1b4ff4",
+    "tree": "940c2d6080d5c1ff21708b7cb738d57fd726c91f"
+   },
+   {
+    "stage": "receipt",
+    "commit": "941cdba503196c709e69c785a2ce56f911493d38",
+    "tree": "9dd1c33727a652ec459ad289cbab706ab2033878"
+   },
+   {
+    "stage": "addendum",
+    "commit": "8bb6082aa6800b9bca84f16d1a03eb89590d04d2",
+    "tree": "a10e76584db86f34a2e31581bb317db4e19f4e38"
+   },
+   {
+    "stage": "readme",
+    "commit": "f5a9a3bdb2b16c5227dd4ac18fa72605c7c4ac1c",
+    "tree": "10a5cb89203b2ed153c536a86189905dd1b52716"
+   }
+  ],
+  "push_seconds": 252.1,
+  "push_failures": [],
+  "push_scope": "18 logged pushes (stages, receipt and README), each with rc 0 and a matching remote-ack; the addendum commit 8bb6082 was pushed without a timing record, and its arrival is shown by the remote head that followed it, the blobless-clone commit chain and the GitHub API",
+  "files": 7057,
+  "bytes": 3927905064,
+  "unique_bytes": 3051895856,
+  "manifest": {
+   "path": "evidence-manifest.json",
+   "sha256": "8e37a9d50749e9f7ec2a00705888e75b72ef69f7c6c9e39a028feeb19566cd65",
+   "git_blob": "c8e0dd05ea736e3f9112926f90ed8d38035856b4"
+  },
+  "preservation_receipt": {
+   "path": "preservation-receipt.json",
+   "sha256": "b0de5157f80b3b98d3579079fc17aed5bb1852a5cc1a5c8ec1df5dfb267585b1",
+   "git_blob": "c1dc91ae214c2da959568f94866977ccddd4ec86"
+  },
+  "symlinks_not_followed": [
+   {
+    "path": "bench3/art/runs/s4-B/run-20261026T191006Z-99c888a5/batches/train-000266-seat0/execution/episode-000001/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3/art/runs/s4-B/run-20261026T191006Z-99c888a5/batches/train-000266-seat0/execution/episode-000002/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3/art/runs/s4-B/run-20261026T191006Z-99c888a5/batches/train-000266-seat0/execution/episode-000003/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3/art/runs/s4-B/run-20261026T191006Z-99c888a5/batches/train-000266-seat0/execution/episode-000004/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3c/runtime",
+    "target": "/home/claude/bench3/runtime"
+   },
+   {
+    "path": "bench3c/art/inputs",
+    "target": "/home/claude/bench3/art/inputs"
+   },
+   {
+    "path": "bench3c/art/runs/s4-C/run-20261026T191006Z-03d515c8/batches/train-000266-seat0/execution/episode-000001/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3c/art/runs/s4-C/run-20261026T191006Z-03d515c8/batches/train-000266-seat0/execution/episode-000002/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3c/art/runs/s4-C/run-20261026T191006Z-03d515c8/batches/train-000266-seat0/execution/episode-000003/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   },
+   {
+    "path": "bench3c/art/runs/s4-C/run-20261026T191006Z-03d515c8/batches/train-000266-seat0/execution/episode-000004/profile/data/vcmi/Data",
+    "target": "/home/claude/heroes-private/game-data/Data"
+   }
+  ],
+  "excluded": [
+   {
+    "path": "bench2/runtime",
+    "reason": "built VCMI runtime binaries for this host; rebuildable from the release commits",
+    "files": 1200,
+    "bytes": 121470686,
+    "sha256_of_sorted_file_list": "925ddad626b2b90ec0f432bbd7ad8a8b0ed198881f66b7bf72fd6e1a1713cdf3"
+   },
+   {
+    "path": "bench3/runtime",
+    "reason": "built VCMI runtime binaries for this host; rebuildable from the release commits",
+    "files": 602,
+    "bytes": 60639164,
+    "sha256_of_sorted_file_list": "afc96098438ec7ab21834d071eab6660863ff4ea5817c0469ed40bd6a52c897e"
+   },
+   {
+    "path": "bench3/art/releases",
+    "reason": "frozen release worktrees of the public heroes-rl repository (code and VCMI source), named by commit; reproducible from those commits and not touched",
+    "files": 28338,
+    "bytes": 729493564,
+    "sha256_of_sorted_file_list": "41e5ec9ec752915f032710fd89c8d4d6e787d5f02b4e05a3db56a5ae50699aca"
+   }
+  ],
+  "game_assets_included": false,
+  "host_files_deleted": []
+ },
+ "deliverables": {
+  "docs/research/original5000-local-acceleration-2026-10-26.md": {
+   "sha256": "f639f865f0c480b7d7a46f3df57c6de27eb7df7826c65d3aba71fc689ed90b52",
+   "bytes": 78352,
+   "git_blob": "af3590c0e4d1d28b03cfd75db6c1e007b2b6f1fa"
+  },
+  "docs/research/original5000-local-acceleration-integration-2026-10-26.md": {
+   "sha256": "78f594920956b571eecf3f100616369ab6d157c6542f637446263dfc0cdbf0f9",
+   "bytes": 18011,
+   "git_blob": "02149a5ebf3bb01200556890ccad663d37ea5b44"
+  },
+  "validation/original5000-local-acceleration-linux-2026-10-27.json": {
+   "sha256": "09576321c4a7a6f2eb5f36728cfc2324aece07e9edf4b03f7ac0ee0b7005afe3",
+   "bytes": 132804,
+   "git_blob": "ed57d1c4e10335993d3271744b8bacde7389bd5a"
+  },
+  "reports/cloud/claude-original5000-status.json": {
+   "sha256": "91a4542e8511338dad25a50ab9bed781377c40da23f2a1b130ab16d57df26209",
+   "bytes": 31303,
+   "git_blob": "219f0b68ec4e816142ed9e305d0143c3945e4ea9"
+  }
+ },
+ "lineage_context": {
+  "benchmark_parent": "update 629 (policy 8be3d31b..., resume 1b86fced...), preregistered and unchanged",
+  "user_mac_original_run": "independent of this assignment: reached update 699 (70 updates, 280 admitted games) and stopped at 2026-10-27T08:55:28Z on its per-batch PPO timeout; preserved on the Mac and never to be reset to 629"
+ },
+ "official": {
+  "official_run_launched": false,
+  "official_lineage_touched": false,
+  "teacher_touched": false,
+  "paid_compute": false,
+  "auto_merge": false,
+  "pr31_merged": false,
+  "compute_after_deadline": false
+ },
+ "receipt_v1": {
+  "commit": "1bb474a066a3d7273425b406adb0c908d6b8fcd5",
+  "path": "reports/cloud/claude-original5000-final-receipt.json",
+  "sha256": "dba9e40df9831f77a1162d9aa5a0f884faa0b0e640794dd1b6c4ad8214e42c9f",
+  "git_blob": "47078d3524021bba1cb99ff5e80a53aa2a1589d0",
+  "content": {
+   "schema": "claude-original5000-final-receipt-v1",
+   "generated_utc": "2026-10-27T10:50:37Z",
+   "deadlines": {
+    "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
+    "hard_stop_utc": "2026-10-27T11:00:00Z",
+    "recorded_utc": "2026-10-26T18:16:32.554529Z",
+    "never_moved": true
+   },
+   "watchdog": {
+    "pid": 238,
+    "heavy_stop_receipt": {
+     "reason": "heavy-work deadline",
+     "utc": "2026-10-27T10:50:00.004932Z",
+     "monotonic": 24299.110452384,
+     "targets": [],
+     "signals": [],
+     "remaining": [],
+     "all_stopped": true
+    },
+    "hard_stop_receipt": null,
+    "restarts": [
+     {
+      "utc": "2026-10-26T23:18:56.075050Z",
+      "pid": 294,
+      "starttime": 22589,
+      "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+     },
+     {
+      "utc": "2026-10-26T23:50:09.621962Z",
+      "pid": 238,
+      "starttime": 6576,
+      "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+     },
+     {
+      "utc": "2026-10-27T04:06:01.239649Z",
+      "pid": 238,
+      "starttime": 6029,
+      "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54"
+     }
+    ],
+    "reboots": [
+     {
+      "detected_utc": "2026-10-26T23:18:56.069505Z",
+      "previous_boot_id": "3b357b50-ab00-4565-9348-e736b0dd027a",
+      "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+      "previous": {
+       "heavy_stop_monotonic": 77084.07492852677,
+       "hard_stop_monotonic": 77684.07492852677
+      },
+      "retired_registrations": [
+       "bench-m1-B-27772.json",
+       "bench-m1-CH-4244.json",
+       "bench-m1-XH-11817.json",
+       "bench-s4-B-15036.json",
+       "bench-s4-C-15038.json",
+       "driver-m1-B-27730.json",
+       "driver-m1-CH-4201.json",
+       "driver-m1-XH-11768.json",
+       "driver-s4-B-14950.json",
+       "driver-s4-C-14952.json",
+       "ppo-r0b0-C-16549.json",
+       "ppo266-matrix-24300.json",
+       "ppo266-matrix2-7652.json",
+       "schedule-m3-27710.json"
+      ],
+      "retired_to": "/home/claude/overnight/owned-stale/boot-3b357b50-ab00-4565-9348-e736b0dd027a"
+     },
+     {
+      "detected_utc": "2026-10-26T23:50:09.615305Z",
+      "previous_boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+      "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+      "previous": {
+       "heavy_stop_monotonic": 41689.85133165173,
+       "hard_stop_monotonic": 42289.85133165173
+      },
+      "retired_registrations": [
+       "bench-m1-F-482.json",
+       "driver-m1-F-407.json",
+       "ppo266-matrix3-473.json",
+       "ppo267-matrix4-2346.json",
+       "schedule-m3b-393.json"
+      ],
+      "retired_to": "/home/claude/overnight/owned-stale/boot-b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+     },
+     {
+      "detected_utc": "2026-10-27T04:06:01.222421Z",
+      "previous_boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+      "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+      "previous": {
+       "heavy_stop_monotonic": 39656.33168057152,
+       "hard_stop_monotonic": 40256.33168057152
+      },
+      "retired_registrations": [
+       "bench-m2-B-10549.json",
+       "bench-m3-R5H-7512.json",
+       "bench-m3-RAF-28722.json",
+       "bench-m3-RAH-20081.json",
+       "bench-m3-RBN-16385.json",
+       "bench-m3-RH-1237.json",
+       "bench-m6-RBH-18987.json",
+       "bench-m6-RBH-driver-18943.json",
+       "campaign-m3-R5H-driver-7440.json",
+       "driver-m2-B-10504.json",
+       "driver-m3-R5H-7440.json",
+       "driver-m3-RAF-28661.json",
+       "driver-m3-RAH-20028.json",
+       "driver-m3-RBN-16312.json",
+       "driver-m3-RH-1190.json",
+       "driver-m6-RBH-18943.json",
+       "ppo-B267-3716.json",
+       "ppo-P266-349.json",
+       "ppo-R266-4798.json",
+       "ppo-R267c-26370.json",
+       "ppo-R267d-22641.json",
+       "ppo-R8H267-18814.json",
+       "ppo-after-b267-3886.json",
+       "ppo-chain-r266-6577.json",
+       "ppo-matrix10-23603.json",
+       "ppo-matrix5-1534.json",
+       "ppo-matrix5-27622.json",
+       "ppo-matrix5-3886.json",
+       "ppo-matrix5-6577.json",
+       "ppo-matrix6-19729.json",
+       "ppo-matrix7-27622.json",
+       "ppo-matrix8-5008.json",
+       "ppo-matrix9-9489.json",
+       "schedule-after-m3r5h-12896.json",
+       "schedule-after-m3r5h-check-12896.json",
+       "schedule-after-m3raf-890.json",
+       "schedule-after-m3rh-6315.json",
+       "schedule-after-m6rbh-23537.json",
+       "schedule-m4-1173.json",
+       "schedule-m5-6315.json",
+       "schedule-m6-12896.json",
+       "schedule-m7-890.json",
+       "tests-cand6-9487.json"
+      ],
+      "retired_to": "/home/claude/overnight/owned-stale/boot-72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+     }
+    ]
+   },
+   "registered_roots_alive": [],
+   "benchmark_processes_alive": [],
+   "git": {
+    "branch": "claude/project-thread-iba9jw-original5000",
+    "local_head": "dfd55d5bdfee7129145bf740f151e1544b3dcc91",
+    "remote_head": "dfd55d5bdfee7129145bf740f151e1544b3dcc91",
+    "worktree_clean": true
+   },
+   "deliverables": {
+    "docs/research/original5000-local-acceleration-2026-10-26.md": {
+     "sha256": "d437148cc495ffa8686124bfbfa8765f54f672cf55cd55ffa85b2d52ea14a8f5",
+     "bytes": 74031
+    },
+    "docs/research/original5000-local-acceleration-integration-2026-10-26.md": {
+     "sha256": "b4995a4acb8fe1543b5f08b26ce8cc2d31f41048448abcc934cbf795c08ef4e1",
+     "bytes": 17473
+    },
+    "validation/original5000-local-acceleration-linux-2026-10-27.json": {
+     "sha256": "09576321c4a7a6f2eb5f36728cfc2324aece07e9edf4b03f7ac0ee0b7005afe3",
+     "bytes": 132804
+    },
+    "reports/cloud/claude-original5000-status.json": {
+     "sha256": "91a4542e8511338dad25a50ab9bed781377c40da23f2a1b130ab16d57df26209",
+     "bytes": 31303
+    }
+   },
+   "private_data": {
+    "roots": [
+     "/home/claude/bench3",
+     "/home/claude/bench3c",
+     "/home/claude/bench2"
+    ],
+    "note": "raw episodes (losslessly compressed with per-file SHA-256 manifests), captures and benchmark checkpoints stay on this host; the validation record binds campaign states by digest; nothing raw was pushed"
+   },
+   "disk": {
+    "free_bytes": 8195264512
+   },
+   "official": {
+    "official_run_launched": false,
+    "official_lineage_touched": false,
+    "teacher_touched": false,
+    "paid_compute": false,
+    "auto_merge": false
+   }
+  }
+ }
+}

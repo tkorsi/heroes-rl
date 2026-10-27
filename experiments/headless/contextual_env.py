@@ -243,13 +243,11 @@ class ContextualMixin:
             drain_choice = {"player": side.player, "decision_seq": producer.live.decision.seq}
         self.agent_wait += time.monotonic() - self.request_time
         started = time.perf_counter()
-        try:
-            side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
-            delivered = True
-        except OSError as error:
-            side.write_error = f"{type(error).__name__}: {error}"
+        refused = self._write_response(side, response)
+        delivered = refused is None
+        if not delivered:
+            side.write_error = refused
             side.responses_undelivered += 1
-            delivered = False
         self.costs["respond"] += time.perf_counter() - started
         self._write_ledger(side, "policy", {**response, "delivered": delivered,
                                             "outside_learner_prefix": continuation})
@@ -264,6 +262,14 @@ class ContextualMixin:
             self._note_problem("action_delivery_failed", f"{side.color}: {side.write_error}")
         self.env_step += 1
         self.request = None
+
+    def _write_response(self, side, response):
+        """Deliver one response line; a refusal text, or None once it was written."""
+        try:
+            side.connection.sendall((json.dumps(response, separators=(",", ":")) + "\n").encode())
+        except OSError as error:
+            return f"{type(error).__name__}: {error}"
+        return None
 
     def step(self, action):
         if self.request is None:
@@ -433,15 +439,17 @@ class ContextualMixin:
         if history.decision is None or history.frames[-1] != history.decision:
             raise ValueError("Request must end at the exact current player decision")
         frames = encoded(history, side.unread_frames_from)
+        typed = tuple(history.frames[side.unread_frames_from:])
         # Internal continuation may have already delivered its boundary decision.
         if not frames and continuation:
             frames = [contract.encode_frame(history.decision)]
+            typed = (history.decision,)
         if not frames:
             raise ValueError("Empty contextual request history")
         if not continuation:
-            side.unread_frames_from = len(history.frames)
+            side.unread_frames_from = history.frame_count
         self.request = Request(side.color, player, "contextual", frames[-1], frames, frames,
-                               past_horizon=continuation)
+                               past_horizon=continuation, typed_frames=typed)
         self.request_time = time.monotonic()
         return self.request
 
@@ -490,8 +498,11 @@ class ContextualMixin:
                 native = Path(binary).parent
                 # The verifier and linked rules/AI libraries are part of the
                 # executable recipe, not just the client entry-point binary.
-                self._context_identity["native_runtime_sha256"] = contextual_evidence.runtime_identity(native)
+                self._context_identity["native_runtime_sha256"] = self._runtime_identity(native)
         return self._context_identity
+
+    def _runtime_identity(self, directory):
+        return contextual_evidence.runtime_identity(directory)
 
     def _finish(self, exited):
         if self.result is not None:

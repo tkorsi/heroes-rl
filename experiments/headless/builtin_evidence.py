@@ -203,6 +203,27 @@ def validate_manifest_history(history, manifest):
             "native_execution_verified": False}
 
 
+def _in_process(manifest):
+    identity = manifest.get("identity")
+    backend = identity.get("backend") if type(identity) is dict else None
+    return type(backend) is dict and backend.get("kind") == "embedded-in-process-v1"
+
+
+def _host_stop_proven(manifest, final):
+    """The game process's signal status, or the in-process engine's close report."""
+    if _in_process(manifest):
+        from experiments.headless import embedded_evidence
+        return embedded_evidence.truncation_closed(final)
+    return final.get("returncode") in (-15, -9)
+
+
+def _natural_close_proven(manifest, final):
+    if _in_process(manifest):
+        from experiments.headless import embedded_evidence
+        return embedded_evidence.natural_closed(final)
+    return True
+
+
 def read_finalization(directory, manifest):
     """Bind the external proof; replay additionally verifies native semantics/source."""
     profile = manifest_profile(manifest)
@@ -212,6 +233,8 @@ def read_finalization(directory, manifest):
     data = path.read_bytes()
     require(hashlib.sha256(data).hexdigest() == sha, "One-seat finalization bytes changed")
     final = native.strict_json(data)
+    from experiments.headless import embedded_evidence
+    embedded_evidence.require_consistent_backend(manifest, final)
     player, color = manifest["learner_player"], COLORS[manifest["learner_player"]]
     require(final.get("schema") == FINAL_SCHEMA and type(final.get("learner_player")) is int
             and final["learner_player"] == player
@@ -227,10 +250,11 @@ def read_finalization(directory, manifest):
     if manifest["status"] == "completed":
         require(final.get("engine_verified_outcomes") == manifest["outcomes_by_player"]
                 and final.get("socket_outcome") == manifest["outcomes_by_player"][color]
-                and final.get("terminal_barrier_error") is None and final.get("declared_stop") is False,
+                and final.get("terminal_barrier_error") is None and final.get("declared_stop") is False
+                and _natural_close_proven(manifest, final),
                 "Natural finalization has incomplete or interrupted terminal evidence")
     elif manifest["status"] == "truncated":
         require(final.get("declared_stop") is True and final.get("shutdown_verified") is True
-                and final.get("returncode") in (-15, -9) and final.get("reason") == manifest["termination_reason"]
+                and _host_stop_proven(manifest, final) and final.get("reason") == manifest["termination_reason"]
                 and final.get("engine_verified_outcomes") is None, "Unverified single-player cutoff shutdown")
     return final

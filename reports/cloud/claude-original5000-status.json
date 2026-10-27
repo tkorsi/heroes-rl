@@ -1,0 +1,689 @@
+{
+ "schema": "claude-original5000-status-v1",
+ "generated_utc": "2026-10-27T10:50:34Z",
+ "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
+ "deadlines": {
+  "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
+  "hard_stop_utc": "2026-10-27T11:00:00Z",
+  "heavy_work_stop_monotonic": 24299.105468029557,
+  "hard_stop_monotonic": 24899.105468029557,
+  "recorded_utc": "2026-10-26T18:16:32.554529Z",
+  "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+  "immutable": true
+ },
+ "watchdog": {
+  "pid": 238,
+  "kernel_starttime": 6029,
+  "command": [
+   "python3",
+   "/home/claude/overnight/watchdog.py",
+   "run"
+  ],
+  "alive": true,
+  "heartbeat_utc": "2026-10-27T10:50:30.007405Z",
+  "seconds_to_heavy_stop": -30.0,
+  "heavy_stop_receipt": {
+   "reason": "heavy-work deadline",
+   "utc": "2026-10-27T10:50:00.004932Z",
+   "monotonic": 24299.110452384,
+   "targets": [],
+   "signals": [],
+   "remaining": [],
+   "all_stopped": true
+  },
+  "hard_stop_receipt": null,
+  "restarts": [
+   {
+    "utc": "2026-10-26T23:18:56.075050Z",
+    "pid": 294,
+    "starttime": 22589,
+    "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "utc": "2026-10-26T23:50:09.621962Z",
+    "pid": 238,
+    "starttime": 6576,
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+   },
+   {
+    "utc": "2026-10-27T04:06:01.239649Z",
+    "pid": 238,
+    "starttime": 6029,
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54"
+   }
+  ],
+  "reboots": [
+   {
+    "detected_utc": "2026-10-26T23:18:56.069505Z",
+    "previous_boot_id": "3b357b50-ab00-4565-9348-e736b0dd027a",
+    "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+    "previous": {
+     "heavy_stop_monotonic": 77084.07492852677,
+     "hard_stop_monotonic": 77684.07492852677
+    },
+    "retired_registrations": [
+     "bench-m1-B-27772.json",
+     "bench-m1-CH-4244.json",
+     "bench-m1-XH-11817.json",
+     "bench-s4-B-15036.json",
+     "bench-s4-C-15038.json",
+     "driver-m1-B-27730.json",
+     "driver-m1-CH-4201.json",
+     "driver-m1-XH-11768.json",
+     "driver-s4-B-14950.json",
+     "driver-s4-C-14952.json",
+     "ppo-r0b0-C-16549.json",
+     "ppo266-matrix-24300.json",
+     "ppo266-matrix2-7652.json",
+     "schedule-m3-27710.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-3b357b50-ab00-4565-9348-e736b0dd027a"
+   },
+   {
+    "detected_utc": "2026-10-26T23:50:09.615305Z",
+    "previous_boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "previous": {
+     "heavy_stop_monotonic": 41689.85133165173,
+     "hard_stop_monotonic": 42289.85133165173
+    },
+    "retired_registrations": [
+     "bench-m1-F-482.json",
+     "driver-m1-F-407.json",
+     "ppo266-matrix3-473.json",
+     "ppo267-matrix4-2346.json",
+     "schedule-m3b-393.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "detected_utc": "2026-10-27T04:06:01.222421Z",
+    "previous_boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+    "previous": {
+     "heavy_stop_monotonic": 39656.33168057152,
+     "hard_stop_monotonic": 40256.33168057152
+    },
+    "retired_registrations": [
+     "bench-m2-B-10549.json",
+     "bench-m3-R5H-7512.json",
+     "bench-m3-RAF-28722.json",
+     "bench-m3-RAH-20081.json",
+     "bench-m3-RBN-16385.json",
+     "bench-m3-RH-1237.json",
+     "bench-m6-RBH-18987.json",
+     "bench-m6-RBH-driver-18943.json",
+     "campaign-m3-R5H-driver-7440.json",
+     "driver-m2-B-10504.json",
+     "driver-m3-R5H-7440.json",
+     "driver-m3-RAF-28661.json",
+     "driver-m3-RAH-20028.json",
+     "driver-m3-RBN-16312.json",
+     "driver-m3-RH-1190.json",
+     "driver-m6-RBH-18943.json",
+     "ppo-B267-3716.json",
+     "ppo-P266-349.json",
+     "ppo-R266-4798.json",
+     "ppo-R267c-26370.json",
+     "ppo-R267d-22641.json",
+     "ppo-R8H267-18814.json",
+     "ppo-after-b267-3886.json",
+     "ppo-chain-r266-6577.json",
+     "ppo-matrix10-23603.json",
+     "ppo-matrix5-1534.json",
+     "ppo-matrix5-27622.json",
+     "ppo-matrix5-3886.json",
+     "ppo-matrix5-6577.json",
+     "ppo-matrix6-19729.json",
+     "ppo-matrix7-27622.json",
+     "ppo-matrix8-5008.json",
+     "ppo-matrix9-9489.json",
+     "schedule-after-m3r5h-12896.json",
+     "schedule-after-m3r5h-check-12896.json",
+     "schedule-after-m3raf-890.json",
+     "schedule-after-m3rh-6315.json",
+     "schedule-after-m6rbh-23537.json",
+     "schedule-m4-1173.json",
+     "schedule-m5-6315.json",
+     "schedule-m6-12896.json",
+     "schedule-m7-890.json",
+     "tests-cand6-9487.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+   }
+  ]
+ },
+ "owned_processes": [
+  {
+   "label": "bench-m3-REF",
+   "pid": 18352,
+   "starttime": 1822758,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m3-REF/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T09:08:48.512303Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m3-RET",
+   "pid": 3043,
+   "starttime": 604911,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m3-RET/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T05:45:50.047778Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m4-RDH",
+   "pid": 381,
+   "starttime": 21110,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m4-RDH/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T04:08:32.033591Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m4-RDH-driver",
+   "pid": 334,
+   "starttime": 20599,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m4-RDH",
+    "--checkout",
+    "/home/claude/o5k-cand13"
+   ],
+   "registered_utc": "2026-10-27T04:52:49.657787Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m6-B",
+   "pid": 10924,
+   "starttime": 797147,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m6-B/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T06:17:52.398113Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "bench-m6-REH",
+   "pid": 24198,
+   "starttime": 1222881,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m6-REH/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T07:28:49.742885Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m3-REF",
+   "pid": 18296,
+   "starttime": 1822360,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m3-REF",
+    "--checkout",
+    "/home/claude/o5k-cand14"
+   ],
+   "registered_utc": "2026-10-27T09:08:44.595266Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m3-RET",
+   "pid": 2996,
+   "starttime": 604569,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m3-RET",
+    "--checkout",
+    "/home/claude/o5k-cand14"
+   ],
+   "registered_utc": "2026-10-27T05:45:46.660896Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m4-RDH",
+   "pid": 334,
+   "starttime": 20599,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m4-RDH",
+    "--checkout",
+    "/home/claude/o5k-cand13"
+   ],
+   "registered_utc": "2026-10-27T04:08:27.031296Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m6-B",
+   "pid": 10872,
+   "starttime": 796714,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m6-B",
+    "--checkout",
+    "/home/claude/o5k-main"
+   ],
+   "registered_utc": "2026-10-27T06:17:48.114604Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "driver-m6-REH",
+   "pid": 24145,
+   "starttime": 1222563,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m6-REH",
+    "--checkout",
+    "/home/claude/o5k-cand14"
+   ],
+   "registered_utc": "2026-10-27T07:28:46.600812Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix11",
+   "pid": 296,
+   "starttime": 19372,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./run_matrix11.sh"
+   ],
+   "registered_utc": "2026-10-27T04:08:14.650924Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix12",
+   "pid": 25791,
+   "starttime": 1237212,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./run_matrix12.sh"
+   ],
+   "registered_utc": "2026-10-27T07:31:13.056375Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix13",
+   "pid": 25657,
+   "starttime": 2020497,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./run_matrix13.sh"
+   ],
+   "registered_utc": "2026-10-27T09:41:45.904119Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "schedule-after-m3ret",
+   "pid": 9075,
+   "starttime": 754675,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./after_m3ret.sh"
+   ],
+   "registered_utc": "2026-10-27T06:10:47.682653Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "schedule-after-m4rdh",
+   "pid": 25294,
+   "starttime": 286977,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./after_m4rdh.sh"
+   ],
+   "registered_utc": "2026-10-27T04:52:50.729085Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "schedule-m10",
+   "pid": 9075,
+   "starttime": 754675,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
+    "/home/claude/bench3/schedules/m10.json"
+   ],
+   "registered_utc": "2026-10-27T06:17:47.993910Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "schedule-m8",
+   "pid": 318,
+   "starttime": 20586,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
+    "/home/claude/bench3/schedules/m8.json"
+   ],
+   "registered_utc": "2026-10-27T04:08:26.839282Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "schedule-m9",
+   "pid": 25294,
+   "starttime": 286977,
+   "alive": false,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
+    "/home/claude/bench3/schedules/m9.json"
+   ],
+   "registered_utc": "2026-10-27T05:45:46.473940Z",
+   "live_descendants": 0
+  }
+ ],
+ "phase": "finished: all benchmark work ended at 09:57 UTC; the watchdog's heavy-work stop at 10:50:00 UTC found nothing running (all_stopped true); final receipt reports/cloud/claude-original5000-final-receipt.json; PR #31 stays a draft; no official run, lineage, Teacher or paid compute touched",
+ "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
+ "bindings": {
+  "main": "a8ac411d32658387598376c792136bc586edc5f9",
+  "accepted_implementation_for_default_path": "a8ac411d32658387598376c792136bc586edc5f9",
+  "fast_path_branch": "claude/project-thread-iba9jw-original5000",
+  "pr30_head": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+  "phase2_branch": "claude/project-thread-iba9jw-acceleration-phase2 @ 74afd86",
+  "update629": {
+   "handoff_receipt": "main validation/local-script-final629-sync-2026-10-26.json",
+   "checkpoint_package_commit": "3f507507afde652c61def59a994a816d12cb0170 (restore receipt 8ab78fea6e7dfb023a5daf38b8fcc10d0e89de51)",
+   "full_archive_commit": "87e814e6d2de8a0690fed7e158d2e50f87b59267 (publication receipt 78afd6f27b589a71414f143f6f866d6ded0cca49); read only, not downloaded here",
+   "policy_sha256": "8be3d31b51edc11bd6affe45d4276cde56b97688f00fb9fa113c13f490577520",
+   "resume_sha256": "1b86fcedc1ad9eda8a9a56d03783ff70761205fa88045896dbe8f6d74029d487",
+   "plan_sha256": "853cb4cbd04a4daf503c41820e4facac6d8d1c7a4ea3730fee5cf37a8a31cc99",
+   "report_sha256": "b5bb3310ff981e428482e91e528ee4c4b57b6b3e3ac9c958ad16caa4b0fcd29a",
+   "initial_update628_sha256": "2f017a503902b7f29f6e3e3a2b88831d05d18a196386d96c6f3d34df67e22cf5",
+   "progress": {
+    "updates": 629,
+    "rollouts": 2516,
+    "decisions": 127958
+   },
+   "benchmark_use": "disposable read-only copies; exact full restore (model, Adam, all RNG, progress, pool) passes on this host through the benchmark-only Torch build relocation"
+  },
+  "accepted_runtime_build": {
+   "recipe": "main's engine recipe (engine/ identical to main), built here; Linux binaries, not the Mac pins",
+   "vcmiclient_sha256": "c03abdcaa3a148610f0af069ad0fd667190b2528a45aa0f8077bf321d5c35c79",
+   "libExplorerRL_sha256": "e60b7bb088917fea5869eb9cb38f97c29882de17435ca6f4451738cbd2f2092e"
+  },
+  "original_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "benchmark_seed_namespace": {
+   "engine_base": 60000000,
+   "policy_base": 70000000,
+   "note": "separate ledger per campaign; never 40M/50M or 20M/30M"
+  }
+ },
+ "measurements": {
+  "pr30_comparison_original_map": "Earlier (412 parent): PR30 baseline B cannot finish the first original-map batch (games of 2, 60, 93 and 2525 decisions): its PPO alone took 3779 s optimizer-only against a 3540 s update budget. The opt-in experiment with three exact helpers completed the same complete verified batch in 543.6 s compute.",
+  "pr30_comparison_easy_map": "Steady-state ratio of medians over 6 paired batches: exact with helpers 1.22x compute; opt-in experiment 3.89x compute, 3.77x durable (local push).",
+  "local_runner_original_map_629": "Concurrent smokes (not timed comparisons): fast path (overlap, no helpers) admitted batch 266 (3968 decisions) at 3468 s of the 3540 s worker budget (games 170 s, PPO 3285 s); accepted a8ac411 played the same games in 492 s and was stopped inside PPO by the update wall limit after 77 of 125 optimizer steps, update rolled back, run stopped_failure. Game identity on every observation and decision frame: 11 of 12 paired games identical; one baseline game differed in the order of an asynchronous turn-end event and a new-day notice before its last decision (same decisions and result); an accepted-vs-accepted repeat is scheduled.",
+  "local_runner_original_map_629_solo_accepted": "m1-B (a8ac411 alone on CPUs 1-3): baseline batches 318 s and 557 s; training batch 266 games 474 s, PPO stopped by the update wall limit after 83 of 125 optimizer steps (worker 3519 s), update rolled back, run stopped_failure.",
+  "optimizer_only_batch266": {
+   "note": "Optimizer-only PPO of the same 629 parent on training batch 266 (3968 decisions), one job at a time on CPU 0",
+   "fast_path_exact_no_helpers_seconds": 3241.7,
+   "fast_path_breakdown": {
+    "prefix_reconstruction": 461.8,
+    "loss_forward": 911.2,
+    "backward_and_clip": 1826.7,
+    "behavior_verification": 20.9,
+    "optimizer_step": 17.4
+   },
+   "accepted_seconds": 4214.9,
+   "accepted_breakdown": {
+    "prefix_reconstruction": 1267.1,
+    "loss_forward": 858.0,
+    "backward_and_clip": 1696.4,
+    "behavior_verification": 373.0,
+    "optimizer_step": 16.4
+   },
+   "accepted_vs_fast_exact": "bitwise equal weights and Adam state; 1.30x",
+   "numerical_experiment_seconds": 521.7,
+   "numerical_experiment_ratio": "6.2x vs fast exact, 8.1x vs accepted; weights differ by at most 1.7e-4 absolute (0.37% relative)",
+   "pr30": "rerunning after the reboot",
+   "counterbalanced_repeat": "B2 then C2 after P"
+  },
+  "event_order": "Two accepted runs with the same seeds (s4-B, m1-B) differ in one of twelve games (asynchronous turn-end/new-day order), the same game where accepted and fast path once differed; m1-B equals the fast-path smoke in all twelve.",
+  "local_runner_original_map_629_m1_CH": "m1-CH (fast exact, overlapped verification, 2 prefix helpers, alone on CPUs 1-3): baseline batches about 3.5 min each; training batch 266 worker 2891 s (games 145 s, PPO 2732 s), batch 267 864 s; stopped as requested after 2 updates",
+  "local_runner_original_map_629_m1_XH": "m1-XH (opt-in numerical experiment shared_graph_encodings with the same helpers): baseline batches 106 s and 191 s; training batch 266 477 s, batch 267 109 s; stopped as requested after 2 updates; batch 267 games differ from the exact ones because the weights differ",
+  "local_runner_original_map_629_m1_F": "m1-F (15ed404, serial verification, no helpers) lost to the second restart after its baseline batches: 140.1 s and 246.1 s (same games)",
+  "m3_RH": {
+   "commit": "1721220",
+   "baselines_seconds": [
+    110.35,
+    195.8
+   ],
+   "batch266": {
+    "execution_seconds": 1646.35,
+    "ppo_total_seconds": 1528.12,
+    "after_weights": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be",
+    "equals": "update 630 of m1-CH (15ed404); the accepted a8ac411 computes the same bits on this batch optimizer-only (O11)"
+   },
+   "batch267": {
+    "execution_seconds": 460.73,
+    "after_weights": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db",
+    "equals": "update 631 of m1-CH (15ed404); accepted a8ac411 equal on this batch optimizer-only (B267)"
+   },
+   "ratio_vs_accepted_batch266_lower_bound": 2.14
+  },
+  "optimizer_only_batch267_cpu0": {
+   "accepted_a8ac411_seconds": 739.3,
+   "fast_exact_15ed404_seconds": 609.4,
+   "replay_1721220_seconds": 419.0,
+   "bitwise_equal": true
+  },
+  "optimizer_only_batch266_cpu0": {
+   "accepted_a8ac411_seconds": 4214.9,
+   "fast_exact_7c4303f_seconds": 3241.7,
+   "experiment_X_seconds": 521.7,
+   "bitwise_equal_exact": true
+  },
+  "m3_RAH": {
+   "commit": "a5b3568",
+   "variant": "fast path, overlap verification, 2 prefix helpers and 2 replay threads",
+   "training_batch_seconds": {
+    "266": 1237.4,
+    "267": 351.7
+   },
+   "ppo_seconds": {
+    "266": 1102.4,
+    "267": 309.1
+   },
+   "baseline_batch_seconds": {
+    "seat0": 94.7,
+    "seat1": 207.1
+   },
+   "checkpoint_digests_equal_to_accepted_fast_and_m3_R5H": true
+  },
+  "m3_R5H": {
+   "commit": "4f02a10",
+   "training_batch_seconds": {
+    "266": 1182.3,
+    "267": 339.9
+   },
+   "ppo_seconds": {
+    "266": 1053.2,
+    "267": 298.5
+   }
+  },
+  "optimizer_only_batch267_ab_cpu0": {
+   "order": "RA267 R267b R267c RA267b",
+   "seconds": {
+    "RA267 (a5b3568)": 512.4,
+    "R267b (1721220)": 465.9,
+    "R267c (1721220)": 485.4,
+    "RA267b (a5b3568)": 535.5
+   },
+   "weights": "all 46439a9b (equal to the accepted path)",
+   "note": "a5b3568 about 10% slower than 1721220 here, but the background differed (different campaign phases on CPUs 1-3); a 6000-occurrence micro-benchmark shows the recording hook variants within 0.5-2% of each other, so the hook was kept"
+  },
+  "m3_RAF": {
+   "commit": "a5b3568",
+   "variant": "macOS default: fast path, serial verification, no helpers, replay inside the backward (one CPU for PPO, as the accepted path)",
+   "training_batch_seconds": {
+    "266": 2017.0
+   },
+   "ppo_seconds": {
+    "266": 1838.3
+   },
+   "baseline_batch_seconds": {
+    "seat0": 113.4,
+    "seat1": 225.6
+   },
+   "checkpoint_digest_equal_to_every_exact_campaign": true,
+   "note": "batch 266 at least 1.75x the censored accepted batch (3,523 s) on the same single-CPU PPO; the accepted batch is estimated at about 4,600 to 4,900 s, about 2.3 to 2.4x"
+  },
+  "m2_B": {
+   "commit": "a8ac411",
+   "baselines_seconds": [
+    219.2,
+    417.1
+   ],
+   "note": "accepted path, baselines only; m1-B took 318.1 and 557.7 s for the same games (host drift)"
+  },
+  "m3_RBN": {
+   "commit": "2ba42ac",
+   "start_args": "--fast-path --serial-verification --no-text-replay",
+   "baselines_seconds": [
+    109.4,
+    225.4
+   ],
+   "execution_recorded": {
+    "text_leaf_replay": false,
+    "prefix_helpers": 0,
+    "overlapped_verification": false
+   }
+  },
+  "optimizer_only_batch266_pr30_cpu0": {
+   "pr30_4d7688b_seconds": 3243.7,
+   "replay_1721220_seconds": 1750.7,
+   "ratio": 1.85,
+   "weights": "both fe1378ef (equal to the accepted path)",
+   "note": "one CPU each; PR30 prefix 953.4 s, loss forward 698.0 s, backward 1363.5 s, behaviour check 211.7 s"
+  },
+  "m6_RBH": {
+   "commit": "2ba42ac",
+   "baselines_seconds": [
+    96.7,
+    209.1
+   ],
+   "cold_start_seconds": 315.2,
+   "training_batch_seconds": {
+    "266": 1209.4,
+    "267": 350.6
+   },
+   "interrupted": "host restart during the PPO of batch 268",
+   "games": "batch 266 game 4 had the known asynchronous notice order difference, so update 630/631 bytes differ (25150b2c, cc4397a0): not comparable"
+  },
+  "optimizer_only_batch267_ab2_cpu0": {
+   "order": "R267d R B267 RB267b R267e",
+   "seconds": {
+    "R267d (1721220)": 473.5,
+    "RB267 (2ba42ac)": 489.2,
+    "RB267b (2ba42ac)": 505.6,
+    "R267e (1721220)": 490.9
+   },
+   "weights": "all 46439a9b",
+   "note": "the candidate about 3% slower (fail-closed per-occurrence bookkeeping); host drift about 4% across the four runs"
+  },
+  "optimizer_only_batch267_final_cpu0": {
+   "RD267_480aa1a_seconds": 503.6,
+   "RBN267_fallback_2ba42ac_seconds": 740.6,
+   "P267_pr30": "see validation record",
+   "weights": "46439a9b in both"
+  },
+  "m4_RDH": "learner 480aa1a (same values and order as 5635c7c), fast path with prefix helpers and deferred replay on CPUs 1-3, from 629: cold start 360.7 s (baselines 114.8 and 222.2 s); training batches 266 1248.0 s (update 630 fe1378ef, exact), 267 350.3 s (631 46439a9b, exact), 268 622.1, 269 900.5, 270 1810.3, 271 479.3 s (decisions 3968/1359/2084/2969/5831/1751); mean 901.7 s, median 761.3 s, about 4.0 verified updates per hour; projection 1,250 updates + 26 evaluation batches about 314 h on this host; peak 8.53 GB RSS, 45 fds, 21 threads, 10 processes",
+  "optimizer_only_batch266_accepted_repeat_cpu0": "B2, accepted a8ac411, 05:14-06:08 UTC: 3230.4 s, update 630 fe1378ef (same bytes); the same job took 4214.9 s at 21:11-22:21 UTC on 26 Oct: host drift of about 25% for the accepted path (also seen in the accepted baselines, 876 s in m1-B against 636 s in m2-B). PR30 P266 3243.7 s; exact replay RD266 1839.2 s (1.76x B2)",
+  "m3_RET": "final learner 5635c7c (release fe0d083), macOS default plus two replay threads without any fork (Mac letter T), CPUs 1-3, from 629: cold start 365.9 s (baselines 114.9 and 231.5 s); training batch 266 1516.7 s (PPO 1332.2 s), full learner state digest 8bbbe66b..., the same as every exact campaign's (accepted-equivalent update 630); peak 6.68 GB RSS, 45 fds, 21 threads, 10 processes",
+  "optimizer_only_batch266_fast_no_replay_repeat_cpu0": "C2, fast path without replay (15ed404, learner bytes of 7c4303f), 06:08-06:50 UTC: 2481.1 s, update 630 fe1378ef; the same job C took 3241.7 s at 20:17-21:11 UTC on 26 Oct (0.765 of it, as B2 is 0.766 of B): the drift is the host's and affects both paths alike; accepted/fast ratio 1.30 in the evening pair and 1.30 in the night pair",
+  "m6_B": "accepted a8ac411 again at night (06:17-07:28 UTC), CPUs 1-3, from 629: baselines 226.3 and 425.4 s (cold start 675.9 s); training batch 266 with the same games as every exact campaign stopped at the 3,540 s budget after 116 of 125 optimizer steps (batch 3,519.6 s), update rolled back, run stopped; extrapolated complete batch about 3,790 s. Batch 266 of the fast path against it: at least 2.82x (m4-RDH, about 3.0x extrapolated), 2.32x without any fork (m3-RET, about 2.5x), 1.74x macOS default (m3-RAF, about 1.9x)",
+  "optimizer_only_batch266_pr30_repeat_cpu0": "P266b, PR30 4d7688b, 06:50-07:46 UTC: 3370.3 s (P266 at 01:50 UTC: 3243.7 s), update 630 fe1378ef; on one CPU PR30 takes the accepted path's time on batch 266 (B2 3230.4 s)",
+  "optimizer_only_batch266_final_learner_cpu0": "RE266, final learner 5635c7c (release worktree fe0d083), replay inside the engine on one CPU, 08:22-08:58 UTC: 2174.4 s, update 630 fe1378ef (exact); RD266b (480aa1a) 07:46-08:22 UTC: 2130.6 s, against RD266 1839.2 s at 04:43: the host slowed again in the morning by about 15%",
+  "m6_REH": "final learner 5635c7c (release fe0d083), two prefix helpers and two replay threads, CPUs 1-3, 07:28-09:06 UTC, from 629: cold start 327.0 s (baselines 102.4 and 214.2 s); training batches 266 1410.1 s, 267 386.4, 268 621.8, 269 1041.0, 270 2081.3 s with the same decisions per batch as m4-RDH; 266 and 267 have the same games and learner state digests as m4-RDH (updates 630 and 631 exact on the final learner); in 268, 269 and 270 one game of four differs from m4-RDH (asynchronous event order), so those batches are not comparable for exactness. Mean 1108.1 s, median 1041.0 s, 12% above m4-RDH's same five batches (986.2 s): the host was slower in the morning (RE266 2174.4 s at 08:22 against RD266 1839.2 s at 04:43). Peak 9.03 GB RSS, 43 fds, 21 threads, 10 processes",
+  "m3_REF": "final learner 5635c7c macOS default (serial verification, no helpers, replay inside the engine), CPUs 1-3, 09:08-09:56 UTC: cold start 391.6 s (baselines 129.1 and 250.9 s); batch 266 2452.5 s (PPO 2246.4 s), same learner state digest as every other exact campaign; peak 6.67 GB RSS",
+  "optimizer_only_batch267_bracket_cpu0": "RE267 646.6 s (08:58), B267b 929.1 s (09:09, accepted), P267b 953.3 s (09:25, PR30), RE267b 608.6 s (09:41): all update 631 46439a9b; final learner 1.48x accepted and 1.52x PR30 on one CPU"
+ },
+ "completed_checks": [
+  "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",
+  "main's local runner offline check on this host: exact 629 restore through the benchmark shim",
+  "fast-path unit tests: reviewed transition pins, tampered or unlisted sources rejected, execution choices bound, serial fallback never forks, default path releases the accepted commit",
+  "Mac acceptance tool guard tests on Linux (lock exclusion both ways, role-named parent copies, final-parent refusal, stop during last batch)",
+  "lineage guard: an exact session refuses a parent produced by a numerical experiment (tests)",
+  "raw episode compression with per-file SHA-256 verification before removal (benchmark disk allowance)",
+  "reviewed-tree check: every file of experiments/, the learner lock, runner, preparation and prepare_vcmi must equal a8ac411 or its FAST_PATH_TREE pin (tests: altered, unpinned and new modules refused)",
+  "serial fallback runs the history check in the worker before replay (no thread, no fork)",
+  "Mac tool: exit status covers failed, bounded, interrupted, incomplete or leftover campaigns and a moved checkout; summary always written; main() tested end to end with the game replaced",
+  "numerical experiment refuses the official configuration and run root",
+  "game digests cover every observation and decision frame; missing digests are reported as not comparable",
+  "test suites: test_local_fast_path, test_local_script_training (32), test_prefix_pool, test_parallel_verification, test_ppo_phase2_acceleration (33), local script controller/integration and builtin evaluation (51), Mac tool (14)",
+  "fourth independent review of the deferred replays (13 agents, 10 verified findings): fixed in 480aa1a or stated as limitations; mutation checks of the new gating tests",
+  "480aa1a: 104 unit tests of the fast path, learner, replay, prefix pool, parallel verification and phase-2 acceleration, and 25 Mac tool and bench tool tests pass; fast_path_pins reports pins match",
+  "fifth independent review of the 480aa1a diff (9 agents, 7 confirmed findings, none reachable from the PPO update): fixed in 5635c7c with new tests; 106 unit tests and 25 tool tests pass; pins match"
+ ],
+ "blockers": [],
+ "official_lineage_touched": false,
+ "official_run_launched": false,
+ "teacher_touched": false,
+ "candidate_commit": "5635c7c (final learner candidate: 480aa1a plus the fifth review fixes: every replay checks the bracket's intra-op thread count, the bracket's task is recorded on a fresh view of the loss, all-or-none installation); fe0d083 adds the log. Measured: 480aa1a (m4-RDH, RD267, RD266), 2ba42ac (m3-RBN, m6-RBH, RB267, RBN267), a5b3568, 4f02a10, 1721220, 15ed404",
+ "incidents": [
+  "20:0x UTC: a pkill -f pattern matched my own waiting shell and killed only my tool shells (drivers verified alive); standing rule violated, waits now use kill -0 on recorded pids",
+  "about 23:15Z: the host rebooted (boot 3b357b50 -> b9c386f7); every process died. m1-XH had already finished; its summary and lossless compression were redone by hand. The watchdog refused to restart on a new boot; it was changed to re-anchor its monotonic deadlines to the unchanged UTC deadlines and to retire all registrations of the previous boot (tested), then restarted. Optimizer-only job P (PR30) was lost and rerun from the start; the remaining five campaigns run unchanged as schedule m3b.",
+  "about 23:48:50Z: second host restart (boot b9c386f7 -> 72fdd1aa); lost m1-F (26 min in) and the second PR30 optimizer-only attempt; watchdog restarted through the reboot path with the same UTC deadlines; the optimizer-only queue now skips finished jobs",
+  "02:45Z: the session disk allowance was down to 2.8 GB while m6-RBH (eight training batches, about 0.6 GB of raw episodes per batch) ran; freed to 6.6 GB by lossless, verified compression of older benchmark episodes (bench2 o-XH/r0-B, runs/final, reval-final, vsbase-final), deleting scratch files and removing three unused release worktrees; a low-disk alarm now watches the allowance",
+  "about 03:25Z: third host restart (boot 72fdd1aa -> 3eb80ab8); the session resumed 04:05Z. Lost m6-RBH during batch 268 (two batches admitted) and RBN267; a read-only review workflow had already failed on a session limit. Watchdog restarted through the reboot path with the unchanged UTC deadlines; m6-RBH summarized and compressed; schedule m8 and queue 11 restarted"
+ ],
+ "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)",
+ "headline": "Linux, original map, from 629, same three CPUs: the accepted path cannot complete training batch 266 (update deadline after 116 of 125 steps; about 3,790 s extrapolated); the exact fast path with helpers and replay threads did it in 1,248 s and 1,410 s bracketing the accepted run: at least 2.65x, about 2.85x; cold start 1.97x; final learner exact end to end; about 3.6 verified updates per hour over eleven batches, projection about 347 h for 1,250 updates + 26 evaluation batches. No-fork replay threads (Mac letter T) at least 2.32x; macOS default 1.44 to 1.75x (below 2x). PR30 equals the accepted path on one CPU; the exact replay is 1.5 to 1.85x PR30 on one CPU (second 2x not reached on one CPU) and its three-CPU PPO 2.7 to 2.9x PR30's single-CPU PPO"
+}

@@ -204,7 +204,12 @@ def empty_attempt(row):
         "rewards": dict.fromkeys(COLORS), "training_samples": 0, "optimizer_steps": 0, "completion_receipt": False}
 
 
-def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
+def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save, *, identity_verified=False):
+    """One scheduled game, its verification and cleanup.
+
+    ``identity_verified`` means the caller's last action was a passed ``check_identity(plan)``
+    (the previous attempt's final check), so the identical opening check is not repeated.
+    """
     from experiments.headless.env import Limits
     from experiments.headless.builtin_env import BuiltinHeadlessEnv
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
@@ -212,6 +217,7 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
     from .builtin_rollout import BuiltinCollector, audit_persisted_builtin_policy, retain_failed_builtin_evidence
     from .builtin_gameplay import TrainingBinding, TrainingCollector, verify_training_capture
     from .builtin_behavior import analyze_episode
+    from experiments.headless.background_check import BackgroundCheck
     from .contextual_model import weights_sha256
     from validation.probes.validate_hero_policy import wall_limit
     from experiments.headless.builtin_evidence import profile_for
@@ -227,7 +233,8 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
         save(attempt)
     try:
         with wall_limit(budget.remaining(cfg["cleanup_reserve_seconds"])):
-            check_identity(plan)
+            if not identity_verified:
+                check_identity(plan)
             opponent = native_opponent(plan["runtime"], seat)
             launcher = DeadlineVcmiLauncher(Path(plan["binary"]), Path(plan["data"]), Path(plan["game_map"]),
                 deadline_monotonic=budget.deadline - 2, deadline_wall=budget.wall_deadline - 2,
@@ -266,20 +273,27 @@ def run_attempt(plan, plan_path, sha, index, model, checkpoint, budget, save):
             require(manifest["status"] in ("completed", "truncated"), "Unscored technical episode failure")
             require(len(experience.decisions) <= cfg["max_total_choices"], "Choice cap exceeded")
             progress("verification")
-            if row["phase"] == "training":
-                receipt = verify_training_capture(folder, collected, bound, model,
-                    replay_binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
-                    remaining=lambda: budget.remaining(cfg["cleanup_reserve_seconds"]))
-            else:
-                write(folder / "builtin-rollout.json", collected.to_dict())
-                reconstructed = audit_persisted_builtin_policy(folder, model, checkpoint, row["policy_seed"], opponent)
-                write(folder / "policy-reconstruction.json", reconstructed)
-                replay = verify_episode(folder, binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
-                    timeout=budget.remaining(cfg["cleanup_reserve_seconds"]))
-                require(replay.get("verified") is True, "Independent native replay failed")
-                attempt["reconstruction"] = reconstructed
-            require(weights_sha256(model) == before, "Policy changed during collection/verification")
-            behavior = analyze_episode(folder)
+            # The behavior report reads only the finalized capture files; it is computed in a
+            # forked child alongside verification and written only after verification passes.
+            analyzing = BackgroundCheck(analyze_episode, folder)
+            try:
+                analyzing.start()
+                if row["phase"] == "training":
+                    receipt = verify_training_capture(folder, collected, bound, model,
+                        replay_binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
+                        remaining=lambda: budget.remaining(cfg["cleanup_reserve_seconds"]))
+                else:
+                    write(folder / "builtin-rollout.json", collected.to_dict())
+                    reconstructed = audit_persisted_builtin_policy(folder, model, checkpoint, row["policy_seed"], opponent)
+                    write(folder / "policy-reconstruction.json", reconstructed)
+                    replay = verify_episode(folder, binary=Path(plan["replay_binary"]["path"]), data=Path(plan["data"]),
+                        timeout=budget.remaining(cfg["cleanup_reserve_seconds"]))
+                    require(replay.get("verified") is True, "Independent native replay failed")
+                    attempt["reconstruction"] = reconstructed
+                require(weights_sha256(model) == before, "Policy changed during collection/verification")
+                behavior = analyzing.result(timeout=budget.remaining(cfg["cleanup_reserve_seconds"]))
+            finally:
+                analyzing.stop()
             write(folder / "behavior.json", behavior)
             attempt.update(status="pending_verification", replay_verified=True,
                 behavior=binding(folder / "behavior.json"), weights_unchanged=True)

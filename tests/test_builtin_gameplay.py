@@ -4,9 +4,11 @@ from contextlib import ExitStack
 from dataclasses import replace
 import hashlib
 import json
+import os
 from pathlib import Path
 import random
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -271,12 +273,17 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
         (folder / "engine/experiment-metadata.json").write_text('{"synthetic":true}')
         return captured, bound, model, folder
 
-    def verify(self, captured, bound, model, folder, *, diagnostic=False, mutate=False):
+    def verify(self, captured, bound, model, folder, *, diagnostic=False, mutate=False, native_error=None, native_delay=0,
+               started=None):
         from experiments.headless import builtin_replay as replay
+        from experiments.headless.background_check import BackgroundCheck
         from experiments.headless.builtin_replay_history import verify_history
         def synthetic_native(episode, *, output, **kwargs):
             # Only native process execution/effect verification is mocked.
             # Own transport reconstruction and fixed-model resampling are real.
+            time.sleep(native_delay)
+            if native_error is not None:
+                raise native_error
             output.mkdir()
             final = evidence.read_finalization(episode, captured.manifest)
             history = verify_history(episode, captured.manifest, final)
@@ -288,7 +295,13 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
             if mutate:
                 (episode / "engine/experiment-metadata.json").write_text('{"tampered":true}')
             return result
-        with patch.object(replay, "verify_episode", side_effect=synthetic_native), patch.object(replay, "validate_native_report") as native_check:
+        start = BackgroundCheck.start
+        def recorded(check):
+            start(check)
+            (started if started is not None else []).append(check.pid)
+            return check
+        with patch.object(replay, "verify_episode", side_effect=synthetic_native), patch.object(replay, "validate_native_report") as native_check, \
+             patch.object(BackgroundCheck, "start", recorded):
             receipt = gameplay.verify_training_capture(folder, captured, bound, model, replay_binary=folder / "unused-verifier",
                 data=folder, remaining=lambda: 30.0)
             native_check.assert_called_once()
@@ -317,6 +330,54 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.verify(captured, bound, model, folder, diagnostic=diagnostic, mutate=mutate)
                 self.assertFalse((folder / "training-receipt.json").exists())
+
+
+    def test_overlapped_failures_keep_the_serial_error_and_stop_the_replay(self):
+        from validation.probes import validate_hero_policy
+        reconstruct = validate_hero_policy.reconstruct_behavior
+        def mismatched(*args, **kwargs):
+            return {**reconstruct(*args, **kwargs), "maximum_absolute_difference": 1.0}
+        cases = (
+            # A parent check fails while the replay still runs: its error, at once.
+            ("parent", dict(native_delay=30), mismatched, ValueError, "Exact independent behavior reconstruction failed"),
+            # The replay fails after every parent check passed: its exception, unchanged.
+            ("replay", dict(native_error=OSError("native differs")), reconstruct, OSError, "native differs"),
+        )
+        for name, options, policy, error, message in cases:
+            with self.subTest(name), tempfile.TemporaryDirectory() as temp:
+                captured, bound, model, folder = self.collect(Path(temp).resolve(), 1, "cutoff")
+                started, begun = [], time.monotonic()
+                with patch.object(validate_hero_policy, "reconstruct_behavior", side_effect=policy), self.assertRaisesRegex(error, message):
+                    self.verify(captured, bound, model, folder, started=started, **options)
+                self.assertLess(time.monotonic() - begun, 20)
+                self.assertEqual(len(started), 1)
+                self.assertTrue(reaped(started[0]))
+                self.assertFalse((folder / "training-receipt.json").exists())
+
+    def test_a_tampered_manifest_or_rollout_fails_with_the_serial_error_before_any_replay(self):
+        for tamper_rollout, message in ((False, "Only an intact naturally ended"), (True, "Fresh training artifact changed after capture")):
+            with self.subTest(tamper_rollout=tamper_rollout), tempfile.TemporaryDirectory() as temp:
+                captured, bound, model, folder = self.collect(Path(temp).resolve(), 0, "natural")
+                manifest = json.loads((folder / "manifest.json").read_text())
+                del manifest["replay"]  # binding it would raise a KeyError first
+                (folder / "manifest.json").write_text(json.dumps(manifest))
+                if tamper_rollout:
+                    rollout = json.loads((folder / "builtin-training-rollout.json").read_text())
+                    rollout["tampered"] = True
+                    (folder / "builtin-training-rollout.json").write_text(json.dumps(rollout))
+                started = []
+                with self.assertRaisesRegex(ValueError, message):
+                    self.verify(captured, bound, model, folder, started=started)
+                self.assertEqual(started, [])
+                self.assertFalse((folder / "training-receipt.json").exists())
+
+
+def reaped(pid):
+    try:
+        os.waitpid(pid, os.WNOHANG)
+    except ChildProcessError:
+        return True
+    return False
 
 
 class TransactionRollbackTests(unittest.TestCase):

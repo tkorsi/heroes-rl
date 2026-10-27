@@ -33,6 +33,11 @@ RECORD_FIELDS = {
 
 
 def unique_object(pairs):
+    # dict() keeps first insertion order and drops nothing unless a key repeats;
+    # only then does the loop name the first repeated key, as it always did.
+    result = dict(pairs)
+    if len(result) == len(pairs):
+        return result
     result = {}
     for key, value in pairs:
         if key in result:
@@ -116,11 +121,13 @@ class ContextualProducer:
                     raise ValueError("Unknown native decision reference")
                 else:
                     raw["decision_seq"] = self.decision_ids[native_id]
-            raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=len(self.live.frames))
+            raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=self.live.frame_count)
+            observation = None
             if record_kind == "decision":
                 observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
                 raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))
-            frame = contract.decode_frame(raw)
+            # The decision's observation is decoded once, from this same raw dict and schema.
+            frame = contract.decode_frame(raw, observation=observation)
             self.live.append(frame)
             appended.append(frame)
             if record_kind == "decision":

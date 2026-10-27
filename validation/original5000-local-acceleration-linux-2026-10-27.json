@@ -1,0 +1,5058 @@
+{
+ "accepted_stopped_batches": [
+  {
+   "attempted_optimizer_steps": 83,
+   "campaign": "m1-B",
+   "execution_wall_seconds": 3514.250975832001,
+   "games_end_seconds_after_worker_start": 362.36402010917664,
+   "sequence": 266
+  },
+  {
+   "attempted_optimizer_steps": 116,
+   "campaign": "m6-B",
+   "execution_wall_seconds": 3513.0671655200003,
+   "games_end_seconds_after_worker_start": 264.01036643981934,
+   "sequence": 266
+  }
+ ],
+ "campaigns": {
+  "m1-B": {
+   "child_cpu_seconds": 4383.33744,
+   "cold_start_seconds": 888.8768179416656,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 318.080675,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 557.667299,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": null,
+   "git_head": "a8ac411d32658387598376c792136bc586edc5f9",
+   "launch_seconds": 4413.988802534001,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 6462370816,
+     "total_rss": 7351267328
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 12943360,
+    "supervisor_rss_last": 650620928
+   },
+   "status": "stopped_failure",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 0,
+     "error": "ValueError: Batch failed: UpdateRolledBack: TimeoutError: Fixed-weight diagnostic exceeded its declared case wall limit; model, Adam and all RNG state restored",
+     "game_seconds": [
+      27.194857565002167,
+      113.3677246240004,
+      125.81180617299833,
+      208.23058863500046
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": null,
+     "seat": 0,
+     "seconds": 3522.95707,
+     "sequence": 266,
+     "state": null,
+     "status": "failed"
+    }
+   ],
+   "variant": "B"
+  },
+  "m1-CH": {
+   "child_cpu_seconds": 4451.615417,
+   "cold_start_seconds": 348.9864230155945,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 119.47698,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 207.648047,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 3240.0560290813446,
+   "git_head": "15ed404a376b6ede3bab221cc6b9d16bfcec21bb",
+   "launch_seconds": 4106.189433731004,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 6758049792,
+     "total_rss": 8045740032
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 0,
+    "supervisor_rss_first": 13615104,
+    "supervisor_rss_last": 0
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      9.024966919998406,
+      31.59459589999824,
+      38.177236563002225,
+      65.8202888909982
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 1602.551383588012,
+      "behavior_verification": 18.68471730500096,
+      "history_encoding": 2.7461260159980156,
+      "loss_forward": 850.1770053339569,
+      "optimizer_step": 14.39069266801016,
+      "prefix_helper_start": 0.050659134998568334,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 242.96313629501674,
+      "total": 2731.5897054230045
+     },
+     "seat": 0,
+     "seconds": 2891.069606,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      8.063460719000432,
+      7.879257448003045,
+      21.15047258300183,
+      6.747744814994803
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 502.48312605801766,
+      "behavior_verification": 5.066245476002223,
+      "history_encoding": 0.5485957999990205,
+      "loss_forward": 263.1104270950236,
+      "optimizer_step": 4.807502897027007,
+      "prefix_helper_start": 0.03465974899881985,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 32.91617054698145,
+      "total": 808.9762897839973
+     },
+     "seat": 1,
+     "seconds": 863.940713,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    }
+   ],
+   "variant": "CH"
+  },
+  "m1-F": {
+   "child_cpu_seconds": null,
+   "cold_start_seconds": null,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 140.141108,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 246.148711,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": null,
+   "git_head": "15ed404a376b6ede3bab221cc6b9d16bfcec21bb",
+   "launch_seconds": null,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 5788354560,
+     "total_rss": 6672830464
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 6,
+    "supervisor_rss_first": 10235904,
+    "supervisor_rss_last": 622141440
+   },
+   "status": "running",
+   "training_batches": [],
+   "variant": "F"
+  },
+  "m1-XH": {
+   "child_cpu_seconds": 1246.526466,
+   "cold_start_seconds": 313.15864396095276,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 105.546567,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 190.921248,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 790.0052180290222,
+   "git_head": "15ed404a376b6ede3bab221cc6b9d16bfcec21bb",
+   "launch_seconds": 900.6418857390017,
+   "resources": {
+    "peak": {
+     "fds": 42,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 6782162944,
+     "total_rss": 8070508544
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 7,
+    "supervisor_rss_first": 13471744,
+    "supervisor_rss_last": 623472640
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      7.911470176004514,
+      28.12166775300284,
+      33.40221086599922,
+      58.833879310004704
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 61.00183063701115,
+      "behavior_verification": 16.754798410001968,
+      "experiment_shared_graph_encodings": 1.0,
+      "history_encoding": 2.358206753000559,
+      "loss_forward": 49.36787632902997,
+      "optimizer_step": 0.6494284770305967,
+      "prefix_helper_start": 0.04390298799989978,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 206.2501301189768,
+      "total": 336.7583359820055
+     },
+     "seat": 0,
+     "seconds": 476.846574,
+     "sequence": 266,
+     "state": "4a92d2cbaf5c1ca64091c4bfa59857946b91acd7c2ed8cf1e6c629183037d33a",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      7.127415816998109,
+      6.933320554999227,
+      18.367720971997187,
+      5.79415285000141
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 16.502608994029288,
+      "behavior_verification": 4.5213946779986145,
+      "experiment_shared_graph_encodings": 1.0,
+      "history_encoding": 0.46532968100655125,
+      "loss_forward": 13.450466666996363,
+      "optimizer_step": 0.16718896398379002,
+      "prefix_helper_start": 0.031217489995469805,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 26.38746409502346,
+      "total": 61.59939270099858
+     },
+     "seat": 1,
+     "seconds": 109.05609,
+     "sequence": 267,
+     "state": "2e37063d8049d7a2ade6115fd575029105e821d3f2400e9422d3ab1b7320af9c",
+     "status": "passed"
+    }
+   ],
+   "variant": "XH"
+  },
+  "m2-B": {
+   "child_cpu_seconds": 644.493199,
+   "cold_start_seconds": null,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 219.199835,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 417.133916,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": null,
+   "git_head": "a8ac411d32658387598376c792136bc586edc5f9",
+   "launch_seconds": 658.879457164001,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 6419000320,
+     "total_rss": 7359844352
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 13586432,
+    "supervisor_rss_last": 625315840
+   },
+   "status": "stopped_requested",
+   "training_batches": [],
+   "variant": "B"
+  },
+  "m3-R5H": {
+   "child_cpu_seconds": 2989.237815,
+   "cold_start_seconds": 308.9935839176178,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 90.395889,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 201.021172,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1491.2642970085144,
+   "git_head": "4f02a10ce615c90d14172fe9df0f14ed242e4c71",
+   "launch_seconds": 1832.8741309059997,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 6714039296,
+     "total_rss": 8038158336
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 7,
+    "supervisor_rss_first": 13725696,
+    "supervisor_rss_last": 623628288
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      7.229710752999836,
+      27.3318319240002,
+      32.11069068500001,
+      53.17722677199981
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 683.2347852810017,
+      "behavior_verification": 16.396033302999967,
+      "history_encoding": 1.9161051629998838,
+      "loss_forward": 155.6145493110016,
+      "optimizer_step": 2.763924513001257,
+      "prefix_helper_start": 0.04042141399986576,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 186.92329745799725,
+      "total": 1053.2263078699998
+     },
+     "seat": 0,
+     "seconds": 1182.270713,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      6.23623703299927,
+      5.982859763999841,
+      16.63825389000067,
+      5.0916289369997685
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 218.83732556199993,
+      "behavior_verification": 4.226599767999687,
+      "history_encoding": 0.4183052199996382,
+      "loss_forward": 48.03560059799929,
+      "optimizer_step": 0.8384658619970651,
+      "prefix_helper_start": 0.027466891000585747,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 24.387918559002173,
+      "total": 298.5085213430002
+     },
+     "seat": 1,
+     "seconds": 339.944653,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    }
+   ],
+   "variant": "R5H"
+  },
+  "m3-RAF": {
+   "child_cpu_seconds": 2352.2750920000003,
+   "cold_start_seconds": 348.93414306640625,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 113.354036,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 225.580763,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 2365.9572851657867,
+   "git_head": "a5b3568b87130719555a6f3a42c45195225e0ed2",
+   "launch_seconds": 2367.5981509450003,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 5745887232,
+     "total_rss": 6686916608
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 13500416,
+    "supervisor_rss_last": 694177792
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      9.798270381000293,
+      36.16828209399955,
+      43.7720054600004,
+      79.0814651439996
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 1274.7541001929985,
+      "behavior_verification": 17.162994818999323,
+      "history_encoding": 1.7340435599999182,
+      "loss_forward": 171.23385692600004,
+      "optimizer_step": 2.403329164009847,
+      "prefix_reconstruction": 364.69425765099186,
+      "total": 1838.3476358710004
+     },
+     "seat": 0,
+     "seconds": 2017.023142,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    }
+   ],
+   "variant": "RAF"
+  },
+  "m3-RAH": {
+   "child_cpu_seconds": 3332.1252010000003,
+   "cold_start_seconds": 320.59684801101685,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 94.701043,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 207.139972,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1558.0019931793213,
+   "git_head": "a5b3568b87130719555a6f3a42c45195225e0ed2",
+   "launch_seconds": 1911.4712006170002,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 6756259840,
+     "total_rss": 8055566336
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 13164544,
+    "supervisor_rss_last": 628572160
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      8.043926745000135,
+      29.2803325040004,
+      31.242546747999768,
+      56.71404900299967
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 717.4830153330022,
+      "behavior_verification": 18.775096919000134,
+      "history_encoding": 1.7648041439997542,
+      "loss_forward": 167.72601040800328,
+      "optimizer_step": 4.027872810996087,
+      "prefix_helper_start": 0.04637514300065959,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 184.0352090890019,
+      "total": 1102.357177121
+     },
+     "seat": 0,
+     "seconds": 1237.405145,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      6.430202284000188,
+      6.134842204999586,
+      16.858508968000024,
+      5.514687801000036
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 228.49937462600428,
+      "behavior_verification": 4.573312878000252,
+      "history_encoding": 0.447996066000087,
+      "loss_forward": 49.05807788599941,
+      "optimizer_step": 1.1909236589981447,
+      "prefix_helper_start": 0.030250861999775225,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 22.946536607998496,
+      "total": 309.10968183299974
+     },
+     "seat": 1,
+     "seconds": 351.664932,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    }
+   ],
+   "variant": "RAH"
+  },
+  "m3-RBN": {
+   "child_cpu_seconds": 353.696856,
+   "cold_start_seconds": null,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 109.43871,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 225.403907,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": null,
+   "git_head": "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5",
+   "launch_seconds": 355.3905963699999,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 5789407232,
+     "total_rss": 6690238464
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 12660736,
+    "supervisor_rss_last": 679649280
+   },
+   "status": "stopped_requested",
+   "training_batches": [],
+   "variant": "RBN"
+  },
+  "m3-REF": {
+   "child_cpu_seconds": 2829.8303610000003,
+   "cold_start_seconds": 391.5983781814575,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 129.069057,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 250.901185,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 2844.1176681518555,
+   "git_head": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "launch_seconds": 2846.8113565079984,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 5782289408,
+     "total_rss": 6669586432
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 11190272,
+    "supervisor_rss_last": 622948352
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      10.809296758001437,
+      42.76045409499784,
+      51.08220271200116,
+      90.54128160600158
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 1570.7244799999935,
+      "behavior_verification": 20.278242482003407,
+      "history_encoding": 1.9808601289987564,
+      "loss_forward": 215.01000998902236,
+      "optimizer_step": 3.31102347000342,
+      "prefix_reconstruction": 427.32746281598884,
+      "total": 2246.4279064919974
+     },
+     "seat": 0,
+     "seconds": 2452.51929,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    }
+   ],
+   "variant": "REF"
+  },
+  "m3-RET": {
+   "child_cpu_seconds": 2805.643676,
+   "cold_start_seconds": 365.8773910999298,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 114.871336,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 231.547963,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1882.6066761016846,
+   "git_head": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "launch_seconds": 1884.537291832,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 5792316416,
+     "total_rss": 6679928832
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 12173312,
+    "supervisor_rss_last": 624697344
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      9.560754200999327,
+      37.302573924999706,
+      45.224205666999296,
+      82.39572513800067
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 734.3913899890058,
+      "behavior_verification": 19.814536331000454,
+      "history_encoding": 2.1273954970001796,
+      "loss_forward": 185.46081155099728,
+      "optimizer_step": 2.3116900390004957,
+      "prefix_reconstruction": 380.7806212339983,
+      "total": 1332.169730015
+     },
+     "seat": 0,
+     "seconds": 1516.729285,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    }
+   ],
+   "variant": "RET"
+  },
+  "m3-RH": {
+   "child_cpu_seconds": 2725.32149,
+   "cold_start_seconds": 333.0810511112213,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 113.909728,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 198.200921,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1982.251492023468,
+   "git_head": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "launch_seconds": 2447.485754617,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 6749321216,
+     "total_rss": 8034668544
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 12701696,
+    "supervisor_rss_last": 623419392
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      6.296439158999988,
+      23.968171181999992,
+      28.909231482999985,
+      53.10758536499998
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 1169.9348386620006,
+      "behavior_verification": 15.94606499400004,
+      "history_encoding": 1.7550414899999396,
+      "loss_forward": 153.85178604700025,
+      "optimizer_step": 2.2906838690006452,
+      "prefix_helper_start": 0.03930802899992614,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 178.29442779000283,
+      "total": 1528.1159361199998
+     },
+     "seat": 0,
+     "seconds": 1649.170441,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      6.484696122000059,
+      6.496571080000194,
+      18.899412830000074,
+      5.5125396960002035
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 346.4065641440011,
+      "behavior_verification": 4.312511457000255,
+      "history_encoding": 0.39821237199976167,
+      "loss_forward": 44.20579493900186,
+      "optimizer_step": 0.6529124049998245,
+      "prefix_helper_start": 0.03158422700016672,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 21.24705701800076,
+      "total": 418.717235007
+     },
+     "seat": 1,
+     "seconds": 463.596787,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    }
+   ],
+   "variant": "RH"
+  },
+  "m4-RDH": {
+   "child_cpu_seconds": 10495.778714,
+   "cold_start_seconds": 360.69643092155457,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 114.782488,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 222.217366,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1608.6815950870514,
+   "git_head": "579043e3343e7446ad88c6a652cbdbecba71acc5",
+   "launch_seconds": 5773.07255345,
+   "resources": {
+    "peak": {
+     "fds": 45,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 7367405568,
+     "total_rss": 8530763776
+    },
+    "supervisor_fds_first": 4,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 11968512,
+    "supervisor_rss_last": 383909888
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      6.852707777999967,
+      27.377026272999956,
+      32.48633264700004,
+      57.29395416900002
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 713.1054168369983,
+      "behavior_verification": 16.897220367000045,
+      "history_encoding": 1.966897415999938,
+      "loss_forward": 184.00709317499945,
+      "optimizer_step": 2.170911176000459,
+      "prefix_helper_start": 0.054202079999981834,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 189.28659221700048,
+      "total": 1114.3794414120002
+     },
+     "seat": 0,
+     "seconds": 1247.985164,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      6.446323188000179,
+      6.290298587999814,
+      17.081524118999823,
+      5.247589663999861
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 222.31906350299823,
+      "behavior_verification": 4.540657880000026,
+      "history_encoding": 0.4885769539998819,
+      "loss_forward": 54.934238431000495,
+      "optimizer_step": 0.6102852829992571,
+      "prefix_helper_start": 0.029622607999954198,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 22.594130862001748,
+      "total": 307.2724963390001
+     },
+     "seat": 1,
+     "seconds": 350.279835,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      945,
+      345,
+      408,
+      386
+     ],
+     "decisions": 2084,
+     "error": null,
+     "game_seconds": [
+      34.051262820000375,
+      13.062890044999676,
+      13.42212250700004,
+      12.593653353000263
+     ],
+     "games": [
+      "c602f784ebcc02d2c1878f0ff054e40ec05832a203fa18084e596ccf59f65659",
+      "46c17a4bf9e75f2213002f8bf6c4ee9e2b026b1f3cc5734c4923b265cf7cd416",
+      "fc2fa44a27c915874affb54f148c530742e6699613beda7b1d7fe2c19ed5e654",
+      "a3a444f5562b1fecc7cb7485d8475f3d57a1f8ac410efc6a186506bf301c4031"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 383.2670336900014,
+      "behavior_verification": 14.283900592000009,
+      "history_encoding": 0.7276238650001687,
+      "loss_forward": 87.05517298699942,
+      "optimizer_step": 0.997195203998217,
+      "prefix_helper_start": 0.026413019000301574,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 50.70159761400009,
+      "total": 540.0941556940002
+     },
+     "seat": 0,
+     "seconds": 622.057838,
+     "sequence": 268,
+     "state": "fa33136e487ac532303d4fe1e4e99b2b24d5d0791725a4f78583db84970c2702",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      297,
+      825,
+      433,
+      1414
+     ],
+     "decisions": 2969,
+     "error": null,
+     "game_seconds": [
+      8.838474165000207,
+      25.55661786399969,
+      11.55088786799979,
+      39.389897092999945
+     ],
+     "games": [
+      "1ce4ee2ffbfd2cbb70774499e0cdc6ef8e04688f2643934447aa129015432575",
+      "6f96e4c587239c4cc9b0b542ae32043476947d57d93bfb8f9873705435f34b81",
+      "4a0a41f9e3add4474bc2e79f66e2e25a26232092f63629d797a6a793d970e6aa",
+      "d616048e43bd937627254e09e6e1efb376c9580b53c91571e38c2fb650937321"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 546.5161651559988,
+      "behavior_verification": 12.475987992999762,
+      "history_encoding": 0.9710168799997518,
+      "loss_forward": 132.81229422399883,
+      "optimizer_step": 1.7628062369990403,
+      "prefix_helper_start": 0.054944404999787366,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 106.21553776000246,
+      "total": 805.7164299649999
+     },
+     "seat": 1,
+     "seconds": 900.537955,
+     "sequence": 269,
+     "state": "417cbd9d831e8078db4581399e5857fac0cf73922162603c7684f3d005e3f943",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      219,
+      3413,
+      909,
+      1290
+     ],
+     "decisions": 5831,
+     "error": null,
+     "game_seconds": [
+      6.414278416999878,
+      118.22736655200015,
+      32.80641608100041,
+      40.97265659899995
+     ],
+     "games": [
+      "b6746ac369f64e04cd2638d9f6714c4627f268f6d88f6619167d4917c533cb1c",
+      "493f8693fc11313d82cd02a8502725b2adcb11de0f543af755756cab373116f5",
+      "db7465d835a8bcc57fec2f95dadaccc703fcee6ecba3320b63f0b1543fe63732",
+      "024eb239f71b6db9e0760d9bc253a14407dafaaa45284b5118cc90d812e3d979"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 965.6741847519997,
+      "behavior_verification": 23.718836797000222,
+      "history_encoding": 5.061098636999759,
+      "loss_forward": 249.60818172199743,
+      "optimizer_step": 3.2022873560076732,
+      "prefix_helper_start": 0.06201385699978346,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 344.9426879849934,
+      "total": 1601.1486907490003
+     },
+     "seat": 0,
+     "seconds": 1810.32862,
+     "sequence": 270,
+     "state": "d6766e6397caaa6e1bcf45037d06dfbd865eaf70fcef9f0336fbbcb1d91be22a",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      606,
+      268,
+      526,
+      351
+     ],
+     "decisions": 1751,
+     "error": null,
+     "game_seconds": [
+      16.614456461000373,
+      7.506681566000225,
+      13.128746159999537,
+      9.900190887999997
+     ],
+     "games": [
+      "6b740abdbc993765301a3e712b9053a0786148f5888ed48a16748f63853dd47d",
+      "47cfa6761e40f898753a438e420dc3a5601d9b4e198a0a0df55f83dc67c67b96",
+      "3b33016a5745e997fdb6ed80bfbb5f8ce3e1ab9b5d1bc5ca27e7f64b254d45bc",
+      "339028f2320e445d995966a4a0649d52afdef5f0dd6c7e96294d9e6c6ef20d14"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 299.69302129699827,
+      "behavior_verification": 7.073804588000712,
+      "history_encoding": 0.5955042049999975,
+      "loss_forward": 75.1679452419985,
+      "optimizer_step": 0.8546345329996257,
+      "prefix_helper_start": 0.03390770500027429,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 37.893815111997355,
+      "total": 423.95492834200013
+     },
+     "seat": 1,
+     "seconds": 479.253961,
+     "sequence": 271,
+     "state": "12f7ee797bc2ef1ec3dcf3b04d3371da86c604bae419b9d9b8b4637524976796",
+     "status": "passed"
+    }
+   ],
+   "variant": "RDH"
+  },
+  "m6-B": {
+   "child_cpu_seconds": 4147.341466,
+   "cold_start_seconds": 675.9163639545441,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 226.340453,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 425.400519,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": null,
+   "git_head": "a8ac411d32658387598376c792136bc586edc5f9",
+   "launch_seconds": 4197.359481532,
+   "resources": {
+    "peak": {
+     "fds": 39,
+     "processes": 9,
+     "threads": 21,
+     "total_pss": 6442633216,
+     "total_rss": 7329660928
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 3,
+    "supervisor_rss_first": 13828096,
+    "supervisor_rss_last": 620990464
+   },
+   "status": "stopped_failure",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 0,
+     "error": "ValueError: Batch failed: UpdateRolledBack: TimeoutError: Fixed-weight diagnostic exceeded its declared case wall limit; model, Adam and all RNG state restored",
+     "game_seconds": [
+      18.39637819699965,
+      83.85064202299873,
+      93.26966307699877,
+      153.2501358160007
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": null,
+     "seat": 0,
+     "seconds": 3519.583843,
+     "sequence": 266,
+     "state": null,
+     "status": "failed"
+    }
+   ],
+   "variant": "B"
+  },
+  "m6-RBH": {
+   "child_cpu_seconds": null,
+   "cold_start_seconds": 315.17064595222473,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 96.714314,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 209.052884,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1524.5481009483337,
+   "git_head": "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5",
+   "launch_seconds": null,
+   "resources": {
+    "peak": {
+     "fds": 43,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 7285611520,
+     "total_rss": 9166970880
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 6,
+    "supervisor_rss_first": 11034624,
+    "supervisor_rss_last": 627396608
+   },
+   "status": "running",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      6.958058592999805,
+      25.83716035299949,
+      30.235474756000258,
+      54.93833099800031
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "f64ab9de251a709d171ca92ba6742012cd91f286c6308b42d0e8095baa751b04"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 689.0663605559948,
+      "behavior_verification": 17.007676785000513,
+      "history_encoding": 1.8667783370001416,
+      "loss_forward": 182.23798865901153,
+      "optimizer_step": 1.9754727040035505,
+      "prefix_helper_start": 0.05167245299890055,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 182.8176924599993,
+      "total": 1081.7203276569999
+     },
+     "seat": 0,
+     "seconds": 1209.377455,
+     "sequence": 266,
+     "state": "2aa2847cf8d6398687ab2897edcc861b75b639173135b835581041393e1738d6",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      6.3775915400001395,
+      6.271307945000444,
+      17.591169616000116,
+      5.8822118590014725
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 221.27527166301115,
+      "behavior_verification": 4.935938943999645,
+      "history_encoding": 0.4920076729995344,
+      "loss_forward": 53.968301391998466,
+      "optimizer_step": 0.6191535190009745,
+      "prefix_helper_start": 0.0317275690013048,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 23.39208826199865,
+      "total": 306.6715053129992
+     },
+     "seat": 1,
+     "seconds": 350.591448,
+     "sequence": 267,
+     "state": "18c7c6a38972269fd2b7306e6237919b4867b9a735d9450f096979aa58442cf3",
+     "status": "passed"
+    }
+   ],
+   "variant": "RBH"
+  },
+  "m6-REH": {
+   "child_cpu_seconds": 10734.807765999998,
+   "cold_start_seconds": 326.9715459346771,
+   "evaluation_batches": [
+    {
+     "choices": [
+      301,
+      1315,
+      896,
+      536
+     ],
+     "seat": 0,
+     "seconds": 102.366313,
+     "status": "passed"
+    },
+    {
+     "choices": [
+      200,
+      238,
+      4464,
+      17
+     ],
+     "seat": 1,
+     "seconds": 214.209103,
+     "status": "passed"
+    }
+   ],
+   "first_checkpoint_seconds": 1737.036376953125,
+   "git_head": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "launch_seconds": 5869.959176842,
+   "resources": {
+    "peak": {
+     "fds": 43,
+     "processes": 10,
+     "threads": 21,
+     "total_pss": 7275260928,
+     "total_rss": 9027473408
+    },
+    "supervisor_fds_first": 3,
+    "supervisor_fds_last": 7,
+    "supervisor_rss_first": 13570048,
+    "supervisor_rss_last": 623038464
+   },
+   "status": "stopped_requested",
+   "training_batches": [
+    {
+     "choices": [
+      246,
+      1066,
+      1091,
+      1565
+     ],
+     "decisions": 3968,
+     "error": null,
+     "game_seconds": [
+      7.440609014000074,
+      29.582474246000857,
+      35.697248798000146,
+      67.06933530199967
+     ],
+     "games": [
+      "c8380e318b70d94a830cdc77ae3c30214424d4978836ec8168f40017bf6b1fbc",
+      "6cc0a595b4f8da02f191b75d2dd6ceef889d250caa8d6c1c2952fdccd658ea27",
+      "d45b50a06673922290368d79e68587c238c9ab01e960879cd51ab9905bf22bc1",
+      "5cad977b205e274bf48e1535b56484609a709d45f60145ee86e2ba3cede9ad5e"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 804.6450605279897,
+      "behavior_verification": 20.17991322799935,
+      "history_encoding": 2.129745661000925,
+      "loss_forward": 209.23984629800543,
+      "optimizer_step": 2.25397585101382,
+      "prefix_helper_start": 0.046755334000408766,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 213.43835823202426,
+      "total": 1259.6862939909988
+     },
+     "seat": 0,
+     "seconds": 1410.064831,
+     "sequence": 266,
+     "state": "8bbbe66b987cb00270158285a4a6e112506c637e7ac89a2380c3970bfdf87eb3",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      218,
+      239,
+      723,
+      179
+     ],
+     "decisions": 1359,
+     "error": null,
+     "game_seconds": [
+      7.416625218000263,
+      6.828073511000184,
+      19.548266612999214,
+      6.224554802000057
+     ],
+     "games": [
+      "a5ce6726366b1e2b1e9bd7d558f9300ef46bfb3ca54745ea8f4dfb73655be469",
+      "53db079905da0d5612f6cc246e782d804ef10e888d07546c6aa463a6cfbb856c",
+      "8ddfcae5f6f58d0f9206480c737119556ac4a67145bef2316df09cdf1d829976",
+      "16b3ea87892dd8bb62a64c6ce831b5865be67d6d18dd63e033e6cc968f446671"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 244.66035831200315,
+      "behavior_verification": 4.899960815000668,
+      "history_encoding": 0.4806869479998568,
+      "loss_forward": 59.32937975400091,
+      "optimizer_step": 0.6823271689972898,
+      "prefix_helper_start": 0.030264420000094105,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 25.489109392998216,
+      "total": 337.55924909200075
+     },
+     "seat": 1,
+     "seconds": 386.3865,
+     "sequence": 267,
+     "state": "e280e2c9de96739f3924029a6406167d50a0ef2f7fc6342a0b26d50064b0735e",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      945,
+      345,
+      408,
+      386
+     ],
+     "decisions": 2084,
+     "error": null,
+     "game_seconds": [
+      31.437956245999885,
+      12.428449270999408,
+      12.105186781998782,
+      11.75908131200049
+     ],
+     "games": [
+      "b016c783b50db83ec6ca617102207b309e012fa1947a3b196489352e279917b8",
+      "46c17a4bf9e75f2213002f8bf6c4ee9e2b026b1f3cc5734c4923b265cf7cd416",
+      "fc2fa44a27c915874affb54f148c530742e6699613beda7b1d7fe2c19ed5e654",
+      "a3a444f5562b1fecc7cb7485d8475f3d57a1f8ac410efc6a186506bf301c4031"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 381.6992825810157,
+      "behavior_verification": 9.23775490099979,
+      "history_encoding": 0.7292185930000414,
+      "loss_forward": 96.16628136899453,
+      "optimizer_step": 1.0719149229989853,
+      "prefix_helper_start": 0.03652366899950721,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 52.34832490900226,
+      "total": 544.6495759979989
+     },
+     "seat": 0,
+     "seconds": 621.836544,
+     "sequence": 268,
+     "state": "6d17c096e1df3f2b03be20b13db8daa5477c33847850e792a0c9c4b638aa174c",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      297,
+      825,
+      433,
+      1414
+     ],
+     "decisions": 2969,
+     "error": null,
+     "game_seconds": [
+      9.488301434999812,
+      25.80017243200018,
+      13.667758355000842,
+      45.6234242419996
+     ],
+     "games": [
+      "1ce4ee2ffbfd2cbb70774499e0cdc6ef8e04688f2643934447aa129015432575",
+      "7c6ee3b7b7906b15918621b9043e822b4b22b1723bf068cbf67537fcdb710cce",
+      "4a0a41f9e3add4474bc2e79f66e2e25a26232092f63629d797a6a793d970e6aa",
+      "d616048e43bd937627254e09e6e1efb376c9580b53c91571e38c2fb650937321"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 629.8305368940019,
+      "behavior_verification": 16.070718642999054,
+      "history_encoding": 1.3538327590013068,
+      "loss_forward": 155.34828121198734,
+      "optimizer_step": 1.8841851020206377,
+      "prefix_helper_start": 0.03839522000089346,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 126.03414167601477,
+      "total": 936.2286520030011
+     },
+     "seat": 1,
+     "seconds": 1041.037414,
+     "sequence": 269,
+     "state": "40edf38bd1a39b391ad2a89afae8795b8462a936747f24050fea21bd1f92c99d",
+     "status": "passed"
+    },
+    {
+     "choices": [
+      219,
+      3413,
+      909,
+      1290
+     ],
+     "decisions": 5831,
+     "error": null,
+     "game_seconds": [
+      7.2242690729999595,
+      140.37202587699903,
+      38.71996194100029,
+      45.73519034899982
+     ],
+     "games": [
+      "b6746ac369f64e04cd2638d9f6714c4627f268f6d88f6619167d4917c533cb1c",
+      "41f7ef893633a506800b6fcff5889689b8dd970b81d0b7be39a806a51cefccda",
+      "db7465d835a8bcc57fec2f95dadaccc703fcee6ecba3320b63f0b1543fe63732",
+      "024eb239f71b6db9e0760d9bc253a14407dafaaa45284b5118cc90d812e3d979"
+     ],
+     "ppo_seconds": {
+      "backward_and_clip": 1101.8844091630344,
+      "behavior_verification": 27.392057459999705,
+      "history_encoding": 6.017429174999052,
+      "loss_forward": 286.6571419079901,
+      "optimizer_step": 3.79345076001664,
+      "prefix_helper_start": 0.05845415099975071,
+      "prefix_helpers": 2.0,
+      "prefix_reconstruction": 400.82218046801427,
+      "total": 1836.9657549310014
+     },
+     "seat": 0,
+     "seconds": 2081.345356,
+     "sequence": 270,
+     "state": "75b4ad46aa721af463ee67d1d76224a30a310d058253f58835c001a70834ed01",
+     "status": "passed"
+    }
+   ],
+   "variant": "REH"
+  }
+ },
+ "generated_utc": "2026-10-27T10:10:25Z",
+ "host": {
+  "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+  "kernel": "6.18.44-fc-v165",
+  "memory_gib": 15.7,
+  "python": "3.13.17",
+  "vcpus": 4
+ },
+ "measurement_scope": "Linux benchmark host, not the Mac. Campaigns: one at a time on CPUs 1-3 from disposable copies of the final 629 package, benchmark seed namespace, first sequence 266, original hero-management-v2. Optimizer-only jobs: one at a time on CPU 0.",
+ "notes": {
+  "checks": [
+   "5635c7c: 106 unit tests (fast path, local script training, replayed text leaves, prefix pool, parallel verification, phase-2 acceleration) and 25 Mac tool and bench tool tests pass; tools/acceleration3/fast_path_pins.py reports pins match",
+   "tools/prepare_vcmi.py --check passes in the final release (fe0d083, 2026-10-27 06:11 UTC: \"pinned upstream + root patches + owned source match exactly\") and in the 2ba42ac release; every campaign's runner also verifies its release's VCMI checkout (6901839a) before its first game",
+   "five independent adversarial reviews of the replay and its deferred lifecycle; every confirmed finding fixed or stated as a limitation; mutation checks show the gating tests fail without the gate",
+   "exactness on real original-map data: identical games give update 630 fe1378ef... and 631 46439a9b... in every exact campaign and optimizer-only run with identical games (accepted, PR30, fast path, the replay candidates, the final learner 5635c7c on both, and the --no-text-replay fallback on 631)",
+   "both seats: baselines of seat 0 and seat 1 in every campaign; training batches alternate seats (266 seat 0, 267 seat 1, ...)",
+   "resource behaviour over six consecutive training batches (m4-RDH): memory, descriptors and threads in the campaign's resources.jsonl",
+   "an independent read-only check (43 agents, three checkers plus an adversarial verifier per reported discrepancy) recomputed every number of the guide's Linux results and log O19 from the compact records; 35 of 40 reported discrepancies were confirmed, none in a digest or an exactness claim, and all were corrected (log O19)"
+  ],
+  "commits": {
+   "accepted_default": "a8ac411d32658387598376c792136bc586edc5f9 (main; ACCEPTED_IMPLEMENTATION of the default run)",
+   "final_learner_candidate": "5635c7c (campaigns m3-RET, m6-REH, m3-REF and optimizer-only RE266, RE267 from worktree fe0d083, which adds only the log)",
+   "learner_differences_between_measured_candidates": "480aa1a, 2ba42ac, a5b3568 and 4f02a10 differ from 5635c7c only in fail-closed guards of the deferred replay lifecycle and in the --replay-threads option; the computed values and their order are the same, as the identical update 630/631 bytes show",
+   "measured_learners": {
+    "15ed404": "m1-CH, m1-XH, m1-F, m2-XH, m2-CH, C267 (fast path without replay; X the numerical experiment)",
+    "1721220": "m3-RH, R266, R267 to R267e",
+    "2ba42ac": "m3-RBN, m6-RBH, RB267, RB267b, RBN267 (learner of 20b20f9)",
+    "480aa1a": "m4-RDH, RD266, RD267, RD266b (fourth review fixes, --replay-threads)",
+    "4f02a10": "m3-R5H",
+    "5635c7c": "m3-RET, m6-REH, m3-REF, RE266, RE267 (final learner candidate; release fe0d083)",
+    "7c4303f": "ppo266 C and X (same learner bytes as 15ed404)",
+    "a5b3568": "m3-RAH, m3-RAF, RA267, RA267b",
+    "a8ac411 (accepted)": "m1-B, m2-B, m6-B, B266, B2, B267"
+   },
+   "pr30": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321"
+  },
+  "headline": {
+   "accepted_batch266": "not completed: the update was stopped at the update deadline (3,540 s from the worker start, less a 30 s cleanup reserve) after 116 of 125 optimizer steps and was rolled back (batch 3,519.6 s); its own step rate extrapolates to about 3,790 s",
+   "cold_start_seconds": {
+    "accepted": 675.9,
+    "fast_bracket_mean": 343.8,
+    "ratio": 1.97
+   },
+   "comparison": "bracketed: the accepted campaign m6-B (06:17 UTC) between two fast-path campaigns of the same configuration, m4-RDH (04:08 UTC, learner 480aa1a) and m6-REH (07:28 UTC, final learner 5635c7c); same games in batch 266; their mean is used",
+   "fast_batch266_seconds": [
+    1247.99,
+    1410.06
+   ],
+   "first_checkpoint_seconds": {
+    "accepted": "none; at least 4,195.5 s from launch to the stopped batch",
+    "fast_bracket_mean": 1672.9
+   },
+   "macos_default": "m3-REF (final learner) batch 266 2,452.5 s on the slow morning host and m3-RAF (a5b3568) 2,017.0 s at 01:46 UTC: at least 1.44 to 1.74x, about 1.54 to 1.88x; below 2x on this host",
+   "no_fork_replay_threads": "m3-RET (final learner, --serial-verification --replay-threads 2) batch 266 1,516.7 s: at least 2.32x, about 2.50x",
+   "optimizer_only_one_cpu": {
+    "batch266_replay_over_pr30": "1.55 to 1.85x (bracket RD266, B2 and P266b, RD266b: 1.66x)",
+    "batch267_replay_over_pr30": "1.47 to 1.67x (bracket RE267, B267b and P267b, RE267b: 1.52x; 1.48x against the accepted path)"
+   },
+   "pr30": "on one CPU PR30 takes the accepted path's time on batch 266; the exact replay is 1.6 to 1.85x PR30 on one CPU, so a second 2x against PR30 is not reached on one CPU; on three CPUs the fast path's PPO is 2.7 to 2.9x PR30's single-CPU PPO, using CPUs PR30 leaves idle",
+   "projection_hours": {
+    "accepted": "not projectable: it does not complete the first batch",
+    "linux_setting_eleven_batches": 347.0,
+    "m4_RDH_night": 314.4,
+    "m6_REH_morning": 386.0
+   },
+   "ratio_extrapolated": 2.85,
+   "ratio_lower_bound": 2.65
+  },
+  "limits": [
+   "Linux benchmark host (4 vCPU Xeon, 15.7 GiB); not the Mac. The Mac command is provided, not run.",
+   "Equal resources: every campaign ran alone on the same three CPUs (1-3). The fast path's prefix helpers and replay threads use CPUs that the accepted path and PR30 leave idle; single-CPU optimizer-only comparisons are reported separately.",
+   "Host drift: the host's speed changed during the night. The same accepted work took 1.3 to 1.4x as long in the evening of 26 Oct as at night (B 4,214.9 s against B2 3,230.4 s; C 3,241.7 s against C2 2,481.1 s; accepted baselines 876 s against 636 to 652 s), and fast-path work took up to 1.3x as long in the morning as at 04:00 to 05:00 UTC (RE266 2,174.4 s and RD266b 2,130.6 s against RD266 1,839.2 s; RE267 646.6 s against RD267 503.6 s; m6-REH 1.00 to 1.16x m4-RDH per batch). Ratios within a pair measured at the same time are stable; the headline brackets the accepted campaign between two fast-path campaigns.",
+   "The accepted path cannot complete training batch 266 from 629 on this host: its update is stopped at the 3,540 s budget and rolled back, after 83 of 125 optimizer steps in the evening (m1-B, batch 3,523 s) and after 116 at night (m6-B, batch 3,519.6 s, the same games). Ratios against it are lower bounds; the night run's own step rate puts the complete batch at about 3,790 s (an extrapolation over the last 9 of 125 steps). The evening estimate of 4,600 to 4,900 s measured the slower evening host and is not used.",
+   "The projection uses the measured batches from the 629 parent (sequences 266 onward); later batches depend on how long the policy's games become. It is a scale, not a forecast.",
+   "Projections are comparable only between variants measured on the same sequences (each variant's projection lists its distinct_sequences): batches 266 and 267 alone average less than the six batches 266 to 271 (799 s against 902 s in m4-RDH), so a projection from 266 and 267 only is biased low.",
+   "The engine delivers some notices asynchronously, so a game can differ in event order between runs with the same seeds (one of twelve games in two accepted runs; m6-RBH batch 266 game 4). Such batches are not comparable and are not used as evidence of exactness either way.",
+   "Three host restarts (about 23:15, 23:49 and 03:25 UTC) interrupted m1-F, two PR30 runs, m6-RBH (after two admitted batches) and RBN267; every lost job was rerun or reported as lost.",
+   "Campaign summaries and lossless compression of raw episodes run between campaigns, briefly on CPU 0, while the optimizer-only queue runs there.",
+   "Fork safety of the overlapped verification and prefix helpers with Torch loaded on macOS is unverified; the macOS default uses neither (Mac letters O and H test them).",
+   "The shared_graph_encodings experiment is numerically different (reordered gradient summation) and reported separately; it is never a default.",
+   "m6-REH's batches 268 to 270 each have one game of four that differs from m4-RDH's (asynchronous event order, with the same decision counts); they are timed but not used as evidence of exactness either way."
+  ],
+  "not_run": [
+   "m2-XH (repeat of the numerical experiment campaign): not started at the schedule's 09:55 UTC cutoff",
+   "m5-REH and m2-CH: dropped for time (schedule m9 note)"
+  ]
+ },
+ "optimizer_only": [
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "a8ac411d32658387598376c792136bc586edc5f9",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "B266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    4214.874529425
+   ],
+   "timings": {
+    "backward_and_clip": 1696.421577995996,
+    "behavior_verification": 372.9840768059985,
+    "history_encoding": 2.6483346930035623,
+    "loss_forward": 858.00121420902,
+    "optimizer_step": 16.380282214984618,
+    "prefix_reconstruction": 1267.0592620009884,
+    "total": 4213.509509169002
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "7c4303f59f256a0f13fff968df155c9baba4bcff",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": null,
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "C266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    3241.7081016519987
+   ],
+   "timings": {
+    "backward_and_clip": 1826.7002922580396,
+    "behavior_verification": 20.86420724100026,
+    "history_encoding": 2.065228579001996,
+    "loss_forward": 911.2145615000154,
+    "optimizer_step": 17.433113365030295,
+    "prefix_reconstruction": 461.7850784160182,
+    "total": 3240.078309577002
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b49ce4c3f499e4d352c1b86c04626374420754841fc3488a40017372936e39e6",
+   "commit": "7c4303f59f256a0f13fff968df155c9baba4bcff",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 74,
+     "max_absolute": 2.5262124836444855e-08,
+     "max_relative": 1.7560390349104564,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 36,
+     "max_absolute": 3.3993273973464966e-08,
+     "max_relative": 4.571428632530778,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 34,
+     "max_absolute": 0.00017378106713294983,
+     "max_relative": 0.003690773193604706,
+     "tensors": 39
+    }
+   },
+   "experiments": [
+    "shared_graph_encodings"
+   ],
+   "gradient_sha256": "af7429247db18f75e89823aa3cb9c79c1ca4450ea414c9a7b9ec9854c8b8f1c7",
+   "identical_across_repetitions": true,
+   "label": "X266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    521.7095931619988
+   ],
+   "timings": {
+    "backward_and_clip": 66.39211033399988,
+    "behavior_verification": 19.83655362799982,
+    "experiment_shared_graph_encodings": 1.0,
+    "history_encoding": 2.149662789001013,
+    "loss_forward": 52.08818861399777,
+    "optimizer_step": 0.7242197219929949,
+    "prefix_reconstruction": 380.13919015204374,
+    "total": 521.6434777930008
+   },
+   "weights_sha256": "863e82e7e2cfb6b38170c3ee86ace2421c8319e183606a12d4b58c11f930cae2"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "R266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    1750.6823844669998
+   ],
+   "timings": {
+    "backward_and_clip": 1227.4949351230034,
+    "behavior_verification": 15.274471617000017,
+    "history_encoding": 1.877596616000119,
+    "loss_forward": 150.27340786099876,
+    "optimizer_step": 2.21412802200075,
+    "prefix_reconstruction": 347.6401944420031,
+    "total": 1750.564670286
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "P266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    3243.6995647640006
+   ],
+   "timings": {
+    "backward_and_clip": 1363.4603267969978,
+    "behavior_verification": 211.6989095129993,
+    "history_encoding": 1.9363231540000925,
+    "loss_forward": 697.9701263230018,
+    "optimizer_step": 14.281010920984954,
+    "prefix_reconstruction": 953.3975628269982,
+    "total": 3242.754040029
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "579043e3343e7446ad88c6a652cbdbecba71acc5",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "RD266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    1839.2041434850003
+   ],
+   "timings": {
+    "backward_and_clip": 1293.9486108939973,
+    "behavior_verification": 16.54914675100008,
+    "history_encoding": 1.9617878809999638,
+    "loss_forward": 173.53050651500098,
+    "optimizer_step": 2.5041557270005796,
+    "prefix_reconstruction": 344.52941232299827,
+    "total": 1839.0801117569995
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "a8ac411d32658387598376c792136bc586edc5f9",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "B2",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    3230.3943777669992
+   ],
+   "timings": {
+    "backward_and_clip": 1362.511798741003,
+    "behavior_verification": 218.3059954780001,
+    "history_encoding": 2.251664536000135,
+    "loss_forward": 679.4238043460009,
+    "optimizer_step": 14.53809269699741,
+    "prefix_reconstruction": 952.246638100999,
+    "total": 3229.2877122279997
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "15ed404a376b6ede3bab221cc6b9d16bfcec21bb",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "C2",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    2481.0529505999993
+   ],
+   "timings": {
+    "backward_and_clip": 1375.6783432550028,
+    "behavior_verification": 17.046226123999986,
+    "history_encoding": 2.018622667999807,
+    "loss_forward": 691.5137265590083,
+    "optimizer_step": 14.368804947005628,
+    "prefix_reconstruction": 379.3734311289945,
+    "total": 2480.011774611001
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "P266b",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    3370.3320363879993
+   ],
+   "timings": {
+    "backward_and_clip": 1399.1185539419948,
+    "behavior_verification": 234.36538861100053,
+    "history_encoding": 1.9117408570000407,
+    "loss_forward": 712.792683611995,
+    "optimizer_step": 13.981798888011326,
+    "prefix_reconstruction": 1007.167615222008,
+    "total": 3369.3478571060004
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "579043e3343e7446ad88c6a652cbdbecba71acc5",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "RD266b",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    2130.6252855370003
+   ],
+   "timings": {
+    "backward_and_clip": 1503.719330834987,
+    "behavior_verification": 17.96034818299995,
+    "history_encoding": 2.1610763030003,
+    "loss_forward": 201.2102742059942,
+    "optimizer_step": 2.6829226840072806,
+    "prefix_reconstruction": 395.85678678901604,
+    "total": 2130.419257628999
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "b9906834ec17cdb4c8888bcdde54ea3450945a5ff030659114c1253f72d804bb",
+   "commit": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "decisions": [
+    246,
+    1066,
+    1091,
+    1565
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "a87db05867f2554ace3e7c1710634705ccdad059e35b0c611079b48ea57c441d",
+   "identical_across_repetitions": true,
+   "label": "RE266",
+   "prefix_helpers": 0,
+   "reference_equal": null,
+   "samples": 3968,
+   "seconds": [
+    2174.400172529
+   ],
+   "timings": {
+    "backward_and_clip": 1533.1724651369932,
+    "behavior_verification": 18.651338478999605,
+    "history_encoding": 2.1700421950008604,
+    "loss_forward": 208.58221238899387,
+    "optimizer_step": 3.0591203019812383,
+    "prefix_reconstruction": 401.18074634701225,
+    "total": 2174.2720880510005
+   },
+   "weights_sha256": "fe1378ef255e7a3f217e4152388cd49433eaf4f02090ab7bdb2e7a23202a08be"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "a8ac411d32658387598376c792136bc586edc5f9",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "B267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    739.3465925310002
+   ],
+   "timings": {
+    "backward_and_clip": 391.2962256020012,
+    "behavior_verification": 62.355539965999924,
+    "history_encoding": 0.4346242430001439,
+    "loss_forward": 192.63491970699965,
+    "optimizer_step": 4.214114757000289,
+    "prefix_reconstruction": 87.91051207800137,
+    "total": 738.8491496849999
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "15ed404a376b6ede3bab221cc6b9d16bfcec21bb",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "C267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    609.408616857
+   ],
+   "timings": {
+    "backward_and_clip": 380.0821059629999,
+    "behavior_verification": 3.801166158000001,
+    "history_encoding": 0.24843543299994053,
+    "loss_forward": 187.10641954399944,
+    "optimizer_step": 4.106490853999503,
+    "prefix_reconstruction": 33.48687625900061,
+    "total": 608.834967277
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": null,
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    419.040488299
+   ],
+   "timings": {
+    "backward_and_clip": 339.9201775730003,
+    "behavior_verification": 3.99916175300001,
+    "history_encoding": 0.2486477530000002,
+    "loss_forward": 43.08012036000065,
+    "optimizer_step": 0.5790807930000028,
+    "prefix_reconstruction": 29.815307436999774,
+    "total": 418.98439793700004
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    465.8514551750004
+   ],
+   "timings": {
+    "backward_and_clip": 378.39115730700087,
+    "behavior_verification": 4.329097857999841,
+    "history_encoding": 0.23103585300032137,
+    "loss_forward": 45.978638853997836,
+    "optimizer_step": 0.6659840880038246,
+    "prefix_reconstruction": 34.72488178600452,
+    "total": 465.79148690299917
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R267c",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    485.39133121299983
+   ],
+   "timings": {
+    "backward_and_clip": 394.55240372700246,
+    "behavior_verification": 4.368634526999813,
+    "history_encoding": 0.2779375189993516,
+    "loss_forward": 47.64242279300015,
+    "optimizer_step": 0.7336038689963971,
+    "prefix_reconstruction": 36.15655271600008,
+    "total": 485.3251353129999
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "a5b3568b87130719555a6f3a42c45195225e0ed2",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RA267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    512.3855855700003
+   ],
+   "timings": {
+    "backward_and_clip": 415.8572809820025,
+    "behavior_verification": 4.750161869999829,
+    "history_encoding": 0.23101041100017028,
+    "loss_forward": 52.39900990500428,
+    "optimizer_step": 0.7478263710017927,
+    "prefix_reconstruction": 36.60900132000461,
+    "total": 512.2956285209993
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "a5b3568b87130719555a6f3a42c45195225e0ed2",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RA267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    535.5334670869997
+   ],
+   "timings": {
+    "backward_and_clip": 436.60537832499904,
+    "behavior_verification": 4.416423530999964,
+    "history_encoding": 0.3120386830005373,
+    "loss_forward": 53.902026581996324,
+    "optimizer_step": 0.8202559080018546,
+    "prefix_reconstruction": 37.73295035299725,
+    "total": 535.4674445680002
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R267d",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    473.48219901800076
+   ],
+   "timings": {
+    "backward_and_clip": 385.0083496620082,
+    "behavior_verification": 4.012300411000979,
+    "history_encoding": 0.22959880199960025,
+    "loss_forward": 47.01991177200216,
+    "optimizer_step": 0.6965945680003642,
+    "prefix_reconstruction": 34.912699647995396,
+    "total": 473.41808529099944
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RB267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    489.24087315700126
+   ],
+   "timings": {
+    "backward_and_clip": 396.99847002000024,
+    "behavior_verification": 4.330689746999269,
+    "history_encoding": 0.2180427650000638,
+    "loss_forward": 50.71603486499589,
+    "optimizer_step": 0.6978387059953093,
+    "prefix_reconstruction": 34.56202710000798,
+    "total": 489.17972639099935
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RB267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    505.6410530819994
+   ],
+   "timings": {
+    "backward_and_clip": 409.44282064000254,
+    "behavior_verification": 4.132063815999572,
+    "history_encoding": 0.2351455560001341,
+    "loss_forward": 53.55734216799283,
+    "optimizer_step": 0.7544971340030315,
+    "prefix_reconstruction": 35.75910267299696,
+    "total": 505.58200747499905
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "1721220ca39b5375378b184f201bddd8fc5c6c44",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R267e",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    490.9359185600006
+   ],
+   "timings": {
+    "backward_and_clip": 399.38533576300324,
+    "behavior_verification": 4.60704501500004,
+    "history_encoding": 0.24322089400084224,
+    "loss_forward": 48.763418163001916,
+    "optimizer_step": 0.722895648001213,
+    "prefix_reconstruction": 35.50877797699468,
+    "total": 490.86846106600024
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "5aff6901e65d0a135b2d6f7aac48691441b74496",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R8267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    519.2439615020003
+   ],
+   "timings": {
+    "backward_and_clip": 420.5816162409974,
+    "behavior_verification": 4.439782496000134,
+    "history_encoding": 0.4085348599996905,
+    "loss_forward": 53.63733238400118,
+    "optimizer_step": 0.7542051469986291,
+    "prefix_reconstruction": 37.66333306599881,
+    "total": 519.177313017
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "5aff6901e65d0a135b2d6f7aac48691441b74496",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "R8H267",
+   "prefix_helpers": 2,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    499.03759857500063
+   ],
+   "timings": {
+    "backward_and_clip": 393.9983553359998,
+    "behavior_verification": 4.0613743349995275,
+    "history_encoding": 0.23415039399969828,
+    "loss_forward": 53.26332319400262,
+    "optimizer_step": 1.1798415200000818,
+    "prefix_helper_start": 0.0322561200000564,
+    "prefix_helpers": 2.0,
+    "prefix_reconstruction": 43.64222859700112,
+    "total": 498.92972593300055
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RBN267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    740.577947363
+   ],
+   "timings": {
+    "backward_and_clip": 460.84095262699987,
+    "behavior_verification": 4.416588517000008,
+    "history_encoding": 0.27690324899998586,
+    "loss_forward": 228.94697155199947,
+    "optimizer_step": 5.253041903999787,
+    "prefix_reconstruction": 40.28647893299981,
+    "total": 740.025117666
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "579043e3343e7446ad88c6a652cbdbecba71acc5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RD267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    503.55099711799994
+   ],
+   "timings": {
+    "backward_and_clip": 407.98099236900055,
+    "behavior_verification": 4.198908223000103,
+    "history_encoding": 0.26709521699990546,
+    "loss_forward": 53.23725552200074,
+    "optimizer_step": 0.7301201490000722,
+    "prefix_reconstruction": 35.37048765500049,
+    "total": 503.479371734
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "P267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    839.026771071
+   ],
+   "timings": {
+    "backward_and_clip": 439.7833020730004,
+    "behavior_verification": 71.65896041499991,
+    "history_encoding": 0.23191825900016738,
+    "loss_forward": 222.0840800700007,
+    "optimizer_step": 5.124692511000831,
+    "prefix_reconstruction": 99.57635759100185,
+    "total": 838.4629804839999
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RE267",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    646.624100664998
+   ],
+   "timings": {
+    "backward_and_clip": 525.0686432869952,
+    "behavior_verification": 4.865279241999815,
+    "history_encoding": 0.25015441099822056,
+    "loss_forward": 69.16455829599363,
+    "optimizer_step": 1.010461501980899,
+    "prefix_reconstruction": 44.167421243004355,
+    "total": 646.5587254650018
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "a8ac411d32658387598376c792136bc586edc5f9",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "B267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    929.085998798997
+   ],
+   "timings": {
+    "backward_and_clip": 490.52942169399466,
+    "behavior_verification": 80.77372013499917,
+    "history_encoding": 0.4530227110008127,
+    "loss_forward": 240.5535574159985,
+    "optimizer_step": 5.798539180010266,
+    "prefix_reconstruction": 110.36693748000107,
+    "total": 928.4801631020018
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "P267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    953.3147602400022
+   ],
+   "timings": {
+    "backward_and_clip": 505.4354923489882,
+    "behavior_verification": 84.81664859100056,
+    "history_encoding": 0.2542603299989423,
+    "loss_forward": 245.42980087299657,
+    "optimizer_step": 5.965939133988286,
+    "prefix_reconstruction": 110.55793911600631,
+    "total": 952.4646751180007
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  },
+  {
+   "adam_sha256": "eb2cd015e90442e006aebc1035b720a9f3c2aff7dfe9b62592c18a7c8198e806",
+   "commit": "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5",
+   "decisions": [
+    218,
+    239,
+    723,
+    179
+   ],
+   "difference": {
+    "adam": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 117
+    },
+    "gradients": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 35
+    },
+    "model": {
+     "differing": 0,
+     "max_absolute": 0.0,
+     "max_relative": 0.0,
+     "tensors": 39
+    }
+   },
+   "experiments": [],
+   "gradient_sha256": "4d53e05d95083c597e1196470689faed8ac340540dde9493797fd42e584fd375",
+   "identical_across_repetitions": true,
+   "label": "RE267b",
+   "prefix_helpers": 0,
+   "reference_equal": {
+    "adam": true,
+    "minibatch_generator": true,
+    "model": true
+   },
+   "samples": 1359,
+   "seconds": [
+    608.5933024059996
+   ],
+   "timings": {
+    "backward_and_clip": 493.25013633600975,
+    "behavior_verification": 5.287005874000897,
+    "history_encoding": 0.2792366180001409,
+    "loss_forward": 65.72329304399682,
+    "optimizer_step": 0.899869082015357,
+    "prefix_reconstruction": 41.13767658799043,
+    "total": 608.526550655999
+   },
+   "weights_sha256": "46439a9b1337a5f5105c0a2ec68f3d998c68cddb1858e6e9fd4367e417c767db"
+  }
+ ],
+ "paired_evaluation_batches": [
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m1-F",
+   "candidate_seconds": 140.141108,
+   "identical_games": null,
+   "ratio": 2.2697171410975283,
+   "seat": 0,
+   "variant": "F"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m1-F",
+   "candidate_seconds": 246.148711,
+   "identical_games": null,
+   "ratio": 2.265570665531537,
+   "seat": 1,
+   "variant": "F"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m1-CH",
+   "candidate_seconds": 119.47698,
+   "identical_games": null,
+   "ratio": 2.662275820831762,
+   "seat": 0,
+   "variant": "CH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m1-CH",
+   "candidate_seconds": 207.648047,
+   "identical_games": null,
+   "ratio": 2.6856371011281412,
+   "seat": 1,
+   "variant": "CH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m1-XH",
+   "candidate_seconds": 105.546567,
+   "identical_games": null,
+   "ratio": 3.0136524952062156,
+   "seat": 0,
+   "variant": "XH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m1-XH",
+   "candidate_seconds": 190.921248,
+   "identical_games": null,
+   "ratio": 2.920928418611636,
+   "seat": 1,
+   "variant": "XH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-RH",
+   "candidate_seconds": 113.909728,
+   "identical_games": null,
+   "ratio": 2.7923925426281415,
+   "seat": 0,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-RH",
+   "candidate_seconds": 113.909728,
+   "identical_games": null,
+   "ratio": 1.9243293689543355,
+   "seat": 0,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-RH",
+   "candidate_seconds": 113.909728,
+   "identical_games": null,
+   "ratio": 1.9870160079743144,
+   "seat": 0,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-RH",
+   "candidate_seconds": 198.200921,
+   "identical_games": null,
+   "ratio": 2.8136463553567443,
+   "seat": 1,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-RH",
+   "candidate_seconds": 198.200921,
+   "identical_games": null,
+   "ratio": 2.1046013000111135,
+   "seat": 1,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-RH",
+   "candidate_seconds": 198.200921,
+   "identical_games": null,
+   "ratio": 2.1463094967152045,
+   "seat": 1,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 90.395889,
+   "identical_games": null,
+   "ratio": 3.5187515551730453,
+   "seat": 0,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 90.395889,
+   "identical_games": null,
+   "ratio": 2.4248872091959845,
+   "seat": 0,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 90.395889,
+   "identical_games": null,
+   "ratio": 2.503879938610925,
+   "seat": 0,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 201.021172,
+   "identical_games": null,
+   "ratio": 2.774171961349424,
+   "seat": 1,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 201.021172,
+   "identical_games": null,
+   "ratio": 2.075074539909657,
+   "seat": 1,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-R5H",
+   "candidate_seconds": 201.021172,
+   "identical_games": null,
+   "ratio": 2.1161975863915465,
+   "seat": 1,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 94.701043,
+   "identical_games": null,
+   "ratio": 3.3587874528478,
+   "seat": 0,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 94.701043,
+   "identical_games": null,
+   "ratio": 2.3146506950298322,
+   "seat": 0,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 94.701043,
+   "identical_games": null,
+   "ratio": 2.390052377775818,
+   "seat": 0,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 207.139972,
+   "identical_games": null,
+   "ratio": 2.6922244587345987,
+   "seat": 1,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 207.139972,
+   "identical_games": null,
+   "ratio": 2.013777987765683,
+   "seat": 1,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-RAH",
+   "candidate_seconds": 207.139972,
+   "identical_games": null,
+   "ratio": 2.0536862822401076,
+   "seat": 1,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 113.354036,
+   "identical_games": null,
+   "ratio": 2.8060816025994875,
+   "seat": 0,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 113.354036,
+   "identical_games": null,
+   "ratio": 1.933762949560967,
+   "seat": 0,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 113.354036,
+   "identical_games": null,
+   "ratio": 1.9967568953610086,
+   "seat": 0,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 225.580763,
+   "identical_games": null,
+   "ratio": 2.4721403172131304,
+   "seat": 1,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 225.580763,
+   "identical_games": null,
+   "ratio": 1.8491555328235147,
+   "seat": 1,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-RAF",
+   "candidate_seconds": 225.580763,
+   "identical_games": null,
+   "ratio": 1.885801401425351,
+   "seat": 1,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 109.43871,
+   "identical_games": null,
+   "ratio": 2.906473175716344,
+   "seat": 0,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 109.43871,
+   "identical_games": null,
+   "ratio": 2.002946078220403,
+   "seat": 0,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 109.43871,
+   "identical_games": null,
+   "ratio": 2.068193722312699,
+   "seat": 0,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 225.403907,
+   "identical_games": null,
+   "ratio": 2.4740800034136052,
+   "seat": 1,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 225.403907,
+   "identical_games": null,
+   "ratio": 1.8506064138453464,
+   "seat": 1,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-RBN",
+   "candidate_seconds": 225.403907,
+   "identical_games": null,
+   "ratio": 1.8872810354613772,
+   "seat": 1,
+   "variant": "RBN"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m6-RBH",
+   "candidate_seconds": 96.714314,
+   "identical_games": null,
+   "ratio": 2.3402994204146452,
+   "seat": 0,
+   "variant": "RBH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m6-RBH",
+   "candidate_seconds": 209.052884,
+   "identical_games": null,
+   "ratio": 2.034894285409619,
+   "seat": 1,
+   "variant": "RBH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 114.782488,
+   "identical_games": null,
+   "ratio": 2.7711603097503863,
+   "seat": 0,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 114.782488,
+   "identical_games": null,
+   "ratio": 1.9096975402728682,
+   "seat": 0,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 114.782488,
+   "identical_games": null,
+   "ratio": 1.9719075352330748,
+   "seat": 0,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 222.217366,
+   "identical_games": null,
+   "ratio": 2.509557686864131,
+   "seat": 1,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 222.217366,
+   "identical_games": null,
+   "ratio": 1.8771436432200352,
+   "seat": 1,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m4-RDH",
+   "candidate_seconds": 222.217366,
+   "identical_games": null,
+   "ratio": 1.9143441696631396,
+   "seat": 1,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-RET",
+   "candidate_seconds": 114.871336,
+   "identical_games": null,
+   "ratio": 2.7690169373498015,
+   "seat": 0,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-RET",
+   "candidate_seconds": 114.871336,
+   "identical_games": null,
+   "ratio": 1.9082204719896354,
+   "seat": 0,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-RET",
+   "candidate_seconds": 114.871336,
+   "identical_games": null,
+   "ratio": 1.9703823502148525,
+   "seat": 0,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-RET",
+   "candidate_seconds": 231.547963,
+   "identical_games": null,
+   "ratio": 2.4084310299028626,
+   "seat": 1,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-RET",
+   "candidate_seconds": 231.547963,
+   "identical_games": null,
+   "ratio": 1.8015011257084563,
+   "seat": 1,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-RET",
+   "candidate_seconds": 231.547963,
+   "identical_games": null,
+   "ratio": 1.8372025972001316,
+   "seat": 1,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m6-REH",
+   "candidate_seconds": 102.366313,
+   "identical_games": null,
+   "ratio": 2.2110833766182436,
+   "seat": 0,
+   "variant": "REH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m6-REH",
+   "candidate_seconds": 214.209103,
+   "identical_games": null,
+   "ratio": 1.9859124240859174,
+   "seat": 1,
+   "variant": "REH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 318.080675,
+   "campaign": "m3-REF",
+   "candidate_seconds": 129.069057,
+   "identical_games": null,
+   "ratio": 2.464422398313486,
+   "seat": 0,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 219.199835,
+   "campaign": "m3-REF",
+   "candidate_seconds": 129.069057,
+   "identical_games": null,
+   "ratio": 1.6983143760010584,
+   "seat": 0,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 226.340453,
+   "campaign": "m3-REF",
+   "candidate_seconds": 129.069057,
+   "identical_games": null,
+   "ratio": 1.7536383875493877,
+   "seat": 0,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 557.667299,
+   "campaign": "m3-REF",
+   "candidate_seconds": 250.901185,
+   "identical_games": null,
+   "ratio": 2.222657095063142,
+   "seat": 1,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m2-B",
+   "baseline_seconds": 417.133916,
+   "campaign": "m3-REF",
+   "candidate_seconds": 250.901185,
+   "identical_games": null,
+   "ratio": 1.6625426300796466,
+   "seat": 1,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 425.400519,
+   "campaign": "m3-REF",
+   "candidate_seconds": 250.901185,
+   "identical_games": null,
+   "ratio": 1.6954902743883014,
+   "seat": 1,
+   "variant": "REF"
+  }
+ ],
+ "paired_training_batches": [
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m1-CH",
+   "candidate_seconds": 2891.069606,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 1.218565289015736,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "CH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m1-XH",
+   "candidate_seconds": 476.846574,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 7.388030578573477,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "XH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-RH",
+   "candidate_seconds": 1649.170441,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.136199499103198,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-RH",
+   "candidate_seconds": 1649.170441,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.134154090747495,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-R5H",
+   "candidate_seconds": 1182.270713,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.9798226677378588,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-R5H",
+   "candidate_seconds": 1182.270713,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.9769694912505207,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "R5H"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-RAH",
+   "candidate_seconds": 1237.405145,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.847052223950467,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-RAH",
+   "candidate_seconds": 1237.405145,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.844326174997438,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RAH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-RAF",
+   "candidate_seconds": 2017.023142,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 1.746612121914861,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-RAF",
+   "candidate_seconds": 2017.023142,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 1.7449397429868456,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RAF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m6-RBH",
+   "candidate_seconds": 1209.377455,
+   "candidate_status": "passed",
+   "identical_games": false,
+   "ratio": null,
+   "ratio_lower_bound": 2.9102442983774655,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RBH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m4-RDH",
+   "candidate_seconds": 1247.985164,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.822915825944867,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m4-RDH",
+   "candidate_seconds": 1247.985164,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.8202128875628203,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RDH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-RET",
+   "candidate_seconds": 1516.729285,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.322732939121697,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-RET",
+   "candidate_seconds": 1516.729285,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.3205089252298574,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "RET"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m6-REH",
+   "candidate_seconds": 1410.064831,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 2.4960439872143723,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "REH"
+  },
+  {
+   "baseline": "m1-B",
+   "baseline_seconds": 3522.95707,
+   "baseline_status": "failed",
+   "campaign": "m3-REF",
+   "candidate_seconds": 2452.51929,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 1.436464571090081,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "REF"
+  },
+  {
+   "baseline": "m6-B",
+   "baseline_seconds": 3519.583843,
+   "baseline_status": "failed",
+   "campaign": "m3-REF",
+   "candidate_seconds": 2452.51929,
+   "candidate_status": "passed",
+   "identical_games": true,
+   "ratio": null,
+   "ratio_lower_bound": 1.4350891580551033,
+   "seat": 0,
+   "sequence": 266,
+   "variant": "REF"
+  }
+ ],
+ "projection_method": "(``--games 5000 --eval-every 100``: 1,250 training updates; eight evaluation\ngames before the first update, after every 100 updates and at the end, 26 evaluation batches of one seat):\n    wall = cold start + 1,250 x (mean measured training batch) + 26 x (mean measured evaluation batch)\nfrom batches of this host that start at the 629 parent. Later batches depend on how long the policy's games\nbecome; nothing here predicts that, so the projection is a scale, not a forecast.",
+ "schema": "original5000-local-acceleration-linux-v1",
+ "variants": {
+  "B": {
+   "campaigns": [
+    "m1-B",
+    "m2-B",
+    "m6-B"
+   ],
+   "cold_start_seconds": {
+    "max": 888.8768179416656,
+    "median": 782.3965909481049,
+    "min": 675.9163639545441,
+    "n": 2
+   },
+   "commits": [
+    "a8ac411d32658387598376c792136bc586edc5f9"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 557.667299,
+    "median": 367.60729549999996,
+    "min": 219.199835,
+    "n": 6
+   },
+   "stopped_training_batches": [
+    {
+     "campaign": "m1-B",
+     "error": "ValueError: Batch failed: UpdateRolledBack: TimeoutError: Fixed-weight diagnostic exceeded its declared case wall limit; model, Adam and all RNG state restored",
+     "seconds": 3522.95707,
+     "sequence": 266
+    },
+    {
+     "campaign": "m6-B",
+     "error": "ValueError: Batch failed: UpdateRolledBack: TimeoutError: Fixed-weight diagnostic exceeded its declared case wall limit; model, Adam and all RNG state restored",
+     "seconds": 3519.583843,
+     "sequence": 266
+    }
+   ],
+   "training_batch_seconds": null,
+   "training_batch_seconds_by_sequence": {}
+  },
+  "CH": {
+   "campaigns": [
+    "m1-CH"
+   ],
+   "cold_start_seconds": {
+    "max": 348.9864230155945,
+    "median": 348.9864230155945,
+    "min": 348.9864230155945,
+    "n": 1
+   },
+   "commits": [
+    "15ed404a376b6ede3bab221cc6b9d16bfcec21bb"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 207.648047,
+    "median": 163.5625135,
+    "min": 119.47698,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 348.9864230155945,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 653.1897392080599,
+    "hours_if_every_batch_were_the_fastest": 301.2576397288932,
+    "hours_if_every_batch_were_the_slowest": 1005.1218386872265,
+    "mean_evaluation_batch_seconds": 163.5625135,
+    "mean_training_batch_seconds": 1877.5051595
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 2891.069606,
+    "median": 1877.5051595,
+    "min": 863.940713,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 2891.069606,
+     "median": 2891.069606,
+     "min": 2891.069606,
+     "n": 1
+    },
+    "267": {
+     "max": 863.940713,
+     "median": 863.940713,
+     "min": 863.940713,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 1.9174381395355096
+  },
+  "F": {
+   "campaigns": [
+    "m1-F"
+   ],
+   "cold_start_seconds": null,
+   "commits": [
+    "15ed404a376b6ede3bab221cc6b9d16bfcec21bb"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 246.148711,
+    "median": 193.14490949999998,
+    "min": 140.141108,
+    "n": 2
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": null,
+   "training_batch_seconds_by_sequence": {}
+  },
+  "R5H": {
+   "campaigns": [
+    "m3-R5H"
+   ],
+   "cold_start_seconds": {
+    "max": 308.9935839176178,
+    "median": 308.9935839176178,
+    "min": 308.9935839176178,
+    "n": 1
+   },
+   "commits": [
+    "4f02a10ce615c90d14172fe9df0f14ed242e4c71"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 201.021172,
+    "median": 145.7085305,
+    "min": 90.395889,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 308.9935839176178,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 265.4116719796993,
+    "hours_if_every_batch_were_the_fastest": 119.1745087852549,
+    "hours_if_every_batch_were_the_slowest": 411.64883517414376,
+    "mean_evaluation_batch_seconds": 145.7085305,
+    "mean_training_batch_seconds": 761.107683
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1182.270713,
+    "median": 761.107683,
+    "min": 339.944653,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1182.270713,
+     "median": 1182.270713,
+     "min": 1182.270713,
+     "n": 1
+    },
+    "267": {
+     "max": 339.944653,
+     "median": 339.944653,
+     "min": 339.944653,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 4.729948311400767
+  },
+  "RAF": {
+   "campaigns": [
+    "m3-RAF"
+   ],
+   "cold_start_seconds": {
+    "max": 348.93414306640625,
+    "median": 348.93414306640625,
+    "min": 348.93414306640625,
+    "n": 1
+   },
+   "commits": [
+    "a5b3568b87130719555a6f3a42c45195225e0ed2"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 225.580763,
+    "median": 169.4673995,
+    "min": 113.354036,
+    "n": 2
+   },
+   "projection": {
+    "batches": 1,
+    "cold_start_seconds": 348.93414306640625,
+    "distinct_sequences": [
+     266
+    ],
+    "hours": 701.6761150083519,
+    "hours_if_every_batch_were_the_fastest": 701.6761150083519,
+    "hours_if_every_batch_were_the_slowest": 701.6761150083519,
+    "mean_evaluation_batch_seconds": 169.4673995,
+    "mean_training_batch_seconds": 2017.023142
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 2017.023142,
+    "median": 2017.023142,
+    "min": 2017.023142,
+    "n": 1
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 2017.023142,
+     "median": 2017.023142,
+     "min": 2017.023142,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 1.7848084759356717
+  },
+  "RAH": {
+   "campaigns": [
+    "m3-RAH"
+   ],
+   "cold_start_seconds": {
+    "max": 320.59684801101685,
+    "median": 320.59684801101685,
+    "min": 320.59684801101685,
+    "n": 1
+   },
+   "commits": [
+    "a5b3568b87130719555a6f3a42c45195225e0ed2"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 207.139972,
+    "median": 150.92050749999999,
+    "min": 94.701043,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 320.59684801101685,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 277.05925782444746,
+    "hours_if_every_batch_were_the_fastest": 123.28491528972529,
+    "hours_if_every_batch_were_the_slowest": 430.83360035916974,
+    "mean_evaluation_batch_seconds": 150.92050749999999,
+    "mean_training_batch_seconds": 794.5350384999999
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1237.405145,
+    "median": 794.5350384999999,
+    "min": 351.664932,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1237.405145,
+     "median": 1237.405145,
+     "min": 1237.405145,
+     "n": 1
+    },
+    "267": {
+     "max": 351.664932,
+     "median": 351.664932,
+     "min": 351.664932,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 4.530951846751061
+  },
+  "RBH": {
+   "campaigns": [
+    "m6-RBH"
+   ],
+   "cold_start_seconds": {
+    "max": 315.17064595222473,
+    "median": 315.17064595222473,
+    "min": 315.17064595222473,
+    "n": 1
+   },
+   "commits": [
+    "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 209.052884,
+    "median": 152.883599,
+    "min": 96.714314,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 315.17064595222473,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 272.0196412763756,
+    "hours_if_every_batch_were_the_fastest": 122.92484839443118,
+    "hours_if_every_batch_were_the_slowest": 421.1144341583201,
+    "mean_evaluation_batch_seconds": 152.883599,
+    "mean_training_batch_seconds": 779.9844515
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1209.377455,
+    "median": 779.9844515,
+    "min": 350.591448,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1209.377455,
+     "median": 1209.377455,
+     "min": 1209.377455,
+     "n": 1
+    },
+    "267": {
+     "max": 350.591448,
+     "median": 350.591448,
+     "min": 350.591448,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 4.615476620177216
+  },
+  "RBN": {
+   "campaigns": [
+    "m3-RBN"
+   ],
+   "cold_start_seconds": null,
+   "commits": [
+    "2ba42ac90d700eb1c8f71f0298852f46bb4f59c5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 225.403907,
+    "median": 167.4213085,
+    "min": 109.43871,
+    "n": 2
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": null,
+   "training_batch_seconds_by_sequence": {}
+  },
+  "RDH": {
+   "campaigns": [
+    "m4-RDH"
+   ],
+   "cold_start_seconds": {
+    "max": 360.69643092155457,
+    "median": 360.69643092155457,
+    "min": 360.69643092155457,
+    "n": 1
+   },
+   "commits": [
+    "579043e3343e7446ad88c6a652cbdbecba71acc5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 222.217366,
+    "median": 168.499927,
+    "min": 114.782488,
+    "n": 2
+   },
+   "projection": {
+    "batches": 6,
+    "cold_start_seconds": 360.69643092155457,
+    "distinct_sequences": [
+     266,
+     267,
+     268,
+     269,
+     270,
+     271
+    ],
+    "hours": 314.4214992336819,
+    "hours_if_every_batch_were_the_fastest": 122.94208007858931,
+    "hours_if_every_batch_were_the_slowest": 629.9034637591449,
+    "mean_evaluation_batch_seconds": 168.499927,
+    "mean_training_batch_seconds": 901.7405621666667
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1810.32862,
+    "median": 761.2978965,
+    "min": 350.279835,
+    "n": 6
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1247.985164,
+     "median": 1247.985164,
+     "min": 1247.985164,
+     "n": 1
+    },
+    "267": {
+     "max": 350.279835,
+     "median": 350.279835,
+     "min": 350.279835,
+     "n": 1
+    },
+    "268": {
+     "max": 622.057838,
+     "median": 622.057838,
+     "min": 622.057838,
+     "n": 1
+    },
+    "269": {
+     "max": 900.537955,
+     "median": 900.537955,
+     "min": 900.537955,
+     "n": 1
+    },
+    "270": {
+     "max": 1810.32862,
+     "median": 1810.32862,
+     "min": 1810.32862,
+     "n": 1
+    },
+    "271": {
+     "max": 479.253961,
+     "median": 479.253961,
+     "min": 479.253961,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 3.992279100044099
+  },
+  "REF": {
+   "campaigns": [
+    "m3-REF"
+   ],
+   "cold_start_seconds": {
+    "max": 391.5983781814575,
+    "median": 391.5983781814575,
+    "min": 391.5983781814575,
+    "n": 1
+   },
+   "commits": [
+    "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 250.901185,
+    "median": 189.985121,
+    "min": 129.069057,
+    "n": 2
+   },
+   "projection": {
+    "batches": 1,
+    "cold_start_seconds": 391.5983781814575,
+    "distinct_sequences": [
+     266
+    ],
+    "hours": 853.0500900067171,
+    "hours_if_every_batch_were_the_fastest": 853.0500900067171,
+    "hours_if_every_batch_were_the_slowest": 853.0500900067171,
+    "mean_evaluation_batch_seconds": 189.985121,
+    "mean_training_batch_seconds": 2452.51929
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 2452.51929,
+    "median": 2452.51929,
+    "min": 2452.51929,
+    "n": 1
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 2452.51929,
+     "median": 2452.51929,
+     "min": 2452.51929,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 1.4678783627426635
+  },
+  "REH": {
+   "campaigns": [
+    "m6-REH"
+   ],
+   "cold_start_seconds": {
+    "max": 326.9715459346771,
+    "median": 326.9715459346771,
+    "min": 326.9715459346771,
+    "n": 1
+   },
+   "commits": [
+    "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 214.209103,
+    "median": 158.287708,
+    "min": 102.366313,
+    "n": 2
+   },
+   "projection": {
+    "batches": 5,
+    "cold_start_seconds": 326.9715459346771,
+    "distinct_sequences": [
+     266,
+     267,
+     268,
+     269,
+     270
+    ],
+    "hours": 386.0028092233151,
+    "hours_if_every_batch_were_the_fastest": 135.3959935983152,
+    "hours_if_every_batch_were_the_slowest": 723.9233741538707,
+    "mean_evaluation_batch_seconds": 158.287708,
+    "mean_training_batch_seconds": 1108.1341289999998
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 2081.345356,
+    "median": 1041.037414,
+    "min": 386.3865,
+    "n": 5
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1410.064831,
+     "median": 1410.064831,
+     "min": 1410.064831,
+     "n": 1
+    },
+    "267": {
+     "max": 386.3865,
+     "median": 386.3865,
+     "min": 386.3865,
+     "n": 1
+    },
+    "268": {
+     "max": 621.836544,
+     "median": 621.836544,
+     "min": 621.836544,
+     "n": 1
+    },
+    "269": {
+     "max": 1041.037414,
+     "median": 1041.037414,
+     "min": 1041.037414,
+     "n": 1
+    },
+    "270": {
+     "max": 2081.345356,
+     "median": 2081.345356,
+     "min": 2081.345356,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 3.2487042008612304
+  },
+  "RET": {
+   "campaigns": [
+    "m3-RET"
+   ],
+   "cold_start_seconds": {
+    "max": 365.8773910999298,
+    "median": 365.8773910999298,
+    "min": 365.8773910999298,
+    "n": 1
+   },
+   "commits": [
+    "fe0d08300d6f64c6a5297edb15cd6ee9b6508cb5"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 231.547963,
+    "median": 173.2096495,
+    "min": 114.871336,
+    "n": 2
+   },
+   "projection": {
+    "batches": 1,
+    "cold_start_seconds": 365.8773910999298,
+    "distinct_sequences": [
+     266
+    ],
+    "hours": 527.9947040355833,
+    "hours_if_every_batch_were_the_fastest": 527.9947040355833,
+    "hours_if_every_batch_were_the_slowest": 527.9947040355833,
+    "mean_evaluation_batch_seconds": 173.2096495,
+    "mean_training_batch_seconds": 1516.729285
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1516.729285,
+    "median": 1516.729285,
+    "min": 1516.729285,
+    "n": 1
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1516.729285,
+     "median": 1516.729285,
+     "min": 1516.729285,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 2.373528378203629
+  },
+  "RH": {
+   "campaigns": [
+    "m3-RH"
+   ],
+   "cold_start_seconds": {
+    "max": 333.0810511112213,
+    "median": 333.0810511112213,
+    "min": 333.0810511112213,
+    "n": 1
+   },
+   "commits": [
+    "1721220ca39b5375378b184f201bddd8fc5c6c44"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 198.200921,
+    "median": 156.05532449999998,
+    "min": 113.909728,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 333.0810511112213,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 368.0194547189198,
+    "hours_if_every_batch_were_the_fastest": 162.1906953439198,
+    "hours_if_every_batch_were_the_slowest": 573.8482140939198,
+    "mean_evaluation_batch_seconds": 156.05532449999998,
+    "mean_training_batch_seconds": 1056.383614
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 1649.170441,
+    "median": 1056.383614,
+    "min": 463.596787,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 1649.170441,
+     "median": 1649.170441,
+     "min": 1649.170441,
+     "n": 1
+    },
+    "267": {
+     "max": 463.596787,
+     "median": 463.596787,
+     "min": 463.596787,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 3.407852935515147
+  },
+  "XH": {
+   "campaigns": [
+    "m1-XH"
+   ],
+   "cold_start_seconds": {
+    "max": 313.15864396095276,
+    "median": 313.15864396095276,
+    "min": 313.15864396095276,
+    "n": 1
+   },
+   "commits": [
+    "15ed404a376b6ede3bab221cc6b9d16bfcec21bb"
+   ],
+   "evaluation_batch_seconds": {
+    "max": 190.921248,
+    "median": 148.2339075,
+    "min": 105.546567,
+    "n": 2
+   },
+   "projection": {
+    "batches": 2,
+    "cold_start_seconds": 313.15864396095276,
+    "distinct_sequences": [
+     266,
+     267
+    ],
+    "hours": 102.8767792330447,
+    "hours_if_every_batch_were_the_fastest": 39.02426464971137,
+    "hours_if_every_batch_were_the_slowest": 166.729293816378,
+    "mean_evaluation_batch_seconds": 148.2339075,
+    "mean_training_batch_seconds": 292.951332
+   },
+   "stopped_training_batches": [],
+   "training_batch_seconds": {
+    "max": 476.846574,
+    "median": 292.951332,
+    "min": 109.05609,
+    "n": 2
+   },
+   "training_batch_seconds_by_sequence": {
+    "266": {
+     "max": 476.846574,
+     "median": 476.846574,
+     "min": 476.846574,
+     "n": 1
+    },
+    "267": {
+     "max": 109.05609,
+     "median": 109.05609,
+     "min": 109.05609,
+     "n": 1
+    }
+   },
+   "verified_updates_per_hour": 12.288730607307839
+  }
+ }
+}
