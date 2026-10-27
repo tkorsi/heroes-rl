@@ -907,3 +907,57 @@ execution), not 3,780 s (no stated ratio changes at its precision except the mac
   campaign (m2-XH, not started at the cutoff). The shared_graph_encodings experiment stays opt-in,
   numerically different and never a default; exact remains the default of the fast path, and the
   default run remains the accepted a8ac411.
+
+### Final correction after the deadline (27 October)
+
+This section corrects the final receipt of 10:50:37 UTC and records the preservation of the raw
+evidence. No game, PPO update, benchmark or test ran after the deadline.
+
+- The hard-stop receipt is null and stays null. The session host of boot 3eb80ab8 was shut down
+  about 4 minutes before the 11:00:00 hard stop. The idle session process received SIGTERM at
+  10:55:54.081, the environment recorded its exit (code 143) at 10:55:54.316 and the end of the task
+  run at 10:55:54.318. That record is the last durable write on the disk (its file's coarse mtime
+  reads 10:55:54.31). The watchdog (pid 238, start ticks 6029) last wrote its heartbeat at
+  10:55:30.040, and the next was due by about 10:56:00. So the host stopped writing between 10:55:54
+  and about 10:56:00, and the watchdog never reached its hard-stop branch. Its heavy-work receipt at
+  10:50:00.005 had found no registered root alive, sent no signal and left nothing running. The next
+  boot (f1754ffc) started at 11:06:55.
+- After the new boot, read-only scans at 11:11:36 and 11:29:10 checked all 92 registrations:
+  - 19 still in `owned/`, registered in the boot that ended at 10:55:54;
+  - 62 retired by the watchdog at the three earlier reboots;
+  - 11 set aside by hand at 19:14 UTC on 26 October, before the first reboot.
+
+  Each was checked by pid and kernel start ticks, and by boot id where one was recorded (67 of the
+  92; the 25 registered before 23:00 UTC on 26 October carry none). None is alive, none of their pids
+  is in use on the new boot, and no benchmark or game process exists. Nothing was signalled. The
+  watchdog was not restarted, because a restart would retire registrations and run its stop branch.
+- The raw evidence that the receipt kept only on the host is now also in the private repository
+  tkorsi/heroes-rl-training-state, which is verified private. It is on the branch
+  `claude/original5000-benchmark-evidence-20261027`, head f5a9a3b (tree 10a5cb89). The branch has
+  19 commits: 16 bounded stages of at most 200 MiB of new unique content each, a preservation receipt
+  (941cdba), a shutdown addendum with the post-push recheck (8bb6082), and a README update.
+  - It holds 7,057 host files, 3.93 GB (3.05 GB unique), plus seven root records (7,064 files in
+    the tree). That covers `overnight/` with the watchdog state and every registration, plus
+    `bench/`, `bench2/`, `bench3/` and `bench3c/`: every campaign, including the failed and
+    interrupted attempts, with their schedules, queue scripts, logs, manifests, checkpoints and
+    episode archives.
+  - `evidence-manifest.json` binds each file by sha256 and git blob id, and `SHA256SUMS` verifies a
+    checkout.
+  - It was verified from the remote side. Fresh blobless clones match every commit id, every tree
+    id, and the blob id and mode of every manifest file. The GitHub API returns the same root
+    entries. Four blobs downloaded back (the largest is 73.5 MB) match the host sha256.
+  - It holds no installed game data. The ten symlinks are listed and were not followed, the episode
+    archives contain `Data` only as link entries, not its content, and the `.vmap` files are the
+    project's own maps.
+  - The frozen release worktrees (`bench3/art/releases`) and the runtime builds were not copied and
+    are bound by file-list hashes. Nothing on the host was deleted.
+- `reports/cloud/claude-original5000-final-receipt.json` is now version 2 and keeps version 1
+  verbatim (commit 1bb474a, blob 47078d35). The public process proof is
+  `reports/cloud/claude-original5000-shutdown-proof-20261027.json`. Argv longer than 240 characters
+  is shortened there, and every user process carries `argv_sha256` (the sha256 of its exact argv
+  elements joined by NUL bytes). The private branch has the exact argv.
+- Lineage context: the preregistered benchmark parent 629 is unchanged. The user's own Mac Original
+  run is separate. It reached update 699 independently (70 updates, 280 admitted games) and stopped
+  at 08:55:28 UTC on 27 October on its per-batch PPO timeout. It is preserved and must never be
+  reset to 629. The guide's Mac check takes its parent only from the pinned 629 parent run, refuses
+  if that run's final checkpoint is not 629, and never resumes or resets the 699 run.

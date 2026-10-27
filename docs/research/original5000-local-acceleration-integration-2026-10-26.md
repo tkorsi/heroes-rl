@@ -126,6 +126,13 @@ On the Mac, bounded, from a clean checkout of this branch, while the manual run 
 `~/Projects/Heroes-bench/...`, uses disposable copies of the final 629 checkpoint and the benchmark
 seed namespace 60M/70M, and never touches the official lineage):
 
+[Correction, 27 October: the Mac's own Original run is independent of this check. It continued to
+update 699 (70 updates, 280 admitted games) and stopped at 08:55:28 UTC on 27 October on its
+per-batch PPO timeout; it is preserved and must never be reset to 629. Update 629 here is only the
+preregistered benchmark parent: the check reads the pinned 629 parent run
+`run-20261026T160706Z-0be8eb77` without writing to it and refuses unless that run's final checkpoint
+matches the 629 hashes; it never resumes, resets or edits the 699 run.]
+
 ```sh
 "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --dry-run
 "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --order AF --updates 1 --hours 4
