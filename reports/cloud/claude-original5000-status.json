@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T10:10:25Z",
+ "generated_utc": "2026-10-27T10:50:34Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,9 +20,17 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T10:10:05.243443Z",
-  "seconds_to_heavy_stop": 2394.8,
-  "heavy_stop_receipt": null,
+  "heartbeat_utc": "2026-10-27T10:50:30.007405Z",
+  "seconds_to_heavy_stop": -30.0,
+  "heavy_stop_receipt": {
+   "reason": "heavy-work deadline",
+   "utc": "2026-10-27T10:50:00.004932Z",
+   "monotonic": 24299.110452384,
+   "targets": [],
+   "signals": [],
+   "remaining": [],
+   "all_stopped": true
+  },
   "hard_stop_receipt": null,
   "restarts": [
    {
@@ -422,7 +430,7 @@
    "live_descendants": 0
   }
  ],
- "phase": "all benchmark work ended at 09:57 UTC; final validation record composed; two independent read-only checks of the reported numbers done and their corrections applied; stop receipts and final push by 11:00 UTC",
+ "phase": "finished: all benchmark work ended at 09:57 UTC; the watchdog's heavy-work stop at 10:50:00 UTC found nothing running (all_stopped true); final receipt reports/cloud/claude-original5000-final-receipt.json; PR #31 stays a draft; no official run, lineage, Teacher or paid compute touched",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
