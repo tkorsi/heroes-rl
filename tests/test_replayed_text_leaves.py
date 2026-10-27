@@ -40,6 +40,22 @@ def bits_equal(left, right):
     return tensors_equal(bits(left), bits(right))
 
 
+def strides(grads):
+    return [None if grad is None else grad.stride() for grad in grads]
+
+
+class Raising(torch.autograd.Function):
+    """Passes its input forward; its backward raises."""
+
+    @staticmethod
+    def forward(ctx, value):
+        return value.clone()
+
+    @staticmethod
+    def backward(ctx, grad):
+        raise RuntimeError("injected backward failure")
+
+
 class Opaque(torch.autograd.Function):
     """Passes its input forward and sends no gradient back (an undefined incoming gradient)."""
 
@@ -54,6 +70,29 @@ class Opaque(torch.autograd.Function):
 
 class Text(str):
     """A str subclass: its leaves take the reference path, never the replay."""
+
+
+class NoHelpers:
+    """Declared prefix helpers that compute nothing: every prefix stays in this process."""
+
+    def __init__(self, *args):
+        pass
+
+    def vectors(self, *args):
+        return None
+
+    def close(self):
+        pass
+
+
+class Pending:
+    """A queued replay that no worker ever starts: the main thread must take it."""
+
+    def done(self):
+        return False
+
+    def cancel(self):
+        return True
 
 
 class ReplayedTextLeafTests(unittest.TestCase):
@@ -117,16 +156,27 @@ class ReplayedTextLeafTests(unittest.TestCase):
             self.assertNotIn("_leaf_replay_state", replayed.__dict__)
 
     def test_updates_with_deferred_replays_on_worker_threads_are_bit_identical(self):
-        for workers, seed, config in ((2, 47, PPOConfig(decisions_per_window=2, windows_per_minibatch=2)),
-                                      (3, 48, PPOConfig(decisions_per_window=3, windows_per_minibatch=8, epochs=3)),
-                                      (1, 49, PPOConfig(decisions_per_window=1, windows_per_minibatch=4))):
+        for workers, helpers, seed, config in (
+                (2, 0, 47, PPOConfig(decisions_per_window=2, windows_per_minibatch=2)),
+                (3, 0, 48, PPOConfig(decisions_per_window=3, windows_per_minibatch=8, epochs=3)),
+                (1, 0, 49, PPOConfig(decisions_per_window=1, windows_per_minibatch=4)),
+                (None, 2, 50, PPOConfig(decisions_per_window=2, windows_per_minibatch=2))):  # threads = declared helpers
             replayed, reference = deepcopy(self.model), deepcopy(self.model)
-            left = self.update(replayed, True, config, seed, workers)
+            deferred, add = [], cm._DeferredTextReplays.add
+
+            def counting(owner, leaf, grad):
+                deferred.append(owner.pool._max_workers); return add(owner, leaf, grad)
+            with patch.object(cm._DeferredTextReplays, "add", counting), patch.object(ppo, "PREFIX_HELPERS", helpers), \
+                    patch("experiments.learner.prefix_pool.PrefixPool", NoHelpers):
+                left = self.update(replayed, True, config, seed, workers)
             right = self.update(reference, False, config, seed)
             self.assertGreater(left[0], 0)
+            self.assertTrue(deferred)  # the PPO path itself defers, on the expected number of threads
+            self.assertEqual(set(deferred), {workers or helpers})
             self.assertEqual(left[1], right[1])
             for a, b in zip(left[2:], right[2:]):
                 self.assertTrue(bits_equal(a, b))
+            self.assertEqual(strides(left[3]), strides(right[3]))
             self.assertNotIn("_text_replay_deferred", replayed.__dict__)
 
     def deferred_window_gradients(self, workers, extra=None):
@@ -140,22 +190,95 @@ class ReplayedTextLeafTests(unittest.TestCase):
             loss = sum(e.log_prob + 0.5 * e.value for e in evaluated)
             if extra is not None:
                 loss = loss + extra()
-            loss.backward()
-            self.model.finish_text_replays()
+            self.model.backward_with_text_replays(loss)
         return ([(e.log_prob.detach(), e.value.detach()) for e in evaluated],
                 [None if p.grad is None else p.grad.clone() for p in self.model.parameters()])
 
-    def test_deferred_window_gradients_are_bit_identical_and_need_finishing(self):
+    def test_deferred_window_gradients_are_bit_identical(self):
         reference = self.window_gradients(torch.enable_grad())
         for workers in (1, 2, 4):
-            self.assertTrue(bits_equal(self.deferred_window_gradients(workers), reference))
+            deferred, add = [], cm._DeferredTextReplays.add
+
+            def counting(owner, leaf, grad):
+                deferred.append(leaf); return add(owner, leaf, grad)
+            with patch.object(cm._DeferredTextReplays, "add", counting):
+                result = self.deferred_window_gradients(workers)
+            self.assertTrue(deferred)
+            self.assertTrue(bits_equal(result, reference))
+            self.assertEqual(strides(result[1]), strides(reference[1]))
+        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+
+    def window_graph(self):
         window = self.rollouts[0].decisions[1:]
         start = self.rollouts[0].decisions[0].decision_seq + 1
         prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
-        with self.assertRaisesRegex(RuntimeError, "not finished"):
+        evaluated = _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)
+        return sum(e.log_prob + 0.5 * e.value for e in evaluated)
+
+    def test_other_backwards_in_a_deferred_context_replay_inside_the_engine_exactly(self):
+        params = list(self.model.parameters())
+        leaves = [self.model.byte.weight, self.model.text_gru.weight_hh_l0, self.model.tree[0].weight]
+        reference = self.window_gradients(torch.enable_grad())
+        self.model.zero_grad(set_to_none=True)
+        expected = torch.autograd.grad(self.window_graph(), params, allow_unused=True)
+        self.model.zero_grad(set_to_none=True)
+        self.window_graph().backward(inputs=leaves)
+        expected_inputs = [p.grad.clone() for p in leaves]
+        with patch.object(cm._DeferredTextReplays, "add", side_effect=AssertionError("deferred outside the bracket")):
+            for run in range(3):
+                self.model.zero_grad(set_to_none=True)
+                with self.model.replayed_text_leaves(2) as active:
+                    self.assertTrue(active)
+                    if run == 0:
+                        self.window_graph().backward()
+                        self.assertTrue(bits_equal([p.grad for p in params], reference[1]))
+                    elif run == 1:
+                        self.assertTrue(bits_equal(list(torch.autograd.grad(self.window_graph(), params,
+                                                                            allow_unused=True)), list(expected)))
+                    else:
+                        self.window_graph().backward(inputs=leaves)
+                        self.assertTrue(bits_equal([p.grad for p in leaves], expected_inputs))
+        # Gradients already present (accumulation) also keep the engine's own replay, exactly.
+        self.model.zero_grad(set_to_none=True)
+        self.window_graph().backward()
+        self.window_graph().backward()
+        twice = [None if p.grad is None else p.grad.clone() for p in params]
+        self.model.zero_grad(set_to_none=True)
+        with self.model.replayed_text_leaves(2):
+            self.model.backward_with_text_replays(self.window_graph())
+        with patch.object(cm._DeferredTextReplays, "add", side_effect=AssertionError("deferred onto gradients")):
             with self.model.replayed_text_leaves(2):
-                sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)).backward()
-        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+                self.model.backward_with_text_replays(self.window_graph())
+        self.assertTrue(bits_equal([p.grad for p in params], twice))
+
+    def test_a_failed_backward_or_finish_refuses_further_brackets(self):
+        for failure in ("backward", "finish"):
+            self.model.zero_grad(set_to_none=True)
+            replay = cm._ReplayedText.replay
+
+            def failing(leaf, grad):
+                if threading.current_thread() is threading.main_thread():
+                    raise KeyboardInterrupt("injected finish interruption")
+                return replay(leaf, grad)
+            with self.model.replayed_text_leaves(1):
+                deferred = self.model.__dict__["_text_replay_deferred"]
+                if failure == "backward":
+                    loss = self.window_graph() + Raising.apply(self.model.tree[0].bias).sum()
+                    with self.assertRaisesRegex(RuntimeError, "injected backward failure"):
+                        self.model.backward_with_text_replays(loss)
+                else:
+                    with patch.object(cm._ReplayedText, "replay", failing), \
+                            patch.object(cm._DeferredTextReplays, "add",
+                                         lambda owner, leaf, grad: owner.pending.append((leaf, grad, Pending()))):
+                        with self.assertRaises(KeyboardInterrupt):
+                            self.model.backward_with_text_replays(self.window_graph())
+                self.assertTrue(deferred.broken)
+                self.assertFalse(deferred.active or deferred.pending)
+                self.assertTrue(all(total is None for total in deferred.sums))
+                with self.assertRaisesRegex(RuntimeError, "failed earlier"):
+                    self.model.backward_with_text_replays(self.window_graph())
+            self.assertFalse([t for t in threading.enumerate() if t.name.startswith("text-replay")])
+            self.assertNotIn("_text_replay_deferred", self.model.__dict__)
 
     def test_the_main_thread_takes_unstarted_replays_after_the_backward_bit_identically(self):
         reference = self.window_gradients(torch.enable_grad())
@@ -233,22 +356,52 @@ class ReplayedTextLeafTests(unittest.TestCase):
         self.assertNotIn("_leaf_replay_state", self.model.__dict__)
         self.assertNotIn("_text_replay_deferred", self.model.__dict__)
 
-    def test_a_second_backward_before_finishing_deferred_replays_is_refused(self):
-        window = self.rollouts[0].decisions[1:]
-        start = self.rollouts[0].decisions[0].decision_seq + 1
-        prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
-        with self.assertRaisesRegex(RuntimeError, "finished after each backward"):
-            with self.model.replayed_text_leaves(2):
-                for _ in range(2):
-                    sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)).backward()
-        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+    def test_brackets_in_one_context_each_install_their_own_exact_gradients(self):
         reference = self.window_gradients(torch.enable_grad())
-        with self.model.replayed_text_leaves(2):  # one finish per backward stays exact
-            evaluated = _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)
+        with self.model.replayed_text_leaves(2):
+            for _ in range(3):
+                self.model.zero_grad(set_to_none=True)
+                self.model.backward_with_text_replays(self.window_graph())
+                self.assertTrue(bits_equal([p.grad for p in self.model.parameters()], reference[1]))
+
+    def test_a_parameter_frozen_or_hooked_during_the_backward_fails_closed(self):
+        byte = self.model.byte.weight
+        for change, undo in ((lambda: byte.requires_grad_(False), lambda: byte.requires_grad_(True)),
+                             (lambda: hooks.append(byte.register_post_accumulate_grad_hook(lambda p: None)),
+                              lambda: hooks.pop().remove())):
+            hooks = []
+            probe = torch.zeros((), requires_grad=True)
+            probe.register_hook(lambda grad: (change(), None)[1])
+            try:
+                with self.assertRaisesRegex(RuntimeError, "changed or received gradient"):
+                    self.deferred_window_gradients(2, extra=lambda: 0.0 * probe)
+            finally:
+                undo()
+
+    def test_a_parameter_frozen_or_hooked_after_its_last_occurrence_keeps_the_engine_replay(self):
+        byte = self.model.byte.weight
+        for change, undo in ((lambda: byte.requires_grad_(False), lambda: byte.requires_grad_(True)),
+                             (lambda: hooks.append(byte.register_post_accumulate_grad_hook(lambda p: None)),
+                              lambda: hooks.pop().remove())):
+            hooks = []
             self.model.zero_grad(set_to_none=True)
-            sum(e.log_prob + 0.5 * e.value for e in evaluated).backward()
-            self.model.finish_text_replays()
-        self.assertTrue(bits_equal([None if p.grad is None else p.grad for p in self.model.parameters()], reference[1]))
+            with self.model.replayed_text_leaves(2):
+                loss = self.window_graph()
+                change()
+                try:
+                    with patch.object(cm._DeferredTextReplays, "add", side_effect=AssertionError("deferred")):
+                        self.model.backward_with_text_replays(loss)
+                    replayed = [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+                finally:
+                    undo()
+            self.model.zero_grad(set_to_none=True)
+            loss = self.window_graph()
+            change()
+            try:
+                loss.backward()
+                self.assertTrue(bits_equal(replayed, [p.grad for p in self.model.parameters()]))
+            finally:
+                undo()
 
     def test_a_direct_gradient_to_a_text_parameter_fails_closed_under_deferral(self):
         with self.assertRaisesRegex(RuntimeError, "outside its replayed occurrences"):
@@ -256,13 +409,14 @@ class ReplayedTextLeafTests(unittest.TestCase):
 
     def test_a_parameter_hook_keeps_the_immediate_replay(self):
         reference = self.window_gradients(torch.enable_grad())
-        handle = self.model.byte.weight.register_hook(lambda grad: grad)
-        try:
-            with self.model.replayed_text_leaves(2):
-                self.assertNotIn("_text_replay_deferred", self.model.__dict__)
-            self.assertTrue(bits_equal(self.deferred_window_gradients(2), reference))
-        finally:
-            handle.remove()
+        for register in (lambda: self.model.byte.weight.register_hook(lambda grad: grad),
+                         lambda: self.model.text_gru.bias_hh_l0.register_post_accumulate_grad_hook(lambda p: None)):
+            handle = register()
+            try:
+                with patch.object(cm._DeferredTextReplays, "add", side_effect=AssertionError("deferred with a hook")):
+                    self.assertTrue(bits_equal(self.deferred_window_gradients(2), reference))
+            finally:
+                handle.remove()
 
     def test_window_values_and_gradients_are_bit_identical_and_leaves_repeat(self):
         made, applied = [], []
@@ -422,6 +576,44 @@ class ReplayedTextLeafTests(unittest.TestCase):
             replayed = self.leaf_gradients(texts, True)
         self.assertEqual(sorted(seen), [False] * 4 + [True] * 2)
         self.assertTrue(bits_equal(replayed, self.leaf_gradients(texts, False)))
+
+    def test_a_data_replacement_of_a_leaf_parameter_before_an_occurrence_fails_closed(self):
+        for name in ("byte.weight", "text_gru.weight_hh_l0"):
+            with self.model.replayed_text_leaves():
+                state = self.model.__dict__["_leaf_replay_state"]
+                self.model._encode_tree(("text", "a"), {cm._LEAF_REPLAY: state})
+                param = self.model.get_parameter(name)
+                version = param._version
+                param.data = param.data.clone()
+                self.assertEqual(param._version, version)  # what the version alone would miss
+                with self.assertRaisesRegex(RuntimeError, "parameters changed"):
+                    self.model._encode_tree(("text", "a"), {cm._LEAF_REPLAY: state})
+
+    def test_autocast_anomaly_mode_and_forward_hooks_keep_the_reference(self):
+        module = torch.nn.modules.module
+        modes = (lambda: torch.autocast("cpu", dtype=torch.bfloat16),
+                 lambda: torch.autograd.detect_anomaly(check_nan=False),
+                 lambda: hooked(self.model.byte.register_forward_hook(lambda *a: None)),
+                 lambda: hooked(self.model.text_gru.register_forward_pre_hook(lambda *a: None)),
+                 lambda: hooked(module.register_module_forward_hook(lambda *a: None)))
+
+        @contextmanager
+        def hooked(handle):
+            try:
+                yield
+            finally:
+                handle.remove()
+        for mode in modes:
+            with mode():
+                with self.model.replayed_text_leaves() as active:
+                    self.assertFalse(active)
+            with self.model.replayed_text_leaves() as active:
+                self.assertTrue(active)
+                state = self.model.__dict__["_leaf_replay_state"]
+                with mode(), patch.object(cm._TextOccurrence, "apply", side_effect=AssertionError("replayed")):
+                    inside = self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+                    outside = self.model._encode_tree(("text", "ab"), {})
+                self.assertTrue(bits_equal(inside, outside))
 
     def test_an_in_place_change_to_any_leaf_parameter_before_an_occurrence_fails_closed(self):
         for name in ("byte.weight", "text_gru.weight_ih_l0", "text_gru.weight_hh_l0", "text_gru.bias_ih_l0",

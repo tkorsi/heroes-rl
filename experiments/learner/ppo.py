@@ -431,9 +431,10 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 before_step()
             phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
-            loss.backward()
             if replaying:
-                model.finish_text_replays()
+                model.backward_with_text_replays(loss)
+            else:
+                loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
             timings["backward_and_clip"] += perf_counter() - phase
             sharing.__exit__(None, None, None)
