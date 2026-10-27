@@ -128,7 +128,7 @@ seed namespace 60M/70M, and never touches the official lineage):
 "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --order AF --updates 1 --hours 4
 ```
 
-`AF` (about MAC_AF_ESTIMATE on this Linux host's numbers; the Mac is unmeasured) plays the eight
+`AF` (about two hours on this Linux host's numbers, 4,412 s for A and 2,366 s for F; the Mac is unmeasured) plays the eight
 fixed baseline games and one training batch with the accepted implementation and then with the
 macOS fast-path default, from the same parent and seeds. It exits 0 only if both campaigns ended
 cleanly (every requested batch admitted, no bound reached, nothing interrupted or left running, the
@@ -155,7 +155,32 @@ experiment (reported apart). Ctrl-C stops after the current batch as with
 
 ## Measured on Linux (not a Mac estimate)
 
-See the log, sections O5 onward, and the validation record. Summary for the review: RESULTS_SUMMARY.
+See the log, sections O5 onward, and the validation record
+(`validation/original5000-local-acceleration-linux-2026-10-27.json`). Summary for the review, all on
+the original map from the final 629 parent, every campaign alone on the same three CPUs:
+
+- The accepted implementation (a8ac411) cannot complete training batch 266: its update stops at the
+  3,540 s budget after 83 of 125 optimizer steps (batch 3,523 s). Its complete length is estimated at
+  about 4,600 to 4,900 s; every ratio against it is a lower bound.
+- The exact fast path with prefix helpers and deferred replay (480aa1a, which computes the same values
+  in the same order as the final candidate 5635c7c) completed batch 266 in 1,248 s, at least 2.8x the
+  censored accepted batch (about 3.7 to 3.9x against its estimated length). Over six consecutive
+  training batches (266 to 271) its mean was 902 s (median 761 s, slowest 1,810 s against the 3,540 s
+  budget), about 4.0 verified updates per hour; cold start 361 s, evaluation batches 115 and 222 s.
+  Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host. Peak over
+  the six batches: 8.5 GB RSS (during the largest batch, 5,831 decisions; memory follows the batch
+  size and falls back after it), 45 descriptors, 21 threads, 10 processes, with no descriptor or
+  thread growth.
+- Against PR30 (4d7688b): its optimizer has no multi-CPU option, so the like-for-like single-CPU
+  optimizer-only comparison is 1.76 to 1.85x on batch 266 and 1.67x on batch 267; on the same three
+  CPUs (PR30 leaves two idle during PPO) the fast path's batch 266 is about 3x shorter.
+- Exactness: identical games give update 630 `fe1378ef...` and 631 `46439a9b...` with the accepted
+  path, PR30, the fast path, every replay candidate and the `--no-text-replay` fallback.
+- The numerical experiment `shared_graph_encodings` (reordered gradient summation, never a default)
+  ran batch 266 in 477 s; it is reported apart and is not part of the exact figures.
+
+These are Linux numbers; the Mac has other CPUs, another BLAS and no measured fork safety for the
+helpers, so validate there with the bounded command above before choosing any default.
 
 ## Rollback
 
