@@ -1,0 +1,58 @@
+{
+  "schema": "heroes-original699-manual-readiness-v1",
+  "verified_utc": "2026-10-27T15:42:52.256657+00:00",
+  "code_commit": "35b4f9f3a7eb05c9e8d197abafb6a00e441c9ba8",
+  "wrapper_sha256": "26fbc021393819d32c96496893c841c99ae383287450d01f1c902d88debea7aa",
+  "command_verified": [
+    "./continue-original-4720.sh",
+    "check"
+  ],
+  "check_result": {
+    "status": "continuation_offline_checks_passed",
+    "checkpoint": {
+      "updates": 699,
+      "rollouts": 2796,
+      "decisions": 366475
+    },
+    "exact_restore": true,
+    "remaining_training_games": 4720,
+    "next_sequence": 337,
+    "session_safety_cap_hours": 336.0,
+    "shared_wall_seconds": 10800,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "gameplay_performed": false,
+    "ppo_updates": 0
+  },
+  "selected_execution": {
+    "fast_path": true,
+    "serial_verification": true,
+    "prefix_helpers": 0,
+    "replay_threads": 2,
+    "numerical_experiments": []
+  },
+  "legacy_reset_guard": {
+    "command": [
+      "./train-original-5000.sh",
+      "check"
+    ],
+    "returncode": 2,
+    "message": "An official original-map run already exists; refusing to reset its state to629.\nUse ./continue-original-4720.sh to check and continue its verified remaining target."
+  },
+  "validation": {
+    "focused_tests_run": 65,
+    "passed": 64,
+    "skipped": 1,
+    "fast_path_pins": "match",
+    "shell_syntax": "passed",
+    "mac_comparison": "validation/mac699-acceleration-results-2026-10-27.json"
+  },
+  "manual_launch_only": true,
+  "official_training_started": false,
+  "retained_failed_attempt": 336,
+  "benchmark_states_eligible": false,
+  "private_official699_receipt": "validation/local-script-final699-sync-2026-10-27.json"
+}
