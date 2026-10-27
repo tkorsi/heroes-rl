@@ -761,7 +761,8 @@ the evening before; every phase is shorter by a similar fraction (prefix reconst
 loss forward 858 to 679 s, backward 1,696 to 1,363 s). The accepted baseline games show the same: 876 s
 in m1-B (20:33 UTC) against 636 s in m2-B (02:20 UTC). The host was about 25% slower for the accepted
 path in the early evening, which is when m1-B measured the accepted batch 266 and B its optimizer-only
-time. The fast path's baselines vary much less over the night (291 to 339 s from 21:48 onward). Two
+time. The overlapped fast path's baselines vary much less over the night (291 to 337 s from 21:48 onward;
+the serial-verification variants 335 to 386 s). Two
 consequences: ratios between an evening accepted measurement and a night-time fast-path measurement
 are inflated by the drift, and the estimate of the accepted complete batch (4,600 to 4,900 s, O10) holds
 only for the evening host. On one CPU at nearly the same time, the accepted path and PR30 take the same
