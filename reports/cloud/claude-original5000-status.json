@@ -1,27 +1,27 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T02:50:53Z",
+ "generated_utc": "2026-10-27T04:11:47Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
   "hard_stop_utc": "2026-10-27T11:00:00Z",
-  "heavy_work_stop_monotonic": 39656.33168057152,
-  "hard_stop_monotonic": 40256.33168057152,
+  "heavy_work_stop_monotonic": 24299.105468029557,
+  "hard_stop_monotonic": 24899.105468029557,
   "recorded_utc": "2026-10-26T18:16:32.554529Z",
-  "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+  "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
   "immutable": true
  },
  "watchdog": {
   "pid": 238,
-  "kernel_starttime": 6576,
+  "kernel_starttime": 6029,
   "command": [
    "python3",
    "/home/claude/overnight/watchdog.py",
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T02:50:41.776569Z",
-  "seconds_to_heavy_stop": 28758.2,
+  "heartbeat_utc": "2026-10-27T04:11:31.349468Z",
+  "seconds_to_heavy_stop": 23908.7,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -36,6 +36,12 @@
     "pid": 238,
     "starttime": 6576,
     "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+   },
+   {
+    "utc": "2026-10-27T04:06:01.239649Z",
+    "pid": 238,
+    "starttime": 6029,
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54"
    }
   ],
   "reboots": [
@@ -81,624 +87,124 @@
      "schedule-m3b-393.json"
     ],
     "retired_to": "/home/claude/overnight/owned-stale/boot-b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "detected_utc": "2026-10-27T04:06:01.222421Z",
+    "previous_boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+    "previous": {
+     "heavy_stop_monotonic": 39656.33168057152,
+     "hard_stop_monotonic": 40256.33168057152
+    },
+    "retired_registrations": [
+     "bench-m2-B-10549.json",
+     "bench-m3-R5H-7512.json",
+     "bench-m3-RAF-28722.json",
+     "bench-m3-RAH-20081.json",
+     "bench-m3-RBN-16385.json",
+     "bench-m3-RH-1237.json",
+     "bench-m6-RBH-18987.json",
+     "bench-m6-RBH-driver-18943.json",
+     "campaign-m3-R5H-driver-7440.json",
+     "driver-m2-B-10504.json",
+     "driver-m3-R5H-7440.json",
+     "driver-m3-RAF-28661.json",
+     "driver-m3-RAH-20028.json",
+     "driver-m3-RBN-16312.json",
+     "driver-m3-RH-1190.json",
+     "driver-m6-RBH-18943.json",
+     "ppo-B267-3716.json",
+     "ppo-P266-349.json",
+     "ppo-R266-4798.json",
+     "ppo-R267c-26370.json",
+     "ppo-R267d-22641.json",
+     "ppo-R8H267-18814.json",
+     "ppo-after-b267-3886.json",
+     "ppo-chain-r266-6577.json",
+     "ppo-matrix10-23603.json",
+     "ppo-matrix5-1534.json",
+     "ppo-matrix5-27622.json",
+     "ppo-matrix5-3886.json",
+     "ppo-matrix5-6577.json",
+     "ppo-matrix6-19729.json",
+     "ppo-matrix7-27622.json",
+     "ppo-matrix8-5008.json",
+     "ppo-matrix9-9489.json",
+     "schedule-after-m3r5h-12896.json",
+     "schedule-after-m3r5h-check-12896.json",
+     "schedule-after-m3raf-890.json",
+     "schedule-after-m3rh-6315.json",
+     "schedule-after-m6rbh-23537.json",
+     "schedule-m4-1173.json",
+     "schedule-m5-6315.json",
+     "schedule-m6-12896.json",
+     "schedule-m7-890.json",
+     "tests-cand6-9487.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-72fdd1aa-b162-4a2f-88b5-00e272f441fb"
    }
   ]
  },
  "owned_processes": [
   {
-   "label": "bench-m2-B",
-   "pid": 10549,
-   "starttime": 908921,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m2-B/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-27T02:20:32.913809Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m3-R5H",
-   "pid": 7512,
-   "starttime": 283524,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m3-R5H/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-27T00:36:18.939187Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m3-RAF",
-   "pid": 28722,
-   "starttime": 668761,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m3-RAF/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-27T01:40:31.310334Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m3-RAH",
-   "pid": 20081,
-   "starttime": 470835,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m3-RAH/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-27T01:07:32.049839Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m3-RBN",
-   "pid": 16385,
-   "starttime": 980595,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m3-RBN/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-27T02:32:29.652316Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m3-RH",
-   "pid": 1237,
-   "starttime": 35175,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "tools/run_local_training.py",
-    "start",
-    "--config",
-    "/home/claude/bench3/art/campaigns/m3-RH/machine.json",
-    "--profile"
-   ],
-   "registered_utc": "2026-10-26T23:54:55.450331Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "bench-m6-RBH",
-   "pid": 18987,
-   "starttime": 1020421,
+   "label": "bench-m4-RDH",
+   "pid": 381,
+   "starttime": 21110,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
     "start",
     "--config",
-    "/home/claude/bench3/art/campaigns/m6-RBH/machine.json",
+    "/home/claude/bench3/art/campaigns/m4-RDH/machine.json",
     "--profile"
    ],
-   "registered_utc": "2026-10-27T02:39:07.904680Z",
+   "registered_utc": "2026-10-27T04:08:32.033591Z",
    "live_descendants": 8
   },
   {
-   "label": "bench-m6-RBH-driver",
-   "pid": 18943,
-   "starttime": 1020084,
+   "label": "driver-m4-RDH",
+   "pid": 334,
+   "starttime": 20599,
    "alive": true,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
     "--name",
-    "m6-RBH",
+    "m4-RDH",
     "--checkout",
-    "/home/claude/o5k-cand12"
+    "/home/claude/o5k-cand13"
    ],
-   "registered_utc": "2026-10-27T02:49:33.107669Z",
+   "registered_utc": "2026-10-27T04:08:27.031296Z",
    "live_descendants": 9
   },
   {
-   "label": "campaign-m3-R5H-driver",
-   "pid": 7440,
-   "starttime": 283220,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-R5H",
-    "--checkout",
-    "/home/claude/o5k-cand5"
-   ],
-   "registered_utc": "2026-10-27T00:49:59.353438Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m2-B",
-   "pid": 10504,
-   "starttime": 908572,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m2-B",
-    "--checkout",
-    "/home/claude/o5k-main"
-   ],
-   "registered_utc": "2026-10-27T02:20:29.458025Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m3-R5H",
-   "pid": 7440,
-   "starttime": 283220,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-R5H",
-    "--checkout",
-    "/home/claude/o5k-cand5"
-   ],
-   "registered_utc": "2026-10-27T00:36:15.943181Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m3-RAF",
-   "pid": 28661,
-   "starttime": 668454,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-RAF",
-    "--checkout",
-    "/home/claude/o5k-cand10"
-   ],
-   "registered_utc": "2026-10-27T01:40:28.305297Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m3-RAH",
-   "pid": 20028,
-   "starttime": 470509,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-RAH",
-    "--checkout",
-    "/home/claude/o5k-cand10"
-   ],
-   "registered_utc": "2026-10-27T01:07:28.835698Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m3-RBN",
-   "pid": 16312,
-   "starttime": 980249,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-RBN",
-    "--checkout",
-    "/home/claude/o5k-cand12"
-   ],
-   "registered_utc": "2026-10-27T02:32:26.251778Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m3-RH",
-   "pid": 1190,
-   "starttime": 34427,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m3-RH",
-    "--checkout",
-    "/home/claude/o5k-cand4"
-   ],
-   "registered_utc": "2026-10-26T23:54:48.011238Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "driver-m6-RBH",
-   "pid": 18943,
-   "starttime": 1020084,
-   "alive": true,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
-    "--name",
-    "m6-RBH",
-    "--checkout",
-    "/home/claude/o5k-cand12"
-   ],
-   "registered_utc": "2026-10-27T02:39:04.586301Z",
-   "live_descendants": 9
-  },
-  {
-   "label": "ppo-B267",
-   "pid": 3716,
-   "starttime": 140411,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/o5k-main",
-    "--parent-plan",
-    "/home/claude/bench3/ppo267/parent630/plan.json"
-   ],
-   "registered_utc": "2026-10-27T00:16:04.212026Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-P266",
-   "pid": 349,
-   "starttime": 727447,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/accel-fix",
-    "--parent-plan",
-    "/home/claude/bench3/art/inputs/parent629/plan.json"
-   ],
-   "registered_utc": "2026-10-27T01:58:39.111353Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-R266",
-   "pid": 4798,
-   "starttime": 222592,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/o5k-cand4",
-    "--parent-plan",
-    "/home/claude/bench3/art/inputs/parent629/plan.json"
-   ],
-   "registered_utc": "2026-10-27T00:30:19.773194Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-R267c",
-   "pid": 26370,
-   "starttime": 601474,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/o5k-cand4",
-    "--parent-plan",
-    "/home/claude/bench3/ppo267/parent630/plan.json"
-   ],
-   "registered_utc": "2026-10-27T01:35:07.687077Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-R267d",
-   "pid": 22641,
-   "starttime": 1053679,
-   "alive": true,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/o5k-cand4",
-    "--parent-plan",
-    "/home/claude/bench3/ppo267/parent630/plan.json"
-   ],
-   "registered_utc": "2026-10-27T02:50:08.404559Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-R8H267",
-   "pid": 18814,
-   "starttime": 451672,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/bench3/tools/ppo_bench.py",
-    "--checkout",
-    "/home/claude/o5k-cand8",
-    "--parent-plan",
-    "/home/claude/bench3/ppo267/parent630/plan.json"
-   ],
-   "registered_utc": "2026-10-27T01:05:42.696417Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-after-b267",
-   "pid": 3886,
-   "starttime": 160536,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./after_b267.sh"
-   ],
-   "registered_utc": "2026-10-27T00:15:49.107094Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-chain-r266",
-   "pid": 6577,
-   "starttime": 247613,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./chain_after_r266.sh"
-   ],
-   "registered_utc": "2026-10-27T00:30:19.832641Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix10",
-   "pid": 23603,
-   "starttime": 1086674,
+   "label": "ppo-matrix11",
+   "pid": 296,
+   "starttime": 19372,
    "alive": true,
    "command": [
     "/bin/bash",
-    "./run_matrix10.sh"
+    "./run_matrix11.sh"
    ],
-   "registered_utc": "2026-10-27T02:50:10.446334Z",
+   "registered_utc": "2026-10-27T04:08:14.650924Z",
    "live_descendants": 1
   },
   {
-   "label": "ppo-matrix5",
-   "pid": 1534,
-   "starttime": 36089,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./run_matrix5.sh"
-   ],
-   "registered_utc": "2026-10-26T23:55:04.598641Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix5",
-   "pid": 27622,
-   "starttime": 636503,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "/home/claude/bench3/ppo5/run_matrix5.sh"
-   ],
-   "registered_utc": "2026-10-27T01:50:18.129822Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix5",
-   "pid": 3886,
-   "starttime": 160536,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "/home/claude/bench3/ppo5/run_matrix5.sh"
-   ],
-   "registered_utc": "2026-10-27T00:26:09.590577Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix5",
-   "pid": 6577,
-   "starttime": 247613,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "/home/claude/bench3/ppo5/run_matrix5.sh"
-   ],
-   "registered_utc": "2026-10-27T00:55:35.619680Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix6",
-   "pid": 19729,
-   "starttime": 460003,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./run_matrix6.sh"
-   ],
-   "registered_utc": "2026-10-27T01:05:43.737550Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix7",
-   "pid": 27622,
-   "starttime": 636503,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./run_matrix7.sh"
-   ],
-   "registered_utc": "2026-10-27T01:35:08.729287Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix8",
-   "pid": 5008,
-   "starttime": 777645,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./run_matrix8.sh"
-   ],
-   "registered_utc": "2026-10-27T01:58:40.158370Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "ppo-matrix9",
-   "pid": 9489,
-   "starttime": 878592,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./run_matrix9.sh"
-   ],
-   "registered_utc": "2026-10-27T02:15:29.627382Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-after-m3r5h",
-   "pid": 12896,
-   "starttime": 347393,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./after_m3r5h.sh"
-   ],
-   "registered_utc": "2026-10-27T00:46:57.635717Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-after-m3r5h-check",
-   "pid": 12896,
-   "starttime": 347393,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./after_m3r5h.sh"
-   ],
-   "registered_utc": "2026-10-27T00:49:59.380987Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-after-m3raf",
-   "pid": 890,
-   "starttime": 737718,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./after_m3raf.sh"
-   ],
-   "registered_utc": "2026-10-27T01:52:00.885248Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-after-m3rh",
-   "pid": 6315,
-   "starttime": 238312,
-   "alive": false,
-   "command": [
-    "/bin/bash",
-    "./schedules/after_m3rh.sh"
-   ],
-   "registered_utc": "2026-10-27T00:28:46.822332Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-after-m6rbh",
-   "pid": 23537,
-   "starttime": 1083146,
+   "label": "schedule-m8",
+   "pid": 318,
+   "starttime": 20586,
    "alive": true,
    "command": [
-    "/bin/bash",
-    "./after_m6rbh.sh"
-   ],
-   "registered_utc": "2026-10-27T02:49:35.164797Z",
-   "live_descendants": 1
-  },
-  {
-   "label": "schedule-m4",
-   "pid": 1173,
-   "starttime": 34362,
-   "alive": false,
-   "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
-    "/home/claude/bench3/schedules/m4.json"
+    "/home/claude/bench3/schedules/m8.json"
    ],
-   "registered_utc": "2026-10-26T23:54:47.350534Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-m5",
-   "pid": 6315,
-   "starttime": 238312,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
-    "/home/claude/bench3/schedules/m5.json"
-   ],
-   "registered_utc": "2026-10-27T00:36:15.819810Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-m6",
-   "pid": 12896,
-   "starttime": 347393,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
-    "/home/claude/bench3/schedules/m6.json"
-   ],
-   "registered_utc": "2026-10-27T01:07:28.649698Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "schedule-m7",
-   "pid": 890,
-   "starttime": 737718,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
-    "/home/claude/bench3/schedules/m7.json"
-   ],
-   "registered_utc": "2026-10-27T02:20:29.327691Z",
-   "live_descendants": 0
-  },
-  {
-   "label": "tests-cand6",
-   "pid": 9487,
-   "starttime": 308705,
-   "alive": false,
-   "command": [
-    "/home/claude/heroes-rl/.venv/bin/python",
-    "-m",
-    "unittest",
-    "tests.test_replayed_text_leaves",
-    "tests.test_ppo_phase2_acceleration",
-    "tests.test_ppo_prefix_performance"
-   ],
-   "registered_utc": "2026-10-27T00:40:55.671441Z",
-   "live_descendants": 0
+   "registered_utc": "2026-10-27T04:08:26.839282Z",
+   "live_descendants": 10
   }
  ],
- "phase": "schedule m8 on CPUs 1-3 takes over after m6-RBH (eight training batches 266-273 on 2ba42ac, running): m4-RDH, m3-RDT, m3-RDF, m2-XH, m5-RDH, m2-CH on the final learner candidate 480aa1a (worktree at 579043e) and 15ed404; CPU 0 queue 10: batch 267 A/B (R267d, RB267, RB267b, R267e), RBN267, RD267, P267, RD266, B2, C2, P266b, RD266b",
+ "phase": "after the third host restart (about 03:25Z; resumed 04:05Z, watchdog restarted with the same deadlines): schedule m8 on CPUs 1-3 measures the final learner candidate 480aa1a (worktree at 579043e): m4-RDH (six training batches 266-271, running), m3-RDT, m3-RDF, m2-XH, m5-RDH, m2-CH; CPU 0 queue 11: RBN267, RD267, P267, RD266, B2, C2, P266b, RD266b; a fifth read-only review of the 480aa1a diff is running",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -880,6 +386,31 @@
    "ratio": 1.85,
    "weights": "both fe1378ef (equal to the accepted path)",
    "note": "one CPU each; PR30 prefix 953.4 s, loss forward 698.0 s, backward 1363.5 s, behaviour check 211.7 s"
+  },
+  "m6_RBH": {
+   "commit": "2ba42ac",
+   "baselines_seconds": [
+    96.7,
+    209.1
+   ],
+   "cold_start_seconds": 315.2,
+   "training_batch_seconds": {
+    "266": 1209.4,
+    "267": 350.6
+   },
+   "interrupted": "host restart during the PPO of batch 268",
+   "games": "batch 266 game 4 had the known asynchronous notice order difference, so update 630/631 bytes differ (25150b2c, cc4397a0): not comparable"
+  },
+  "optimizer_only_batch267_ab2_cpu0": {
+   "order": "R267d R B267 RB267b R267e",
+   "seconds": {
+    "R267d (1721220)": 473.5,
+    "RB267 (2ba42ac)": 489.2,
+    "RB267b (2ba42ac)": 505.6,
+    "R267e (1721220)": 490.9
+   },
+   "weights": "all 46439a9b",
+   "note": "the candidate about 3% slower (fail-closed per-occurrence bookkeeping); host drift about 4% across the four runs"
   }
  },
  "completed_checks": [
@@ -907,7 +438,8 @@
   "20:0x UTC: a pkill -f pattern matched my own waiting shell and killed only my tool shells (drivers verified alive); standing rule violated, waits now use kill -0 on recorded pids",
   "about 23:15Z: the host rebooted (boot 3b357b50 -> b9c386f7); every process died. m1-XH had already finished; its summary and lossless compression were redone by hand. The watchdog refused to restart on a new boot; it was changed to re-anchor its monotonic deadlines to the unchanged UTC deadlines and to retire all registrations of the previous boot (tested), then restarted. Optimizer-only job P (PR30) was lost and rerun from the start; the remaining five campaigns run unchanged as schedule m3b.",
   "about 23:48:50Z: second host restart (boot b9c386f7 -> 72fdd1aa); lost m1-F (26 min in) and the second PR30 optimizer-only attempt; watchdog restarted through the reboot path with the same UTC deadlines; the optimizer-only queue now skips finished jobs",
-  "02:45Z: the session disk allowance was down to 2.8 GB while m6-RBH (eight training batches, about 0.6 GB of raw episodes per batch) ran; freed to 6.6 GB by lossless, verified compression of older benchmark episodes (bench2 o-XH/r0-B, runs/final, reval-final, vsbase-final), deleting scratch files and removing three unused release worktrees; a low-disk alarm now watches the allowance"
+  "02:45Z: the session disk allowance was down to 2.8 GB while m6-RBH (eight training batches, about 0.6 GB of raw episodes per batch) ran; freed to 6.6 GB by lossless, verified compression of older benchmark episodes (bench2 o-XH/r0-B, runs/final, reval-final, vsbase-final), deleting scratch files and removing three unused release worktrees; a low-disk alarm now watches the allowance",
+  "about 03:25Z: third host restart (boot 72fdd1aa -> 3eb80ab8); the session resumed 04:05Z. Lost m6-RBH during batch 268 (two batches admitted) and RBN267; a read-only review workflow had already failed on a session limit. Watchdog restarted through the reboot path with the unchanged UTC deadlines; m6-RBH summarized and compressed; schedule m8 and queue 11 restarted"
  ],
  "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)"
 }

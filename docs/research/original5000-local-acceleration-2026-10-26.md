@@ -664,3 +664,41 @@ occurrences; a backward interrupted after replays are queued and a failed `finis
 gradient; a parameter frozen or hooked during the backward fails closed for the last checked
 parameter as for the first, with nothing installed. Mutations: gating on the flag alone fails the
 nested and mode tests; dropping the thread-count check fails the mode test.
+
+### O17. PR30 on batch 266, the batch 267 A/B, a third host restart, and the final schedule (02:45 to 04:15 UTC)
+
+Optimizer-only on CPU 0, batch 266 from 629: PR30 4d7688b took 3243.7 s (prefix reconstruction 953.4,
+loss forward 698.0, backward and clip 1363.5, behaviour verification 211.7 s) and ended in the same
+update 630 bytes (fe1378ef...) as the accepted path. The replay 1721220 took 1750.7 s on the same CPU:
+1.85x PR30 with one CPU each. PR30 has no exact multi-CPU option for PPO (no prefix helpers in its
+learner), so on the same three CPUs its PPO stays at about 3,244 s while the candidate's takes 1,053 to
+1,102 s (m3-R5H, m3-RAH), about 3x; that figure uses CPUs PR30 cannot use and is reported as such.
+
+The interleaved A/B on batch 267 (update 631 bytes 46439a9b... in every run) in the order R B B R:
+1721220 473.5 and 490.9 s, the integration candidate 2ba42ac 489.2 and 505.6 s. The candidate is 3%
+slower on average here, against 10% for a5b3568 in the earlier pair; the host drifted upward by about
+4% across the four runs. The remaining cost is the fail-closed bookkeeping per occurrence in the
+forward (the mode and hook check and the parameter state comparison, about 8 us per occurrence by a
+micro-benchmark), which was kept.
+
+The fourth review's fixes became 480aa1a (O16). A micro-benchmark on the production model size
+(feature size 32; texts of 1 to 27 characters) puts one occurrence's replay at about 1 ms and the
+in-order folding of its contributions at 46 us (4%), so the folding the main thread does during a
+deferred backward is not where the remaining backward time goes; the main thread's own engine work
+on the rest of the graph (tree nodes, frame recurrence, heads) is, at roughly 680 s of the 683 s
+backward of batch 266 with two replay threads. A further exact cut would have to replay repeated
+internal subtrees as well, which is not attempted tonight.
+
+At about 03:25 UTC the host restarted a third time (boot 72fdd1aa -> 3eb80ab8; the session resumed
+at 04:05). Lost: m6-RBH during the PPO of training batch 268, and the CPU 0 job RBN267. Batches 266 and
+267 of m6-RBH had been admitted in 1209.4 s and 350.6 s (baselines 96.7 s and 209.1 s, cold start
+315.2 s). Their games are not all the same as the other campaigns': in batch 266 the fourth game again
+saw two asynchronous notices in the other order (the game in which two accepted runs also differed,
+O10), so its training data and its update 630 and 631 bytes (25150b2c..., cc4397a0...) differ, and the
+pair is reported as not comparable rather than as evidence either way. The watchdog was
+restarted through its reboot path with the unchanged UTC deadlines (heavy work 10:50, hard stop 11:00).
+m6-RBH was summarized and compressed as far as it got; schedule m8 (CPUs 1-3, from 04:08) measures the
+final learner candidate (worktree at 579043e, learner of 480aa1a): m4-RDH with six training batches
+(266 to 271) for the projection, m3-RDT (the macOS default with two replay threads and no fork),
+m3-RDF (the macOS default), m2-XH, m5-RDH, and m2-CH if time allows; queue 11 on CPU 0 reruns RBN267
+and continues with RD267, P267, RD266, B2, C2, P266b and RD266b.
