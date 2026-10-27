@@ -79,7 +79,8 @@ def main():
     p.add_argument('--bench', type=Path, default=Path('/home/claude/bench3'))
     p.add_argument('--campaigns', nargs='+', required=True)
     p.add_argument('--optimizer-only', nargs='*', default=[], metavar='LABEL=PATH')
-    p.add_argument('--accepted-stopped', default='m1-B:266', help='CAMPAIGN:SEQUENCE of the accepted stopped batch')
+    p.add_argument('--accepted-stopped', nargs='*', default=['m1-B:266'], metavar='CAMPAIGN:SEQUENCE',
+                   help='the accepted stopped batches')
     p.add_argument('--notes', type=Path, help='JSON object merged in as "notes" (commits, checks, limits)')
     p.add_argument('--out', type=Path, required=True)
     a = p.parse_args()
@@ -164,12 +165,14 @@ def main():
                   variants=variants, paired_training_batches=pairs, paired_evaluation_batches=evaluation,
                   optimizer_only=[optimizer_only(*item.split('=', 1)) for item in a.optimizer_only],
                   campaigns=campaigns)
-    if a.accepted_stopped:
-        name, sequence = a.accepted_stopped.split(':')
+    stopped = []
+    for item in a.accepted_stopped:
+        name, sequence = item.split(':')
         try:
-            record['accepted_stopped_batch'] = accepted_stopped_batch(a.bench, name, int(sequence))
+            stopped.append(accepted_stopped_batch(a.bench, name, int(sequence)))
         except (OSError, StopIteration, KeyError, ValueError) as error:
-            record['accepted_stopped_batch'] = dict(error=repr(error))
+            stopped.append(dict(campaign=name, sequence=int(sequence), error=repr(error)))
+    record['accepted_stopped_batches'] = stopped
     if a.notes:
         record['notes'] = json.loads(a.notes.read_text())
     a.out.write_text(json.dumps(record, indent=1, sort_keys=True) + '\n')

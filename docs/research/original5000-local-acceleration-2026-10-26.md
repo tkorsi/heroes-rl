@@ -764,7 +764,7 @@ path in the early evening, which is when m1-B measured the accepted batch 266 an
 time. The overlapped fast path's baselines vary much less over the night (291 to 337 s from 21:48 onward;
 the serial-verification variants 335 to 386 s). Two
 consequences: ratios between an evening accepted measurement and a night-time fast-path measurement
-are inflated by the drift, and the estimate of the accepted complete batch (4,600 to 4,900 s, O10) holds
+are inflated by the drift, and the estimate of the accepted complete batch (4,600 to 4,900 s, O16) holds
 only for the evening host. On one CPU at nearly the same time, the accepted path and PR30 take the same
 time on batch 266 (B2 3,230.4 s, P266 3,243.7 s at 01:50 UTC; the same per-phase times to 2%), and the
 exact replay RD266 (480aa1a, 04:43 UTC, just before B2) 1,839.2 s, 1.76x.
@@ -775,3 +775,26 @@ m6-B (the accepted campaign again, one training batch, named so that m6-REH pair
 m6-REH (the final learner, five training batches), m3-REF and m2-XH if time allows; no campaign starts
 after 09:55 UTC. CPU 0 continues with C2, P266b and RD266b, which repeat C, P266 and RD266 at other
 times of the night. `tools/prepare_vcmi.py --check` passes in the final release (fe0d083).
+
+m3-RET (the final learner 5635c7c from release fe0d083; serial verification, no fork, two replay
+threads: the Mac letter T) admitted batch 266 in 1,516.7 s (PPO 1,332.2 s) with the learner state
+digest 8bbbe66b... that every exact campaign's batch 266 has, so the final learner is exact end to end
+on the real batch; cold start 365.9 s, baselines 114.9 and 231.5 s, peak 6.68 GB RSS.
+
+C2 (fast path without replay, CPU 0, 06:08 to 06:50 UTC) took 2,481.1 s against 3,241.7 s for C at
+20:17 UTC, 0.765 of it, as B2 is 0.766 of B: the drift is the host's and affects both paths alike, and
+the ratio within each pair (accepted over fast path, 1.30 in the evening and 1.30 at night) is stable.
+
+m6-B (the accepted campaign again, 06:17 to 07:28 UTC) played the same eight baseline games in 651.7 s
+(226.3 and 425.4 s; m2-B 636.3 s at 02:20, m1-B 875.8 s at 20:33) and the same four games of batch 266
+as m1-B and every exact campaign, and its update again stopped at the 3,540 s budget and was rolled
+back, now after 116 of 125 optimizer steps (games ended 264 s after the worker started; batch
+3,519.6 s; cold start 675.9 s; peak 7.33 GB RSS). So even on the faster night host the accepted path
+cannot run the first original-map training batch from 629 on this hardware; the official run would
+stop there. Extrapolating its own PPO step rate (3,249 s for about 115.5 steps), the complete batch
+would take about 3,780 s. Against that contemporaneous reference, batch 266 of the fast path is at
+least 2.82x shorter with helpers and replay threads (m4-RDH, 1,248.0 s; about 3.0x by the
+extrapolation), at least 2.32x without any fork (m3-RET; about 2.5x) and at least 1.74x as the macOS
+default (m3-RAF; about 1.9x); its cold start is 1.9x shorter (361 s against 676 s). The evening
+estimate of 4,600 to 4,900 s for the complete accepted batch (O16) is withdrawn as a reference: it
+measured the slower evening host.

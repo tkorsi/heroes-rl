@@ -159,21 +159,31 @@ See the log, sections O5 onward, and the validation record
 (`validation/original5000-local-acceleration-linux-2026-10-27.json`). Summary for the review, all on
 the original map from the final 629 parent, every campaign alone on the same three CPUs:
 
-- The accepted implementation (a8ac411) cannot complete training batch 266: its update stops at the
-  3,540 s budget after 83 of 125 optimizer steps (batch 3,523 s). Its complete length is estimated at
-  about 4,600 to 4,900 s; every ratio against it is a lower bound.
-- The exact fast path with prefix helpers and deferred replay (480aa1a, which computes the same values
-  in the same order as the final candidate 5635c7c) completed batch 266 in 1,248 s, at least 2.8x the
-  censored accepted batch (about 3.7 to 3.9x against its estimated length). Over six consecutive
-  training batches (266 to 271) its mean was 902 s (median 761 s, slowest 1,810 s against the 3,540 s
-  budget), about 4.0 verified updates per hour; cold start 361 s, evaluation batches 115 and 222 s.
-  Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host. Peak over
-  the six batches: 8.5 GB RSS (during the largest batch, 5,831 decisions; memory follows the batch
-  size and falls back after it), 45 descriptors, 21 threads, 10 processes, with no descriptor or
-  thread growth.
-- Against PR30 (4d7688b): its optimizer has no multi-CPU option, so the like-for-like single-CPU
-  optimizer-only comparison is 1.76 to 1.85x on batch 266 and 1.67x on batch 267; on the same three
-  CPUs (PR30 leaves two idle during PPO) the fast path's batch 266 is about 3x shorter.
+- The accepted implementation (a8ac411) cannot complete training batch 266 on this host: its update
+  stops at the 3,540 s budget and is rolled back, in the evening after 83 of 125 optimizer steps
+  (m1-B, batch 3,523 s) and again at night after 116 (m6-B, 06:17 UTC, batch 3,520 s, the same games).
+  The host was about 25% slower in the evening (O19), so the night run is the fair reference:
+  extrapolating its own step rate, the complete batch would take about 3,780 s. Every ratio against
+  the accepted batch is therefore a lower bound, with the extrapolated ratio beside it. Its cold start
+  (launch to the first training batch, including the eight baseline games) was 676 s.
+- The exact fast path with two prefix helpers and two replay threads (480aa1a, which computes the same
+  values in the same order as the final candidate 5635c7c; m4-RDH, 04:08 UTC) completed batch 266 in
+  1,248 s with the same games and the accepted update: at least 2.8x the accepted batch, about 3.0x by
+  the extrapolation; cold start 361 s (1.9x). The final candidate without any fork and with two replay
+  threads (`--fast-path --serial-verification --replay-threads 2`, the Mac letter T; m3-RET) took
+  1,517 s (at least 2.3x, about 2.5x) with the same learner state digest; the macOS default (one CPU for
+  PPO; m3-RAF) 2,017 s (at least 1.7x, about 1.9x).
+- Over six consecutive training batches (266 to 271) m4-RDH's mean was 902 s (median 761 s, slowest
+  1,810 s against the 3,540 s budget), about 4.0 verified updates per hour; evaluation batches 115 and
+  222 s. Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host (the
+  accepted path cannot be projected: it does not complete the first batch). Peak over the six batches:
+  8.5 GB RSS (during the largest batch, 5,831 decisions; memory follows the batch size and falls back
+  after it), 45 descriptors, 21 threads, 10 processes, with no descriptor or thread growth.
+- Against PR30 (4d7688b): on one CPU its optimizer takes the accepted path's time on batch 266
+  (3,244 s against 3,230 s at night), so on this batch it gains nothing over the accepted path; the
+  like-for-like single-CPU optimizer-only comparison is 1.76 to 1.85x on batch 266 and 1.67x on batch
+  267. PR30 has no multi-CPU option for PPO, so on the same three CPUs the fast path's PPO of batch
+  266 (1,114 s in m4-RDH) is about 2.9x PR30's.
 - Exactness: identical games give update 630 `fe1378ef...` and 631 `46439a9b...` with the accepted
   path, PR30, the fast path, every replay candidate and the `--no-text-replay` fallback.
 - The numerical experiment `shared_graph_encodings` (reordered gradient summation, never a default)
