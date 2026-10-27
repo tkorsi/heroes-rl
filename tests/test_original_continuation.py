@@ -70,6 +70,7 @@ class ContinuationTests(unittest.TestCase):
         self.write(self.anchor/'session.json', self.session)
         self.write(self.anchor/'campaign-report.json', self.report)
         self.write(self.anchor/'shutdown.json', self.shutdown)
+        self.write(self.root/'latest-run.json', dict(run_dir=str(self.anchor), session=runner_binding(self.anchor/'session.json')))
         self.write(self.root/'latest-checkpoint.json', dict(parent=self.parent, progress=self.progress, run_dir=str(self.anchor)))
         self.write(self.root/'sequence-ledger.json', dict(next_sequence=337, consumed=[dict(sequence=n) for n in range(266,337)]))
         self.reader = patch.object(adapter, 'read_descriptor', return_value=({}, self.valid_report()))
@@ -105,6 +106,17 @@ class ContinuationTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'verified closed'):
                     self.select()
                 self.write(self.anchor/which, source)
+
+    def test_newest_attempt_failure_before_first_update_cannot_bypass_cleanup(self):
+        failed = self.root/'newest-failed'; failed.mkdir()
+        self.write(failed/'session.json', {**self.session, 'run_dir': str(failed), 'target_games': 4720})
+        self.write(failed/'campaign-report.json', {**self.report, 'batches': []})
+        self.write(failed/'shutdown.json', {**self.shutdown, 'owned_cleanup_verified': False})
+        self.write(self.root/'latest-run.json', dict(run_dir=str(failed), session=runner_binding(failed/'session.json')))
+        with self.assertRaisesRegex(ValueError, 'verified closed'):
+            self.select()
+        self.write(failed/'shutdown.json', self.shutdown)
+        self.assertEqual(self.select()[1], 4720)
 
     def test_seed_ledger_cannot_reset_reuse_or_omit_failed336(self):
         for ledger in [dict(next_sequence=336, consumed=[dict(sequence=335)]),

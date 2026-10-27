@@ -241,6 +241,12 @@ def original_continuation(anchor, config):
             and failed_report.get('after_checkpoint') is None
             and not list(Path(failed_plan['execution_output']).glob('after-*.pt')),
             'Failed batch336 was not fully rolled back without an after checkpoint')
+    newest = read(root / 'latest-run.json')
+    newest_run = Path(newest['run_dir']).resolve()
+    require(binding(newest['session']['path']) == newest['session']
+            and Path(newest['session']['path']).resolve() == newest_run/'session.json',
+            'Newest attempt session binding changed')
+    closed(newest_run, 'newest_attempt')  # It can have failed before advancing latest-checkpoint.
     latest = read(root / 'latest-checkpoint.json')
     _, last_report = closed(Path(latest['run_dir']).resolve(), 'latest')
     parent = latest['parent']
