@@ -12,6 +12,7 @@ from copy import deepcopy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import random
 import subprocess
@@ -142,7 +143,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'c62d25f77999b0180c8c945f637fc53215a0e615c975a975bb1debf507d27f09'
+LOCAL_ADAPTER_TRANSITION_AST = '6b111a73564d2af57e74237470d43732db7cce6dde91903ce2d8e71451d8231c'
 
 
 def write_new(path, value):
@@ -250,6 +251,37 @@ def _git_blob(data):
     return hashlib.sha1(b'blob %d\0' % len(data) + data).hexdigest()
 
 
+def discovered_reviewed_sources(root):
+    """Discover authored Python, excluding only inactive generated virtualenvs.
+
+    Accepted, tracked and explicitly pinned files are checked separately; this
+    exclusion must never remove them from the reviewed source inventory.
+    """
+    root = Path(root).resolve()
+    names = set()
+    for folder in REVIEWED_SCAN:
+        for directory, children, files in os.walk(root / folder, followlinks=False):
+            children[:] = [name for name in children if name != '__pycache__']
+            if '.venv' in children:
+                environment = Path(directory) / '.venv'
+                marker = environment / 'pyvenv.cfg'
+                if (not environment.is_symlink() and marker.is_file() and not marker.is_symlink()
+                        and subprocess.run(['git', '-C', str(root), 'check-ignore', '--no-index', '-q', '--',
+                                            environment.relative_to(root).as_posix() + '/'],
+                                           check=False, timeout=30).returncode == 0):
+                    executable_paths = [sys.prefix, sys.exec_prefix, sys.executable, *sys.path]
+                    executable_paths += [getattr(module, '__file__', None)
+                                         for module in tuple(sys.modules.values()) if module is not None]
+                    active = any(isinstance(path, str) and Path(path).resolve().is_relative_to(environment)
+                                 for path in executable_paths)
+                    require(not active, 'Generated virtualenv contributes executable source: '
+                            + environment.relative_to(root).as_posix())
+                    children.remove('.venv')
+            names.update((Path(directory) / name).relative_to(root).as_posix()
+                         for name in files if name.endswith('.py'))
+    return names
+
+
 def reviewed_tree(root=ROOT):
     """Every file of the run's code equals the accepted implementation or its reviewed fast-path pin."""
     def git(*args):
@@ -259,8 +291,7 @@ def reviewed_tree(root=ROOT):
         meta, name = line.split('\t', 1)
         accepted[name] = meta.split()[2]
     names = set(accepted) | set(git('ls-files', '--full-name', '--', *REVIEWED_TREE).split('\n')) | set(FAST_PATH_TREE)
-    names |= {p.relative_to(root).as_posix() for folder in REVIEWED_SCAN for p in (root / folder).rglob('*.py')
-              if '__pycache__' not in p.parts}
+    names |= discovered_reviewed_sources(root)
     replaced = []
     for name in sorted(names - {''}):
         path = root / name

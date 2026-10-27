@@ -60,8 +60,7 @@ def expected_tree():
         meta, name = line.split('\t', 1)
         accepted[name] = meta.split()[2]
     names = set(accepted) | set(git('ls-files', '--full-name', '--', *local.REVIEWED_TREE).split('\n'))
-    names |= {p.relative_to(ROOT).as_posix() for folder in local.REVIEWED_SCAN for p in (ROOT / folder).rglob('*.py')
-              if '__pycache__' not in p.parts}
+    names |= local.discovered_reviewed_sources(ROOT)
     learner = set(expected_pins())
     tree = {}
     for name in sorted(names - {''} - learner - {ADAPTER}):

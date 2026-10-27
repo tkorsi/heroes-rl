@@ -1,0 +1,47 @@
+{
+  "schema": "heroes-original699-generated-environment-correction-v1",
+  "recorded_utc": "2026-10-27T15:51:19.595588+00:00",
+  "failed_main_check": {
+    "checkout": "/Users/orsi/Projects/Heroes",
+    "source_commit": "3db71bcdc7d3590c2e9778fb99cc7bd8971a7e46",
+    "command": [
+      "./continue-original-4720.sh",
+      "check"
+    ],
+    "returncode": 2,
+    "error": "Unreviewed fast-path source: experiments/explorer/.venv/bin/activate_this.py"
+  },
+  "historical_root_readiness": "validation/original699-manual-readiness-2026-10-27.json",
+  "cause": "Filesystem discovery included a pre-existing ignored generated Python3.12 virtualenv; the root worktree lacked that environment.",
+  "correction": "Shared discovery prunes only Git-ignored nonsymlink .venv directories with a regular nonsymlink pyvenv.cfg, and rejects exclusion if interpreter, import search path or loaded module uses the directory. Accepted, tracked and pinned files remain independently checked. Other ignored/untracked authored Python remains checked.",
+  "environment_removed_or_modified": false,
+  "learner_math_or_native_runtime_changed": false,
+  "focused_regression_tests": {
+    "run": 20,
+    "passed": 20,
+    "includes_generated_environment_tests": 4
+  },
+  "actual_main_recheck": "pending after commit and local fast-forward; no readiness claim from the historical root check",
+  "gameplay_performed": false,
+  "official_updates": 0,
+  "official_parent": 699,
+  "remaining_games": 4720,
+  "next_sequence": 337,
+  "final_targeted_suite": {
+    "run": 69,
+    "passed": 68,
+    "skipped": 1,
+    "seconds": 12.782
+  },
+  "independent_review": {
+    "agent": "final_continuation_review",
+    "result": "no blocker",
+    "scope": "source discovery, tracked/pinned union, active-path rejection, pin generator and regression tests"
+  },
+  "pins": {
+    "learner": 12,
+    "tree": 16,
+    "unchanged": true,
+    "adapter_ast": "6b111a73564d2af57e74237470d43732db7cce6dde91903ce2d8e71451d8231c"
+  }
+}

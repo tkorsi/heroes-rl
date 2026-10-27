@@ -192,3 +192,24 @@ path `benchmarks/mac699-20261027`. All298 package blobs were
 acknowledged remotely; eight checkpoint files were independently downloaded and
 full700/701 states restored exactly. These states are explicitly ineligible for
 the official continuation.
+
+
+## Deployment-readiness correction after the Mac measurements
+
+The root-worktree offline check passed at `35b4f9f`, but the subsequent check
+from the user's main checkout at `3db71bc` refused a pre-existing generated
+`experiments/explorer/.venv/bin/activate_this.py`. That Python3.12 environment
+was ignored and separate from the locked training interpreter; it was not
+removed or modified. The historical root readiness receipt remains unchanged
+and does not establish main-checkout readiness.
+
+Source discovery now excludes only inactive, Git-ignored `.venv` directories
+with a regular nonsymlink `pyvenv.cfg`. Accepted, tracked and explicitly pinned
+sources are still independently checked; other ignored or untracked authored
+Python remains subject to rejection. Active interpreter/import/module paths
+prevent this exemption. Both runtime validation and the pin generator share
+this discovery rule. This is orchestration/source-inventory correction only,
+with no PPO mathematics or native runtime change and no repeated gameplay.
+The [correction receipt](../../validation/original699-generated-env-correction-2026-10-27.json)
+retains the failure and regression tests. A new main-checkout receipt must pass
+before the script is described as ready to launch.

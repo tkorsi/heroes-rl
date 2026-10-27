@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -130,6 +132,90 @@ class ReviewedTreeTests(unittest.TestCase):
     def test_the_adapter_is_bound_by_its_ast_pin(self):
         with patch.object(local, 'LOCAL_ADAPTER_TRANSITION_AST', '0' * 64), self.assertRaisesRegex(ValueError, 'Unreviewed local adapter'):
             local.reviewed_tree()
+
+
+class GeneratedEnvironmentDiscoveryTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.git('init', '-q')
+        self.write('.gitignore', '.venv/\nignored-authored/\n')
+        self.write('experiments/kept.py', 'VALUE = 1\n')
+        self.git('add', '.')
+        self.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'Baseline')
+        self.baseline = self.git('rev-parse', 'HEAD').strip()
+        self.environment = self.root / 'experiments/explorer/.venv'
+
+    def git(self, *arguments):
+        return subprocess.check_output(['git', '-C', str(self.root), *arguments], text=True)
+
+    def write(self, name, contents):
+        path = self.root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(contents)
+        return path
+
+    def generated_environment(self):
+        self.write('experiments/explorer/.venv/pyvenv.cfg', 'version = 3.12\n')
+        self.write('experiments/explorer/.venv/bin/activate_this.py', 'GENERATED = True\n')
+
+    def reviewed(self):
+        with patch.object(local, 'ACCEPTED_ADAPTER_COMMIT', self.baseline), \
+                patch.object(local, 'REVIEWED_TREE', ('experiments',)), \
+                patch.object(local, 'FAST_PATH_TREE', {}), patch.object(local, 'FAST_PATH_SOURCES', {}):
+            return local.reviewed_tree(self.root)
+
+    def test_inactive_ignored_generated_environment_does_not_block_authored_source_gate(self):
+        self.generated_environment()
+        self.assertEqual(local.discovered_reviewed_sources(self.root), {'experiments/kept.py'})
+        self.assertEqual(self.reviewed(), [])
+        for name in ('experiments/extra.py', 'experiments/ignored-authored/extra.py'):
+            path = self.write(name, 'UNREVIEWED = True\n')
+            try:
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: ' + name):
+                    self.reviewed()
+            finally:
+                path.unlink()
+
+    def test_missing_symlinked_or_unignored_marker_is_not_an_exemption(self):
+        self.generated_environment()
+        marker = self.environment / 'pyvenv.cfg'
+        marker.unlink()
+        probe = 'experiments/explorer/.venv/bin/activate_this.py'
+        self.assertIn(probe, local.discovered_reviewed_sources(self.root))
+        external = self.write('not-a-venv.cfg', 'version = 3.12\n')
+        marker.symlink_to(external)
+        self.assertIn(probe, local.discovered_reviewed_sources(self.root))
+        marker.unlink()
+        marker.write_text('version = 3.12\n')
+        (self.root / '.gitignore').write_text('ignored-authored/\n')
+        self.assertIn(probe, local.discovered_reviewed_sources(self.root))
+
+    def test_tracked_environment_files_remain_in_the_gate(self):
+        self.generated_environment()
+        probe = 'experiments/explorer/.venv/bin/activate_this.py'
+        self.git('add', '-f', probe)
+        with self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: ' + probe):
+            self.reviewed()
+        self.git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'Tracked environment')
+        self.baseline = self.git('rev-parse', 'HEAD').strip()
+        self.assertEqual(self.reviewed(), [])
+        self.write(probe, 'ALTERED = True\n')
+        with self.assertRaisesRegex(ValueError, 'Unreviewed fast-path source: ' + probe):
+            self.reviewed()
+
+    def test_active_environment_or_import_path_cannot_be_excluded(self):
+        self.generated_environment()
+        for target, value in [('prefix', str(self.environment)),
+                              ('path', [*sys.path, str(self.environment / 'lib')])]:
+            with self.subTest(target=target), patch.object(sys, target, value), \
+                    self.assertRaisesRegex(ValueError, 'Generated virtualenv contributes executable source'):
+                local.discovered_reviewed_sources(self.root)
+        module = SimpleNamespace(__file__=str(self.environment / 'loaded.py'))
+        with patch.dict(sys.modules, generated_env_probe=module), \
+                self.assertRaisesRegex(ValueError, 'Generated virtualenv contributes executable source'):
+            local.discovered_reviewed_sources(self.root)
 
 
 class ExecutionChoiceTests(unittest.TestCase):
