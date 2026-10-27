@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T07:30:42Z",
+ "generated_utc": "2026-10-27T08:25:49Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,8 +20,8 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T07:30:32.522198Z",
-  "seconds_to_heavy_stop": 11967.5,
+  "heartbeat_utc": "2026-10-27T08:25:34.646230Z",
+  "seconds_to_heavy_stop": 8665.4,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -224,7 +224,7 @@
     "--profile"
    ],
    "registered_utc": "2026-10-27T07:28:49.742885Z",
-   "live_descendants": 4
+   "live_descendants": 8
   },
   {
    "label": "driver-m3-RET",
@@ -288,18 +288,30 @@
     "/home/claude/o5k-cand14"
    ],
    "registered_utc": "2026-10-27T07:28:46.600812Z",
-   "live_descendants": 5
+   "live_descendants": 9
   },
   {
    "label": "ppo-matrix11",
    "pid": 296,
    "starttime": 19372,
-   "alive": true,
+   "alive": false,
    "command": [
     "/bin/bash",
     "./run_matrix11.sh"
    ],
    "registered_utc": "2026-10-27T04:08:14.650924Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix12",
+   "pid": 25791,
+   "starttime": 1237212,
+   "alive": true,
+   "command": [
+    "/bin/bash",
+    "./run_matrix12.sh"
+   ],
+   "registered_utc": "2026-10-27T07:31:13.056375Z",
    "live_descendants": 1
   },
   {
@@ -312,7 +324,7 @@
     "./after_m3ret.sh"
    ],
    "registered_utc": "2026-10-27T06:10:47.682653Z",
-   "live_descendants": 6
+   "live_descendants": 10
   },
   {
    "label": "schedule-after-m4rdh",
@@ -337,7 +349,7 @@
     "/home/claude/bench3/schedules/m10.json"
    ],
    "registered_utc": "2026-10-27T06:17:47.993910Z",
-   "live_descendants": 6
+   "live_descendants": 10
   },
   {
    "label": "schedule-m8",
@@ -584,7 +596,8 @@
   "optimizer_only_batch266_accepted_repeat_cpu0": "B2, accepted a8ac411, 05:14-06:08 UTC: 3230.4 s, update 630 fe1378ef (same bytes); the same job took 4214.9 s at 21:11-22:21 UTC on 26 Oct: host drift of about 25% for the accepted path (also seen in the accepted baselines, 876 s in m1-B against 636 s in m2-B). PR30 P266 3243.7 s; exact replay RD266 1839.2 s (1.76x B2)",
   "m3_RET": "final learner 5635c7c (release fe0d083), macOS default plus two replay threads without any fork (Mac letter T), CPUs 1-3, from 629: cold start 365.9 s (baselines 114.9 and 231.5 s); training batch 266 1516.7 s (PPO 1332.2 s), full learner state digest 8bbbe66b..., the same as every exact campaign's (accepted-equivalent update 630); peak 6.68 GB RSS, 45 fds, 21 threads, 10 processes",
   "optimizer_only_batch266_fast_no_replay_repeat_cpu0": "C2, fast path without replay (15ed404, learner bytes of 7c4303f), 06:08-06:50 UTC: 2481.1 s, update 630 fe1378ef; the same job C took 3241.7 s at 20:17-21:11 UTC on 26 Oct (0.765 of it, as B2 is 0.766 of B): the drift is the host's and affects both paths alike; accepted/fast ratio 1.30 in the evening pair and 1.30 in the night pair",
-  "m6_B": "accepted a8ac411 again at night (06:17-07:28 UTC), CPUs 1-3, from 629: baselines 226.3 and 425.4 s (cold start 675.9 s); training batch 266 with the same games as every exact campaign stopped at the 3,540 s budget after 116 of 125 optimizer steps (batch 3,519.6 s), update rolled back, run stopped; extrapolated complete batch about 3,780 s. Batch 266 of the fast path against it: at least 2.82x (m4-RDH, about 3.0x extrapolated), 2.32x without any fork (m3-RET, about 2.5x), 1.74x macOS default (m3-RAF, about 1.9x)"
+  "m6_B": "accepted a8ac411 again at night (06:17-07:28 UTC), CPUs 1-3, from 629: baselines 226.3 and 425.4 s (cold start 675.9 s); training batch 266 with the same games as every exact campaign stopped at the 3,540 s budget after 116 of 125 optimizer steps (batch 3,519.6 s), update rolled back, run stopped; extrapolated complete batch about 3,780 s. Batch 266 of the fast path against it: at least 2.82x (m4-RDH, about 3.0x extrapolated), 2.32x without any fork (m3-RET, about 2.5x), 1.74x macOS default (m3-RAF, about 1.9x)",
+  "optimizer_only_batch266_pr30_repeat_cpu0": "P266b, PR30 4d7688b, 06:50-07:46 UTC: 3370.3 s (P266 at 01:50 UTC: 3243.7 s), update 630 fe1378ef; on one CPU PR30 takes the accepted path's time on batch 266 (B2 3230.4 s)"
  },
  "completed_checks": [
   "watchdog stop path tested on a TERM-ignoring owned process tree, an unowned process and a stale registration",

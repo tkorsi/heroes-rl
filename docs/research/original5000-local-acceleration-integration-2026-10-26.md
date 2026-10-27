@@ -61,10 +61,13 @@ module or saved-tensor hooks. Two changes are not detected and are outside the e
 (neither occurs in the training loop): an in-place write through `.data` (it bypasses the version
 counter) and a hook registered on a leaf parameter's gradient accumulator node.
 
-The exact options produce bitwise-identical games, PPO updates, Adam state, RNG streams and
-checkpoint weights to the accepted implementation (tests and paired Linux campaigns below). The
-experiment does not: its updates differ from the exact update by about 2e-4 of the update norm per
-batch and the lineages diverge after the first update. It is an opt-in candidate pending manual
+From the same games, the exact options produce the accepted implementation's PPO update, Adam
+state, RNG streams and checkpoint weights bit for bit (differential tests; single-CPU optimizer-only
+runs of the accepted path, PR30 and the fast path on real batches 266 and 267; fast-path campaigns
+whose admitted states equal those digests; the accepted campaigns themselves never admit batch 266
+on this host, see below). The experiment does not: after one batch (266, 125 optimizer steps) 34 of
+39 weight tensors differ from the exact ones, by at most 1.7e-4 absolute and 0.37% relative per
+element, and the lineages diverge from there. It is an opt-in candidate pending manual
 review, not a substitute for the exact learner in the official lineage.
 
 ## Lineage rules (fail closed)
@@ -128,7 +131,8 @@ seed namespace 60M/70M, and never touches the official lineage):
 "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --order AF --updates 1 --hours 4
 ```
 
-`AF` (about two hours on this Linux host's numbers, 4,412 s for A and 2,366 s for F; the Mac is unmeasured) plays the eight
+`AF` (about two hours on this Linux host's numbers: 4,196 s for A, whose training batch is stopped
+at the update deadline, and 2,366 s for F; the Mac is unmeasured) plays the eight
 fixed baseline games and one training batch with the accepted implementation and then with the
 macOS fast-path default, from the same parent and seeds. It exits 0 only if both campaigns ended
 cleanly (every requested batch admitted, no bound reached, nothing interrupted or left running, the
@@ -139,11 +143,13 @@ state; `summary.json` in the bench folder lists every problem and has per-batch 
 lengths, PPO times, peak memory and process counts. Games are compared on every observation and
 decision record. The engine delivers some notices asynchronously, so two runs with the same seeds
 can see two of them in the other order even on the accepted implementation (on Linux, two accepted
-runs differed in one of twelve games, the same game in which accepted and fast path once differed);
+runs differed in one of twelve games, a baseline game in which accepted and fast path also once
+differed, and one fast-path campaign differed from all others in one game of batch 266);
 such a batch is reported as not comparable rather than as a failure of exactness, and the check
 needs one batch with identical games (repeat with `--order AFF` if the first pair differs). If the A campaign's training
 batch is stopped by the update wall limit (on this Linux host the accepted path could not finish
-that batch, sequence 266 from 629, within the fixed 3,540 s worker budget), the summary reports it
+that batch, sequence 266 from 629, within the fixed 3,540 s update deadline, counted from the
+worker's start; the worker's whole limit is 3,600 s), the summary reports it
 as a problem: it means the accepted implementation cannot run that batch on the Mac either, which
 the official run would meet as a failed batch and a stop. Optional:
 `--order AOOA` tests forked verification on macOS (fork safety with Torch loaded is unverified
@@ -160,32 +166,43 @@ See the log, sections O5 onward, and the validation record
 the original map from the final 629 parent, every campaign alone on the same three CPUs:
 
 - The accepted implementation (a8ac411) cannot complete training batch 266 on this host: its update
-  stops at the 3,540 s budget and is rolled back, in the evening after 83 of 125 optimizer steps
-  (m1-B, batch 3,523 s) and again at night after 116 (m6-B, 06:17 UTC, batch 3,520 s, the same games).
-  The host was about 25% slower in the evening (O19), so the night run is the fair reference:
-  extrapolating its own step rate, the complete batch would take about 3,780 s. Every ratio against
-  the accepted batch is therefore a lower bound, with the extrapolated ratio beside it. Its cold start
-  (launch to the first training batch, including the eight baseline games) was 676 s.
-- The exact fast path with two prefix helpers and two replay threads (480aa1a, which computes the same
-  values in the same order as the final candidate 5635c7c; m4-RDH, 04:08 UTC) completed batch 266 in
-  1,248 s with the same games and the accepted update: at least 2.8x the accepted batch, about 3.0x by
-  the extrapolation; cold start 361 s (1.9x). The final candidate without any fork and with two replay
-  threads (`--fast-path --serial-verification --replay-threads 2`, the Mac letter T; m3-RET) took
-  1,517 s (at least 2.3x, about 2.5x) with the same learner state digest; the macOS default (one CPU for
-  PPO; m3-RAF) 2,017 s (at least 1.7x, about 1.9x).
+  passes the 3,540 s update deadline and is rolled back, in the evening after 83 of 125 optimizer
+  steps (m1-B, batch 3,523 s) and again at night after 116 (m6-B, 06:17 UTC, batch 3,520 s, the same
+  games). The same accepted work took 1.3 to 1.4x as long in the evening as at night (O19), so the
+  night run is the reference: extrapolating its own step rate, the complete batch would take about
+  3,780 s. Every ratio against the accepted batch is a lower bound, with the extrapolated ratio
+  beside it. Its cold start (launch to the first training batch, including the eight baseline games)
+  was 676 s.
+- Batch 266 of the fast path from the same night, with the same games and the accepted update 630
+  bytes: with two prefix helpers and two replay threads (m4-RDH, learner 480aa1a, which computes the
+  same values in the same order as the final candidate 5635c7c; 04:14 UTC) 1,248 s, at least 2.8x and
+  about 3.0x by the extrapolation, cold start 361 s (1.9x); the final candidate without any fork and
+  with two replay threads (`--fast-path --serial-verification --replay-threads 2`, the Mac letter T;
+  m3-RET, 05:52 UTC, immediately before m6-B) 1,517 s, at least 2.3x and about 2.5x; the macOS
+  default (one CPU for PPO; m3-RAF on the earlier learner a5b3568, 01:46 UTC) 2,017 s, at least 1.7x
+  and about 1.9x. The repeat on the final learner with helpers (m6-REH, from 07:28 UTC) is in the
+  log, O19, and in the validation record.
 - Over six consecutive training batches (266 to 271) m4-RDH's mean was 902 s (median 761 s, slowest
-  1,810 s against the 3,540 s budget), about 4.0 verified updates per hour; evaluation batches 115 and
-  222 s. Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host (the
-  accepted path cannot be projected: it does not complete the first batch). Peak over the six batches:
-  8.5 GB RSS (during the largest batch, 5,831 decisions; memory follows the batch size and falls back
-  after it), 45 descriptors, 21 threads, 10 processes, with no descriptor or thread growth.
+  1,810 s against the 3,540 s deadline), about 4.0 verified updates per hour; evaluation batches 115
+  and 222 s. Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host
+  (the accepted path cannot be projected: it does not complete the first batch). Peaks within the six
+  batches: 8.5 GB RSS (in the largest batch, 5,831 decisions, during collection, when the native
+  verification replay of its longest game held 3.3 GB; its PPO peaked at 5.7 GB), 43 descriptors, 21
+  threads, 10 processes; per-batch peaks rise with the batch size and fall back after it, with no
+  descriptor or thread growth.
 - Against PR30 (4d7688b): on one CPU its optimizer takes the accepted path's time on batch 266
-  (3,244 s against 3,230 s at night), so on this batch it gains nothing over the accepted path; the
-  like-for-like single-CPU optimizer-only comparison is 1.76 to 1.85x on batch 266 and 1.67x on batch
-  267. PR30 has no multi-CPU option for PPO, so on the same three CPUs the fast path's PPO of batch
-  266 (1,114 s in m4-RDH) is about 2.9x PR30's.
-- Exactness: identical games give update 630 `fe1378ef...` and 631 `46439a9b...` with the accepted
-  path, PR30, the fast path, every replay candidate and the `--no-text-replay` fallback.
+  (3,244 s at 01:50 UTC and 3,370 s at 06:50 UTC, against 3,230 s for the accepted path at 05:14
+  UTC), so on this batch it gains nothing over the accepted path. The like-for-like single-CPU
+  optimizer-only comparison with the exact replay is 1.6 to 1.85x on batch 266 (the replay's 1,751
+  to 2,131 s against 3,230 to 3,370 s, depending on the hour) and 1.67x on batch 267. PR30 has no
+  multi-CPU option for PPO, so on the same three CPUs the fast path's PPO of batch 266 (1,114 s in
+  m4-RDH) is about 2.9x PR30's single-CPU PPO.
+- Exactness: from identical games, update 630 `fe1378ef...` comes out of the accepted path, PR30, the
+  fast path without replay, the replay candidates 1721220, 4f02a10, a5b3568 and 480aa1a, and the
+  final learner (m3-RET); update 631 `46439a9b...` out of the accepted path, PR30, the fast path, the
+  replay candidates (2ba42ac included) and the `--no-text-replay` fallback (measured on batch 267
+  only). One fast-path campaign (m6-RBH) saw one game of batch 266 in another event order and is
+  reported as not comparable.
 - The numerical experiment `shared_graph_encodings` (reordered gradient summation, never a default)
   ran batch 266 in 477 s; it is reported apart and is not part of the exact figures.
 

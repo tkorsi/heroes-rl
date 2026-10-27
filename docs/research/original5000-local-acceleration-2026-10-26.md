@@ -205,7 +205,9 @@ verification and prefix reconstruction (prefix helpers parallelize only the latt
 Consequence for the update budget (H7). Forward plus backward costs about 0.6 to 0.7 s per decision
 on this host on both exact paths. The update phase must finish within 3540 s of the worker's start,
 including the four games and their checks, so on this host any batch with more than roughly 4,500
-decisions in total exceeds the budget on the exact paths too and stops the run (fail closed). The
+decisions in total exceeds the budget on the exact paths too and stops the run (fail closed).
+[O19: this holds for the accepted path and the fast path without replay; the replay learner later
+admitted a batch of 5,831 decisions in 1,810 s.] The
 first training batch from 629 has 3,968.
 
 ### O7. Smoke outcomes, a correction, and the independent review (20:20 to 20:35 UTC)
@@ -316,7 +318,9 @@ ended `stopped_failure`. So H7 holds on this host without any contention: the ac
 implementation cannot complete the first training batch of the original-map run from 629 (3,968
 decisions) within the fixed update budget, and the manual run would stop at it.
 
-The optimizer-only fast path (`ppo266` job C, 7c4303f, no helpers, CPU 0 alone) needed 3241.7 s for
+The optimizer-only fast path (`ppo266` job C, 7c4303f, no helpers, CPU 0 alone [O19: CPU 0 only and
+one job at a time, but not exclusive: read-only review agents and short tests also ran on CPU 0 in its
+window]) needed 3241.7 s for
 the same update (prefix reconstruction 461.8, loss forward 911.2, backward 1826.7, behaviour
 verification 20.9, Adam 17.4 s; 0.82 s per decision), with identical tensors across repetitions.
 
@@ -466,7 +470,10 @@ in 460.7 s with update 631 weights 46439a9b..., equal to m1-CH. So game to check
 replay reproduces the accepted computation exactly, and batch 266, which the accepted path cannot
 finish within its 3,540 s update budget (stopped at 3,523 s), takes 1,646 s: at least 2.14x
 (a lower bound, because the accepted batch is censored), about 2.9x against the estimate of
-O12 (about 4,800 s), and 1.76x against m1-CH. Batch 267: 1.88x against m1-CH.
+O12 (about 4,800 s), and 1.76x against m1-CH. Batch 267: 1.88x against m1-CH. [O19: these times are
+the workers' execution walls; the batch seconds used elsewhere are 113.9, 198.2, 1,649.2 and 463.6 s
+(1.75x and 1.86x against m1-CH). The 2.9x divides an evening estimate by a night measurement; against
+the night reference of about 3,780 s it is about 2.3x.]
 
 Candidate 4f02a10 (on top of 1721220) runs the occurrence replays on the declared helper CPUs
 while the main backward continues. An occurrence then returns nothing to the engine and queues its
@@ -524,7 +531,9 @@ default), together with the accepted cold start and repeats.
 Optimizer-only on CPU 0, batch 266 (seat 0, 3968 decisions) from 629: the replay 1721220 took
 1750.7 s (prefix reconstruction 347.6, loss forward 150.3, backward and clip 1227.5 s) and ended in
 the fast path's exact state (C.pt, update 630 weights fe1378ef...). Against the same batch on the
-same CPU: accepted a8ac411 4214.9 s (2.41x), fast exact 15ed404 3241.7 s (1.85x).
+same CPU: accepted a8ac411 4214.9 s (2.41x), fast exact 15ed404 3241.7 s (1.85x). [O19: job C ran
+7c4303f, whose learner bytes equal 15ed404's; both baselines ran in the slower evening. The night
+repeats B2 3,230.4 s and C2 2,481.1 s give 1.85x and 1.42x against this replay.]
 
 Campaign m3-R5H (4f02a10: two prefix helpers, replays on two threads during the backward;
 CPUs 1 to 3, the same 629 copy): baseline batches 90.4 s and 201.0 s; training batch 266 passed in
@@ -609,10 +618,12 @@ text-leaf replay inside the engine, so PPO on one CPU; CPUs 1 to 3, the same 629
 every exact campaign. Against the accepted path's stopped batch (3,523 s at the 3,540 s budget with
 83 of 125 optimizer steps done) that is at least 1.75x; the accepted path's own per-game deadline
 evidence (games end at 362 s, then 83 steps in about 3,160 s) puts its complete batch at about 4,600
-to 4,900 s, about 2.3 to 2.4x. This is the setting the Mac would run without `--prefix-helpers`.
+to 4,900 s, about 2.3 to 2.4x. [O19: that arithmetic was low (the same extrapolation gives about
+5,120 s), and it describes the slower evening host; against the night reference of about 3,780 s this
+batch is about 1.9x.] This is the setting the Mac would run without `--prefix-helpers`.
 
 m2-B (a8ac411, baselines only, the counterbalancing repeat of m1-B): 219.2 s and 417.1 s, against
-318.1 s and 557.7 s in m1-B. The same eight games took 30% less time in the later campaign, the
+318.1 s and 557.7 s in m1-B. The same eight games took 30% [O19: 27%] less time in the later campaign, the
 largest run-to-run drift seen on this host; the cold-start comparison therefore uses both. m3-RBN
 (2ba42ac with `--serial-verification --no-text-replay`, baselines only): 109.4 s and 225.4 s, and
 its session and batch plans record `text_leaf_replay: false`, so the in-lineage fallback switch
@@ -695,7 +706,8 @@ at 04:05). Lost: m6-RBH during the PPO of training batch 268, and the CPU 0 job 
 267 of m6-RBH had been admitted in 1209.4 s and 350.6 s (baselines 96.7 s and 209.1 s, cold start
 315.2 s). Their games are not all the same as the other campaigns': in batch 266 the fourth game again
 saw two asynchronous notices in the other order (the game in which two accepted runs also differed,
-O10), so its training data and its update 630 and 631 bytes (25150b2c..., cc4397a0...) differ, and the
+O10) [O19: wrong: it is another game, game 4 of training batch 266, in which no two accepted runs
+differed; the O10 game is game 4 of the seat 0 baseline], so its training data and its update 630 and 631 bytes (25150b2c..., cc4397a0...) differ, and the
 pair is reported as not comparable rather than as evidence either way. The watchdog was
 restarted through its reboot path with the unchanged UTC deadlines (heavy work 10:50, hard stop 11:00).
 m6-RBH was summarized and compressed as far as it got; schedule m8 (CPUs 1-3, from 04:08) measures the
@@ -748,26 +760,31 @@ recursed without bound, because the nested backward runs the loss's hook again, 
 the session's memory limit before it could affect the campaign's processes; the test now guards its
 hook, and test runs carry a memory limit.
 
-### O19. Host drift, a contemporaneous accepted repeat, and the last schedule (05:45 to 06:15 UTC)
+### O19. Host drift, a same-night accepted repeat, the last schedule, and an independent check (05:14 to 08:45 UTC)
 
 m4-RDH finished its six training batches (266 to 271) in 1248.0, 350.3, 622.1, 900.5, 1810.3 and
 479.3 s (3,968, 1,359, 2,084, 2,969, 5,831 and 1,751 decisions; mean 901.7 s, median 761.3 s), cold
-start 360.7 s, baselines 114.8 and 222.2 s, peak 8.53 GB RSS, 45 descriptors, 21 threads and 10
-processes. Memory follows the batch size (the peak is in batch 270's PPO) and falls back after it.
+start 360.7 s, baselines 114.8 and 222.2 s. Within the six batches the peaks are 8.53 GB RSS, 43
+descriptors, 21 threads and 10 processes (45 descriptors at launch, during release preparation).
+Per-batch RSS peaks rise with the batch size (3.49, 3.63, 3.70, 4.20, 6.49 and 8.53 GB for 1,359 to
+5,831 decisions) and fall back after the largest; the overall peak is in batch 270 during collection,
+when the native verification replay of its longest game held 3.3 GB, while its PPO peaked at 5.7 GB.
 
 The CPU 0 repeat B2 of the accepted optimizer-only batch 266 (a8ac411, 05:14 to 06:08 UTC) took
 3,230.4 s, with the same update 630 bytes, against 4,214.9 s for the same job B at 21:11 to 22:21 UTC
-the evening before; every phase is shorter by a similar fraction (prefix reconstruction 1,267 to 952 s,
-loss forward 858 to 679 s, backward 1,696 to 1,363 s). The accepted baseline games show the same: 876 s
-in m1-B (20:33 UTC) against 636 s in m2-B (02:20 UTC). The host was about 25% slower for the accepted
-path in the early evening, which is when m1-B measured the accepted batch 266 and B its optimizer-only
-time. The overlapped fast path's baselines vary much less over the night (291 to 337 s from 21:48 onward;
+the evening before; the three large phases are shorter by a similar fraction, 20 to 25% (prefix
+reconstruction 1,267 to 952 s, loss forward 858 to 679 s, backward 1,696 to 1,363 s), and behaviour
+verification by 41% (373 to 218 s). The accepted baseline games show the same: 876 s in m1-B (20:33
+UTC) against 636 s in m2-B (02:20 UTC). The same accepted work took 1.3 to 1.4x as long in the early
+evening as at night (night times about 25% shorter), and the early evening is when m1-B measured the
+accepted batch 266 and B its optimizer-only time. The overlapped fast path's baselines vary much less over the night (291 to 337 s from 21:48 onward;
 the serial-verification variants 335 to 386 s). Two
 consequences: ratios between an evening accepted measurement and a night-time fast-path measurement
 are inflated by the drift, and the estimate of the accepted complete batch (4,600 to 4,900 s, O16) holds
-only for the evening host. On one CPU at nearly the same time, the accepted path and PR30 take the same
-time on batch 266 (B2 3,230.4 s, P266 3,243.7 s at 01:50 UTC; the same per-phase times to 2%), and the
-exact replay RD266 (480aa1a, 04:43 UTC, just before B2) 1,839.2 s, 1.76x.
+only for the evening host (and its arithmetic was low: the same extrapolation gives about 5,120 s).
+On one CPU the accepted path and PR30 take the same time on batch 266 (B2 3,230.4 s at 05:14 UTC,
+P266 3,243.7 s at 01:50 UTC, with the same per-phase times to 3%), and the exact replay RD266
+(480aa1a, 04:43 UTC, just before B2) 1,839.2 s, 1.76x.
 
 So that the accepted batch 266 has a measurement bracketed by fast-path campaigns of the same night,
 schedule m9 was stopped during m3-RET (its driver kept running) and replaced by m10 (06:10 UTC):
@@ -778,7 +795,8 @@ times of the night. `tools/prepare_vcmi.py --check` passes in the final release 
 
 m3-RET (the final learner 5635c7c from release fe0d083; serial verification, no fork, two replay
 threads: the Mac letter T) admitted batch 266 in 1,516.7 s (PPO 1,332.2 s) with the learner state
-digest 8bbbe66b... that every exact campaign's batch 266 has, so the final learner is exact end to end
+digest 8bbbe66b... that every other exact campaign's batch 266 has (all but m6-RBH, whose fourth game
+differed, O17), so the final learner is exact end to end
 on the real batch; cold start 365.9 s, baselines 114.9 and 231.5 s, peak 6.68 GB RSS.
 
 C2 (fast path without replay, CPU 0, 06:08 to 06:50 UTC) took 2,481.1 s against 3,241.7 s for C at
@@ -787,14 +805,35 @@ the ratio within each pair (accepted over fast path, 1.30 in the evening and 1.3
 
 m6-B (the accepted campaign again, 06:17 to 07:28 UTC) played the same eight baseline games in 651.7 s
 (226.3 and 425.4 s; m2-B 636.3 s at 02:20, m1-B 875.8 s at 20:33) and the same four games of batch 266
-as m1-B and every exact campaign, and its update again stopped at the 3,540 s budget and was rolled
+as m1-B and every exact campaign but m6-RBH, and its update again passed the 3,540 s update deadline
+(counted from the worker's start; the worker's whole limit is 3,600 s) and was rolled
 back, now after 116 of 125 optimizer steps (games ended 264 s after the worker started; batch
 3,519.6 s; cold start 675.9 s; peak 7.33 GB RSS). So even on the faster night host the accepted path
 cannot run the first original-map training batch from 629 on this hardware; the official run would
 stop there. Extrapolating its own PPO step rate (3,249 s for about 115.5 steps), the complete batch
-would take about 3,780 s. Against that contemporaneous reference, batch 266 of the fast path is at
-least 2.82x shorter with helpers and replay threads (m4-RDH, 1,248.0 s; about 3.0x by the
-extrapolation), at least 2.32x without any fork (m3-RET; about 2.5x) and at least 1.74x as the macOS
-default (m3-RAF; about 1.9x); its cold start is 1.9x shorter (361 s against 676 s). The evening
+would take about 3,780 s. Against that same-night reference, batch 266 of the fast path is at least
+2.82x shorter with helpers and replay threads (m4-RDH, 1,248.0 s, two hours earlier; about 3.0x by
+the extrapolation), at least 2.32x without any fork (m3-RET, immediately before m6-B; about 2.5x) and
+at least 1.74x as the macOS default (m3-RAF on the earlier learner a5b3568, at 01:46 UTC, before the
+third host restart; about 1.9x); its cold start is 1.9x shorter (361 s against 676 s). m6-REH, after
+m6-B, closes the bracket. The evening
 estimate of 4,600 to 4,900 s for the complete accepted batch (O16) is withdrawn as a reference: it
 measured the slower evening host.
+
+An independent read-only check (three checkers and an adversarial verifier per reported discrepancy,
+43 agents, 07:33 to 08:25 UTC) recomputed every number in the guide's Linux results and in this
+section from the compact records; 35 of 40 reported discrepancies were confirmed, none of them in a
+digest or an exactness claim. Fixed here and in the guide: descriptor peaks (43 within the batches,
+45 at launch); where the memory peak falls (collection, not PPO); the per-phase drift (three large
+phases 20 to 25%, behaviour verification 41%); "the same per-phase times" (to 3%, not 2%); "every
+exact campaign" (all but m6-RBH); "contemporaneous" (same night; only m3-RET is adjacent to m6-B);
+the drift size (evening work took 1.3 to 1.4x as long); the 3,540 s figure (the update deadline from
+the worker's start, inside a 3,600 s worker limit); the experiment's divergence (after one batch 34 of
+39 weight tensors differ, by at most 1.7e-4 absolute and 0.37% relative, replacing an unsupported
+"2e-4 of the update norm"); which commits update 630 and 631 were actually shown for (the fallback on
+631 only); and the A duration of the Mac AF check (4,196 s on the night host). Earlier sections carry
+bracketed [O19: ...] corrections where the check found them wrong: O6 (the 4,500-decision limit does
+not apply to the replay learner), O10 (CPU 0 was not exclusive during job C; rounding 557/474 s is
+558/475 s), O14 (execution walls rather than batch seconds; an evening estimate against a night
+measurement), O15 (job C's commit label; the night baselines), O16 (the 4,600 to 4,900 s estimate;
+27% rather than 30%) and O17 (m6-RBH's differing game is not the O10 game).
