@@ -24,7 +24,7 @@ from experiments.headless.env import HeadlessSelfPlayEnv, Limits, VcmiLauncher
 from experiments.learner import contextual as c
 from experiments.learner.checkpoints import FrozenOpponentPool, _model_from_payload, _read
 from experiments.learner.contextual_model import encode_history, weights_sha256
-from experiments.learner.contextual_rollout import CollectedEpisode, ContextualCollector
+from experiments.learner.contextual_rollout import CollectedEpisode, ContextualCollector, behavior_guard_version
 from experiments.learner.first_run import ROOT, canonical, file_identity, implementation_identity, schedule, validate_config
 from experiments.learner.gameplay import BudgetExpired, assert_same_state, check_identity, require, verify_collected
 from experiments.learner.inference import digest, history_coverage, ordinary_map_identity, source_identity, write_json
@@ -263,7 +263,8 @@ def collect_attempt(plan, output, spec, loaded, remaining):
                 "Native episode differs from the original paired evaluation seed")
         remaining()
         for policy, trajectory in zip(models, persisted.rollouts):
-            _verify_behavior(policy, (trajectory,), (encode_history(trajectory.history),))
+            _verify_behavior(policy, (trajectory,), (encode_history(trajectory.history,
+                             guard_version=behavior_guard_version(trajectory.decisions)),))
             remaining()
         check_integrity(plan, loaded)
         return {"status": manifest["status"], "termination_reason": manifest["termination_reason"],

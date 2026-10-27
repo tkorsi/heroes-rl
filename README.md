@@ -11,6 +11,14 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
+The user has authorized a **visible-history interaction budget** to prevent
+repeated window, army/artifact and no-effect movement loops. This is an explicit
+policy-support intervention, not another exact acceleration. Terminal-only
+rewards and the PPO/model architecture stay unchanged. The
+[prospective protocol](docs/research/interaction-guard-2026-10-27.md) requires
+isolated frozen-policy acceptance before the manual continuation is enabled;
+no official training is launched by preparation.
+
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate
 experiment branches and their PRs describe the history.

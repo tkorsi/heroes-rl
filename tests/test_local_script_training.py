@@ -72,8 +72,8 @@ class ExactSourceAndMapTests(unittest.TestCase):
         for commit, digest in local.LOCAL_ADAPTER_ORIGINS.items():
             previous = subprocess.check_output(['git', 'show', commit+':'+path], cwd=local.ROOT, timeout=10)
             proof = local.local_adapter_transition(commit, digest, previous, current)
-            self.assertEqual(proof['transition'], 'reviewed_exact_fast_path_adapter' if commit == local.ACCEPTED_ADAPTER_COMMIT
-                             else 'explicit_map_profile_and_seed_namespace')
+            self.assertEqual(proof['transition'], 'reviewed_policy_support_adapter')
+            self.assertEqual(proof['policy_support_contract'], local.interaction_guard.VERSION)
             with self.assertRaisesRegex(ValueError, 'historical local adapter'):
                 local.local_adapter_transition('0'*40, digest, previous, current)
             with self.assertRaisesRegex(ValueError, 'historical local adapter'):

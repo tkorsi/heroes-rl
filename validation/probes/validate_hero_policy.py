@@ -133,7 +133,9 @@ def reconstruct_behavior(history, decisions, estimates, model, seed, *, schema=c
     before = weights_sha256(model)
     require(all(item.prefix.weights_sha256 == before for item in (*decisions, *estimates)),
             "Behavior belongs to different fixed weights")
-    encoder = ContextualEncoder(history[0].episode, history[0].player, schema)
+    from experiments.learner.contextual_rollout import behavior_guard_version
+    encoder = ContextualEncoder(history[0].episode, history[0].player, schema,
+                                guard_version=behavior_guard_version(decisions))
     state = model.initial_state()
     generator = torch.Generator(device="cpu").manual_seed(seed)
     by_choice = {item.decision_seq: item for item in decisions}

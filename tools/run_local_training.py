@@ -22,7 +22,8 @@ sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = Path.home() / 'Projects/Heroes-artifacts/local-script-training/machine.json'
 ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original.json')
 # The default path releases this accepted implementation unchanged. Only an explicit --fast-path
-# releases the current commit, whose reviewed exact fast path the session then records.
+# releases the current commit, whose execution choices and any separately opted-in
+# policy-support intervention the session records.
 ACCEPTED_IMPLEMENTATION = 'a8ac411d32658387598376c792136bc586edc5f9'
 
 
@@ -550,6 +551,7 @@ def start(args):
         if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
         if args.continue_original is not None: command += ['--continue-original', str(args.continue_original.resolve())]
         if args.batch_wall_seconds is not None: command += ['--batch-wall-seconds', str(args.batch_wall_seconds)]
+        if args.interaction_guard is not None: command += ['--interaction-guard', args.interaction_guard]
     os.chdir(release)
     os.execv(sys.executable, command)
     raise AssertionError("exec returned")
@@ -573,6 +575,7 @@ def launch_owned(args):
                                          prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
                                          replay_threads=args.replay_threads,
                                          experiments=args.experiment)
+    policy_support = adapter.check_policy_support(args.interaction_guard)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
@@ -581,7 +584,7 @@ def launch_owned(args):
     if args.continue_original is not None:
         parent, args.games, continuation = original_continuation(args.continue_original, config)
     initial = adapter.restore_parent(parent)
-    adapter.check_lineage(adapter.read_descriptor(parent)[0], execution)  # before any session or game
+    adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, policy_support)  # before any session or game
     parent_final_evidence = None
     if args.parent_final is not None:
         prior = read(args.parent_final / 'campaign-report.json')
@@ -595,7 +598,7 @@ def launch_owned(args):
         source=source_identity('adventure-capabilities-v1'), implementation=pilot.implementation(), prerequisites=pilot.prerequisites(),
         configuration=adapter.operational_configuration(parent, args.batch_wall_seconds),
         batch_wall_seconds=args.batch_wall_seconds, original_continuation=continuation,
-        execution=execution, asset_config=binding(args.config),
+        execution=execution, policy_support=policy_support, asset_config=binding(args.config),
         runtime_bin=config['runtime_bin'], runtime=config['runtime'], data=config['data'], maps=config['maps'],
         artifact_root=config['artifact_root'], run_root=str(run_root), run_dir=str(run), initial_parent=parent,
         next_sequence=continuation['next_sequence'] if continuation else config.get('next_sequence', 266), supervisor_pid=os.getpid(),
@@ -614,12 +617,19 @@ def launch_owned(args):
     hypothesis = ('Continue the final easy-trained state on original hero-management-v2; test whether stochastic on-policy PPO discovers wins within the declared game budget. A first win is not proof of reliable strategy.'
                   if session['profile'] == 'original' else
                   'Continue the accepted easier8x8 distribution; measure fixed paired outcomes without claiming original-map transfer.')
+    if policy_support is not None:
+        hypothesis += (' The declared visible-history interaction guard changes action support to bound repeated '
+                       'navigation, failed movement and reversible management; terminal rewards and PPO formulas '
+                       'remain unchanged. This is a new behavior-support experiment, not identical-policy acceleration.')
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
-    print(f"Implementation: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
+    print(f"Execution optimizations: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
           f"verification, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
           + ('off' if not execution['text_leaf_replay'] else 'not used by the experiment' if execution['experiments']
              else f"on {execution['replay_threads']} threads" if execution['replay_threads'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
+    if policy_support is not None:
+        print(f"Policy support intervention: {policy_support}; terminal-only rewards unchanged. "
+              "Action support differs from the previous unguarded run.", flush=True)
     if continuation:
         print(f"Original target: {continuation['target_games']} games; admitted before this session: "
               f"{continuation['admitted_before_session']}; remaining: {args.games}.", flush=True)
@@ -707,6 +717,8 @@ def main():
     parents.add_argument('--continue-original', type=Path,
                          help='Continue the preserved699 lineage toward the original total5000-game target')
     parser.add_argument('--session', type=Path)
+    parser.add_argument('--interaction-guard', choices=('visible-interaction-budget-v1',),
+                        help='Explicit visible-history policy-support intervention; disabled when omitted')
     fast = parser.add_argument_group('opt-in exact fast path (default: the accepted implementation)')
     fast.add_argument('--fast-path', action='store_true', help='Run the reviewed exact fast path of this commit')
     overlap = fast.add_mutually_exclusive_group()
@@ -722,7 +734,7 @@ def main():
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
                       help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
     args = parser.parse_args()
-    if (args.continue_original is not None or args.batch_wall_seconds is not None) and not args.fast_path:
+    if (args.continue_original is not None or args.batch_wall_seconds is not None or args.interaction_guard is not None) and not args.fast_path:
         parser.error('Continuation and operational budget changes require the reviewed --fast-path release')
     if args.continue_original is not None:
         if args.profile != 'original' or args.games is not None or args.max_updates is not None or args.experiment:
@@ -770,10 +782,15 @@ def main():
                 parent, remaining, continuation = original_continuation(args.continue_original, config)
                 state = adapter.restore_parent(parent)
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
+                adapter.check_lineage(adapter.read_descriptor(parent)[0],
+                    adapter.execution_choice(overlapped_verification=args.overlap_verification,
+                        prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
+                        replay_threads=args.replay_threads, experiments=args.experiment), args.interaction_guard)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
                 exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
                 session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],
+                policy_support=args.interaction_guard,
                 gameplay_performed=False, ppo_updates=0), indent=2))
         else:
             print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],

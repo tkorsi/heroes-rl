@@ -25,6 +25,7 @@ import torch
 
 from . import builtin_first_run as pilot, builtin_training as batches
 from . import builtin_training_resume as resume, checkpoints as cp
+from . import interaction_guard
 from .builtin_preservation import binding, durable_path, verify_pair
 from .inference import source_identity
 from experiments.headless.contextual_evidence import runtime_identity
@@ -56,48 +57,67 @@ LOCAL_ADAPTER_ORIGINS = {
     ACCEPTED_ADAPTER_COMMIT: '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
     # Official original-map run629->699: byte-identical accepted local adapter.
     'b4fe70cc0285a76716430b5f41b17b43ba828b12': '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
+    # Official checkpoint699 continuation, closed before the support intervention.
+    'a92250fe96feedcb7c21c169bd69ad9c7281b5ef': '3195c79c5d0a0e62e499fd659a2815334236348b10ed4f7870959347f2d18363',
 }
-# Reviewed exact fast path: for each replaced learner/collector file, the accepted digests it may
-# replace (3268f2f and a8ac411 hold the same bytes) and the exact digest it must have here. Policy,
-# PPO and optimizer mathematics are unchanged (bitwise differential tests); a parent recorded with
-# an accepted digest may continue under these bytes, and the proof names every such file.
+# These changes implement a declared policy-support intervention. Their exact
+# source pins are checked alongside the execution pins, but they must never be
+# reported as an identical-policy acceleration transition.
+POLICY_SUPPORT_SOURCES = frozenset({
+    'experiments/learner/builtin_rollout.py',
+    'experiments/learner/contextual_model.py',
+    'experiments/learner/contextual_rollout.py',
+    'experiments/learner/evaluate_continuation.py',
+    'experiments/learner/gameplay.py',
+    'experiments/learner/ppo.py',
+})
+# Reviewed source pins: accepted historical digests and exact current bytes.
+# POLICY_SUPPORT_SOURCES are classified as a behavior-support intervention;
+# separate execution optimizations retain their exact-fast-path classification.
+# A pin certifies reviewed bytes, not equivalent action support or trajectories.
 FAST_PATH_SOURCES = {
     'experiments/learner/builtin_first_run.py': (
-        ('a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
+        ('80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2', 'a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
         '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
     'experiments/learner/builtin_gameplay.py': (
-        ('fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
+        ('ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
         'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d'),
     'experiments/learner/builtin_rollout.py': (
-        ('c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
-        'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b'),
+        ('a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
+        '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
-        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768',),
+        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600',),
         '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600'),
     'experiments/learner/builtin_training_resume.py': (
-        ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb',),
+        ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb', '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423',),
         '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
     'experiments/learner/contextual.py': (
-        ('fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
+        ('070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
         '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
     'experiments/learner/contextual_model.py': (
-        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f',),
-        '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d'),
+        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d',),
+        'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72'),
     'experiments/learner/contextual_rollout.py': (
-        ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637',),
-        'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205'),
+        ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
+        '2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346'),
     'experiments/learner/evaluate_builtin_opponent.py': (
-        ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0',),
+        ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
+    'experiments/learner/evaluate_continuation.py': (
+        ('6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d',),
+        '0a52b1e1a73ce78a4b7d1d3a59951bf7e93c32dd44f0dee100fa58dbdd655ed3'),
     'experiments/learner/first_run.py': (
-        ('8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c',),
+        ('645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a', '8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c',),
         '645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a'),
+    'experiments/learner/gameplay.py': (
+        ('f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f',),
+        '9688b93ba526704df51c7d376d27f46c013ec7bdc1ad09432e3de2a0f1fa99c4'),
     'experiments/learner/inference.py': (
-        ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54',),
+        ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54', 'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14',),
         'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14'),
     'experiments/learner/ppo.py': (
-        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60',),
-        '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682'),
+        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682',),
+        '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
 # runner, lock), compared with the accepted implementation's git blobs: only these files may differ,
@@ -136,14 +156,20 @@ FAST_PATH_TREE = {
         '71c6bc91c4fe74896e1fc6f43ef9d1f759f2d60e683c93a6623fdfad09c48b14'),
     'experiments/headless/env.py': ('3da283d9ebb185878d35ef989551ffd04cd18ab2',
         '1f5fb796cb67cd68bc9a755197f73128c16ee22bf19118428babf5ef281c519b'),
+    'experiments/learner/interaction_guard.py': ('',
+        '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f'),
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '4ca2d18a83010b2817d934e3990e5d755d425def3f1f89ab4d2177beeca7f881'),
+        '1a3849d1f8c1917f1c9a181f360c8fb057e3e4ebb9e710f1eb273d656cc883b4'),
+    'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
+        '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
+    'validation/probes/validate_hero_policy.py': ('55badab454804f7fc2e1d544840ad830c1aab5ec',
+        '574850634c7f617b0e9e5a9dada02cdb08e211ca7e05379af98133f2089d85f2'),
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '6b111a73564d2af57e74237470d43732db7cce6dde91903ce2d8e71451d8231c'
+LOCAL_ADAPTER_TRANSITION_AST = '13de226ed1cda4eacc688de3391c9fb910469ee2e1bf88ee6f2317f69513c91c'
 
 
 def write_new(path, value):
@@ -232,8 +258,9 @@ def local_adapter_transition(commit, expected, historical, current):
             'Unreviewed historical local adapter')
     require(_adapter_ast_digest(current) == LOCAL_ADAPTER_TRANSITION_AST,
             'Local adapter differs from the reviewed profile transition')
-    return {'transition': ('reviewed_exact_fast_path_adapter' if commit == ACCEPTED_ADAPTER_COMMIT
-                           else 'explicit_map_profile_and_seed_namespace'),
+    return {'transition': 'reviewed_policy_support_adapter',
+            'policy_support_contract': interaction_guard.VERSION,
+            'policy_support_activation': 'explicit_session_and_plan_only',
             'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
             'current_ast_sha256': LOCAL_ADAPTER_TRANSITION_AST,
             'historical_code_executed': False, 'historical_metadata_rewritten': False}
@@ -243,8 +270,11 @@ def fast_path_transition(name, expected, current):
     accepted, fast = FAST_PATH_SOURCES.get(name, ((), None))
     require(expected in accepted and hashlib.sha256(current).hexdigest() == fast,
             'Policy, PPO or collector implementation changed: ' + name)
-    return {'transition': 'reviewed_exact_fast_path', 'historical_sha256': expected, 'current_sha256': fast,
-            'policy_ppo_mathematics_unchanged': True, 'historical_code_executed': False}
+    support_change = name in POLICY_SUPPORT_SOURCES
+    return {'transition': 'reviewed_policy_support_transition' if support_change else 'reviewed_exact_fast_path',
+            'historical_sha256': expected, 'current_sha256': fast,
+            'policy_support_contract': interaction_guard.VERSION if support_change else None,
+            'policy_ppo_mathematics_unchanged': not support_change, 'historical_code_executed': False}
 
 
 def _git_blob(data):
@@ -283,7 +313,7 @@ def discovered_reviewed_sources(root):
 
 
 def reviewed_tree(root=ROOT):
-    """Every file of the run's code equals the accepted implementation or its reviewed fast-path pin."""
+    """Every executable file matches accepted bytes or its reviewed source pin."""
     def git(*args):
         return subprocess.check_output(['git', '-C', str(root), *args], text=True, timeout=30)
     accepted = {}
@@ -311,7 +341,7 @@ def reviewed_tree(root=ROOT):
 
 
 def source_compatibility(parent):
-    """Every learner/PPO byte remains exact except recognized routing glue and the reviewed fast path."""
+    """Recognize only pinned execution changes and the disclosed support transition."""
     require(parent['interface'] == INTERFACE, 'Interface transition forbidden')
     require(parent['torch'].split('+')[0] == str(torch.__version__).split('+')[0],
             'Unreviewed PyTorch version transition')
@@ -339,8 +369,13 @@ def source_compatibility(parent):
                 'Policy, PPO or collector implementation changed: ' + name)
         changes[name] = 'Recognized check_identity scope routing only; remaining AST exact'
     fast = sorted(k for k, v in changes.items() if type(v) is dict and v['transition'] == 'reviewed_exact_fast_path')
+    support = sorted(k for k, v in changes.items() if type(v) is dict
+                     and v['transition'] in ('reviewed_policy_support_transition', 'reviewed_policy_support_adapter'))
     return {'historical_commit': parent['git_commit'], 'changes': changes,
-            'policy_ppo_unchanged': not fast, 'reviewed_exact_fast_path': fast,
+            'policy_ppo_unchanged': not (fast or support), 'reviewed_exact_fast_path': fast,
+            'reviewed_policy_support_transition': support,
+            'policy_support_contract': interaction_guard.VERSION if support else None,
+            'terminal_reward_and_ppo_formula_unchanged': True,
             'reviewed_fast_path_tree': reviewed_tree(), 'historical_metadata_rewritten': False}
 
 
@@ -505,12 +540,30 @@ def apply_execution(plan):
     from experiments.headless import background_check
     from . import ppo
     value = check_execution(plan['execution'])
+    policy_support = check_policy_support(plan.get('policy_support'))
     background_check.FORK = value['overlapped_verification']
     ppo.PREFIX_HELPERS = value['prefix_helpers']
     ppo.REPLAY_TEXT_LEAVES = value['text_leaf_replay']
     ppo.TEXT_REPLAY_WORKERS = value['replay_threads']
     ppo.EXPERIMENTS = frozenset(value['experiments'])
+    interaction_guard.ACTIVE_VERSION = policy_support
     return value
+
+
+def check_policy_support(value):
+    """An absent historical binding is disabled; only the registered version is accepted."""
+    require(value is None or type(value) is str and value == interaction_guard.VERSION,
+            'Unknown policy support intervention')
+    return value
+
+
+def check_policy_support_binding(plan, session):
+    selected = check_policy_support(plan.get('policy_support'))
+    require(selected == check_policy_support(session.get('policy_support')),
+            'Batch/session policy support differs')
+    require(selected == check_policy_support((plan.get('checkpoint_metadata') or {}).get('policy_support')),
+            'Policy support differs from checkpoint metadata')
+    return selected
 
 
 def check_profile(session, assets):
@@ -530,6 +583,7 @@ def read_session(path, *, active=True):
     path = durable_path(path)
     session = json.loads(path.read_text())
     require(session['schema'] == SESSION_SCHEMA and session['scope'] == SCOPE, 'Unknown local session')
+    check_policy_support(session.get('policy_support'))
     require(path == Path(session['run_dir'])/'session.json', 'Session path changed')
     check_clock(session, active=active)
     require(source_identity(INTERFACE) == session['source'] and not session['source']['tracked_worktree_dirty'],
@@ -570,7 +624,7 @@ def schedule(session, sequence, seat, evaluate=False):
                  engine_seed=engine+i, policy_seed=policy+i) for i in range(4)]
 
 
-def check_lineage(parent_plan, execution):
+def check_lineage(parent_plan, execution, policy_support=None):
     """An exact session never continues a parent that a numerical experiment produced.
 
     A session running an experiment may start from an exact parent or continue its own experiment;
@@ -579,6 +633,12 @@ def check_lineage(parent_plan, execution):
     produced = set((parent_plan.get('checkpoint_metadata') or {}).get('numerical_experiments', []))
     require(produced <= set(check_execution(execution)['experiments']),
             'Parent was produced by a numerical experiment this session does not run: ' + ', '.join(sorted(produced)))
+    selected = check_policy_support(policy_support)
+    inherited = check_policy_support((parent_plan.get('checkpoint_metadata') or {}).get('policy_support'))
+    require(check_policy_support(parent_plan.get('policy_support')) == inherited,
+            'Parent plan/metadata policy support differs')
+    require(inherited is None or inherited == selected,
+            'Guarded parent cannot silently change or drop its policy support')
 
 
 def check_identity(plan):
@@ -597,6 +657,7 @@ def _check_identity(plan):
     for key in ('profile', 'source', 'runtime', 'implementation', 'prerequisites', 'configuration', 'execution',
                 'absolute_deadline_unix', 'compute_deadline_unix'):
         require(plan[key] == session[key], 'Batch/session identity differs: ' + key)
+    check_policy_support_binding(plan, session)
     experiments = check_execution(plan['execution'])['experiments']
     require(plan['checkpoint_metadata'].get('numerical_experiments', []) == experiments,
             'Numerical experiment selection differs from its checkpoint metadata')
@@ -613,7 +674,7 @@ def _check_identity(plan):
     for value in (plan['checkpoint'], plan['replay_binary'], *plan['parent_descriptor'].values()):
         _bound(value)
     parent_plan, parent_report = read_descriptor(plan['parent_descriptor'])
-    check_lineage(parent_plan, plan['execution'])
+    check_lineage(parent_plan, plan['execution'], plan.get('policy_support'))
     progress, steps, _ = resume._completion(parent_plan, parent_report)
     require(all(plan['parent'][key] == plan['parent_descriptor'][key] for key in ('plan', 'report', 'policy', 'resume'))
             and plan['parent']['progress'] == vars(progress) and plan['parent']['optimizer_steps'] == steps,
@@ -626,7 +687,7 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     session_path = Path(session_path).resolve()
     session = read_session(session_path)
     state = restore_parent(parent_descriptor)
-    check_lineage(read_descriptor(parent_descriptor)[0], session['execution'])
+    check_lineage(read_descriptor(parent_descriptor)[0], session['execution'], session.get('policy_support'))
     require(operational_configuration(parent_descriptor, session.get('batch_wall_seconds'))
             == session['configuration'], 'Parent PPO configuration differs')
     rows = schedule(session, sequence, seat, evaluate)
@@ -647,7 +708,8 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     plan = dict(schema=(batches.EVALUATION if evaluate else batches.SCHEMA)+'-plan', scope=SCOPE, profile=session['profile'],
         mode='evaluation' if evaluate else 'training', seat=seat, batch_sequence=sequence,
         source=session['source'], implementation=session['implementation'], prerequisites=session['prerequisites'],
-        configuration=session['configuration'], execution=session['execution'], runtime=session['runtime'], binary=str(binary), data=session['data'],
+        configuration=session['configuration'], execution=session['execution'], policy_support=session.get('policy_support'),
+        runtime=session['runtime'], binary=str(binary), data=session['data'],
         game_map=str(game_map), map=map_identity(game_map, seat, session['profile']), native=launcher.identity(),
         replay_binary=binding(binary.parent/'vcmireplay'), native_opponents=[pilot.native_opponent(session['runtime'], s) for s in (0, 1)],
         schedule=rows, execution_output=str(output/'execution'), parent=state.bindings,
@@ -661,7 +723,7 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     plan['checkpoint_metadata'] = {**session['source'], 'parent_plan_sha256': state.bindings['plan']['sha256'],
         'parent_report_sha256': state.bindings['report']['sha256'], 'initial_checkpoint': state.bindings['policy'],
         'native_opponent': {k: v for k, v in plan['native_opponents'][0].items() if k != 'player'},
-        'archived_neural_pool_executed': False}
+        'archived_neural_pool_executed': False, 'policy_support': session.get('policy_support')}
     if session['execution']['experiments']:
         # The plan, and through its metadata every checkpoint it produces, names the experiment.
         plan['checkpoint_metadata']['numerical_experiments'] = list(session['execution']['experiments'])
@@ -709,6 +771,7 @@ def require_baselines(plan):
             continue
         bp = json.loads(_bound(row['plan']).read_text())
         br = json.loads(_bound(row['report']).read_text())
+        check_policy_support_binding(bp, session)
         require(br['plan_sha256'] == row['plan']['sha256'], 'Baseline report/plan mismatch')
         require(bp['local_session'] == plan['local_session'] and bp['checkpoint'] == session['initial_parent']['policy']
                 and bp['profile'] == session['profile']

@@ -323,7 +323,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     if set(optimized) != owned or len(optimized) != len(owned):
         raise ValueError("Optimizer must own exactly the current trainable model parameters")
     phase = perf_counter()
-    inputs = tuple(encode_history(item.history) for item in rollouts)
+    from .contextual_rollout import behavior_guard_version
+    inputs = tuple(encode_history(item.history, guard_version=behavior_guard_version(item.decisions)) for item in rollouts)
     timings["history_encoding"] = perf_counter() - phase
     phase = perf_counter()
     _verify_behavior(model, rollouts, inputs)

@@ -15,7 +15,8 @@ from experiments.headless import contextual_evidence as native
 from . import contextual as c
 from .contextual_model import ModelConfig, model_schema_for, weights_sha256
 from .contextual_rollout import (ContextualSession, BehaviorDecision, DecisionEstimate,
-                                 RecurrentPrefix, _frame_bytes, _json_native, _wire_text)
+                                 RecurrentPrefix, _frame_bytes, _json_native, _wire_text,
+                                 behavior_guard_version, serialized_guard_version, _history_guards, _support)
 
 SCHEMA = "heroes-builtin-evaluation-rollout-v1"
 COLORS = evidence.COLORS
@@ -78,6 +79,7 @@ class BuiltinCollectedEpisode:
             evidence.require(item.prefix == expected, "Own value estimate has another recurrent prefix")
             values[item.decision_seq] = item.value
         records = {}
+        guards = _history_guards(self.history, behavior_guard_version(self.decisions))
         for item in self.decisions:
             evidence.require(item.decision_seq in prefixes and item.decision_seq not in records,
                              "Behavior must bind a unique own decision")
@@ -85,8 +87,11 @@ class BuiltinCollectedEpisode:
             expected = RecurrentPrefix(history.episode, self.player, self.checkpoint, self.weights_sha256,
                                        item.decision_seq, prefixes[item.decision_seq])
             evidence.require(item.prefix == expected and item.value == values[item.decision_seq]
-                             and item.opponent_checkpoint == token and item.support.offers == frame.offers,
+                             and item.opponent_checkpoint == token and item.support == _support(frame, guards.get(frame.seq)),
                              "Own behavior, support or native opponent binding changed")
+            evidence.require(item.support.guard is None or item.support.guard.permits(
+                             item.action, frame.observation, frame.offers),
+                             "Own action exceeds its reconstructed visible interaction budget")
             records[item.decision_seq] = item
         evidence.require(tuple(records) == tuple(sorted(records)), "Own choices must be chronological")
         evidence.require(all(f.decision_seq in records and records[f.decision_seq].action == f.action
@@ -138,13 +143,14 @@ def load_builtin_episode(path):
     evidence.require(frames and frames[0].player == raw["player"], "Artifact belongs to another player")
     token = _opponent_token(raw["opponent_identity"], raw["player"])
     decisions = []
+    guards = _history_guards(frames, serialized_guard_version(raw["decisions"]))
     for item in raw["decisions"]:
         evidence.require(type(item) is dict and "opponent_checkpoint" not in item,
                          "A native opponent has no invented neural checkpoint")
         seq = item.get("decision_seq")
         evidence.require(type(seq) is int and 0 <= seq < len(frames) and frames[seq].kind == "decision",
                          "Behavior record references no actual own decision")
-        decisions.append(BehaviorDecision.from_dict({**item, "opponent_checkpoint": token}, frames[seq]))
+        decisions.append(BehaviorDecision.from_dict({**item, "opponent_checkpoint": token}, frames[seq], guards.get(seq)))
     estimates = []
     for item in raw["estimates"]:
         evidence.require(type(item) is dict and set(item) == {"decision_seq", "value", "prefix"}, "Malformed own value estimate")

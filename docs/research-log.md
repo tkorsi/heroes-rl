@@ -508,3 +508,12 @@ ignored generated virtualenv. The earlier main refusal is retained; learner math
 and native runtime were unchanged. [Main readiness](../validation/original699-main-readiness-2026-10-27.json)
 confirms exact699 restoration,4,720 remaining games and fresh sequence337, with
 zero launched official games or updates. Both ownership locks are free.
+
+## 27 October 2026 — prospective visible interaction budget
+
+The user requested fixing repeated actions without reward shaping. The
+[prospective protocol](research/interaction-guard-2026-10-27.md) discloses a
+versioned policy-support intervention, its management limits and mandatory-choice
+escapes. It requires frozen-policy native replay/reconstruction and unchanged
+full checkpoint state before enabling a manual continuation. This is not an
+exact-performance claim; no official launch is part of preparation.

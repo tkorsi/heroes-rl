@@ -16,7 +16,8 @@ from pathlib import Path
 import torch
 
 from . import contextual as c
-from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, WeightsSnapshot, distribution_schema_for, model_schema_for, weights_sha256
+from .contextual_model import ContextualEncoder, DecisionSupport, ModelConfig, WeightsSnapshot, decision_support, model_schema_for, weights_sha256
+from .interaction_guard import GuardSupport, Tracker
 
 ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
 TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
@@ -94,13 +95,41 @@ def _repeats(raw, known, verbatim):
 
 def _support_dict(support):
     offers = c.encode_offers(support.offers)
-    return {"action_schema": support.action_schema, "context": offers["context"], "offers": offers,
-            "distribution_schema": support.distribution_schema}
+    result = {"action_schema": support.action_schema, "context": offers["context"], "offers": offers,
+              "distribution_schema": support.distribution_schema}
+    if support.guard is not None:
+        result["interaction_guard"] = support.guard.to_dict()
+    return result
 
 
-def _support(frame):
-    return DecisionSupport(action_schema=frame.offers.schema, context=frame.offers.context, offers=frame.offers,
-                           distribution_schema=distribution_schema_for(frame.offers.schema))
+def _support(frame, guard=None):
+    return decision_support(frame, guard)
+
+
+def behavior_guard_version(decisions):
+    """Use artifact-bound support, never the process's current collection default."""
+    versions = {item.support.guard.version if item.support.guard is not None else None for item in decisions}
+    if len(versions) > 1:
+        raise ValueError("Mixed interaction guard versions in one player rollout")
+    return next(iter(versions), None)
+
+
+def _history_guards(history, version):
+    tracker = Tracker(version=version)
+    return {frame.seq: guard for frame in history if (guard := tracker.observe(frame)) is not None}
+
+
+def serialized_guard_version(decisions):
+    versions = set()
+    for record in decisions:
+        if type(record) is not dict or type(record.get("support")) is not dict:
+            raise ValueError("Expected serialized behavior support")
+        support = record["support"]
+        guard = GuardSupport.from_dict(support["interaction_guard"]) if "interaction_guard" in support else None
+        versions.add(guard.version if guard is not None else None)
+    if len(versions) > 1:
+        raise ValueError("Mixed serialized interaction guard versions")
+    return next(iter(versions), None)
 
 
 def _record(raw, keys):
@@ -192,9 +221,9 @@ class BehaviorDecision:
                 "prefix": self.prefix.to_dict(), "opponent_checkpoint": self.opponent_checkpoint}
 
     @classmethod
-    def from_dict(cls, raw, frame):
+    def from_dict(cls, raw, frame, guard=None):
         data = _record(raw, ("decision_seq", "action", "support", "log_prob", "value", "conditionals", "prefix", "opponent_checkpoint"))
-        support = _support(frame)
+        support = _support(frame, guard)
         if data["support"] != _support_dict(support):
             raise ValueError("Serialized support disagrees with the actual decision")
         action = c.decode_frame(dict(schema=frame.schema, episode=frame.episode, player=frame.player,
@@ -297,12 +326,16 @@ class ContextualRollout:
             if item.prefix != expected: raise ValueError("Decision value prefix is not its complete own history")
             estimates[item.decision_seq] = item
         records = {}
+        guards = _history_guards(self.history, behavior_guard_version(self.decisions))
         for record in self.decisions:
             seq = record.decision_seq
             if seq in records or seq >= len(self.history) or self.history[seq].kind != "decision":
                 raise ValueError("Behavior must reference unique actual player decisions")
-            if record.support != _support(self.history[seq]) or record.opponent_checkpoint != self.opponent_checkpoint:
+            if record.support != _support(self.history[seq], guards.get(seq)) or record.opponent_checkpoint != self.opponent_checkpoint:
                 raise ValueError("Behavior support/opponent changed")
+            if record.support.guard is not None and not record.support.guard.permits(
+                    record.action, self.history[seq].observation, self.history[seq].offers):
+                raise ValueError("Behavior action exceeds its visible interaction budget")
             expected = RecurrentPrefix(self.episode, self.player, self.behavior_checkpoint, self.weights_sha256, seq, prefixes[seq])
             if record.prefix != expected: raise ValueError("Behavior recurrent prefix is not the complete own history")
             if record.value != estimates[seq].value: raise ValueError("Sampled value differs from its own decision estimate")
@@ -371,7 +404,9 @@ class ContextualRollout:
         if any(type(data[name]) is not list for name in ("history", "decisions", "samples", "estimates")):
             raise ValueError("Rollout sequences must be JSON arrays")
         history = tuple(c.decode_frame(frame) for frame in data["history"])
-        decisions = tuple(BehaviorDecision.from_dict(record, history[record["decision_seq"]]) for record in data["decisions"])
+        guards = _history_guards(history, serialized_guard_version(data["decisions"]))
+        decisions = tuple(BehaviorDecision.from_dict(record, history[record["decision_seq"]],
+                         guards.get(record["decision_seq"])) for record in data["decisions"])
         by_seq = {record.decision_seq: record for record in decisions}
         samples = []
         for raw_sample in data["samples"]:
@@ -456,7 +491,7 @@ class ContextualSession:
             if frame.kind == "decision":
                 if output.decision is None: raise ValueError("Model omitted decision policy/value")
                 value = float(output.decision.value.detach().item()); _finite(value, "behavior value")
-                if output.decision.distribution.support != _support(frame): raise ValueError("Model changed contextual support")
+                if output.decision.distribution.support != _support(frame, encoded.guard): raise ValueError("Model changed contextual support")
                 self._values[frame.seq] = value
                 self._prefixes[frame.seq] = RecurrentPrefix(frame.episode, frame.player, self.checkpoint,
                     self.weights_sha256, frame.seq, self._digest.hexdigest())

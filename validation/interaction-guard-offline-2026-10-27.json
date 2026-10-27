@@ -1,0 +1,54 @@
+{
+  "independent_legacy_model_comparison": {
+    "bitwise_equal": true,
+    "decisions": 30,
+    "histories": 14,
+    "seeded_samples": 360
+  },
+  "initial_dependency_check": "missing generated checkout; canonical preparation then completed",
+  "model_tensor_architecture_change": false,
+  "native_validation": "pending",
+  "next_training_sequence": 355,
+  "official_training_launched": false,
+  "parent_checkpoint": 717,
+  "policy_support_change": true,
+  "remaining_games": 4648,
+  "review_corrections": [
+    "Initial cast acknowledgement is not a completed effect; cast/cancel cannot reset navigation.",
+    "Spell target reply acknowledgement alone is also not counted as progress; visible world changes still reset.",
+    "Builtin evaluation loaders independently reconstruct the support from complete history."
+  ],
+  "reward_change": false,
+  "root_suites": [
+    {
+      "modules": [
+        "test_interaction_guard",
+        "test_interaction_guard_model",
+        "test_interaction_guard_rollout",
+        "test_interaction_guard_builtin",
+        "test_contextual_rollout",
+        "test_contextual_ppo",
+        "test_local_fast_path",
+        "test_local_script_training"
+      ],
+      "passed": 87,
+      "skipped": 1,
+      "tests": 88
+    },
+    {
+      "modules": [
+        "test_ppo_prefix_performance",
+        "test_prefix_pool",
+        "test_original_continuation",
+        "test_local_script_controller"
+      ],
+      "passed": 55,
+      "skipped": 1,
+      "tests": 56
+    }
+  ],
+  "schema": "heroes-interaction-guard-offline-v1",
+  "status": "passed",
+  "timestamp_utc": "2026-10-27T19:29:30.922983+00:00",
+  "version": "visible-interaction-budget-v1"
+}

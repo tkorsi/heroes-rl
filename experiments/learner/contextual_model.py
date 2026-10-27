@@ -24,6 +24,9 @@ import torch
 from torch import Tensor, nn
 
 from . import contextual as c
+from . import interaction_guard as interaction_guard
+
+_DEFAULT_GUARD = object()
 
 MODEL_SCHEMA = "heroes-context-model-v1"
 DISTRIBUTION_SCHEMA = "heroes-context-policy-v1"
@@ -83,7 +86,11 @@ def model_schema_for(profile_or_schema):
     return ARMIES_MODEL_SCHEMA if profile.army_transfer else MODEL_SCHEMA
 
 
-def distribution_schema_for(profile_or_schema):
+def distribution_schema_for(profile_or_schema, guard_version=None):
+    if guard_version is not None:
+        if guard_version != interaction_guard.VERSION:
+            raise ValueError("Unsupported contextual interaction guard")
+        return distribution_schema_for(profile_or_schema) + "+" + guard_version
     profile = c.profile_for(profile_or_schema)
     if profile.capabilities:
         return EXPANDED_DISTRIBUTION_SCHEMA
@@ -949,11 +956,14 @@ class ContextualInput:
     semantics: tuple | None
     # These are the frame's CURRENT observation, never an accumulated map cache.
     observation: c.Observation | None = None
+    guard: interaction_guard.GuardSupport | None = None
 
 
 def frame_key(frame):
     """Exact prefix memo key of a frame with semantics: repr keeps number types and signed zeros."""
-    return repr((frame.semantics, frame.observation))
+    if frame.guard is None:
+        return repr((frame.semantics, frame.observation))
+    return repr((frame.semantics, frame.observation, frame.guard))
 
 
 def frame_keys_until(keys, frames, stop):
@@ -967,9 +977,11 @@ def frame_keys_until(keys, frames, stop):
 class ContextualEncoder:
     """Chronology checker plus temporary routing bindings, with no neural state."""
 
-    def __init__(self, episode, player, schema=c.SCHEMA):
+    def __init__(self, episode, player, schema=c.SCHEMA, *, guard_version=_DEFAULT_GUARD):
         self.history = c.PlayerHistory(episode, player, schema=schema)
         self.observation = None
+        self.guard_tracker = (interaction_guard.Tracker() if guard_version is _DEFAULT_GUARD
+                              else interaction_guard.Tracker(guard_version))
 
     def encode(self, frame):
         candidate = copy(self.history)
@@ -1004,19 +1016,22 @@ class ContextualEncoder:
             # Consumer layer, revisions, sequence numbers, evidence and command
             # counters are deliberately absent. A consumed-action marker remains.
             payload = _node("frame", *children)
-        result = ContextualInput(frame, payload, frame.observation)
+        tracker = self.guard_tracker if self.guard_tracker.version is None else self.guard_tracker.copy()
+        guard = tracker.observe(frame)
+        result = ContextualInput(frame, payload, frame.observation, guard)
+        self.guard_tracker = tracker
         self.history = candidate
         if frame.observation is not None:
             self.observation = frame.observation
         return result
 
 
-def encode_history(frames):
+def encode_history(frames, *, guard_version=_DEFAULT_GUARD):
     frames = tuple(frames)
     if not frames:
         return ()
     first = frames[0]
-    encoder = ContextualEncoder(first.episode, first.player, first.schema)
+    encoder = ContextualEncoder(first.episode, first.player, first.schema, guard_version=guard_version)
     return tuple(encoder.encode(frame) for frame in frames)
 
 
@@ -1026,11 +1041,22 @@ class DecisionSupport:
     context: c.Context
     offers: c.Offers
     distribution_schema: str = DISTRIBUTION_SCHEMA
+    guard: interaction_guard.GuardSupport | None = None
 
     def __post_init__(self):
-        if (self.distribution_schema != distribution_schema_for(self.action_schema) or type(self.offers) is not c.Offers
+        if self.guard is not None and type(self.guard) is not interaction_guard.GuardSupport:
+            raise ValueError("Exact immutable interaction support required")
+        if (self.distribution_schema != distribution_schema_for(self.action_schema, self.guard.version if self.guard else None) or type(self.offers) is not c.Offers
                 or self.action_schema != self.offers.schema or self.context != self.offers.context):
             raise ValueError("Exact contextual policy support required")
+
+
+def decision_support(frame, guard=None):
+    """Bind native offers and the independently reconstructed behavior guard."""
+    if type(frame) is not c.Frame or frame.kind != "decision":
+        raise ValueError("A contextual decision frame is required")
+    return DecisionSupport(frame.offers.schema, frame.offers.context, frame.offers,
+                           distribution_schema_for(frame.offers.schema, guard.version if guard else None), guard)
 
 
 @dataclass(frozen=True)
@@ -1420,6 +1446,8 @@ class ContextualActorCritic(nn.Module):
     def _check_step(self, frame, state):
         if type(frame) is not ContextualInput:
             raise ValueError("Use the checked contextual history codec")
+        if frame.guard is not None:
+            decision_support(frame.frame, frame.guard)
         if self.config.schema != model_schema_for(frame.frame.schema):
             raise ValueError("Model version does not match this explicit history profile")
         if (not isinstance(state, Tensor) or state.shape != (self.config.hidden_size,)
@@ -1581,7 +1609,7 @@ class ContextualActorCritic(nn.Module):
         state = self.gru(vector, state)
         decision = None
         if frame.frame.kind == "decision":
-            distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache)
+            distribution = ContextualDistribution(self, state, frame.frame.observation, frame.frame.offers, cells, cache, frame.guard)
             decision = PolicyValue(self.value(state).squeeze(-1), distribution)
         return StepOutput(state, decision)
 
@@ -1595,10 +1623,12 @@ class ContextualDistribution:
     entropy coefficient zero, not a selected-path value mislabeled as entropy.
     """
 
-    def __init__(self, model, state, observation, offers, cells, cache):
+    def __init__(self, model, state, observation, offers, cells, cache, guard=None):
         self.model, self.state, self.observation, self.offers = model, state, observation, offers
         self.cells, self.cache = cells, cache
-        self.support = DecisionSupport(offers.schema, offers.context, offers, distribution_schema_for(offers.schema))
+        self.guard = guard
+        self.support = DecisionSupport(offers.schema, offers.context, offers,
+                                       distribution_schema_for(offers.schema, guard.version if guard else None), guard)
 
     def _features(self, semantic):
         return self.model._encode_root(semantic, self.cache)
@@ -1608,6 +1638,12 @@ class ContextualDistribution:
         return candidates.mv(torch.tanh(self.model.policy_query(self.state))) / sqrt(self.model.config.feature_size)
 
     def _kinds(self):
+        kinds = self._native_kinds()
+        if self.guard is None:
+            return kinds
+        return tuple(kind for kind in kinds if any(self._permitted(action) for action in self._representatives(kind)))
+
+    def _native_kinds(self):
         if self.offers.capability_panel is not None:
             panel = self.offers.capability_panel
             return (("close_capability",) if not panel.mandatory else ()) + tuple(
@@ -1651,8 +1687,103 @@ class ContextualDistribution:
         recruitment = offers.panel.recruitment
         return ("back", "select_recruit", "recruit") if recruitment.slider_max else ("back", "select_recruit")
 
+    def _action(self, kind, **values):
+        subject = None if kind in ("close", "end_turn") else self.offers.context.subject
+        return c.Action(kind, schema=self.offers.schema, **dict({"subject": subject}, **values))
+
+    def _permitted(self, action):
+        return self.guard is None or self.guard.permits(action, self.observation, self.offers)
+
+    def _filtered(self, choices, action_for):
+        # Guard predicates depend on the action's actors, not its quantity. The
+        # count tree therefore retains every native count for an admitted pair.
+        if self.guard is None:
+            return choices
+        return tuple(choice for choice in choices if self._permitted(action_for(choice)))
+
+    def _coordinates(self, subject):
+        width, height, _ = self.offers.size
+        return (index for index in range(width * height)
+                if self._permitted(self._action("move_to", subject=subject, x=index % width, y=index // width)))
+
+    def _subjects(self, kind):
+        refs = (self.offers.town_refs if kind == "open_town" else self.offers.movable_hero_refs
+                if kind == "move_to" and self.offers.movable_hero_refs is not None else self.offers.hero_refs)
+        if self.guard is None:
+            return refs
+        if kind == "move_to":
+            return tuple(ref for ref in refs if ref in self.guard.movable_heroes
+                         and next(self._coordinates(ref), None) is not None)
+        return self._filtered(refs, lambda ref: self._action(kind, subject=ref))
+
+    def _panel_action(self, control):
+        return self._action("open_panel", panel=control.panel,
+                            selection=control.ref if control.panel == "recruitment" else None)
+
+    def _pair_action(self, kind, pair):
+        source, destination, _ = pair
+        return self._action(kind, selection=source, destination=destination,
+                            count=1 if kind in ("transfer_stack", "split_stack") else None)
+
+    def _representatives(self, kind):
+        """One completion per non-quantity leaf, used before choosing a kind.
+
+        The visible interaction budget is quantity independent. Movement stays
+        lazy here, so testing whether a hero has a destination never materializes
+        the rectangle or scores a second policy distribution.
+        """
+        offers = self.offers
+        if kind in ("move_to", "open_hero", "open_town"):
+            for ref in self._subjects(kind):
+                if kind == "move_to":
+                    index = next(self._coordinates(ref), None)
+                    if index is not None:
+                        yield self._action(kind, subject=ref, x=index % offers.size[0], y=index // offers.size[0])
+                else:
+                    yield self._action(kind, subject=ref)
+        elif kind == "open_capability":
+            for panel in offers.capability_controls:
+                yield self._action(kind, panel=panel)
+        elif kind in c.CAPABILITY_ACTIONS:
+            for choice in offers.capability_panel.choices:
+                if choice.kind == kind:
+                    yield self._action(kind, selection=choice.ref, count=1 if kind == "trade_resource" else None)
+        elif kind == "choose_dialog":
+            for choice in offers.dialog_panel.choices:
+                yield self._action(kind, selection=choice.ref)
+        elif kind == "open_panel":
+            for control in offers.panel.controls:
+                yield self._panel_action(control)
+        elif kind == "open_stack":
+            for army in offers.armies:
+                for slot in army.slots:
+                    if slot.count:
+                        yield self._action(kind, selection=slot.ref)
+        elif kind in ("select_upgrade", "open_building", "select_recruit", "select_hero"):
+            choices = (offers.stack_panel.offers if kind == "select_upgrade" else
+                       offers.panel.buildings if kind == "open_building" else
+                       offers.panel.tavern.offers if kind == "select_hero" else offers.panel.recruitment.offers)
+            for choice in choices:
+                yield self._action(kind, selection=choice.ref)
+        elif kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks"):
+            choices = (offers.panel.armies.choices() if kind == "transfer_stack"
+                       else c.army_operation_choices(offers.armies, kind))
+            for pair in choices:
+                yield self._pair_action(kind, pair)
+        elif kind == "recruit":
+            recruit = offers.panel.recruitment
+            yield self._action(kind, selection=recruit.selected_offer_ref, destination=recruit.destination.ref, count=1)
+        elif kind == "construct":
+            yield self._action(kind, selection=offers.panel.building.ref)
+        elif kind == "hire_hero":
+            yield self._action(kind, selection=offers.panel.tavern.selected_offer_ref)
+        elif kind == "upgrade_stack":
+            yield self._action(kind, selection=offers.stack_panel.selected_upgrade_ref)
+        else:
+            yield self._action(kind)
+
     def _walk(self, action=None, generator=None):
-        if action is not None and not self.offers.permits(action):
+        if action is not None and (not self.offers.permits(action) or not self._permitted(action)):
             raise ValueError("Action is outside this exact behavior support")
         memo = self.model._leaf_memo()  # revalidated: weights or modes may differ from forward_step
         if memo is not self.cache.get(_LEAF_MEMO):
@@ -1676,14 +1807,15 @@ class ContextualDistribution:
                             kinds.index(action.kind) if action else None)]
         subject = panel = selection = destination = x = y = count = None
         if kind == "open_capability":
-            controls = self.offers.capability_controls
+            controls = self._filtered(self.offers.capability_controls, lambda panel: self._action(kind, panel=panel))
             index = choose("capability_panel", self._logits([_node("capability_panel", _text(item)) for item in controls]),
                            controls.index(action.panel) if action else None)
             subject, panel = self.offers.context.subject, controls[index]
         elif kind == "close_capability":
             subject = self.offers.context.subject
         elif kind in c.CAPABILITY_ACTIONS:
-            choices = tuple(item for item in self.offers.capability_panel.choices if item.kind == kind)
+            choices = self._filtered(tuple(item for item in self.offers.capability_panel.choices if item.kind == kind),
+                                     lambda item: self._action(kind, selection=item.ref, count=1 if kind == "trade_resource" else None))
             index = choose("capability_choice", self._logits([_capability_choice(item, self.observation) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             choice = choices[index]
@@ -1708,8 +1840,7 @@ class ContextualDistribution:
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
         elif kind in ("move_to", "open_hero", "open_town"):
-            refs = (self.offers.town_refs if kind == "open_town" else self.offers.movable_hero_refs
-                    if kind == "move_to" and self.offers.movable_hero_refs is not None else self.offers.hero_refs)
+            refs = self._subjects(kind)
             semantics = [_node(kind, _subject(self.observation, ref)) for ref in refs]
             index = choose("subject", self._logits(semantics), refs.index(action.subject) if action else None)
             subject = refs[index]
@@ -1720,7 +1851,13 @@ class ContextualDistribution:
                 target = self._features(semantics[index]).expand(width * height, -1)
                 state = self.state.expand(width * height, -1)
                 logits = self.model.coordinate(torch.cat((state, target, self.cells, positions), -1)).squeeze(-1)
-                index = choose("coordinate", logits, action.y * width + action.x if action else None)
+                if self.guard is None:
+                    index = choose("coordinate", logits, action.y * width + action.x if action else None)
+                else:
+                    coordinates = tuple(self._coordinates(subject))
+                    logits = logits[torch.tensor(coordinates, dtype=torch.long, device=logits.device)]
+                    index = coordinates[choose("coordinate", logits,
+                                        coordinates.index(action.y * width + action.x) if action else None)]
                 x, y = index % width, index // width
         elif kind == "open_panel":
             controls = self.offers.panel.controls
@@ -1728,6 +1865,7 @@ class ContextualDistribution:
             # duplicate controls must never double-count its probability mass.
             if any(sum(control.panel == panel for control in controls) > 1 for panel in ("hall", "tavern")):
                 raise ValueError("Duplicate semantic town panel controls")
+            controls = self._filtered(controls, self._panel_action)
             selected = next((i for i, control in enumerate(controls) if action and control.panel == action.panel
                              and (control.panel in ("hall", "tavern") or control.ref == action.selection)), None)
             index = choose("control", self._logits([_semantic(control) for control in controls]), selected)
@@ -1736,23 +1874,26 @@ class ContextualDistribution:
             selection = control.ref if panel == "recruitment" else None
         elif kind == "open_stack":
             choices = tuple(slot.ref for army in self.offers.armies for slot in army.slots if slot.count)
+            choices = self._filtered(choices, lambda ref: self._action(kind, selection=ref))
             index = choose("selection", self._logits([_army_slot(self.observation, ref, receiving=False) for ref in choices]),
                            choices.index(action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index]
         elif kind == "select_upgrade":
-            choices = self.offers.stack_panel.offers
+            choices = self._filtered(self.offers.stack_panel.offers, lambda item: self._action(kind, selection=item.ref))
             index = choose("selection", self._logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
         elif kind in ("open_building", "select_recruit", "select_hero"):
             choices = (self.offers.panel.buildings if kind == "open_building" else
                        self.offers.panel.tavern.offers if kind == "select_hero" else self.offers.panel.recruitment.offers)
+            choices = self._filtered(choices, lambda item: self._action(kind, selection=item.ref))
             index = choose("selection", self._logits([_semantic(item) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             subject, selection = self.offers.context.subject, choices[index].ref
         elif kind in ("transfer_stack", "split_stack", "merge_stacks", "swap_stacks"):
             exchange = self.offers.panel.armies if kind == "transfer_stack" else None
             choices = exchange.choices() if exchange else c.army_operation_choices(self.offers.armies, kind)
+            choices = self._filtered(choices, lambda pair: self._pair_action(kind, pair))
             sources = tuple(dict.fromkeys(source for source, _, _ in choices))
             source_semantics = [_army_slot(self.observation, ref, receiving=False) for ref in sources]
             if kind != "transfer_stack": source_semantics = [_node(kind, item) for item in source_semantics]
@@ -1813,7 +1954,7 @@ class ContextualDistribution:
                 count = low
         selected_action = c.Action(kind, subject, x, y, schema=self.offers.schema,
                                    panel=panel, selection=selection, count=count, destination=destination)
-        if not self.offers.permits(selected_action) or action is not None and selected_action != action:
+        if not self.offers.permits(selected_action) or not self._permitted(selected_action) or action is not None and selected_action != action:
             raise ValueError("Conditional action construction disagrees with support")
         return selected_action, ActionEvaluation(torch.stack([part.log_prob for part in trace]).sum(), tuple(trace))
 

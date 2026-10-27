@@ -22,7 +22,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-ACCEPTED = ('3268f2f8cae6a01277c1629c5d0a9fb8958b5786', 'a8ac411d32658387598376c792136bc586edc5f9')
+ACCEPTED = ('3268f2f8cae6a01277c1629c5d0a9fb8958b5786', 'a8ac411d32658387598376c792136bc586edc5f9',
+            'a92250fe96feedcb7c21c169bd69ad9c7281b5ef')
 ADAPTER = 'experiments/learner/local_script_training.py'
 
 
@@ -46,7 +47,10 @@ def expected_pins():
         if not path.exists():
             raise SystemExit('Accepted learner file is missing here: ' + name)
         current = hashlib.sha256(path.read_bytes()).hexdigest()
-        if current not in accepted:
+        # Retain older629 parent transitions even when this file already equals
+        # the later a922 continuation. These pins certify bytes, not equivalent
+        # policy support; the adapter classifies that intervention separately.
+        if any(current != digest for digest in accepted):
             pins[name] = (tuple(accepted), current)
     return pins
 

@@ -19,6 +19,7 @@ import torch
 from experiments.headless import background_check
 from experiments.learner import local_script_training as local
 from experiments.learner import ppo
+from experiments.learner import interaction_guard
 
 ROOT = Path(__file__).resolve().parents[1]
 ACCEPTED_629 = '3268f2f8cae6a01277c1629c5d0a9fb8958b5786'
@@ -43,14 +44,20 @@ class ReviewedTransitionTests(unittest.TestCase):
         self.assertEqual({k: (tuple(v[0]), v[1]) for k, v in local.FAST_PATH_SOURCES.items()}, pins.expected_pins())
         self.assertEqual(local.LOCAL_ADAPTER_TRANSITION_AST, pins.adapter_ast())
 
-    def test_accepted_parents_continue_under_the_named_fast_path(self):
-        for commit in (ACCEPTED_629, local.ACCEPTED_ADAPTER_COMMIT):
+    def test_accepted_parents_name_the_separate_policy_support_transition(self):
+        for commit in (ACCEPTED_629, local.ACCEPTED_ADAPTER_COMMIT, pins.ACCEPTED[2]):
             with self.subTest(commit=commit):
-                proof = local.source_compatibility(accepted_parent(commit))
-                self.assertEqual(proof['reviewed_exact_fast_path'], sorted(local.FAST_PATH_SOURCES))
+                parent = accepted_parent(commit)
+                proof = local.source_compatibility(parent)
+                changed = {name for name, digest in parent['source_sha256'].items()
+                           if name in local.FAST_PATH_SOURCES and digest != local.FAST_PATH_SOURCES[name][1]}
+                self.assertEqual(proof['reviewed_exact_fast_path'], sorted(changed - local.POLICY_SUPPORT_SOURCES))
+                self.assertEqual(proof['reviewed_policy_support_transition'],
+                    sorted((changed & local.POLICY_SUPPORT_SOURCES) | {'experiments/learner/local_script_training.py'}))
                 self.assertIs(proof['policy_ppo_unchanged'], False)
-                for name in local.FAST_PATH_SOURCES:
-                    self.assertEqual(proof['changes'][name]['transition'], 'reviewed_exact_fast_path')
+                for name in changed:
+                    self.assertEqual(proof['changes'][name]['transition'],
+                        'reviewed_policy_support_transition' if name in local.POLICY_SUPPORT_SOURCES else 'reviewed_exact_fast_path')
 
     def test_a_fast_parent_continues_without_transition(self):
         parent = accepted_parent()
@@ -224,6 +231,16 @@ class ExecutionChoiceTests(unittest.TestCase):
         def restore():
             background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS, ppo.EXPERIMENTS = saved
         self.addCleanup(restore)
+        self.addCleanup(setattr, interaction_guard, 'ACTIVE_VERSION', interaction_guard.ACTIVE_VERSION)
+
+    def test_guard_activation_is_plan_bound_and_old_plans_clear_it(self):
+        execution = local.execution_choice(overlapped_verification=False)
+        local.apply_execution({'execution': execution, 'policy_support': interaction_guard.VERSION})
+        self.assertEqual(interaction_guard.ACTIVE_VERSION, interaction_guard.VERSION)
+        local.apply_execution({'execution': execution})
+        self.assertIsNone(interaction_guard.ACTIVE_VERSION)
+        with self.assertRaisesRegex(ValueError, 'policy support'):
+            local.apply_execution({'execution': execution, 'policy_support': 'unreviewed'})
 
     def test_only_known_exact_choices_and_named_experiments(self):
         value = local.execution_choice(overlapped_verification=True, prefix_helpers=3)
@@ -265,6 +282,29 @@ class ExecutionChoiceTests(unittest.TestCase):
 class LineageTests(unittest.TestCase):
     exact = local.execution_choice(overlapped_verification=False)
     shared = local.execution_choice(overlapped_verification=False, experiments=['shared_graph_encodings'])
+
+    def test_guarded_parent_cannot_silently_drop_guard(self):
+        version = interaction_guard.VERSION
+        parent = {'policy_support': version, 'checkpoint_metadata': {'policy_support': version}}
+        local.check_lineage({}, self.exact, version)
+        local.check_lineage(parent, self.exact, version)
+        with self.assertRaisesRegex(ValueError, 'cannot silently'):
+            local.check_lineage(parent, self.exact)
+        with self.assertRaisesRegex(ValueError, 'plan/metadata'):
+            local.check_lineage({'checkpoint_metadata': {'policy_support': version}}, self.exact, version)
+        with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+            local.check_lineage({}, self.exact, 'other')
+
+    def test_guard_binding_matches_session_plan_and_checkpoint(self):
+        version = interaction_guard.VERSION
+        session = {'policy_support': version}
+        plan = {'policy_support': version, 'checkpoint_metadata': {'policy_support': version}}
+        self.assertEqual(local.check_policy_support_binding(plan, session), version)
+        self.assertIsNone(local.check_policy_support_binding({}, {}))
+        for changed, other in (({**plan, 'policy_support': None}, session),
+                               ({**plan, 'checkpoint_metadata': {}}, session), (plan, {})):
+            with self.assertRaisesRegex(ValueError, 'policy support|Policy support'):
+                local.check_policy_support_binding(changed, other)
 
     def test_an_exact_session_refuses_an_experimental_parent(self):
         experimental = {'checkpoint_metadata': {'numerical_experiments': ['shared_graph_encodings']}}
@@ -342,6 +382,15 @@ class RunnerDefaultTests(unittest.TestCase):
         self.assertFalse(args.fast_path)
         self.assertEqual((args.prefix_helpers, args.experiment), (0, []))
         self.assertEqual(len(controller.ACCEPTED_IMPLEMENTATION), 40)
+        self.assertIsNone(args.interaction_guard)
+
+    def test_guard_requires_explicit_release_and_survives_cli(self):
+        args = self.parse('--fast-path', '--interaction-guard', interaction_guard.VERSION)
+        self.assertEqual(args.interaction_guard, interaction_guard.VERSION)
+        with patch.object(controller.sys, 'argv', self.arguments('--interaction-guard', interaction_guard.VERSION)), \
+                redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as stopped:
+            controller.main()
+        self.assertEqual(stopped.exception.code, 2)
 
     def test_fast_options_require_the_explicit_fast_path(self):
         for extra in [('--prefix-helpers', '2'), ('--experiment', 'shared_graph_encodings'), ('--serial-verification',),

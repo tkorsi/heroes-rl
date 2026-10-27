@@ -25,7 +25,7 @@ from experiments.learner import contextual as c
 from experiments.learner.checkpoints import (TrainingProgress, load_checkpoint, load_policy_checkpoint,
     save_checkpoint, save_policy_checkpoint)
 from experiments.learner.contextual_model import ContextualActorCritic, weights_sha256
-from experiments.learner.contextual_rollout import CollectedEpisode, ContextualCollector
+from experiments.learner.contextual_rollout import CollectedEpisode, ContextualCollector, behavior_guard_version
 from experiments.learner.inference import digest, history_coverage, ordinary_map_identity, source_identity, write_json
 from experiments.learner.ppo import PPOConfig, _admit, _update, _verify_behavior
 from validation.probes.audit_contextual_histories import audit
@@ -213,7 +213,8 @@ def native_update(model, optimizer, folders, plan, *, receipts, generator, remai
     _admit(rollouts, model, native=True)
     # This explicit precheck also runs inside the numerical kernel; neither
     # trusts saved hidden tensors or a serialized behavior-probability claim.
-    _verify_behavior(model, rollouts, tuple(encode_history(item.history) for item in rollouts))
+    _verify_behavior(model, rollouts, tuple(encode_history(item.history, guard_version=behavior_guard_version(item.decisions))
+                                           for item in rollouts))
     result = _transactional_update(model, optimizer, rollouts, config=config, generator=generator,
                                    remaining=remaining, max_optimizer_steps=cfg["max_optimizer_steps"])
     return replace(result, purpose="approved_gameplay"), rollouts
@@ -383,7 +384,8 @@ def execute(plan_path, approved_sha256, output):
                     pool.assert_unchanged()
                     from .contextual_model import encode_history
                     for policy, trajectory in zip(models, collected.rollouts):
-                        _verify_behavior(policy, (trajectory,), (encode_history(trajectory.history),))
+                        _verify_behavior(policy, (trajectory,), (encode_history(trajectory.history,
+                                         guard_version=behavior_guard_version(trajectory.decisions)),))
                     row.update(status=manifest["status"], termination_reason=manifest["termination_reason"],
                                outcomes=manifest["outcomes_by_player"], rewards=manifest["rewards_by_player"],
                                coverage=history_coverage(tuple(env.history(color) for color in COLORS)),

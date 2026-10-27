@@ -20,7 +20,7 @@ import torch
 from experiments.learner import contextual as c
 from experiments.learner.checkpoints import load_policy_checkpoint
 from experiments.learner.contextual_model import ContextualEncoder, weights_sha256
-from experiments.learner.contextual_rollout import CollectedEpisode
+from experiments.learner.contextual_rollout import CollectedEpisode, behavior_guard_version
 from experiments.learner.inference import digest, write_json
 from experiments.learner.ppo import _admit
 from validation.probes.audit_contextual_histories import audit
@@ -67,7 +67,8 @@ def audit_episode(folder, loaded, *, townless_color=None):
         require(before == rollout.weights_sha256, "Checkpoint weights differ from behavior")
         persisted = tuple(c.decode_frame(json.loads(line)) for line in history_path.read_text().splitlines())
         require(persisted == rollout.history, "Rollout omits or changes persisted history")
-        encoder = ContextualEncoder(rollout.episode, rollout.player, rollout.history[0].schema)
+        encoder = ContextualEncoder(rollout.episode, rollout.player, rollout.history[0].schema,
+                                    guard_version=behavior_guard_version(rollout.decisions))
         state = model.initial_state()
         estimates = {item.decision_seq: item for item in rollout.estimates}
         decisions = {item.decision_seq: item for item in rollout.decisions}

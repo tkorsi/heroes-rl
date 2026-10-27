@@ -1,0 +1,93 @@
+{
+  "schema": "heroes-local-final717-preservation-v1",
+  "timestamp_utc": "2026-10-27T19:24:16.843810+00:00",
+  "run_id": "run-20261027T155928Z-49ef925a",
+  "source_commit": "a92250fe96feedcb7c21c169bd69ad9c7281b5ef",
+  "status": "stopped_requested",
+  "stop_reason": "manual_stop",
+  "shutdown_utc": "2026-10-27T19:15:13.322626+00:00",
+  "new_admitted_games": 72,
+  "new_ppo_updates": 18,
+  "training_outcomes": {
+    "win": 0,
+    "loss": 62,
+    "collection_window": 10
+  },
+  "evaluation_games": 8,
+  "evaluation_outcomes": {
+    "loss": 8
+  },
+  "latest_evaluation_checkpoint": 699,
+  "final717_evaluation_performed": false,
+  "failed_batches": 0,
+  "all_18_training_batches_passed": true,
+  "checkpoint_update": 717,
+  "progress": {
+    "decisions": 471200,
+    "rollouts": 2868,
+    "updates": 717
+  },
+  "optimizer_steps": 15717,
+  "original_target_games": 5000,
+  "original_admitted_games": 352,
+  "remaining_games": 4648,
+  "training_sequence_audit": {
+    "first": 337,
+    "last": 354,
+    "count": 18,
+    "unique": true,
+    "next_unused": 355
+  },
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_verified": true,
+  "private_branch": "codex/local-script-final717-checkpoint",
+  "private_package_commit": "a0426e55dc02bf62a226f084d5b70fe405e2dd49",
+  "private_receipt_commit": "10f7f814b74b04e99fcbb58256984adde1e31ce5",
+  "private_package_path": "local-script/run-20261027T155928Z-49ef925a",
+  "remote_tree": "29d7ae16765bd682b7703227aa4084163d3f212d",
+  "package_manifest_sha256": "5fedafefa40a791ce139428e545fed44bf994f835271cc9fefa51450632cbbca",
+  "all_29_package_blobs_independently_downloaded_and_sha256_compared": true,
+  "remote_receipt_commit_and_blobs_read_back": true,
+  "remote_full_restore": {
+    "exact_model_adam_rng_progress_pool": true,
+    "progress": {
+      "decisions": 471200,
+      "rollouts": 2868,
+      "updates": 717
+    },
+    "optimizer_steps": 15717,
+    "weights_sha256": "4bcc92d182e4f5f2e9af085c9815f07cc929a7a607c628e5d3d23bacf1b2bffc",
+    "frozen_source_commit": "a92250fe96feedcb7c21c169bd69ad9c7281b5ef"
+  },
+  "checkpoint_file_sha256": {
+    "plan": "3999e96992ffa819a580fe907bea3ce45591655e35925d280a972a4cf4423997",
+    "report": "4b4f18e6dfb8e62511d2299663c7fcf660130a484bf5f0a4b873ebdef776c11f",
+    "policy": "4086e044ce3684436885209ac79aa04e0c439ea450d24d0658d8df72675f5c02",
+    "resume": "57ca8b83229e583412c49ba1486dc69e0258b4269c7d2efe1c51bc0844a0cb8d",
+    "initial_checkpoint": "e18972c751c7f2db9dc932740f0dc482a0fdbe4224c3af0382a009cf7d10eace"
+  },
+  "owned_cleanup_verified": true,
+  "fresh_shutdown_audit": {
+    "timestamp_utc": "2026-10-27T19:22:22.043255+00:00",
+    "deadline_files_read": 121,
+    "recorded_pids_checked": 243,
+    "recorded_process_groups_checked": 121,
+    "live_owned_processes": [],
+    "owner_locks_available": [
+      "/Users/orsi/Projects/Heroes-artifacts/local-script-training/owner.lock",
+      "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/owner.lock"
+    ]
+  },
+  "full_raw_evidence_retained_locally": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261027T155928Z-49ef925a",
+  "full_raw_archive_remote_verified": false,
+  "source_summary_sha256": "9d14683804d12961729f77c5400a2cf1963aa6937ec79290c23abd9f5893701a",
+  "source_report_sha256": "b3c22b16f9554a8aed66c8afa3976027349fcdc646ff81523cc6f67b4ec8d8f7",
+  "source_shutdown_sha256": "f4c0b1ab6306f6fc92c36caca9c6e1563475c342d4e4c160f3ef5b2641de4538",
+  "new_games_during_preservation": 0,
+  "new_optimizer_updates_during_preservation": 0,
+  "limitations": [
+    "No dedicated final717 evaluation was run; the eight evaluation games belong to baseline699.",
+    "Full raw gameplay remains local; the private remote package contains complete717 state and required716 policy dependency, initial699 state, maps and compact provenance.",
+    "The restored frozen opponent pool is serialization state; the gameplay opponent remained native Nullkiller."
+  ]
+}
