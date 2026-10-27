@@ -463,7 +463,8 @@ def launch_owned(args):
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
     print(f"Implementation: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
           f"verification, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
-          f"{'on' if execution['text_leaf_replay'] else 'off'}"
+          + ('off' if not execution['text_leaf_replay'] else 'not used by the experiment' if execution['experiments']
+             else f"on {execution['prefix_helpers']} threads" if execution['prefix_helpers'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)

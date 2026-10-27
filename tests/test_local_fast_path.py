@@ -251,7 +251,7 @@ class RunnerDefaultTests(unittest.TestCase):
 
     def test_fast_options_require_the_explicit_fast_path(self):
         for extra in [('--prefix-helpers', '2'), ('--experiment', 'shared_graph_encodings'), ('--serial-verification',),
-                      ('--overlap-verification',), ('--fast-path', '--prefix-helpers', '9'),
+                      ('--overlap-verification',), ('--no-text-replay',), ('--fast-path', '--prefix-helpers', '9'),
                       ('--fast-path', '--experiment', 'unknown')]:
             with self.subTest(extra=extra), patch.object(controller.sys, 'argv', self.arguments(*extra)), \
                     patch.object(controller, 'start') as start, redirect_stderr(io.StringIO()):
@@ -273,7 +273,10 @@ class RunnerDefaultTests(unittest.TestCase):
         config = {'artifact_root': '/artifacts', 'run_root': '/artifacts/run', 'default_profile': 'original'}
         for extra, expected, tail in [((), controller.ACCEPTED_IMPLEMENTATION, []),
                                       (('--fast-path', '--serial-verification', '--prefix-helpers', '2'), None,
-                                       ['--fast-path', '--prefix-helpers', '2', '--serial-verification'])]:
+                                       ['--fast-path', '--prefix-helpers', '2', '--serial-verification']),
+                                      (('--fast-path', '--serial-verification', '--no-text-replay'), None,
+                                       ['--fast-path', '--prefix-helpers', '0', '--serial-verification',
+                                        '--no-text-replay'])]:
             with self.subTest(extra=extra):
                 args = self.parse(*extra)
                 with patch.object(controller, 'read', return_value=config), \

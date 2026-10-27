@@ -17,6 +17,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE)); sys.path.insert(0, str(HERE.parents[1] / 'tools'))
 import mac_acceptance as tool  # noqa: E402
 import run_local_training as runner  # noqa: E402
+sys.path.insert(0, str(HERE.parents[1]))
+from experiments.learner import local_script_training as training  # noqa: E402
 
 
 def write(path, value):
@@ -171,6 +173,11 @@ class CommandTests(unittest.TestCase):
         self.assertEqual([a.fast_path for a in parsed], [False, True, True, True, True, True])
         self.assertEqual([a.text_leaf_replay for a in parsed], [True, True, True, True, False, True])
         self.assertEqual(parsed[5].experiment, ['shared_graph_encodings'])
+        for letter, args in zip(tool.CAMPAIGNS, parsed):  # what each session must record, from the runner's own choice
+            expected = None if letter == 'A' else training.execution_choice(
+                overlapped_verification=args.overlap_verification, prefix_helpers=args.prefix_helpers,
+                text_leaf_replay=args.text_leaf_replay, experiments=args.experiment)
+            self.assertEqual(tool.EXECUTION[letter], expected, letter)
 
     def test_an_experiment_never_uses_the_official_configuration_or_run_root(self):
         with self.assertRaises(SystemExit):
@@ -187,13 +194,15 @@ class MainTests(unittest.TestCase):
         self.addCleanup(lambda: (signal.signal(signal.SIGINT, saved[0]), signal.signal(signal.SIGTERM, saved[1])))
         tool.INTERRUPT.update(requested=None, runner=None)
         bench = Path(tmp) / 'bench'
-        releases = {}
+        releases, executions = {}, {}
         def batches_and_release(run_root):
             value = batches(run_root)
             releases[str(run_root)] = value.pop('release')
+            executions[str(run_root)] = value.pop('execution')
             return dict(value, run_dir=str(run_root))
         with mock.patch.object(sys, 'platform', 'darwin'), \
                 mock.patch.object(tool, 'release_of', side_effect=lambda run_dir: releases[run_dir]), \
+                mock.patch.object(tool, 'execution_of', side_effect=lambda run_dir: executions[run_dir]), \
                 mock.patch.object(sys, 'argv', ['mac_acceptance.py', '--bench-root', str(bench), *argv]), \
                 mock.patch.object(tool, 'preflight', return_value=(runner, 'abc')), \
                 mock.patch.object(tool, 'hold_official_lock', return_value=(None, 'absent')), \
@@ -223,7 +232,7 @@ class MainTests(unittest.TestCase):
                                 state=value))
         run = dict(returncode=returncode, bound='not_reached', leftover_processes=[])
         release = runner.ACCEPTED_IMPLEMENTATION if letter == 'A' else 'abc'
-        return run, dict(status=status, batches=batches, run_dir='', release=release)
+        return run, dict(status=status, batches=batches, run_dir='', release=release, execution=tool.EXECUTION[letter])
 
     def fake(self, results):
         runs = iter(results)
@@ -288,6 +297,13 @@ class MainTests(unittest.TestCase):
         code, summary = self.verdict('AF', [self.campaign_result('A', 's'), f])
         self.assertEqual(code, 1)
         self.assertTrue(any('ran release other' in x for x in summary['problems']))
+
+    def test_the_execution_the_session_bound_is_checked(self):
+        n = self.campaign_result('N', 's')
+        n[1]['execution'] = dict(n[1]['execution'], text_leaf_replay=True)  # the fallback flag lost on the way
+        code, summary = self.verdict('AN', [self.campaign_result('A', 's'), n])
+        self.assertEqual(code, 1)
+        self.assertTrue(any('ran execution' in x and "'text_leaf_replay': True" in x for x in summary['problems']))
 
     def test_a_failed_or_divergent_campaign_fails(self):
         cases = [([self.campaign_result('A', 's'), self.campaign_result('F', 'other')], 'identical'),

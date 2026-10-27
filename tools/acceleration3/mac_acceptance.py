@@ -84,6 +84,13 @@ CAMPAIGNS = {'A': [], 'F': ['--fast-path', '--serial-verification'],
              'N': ['--fast-path', '--serial-verification', '--no-text-replay'],
              'X': ['--fast-path', '--serial-verification', '--experiment', 'shared_graph_encodings']}
 EXACT = set('AFOHN')
+# The execution choices each campaign's session must record (the accepted runner records none).
+EXECUTION = {letter: None if letter == 'A' else {
+    'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped, 'prefix_helpers': helpers,
+    'text_leaf_replay': replay, 'experiments': experiments}
+    for letter, (overlapped, helpers, replay, experiments) in {
+        'A': (None, None, None, None), 'F': (False, 0, True, []), 'O': (True, 0, True, []), 'H': (True, 2, True, []),
+        'N': (False, 0, False, []), 'X': (False, 0, True, ['shared_graph_encodings'])}.items()}
 
 
 def utc(value=None):
@@ -337,6 +344,8 @@ def problems(record, updates):
         found.append(f"runner status {record.get('status')}")
     if record.get('release') != record.get('expected_release'):
         found.append(f"ran release {record.get('release')}, expected {record.get('expected_release')}")
+    if record.get('execution') != record.get('expected_execution'):
+        found.append(f"ran execution {record.get('execution')}, expected {record.get('expected_execution')}")
     trained = [b for b in record.get('batches', []) if b['mode'] == 'training']
     if sum(b['status'] == 'passed' for b in trained) != updates or len(trained) != updates:
         found.append(f'{sum(b["status"] == "passed" for b in trained)} of {updates} training batches admitted')
@@ -348,6 +357,11 @@ def problems(record, updates):
 def release_of(run_dir):
     """The commit the campaign's runner actually released and ran (its session's source)."""
     return json.loads((Path(run_dir) / 'session.json').read_text())['source']['git_commit']
+
+
+def execution_of(run_dir):
+    """The execution choices the campaign's session bound; every batch plan must equal them and the worker applies them."""
+    return json.loads((Path(run_dir) / 'session.json').read_text()).get('execution')
 
 
 def chained_pairs(campaigns, reference, other):
@@ -446,10 +460,12 @@ def main():
             expected = runner.ACCEPTED_IMPLEMENTATION if letter == 'A' else head
             try:
                 record['campaigns'][name] = dict(letter=letter, run=run, expected_release=expected,
-                                                 **campaign_summary.batches(run_root))
+                                                 expected_execution=EXECUTION[letter], **campaign_summary.batches(run_root))
                 record['campaigns'][name]['release'] = release_of(record['campaigns'][name]['run_dir'])
+                record['campaigns'][name]['execution'] = execution_of(record['campaigns'][name]['run_dir'])
             except (OSError, ValueError, KeyError) as error:
-                record['campaigns'][name] = dict(letter=letter, run=run, expected_release=expected, status='no_session',
+                record['campaigns'][name] = dict(letter=letter, run=run, expected_release=expected,
+                                                 expected_execution=EXECUTION[letter], status='no_session',
                                                  error=repr(error), batches=[])
             print(json.dumps({name: record['campaigns'][name]['status']}), flush=True)
         if git('rev-parse', 'HEAD') != head or git('status', '--porcelain'):
