@@ -52,10 +52,11 @@ class ReplayedTextLeafTests(unittest.TestCase):
                          synthetic_rollout(self.model, turns=4, episode="replay-b", boundary="cutoff"))
         self.inputs = tuple(encode_history(item.history) for item in self.rollouts)
         self.addCleanup(setattr, ppo, "REPLAY_TEXT_LEAVES", ppo.REPLAY_TEXT_LEAVES)
+        self.addCleanup(setattr, ppo, "TEXT_REPLAY_WORKERS", ppo.TEXT_REPLAY_WORKERS)
         self.addCleanup(setattr, ppo, "EXPERIMENTS", ppo.EXPERIMENTS)
 
-    def update(self, model, replay, config, seed):
-        ppo.REPLAY_TEXT_LEAVES = replay
+    def update(self, model, replay, config, seed, workers=0):
+        ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS = replay, workers
         optimizer = torch.optim.Adam(model.parameters(), lr=0.003)
         generator = torch.Generator().manual_seed(seed)
         occurrences, apply = [], cm._TextOccurrence.apply
@@ -93,6 +94,61 @@ class ReplayedTextLeafTests(unittest.TestCase):
             for a, b in zip(left[2:], right[2:]):
                 self.assertTrue(bits_equal(a, b))
             self.assertNotIn("_leaf_replay_state", replayed.__dict__)
+
+    def test_updates_with_deferred_replays_on_worker_threads_are_bit_identical(self):
+        for workers, seed, config in ((2, 47, PPOConfig(decisions_per_window=2, windows_per_minibatch=2)),
+                                      (3, 48, PPOConfig(decisions_per_window=3, windows_per_minibatch=8, epochs=3)),
+                                      (1, 49, PPOConfig(decisions_per_window=1, windows_per_minibatch=4))):
+            replayed, reference = deepcopy(self.model), deepcopy(self.model)
+            left = self.update(replayed, True, config, seed, workers)
+            right = self.update(reference, False, config, seed)
+            self.assertGreater(left[0], 0)
+            self.assertEqual(left[1], right[1])
+            for a, b in zip(left[2:], right[2:]):
+                self.assertTrue(bits_equal(a, b))
+            self.assertNotIn("_text_replay_deferred", replayed.__dict__)
+
+    def deferred_window_gradients(self, workers, extra=None):
+        self.model.zero_grad(set_to_none=True)
+        window = self.rollouts[0].decisions[1:]
+        start = self.rollouts[0].decisions[0].decision_seq + 1
+        prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
+        with self.model.replayed_text_leaves(workers) as active:
+            self.assertTrue(active)
+            evaluated = _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)
+            loss = sum(e.log_prob + 0.5 * e.value for e in evaluated)
+            if extra is not None:
+                loss = loss + extra()
+            loss.backward()
+            self.model.finish_text_replays()
+        return ([(e.log_prob.detach(), e.value.detach()) for e in evaluated],
+                [None if p.grad is None else p.grad.clone() for p in self.model.parameters()])
+
+    def test_deferred_window_gradients_are_bit_identical_and_need_finishing(self):
+        reference = self.window_gradients(torch.enable_grad())
+        for workers in (1, 2, 4):
+            self.assertTrue(bits_equal(self.deferred_window_gradients(workers), reference))
+        window = self.rollouts[0].decisions[1:]
+        start = self.rollouts[0].decisions[0].decision_seq + 1
+        prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
+        with self.assertRaisesRegex(RuntimeError, "not finished"):
+            with self.model.replayed_text_leaves(2):
+                sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)).backward()
+        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+
+    def test_a_direct_gradient_to_a_text_parameter_fails_closed_under_deferral(self):
+        with self.assertRaisesRegex(RuntimeError, "outside its replayed occurrences"):
+            self.deferred_window_gradients(2, extra=lambda: self.model.text_gru.bias_hh_l0.sum())
+
+    def test_a_parameter_hook_keeps_the_immediate_replay(self):
+        reference = self.window_gradients(torch.enable_grad())
+        handle = self.model.byte.weight.register_hook(lambda grad: grad)
+        try:
+            with self.model.replayed_text_leaves(2):
+                self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+            self.assertTrue(bits_equal(self.deferred_window_gradients(2), reference))
+        finally:
+            handle.remove()
 
     def test_window_values_and_gradients_are_bit_identical_and_leaves_repeat(self):
         made, applied = [], []

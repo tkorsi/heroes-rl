@@ -79,7 +79,7 @@ FAST_PATH_SOURCES = {
         '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f',),
-        'd862ab9cd85ba520b14c65da8ebeefbf53613264e9e16e56a3205829db396038'),
+        '8f2bbc31080bfaf605e27d5d36618474e2f38ead464968540c5ed133109c80b7'),
     'experiments/learner/contextual_rollout.py': (
         ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637',),
         'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205'),
@@ -94,7 +94,7 @@ FAST_PATH_SOURCES = {
         'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14'),
     'experiments/learner/ppo.py': (
         ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60',),
-        'a9fd4e18f12edeb2a4d7f78d9b90e0eb9a8280c19af359d13beb2d0bc6320b5e'),
+        '6966350e0323f42e52946ad1471f235f82ca181928cad456f51901057b03da30'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
 # runner, lock), compared with the accepted implementation's git blobs: only these files may differ,
@@ -140,7 +140,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '8c603e073cdddb486c937868deee43439c287be0c962954d348152a94ef94dfe'
+LOCAL_ADAPTER_TRANSITION_AST = '66cb9b2333437126f0b13bc36fce2e2f70fef3f13aefb52770a97eae73c6b3c3'
 
 
 def write_new(path, value):

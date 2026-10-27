@@ -7,6 +7,8 @@ retains earlier information: there is no accumulated last-seen world cache.
 """
 from __future__ import annotations
 
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from copy import copy
 from dataclasses import asdict, dataclass, fields, is_dataclass
@@ -15,6 +17,7 @@ import json
 from math import copysign, log1p, sqrt
 from operator import attrgetter
 from sys import getsizeof
+import threading
 
 import torch
 from torch import Tensor, nn
@@ -283,6 +286,8 @@ _GRAPH_MEMO = object()
 # Key of the per-frame cache entry that holds the text leaves of one autograd graph whose
 # forward is computed once and whose backward is replayed per occurrence (see replayed_text_leaves).
 _LEAF_REPLAY = object()
+# The replay (leaf, contribution lists) that this thread is running, for the leaves' node hooks.
+_REPLAY_CAPTURE = threading.local()
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
 # The other submodules an observation encoding reads.
@@ -349,7 +354,7 @@ class _ReplayedText:
         self.value = self.out.detach()
         # Every edge from this graph to an alias is one contribution; hooks record them as they run.
         slot = {id(alias): position for position, alias in enumerate(self.alias)}
-        self.counts, self._captured, seen, pending = [0] * len(self.alias), None, set(), [self.out.grad_fn]
+        self.counts, seen, pending = [0] * len(self.alias), set(), [self.out.grad_fn]
         while pending:
             node = pending.pop()
             if node is None or node in seen:
@@ -368,16 +373,22 @@ class _ReplayedText:
 
     def _recorder(self, targets):
         def record(grad_inputs, grad_outputs):
+            leaf, captured = getattr(_REPLAY_CAPTURE, "current", (None, None))
+            if leaf is not self:
+                raise RuntimeError("A text leaf graph ran outside its own replay")
             for edge, position in targets:
-                self._captured[position].append(grad_inputs[edge])
+                captured[position].append(grad_inputs[edge])
         return record
 
     def replay(self, grad):
-        captured = self._captured = [[] for _ in self.alias]
+        """This occurrence's contributions, in order; any thread may replay, each records its own."""
+        captured = [[] for _ in self.alias]
+        outer = getattr(_REPLAY_CAPTURE, "current", None)
+        _REPLAY_CAPTURE.current = (self, captured)
         try:
             torch.autograd.grad(self.out, self.alias, grad, retain_graph=True)
         finally:
-            self._captured = None
+            _REPLAY_CAPTURE.current = outer
         if [len(values) for values in captured] != self.counts:
             raise RuntimeError("A replayed text leaf delivered other gradient contributions than its graph has")
         return [value for values in captured for value in values]
@@ -386,28 +397,90 @@ class _ReplayedText:
         self.out = self.alias = None
 
 
+class _DeferredTextReplays:
+    """Occurrence replays computed by worker threads while the main backward continues.
+
+    Valid only when the text leaf parameters receive gradient from replayed occurrences alone
+    (``finish`` checks that the backward left their gradients unset). Occurrences are queued
+    in the order the engine reaches them; their contributions are added to each parameter's sum
+    strictly in that order, each occurrence's in its replay order, exactly the sequence of
+    additions the engine makes in the immediate replay and in the reference, and ``finish``
+    installs the sums as the gradients. A replay's values do not depend on the thread that
+    computes it: the same operations run on the same operands, one thread per operation.
+    """
+
+    def __init__(self, params, workers):
+        self.params = params
+        self.pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="text-replay")
+        self.pending = deque()
+        self.sums = [None] * len(params)
+
+    def add(self, leaf, grad):
+        self.pending.append((leaf, self.pool.submit(leaf.replay, grad)))
+        while self.pending and self.pending[0][1].done():
+            self._fold(*self.pending.popleft())
+
+    def _fold(self, leaf, future):
+        values = iter(future.result())
+        with torch.no_grad():
+            for position, (param, count) in enumerate(zip(leaf.params, leaf.counts)):
+                if param is not self.params[position]:
+                    raise RuntimeError("Text leaf parameters changed inside a replay context")
+                for _ in range(count):
+                    value = next(values)
+                    if value is None:
+                        continue  # the engine adds nothing for an undefined gradient
+                    if self.sums[position] is None:
+                        self.sums[position] = torch.empty_like(param).copy_(value)
+                    else:
+                        self.sums[position].add_(value)
+
+    def finish(self):
+        while self.pending:
+            self._fold(*self.pending.popleft())
+        sums, self.sums = self.sums, [None] * len(self.params)
+        for param, total in zip(self.params, sums):
+            if total is None:
+                continue
+            if param.grad is not None:
+                raise RuntimeError("A text leaf parameter received gradient outside its replayed occurrences")
+            param.grad = total
+
+    def close(self):
+        """Stop the workers; True if replays were left unfinished."""
+        self.pool.shutdown(wait=True, cancel_futures=True)
+        unfinished = bool(self.pending) or any(total is not None for total in self.sums)
+        self.pending.clear()
+        self.sums = [None] * len(self.params)
+        return unfinished
+
+
 class _TextOccurrence(torch.autograd.Function):
     """One occurrence of a replayed text leaf: the shared value forward, its own replayed backward.
 
     Each parameter is an input once per contribution, so autograd adds the contributions to the
-    parameter's gradient one by one, where the reference chain of this occurrence would.
+    parameter's gradient one by one, where the reference chain of this occurrence would. With
+    deferred replays, the occurrence delivers nothing to the engine and queues its replay instead.
     """
 
     @staticmethod
-    def forward(ctx, leaf, *parameters):
+    def forward(ctx, leaf, deferred, *parameters):
         ctx.set_materialize_grads(False)
-        ctx.leaf = leaf
+        ctx.leaf, ctx.deferred = leaf, deferred
         return leaf.value.clone()
 
     @staticmethod
     def backward(ctx, grad):
         if torch.is_grad_enabled():
             raise RuntimeError("Replayed text leaves do not support higher-order gradients")
-        leaf, ctx.leaf = ctx.leaf, None
+        (leaf, deferred), ctx.leaf, ctx.deferred = (ctx.leaf, ctx.deferred), None, None
         if grad is None:
             # The reference chain receives no gradient and delivers none.
-            return (None,) * (1 + len(leaf.arguments))
-        return (None, *leaf.replay(grad))
+            return (None, None) + (None,) * len(leaf.arguments)
+        if deferred is not None:
+            deferred.add(leaf, grad)
+            return (None, None) + (None,) * len(leaf.arguments)
+        return (None, None, *leaf.replay(grad))
 
 
 def _exact_tree(tree):
@@ -874,10 +947,11 @@ class ContextualActorCritic(nn.Module):
         state.pop("_observation_memo_state", None)
         state.pop("_graph_memo_state", None)
         state.pop("_leaf_replay_state", None)
+        state.pop("_text_replay_deferred", None)
         return state
 
     @contextmanager
-    def replayed_text_leaves(self):
+    def replayed_text_leaves(self, workers=0):
         """Exact: encode each distinct text leaf once per autograd graph, replay its backward per occurrence.
 
         Under autograd, the first occurrence of a text (by its exact string) builds the
@@ -896,6 +970,11 @@ class ContextualActorCritic(nn.Module):
         makes the replay raise, as the aliases share the parameters' version counters).
         Yields False, replaying nothing, unless the model and leaf modules are the plain
         modules this argument covers, without hooks of any kind.
+
+        With ``workers`` > 0 and no hooks on the leaf parameters, occurrences' replays run on
+        that many threads while the backward continues (``_DeferredTextReplays``); the caller
+        must call ``finish_text_replays()`` after the backward and before reading gradients,
+        and leaving the context with replays unfinished raises. The gradients are the same bits.
         """
         byte, gru = self.byte, self.text_gru
         module = nn.modules.module
@@ -908,13 +987,30 @@ class ContextualActorCritic(nn.Module):
         if not plain:
             yield False
             return
+        params = (byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names))
+        deferred = None
+        if workers > 0 and not any(p._backward_hooks or getattr(p, "_post_accumulate_grad_hooks", None) for p in params):
+            deferred = self.__dict__["_text_replay_deferred"] = _DeferredTextReplays(params, workers)
         state = self.__dict__["_leaf_replay_state"] = {}
+        unfinished = False
         try:
             yield True
         finally:
             self.__dict__.pop("_leaf_replay_state", None)
+            if self.__dict__.get("_text_replay_deferred") is deferred:
+                self.__dict__.pop("_text_replay_deferred", None)
+            if deferred is not None:
+                unfinished = deferred.close()
             for leaf in state.values():
                 leaf.release()
+        if unfinished:
+            raise RuntimeError("Deferred text leaf replays were not finished before leaving the context")
+
+    def finish_text_replays(self):
+        """Install the gradients of deferred text leaf replays (no effect without them)."""
+        deferred = self.__dict__.get("_text_replay_deferred")
+        if deferred is not None:
+            deferred.finish()
 
     @contextmanager
     def shared_graph_encodings(self):
@@ -1049,7 +1145,7 @@ class ContextualActorCritic(nn.Module):
                     leaf = replay[tree[1]] = _ReplayedText(self, raw)
                 if any(a is not b for a, b in zip(leaf.params, (self.byte.weight, *self.text_gru._flat_weights))):
                     raise RuntimeError("Text leaf parameters changed inside a replay context")
-                result = _TextOccurrence.apply(leaf, *leaf.arguments)
+                result = _TextOccurrence.apply(leaf, self.__dict__.get("_text_replay_deferred"), *leaf.arguments)
             else:
                 embedding = self.byte(self._long([value + 1 for value in raw])).unsqueeze(0)
                 result = self.text_gru(embedding)[1][0, 0]

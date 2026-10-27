@@ -256,6 +256,9 @@ PREFIX_HELPERS = 0
 # replays that leaf's own backward (``ContextualActorCritic.replayed_text_leaves``). False
 # keeps every occurrence's separate computation; both give bit-identical updates.
 REPLAY_TEXT_LEAVES = True
+# Threads that replay text-leaf occurrences while the backward continues, None: as many as
+# PREFIX_HELPERS (the extra CPUs the caller declared). Zero replays them in the backward itself.
+TEXT_REPLAY_WORKERS = None
 
 
 @dataclass(frozen=True)
@@ -288,6 +291,9 @@ def _update(model, optimizer, rollouts, **options):
             pool.close()
         # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text leaves.
         model.__dict__.pop("_graph_memo_state", None)
+        deferred = model.__dict__.pop("_text_replay_deferred", None)
+        if deferred is not None:
+            deferred.close()
         for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
             leaf.release()
 
@@ -364,8 +370,10 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             # All selected windows see identical parameters. Reconstruct each
             # episode once up to its furthest boundary, then retain the original
             # selected-window order and separate detached autograd graphs.
+            replaying = REPLAY_TEXT_LEAVES and not shared
+            workers = PREFIX_HELPERS if TEXT_REPLAY_WORKERS is None else TEXT_REPLAY_WORKERS
             sharing = (model.shared_graph_encodings() if shared
-                       else model.replayed_text_leaves() if REPLAY_TEXT_LEAVES else nullcontext())
+                       else model.replayed_text_leaves(workers) if replaying else nullcontext())
             sharing.__enter__()
             phase = perf_counter()
             boundaries = {}
@@ -419,6 +427,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
+            if replaying:
+                model.finish_text_replays()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
             timings["backward_and_clip"] += perf_counter() - phase
             sharing.__exit__(None, None, None)
