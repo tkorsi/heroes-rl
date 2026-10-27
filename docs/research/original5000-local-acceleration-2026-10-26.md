@@ -518,3 +518,85 @@ front, and adds every result in queue order as before. A test holds the single w
 first replay until the main thread has taken one and checks bit-identical gradients. b14fb73 is
 the integration candidate; schedule m6 measures it after m3-R5H (with helpers, and with the macOS
 default), together with the accepted cold start and repeats.
+
+### O15. Batch 266 optimizer-only, deferred replays on real data, two more reviews, and the integration candidate (00:50 to 02:10 UTC)
+
+Optimizer-only on CPU 0, batch 266 (seat 0, 3968 decisions) from 629: the replay 1721220 took
+1750.7 s (prefix reconstruction 347.6, loss forward 150.3, backward and clip 1227.5 s) and ended in
+the fast path's exact state (C.pt, update 630 weights fe1378ef...). Against the same batch on the
+same CPU: accepted a8ac411 4214.9 s (2.41x), fast exact 15ed404 3241.7 s (1.85x).
+
+Campaign m3-R5H (4f02a10: two prefix helpers, replays on two threads during the backward;
+CPUs 1 to 3, the same 629 copy): baseline batches 90.4 s and 201.0 s; training batch 266 passed in
+1182.3 s (PPO 1053.2 s: prefix reconstruction 186.9, loss forward 155.6, backward and clip 683.2 s),
+batch 267 in 339.9 s (PPO 298.5 s), with the same games and the same update 630 and 631 weights as
+every exact campaign. The deferred replays cut the backward of batch 266 from 1169.9 s (m3-RH) to
+683.2 s. Batch 266 is at least 2.98x the accepted path (3,523 s, censored) and 2.45x m1-CH.
+
+Second independent review (of 4f02a10, three reviewers, adversarial verification; nine findings
+verified, one refuted). Real but not reachable from the PPO update (the runner trains every
+parameter): with a text-leaf parameter frozen by hand, the deferred mode gave it a gradient that
+the reference leaves unset, which would change gradient clipping and Adam. Real on the failure
+path: live replay threads could take a process signal that the prefix helpers' close defers, and
+an interrupted close skipped the leaves' release. Test gaps: failures while replays are queued,
+the PPO path's deferral itself, gradient strides. Fixes: b73397d (defer only onto trainable leaf
+parameters; workers take the main thread's intra-op thread count before their first kernel; one
+finish per backward), 5aff690 (the `--no-text-replay` switch, recorded in the execution choice as
+`text_leaf_replay`, the in-lineage fallback; Mac campaign N), a5b3568 (a leaf's recording hooks
+held the leaf through the graph's hook storage, a cycle the collector cannot see, so an unreleased
+leaf graph was kept; the hooks now hold it weakly and a test frees it with the collector off), and
+f0d03b6 (replay threads block process signals, faults excepted; the cleanup of replay threads,
+leaves and prefix helpers is isolated so that each runs whatever the previous one raised).
+
+Campaign m3-RAH (a5b3568, same settings as m3-R5H): baselines 94.7 s and 207.1 s, batch 266 in
+1237.4 s (PPO 1102.4 s, backward 717.5 s), batch 267 in 351.7 s, the same weights again. The games
+themselves (identical in both campaigns) took 5 to 7% longer than in m3-R5H, so the 4.7% difference
+in the batch is within the host's drift. On CPU 0 an A/B on batch 267 in the order RA R R RA gave
+a5b3568 512.4 and 535.5 s and 1721220 465.9 and 485.4 s (all with the update 631 bytes): about 10%
+apart although the first pair ran under the same campaign phase. A micro-benchmark of the two
+recording-hook variants (returning a tuple that passes undefined gradients to the aliases, as
+a5b3568 does, or only appending, as 1721220 did; 6,000 occurrences of 150 texts, bit-identical)
+put them within 0.5 to 2% of each other, so the hook was kept and the difference is unexplained.
+A second interleaved A/B (1721220 against the integration candidate, R B B R) follows PR30's
+batch 266 on CPU 0.
+
+Third independent review (of b73397d, three reviewers, adversarial verification). The deferred
+lifecycle failed open outside one successful complete backward: after a failed backward or an
+interrupted `finish`, a later `finish` installed partial sums; `backward(inputs=...)` or
+`autograd.grad` inside the context deferred replays that nothing would install; `finish` kept every
+outstanding result until it returned; a parameter frozen or hooked after its last occurrence, a
+`.data` replacement, anomaly mode, and module hooks or autocast switched on after entry were not
+caught. None is reachable from the PPO update, which calls one plain backward per minibatch on a
+model without hooks. On the integration side: the guide did not say that a fast-path lineage must
+keep its release (a checkpoint of one fast-path commit is refused by a later one that changed a
+pinned file); the documented fallback, passed through `train-original-5000.sh`, would restart from
+the easy parent instead of continuing the lineage; the Mac campaign N could not confirm that the
+switch took effect; the runner tests did not cover the switch's wiring; and the guide's validation
+commands omitted the replay tests and could not import the project from `tests/`.
+
+Candidate 20b20f9 changes the deferred lifecycle. Only `backward_with_text_replays(loss)`, which
+the PPO update now calls, defers: it begins, runs the backward, and finishes (or, if the backward
+raises, drops every queued replay and partial sum and refuses further brackets in that context).
+Every other backward in the context replays inside the engine, exactly. A bracket defers only
+when the leaf parameters are trainable and have neither gradients nor hooks; otherwise
+(accumulation, a parameter frozen or hooked after its last occurrence) the engine replays, again
+exactly. Before installing anything, `finish` checks every leaf parameter again (no gradient from
+elsewhere, no hook, the same data pointer, layout, version and trainability) and raises on any
+change. It folds replays in queue order as soon as the front one is done and keeps nothing it has
+folded, and while the front replay runs on a worker the main thread replays the earliest queued
+occurrence no worker has started. A leaf's aliases are now checked against each parameter's data
+pointer, dtype, shape, strides, version and trainability, so a `.data` replacement fails closed.
+An occurrence under autocast, anomaly mode, saved-tensor hooks, or forward or backward hooks on the
+leaf modules (or global module hooks) is computed as in the reference, and the context refuses
+them at entry. New tests: the PPO path itself defers on the declared number of threads (including
+the mapping from prefix helpers) with bit-identical weights, gradients (strides included) and
+Adam state; plain backward, `backward(inputs=...)`, `autograd.grad` and gradient accumulation in
+the context are exact; a failed backward and an interrupted `finish` refuse further brackets and
+leave no thread; freezing or hooking a parameter during the backward raises and after its last
+occurrence stays exact; `.data` replacement; autocast, anomaly mode and forward hooks take the
+reference path. 3fa2ada makes the Mac tool check each campaign session's execution choices against
+its letter (N must record `text_leaf_replay: false`) and adds the runner wiring tests; 2ba42ac
+fixes the guide (same-release lineage rule, the continuation command through `train-local.sh`, a
+validation command list that runs). A fourth review of 20b20f9 is running. Schedule m7 (after
+m3-RAF on a5b3568) measures 2ba42ac, whose learner bytes are those of 20b20f9: the accepted cold
+start (m2-B), the fallback switch (m3-RBN), eight training batches from 266 (m6-RBH), and repeats.
