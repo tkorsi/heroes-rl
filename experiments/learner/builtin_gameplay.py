@@ -11,6 +11,7 @@ import hashlib
 import json
 from pathlib import Path
 import random
+import secrets
 
 import torch
 
@@ -32,6 +33,7 @@ ROLLOUT_SCHEMA = "heroes-builtin-training-rollout-v1"
 # them. In particular an old diagnostic plus edited labels cannot mint a receipt.
 _BINDINGS, _CAPTURES, _RECEIPTS = {}, {}, {}
 _USED_RECEIPTS = set()
+_PARALLEL_CAPTURES = {}
 
 
 def require(condition, message):
@@ -173,6 +175,77 @@ class TrainingCapture:
     def to_dict(self):
         return {"schema": CAPTURE_SCHEMA, "purpose": "training", "optimization_eligible": False,
                 "binding": self.binding.to_dict(), "experience": self.experience.to_dict()}
+
+
+class _ParallelCaptureLease:
+    """One live child may transfer one freshly planned capture, never a receipt.
+
+    The coordinator creates this capability before the episode directory exists.
+    Completion is read directly from the exclusively attached child's stdout;
+    an artifact on disk, a deserialized lease, or a caller-supplied completion
+    cannot recreate this capability. Ordinary independent verification still
+    runs in the coordinator before it can mint an update receipt.
+    """
+    def __init__(self, binding):
+        self.binding, self.token, self.process = binding, secrets.token_hex(32), None
+        self.consumed = False
+
+
+def _begin_parallel_capture(binding):
+    require(type(binding) is TrainingBinding and _BINDINGS.get(id(binding)) is binding,
+            "Parallel collection needs this coordinator's fresh prelaunch binding")
+    binding.validate()
+    require(not Path(binding.folder).exists(), "Parallel capture directory already exists")
+    lease = _ParallelCaptureLease(binding)
+    _PARALLEL_CAPTURES[id(lease)] = lease
+    return lease
+
+
+def _attach_parallel_process(lease, process):
+    require(_PARALLEL_CAPTURES.get(id(lease)) is lease and not lease.consumed
+            and lease.process is None, "Parallel capture lease is not fresh")
+    require(getattr(process, '_deadline_guarded', False) is True
+            and getattr(process, '_deadline_owner_fd', None) is not None
+            and process.stdout is not None and process.poll() is None,
+            "Parallel capture must own a live guarded child and its private result pipe")
+    lease.process = process
+
+
+def _cancel_parallel_capture(lease):
+    require(_PARALLEL_CAPTURES.get(id(lease)) is lease, "Unknown parallel capture lease")
+    lease.consumed = True
+    _PARALLEL_CAPTURES.pop(id(lease), None)
+
+
+def _complete_parallel_capture(lease):
+    """Consume live launch provenance, then reconstruct the bound fresh capture."""
+    require(_PARALLEL_CAPTURES.get(id(lease)) is lease and not lease.consumed
+            and lease.process is not None, "No fresh live parallel capture lease")
+    lease.consumed = True
+    _PARALLEL_CAPTURES.pop(id(lease), None)
+    process, binding = lease.process, lease.binding
+    require(process.poll() == 0, "Parallel collector did not finish successfully")
+    # This is the actual private pipe from the process attached before launch
+    # completion; no completion/result-file argument is accepted by this gate.
+    message = native.strict_json(process.stdout.read(65537))
+    require(type(message) is dict and message.get('token') == lease.token
+            and message.get('schedule_index') == binding.schedule_index
+            and message.get('plan_sha256') == binding.plan_sha256
+            and message.get('status') == 'passed', "Parallel collector completion differs from its live lease")
+    binding.recheck()
+    folder = Path(binding.folder)
+    path = folder / 'builtin-training-rollout.json'
+    require(message.get('capture') == native.file_identity(path),
+            "Parallel capture bytes changed after child completion")
+    raw = native.strict_json(path.read_bytes())
+    require(raw.get('schema') == CAPTURE_SCHEMA and raw.get('purpose') == 'training'
+            and raw.get('optimization_eligible') is False
+            and raw.get('binding') == binding.to_dict(), "Parallel capture has another binding")
+    capture = TrainingCapture(load_builtin_episode(raw['experience']), binding)
+    _check_capture(capture, binding)
+    require(canonical(raw) == canonical(capture.to_dict()), "Parallel capture contains extra or changed fields")
+    _CAPTURES[id(capture)] = capture
+    return capture, message
 
 
 class TrainingCollector(BuiltinCollector):
@@ -464,11 +537,16 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
 
 def _admit_builtin(receipts, model, *, plan_sha256):
     from experiments.headless.builtin_replay import verify_identity
-    require(type(receipts) is tuple and 1 <= len(receipts) <= 4, "One batch needs its complete planned fresh captures")
+    require(type(receipts) is tuple and 1 <= len(receipts) <= 8, "One batch needs its complete planned fresh captures")
     require(all(type(receipt) is VerifiedTrainingReceipt and _RECEIPTS.get(id(receipt)) is receipt
                 and id(receipt) not in _USED_RECEIPTS for receipt in receipts), "Receipt is not fresh or was already used")
     require(len({id(receipt) for receipt in receipts}) == len(receipts), "Duplicate training receipt")
     plan = native.strict_json(Path(receipts[0].binding.plan_path).read_bytes())
+    if 'parallel_collection' in plan['configuration']:
+        require(_parallel_eight(plan) and len(receipts) == 8,
+                "Parallel collection requires its complete explicit eight-game batch")
+    else:
+        require(len(receipts) <= 4, "Eight captures require an explicit complete parallel collection plan")
     expected = [index for index, row in enumerate(plan["schedule"]) if row.get("phase") == "training"]
     require([receipt.binding.schedule_index for receipt in receipts] == expected[:len(receipts)]
             and (len(receipts) == len(expected)
@@ -494,17 +572,32 @@ def _admit_builtin(receipts, model, *, plan_sha256):
     return tuple(receipt.rollout for receipt in receipts)
 
 
+def _parallel_eight(plan):
+    """An explicit new eight-game batch; historical plans keep their limits."""
+    execution = plan.get('configuration', {}).get('parallel_collection')
+    return (type(execution) is dict and set(execution) == {'batch_size', 'workers'}
+            and type(execution['batch_size']) is int and execution['batch_size'] == 8
+            and type(execution['workers']) is int and execution['workers'] in (1, 8)
+            and plan.get('schema') == 'heroes-builtin-training-v1-plan'
+            and plan['configuration'].get('allow_verified_training_prefix') is False
+            and len(plan.get('schedule', ())) == 8
+            and all(row.get('phase') == 'training' for row in plan['schedule']))
+
+
 def native_update(model, optimizer, receipts, *, plan_sha256, config, generator, remaining, max_optimizer_steps=32):
     """One complete on-policy batch; only this worker's verified receipts admit."""
     _time_left(remaining)
     require(type(config) is PPOConfig and config.gamma == config.gae_lambda == 1
             and config.epochs == 1 and config.decisions_per_window == 16 and config.windows_per_minibatch == 2,
             "Pilot PPO must retain the predeclared undiscounted one-epoch windows")
-    require(type(max_optimizer_steps) is int and 1 <= max_optimizer_steps <= 640
+    require(type(max_optimizer_steps) is int and 1 <= max_optimizer_steps <= 1280
             and type(optimizer) is torch.optim.Adam
             and all(group["lr"] == 0.0003 for group in optimizer.param_groups), "Pilot requires bounded Adam at 3e-4")
     rollouts = _admit_builtin(receipts, model, plan_sha256=plan_sha256)
     plan = native.strict_json(Path(receipts[0].binding.plan_path).read_bytes())
+    parallel = _parallel_eight(plan)
+    require(max_optimizer_steps <= (1280 if parallel else 640),
+            "Expanded optimizer cap requires an explicit eight-game collection plan")
     require(canonical(config.to_dict()) == canonical(plan["configuration"]["ppo"]),
             "PPO configuration differs from the approved plan")
     require(max_optimizer_steps == plan["configuration"]["max_optimizer_steps"],
@@ -512,11 +605,11 @@ def native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
     if max_optimizer_steps > 32:
         require(plan["schema"] == "heroes-builtin-training-v1-plan"
                 and plan["configuration"]["allow_verified_training_prefix"] is False
-                and len(rollouts) == len(plan["schedule"]) == 4
+                and len(rollouts) == len(plan["schedule"]) == (8 if parallel else 4)
                 and plan["configuration"]["ordinary_choice_limit"] == 4960
                 and plan["configuration"]["reserved_dialog_choices"] == 160
                 and plan["configuration"]["max_total_choices"] == 5120,
-                "Expanded cap requires the complete four-game continuation batch")
+                "Expanded cap requires the complete declared continuation batch")
     windows = sum((len(rollout.samples) + 15) // 16 for rollout in rollouts)
     require((windows + 1) // 2 <= max_optimizer_steps, "Complete update exceeds its optimizer-step cap")
     _USED_RECEIPTS.update(id(receipt) for receipt in receipts)

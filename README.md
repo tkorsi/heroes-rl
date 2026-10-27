@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**26 October 2026**. Earlier stages are preserved in
+**27 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -235,6 +235,15 @@ at manual launch. The old `./train-local.sh --hours 2` remains the easier8x8
 preset. See the [launch and result instructions](docs/operations/local-script-training.md)
 and [prospective original-map experiment](configs/local-original-5000-20261026.json).
 Preparing this next experiment does not start games or alter the active release.
+
+An isolated [eight-process collection experiment](docs/research/parallel-eight-collection-2026-10-27.md)
+adds an explicit eight-game batch and a guarded serial-versus-parallel benchmark.
+It preserves per-game policy memory/RNG and requires complete independent
+verification before fresh receipts can enter PPO. Its benchmark uses frozen
+checkpoint 699 and performs no optimizer updates. This opt-in implementation
+does not change the official continuation's four-game configuration, source
+release, checkpoint pointer or seed ledger. Collection and full verified-batch
+timings are reported separately; neither is a complete PPO-cycle speedup.
 
 ## Experiment agreement
 
