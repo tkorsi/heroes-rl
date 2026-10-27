@@ -1,0 +1,30 @@
+{
+  "schema": "heroes-original699-readonly-review-v1",
+  "timestamp_utc": "2026-10-27T13:57:42.316397+00:00",
+  "reviewed_commit": "a123445",
+  "scope": "Read-only continuation and static execution identity review while an isolated Mac benchmark is running",
+  "blocking_findings": [],
+  "checks": {
+    "official699_anchor": true,
+    "failed336_excluded": true,
+    "next_unused_sequence337_or_later": true,
+    "verified_descendant_remaining_target": true,
+    "newest_attempt_closure_even_without_checkpoint": true,
+    "benchmark_and_numerical_experiment_exclusion": true,
+    "shared_update_limits_only_changed": [
+      10800,
+      10740
+    ],
+    "continuation336_hours_no_hidden48h_limit": true,
+    "learner_pins_matched": 12,
+    "tree_pins_matched": 16,
+    "adapter_ast_matched": true
+  },
+  "outstanding": [
+    "Complete actual Mac correctness and timing gate",
+    "Refresh offline continuation check after all changes",
+    "Select measured execution flags"
+  ],
+  "gameplay_performed_by_review": false,
+  "tests_executed_by_review": false
+}

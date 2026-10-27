@@ -100,3 +100,22 @@ Compare full model, gradients, Adam, every RNG, unchanged progress/sampler/pool
 and before/after input hashes. Its independent guardian uses the original
 20:21:52.592870UTC study hard deadline and a per-update maximum10800seconds;
 no supplementary window is added. Optimizer-only timing is reported separately.
+
+## Prospective missing-Blue supplement — 2026-10-27T14:30:37.455011+00:00
+
+The accepted path completed Red266 in5434.37seconds and exactly restored700,
+but its unchanged conservative admission rule requires six times the slowest
+batch and therefore declined the second requested training batch. Its ordinary
+final evaluations remain separate. The planned two-update full-cycle study is
+incomplete; no deadline or admission rule is changed to force completion.
+
+Before candidate Blue267 has completed, register a small conditional correctness
+supplement: if a candidate266 history/full-state pair matches A and candidate267
+passes its checks, compare accepted and the fastest validated exact candidate
+optimizer on those existing Blue267 captures from identical disposable full700
+parents. Use the independent guarded capture driver, compare model, gradients,
+Adam, all RNG and unchanged progress/sampler/pool plus input bindings, and retain
+all results. There are no new native games, official samples or promoted weights.
+This optimizer-only supplement must fit the same20:21:52.592870UTC study deadline
+and cannot be reported as completion of the missing accepted Blue full-cycle
+measurement. A supplemental exactness failure prevents candidate adoption.
