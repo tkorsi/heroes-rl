@@ -13,10 +13,12 @@ from disposable copies of the final 629 checkpoint, exactly through ``run_local_
     O  ``--fast-path --overlap-verification`` (forked verification; fork safety on macOS is what
        this campaign tests)
     H  ``--fast-path --overlap-verification --prefix-helpers 2``
+    N  ``--fast-path --no-text-replay`` (the macOS defaults with every text leaf occurrence computed
+       separately: the in-lineage fallback if the text-leaf replay ever refuses)
     X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
 
 Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds.
-Each exact campaign (F, O, H, and any repeated A) is compared with the A campaigns batch by batch
+Each exact campaign (F, O, H, N, and any repeated A) is compared with the A campaigns batch by batch
 while both still share the same parent; wherever their games are identical their checkpoints must
 be bitwise identical, and every exact campaign needs at least one such comparable batch.
 ``summary.json`` gives each campaign's status (identical, diverged, not comparable). The default
@@ -79,8 +81,9 @@ PARENT_FILES = {'plan': 'plan.json', 'report': 'report.json', 'policy': 'after-p
 CAMPAIGNS = {'A': [], 'F': ['--fast-path', '--serial-verification'],
              'O': ['--fast-path', '--overlap-verification'],
              'H': ['--fast-path', '--overlap-verification', '--prefix-helpers', '2'],
+             'N': ['--fast-path', '--serial-verification', '--no-text-replay'],
              'X': ['--fast-path', '--serial-verification', '--experiment', 'shared_graph_encodings']}
-EXACT = set('AFOH')
+EXACT = set('AFOHN')
 
 
 def utc(value=None):

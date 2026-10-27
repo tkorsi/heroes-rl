@@ -136,11 +136,11 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '2f9d3918bf725e4cf58dab6ee728a55a1693c82c584229affb715f5f782a91a4'),
+        '69e33e8ef714905360389daf13c68d4d1c6214d5380a04b3fea9c8e509afd27f'),
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'b15b98e5e0c50449040153f62b8f655da9a04b0b39af5cf57e15949a0b4ef57d'
+LOCAL_ADAPTER_TRANSITION_AST = 'fb8a38daddc1d3b8d76b463aa51a182e4c8b354945c5e6fb4bdc4818e13f9bbf'
 
 
 def write_new(path, value):
@@ -428,17 +428,20 @@ def check_clock(session, *, active=True):
 
 def check_execution(value):
     """The session's execution choices: exact by default; a numerical experiment only when named."""
-    require(type(value) is dict and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'experiments'}
+    require(type(value) is dict
+            and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay', 'experiments'}
             and value['implementation'] == 'exact-fast-path-v1' and type(value['overlapped_verification']) is bool
             and type(value['prefix_helpers']) is int and 0 <= value['prefix_helpers'] <= 8
+            and type(value['text_leaf_replay']) is bool
             and type(value['experiments']) is list and value['experiments'] == sorted(set(value['experiments']))
             and set(value['experiments']) <= set(NUMERICAL_EXPERIMENTS), 'Unknown execution choice')
     return value
 
 
-def execution_choice(*, overlapped_verification, prefix_helpers=0, experiments=()):
+def execution_choice(*, overlapped_verification, prefix_helpers=0, text_leaf_replay=True, experiments=()):
     return check_execution({'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped_verification,
-                            'prefix_helpers': prefix_helpers, 'experiments': sorted(set(experiments))})
+                            'prefix_helpers': prefix_helpers, 'text_leaf_replay': text_leaf_replay,
+                            'experiments': sorted(set(experiments))})
 
 
 def apply_execution(plan):
@@ -448,6 +451,7 @@ def apply_execution(plan):
     value = check_execution(plan['execution'])
     background_check.FORK = value['overlapped_verification']
     ppo.PREFIX_HELPERS = value['prefix_helpers']
+    ppo.REPLAY_TEXT_LEAVES = value['text_leaf_replay']
     ppo.EXPERIMENTS = frozenset(value['experiments'])
     return value
 

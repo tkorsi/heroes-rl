@@ -396,6 +396,7 @@ def start(args):
         if args.fast_path:
             command += ['--fast-path', '--prefix-helpers', str(args.prefix_helpers),
                         '--overlap-verification' if args.overlap_verification else '--serial-verification',
+                        *([] if args.text_leaf_replay else ['--no-text-replay']),
                         *(x for name in args.experiment for x in ('--experiment', name))]
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
         if args.games is not None: command += ['--games', str(args.games)]
@@ -421,7 +422,8 @@ def launch_owned(args):
     # This release is the opt-in fast path; the default path releases ACCEPTED_IMPLEMENTATION instead.
     require(args.fast_path, 'This release runs only as the explicit fast path; launch with start')
     execution = adapter.execution_choice(overlapped_verification=args.overlap_verification,
-                                         prefix_helpers=args.prefix_helpers, experiments=args.experiment)
+                                         prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
+                                         experiments=args.experiment)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
@@ -460,7 +462,8 @@ def launch_owned(args):
                   'Continue the accepted easier8x8 distribution; measure fixed paired outcomes without claiming original-map transfer.')
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
     print(f"Implementation: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
-          f"verification, {execution['prefix_helpers']} prefix helpers"
+          f"verification, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
+          f"{'on' if execution['text_leaf_replay'] else 'off'}"
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)
@@ -548,10 +551,13 @@ def main():
     overlap.add_argument('--serial-verification', dest='overlap_verification', action='store_false',
                          help='Run every verification step serially in the worker (default on macOS)')
     fast.add_argument('--prefix-helpers', type=int, default=0, help='Exact forked PPO prefix helpers (0 to 8; default 0)')
+    fast.add_argument('--no-text-replay', dest='text_leaf_replay', action='store_false',
+                      help='Compute every text leaf occurrence separately (bit-identical; the fallback if the replay refuses)')
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
                       help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
     args = parser.parse_args()
-    if not args.fast_path and (args.overlap_verification is not None or args.prefix_helpers or args.experiment):
+    if not args.fast_path and (args.overlap_verification is not None or args.prefix_helpers or args.experiment
+                               or not args.text_leaf_replay):
         parser.error('Fast-path options require --fast-path')
     if not 0 <= args.prefix_helpers <= 8: parser.error('--prefix-helpers must be between 0 and 8')
     if args.overlap_verification is None: args.overlap_verification = sys.platform != 'darwin'

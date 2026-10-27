@@ -164,11 +164,13 @@ class CommandTests(unittest.TestCase):
     def test_campaign_flags(self):
         self.assertEqual(tool.CAMPAIGNS['A'], [])
         self.assertIn('--serial-verification', tool.CAMPAIGNS['F'])
-        self.assertEqual(tool.EXACT, set('AFOH'))
+        self.assertEqual(tool.EXACT, set('AFOHN'))
+        self.assertIn('--no-text-replay', tool.CAMPAIGNS['N'])
         self.assertNotIn('X', tool.EXACT)
         parsed = [self.parse('--config', '/bench/machine.json', *flags) for flags in tool.CAMPAIGNS.values()]
-        self.assertEqual([a.fast_path for a in parsed], [False, True, True, True, True])
-        self.assertEqual(parsed[4].experiment, ['shared_graph_encodings'])
+        self.assertEqual([a.fast_path for a in parsed], [False, True, True, True, True, True])
+        self.assertEqual([a.text_leaf_replay for a in parsed], [True, True, True, True, False, True])
+        self.assertEqual(parsed[5].experiment, ['shared_graph_encodings'])
 
     def test_an_experiment_never_uses_the_official_configuration_or_run_root(self):
         with self.assertRaises(SystemExit):

@@ -109,22 +109,25 @@ def main():
                 fastest_batch=(start + 1250 * min(b['seconds'] for b in passed) + 26 * mean_eval) / 3600,
                 slowest_batch=(start + 1250 * max(b['seconds'] for b in passed) + 26 * mean_eval) / 3600)
         per_variant[variant] = row
-    # Paired batches: same (sequence, seat) in a baseline and a candidate campaign of the same block.
+    # Paired batches: same (sequence, seat) in a baseline campaign (of the same block when it has one, else
+    # every baseline campaign) and a candidate campaign. Every campaign starts from the same 629 copy and seeds.
+    baselines = [n for n, c in campaigns.items() if c.get('variant') == 'B' and 'training_batches' in c]
+
+    def bases(name):
+        block = name.split('-')[0]
+        return [f'{block}-B'] if f'{block}-B' in baselines else baselines
     pairs = []
     for name, c in campaigns.items():
         if c.get('variant') in (None, 'B'):
             continue
         block = name.split('-')[0]
-        base = campaigns.get(f'{block}-B')
-        if not base or 'training_batches' not in base:
-            continue
         for b in c['training_batches']:
-            for r in base['training_batches']:
+            for r in (r for base in bases(name) for r in campaigns[base]['training_batches']):
                 if (r['sequence'], r['seat']) == (b['sequence'], b['seat']):
                     both = r['status'] == b['status'] == 'passed' and b['seconds']
                     # A baseline stopped by its wall limit only bounds its own time from below.
                     censored = r['status'] != 'passed' and b['status'] == 'passed' and b['seconds']
-                    pairs.append(dict(block=block, variant=c['variant'], sequence=b['sequence'], seat=b['seat'],
+                    pairs.append(dict(block=block, campaign=name, variant=c['variant'], sequence=b['sequence'], seat=b['seat'],
                                       baseline_status=r['status'], candidate_status=b['status'],
                                       baseline_seconds=r['seconds'], candidate_seconds=b['seconds'],
                                       ratio=r['seconds'] / b['seconds'] if both else None,
@@ -136,13 +139,13 @@ def main():
     for name, c in campaigns.items():
         if c.get('variant') in (None, 'B'):
             continue
-        base = campaigns.get(f"{name.split('-')[0]}-B")
         for b in c.get('evaluation_batches', []):
-            for r in (base or {}).get('evaluation_batches', []):
-                if r['seat'] == b['seat'] and r['status'] == b['status'] == 'passed':
-                    evaluation.append(dict(block=name.split('-')[0], variant=c['variant'], seat=b['seat'],
-                                           baseline_seconds=r['seconds'], candidate_seconds=b['seconds'],
-                                           ratio=r['seconds'] / b['seconds']))
+            for base in bases(name):
+                for r in campaigns[base].get('evaluation_batches', []):
+                    if r['seat'] == b['seat'] and r['status'] == b['status'] == 'passed':
+                        evaluation.append(dict(block=name.split('-')[0], campaign=name, baseline=base, variant=c['variant'],
+                                               seat=b['seat'], baseline_seconds=r['seconds'],
+                                               candidate_seconds=b['seconds'], ratio=r['seconds'] / b['seconds']))
     result = dict(campaigns=campaigns, per_variant=per_variant, paired_training_batches=pairs,
                   paired_evaluation_batches=evaluation)
     text = json.dumps(result, indent=1, sort_keys=True)

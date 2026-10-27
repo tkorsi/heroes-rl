@@ -134,19 +134,21 @@ class ReviewedTreeTests(unittest.TestCase):
 
 class ExecutionChoiceTests(unittest.TestCase):
     def setUp(self):
-        saved = background_check.FORK, ppo.PREFIX_HELPERS, ppo.EXPERIMENTS
+        saved = background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS
         def restore():
-            background_check.FORK, ppo.PREFIX_HELPERS, ppo.EXPERIMENTS = saved
+            background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS = saved
         self.addCleanup(restore)
 
     def test_only_known_exact_choices_and_named_experiments(self):
         value = local.execution_choice(overlapped_verification=True, prefix_helpers=3)
         self.assertEqual(value, {'implementation': 'exact-fast-path-v1', 'overlapped_verification': True,
-                                 'prefix_helpers': 3, 'experiments': []})
+                                 'prefix_helpers': 3, 'text_leaf_replay': True, 'experiments': []})
+        self.assertIs(local.execution_choice(overlapped_verification=True, text_leaf_replay=False)['text_leaf_replay'], False)
         self.assertEqual(local.execution_choice(overlapped_verification=False, experiments=['shared_graph_encodings'])['experiments'],
                          ['shared_graph_encodings'])
         bad = [dict(value, implementation='accepted'), dict(value, overlapped_verification=1), dict(value, prefix_helpers=9),
                dict(value, prefix_helpers=-1), dict(value, prefix_helpers=True), dict(value, experiments=['faster']),
+               dict(value, text_leaf_replay=1), {k: v for k, v in value.items() if k != 'text_leaf_replay'},
                dict(value, experiments=['shared_graph_encodings', 'shared_graph_encodings']), dict(value, extra=0),
                {k: v for k, v in value.items() if k != 'experiments'}]
         for item in bad:
@@ -155,11 +157,13 @@ class ExecutionChoiceTests(unittest.TestCase):
 
     def test_choices_take_effect_only_from_a_plan(self):
         local.apply_execution({'execution': local.execution_choice(overlapped_verification=False, prefix_helpers=2,
+                                                                   text_leaf_replay=False,
                                                                    experiments=['shared_graph_encodings'])})
-        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.EXPERIMENTS),
-                         (False, 2, frozenset({'shared_graph_encodings'})))
+        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS),
+                         (False, 2, False, frozenset({'shared_graph_encodings'})))
         local.apply_execution({'execution': local.execution_choice(overlapped_verification=True)})
-        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.EXPERIMENTS), (True, 0, frozenset()))
+        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS),
+                         (True, 0, True, frozenset()))
         with self.assertRaises(ValueError):
             local.apply_execution({'execution': {'implementation': 'exact-fast-path-v1'}})
 
