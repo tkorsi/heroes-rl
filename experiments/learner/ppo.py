@@ -286,16 +286,21 @@ def _update(model, optimizer, rollouts, **options):
     try:
         return _update_kernel(model, optimizer, rollouts, pools=pools, **options)
     finally:
-        # Prefix helpers end with the update, whatever its outcome.
-        for pool in pools:
-            pool.close()
-        # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text leaves.
-        model.__dict__.pop("_graph_memo_state", None)
-        deferred = model.__dict__.pop("_text_replay_deferred", None)
-        if deferred is not None:
-            deferred.close()
-        for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
-            leaf.release()
+        try:
+            # The experiment's shared encodings never outlive their minibatch graph, nor do replayed text
+            # leaves; replay threads stop before the prefix helpers do.
+            model.__dict__.pop("_graph_memo_state", None)
+            deferred = model.__dict__.pop("_text_replay_deferred", None)
+            try:
+                if deferred is not None:
+                    deferred.close()
+            finally:
+                for leaf in model.__dict__.pop("_leaf_replay_state", {}).values():
+                    leaf.release()
+        finally:
+            # Prefix helpers end with the update, whatever its outcome.
+            for pool in pools:
+                pool.close()
 
 
 def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,

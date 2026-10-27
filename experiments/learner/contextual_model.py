@@ -16,6 +16,7 @@ import hashlib
 import json
 from math import copysign, log1p, sqrt
 from operator import attrgetter
+import signal
 from sys import getsizeof
 import threading
 import weakref
@@ -290,6 +291,10 @@ _LEAF_REPLAY = object()
 # The replay (leaf, contribution lists) that this thread is running, for the leaves' node hooks.
 _REPLAY_CAPTURE = threading.local()
 _TOP_SAVED_TENSOR_HOOKS = getattr(torch._C._autograd, "_top_saved_tensors_default_hooks", None)
+# Signals a replay thread never takes, so that process-directed ones reach the main thread, whose masked
+# sections (prefix helpers, background checks) defer them. Faults stay with the thread that causes them.
+_REPLAY_THREAD_BLOCKED = signal.valid_signals() - {getattr(signal, name) for name in (
+    "SIGKILL", "SIGSTOP", "SIGSEGV", "SIGBUS", "SIGFPE", "SIGILL", "SIGTRAP", "SIGABRT", "SIGSYS") if hasattr(signal, name)}
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
 # The other submodules an observation encoding reads.
@@ -321,6 +326,12 @@ def _bits(tensor):
     """Integer view of a tensor's exact bits: signed zeros and NaN payloads differ."""
     dtype = _BIT_DTYPES.get(tensor.element_size())
     return tensor.view(dtype) if dtype is not None else tensor.reshape(-1).view(torch.uint8)
+
+
+def _start_replay_thread(threads):
+    """Before a replay thread's first kernel: block process signals and take the caller's intra-op thread count."""
+    signal.pthread_sigmask(signal.SIG_BLOCK, _REPLAY_THREAD_BLOCKED)
+    torch.set_num_threads(threads)
 
 
 def _saved_tensor_hooks():
@@ -425,7 +436,8 @@ class _DeferredTextReplays:
     additions the engine makes in the immediate replay and in the reference, and ``finish``
     installs the sums as the gradients. A replay's values do not depend on the thread that
     computes it: the same operations run on the same operands, one thread per operation, and
-    each worker takes the main thread's intra-op thread count before its first kernel. Once the
+    each worker takes the main thread's intra-op thread count before its first kernel (and
+    leaves process signals to the main thread). Once the
     backward is done, ``finish`` replays the queued occurrences that no worker has started, last
     first, while the workers continue from the front. Each backward needs its own ``finish``.
     """
@@ -433,7 +445,7 @@ class _DeferredTextReplays:
     def __init__(self, params, workers):
         self.params = params
         self.pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="text-replay",
-                                       initializer=torch.set_num_threads, initargs=(torch.get_num_threads(),))
+                                       initializer=_start_replay_thread, initargs=(torch.get_num_threads(),))
         self.pending = deque()
         self.sums = [None] * len(params)
         self.armed = self.ended = False
@@ -1048,10 +1060,12 @@ class ContextualActorCritic(nn.Module):
                 self.__dict__.pop("_leaf_replay_state", None)
             if self.__dict__.get("_text_replay_deferred") is deferred:
                 self.__dict__.pop("_text_replay_deferred", None)
-            if deferred is not None:
-                unfinished = deferred.close()
-            for leaf in state.values():
-                leaf.release()
+            try:
+                if deferred is not None:
+                    unfinished = deferred.close()
+            finally:
+                for leaf in state.values():  # only after the workers stopped, but whatever stopping them raised
+                    leaf.release()
         if unfinished:
             raise RuntimeError("Deferred text leaf replays were not finished before leaving the context")
 

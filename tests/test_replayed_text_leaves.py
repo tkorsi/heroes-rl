@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import replace
 import gc
 import pickle
+import signal
 import threading
 import unittest
 import weakref
@@ -200,6 +201,37 @@ class ReplayedTextLeafTests(unittest.TestCase):
             self.deferred_window_gradients(2)
         self.assertTrue(calls)
         self.assertEqual(set(calls), {(False, torch.get_num_threads())})
+
+    def test_replay_threads_leave_process_signals_to_the_main_thread(self):
+        masks, replay = [], cm._ReplayedText.replay
+
+        def recording(leaf, grad):
+            if threading.current_thread() is not threading.main_thread():
+                masks.append(signal.pthread_sigmask(signal.SIG_BLOCK, []))
+            return replay(leaf, grad)
+        with patch.object(cm._ReplayedText, "replay", recording):
+            self.deferred_window_gradients(2)
+        self.assertTrue(masks)
+        for mask in masks:
+            self.assertLessEqual({signal.SIGALRM, signal.SIGINT, signal.SIGTERM}, mask)
+        self.assertNotIn(signal.SIGINT, signal.pthread_sigmask(signal.SIG_BLOCK, []))
+
+    def test_a_failed_replay_ends_its_threads_and_state_with_the_update(self):
+        ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS = True, 2
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0003)
+        calls, replay = [], cm._ReplayedText.replay
+
+        def failing(leaf, grad):
+            calls.append(grad)
+            if len(calls) == 3:
+                raise RuntimeError("injected replay failure")
+            return replay(leaf, grad)
+        with patch.object(cm._ReplayedText, "replay", failing), \
+                self.assertRaisesRegex(RuntimeError, "injected replay failure"):
+            ppo._update(self.model, optimizer, self.rollouts, config=PPOConfig(), generator=torch.Generator().manual_seed(5))
+        self.assertFalse([t for t in threading.enumerate() if t.name.startswith("text-replay")])
+        self.assertNotIn("_leaf_replay_state", self.model.__dict__)
+        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
 
     def test_a_second_backward_before_finishing_deferred_replays_is_refused(self):
         window = self.rollouts[0].decisions[1:]
