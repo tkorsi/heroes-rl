@@ -40,12 +40,17 @@ forked helpers; and the replay of repeated text leaves. Within one minibatch gra
 text leaf (`text_gru(byte(...))`) is computed once, and every occurrence replays that leaf's own
 backward graph with its own incoming gradient, returning each contribution to the five leaf
 parameters separately, in the reference order (log O13 to O15). With helpers declared, the replays
-run on that many threads while the backward continues, and their contributions are added in the same
-order before the optimizer step. The replay refuses (raises; the update is rolled back) on anything
-outside its exactness argument: a replaced or changed leaf parameter inside the minibatch, a
+of the minibatch's one bracketed backward run on that many threads while the backward continues,
+and their contributions are added in the same order, and installed as the gradients, before
+gradient clipping and the optimizer step. The bracket defers only onto trainable leaf parameters
+without gradients or hooks; any other backward replays inside the autograd engine. The replay
+refuses (raises; the update is rolled back) on anything outside its exactness argument: a leaf
+parameter replaced, frozen or changed inside the minibatch (in place or through `.data`), a
 contribution count that differs from its graph, with replay threads a gradient to a leaf parameter
-from elsewhere, or a higher-order or second backward. It keeps the reference path, silently and
-exactly, for tied leaf parameters, module or saved-tensor hooks.
+from elsewhere or a parameter frozen or hooked during the backward, a failed replay or interrupted
+backward (no further deferral in that minibatch), or a higher-order or second backward. It keeps
+the reference path, silently and exactly, for tied or frozen leaf parameters, autocast, anomaly
+mode, module, global module or saved-tensor hooks.
 
 The exact options produce bitwise-identical games, PPO updates, Adam state, RNG streams and
 checkpoint weights to the accepted implementation (tests and paired Linux campaigns below). The
@@ -64,12 +69,29 @@ review, not a substitute for the exact learner in the official lineage.
   `train-local.sh`) must equal the a8ac411 blob or its `FAST_PATH_TREE` pin, checked on every
   restore; untracked Python files in those folders refuse too. `fast_path_pins.py` regenerates the
   pins after a reviewed change and otherwise reports any difference.
-- A fast-path checkpoint can be continued only by the fast path. The pinned accepted release has no
-  reverse transition and refuses it. So once the official run starts with `--fast-path`, the in-lineage
-  fallback is `--fast-path --serial-verification --prefix-helpers 0 --no-text-replay`, which
-  executes every verification step serially in the worker in main's order, with no fork, and
-  computes every text leaf separately. Returning to the accepted path means restarting from an
-  accepted checkpoint (for example the original 629 parent).
+- A fast-path checkpoint can be continued only by the fast path, and only by a release whose learner
+  digests, adapter and tree pins equal those of the release that wrote it: there is no reviewed
+  fast-to-fast transition list, so a checkpoint written by one fast-path commit is refused by a later
+  one that changed any pinned file ("Policy, PPO or collector implementation changed" or "Unreviewed
+  historical local adapter"). `start` always releases the checkout's HEAD, so keep HEAD at the same
+  commit for the whole fast-path lineage. Adopting a later fix means restarting from an accepted
+  checkpoint (for example the original 629 parent) or adding a reviewed transition.
+- The pinned accepted release has no reverse transition and refuses a fast-path checkpoint. So once
+  the official run starts with `--fast-path`, the in-lineage fallback (same commit) is
+  `--fast-path --serial-verification --prefix-helpers 0 --no-text-replay`, which executes every
+  verification step serially in the worker in main's order, with no fork, and computes every text
+  leaf separately. Continue the lineage with `train-local.sh`, not `train-original-5000.sh`: the
+  latter always restores the finalized easy parent (`--parent-final`), so it would start a new
+  lineage from update 629 instead of continuing. The continuation restores the run root's
+  `latest-checkpoint.json` (or an explicit `--parent`):
+
+  ```sh
+  ./train-local.sh --profile original --fast-path --serial-verification --prefix-helpers 0 \
+      --no-text-replay --games REMAINING_GAMES --hours 48 --eval-every 100
+  ```
+
+  A continuation is a new run: it plays its own eight baseline evaluation games first and counts
+  `--eval-every` from its own first update.
 - A run with `--experiment` writes `numerical_experiments` into every checkpoint's metadata, and a
   continuation must request the same experiment set; an exact run refuses an experimental parent.
 
@@ -79,10 +101,13 @@ On any host with the project's Python (no game, no Torch build requirement beyon
 
 ```sh
 python tools/acceleration3/fast_path_pins.py            # "pins match": pins equal the tree and a8ac411/3268f2f
-python -m unittest tests.test_local_fast_path tests.test_local_script_training
-(cd tests && python -m unittest test_prefix_pool test_parallel_verification test_ppo_phase2_acceleration)
+python -m unittest tests.test_local_fast_path tests.test_local_script_training tests.test_replayed_text_leaves \
+    tests.test_prefix_pool tests.test_parallel_verification tests.test_ppo_phase2_acceleration
+(cd tools/acceleration3 && python -m unittest test_mac_acceptance test_bench_tools)
 python tools/prepare_vcmi.py --check
 ```
+
+Run them from the repository root (the test modules import `experiments` and `tests` as packages).
 
 On the Mac, bounded, from a clean checkout of this branch, while the manual run is NOT active
 (the tool holds the official owner lock and refuses otherwise; it writes only into
@@ -98,7 +123,8 @@ seed namespace 60M/70M, and never touches the official lineage):
 fixed baseline games and one training batch with the accepted implementation and then with the
 macOS fast-path default, from the same parent and seeds. It exits 0 only if both campaigns ended
 cleanly (every requested batch admitted, no bound reached, nothing interrupted or left running, the
-expected commit released, the checkout unchanged) and every exact campaign had at least one
+expected commit released with the execution choices its letter names, the checkout unchanged) and
+every exact campaign had at least one
 training batch with identical games from the same parent as A, each with bitwise-identical learner
 state; `summary.json` in the bench folder lists every problem and has per-batch times, game
 lengths, PPO times, peak memory and process counts. Games are compared on every observation and
