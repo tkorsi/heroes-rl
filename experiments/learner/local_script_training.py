@@ -79,7 +79,7 @@ FAST_PATH_SOURCES = {
         '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f',),
-        '1666ddd74d45b14dadc1bb18401ab2a960b6e2866a2bcf241a49f964a28a5f75'),
+        '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d'),
     'experiments/learner/contextual_rollout.py': (
         ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637',),
         'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205'),
@@ -140,7 +140,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'a0ee1abb562faff9301b889abbff42d415d8609118ddee82c1c024a4272a0d02'
+LOCAL_ADAPTER_TRANSITION_AST = '2913e44bfc004e0e9e5516c62ddbd0973d5060636fddb7e2e7f0b4ae232e6ae5'
 
 
 def write_new(path, value):

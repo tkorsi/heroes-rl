@@ -428,13 +428,21 @@ class ReplayedTextLeafTests(unittest.TestCase):
 
     def test_an_operation_mode_or_another_thread_count_keeps_the_engine_replay(self):
         from torch.overrides import TorchFunctionMode
+        from torch.utils._python_dispatch import TorchDispatchMode
 
         class Passing(TorchFunctionMode):
             def __torch_function__(self, func, types, args=(), kwargs=None):
                 return func(*args, **(kwargs or {}))
+
+        class Counting(TorchDispatchMode):
+            calls = 0
+
+            def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+                Counting.calls += 1
+                return func(*args, **(kwargs or {}))
         probe = torch.zeros((), requires_grad=True)
         probe.register_hook(lambda grad: (torch.set_num_threads(2), None)[1])
-        for setting in ("mode", "threads", "threads during the backward"):
+        for setting in ("mode", "dispatch mode", "threads", "threads during the backward"):
             extra = (lambda: 0.0 * probe) if setting == "threads during the backward" else (lambda: 0.0)
             try:
                 if setting == "threads":
@@ -449,13 +457,14 @@ class ReplayedTextLeafTests(unittest.TestCase):
                 loss = self.window_graph() + extra()
                 try:
                     with patch.object(cm._DeferredTextReplays, "add", side_effect=AssertionError("deferred")), \
-                            (Passing() if setting == "mode" else nullcontext()):
+                            (Passing() if setting == "mode" else Counting() if setting == "dispatch mode" else nullcontext()):
                         if setting == "threads":
                             torch.set_num_threads(2)
                         self.model.backward_with_text_replays(loss)
                 finally:
                     torch.set_num_threads(1)
             self.assertTrue(bits_equal([p.grad for p in self.model.parameters()], reference))
+        self.assertGreater(Counting.calls, 0)  # the engine's own replay ran under the dispatch mode
         self.assertNotIn("_text_replay_deferred", self.model.__dict__)
         # A mode entered inside the backward does not reach later nodes: the engine restores each node's state.
         entered, modes, add = [], [], cm._DeferredTextReplays.add
@@ -471,6 +480,56 @@ class ReplayedTextLeafTests(unittest.TestCase):
         self.assertFalse(any(modes))
         self.assertTrue(bits_equal(result[1], reference[1]))
         self.assertFalse(cm._operation_modes())
+
+    def test_a_thread_count_changed_after_queued_replays_fails_closed(self):
+        leaves = (self.model.byte.weight, *(getattr(self.model.text_gru, name)
+                                           for name in self.model.text_gru._flat_weights_names))
+        engine = torch.autograd.Variable._execution_engine
+        replay, gate = cm._ReplayedText.replay, threading.Event()
+
+        def gated(leaf, grad):  # workers wait, so that finish replays queued occurrences on the main thread
+            if threading.current_thread() is not threading.main_thread():
+                gate.wait(30)
+            return replay(leaf, grad)
+        for when in ("after the last occurrence", "between occurrences"):
+            self.model.zero_grad(set_to_none=True)
+            with self.model.replayed_text_leaves(1):
+                deferred = self.model.__dict__["_text_replay_deferred"]
+                state = self.model.__dict__["_leaf_replay_state"]
+                first = self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+                second = self.model._encode_tree(("text", "cd"), {cm._LEAF_REPLAY: state})
+                if when == "between occurrences":  # the later-created occurrence runs first and is queued
+                    first.register_hook(lambda grad: (torch.set_num_threads(2), None)[1])
+                else:
+                    second.register_hook(lambda grad: (engine.queue_callback(lambda: torch.set_num_threads(2)), None)[1])
+                try:
+                    message = "another intra-op thread count" if when == "after the last occurrence" else "outside its replayed"
+                    with patch.object(cm._ReplayedText, "replay", gated), self.assertRaisesRegex(RuntimeError, message):
+                        self.model.backward_with_text_replays(first.sum() + second.sum())
+                finally:
+                    gate.set()
+                    torch.set_num_threads(1)
+                gate.clear()
+                self.assertTrue(deferred.broken)
+                if when == "after the last occurrence":
+                    self.assertTrue(all(leaf.grad is None for leaf in leaves))  # nothing installed
+
+    def test_a_backward_nested_in_a_hook_on_the_loss_replays_in_the_engine(self):
+        params, nested, started = list(self.model.parameters()), [], []
+        expected = torch.autograd.grad(self.window_graph(), params, allow_unused=True)
+        with self.model.replayed_text_leaves(2):
+            loss = self.window_graph()
+
+            def once(grad):
+                if not started:  # the nested backward runs this hook again
+                    started.append(True)
+                    nested.append(torch.autograd.grad(loss, params, retain_graph=True, allow_unused=True))
+            loss.register_hook(once)
+            # The nested backward ran first through the loss's own graph; its occurrences then refuse a second one.
+            with self.assertRaisesRegex(RuntimeError, "single backward"):
+                self.model.backward_with_text_replays(loss)
+        self.assertEqual(len(nested), 1)
+        self.assertTrue(bits_equal(list(nested[0]), list(expected)))
 
     def test_a_changed_deferred_fold_order_is_detected(self):
         # Negative control: deferred contributions folded in reverse engine order change the bits.
@@ -718,8 +777,18 @@ class ReplayedTextLeafTests(unittest.TestCase):
                 model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
 
     def test_autocast_anomaly_mode_and_forward_hooks_keep_the_reference(self):
+        from torch.overrides import TorchFunctionMode
+        from torch.utils._python_dispatch import TorchDispatchMode
+
+        class Function(TorchFunctionMode):
+            def __torch_function__(self, func, types, args=(), kwargs=None):
+                return func(*args, **(kwargs or {}))
+
+        class Dispatch(TorchDispatchMode):
+            def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+                return func(*args, **(kwargs or {}))
         module = torch.nn.modules.module
-        modes = (lambda: torch.autocast("cpu", dtype=torch.bfloat16),
+        modes = (lambda: torch.autocast("cpu", dtype=torch.bfloat16), Function, Dispatch,
                  lambda: torch.autograd.detect_anomaly(check_nan=False),
                  lambda: hooked(self.model.byte.register_forward_hook(lambda *a: None)),
                  lambda: hooked(self.model.text_gru.register_forward_pre_hook(lambda *a: None)),
@@ -832,8 +901,16 @@ class ReplayedTextLeafTests(unittest.TestCase):
                              synthetic_rollout(self.model, turns=3, episode="threads-b", boundary="cutoff"))
             config = PPOConfig(decisions_per_window=2, windows_per_minibatch=4)
             right = self.update(deepcopy(self.model), False, config, 51)
+            add = cm._DeferredTextReplays.add
             for workers in (0, 2):
-                left = self.update(deepcopy(self.model), True, config, 51, workers)
+                deferred = []
+
+                def recording(owner, leaf, grad):
+                    deferred.append((owner.threads, owner.pool._max_workers)); return add(owner, leaf, grad)
+                with patch.object(cm._DeferredTextReplays, "add", recording):
+                    left = self.update(deepcopy(self.model), True, config, 51, workers)
+                self.assertGreater(left[0], 0)
+                self.assertEqual(set(deferred), {(4, 2)} if workers else set())
                 self.assertEqual(left[1], right[1])
                 for a, b in zip(left[2:], right[2:]):
                     self.assertTrue(bits_equal(a, b))

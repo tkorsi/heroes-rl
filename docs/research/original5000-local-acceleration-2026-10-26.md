@@ -656,7 +656,8 @@ macOS default with two replay threads.
 
 New tests: a nested `autograd.grad` inside the bracket is exact and the bracket's own gradients
 are bit-identical; a function mode or another thread count at the bracket keeps the engine replay,
-exactly, and a thread count changed during the backward does too; a mode entered inside the
+exactly, and a thread count changed during the backward before any occurrence is queued does too
+(after one is queued, the bracket fails closed: see O18); a mode entered inside the
 backward does not reach later occurrences; the deferred fold order reversed changes the bits
 (negative control); every PPO minibatch defers (one bracket per optimizer step, each with its own
 occurrences, all of them deferred); every bracket in one context defers the same number of
@@ -702,3 +703,47 @@ final learner candidate (worktree at 579043e, learner of 480aa1a): m4-RDH with s
 (266 to 271) for the projection, m3-RDT (the macOS default with two replay threads and no fork),
 m3-RDF (the macOS default), m2-XH, m5-RDH, and m2-CH if time allows; queue 11 on CPU 0 reruns RBN267
 and continues with RD267, P267, RD266, B2, C2, P266b and RD266b.
+
+### O18. The final candidate end to end, a fifth review, and its fixes (04:10 to 05:10 UTC)
+
+m4-RDH (learner of 480aa1a, overlapped verification, two prefix helpers, two replay threads) admitted
+training batch 266 with the update 630 bytes fe1378ef..., the accepted computation's, from games equal
+to those of every exact campaign: the deferred replays of the final learner are exact on the real
+batch. On CPU 0, RD267 (480aa1a, replay inside the engine) took 503.6 s with the update 631 bytes
+46439a9b..., and RBN267 (2ba42ac with `--no-text-replay`, the fallback) 740.6 s with the same bytes.
+
+Fifth independent review (of the diff 2ba42ac..480aa1a; three read-only reviewers with adversarial
+verification, nine agents; seven findings confirmed, none reachable from the PPO update, which runs on
+a model without hooks and never changes its thread count):
+- `finish` replayed unstarted occurrences on the main thread at whatever intra-op thread count the
+  main thread had after the backward. The engine does not restore that count, so a hook or engine
+  callback that changed it after the last occurrence changed the installed bits silently; on this
+  torch the text GRU's gradients depend on the count from a feature size of 128 (not at the
+  production 32). A worker whose first kernel ran after such a change could also adopt the new count,
+  because a thread's lazy initialization copies the process-wide count.
+- The bracket's task was recorded by a pre-hook on the loss's own node, which a nested backward
+  started from a tensor hook on the loss reaches first: that nested backward's occurrences were then
+  deferred and returned no gradient.
+- Test gaps: the intra-op threads test never checked that anything was deferred; no test used a
+  dispatch mode, the one mode that reaches the backward (the engine keeps it in the graph task's
+  state, while a function mode is popped by `Tensor.backward`); a thread count changed after an
+  occurrence was queued was untested.
+- Documentation: the guide still tied the replay threads to the prefix helpers, and O16 said that a
+  thread count changed during the backward keeps the engine replay, which holds only before the first
+  occurrence is queued (after it, the later occurrences write `.grad` and `finish` raises).
+- Minor: an asynchronous exception inside the installation loop could leave part of the sums installed.
+
+Fixes (candidate after 9aebc1c): every replay, on a worker or on the main thread, raises unless its
+thread's intra-op count is the bracket's, and each worker runs its lazy initialization before taking
+the count; the bracket now runs `backward()` from a fresh view of the loss and records its task on that
+view's node, which nothing else can reach or hook (the view's backward is the identity, so the
+gradients are the same bits); the sums are installed all or none. New tests: a dispatch mode at the
+bracket keeps the engine replay exactly (and the mode sees the engine's replays), function and
+dispatch modes at forward time keep the reference path, the intra-op threads test records the
+bracket's thread count and its deferrals, a thread count changed between occurrences or by an engine
+callback after the last one fails closed with nothing installed, and a backward nested in a hook on
+the loss computes exact gradients in the engine (the outer backward then refuses its second pass,
+as any second backward through replayed occurrences does). A first version of the nested test
+recursed without bound, because the nested backward runs the loss's hook again, and was killed by
+the session's memory limit before it could affect the campaign's processes; the test now guards its
+hook, and test runs carry a memory limit.

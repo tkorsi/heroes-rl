@@ -31,7 +31,7 @@ become the default by accident), but it changes how future learner work reaches 
 | (none) | accepted implementation a8ac411, unchanged |
 | `--fast-path` | exact fast path; on macOS serial verification and no prefix helpers |
 | `--fast-path --overlap-verification` | also overlap per-game native replay and behaviour report in forked children (Linux default) |
-| `--fast-path --prefix-helpers N` | also compute PPO prefix frame encodings in N forked helpers (0 to 8), bit for bit, and replay text leaves on N threads during the backward |
+| `--fast-path --prefix-helpers N` | also compute PPO prefix frame encodings in N forked helpers (0 to 8), bit for bit, and (by default) replay text leaves on N threads during the backward |
 | `--fast-path --replay-threads N` | replay text leaves on N threads (0 to 8) during the backward, bit for bit; threads only, no fork (default: as many as `--prefix-helpers`) |
 | `--fast-path --no-text-replay` | compute every text leaf occurrence separately, as the accepted learner does (bit-identical; the in-lineage fallback if the replay ever refuses) |
 | `--fast-path --experiment shared_graph_encodings` | NUMERICAL experiment: reordered gradient summation; reported separately; never a default |
@@ -41,18 +41,20 @@ optionally overlapped; PPO prefix states reconstructed with a call-local node me
 forked helpers; and the replay of repeated text leaves. Within one minibatch graph, each distinct
 text leaf (`text_gru(byte(...))`) is computed once, and every occurrence replays that leaf's own
 backward graph with its own incoming gradient, returning each contribution to the five leaf
-parameters separately, in the reference order (log O13 to O15). With helpers declared, the replays
-of the minibatch's one bracketed backward run on that many threads while the backward continues,
+parameters separately, in the reference order (log O13 to O16). With replay threads
+(`--replay-threads N`, by default as many as `--prefix-helpers`), the replays of the minibatch's one
+bracketed backward run on that many threads while the backward continues,
 and their contributions are added in the same order, and installed as the gradients, before
 gradient clipping and the optimizer step. The bracket defers only onto trainable leaf parameters
 without gradients or hooks, and only the occurrences that its own backward reaches (identified by
-the autograd graph task, on the bracket's intra-op thread count); any other backward, including one
-nested in a hook or run on another thread, replays inside the autograd engine. The replay refuses
+the autograd graph task, recorded on a fresh view of the loss that nothing else reaches, and only
+on the bracket's intra-op thread count, which every replay checks); any other backward, including
+one nested in a hook or run on another thread, replays inside the autograd engine. The replay refuses
 (raises; the update is rolled back) on anything outside its exactness argument: a leaf parameter
 replaced, frozen or changed by an autograd-visible in-place operation inside the minibatch, a
 contribution count that differs from its graph, with replay threads a gradient to a leaf parameter
-from elsewhere (a nested `.backward()` included) or a parameter frozen or hooked during the
-backward, a failed replay or interrupted backward (no further deferral in that minibatch), or a
+from elsewhere (a nested `.backward()` included), a parameter frozen or hooked during the backward,
+or an intra-op thread count changed during it after an occurrence was queued, a failed replay or interrupted backward (no further deferral in that minibatch), or a
 higher-order or second backward. It keeps the reference path, silently and exactly, for tied or
 frozen leaf parameters, autocast, anomaly mode, torch function or dispatch modes, module, global
 module or saved-tensor hooks. Two changes are not detected and are outside the exactness argument

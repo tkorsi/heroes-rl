@@ -333,6 +333,7 @@ def _bits(tensor):
 def _start_replay_thread(threads):
     """Before a replay thread's first kernel: block process signals and take the caller's intra-op thread count."""
     signal.pthread_sigmask(signal.SIG_BLOCK, _REPLAY_THREAD_BLOCKED)
+    torch.get_num_threads()  # the thread's own lazy initialization first, so that it cannot replace the count later
     torch.set_num_threads(threads)
 
 
@@ -458,7 +459,8 @@ class _DeferredTextReplays:
 
     Only ``ContextualActorCritic.backward_with_text_replays`` defers: ``begin`` before its
     backward, ``finish`` after it (``fail`` if it raises). Only occurrences reached by that
-    backward's own graph task defer (a pre-hook on the loss's node records the task); every other
+    backward's own graph task defer (a pre-hook records the task on a fresh view of the loss, a
+    node that no other backward can reach and no hook is registered on); every other
     backward or ``autograd.grad`` in the context, nested in a hook or on another thread included,
     replays immediately, inside the engine. A bracket defers only when the text leaf parameters
     are trainable, without gradients and without hooks, so that they receive gradient from
@@ -471,9 +473,12 @@ class _DeferredTextReplays:
     gradients. A replay's values do not depend on the thread that computes it: the same
     operations run on the same operands, one thread per operation, and each worker takes the
     main thread's intra-op thread count before its first kernel (and leaves process signals to
-    the main thread). Replays are folded as soon as all earlier ones are; once the backward is
-    done, ``finish`` also replays on the main thread the earliest queued occurrence that no
-    worker has started whenever the front one is still running. After a failure the object
+    the main thread); every replay, on a worker or on the main thread, raises if its thread's
+    count is not the bracket's, and a count changed during the backward after an occurrence
+    was queued sends the later occurrences to the engine, so ``finish`` raises. Replays are
+    folded as soon as all earlier ones are; once the backward is done, ``finish`` also replays
+    on the main thread the earliest queued occurrence that no worker has started whenever the
+    front one is still running. The sums are installed all or none. After a failure the object
     refuses further brackets.
     """
 
@@ -516,9 +521,15 @@ class _DeferredTextReplays:
                 and torch.get_num_threads() == self.threads)
 
     def add(self, leaf, grad):
-        self.pending.append((leaf, grad, self.pool.submit(leaf.replay, grad)))
+        self.pending.append((leaf, grad, self.pool.submit(self._replay, leaf, grad)))
         while self.head < len(self.pending) and self.pending[self.head][2].done():
             self._fold_head(self.pending[self.head][2].result())
+
+    def _replay(self, leaf, grad):
+        """One occurrence's replay, on any thread, only on the bracket's intra-op thread count."""
+        if torch.get_num_threads() != self.threads:
+            raise RuntimeError("A deferred text leaf replay would run on another intra-op thread count than its bracket")
+        return leaf.replay(grad)
 
     def _fold_head(self, values):
         leaf = self.pending[self.head][0]
@@ -556,7 +567,7 @@ class _DeferredTextReplays:
                         cursor += 1
                     if cursor < len(self.pending):
                         leaf, grad, _ = self.pending[cursor]
-                        taken[cursor] = leaf.replay(grad)
+                        taken[cursor] = self._replay(leaf, grad)
                         cursor += 1
                         continue
                 self._fold_head(future.result())
@@ -566,9 +577,16 @@ class _DeferredTextReplays:
                                           or _parameter_state((param,))[0] != state):
                     raise RuntimeError("A text leaf parameter changed or received gradient outside its replayed "
                                        "occurrences during the backward")
-            for param, total in zip(self.params, sums):
-                if total is not None:
-                    param.grad = total
+            installed = []
+            try:
+                for param, total in zip(self.params, sums):
+                    if total is not None:
+                        param.grad = total
+                        installed.append(param)
+            except BaseException:
+                for param in installed:  # all or nothing
+                    param.grad = None
+                raise
             self._reset()
         except BaseException:
             self.fail()
@@ -1177,9 +1195,11 @@ class ContextualActorCritic(nn.Module):
         if deferred is None or loss.grad_fn is None or not deferred.can_defer():
             loss.backward()
             return
-        deferred.begin(loss.grad_fn)
+        with torch.enable_grad():
+            root = loss.view_as(loss)  # the backward's first node; nothing else reaches it or hooks it
         try:
-            loss.backward()
+            deferred.begin(root.grad_fn)
+            root.backward()
             deferred.finish()
         except BaseException:
             deferred.fail()
