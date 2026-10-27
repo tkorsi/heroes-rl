@@ -270,8 +270,7 @@ def machine_config(python, inputs, data, art, run_root, env, namespace):
             f'v = p.build_configuration(Path({str(inputs / "input412")!r}), p.DEFAULT_RUNTIME, Path({str(data)!r}),'
             f' Path({str(art)!r}), Path({str(run_root)!r}), "original")\n'
             'print(json.dumps(v))')
-    out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True,
-                         start_new_session=True)
+    out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True)  # retain the outer study guardian's process group
     value = json.loads(out.stdout.strip().splitlines()[-1])
     if value['seed_namespace'] != namespace:
         refuse('benchmark namespace did not apply; nothing was started')
