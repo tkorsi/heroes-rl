@@ -1,0 +1,46 @@
+{
+  "schema": "heroes-local-final699-preservation-v1",
+  "timestamp_utc": "2026-10-27T12:13:16.667778+00:00",
+  "run_id": "run-20261026T181133Z-062cd75a",
+  "source_commit": "b4fe70cc0285a76716430b5f41b17b43ba828b12",
+  "status": "stopped_failure",
+  "failure": "Batch336 transactional PPO exceeded 3510-second effective inner wall limit; model, Adam and all RNG rolled back",
+  "new_admitted_games": 280,
+  "new_ppo_updates": 70,
+  "training_outcomes": {
+    "win": 0,
+    "loss": 275,
+    "collection_window": 5
+  },
+  "failed_sequence": 336,
+  "failed_batch_training_samples": 0,
+  "failed_batch_optimizer_updates": 0,
+  "failed_batch_attempted_optimizer_steps": 466,
+  "checkpoint_update": 699,
+  "progress": {
+    "updates": 699,
+    "rollouts": 2796,
+    "decisions": 366475
+  },
+  "optimizer_steps": 12424,
+  "remaining_games": 4720,
+  "next_unused_sequence": 337,
+  "private_package_commit": "f0f5c8f55a98fa4b31fec4e733aca94c01ad7315",
+  "private_receipt_commit": "b09963e",
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_branch": "codex/local-script-final699-checkpoint",
+  "remote_full_restore": {
+    "exact_model_adam_rng_progress_pool": true,
+    "progress": {
+      "updates": 699,
+      "rollouts": 2796,
+      "decisions": 366475
+    },
+    "optimizer_steps": 12424,
+    "weights_sha256": "7218d007ff56ca0d552043ce23e31bc7de90984f796adcdf590d72eefe0be58f"
+  },
+  "owned_cleanup_verified": true,
+  "full_raw_evidence_retained_locally": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a",
+  "full_raw_archive_remote_verified": false,
+  "new_games_during_preservation": 0
+}

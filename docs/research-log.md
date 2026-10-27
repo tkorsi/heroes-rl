@@ -461,3 +461,20 @@ Claude acknowledged the immutable629 handoff at 20:32 Kyiv and will validate
 Linux relocation on disposable copies. This is not evidence of completed Linux
 acceptance or a measured speedup for629. The deadline and manual launch remain
 unchanged.
+
+## 27 October 2026 — original-map timeout and exact699 preservation
+
+The user manually launched the original-map campaign from629. It admitted280 games
+and70 complete PPO updates, ending at699:0 wins,275 losses and5 collection-window
+cutoffs. Batch336 collected four verified games but its16058-sample PPO update
+exceeded the inherited3510-second effective inner deadline after466 attempted Adam
+steps. Transactional rollback admitted no samples or update from336; no after
+checkpoint exists for it. Owned shutdown and full699 restoration passed. The next
+unused training sequence is337 and4720 games remain.
+
+[The preservation receipt](../validation/local-script-final699-sync-2026-10-27.json)
+binds a separately published private699 package, remote blob readback and exact
+model/Adam/RNG/progress/pool restoration. Full raw evidence remains in the original
+artifact directory; this audit does not claim a new remote full-archive copy.
+The user authorized disposable Mac performance checks and timeout/continuation
+preparation. The official continuation remains a manual user launch.
