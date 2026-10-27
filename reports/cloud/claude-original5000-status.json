@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T09:58:01Z",
+ "generated_utc": "2026-10-27T10:10:25Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,8 +20,8 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T09:57:35.176325Z",
-  "seconds_to_heavy_stop": 3144.8,
+  "heartbeat_utc": "2026-10-27T10:10:05.243443Z",
+  "seconds_to_heavy_stop": 2394.8,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -422,7 +422,7 @@
    "live_descendants": 0
   }
  ],
- "phase": "all benchmark work ended at 09:57 UTC (schedule m10 finished; m2-XH not started at its 09:55 cutoff; CPU 0 queue 13 finished). Final validation record composed; final read-only check of the reported numbers, then stop receipts and the final push by 11:00 UTC",
+ "phase": "all benchmark work ended at 09:57 UTC; final validation record composed; two independent read-only checks of the reported numbers done and their corrections applied; stop receipts and final push by 11:00 UTC",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -640,7 +640,7 @@
   "optimizer_only_batch266_accepted_repeat_cpu0": "B2, accepted a8ac411, 05:14-06:08 UTC: 3230.4 s, update 630 fe1378ef (same bytes); the same job took 4214.9 s at 21:11-22:21 UTC on 26 Oct: host drift of about 25% for the accepted path (also seen in the accepted baselines, 876 s in m1-B against 636 s in m2-B). PR30 P266 3243.7 s; exact replay RD266 1839.2 s (1.76x B2)",
   "m3_RET": "final learner 5635c7c (release fe0d083), macOS default plus two replay threads without any fork (Mac letter T), CPUs 1-3, from 629: cold start 365.9 s (baselines 114.9 and 231.5 s); training batch 266 1516.7 s (PPO 1332.2 s), full learner state digest 8bbbe66b..., the same as every exact campaign's (accepted-equivalent update 630); peak 6.68 GB RSS, 45 fds, 21 threads, 10 processes",
   "optimizer_only_batch266_fast_no_replay_repeat_cpu0": "C2, fast path without replay (15ed404, learner bytes of 7c4303f), 06:08-06:50 UTC: 2481.1 s, update 630 fe1378ef; the same job C took 3241.7 s at 20:17-21:11 UTC on 26 Oct (0.765 of it, as B2 is 0.766 of B): the drift is the host's and affects both paths alike; accepted/fast ratio 1.30 in the evening pair and 1.30 in the night pair",
-  "m6_B": "accepted a8ac411 again at night (06:17-07:28 UTC), CPUs 1-3, from 629: baselines 226.3 and 425.4 s (cold start 675.9 s); training batch 266 with the same games as every exact campaign stopped at the 3,540 s budget after 116 of 125 optimizer steps (batch 3,519.6 s), update rolled back, run stopped; extrapolated complete batch about 3,780 s. Batch 266 of the fast path against it: at least 2.82x (m4-RDH, about 3.0x extrapolated), 2.32x without any fork (m3-RET, about 2.5x), 1.74x macOS default (m3-RAF, about 1.9x)",
+  "m6_B": "accepted a8ac411 again at night (06:17-07:28 UTC), CPUs 1-3, from 629: baselines 226.3 and 425.4 s (cold start 675.9 s); training batch 266 with the same games as every exact campaign stopped at the 3,540 s budget after 116 of 125 optimizer steps (batch 3,519.6 s), update rolled back, run stopped; extrapolated complete batch about 3,790 s. Batch 266 of the fast path against it: at least 2.82x (m4-RDH, about 3.0x extrapolated), 2.32x without any fork (m3-RET, about 2.5x), 1.74x macOS default (m3-RAF, about 1.9x)",
   "optimizer_only_batch266_pr30_repeat_cpu0": "P266b, PR30 4d7688b, 06:50-07:46 UTC: 3370.3 s (P266 at 01:50 UTC: 3243.7 s), update 630 fe1378ef; on one CPU PR30 takes the accepted path's time on batch 266 (B2 3230.4 s)",
   "optimizer_only_batch266_final_learner_cpu0": "RE266, final learner 5635c7c (release worktree fe0d083), replay inside the engine on one CPU, 08:22-08:58 UTC: 2174.4 s, update 630 fe1378ef (exact); RD266b (480aa1a) 07:46-08:22 UTC: 2130.6 s, against RD266 1839.2 s at 04:43: the host slowed again in the morning by about 15%",
   "m6_REH": "final learner 5635c7c (release fe0d083), two prefix helpers and two replay threads, CPUs 1-3, 07:28-09:06 UTC, from 629: cold start 327.0 s (baselines 102.4 and 214.2 s); training batches 266 1410.1 s, 267 386.4, 268 621.8, 269 1041.0, 270 2081.3 s with the same decisions per batch as m4-RDH; 266 and 267 have the same games and learner state digests as m4-RDH (updates 630 and 631 exact on the final learner); in 268, 269 and 270 one game of four differs from m4-RDH (asynchronous event order), so those batches are not comparable for exactness. Mean 1108.1 s, median 1041.0 s, 12% above m4-RDH's same five batches (986.2 s): the host was slower in the morning (RE266 2174.4 s at 08:22 against RD266 1839.2 s at 04:43). Peak 9.03 GB RSS, 43 fds, 21 threads, 10 processes",
@@ -677,5 +677,5 @@
   "about 03:25Z: third host restart (boot 72fdd1aa -> 3eb80ab8); the session resumed 04:05Z. Lost m6-RBH during batch 268 (two batches admitted) and RBN267; a read-only review workflow had already failed on a session limit. Watchdog restarted through the reboot path with the unchanged UTC deadlines; m6-RBH summarized and compressed; schedule m8 and queue 11 restarted"
  ],
  "pull_request": "https://github.com/tkorsi/heroes-rl/pull/31 (draft, no auto-merge)",
- "headline": "Linux, original map, from 629, same three CPUs: the accepted path cannot complete training batch 266 (update deadline after 116 of 125 steps; about 3,780 s extrapolated); the exact fast path with helpers and replay threads did it in 1,248 s and 1,410 s bracketing the accepted run: at least 2.65x, about 2.85x; cold start 1.97x; final learner exact end to end; about 3.6 verified updates per hour over eleven batches, projection about 347 h for 1,250 updates + 26 evaluation batches. No-fork replay threads (Mac letter T) at least 2.32x; macOS default 1.44 to 1.75x (below 2x). PR30 equals the accepted path on one CPU; the exact replay is 1.5 to 1.85x PR30 on one CPU (second 2x not reached on one CPU) and its three-CPU PPO 2.7 to 2.9x PR30's single-CPU PPO"
+ "headline": "Linux, original map, from 629, same three CPUs: the accepted path cannot complete training batch 266 (update deadline after 116 of 125 steps; about 3,790 s extrapolated); the exact fast path with helpers and replay threads did it in 1,248 s and 1,410 s bracketing the accepted run: at least 2.65x, about 2.85x; cold start 1.97x; final learner exact end to end; about 3.6 verified updates per hour over eleven batches, projection about 347 h for 1,250 updates + 26 evaluation batches. No-fork replay threads (Mac letter T) at least 2.32x; macOS default 1.44 to 1.75x (below 2x). PR30 equals the accepted path on one CPU; the exact replay is 1.5 to 1.85x PR30 on one CPU (second 2x not reached on one CPU) and its three-CPU PPO 2.7 to 2.9x PR30's single-CPU PPO"
 }

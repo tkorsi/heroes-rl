@@ -1822,7 +1822,7 @@
    "variant": "REH"
   }
  },
- "generated_utc": "2026-10-27T09:57:48Z",
+ "generated_utc": "2026-10-27T10:10:25Z",
  "host": {
   "cpu_model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
   "kernel": "6.18.44-fc-v165",
@@ -1859,7 +1859,7 @@
    "pr30": "4d7688b98fc1e20ab349676cc0a9e719bcfd6321"
   },
   "headline": {
-   "accepted_batch266": "not completed: the update passed the 3,540 s update deadline after 116 of 125 optimizer steps and was rolled back (batch 3,519.6 s); its own step rate extrapolates to about 3,780 s",
+   "accepted_batch266": "not completed: the update was stopped at the update deadline (3,540 s from the worker start, less a 30 s cleanup reserve) after 116 of 125 optimizer steps and was rolled back (batch 3,519.6 s); its own step rate extrapolates to about 3,790 s",
    "cold_start_seconds": {
     "accepted": 675.9,
     "fast_bracket_mean": 343.8,
@@ -1874,7 +1874,7 @@
     "accepted": "none; at least 4,195.5 s from launch to the stopped batch",
     "fast_bracket_mean": 1672.9
    },
-   "macos_default": "m3-REF (final learner) batch 266 2,452.5 s on the slow morning host and m3-RAF (a5b3568) 2,017.0 s at 01:46 UTC: at least 1.44 to 1.75x, about 1.54 to 1.87x; below 2x on this host",
+   "macos_default": "m3-REF (final learner) batch 266 2,452.5 s on the slow morning host and m3-RAF (a5b3568) 2,017.0 s at 01:46 UTC: at least 1.44 to 1.74x, about 1.54 to 1.88x; below 2x on this host",
    "no_fork_replay_threads": "m3-RET (final learner, --serial-verification --replay-threads 2) batch 266 1,516.7 s: at least 2.32x, about 2.50x",
    "optimizer_only_one_cpu": {
     "batch266_replay_over_pr30": "1.55 to 1.85x (bracket RD266, B2 and P266b, RD266b: 1.66x)",
@@ -1894,7 +1894,7 @@
    "Linux benchmark host (4 vCPU Xeon, 15.7 GiB); not the Mac. The Mac command is provided, not run.",
    "Equal resources: every campaign ran alone on the same three CPUs (1-3). The fast path's prefix helpers and replay threads use CPUs that the accepted path and PR30 leave idle; single-CPU optimizer-only comparisons are reported separately.",
    "Host drift: the host's speed changed during the night. The same accepted work took 1.3 to 1.4x as long in the evening of 26 Oct as at night (B 4,214.9 s against B2 3,230.4 s; C 3,241.7 s against C2 2,481.1 s; accepted baselines 876 s against 636 to 652 s), and fast-path work took up to 1.3x as long in the morning as at 04:00 to 05:00 UTC (RE266 2,174.4 s and RD266b 2,130.6 s against RD266 1,839.2 s; RE267 646.6 s against RD267 503.6 s; m6-REH 1.00 to 1.16x m4-RDH per batch). Ratios within a pair measured at the same time are stable; the headline brackets the accepted campaign between two fast-path campaigns.",
-   "The accepted path cannot complete training batch 266 from 629 on this host: its update is stopped at the 3,540 s budget and rolled back, after 83 of 125 optimizer steps in the evening (m1-B, batch 3,523 s) and after 116 at night (m6-B, batch 3,519.6 s, the same games). Ratios against it are lower bounds; the night run's own step rate puts the complete batch at about 3,780 s (an extrapolation over the last 9 of 125 steps). The evening estimate of 4,600 to 4,900 s measured the slower evening host and is not used.",
+   "The accepted path cannot complete training batch 266 from 629 on this host: its update is stopped at the 3,540 s budget and rolled back, after 83 of 125 optimizer steps in the evening (m1-B, batch 3,523 s) and after 116 at night (m6-B, batch 3,519.6 s, the same games). Ratios against it are lower bounds; the night run's own step rate puts the complete batch at about 3,790 s (an extrapolation over the last 9 of 125 steps). The evening estimate of 4,600 to 4,900 s measured the slower evening host and is not used.",
    "The projection uses the measured batches from the 629 parent (sequences 266 onward); later batches depend on how long the policy's games become. It is a scale, not a forecast.",
    "Projections are comparable only between variants measured on the same sequences (each variant's projection lists its distinct_sequences): batches 266 and 267 alone average less than the six batches 266 to 271 (799 s against 902 s in m4-RDH), so a projection from 266 and 267 only is biased low.",
    "The engine delivers some notices asynchronously, so a game can differ in event order between runs with the same seeds (one of twelve games in two accepted runs; m6-RBH batch 266 game 4). Such batches are not comparable and are not used as evidence of exactness either way.",

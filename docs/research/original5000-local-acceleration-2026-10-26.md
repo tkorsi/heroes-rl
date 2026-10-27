@@ -473,7 +473,7 @@ finish within its 3,540 s update budget (stopped at 3,523 s), takes 1,646 s: at 
 O12 (about 4,800 s), and 1.76x against m1-CH. Batch 267: 1.88x against m1-CH. [O19: these times are
 the workers' execution walls; the batch seconds used elsewhere are 113.9, 198.2, 1,649.2 and 463.6 s
 (1.75x and 1.86x against m1-CH). The 2.9x divides an evening estimate by a night measurement; against
-the night reference of about 3,780 s it is about 2.3x.]
+the night reference of about 3,790 s it is about 2.3x.]
 
 Candidate 4f02a10 (on top of 1721220) runs the occurrence replays on the declared helper CPUs
 while the main backward continues. An occurrence then returns nothing to the engine and queues its
@@ -619,7 +619,7 @@ every exact campaign. Against the accepted path's stopped batch (3,523 s at the 
 83 of 125 optimizer steps done) that is at least 1.75x; the accepted path's own per-game deadline
 evidence (games end at 362 s, then 83 steps in about 3,160 s) puts its complete batch at about 4,600
 to 4,900 s, about 2.3 to 2.4x. [O19: that arithmetic was low (the same extrapolation gives about
-5,120 s), and it describes the slower evening host; against the night reference of about 3,780 s this
+5,120 s), and it describes the slower evening host; against the night reference of about 3,790 s this
 batch is about 1.9x.] This is the setting the Mac would run without `--prefix-helpers`.
 
 m2-B (a8ac411, baselines only, the counterbalancing repeat of m1-B): 219.2 s and 417.1 s, against
@@ -805,13 +805,13 @@ the ratio within each pair (accepted over fast path, 1.30 in the evening and 1.3
 
 m6-B (the accepted campaign again, 06:17 to 07:28 UTC) played the same eight baseline games in 651.7 s
 (226.3 and 425.4 s; m2-B 636.3 s at 02:20, m1-B 875.8 s at 20:33) and the same four games of batch 266
-as m1-B and every exact campaign but m6-RBH, and its update again passed the 3,540 s update deadline
+as m1-B and every exact campaign but m6-RBH, and its update was again stopped at the 3,540 s update deadline
 (counted from the worker's start; the worker's whole limit is 3,600 s) and was rolled
 back, now after 116 of 125 optimizer steps (games ended 264 s after the worker started; batch
 3,519.6 s; cold start 675.9 s; peak 7.33 GB RSS). So even on the faster night host the accepted path
 cannot run the first original-map training batch from 629 on this hardware; the official run would
 stop there. Extrapolating its own PPO step rate (3,249 s for about 115.5 steps), the complete batch
-would take about 3,780 s. Against that same-night reference, batch 266 of the fast path is at least
+would take about 3,790 s. Against that same-night reference, batch 266 of the fast path is at least
 2.82x shorter with helpers and replay threads (m4-RDH, 1,248.0 s, two hours earlier; about 3.0x by
 the extrapolation), at least 2.32x without any fork (m3-RET, immediately before m6-B; about 2.5x) and
 at least 1.74x as the macOS default (m3-RAF on the earlier learner a5b3568, at 01:46 UTC, before the
@@ -851,7 +851,7 @@ same job as RD266, 2,130.6 s at 07:46), and RE267 646.6 s at 08:58 against 503.6
 The host slowed again in the morning. Both are exact (fe1378ef..., 46439a9b...).
 
 Headline, bracketed: batch 266 of the Linux setting took 1,248.0 s before m6-B and 1,410.1 s after it,
-mean 1,329.0 s, against at least 3,519.6 s (about 3,780 s extrapolated) for the accepted path: at least
+mean 1,329.0 s, against at least 3,519.6 s (about 3,790 s extrapolated) for the accepted path: at least
 2.65x, about 2.85x. Cold start 343.8 s against 675.9 s, 1.97x. Launch to the first admitted checkpoint
 1,672.9 s (mean of 1,608.7 and 1,737.0 s) against at least 4,195.5 s for the accepted path, which never
 admits one: at least 2.5x. Over the eleven training batches of both campaigns the mean is 995.6 s
@@ -863,7 +863,7 @@ m3-REF (the final learner's macOS default: serial verification, no helpers, repl
 engine; 09:08 to 09:56 UTC) admitted batch 266 in 2,452.5 s (PPO 2,246.4 s) with the same learner
 state digest; cold start 391.6 s, baselines 129.1 and 250.9 s, peak 6.67 GB RSS. It ran on the slow
 morning host; m3-RAF, the same setting on a5b3568, took 2,017.0 s at 01:46. Against the accepted batch
-that is at least 1.44x (REF) to 1.75x (RAF), about 1.54 to 1.87x: the macOS default alone does not reach
+that is at least 1.44x (REF) to 1.74x (RAF), about 1.54 to 1.88x: the macOS default alone does not reach
 2x on this host, while the replay threads without any fork (m3-RET, at least 2.32x, about 2.5x) and the
 helpers do. m2-XH was not started (09:55 cutoff); the experiment's campaign figures are m1-XH's. All
 benchmark work ended at 09:57 UTC, before the 10:50 heavy-work stop.

@@ -171,9 +171,9 @@ between two fast-path campaigns of the same configuration (m4-RDH before it, m6-
 uses their mean.
 
 - Accepted a8ac411 (m6-B, 06:17 UTC): it cannot complete the first training batch (sequence 266,
-  3,968 decisions): its update passes the 3,540 s update deadline after 116 of 125 optimizer steps
-  and is rolled back (batch 3,520 s; in the evening, m1-B, after 83 steps), so the manual run would
-  stop there. Extrapolating its own step rate, the complete batch would take about 3,780 s. Cold
+  3,968 decisions): its update is stopped at the update deadline (3,540 s from the worker start,
+  less a 30 s cleanup reserve) after 116 of 125 optimizer steps and is rolled back (batch 3,520 s; in
+  the evening, m1-B, after 83 steps), so the manual run would stop there. Extrapolating its own step rate, the complete batch would take about 3,790 s. Cold
   start (launch to the first training batch, including the eight baseline games) 676 s.
 - Fast path, two prefix helpers and two replay threads, same games, the accepted update 630 bytes:
   batch 266 1,248 s (m4-RDH, 04:14 UTC, learner 480aa1a, which computes the same values in the same
@@ -183,7 +183,7 @@ uses their mean.
 - Final learner with no fork and two replay threads (`--fast-path --serial-verification
   --replay-threads 2`, Mac letter T; m3-RET, immediately before m6-B): 1,517 s, at least 2.3x, about
   2.5x. macOS default (serial verification, one CPU for PPO): 2,452 s on the final learner (m3-REF,
-  09:14 UTC, same state digest, slow morning host) and 2,017 s on the earlier learner a5b3568 (m3-RAF,
+  09:15 UTC, same state digest, slow morning host) and 2,017 s on the earlier learner a5b3568 (m3-RAF,
   01:46 UTC): at least 1.4 to 1.7x, about 1.5 to 1.9x. The macOS default alone does not reach 2x on
   this host; the replay threads without any fork (T) or the helpers do.
 - Eleven training batches of the Linux setting (m4-RDH 266 to 271, m6-REH 266 to 270; the same
