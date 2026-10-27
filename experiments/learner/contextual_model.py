@@ -288,6 +288,7 @@ _GRAPH_MEMO = object()
 _LEAF_REPLAY = object()
 # The replay (leaf, contribution lists) that this thread is running, for the leaves' node hooks.
 _REPLAY_CAPTURE = threading.local()
+_TOP_SAVED_TENSOR_HOOKS = getattr(torch._C._autograd, "_top_saved_tensors_default_hooks", None)
 # Every submodule that a tree encoding reads (with ``config``): leaves and internal nodes.
 _LEAF_MODULES = ("byte", "text_gru", "number", "tree", "ordered")
 # The other submodules an observation encoding reads.
@@ -321,6 +322,11 @@ def _bits(tensor):
     return tensor.view(dtype) if dtype is not None else tensor.reshape(-1).view(torch.uint8)
 
 
+def _saved_tensor_hooks():
+    """True when saved-tensor default hooks may be active (and when this torch cannot tell)."""
+    return _TOP_SAVED_TENSOR_HOOKS is None or _TOP_SAVED_TENSOR_HOOKS(True) is not None
+
+
 def _leaf_key(kind, value):
     """Exact memo key, or None to bypass: 1, 1.0 and True stay distinct, as do 0.0 and -0.0."""
     if kind == "text":
@@ -344,6 +350,7 @@ class _ReplayedText:
         byte, gru = model.byte, model.text_gru
         self.params = (byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names))
         self.alias = [param.detach().requires_grad_() for param in self.params]
+        self.versions = tuple(param._version for param in self.params)
         index = model._long([value + 1 for value in raw])
         with torch.enable_grad():
             embedding = nn.functional.embedding(index, self.alias[0], byte.padding_idx, byte.max_norm, byte.norm_type,
@@ -376,8 +383,11 @@ class _ReplayedText:
             leaf, captured = getattr(_REPLAY_CAPTURE, "current", (None, None))
             if leaf is not self:
                 raise RuntimeError("A text leaf graph ran outside its own replay")
+            grad_inputs = list(grad_inputs)
             for edge, position in targets:
                 captured[position].append(grad_inputs[edge])
+                grad_inputs[edge] = None  # returned by the replay itself: its own engine sums none of them
+            return tuple(grad_inputs)
         return record
 
     def replay(self, grad):
@@ -386,15 +396,20 @@ class _ReplayedText:
         outer = getattr(_REPLAY_CAPTURE, "current", None)
         _REPLAY_CAPTURE.current = (self, captured)
         try:
-            torch.autograd.grad(self.out, self.alias, grad, retain_graph=True)
+            torch.autograd.grad(self.out, self.alias, grad, retain_graph=True, allow_unused=True)
         finally:
             _REPLAY_CAPTURE.current = outer
         if [len(values) for values in captured] != self.counts:
             raise RuntimeError("A replayed text leaf delivered other gradient contributions than its graph has")
         return [value for values in captured for value in values]
 
+    def matches(self, params):
+        """True when ``params`` are this leaf's parameter objects, unchanged since it was built."""
+        return (all(a is b for a, b in zip(self.params, params))
+                and all(param._version == version for param, version in zip(params, self.versions)))
+
     def release(self):
-        self.out = self.alias = None
+        self.out = self.alias = self.value = None
 
 
 class _DeferredTextReplays:
@@ -465,6 +480,8 @@ class _TextOccurrence(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, leaf, deferred, *parameters):
+        if leaf.value is None:
+            raise RuntimeError("A released text leaf cannot be replayed")
         ctx.set_materialize_grads(False)
         ctx.leaf, ctx.deferred = leaf, deferred
         return leaf.value.clone()
@@ -473,6 +490,8 @@ class _TextOccurrence(torch.autograd.Function):
     def backward(ctx, grad):
         if torch.is_grad_enabled():
             raise RuntimeError("Replayed text leaves do not support higher-order gradients")
+        if ctx.leaf is None:
+            raise RuntimeError("A replayed text leaf occurrence supports a single backward")
         (leaf, deferred), ctx.leaf, ctx.deferred = (ctx.leaf, ctx.deferred), None, None
         if grad is None:
             # The reference chain receives no gradient and delivers none.
@@ -966,10 +985,12 @@ class ContextualActorCritic(nn.Module):
         input once per contribution). Losses, values, log-probabilities, gradients and
         therefore optimizer states are bit-identical to separate recomputation; only the
         repeated forward work is saved. Within a frame the reference cache is unchanged.
-        Callers must leave the context before any parameter change (a change in place
-        makes the replay raise, as the aliases share the parameters' version counters).
-        Yields False, replaying nothing, unless the model and leaf modules are the plain
-        modules this argument covers, without hooks of any kind.
+        Callers must leave the context before any parameter change: an occurrence after a
+        parameter is replaced or changed in place raises. Each occurrence supports one
+        backward. Yields False, replaying nothing, unless the model and leaf modules are the
+        plain modules this argument covers, with distinct leaf parameters and without module
+        or saved-tensor hooks; occurrences under saved-tensor hooks, or after the context,
+        are computed separately as in the reference.
 
         With ``workers`` > 0 and no hooks on the leaf parameters, occurrences' replays run on
         that many threads while the backward continues (``_DeferredTextReplays``); the caller
@@ -984,10 +1005,10 @@ class ContextualActorCritic(nn.Module):
                  and gru.proj_size == 0
                  and not (module._global_backward_hooks or module._global_backward_pre_hooks)
                  and not any(m._backward_hooks or m._backward_pre_hooks for m in self.modules()))
-        if not plain:
+        params = (byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names)) if plain else ()
+        if not plain or len({id(param) for param in params}) != len(params) or _saved_tensor_hooks():
             yield False
             return
-        params = (byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names))
         deferred = None
         if workers > 0 and not any(p._backward_hooks or getattr(p, "_post_accumulate_grad_hooks", None) for p in params):
             deferred = self.__dict__["_text_replay_deferred"] = _DeferredTextReplays(params, workers)
@@ -996,7 +1017,8 @@ class ContextualActorCritic(nn.Module):
         try:
             yield True
         finally:
-            self.__dict__.pop("_leaf_replay_state", None)
+            if self.__dict__.get("_leaf_replay_state") is state:
+                self.__dict__.pop("_leaf_replay_state", None)
             if self.__dict__.get("_text_replay_deferred") is deferred:
                 self.__dict__.pop("_text_replay_deferred", None)
             if deferred is not None:
@@ -1137,13 +1159,16 @@ class ContextualActorCritic(nn.Module):
         if kind == "text":
             raw = tree[1].encode("utf-8")
             replay = cache.get(_LEAF_REPLAY) if raw and type(tree[1]) is str and torch.is_grad_enabled() else None
+            if replay is not None and (replay is not self.__dict__.get("_leaf_replay_state") or _saved_tensor_hooks()):
+                replay = None  # after its context, or under saved-tensor hooks: computed as in the reference
             if not raw:
                 result = self.byte.weight.new_zeros(self.config.feature_size)
             elif replay is not None:
                 leaf = replay.get(tree[1])
                 if leaf is None:
                     leaf = replay[tree[1]] = _ReplayedText(self, raw)
-                if any(a is not b for a, b in zip(leaf.params, (self.byte.weight, *self.text_gru._flat_weights))):
+                gru = self.text_gru
+                if not leaf.matches((self.byte.weight, *(getattr(gru, name) for name in gru._flat_weights_names))):
                     raise RuntimeError("Text leaf parameters changed inside a replay context")
                 result = _TextOccurrence.apply(leaf, self.__dict__.get("_text_replay_deferred"), *leaf.arguments)
             else:

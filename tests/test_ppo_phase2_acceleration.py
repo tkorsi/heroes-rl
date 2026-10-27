@@ -160,11 +160,13 @@ class PhaseTwoAccelerationTests(unittest.TestCase):
             generator = torch.Generator().manual_seed(44)
             rollouts = tuple(replace(item) for item in self.rollouts)
             if model is reference:
-                # Reference behavior check: the original train-mode loop without memos.
+                # Reference behavior check: the original train-mode loop without memos, and every
+                # text leaf occurrence computed separately.
                 original = kernel._verify_behavior
                 kernel._verify_behavior = _verify_behavior_frames
                 try:
-                    report = ppo_update(model, optimizer, rollouts, config=config, generator=generator)
+                    with patch.object(kernel, "REPLAY_TEXT_LEAVES", False):
+                        report = ppo_update(model, optimizer, rollouts, config=config, generator=generator)
                 finally:
                     kernel._verify_behavior = original
             else:

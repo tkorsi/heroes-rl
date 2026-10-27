@@ -1,4 +1,5 @@
 """Exact replay of repeated text leaves: bit-identical updates, sensitivity, fail-closed guards (no gameplay)."""
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import replace
 import pickle
@@ -33,6 +34,22 @@ def bits(value):
 
 def bits_equal(left, right):
     return tensors_equal(bits(left), bits(right))
+
+
+class Opaque(torch.autograd.Function):
+    """Passes its input forward and sends no gradient back (an undefined incoming gradient)."""
+
+    @staticmethod
+    def forward(ctx, value):
+        return value.clone()
+
+    @staticmethod
+    def backward(ctx, grad):
+        return None
+
+
+class Text(str):
+    """A str subclass: its leaves take the reference path, never the replay."""
 
 
 class ReplayedTextLeafTests(unittest.TestCase):
@@ -253,6 +270,87 @@ class ReplayedTextLeafTests(unittest.TestCase):
             report = ppo_update(self.model, optimizer, self.rollouts, config=PPOConfig(),
                                 generator=torch.Generator().manual_seed(3))
         self.assertEqual(report.timings_seconds["experiment_shared_graph_encodings"], 1.0)
+
+    def leaf_gradients(self, texts, replay):
+        """Parameter gradients of weighted text leaf encodings, each computed in its own frame cache."""
+        self.model.zero_grad(set_to_none=True)
+        direction = torch.linspace(-1.0, 1.0, self.model.config.feature_size)
+        with self.model.replayed_text_leaves() if replay else nullcontext(False) as active:
+            self.assertEqual(active, replay)
+            state = self.model.__dict__.get("_leaf_replay_state")
+            loss = 0
+            for weight, text, opaque in texts:
+                value = self.model._encode_tree(("text", text), {} if state is None else {cm._LEAF_REPLAY: state})
+                loss = loss + weight * ((Opaque.apply(value) if opaque else value) * direction).sum()
+            loss.backward()
+        return [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+
+    def test_undefined_gradients_and_reference_path_leaves_mix_exactly(self):
+        texts = ((1.0, "ab", False), (0.5, Text("ab"), False), (2.0, "abc", False), (-1.5, "ab", True),
+                 (0.25, "ab", False), (3.0, Text("abc"), False), (1.0, "x", False), (2.0, "abc", True))
+        seen, backward = [], cm._TextOccurrence.backward
+
+        def observing(ctx, grad):
+            seen.append(grad is None)
+            return backward(ctx, grad)
+        with patch.object(cm._TextOccurrence, "backward", staticmethod(observing)):
+            replayed = self.leaf_gradients(texts, True)
+        self.assertEqual(sorted(seen), [False] * 4 + [True] * 2)
+        self.assertTrue(bits_equal(replayed, self.leaf_gradients(texts, False)))
+
+    def test_an_in_place_change_to_any_leaf_parameter_before_an_occurrence_fails_closed(self):
+        for name in ("byte.weight", "text_gru.weight_ih_l0", "text_gru.weight_hh_l0", "text_gru.bias_ih_l0",
+                     "text_gru.bias_hh_l0"):
+            with self.model.replayed_text_leaves():
+                state = self.model.__dict__["_leaf_replay_state"]
+                self.model._encode_tree(("text", "a"), {cm._LEAF_REPLAY: state})
+                with torch.no_grad():
+                    self.model.get_parameter(name).add_(0.01)
+                with self.assertRaisesRegex(RuntimeError, "parameters changed"):
+                    self.model._encode_tree(("text", "a"), {cm._LEAF_REPLAY: state})
+
+    def test_a_frame_cache_used_after_its_context_is_computed_as_in_the_reference(self):
+        with self.model.replayed_text_leaves():
+            state = self.model.__dict__["_leaf_replay_state"]
+            self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+        with torch.no_grad():
+            self.model.byte.weight.add_(0.01)  # as an optimizer step after the context would
+        with patch.object(cm._TextOccurrence, "apply", side_effect=AssertionError("replayed after its context")):
+            late = self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+        self.assertTrue(bits_equal(late, self.model._encode_tree(("text", "ab"), {})))
+        self.assertEqual(list(state), ["ab"])  # nothing added after the context, which released its leaf
+        self.assertIsNone(state["ab"].value)
+
+    def test_tied_leaf_parameters_and_saved_tensor_hooks_keep_the_reference(self):
+        tied = deepcopy(self.model)
+        with tied.replayed_text_leaves() as active:
+            self.assertTrue(active)
+        tied.text_gru.bias_hh_l0 = tied.text_gru.bias_ih_l0
+        with tied.replayed_text_leaves() as active:
+            self.assertFalse(active)
+        identity = (lambda value: value, lambda value: value)
+        with torch.autograd.graph.saved_tensors_hooks(*identity):
+            with self.model.replayed_text_leaves() as active:
+                self.assertFalse(active)
+
+        @contextmanager
+        def hooked_inside():
+            with self.model.replayed_text_leaves() as active, torch.autograd.graph.saved_tensors_hooks(*identity):
+                self.assertTrue(active)
+                yield
+        reference = self.window_gradients(torch.enable_grad())
+        with patch.object(cm._TextOccurrence, "apply", side_effect=AssertionError("replayed under saved-tensor hooks")):
+            self.assertTrue(bits_equal(self.window_gradients(hooked_inside()), reference))
+
+    def test_a_second_backward_through_a_retained_graph_is_refused(self):
+        window = self.rollouts[0].decisions[1:]
+        start = self.rollouts[0].decisions[0].decision_seq + 1
+        prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
+        with self.model.replayed_text_leaves():
+            loss = sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix))
+            loss.backward(retain_graph=True)
+            with self.assertRaisesRegex(RuntimeError, "single backward"):
+                loss.backward()
 
 
 if __name__ == "__main__":
