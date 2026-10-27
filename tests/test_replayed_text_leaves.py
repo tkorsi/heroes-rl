@@ -171,6 +171,51 @@ class ReplayedTextLeafTests(unittest.TestCase):
         self.assertIn(False, workers)
         self.assertIn(True, workers)
 
+    def test_frozen_leaf_parameters_keep_the_reference_and_freezing_inside_fails_closed(self):
+        for workers in (0, 2):
+            frozen = deepcopy(self.model)
+            frozen.text_gru.bias_hh_l0.requires_grad_(False)
+            with frozen.replayed_text_leaves(workers) as active:
+                self.assertFalse(active)
+                self.assertNotIn("_text_replay_deferred", frozen.__dict__)
+        with self.model.replayed_text_leaves():
+            state = self.model.__dict__["_leaf_replay_state"]
+            self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+            self.model.byte.weight.requires_grad_(False)
+            try:
+                with self.assertRaisesRegex(RuntimeError, "parameters changed"):
+                    self.model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+            finally:
+                self.model.byte.weight.requires_grad_(True)
+
+    def test_replay_workers_take_the_main_thread_count_first(self):
+        calls, setter = [], torch.set_num_threads
+
+        def recording(count):
+            calls.append((threading.current_thread() is threading.main_thread(), count))
+            setter(count)
+        with patch.object(torch, "set_num_threads", recording):
+            self.deferred_window_gradients(2)
+        self.assertTrue(calls)
+        self.assertEqual(set(calls), {(False, torch.get_num_threads())})
+
+    def test_a_second_backward_before_finishing_deferred_replays_is_refused(self):
+        window = self.rollouts[0].decisions[1:]
+        start = self.rollouts[0].decisions[0].decision_seq + 1
+        prefix = self.model.prefix_states(self.inputs[0], (start,))[start]
+        with self.assertRaisesRegex(RuntimeError, "finished after each backward"):
+            with self.model.replayed_text_leaves(2):
+                for _ in range(2):
+                    sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)).backward()
+        self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+        reference = self.window_gradients(torch.enable_grad())
+        with self.model.replayed_text_leaves(2):  # one finish per backward stays exact
+            evaluated = _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)
+            self.model.zero_grad(set_to_none=True)
+            sum(e.log_prob + 0.5 * e.value for e in evaluated).backward()
+            self.model.finish_text_replays()
+        self.assertTrue(bits_equal([None if p.grad is None else p.grad for p in self.model.parameters()], reference[1]))
+
     def test_a_direct_gradient_to_a_text_parameter_fails_closed_under_deferral(self):
         with self.assertRaisesRegex(RuntimeError, "outside its replayed occurrences"):
             self.deferred_window_gradients(2, extra=lambda: self.model.text_gru.bias_hh_l0.sum())
