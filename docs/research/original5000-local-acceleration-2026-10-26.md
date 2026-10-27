@@ -760,7 +760,7 @@ recursed without bound, because the nested backward runs the loss's hook again, 
 the session's memory limit before it could affect the campaign's processes; the test now guards its
 hook, and test runs carry a memory limit.
 
-### O19. Host drift, a same-night accepted repeat, the last schedule, and an independent check (05:14 to 08:45 UTC)
+### O19. Host drift, a bracketed accepted repeat, the final learner end to end, and an independent check (05:14 to 10:00 UTC)
 
 m4-RDH finished its six training batches (266 to 271) in 1248.0, 350.3, 622.1, 900.5, 1810.3 and
 479.3 s (3,968, 1,359, 2,084, 2,969, 5,831 and 1,751 decisions; mean 901.7 s, median 761.3 s), cold
@@ -837,3 +837,43 @@ not apply to the replay learner), O10 (CPU 0 was not exclusive during job C; rou
 558/475 s), O14 (execution walls rather than batch seconds; an evening estimate against a night
 measurement), O15 (job C's commit label; the night baselines), O16 (the 4,600 to 4,900 s estimate;
 27% rather than 30%) and O17 (m6-RBH's differing game is not the O10 game).
+
+m6-REH (the final learner 5635c7c with two prefix helpers and two replay threads, 07:28 to 09:06 UTC)
+closes the bracket around m6-B. Its training batches 266 to 270 took 1,410.1, 386.4, 621.8, 1,041.0
+and 2,081.3 s (mean 1,108.1 s), with the same decisions per batch as m4-RDH; batches 266 and 267 have
+m4-RDH's games and learner state digests, so updates 630 and 631 are exact on the final learner end to
+end, while in each of 268, 269 and 270 one game of four came out in another event order (same decision
+counts), so those three are timed but not compared for exactness. Cold start 327.0 s, baselines 102.4
+and 214.2 s, peak within the batches 9.03 GB RSS, 43 descriptors, 21 threads, 10 processes. It is 0 to
+16% slower per batch than m4-RDH (12% over the five), and CPU 0 shows why: the final learner's
+optimizer-only RE266 took 2,174.4 s at 08:22 UTC against 1,839.2 s for RD266 at 04:43 (RD266b, the
+same job as RD266, 2,130.6 s at 07:46), and RE267 646.6 s at 08:58 against 503.6 s for RD267 at 04:20.
+The host slowed again in the morning. Both are exact (fe1378ef..., 46439a9b...).
+
+Headline, bracketed: batch 266 of the Linux setting took 1,248.0 s before m6-B and 1,410.1 s after it,
+mean 1,329.0 s, against at least 3,519.6 s (about 3,780 s extrapolated) for the accepted path: at least
+2.65x, about 2.85x. Cold start 343.8 s against 675.9 s, 1.97x. Launch to the first admitted checkpoint
+1,672.9 s (mean of 1,608.7 and 1,737.0 s) against at least 4,195.5 s for the accepted path, which never
+admits one: at least 2.5x. Over the eleven training batches of both campaigns the mean is 995.6 s
+(median 900.5 s, slowest 2,081.3 s against the 3,540 s deadline), 3.6 verified updates per hour; the
+projection for 1,250 updates and 26 evaluation batches is about 347 hours on this host (314 h from
+m4-RDH, 386 h from m6-REH).
+
+m3-REF (the final learner's macOS default: serial verification, no helpers, replay inside the
+engine; 09:08 to 09:56 UTC) admitted batch 266 in 2,452.5 s (PPO 2,246.4 s) with the same learner
+state digest; cold start 391.6 s, baselines 129.1 and 250.9 s, peak 6.67 GB RSS. It ran on the slow
+morning host; m3-RAF, the same setting on a5b3568, took 2,017.0 s at 01:46. Against the accepted batch
+that is at least 1.44x (REF) to 1.75x (RAF), about 1.54 to 1.87x: the macOS default alone does not reach
+2x on this host, while the replay threads without any fork (m3-RET, at least 2.32x, about 2.5x) and the
+helpers do. m2-XH was not started (09:55 cutoff); the experiment's campaign figures are m1-XH's. All
+benchmark work ended at 09:57 UTC, before the 10:50 heavy-work stop.
+
+PR30 on one CPU, at about the same hours: batch 266 P266b 3,370.3 s at 06:50 UTC (P266 3,243.7 s at
+01:50) against the accepted B2 3,230.4 s at 05:14; batch 267 P267b 953.3 s against the accepted B267b
+929.1 s in adjacent runs (09:25 and 09:09 UTC; P267 839.0 s at 04:29). PR30 therefore runs the
+accepted path's time on these original-map batches. The exact replay on one CPU is 1.55 to 1.85x PR30
+on batch 266 (1.66x for the bracket RD266, B2 and P266b, RD266b) and 1.47 to 1.67x on batch 267 (the bracket RE267 646.6 s, B267b and P267b, RE267b 608.6 s gives 1.48x
+against the accepted path and 1.52x against PR30), all with bitwise-equal updates, so the
+separate second 2x against PR30 is not reached on one CPU. On the same three CPUs the fast path's PPO
+of batch 266 is 2.9x PR30's single-CPU PPO for m4-RDH (1,114.4 s against P266) and 2.7x for m6-REH
+(1,259.7 s against P266b, 40 minutes earlier), a gain that uses the two CPUs PR30's optimizer leaves idle.

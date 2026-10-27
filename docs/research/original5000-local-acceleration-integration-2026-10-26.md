@@ -161,50 +161,57 @@ experiment (reported apart). Ctrl-C stops after the current batch as with
 
 ## Measured on Linux (not a Mac estimate)
 
-See the log, sections O5 onward, and the validation record
-(`validation/original5000-local-acceleration-linux-2026-10-27.json`). Summary for the review, all on
-the original map from the final 629 parent, every campaign alone on the same three CPUs:
+See the log, sections O5 onward (O19 for the final figures), and the validation record
+`validation/original5000-local-acceleration-linux-2026-10-27.json`. All on the original map from the
+final 629 parent; every campaign ran alone on the same three CPUs (1 to 3), every optimizer-only job
+on CPU 0, one at a time (short read-only commands at the lowest priority also ran there at times). The host's speed drifted during the night: the same accepted work took 1.3 to 1.4x
+as long in the early evening as at night, and fast-path work took up to 1.3x as long in the
+morning as at 04:00 to 05:00 UTC. The headline comparison therefore brackets the accepted campaign
+between two fast-path campaigns of the same configuration (m4-RDH before it, m6-REH after it) and
+uses their mean.
 
-- The accepted implementation (a8ac411) cannot complete training batch 266 on this host: its update
-  passes the 3,540 s update deadline and is rolled back, in the evening after 83 of 125 optimizer
-  steps (m1-B, batch 3,523 s) and again at night after 116 (m6-B, 06:17 UTC, batch 3,520 s, the same
-  games). The same accepted work took 1.3 to 1.4x as long in the evening as at night (O19), so the
-  night run is the reference: extrapolating its own step rate, the complete batch would take about
-  3,780 s. Every ratio against the accepted batch is a lower bound, with the extrapolated ratio
-  beside it. Its cold start (launch to the first training batch, including the eight baseline games)
-  was 676 s.
-- Batch 266 of the fast path from the same night, with the same games and the accepted update 630
-  bytes: with two prefix helpers and two replay threads (m4-RDH, learner 480aa1a, which computes the
-  same values in the same order as the final candidate 5635c7c; 04:14 UTC) 1,248 s, at least 2.8x and
-  about 3.0x by the extrapolation, cold start 361 s (1.9x); the final candidate without any fork and
-  with two replay threads (`--fast-path --serial-verification --replay-threads 2`, the Mac letter T;
-  m3-RET, 05:52 UTC, immediately before m6-B) 1,517 s, at least 2.3x and about 2.5x; the macOS
-  default (one CPU for PPO; m3-RAF on the earlier learner a5b3568, 01:46 UTC) 2,017 s, at least 1.7x
-  and about 1.9x. The repeat on the final learner with helpers (m6-REH, from 07:28 UTC) is in the
-  log, O19, and in the validation record.
-- Over six consecutive training batches (266 to 271) m4-RDH's mean was 902 s (median 761 s, slowest
-  1,810 s against the 3,540 s deadline), about 4.0 verified updates per hour; evaluation batches 115
-  and 222 s. Projection for 1,250 updates and 26 evaluation batches: about 314 hours on this host
-  (the accepted path cannot be projected: it does not complete the first batch). Peaks within the six
-  batches: 8.5 GB RSS (in the largest batch, 5,831 decisions, during collection, when the native
-  verification replay of its longest game held 3.3 GB; its PPO peaked at 5.7 GB), 43 descriptors, 21
-  threads, 10 processes; per-batch peaks rise with the batch size and fall back after it, with no
-  descriptor or thread growth.
-- Against PR30 (4d7688b): on one CPU its optimizer takes the accepted path's time on batch 266
-  (3,244 s at 01:50 UTC and 3,370 s at 06:50 UTC, against 3,230 s for the accepted path at 05:14
-  UTC), so on this batch it gains nothing over the accepted path. The like-for-like single-CPU
-  optimizer-only comparison with the exact replay is 1.6 to 1.85x on batch 266 (the replay's 1,751
-  to 2,131 s against 3,230 to 3,370 s, depending on the hour) and 1.67x on batch 267. PR30 has no
-  multi-CPU option for PPO, so on the same three CPUs the fast path's PPO of batch 266 (1,114 s in
-  m4-RDH) is about 2.9x PR30's single-CPU PPO.
+- Accepted a8ac411 (m6-B, 06:17 UTC): it cannot complete the first training batch (sequence 266,
+  3,968 decisions): its update passes the 3,540 s update deadline after 116 of 125 optimizer steps
+  and is rolled back (batch 3,520 s; in the evening, m1-B, after 83 steps), so the manual run would
+  stop there. Extrapolating its own step rate, the complete batch would take about 3,780 s. Cold
+  start (launch to the first training batch, including the eight baseline games) 676 s.
+- Fast path, two prefix helpers and two replay threads, same games, the accepted update 630 bytes:
+  batch 266 1,248 s (m4-RDH, 04:14 UTC, learner 480aa1a, which computes the same values in the same
+  order as the final learner) and 1,410 s (m6-REH, 07:28 UTC, final learner 5635c7c). Against the
+  bracket mean (1,329 s): at least 2.6x, about 2.8x by the extrapolation; cold start 344 s, 2.0x;
+  launch to the first admitted checkpoint 1,673 s against at least 4,196 s (accepted, no checkpoint).
+- Final learner with no fork and two replay threads (`--fast-path --serial-verification
+  --replay-threads 2`, Mac letter T; m3-RET, immediately before m6-B): 1,517 s, at least 2.3x, about
+  2.5x. macOS default (serial verification, one CPU for PPO): 2,452 s on the final learner (m3-REF,
+  09:14 UTC, same state digest, slow morning host) and 2,017 s on the earlier learner a5b3568 (m3-RAF,
+  01:46 UTC): at least 1.4 to 1.7x, about 1.5 to 1.9x. The macOS default alone does not reach 2x on
+  this host; the replay threads without any fork (T) or the helpers do.
+- Eleven training batches of the Linux setting (m4-RDH 266 to 271, m6-REH 266 to 270; the same
+  decisions per batch in both): mean 996 s, median 900 s, slowest 2,081 s against the 3,540 s
+  deadline, about 3.6 verified updates per hour. Projection for 1,250 updates and 26 evaluation
+  batches: about 347 hours on this host (314 h from m4-RDH alone at night, 386 h from m6-REH in the
+  morning). The accepted path cannot be projected: it does not complete the first batch.
+- Resources within the batches: peak 9.0 GB RSS (m6-REH; 8.5 GB in m4-RDH, during collection of the
+  largest batch, when the native verification replay of its longest game held 3.3 GB; its PPO peaked
+  at 5.7 GB), 43 descriptors, 21 threads, 10 processes; per-batch peaks rise with the batch size and
+  fall back after it, with no descriptor or thread growth over six batches.
+- Against PR30 (4d7688b): on one CPU its optimizer takes the accepted path's time (batch 266:
+  3,244 s and 3,370 s against 3,230 s; batch 267: 953 s against 929 s in adjacent runs at 09:09 and 09:25 UTC). The like-for-like single-CPU
+  optimizer-only comparison with the exact replay is 1.55 to 1.85x on batch 266 (the replay's 1,751
+  to 2,174 s against 3,230 to 3,370 s, depending on the hour; 1.66x for the bracket RD266, B2 and
+  P266b, RD266b) and 1.47 to 1.67x on batch 267 (1.52x for its bracket), so the
+  separate "another 2x against PR30" is not reached on one CPU. PR30 has no multi-CPU option for PPO;
+  on the same three CPUs the fast path's PPO of batch 266 is 2.7x (m6-REH, 1,260 s, against P266b,
+  40 minutes earlier) to 2.9x (m4-RDH, 1,114 s, against P266) PR30's single-CPU PPO, a gain that comes from using CPUs PR30 leaves idle.
 - Exactness: from identical games, update 630 `fe1378ef...` comes out of the accepted path, PR30, the
-  fast path without replay, the replay candidates 1721220, 4f02a10, a5b3568 and 480aa1a, and the
-  final learner (m3-RET); update 631 `46439a9b...` out of the accepted path, PR30, the fast path, the
-  replay candidates (2ba42ac included) and the `--no-text-replay` fallback (measured on batch 267
-  only). One fast-path campaign (m6-RBH) saw one game of batch 266 in another event order and is
+  fast path without replay, the replay candidates 1721220, 4f02a10, a5b3568 and 480aa1a, and the final
+  learner (m3-RET, m6-REH, RE266); update 631 `46439a9b...` out of the accepted path, PR30, the fast
+  path, the replay candidates (2ba42ac included), the final learner (m6-REH, RE267) and the
+  `--no-text-replay` fallback (measured on batch 267 only). Campaigns whose games differ in one game
+  by asynchronous event order (m6-RBH batch 266; m6-REH batches 268 to 270 against m4-RDH) are
   reported as not comparable.
 - The numerical experiment `shared_graph_encodings` (reordered gradient summation, never a default)
-  ran batch 266 in 477 s; it is reported apart and is not part of the exact figures.
+  ran batch 266 in 477 s (m1-XH; its repeat m2-XH was not started at the 09:55 cutoff); it is reported apart and is not part of the exact figures.
 
 These are Linux numbers; the Mac has other CPUs, another BLAS and no measured fork safety for the
 helpers, so validate there with the bounded command above before choosing any default.
