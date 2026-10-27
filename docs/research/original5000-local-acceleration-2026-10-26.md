@@ -884,3 +884,26 @@ stopped at its update deadline less the 30 s cleanup reserve rather than after p
 extrapolated accepted batch is about 3,790 s (3,786.8 s, including the 6.5 s after the worker's
 execution), not 3,780 s (no stated ratio changes at its precision except the macOS default's upper
 "about" figure, 1.88x); m3-REF's batch started at 09:15 UTC; RAF's lower bound is 1.74x.
+
+### Outcome against the assignment (10:15 UTC)
+
+- Target "at least 2x end to end against the accepted local cold path (a8ac411)": met on this Linux
+  host by the exact fast path with prefix helpers and replay threads (batch 266 at least 2.65x, about
+  2.85x, bracketed; cold start 1.97x; first admitted checkpoint at least 2.5x sooner, where the
+  accepted path admits none) and by the final learner without any fork and with two replay threads
+  (at least 2.32x, about 2.5x). Not met by the macOS default alone (at least 1.44 to 1.74x). The
+  comparison uses the same three CPUs for both paths; the fast path uses CPUs the accepted path
+  leaves idle during PPO, which is how it reaches the ratio.
+- "Another 2x against PR30 4d7688b", reported separately: not reached on one CPU (the exact replay is
+  1.55 to 1.85x PR30 on batch 266, 1.47 to 1.67x on batch 267); with the same three CPUs the PPO is
+  2.7 to 2.9x PR30's single-CPU PPO, which PR30 cannot parallelize.
+- Exactness: the final learner 5635c7c reproduces the accepted computation bit for bit on the real
+  original-map batches 266 and 267, game to checkpoint, and in optimizer-only runs.
+- Throughput: about 3.6 verified updates per hour over eleven batches from 629; about 347 hours for
+  1,250 updates and 26 evaluation batches on this host. The accepted path does not complete the first
+  batch here, so no projection exists for it.
+- Not shown: anything on the Mac (the bounded acceptance command is in the guide and was not run);
+  fork safety of the helpers with Torch on macOS; batches beyond 271; and the experiment's second
+  campaign (m2-XH, not started at the cutoff). The shared_graph_encodings experiment stays opt-in,
+  numerically different and never a default; exact remains the default of the fast path, and the
+  default run remains the accepted a8ac411.
