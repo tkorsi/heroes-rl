@@ -17,8 +17,10 @@ Mac-only preparation pins, identically for the baseline and the candidate:
    the official 40M/50M (original) or 20M/30M (easy) bases.
 
 With ``"mode": "namespace"`` in the specification (``tools/acceleration3/mac_acceptance.py`` on
-the accepted Mac machine) only patch 3 applies: the Mac runs its pinned runtime, Torch and
-machine check unchanged, and only the seed namespace differs from an official original run.
+the accepted Mac machine) patch 3 and an explicitly declared operational batch wall allowance apply: the Mac runs its pinned runtime, Torch and
+machine check unchanged. The optional batch_wall_seconds changes only shared_wall_seconds and
+phase_deadlines_seconds.update, equally for accepted and accelerated paths; the resulting session
+and plan bind those values. Nothing else in the PPO/gameplay contract is changed.
 
 So that the patches also reach the adapter's ``python -m`` entry, such an entry imports the
 module under its own name (patched) and calls its ``main()``, which is all its ``__main__`` block
@@ -58,7 +60,23 @@ def _patch_checkpoints(module):
 
 
 def _patch_namespace(module):
-    module.SEED_NAMESPACES = {**module.SEED_NAMESPACES, 'original': dict(_spec()['seed_namespace'])}
+    spec = _spec()
+    module.SEED_NAMESPACES = {**module.SEED_NAMESPACES, 'original': dict(spec['seed_namespace'])}
+    # Mac699 validation declares the same operational allowance for the untouched accepted
+    # release and candidate. This never changes PPO, attempt/collection limits or admission.
+    # It applies on every configuration read, so the new session and its batch plans bind it.
+    seconds = spec.get('batch_wall_seconds')
+    if seconds is not None and hasattr(module, 'configuration'):
+        if type(seconds) is not int or not 3600 <= seconds <= 21600:
+            raise ValueError('Invalid benchmark operational batch wall allowance')
+        original = module.configuration
+        def configuration(descriptor):
+            from copy import deepcopy
+            value = deepcopy(original(descriptor))
+            value['shared_wall_seconds'] = seconds
+            value['phase_deadlines_seconds']['update'] = seconds - 60
+            return value
+        module.configuration = configuration
 
 
 def _patch_prepare(module):

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Bounded Mac acceptance benchmark of the opt-in fast path. Run by the user, never by an agent.
+"""Bounded Mac acceptance benchmark of the opt-in fast path. Run only with explicit user authorization.
 
     "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py --dry-run
     "$HOME/Projects/Heroes/.venv/bin/python" tools/acceleration3/mac_acceptance.py [--order AFFA]
         [--updates 1] [--hours 4] [--parent-run RUN] [--bench-root DIR]
 
 Campaign letters (each plays the eight fixed baseline games, then ``--updates`` training batches,
-from disposable copies of the final 629 checkpoint, exactly through ``run_local_training.py start``):
+from disposable full copies of the selected verified checkpoint (699 by default), exactly through ``run_local_training.py start``):
 
     A  the default command (main's accepted implementation, released from ACCEPTED_IMPLEMENTATION)
     F  ``--fast-path`` with the macOS defaults (serial verification, no prefix helpers)
@@ -20,6 +20,7 @@ from disposable copies of the final 629 checkpoint, exactly through ``run_local_
     X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
 
 Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds.
+A durable study ledger reserves a fresh diagnostic namespace for each invocation, including dry runs.
 Each exact campaign (F, O, H, N, T, and any repeated A) is compared with the A campaigns batch by batch
 while both still share the same parent; wherever their games are identical their checkpoints must
 be bitwise identical, and every exact campaign needs at least one such comparable batch.
@@ -39,10 +40,11 @@ Safety and scope:
   read, never written: the parent run (selected by the runner's own final-parent rule), the pinned
   preparation inputs, the validation prerequisites, the machine description and the runtime. The
   runner's frozen releases are git worktrees of this checkout under the benchmark root.
-- Seeds: benchmark namespace 60M/70M with one ledger per campaign, never 40M/50M (original) or
-  20M/30M (easier8x8). The only change to the unmodified code, applied in memory through
-  ``bench_site/sitecustomize.py`` in its namespace mode, is that namespace. Nothing it produces is
-  a continuation of the official lineage.
+- Seeds: benchmark namespaces start at 80M/80.05M and are reserved before work, never 40M/50M
+  (original), 20M/30M (easier8x8), or the earlier 60M/70M benchmark. The benchmark-only shim also
+  applies the same declared operational batch wall allowance to accepted and candidate code.
+  PPO, rewards, rollout limits, replay and sample admission remain unchanged. Nothing produced
+  is a continuation of the official lineage.
 - Bounded: each runner has its own ``--hours`` hard stop; this tool additionally sends SIGTERM (the
   runner's manual stop) ten minutes after it and kills the campaign's process tree two minutes
   later. Ctrl-C works as with ``train-local.sh`` (stop after the current batch) and starts no
@@ -74,12 +76,14 @@ ROOT = HERE.parents[1]
 OFFICIAL = Path.home() / 'Projects/Heroes-artifacts'
 OFFICIAL_LOCK = OFFICIAL / 'local-script-training' / 'owner.lock'
 OFFICIAL_CONFIG = OFFICIAL / 'local-script-training' / 'machine-original.json'
-PARENT_RUN = OFFICIAL / 'local-script-training' / 'run-20261026T160706Z-0be8eb77'
-NAMESPACE = {'engine_base': 60_000_000, 'policy_base': 70_000_000}
-EXPECTED_PARENT = {'policy': '8be3d31b51edc11bd6affe45d4276cde56b97688f00fb9fa113c13f490577520',
-                   'resume': '1b86fcedc1ad9eda8a9a56d03783ff70761205fa88045896dbe8f6d74029d487'}
+PARENT_RUN = OFFICIAL / 'local-script-training/original/run-20261026T181133Z-062cd75a'
+PARENT_UPDATE = 699
+SEED_LEDGER = Path.home() / 'Projects/Heroes-bench/mac699-seed-ledger.json'
+NAMESPACE = {'engine_base': 80_000_000, 'policy_base': 80_050_000}
+EXPECTED_PARENT = {'policy': '045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046',
+                   'resume': 'c5f8e601040e738bbda9fee987f996829107dda3737e2954e1cc4ba371c0afcf'}
 PARENT_FILES = {'plan': 'plan.json', 'report': 'report.json', 'policy': 'after-policy.pt', 'resume': 'after-resume.pt',
-                'initial_checkpoint': 'initial-checkpoint-update628.pt'}
+                'initial_checkpoint': 'initial-checkpoint-update698.pt'}
 CAMPAIGNS = {'A': [], 'F': ['--fast-path', '--serial-verification'],
              'O': ['--fast-path', '--overlap-verification'],
              'H': ['--fast-path', '--overlap-verification', '--prefix-helpers', '2'],
@@ -169,21 +173,77 @@ def copy_pinned(source, destination):
     return b
 
 
+def stopped_parent(run):
+    """Read-only selection of the pinned 699 state; failed batch 336 remains excluded."""
+    run = Path(run).expanduser().resolve()
+    session, report, shutdown = [json.loads((run / name).read_text()) for name in
+                                ('session.json', 'campaign-report.json', 'shutdown.json')]
+    if (Path(session['run_dir']).resolve() != run
+            or report.get('status') not in ('finished', 'stopped_requested', 'stopped_failure')
+            or report.get('owned_cleanup_verified') is not True
+            or report.get('initial_state_unchanged') is not True
+            or report.get('full_final_restore', {}).get('exact') is not True
+            or report['full_final_restore'].get('progress', {}).get('updates') != PARENT_UPDATE
+            or shutdown.get('owned_cleanup_verified') is not True
+            or shutdown.get('within_hard_deadline') is not True
+            or shutdown.get('worker_returncode') not in (0, 1)):
+        refuse('parent campaign is not stopped with the verified full checkpoint 699')
+    parent = report['latest_parent']
+    for name, expected in EXPECTED_PARENT.items():
+        if parent.get(name, {}).get('sha256') != expected:
+            refuse('parent is not the pinned final 699 checkpoint: ' + name)
+    return parent
+
+
+def reserve_namespace(bench):
+    """Persist a fresh study namespace before any game, even when preparation later fails.
+
+    All implementations in one paired study intentionally share these diagnostic seeds;
+    another invocation gets a different namespace. Never recycle interrupted attempts.
+    """
+    SEED_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    with SEED_LEDGER.with_suffix('.lock').open('a+') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        value = json.loads(SEED_LEDGER.read_text()) if SEED_LEDGER.exists() else {
+            'schema': 'heroes-mac699-benchmark-seeds-v1', 'next_study': 0, 'reserved': []}
+        if value.get('schema') != 'heroes-mac699-benchmark-seeds-v1':
+            refuse('unrecognized benchmark seed ledger')
+        study = value['next_study']
+        if type(study) is not int or not 0 <= study < 10000:
+            refuse('benchmark namespace exhausted or corrupt')
+        namespace = {key: base + 100_000 * study for key, base in NAMESPACE.items()}
+        receipt = dict(study=study, reserved_utc=utc(), benchmark=str(bench), seed_namespace=namespace)
+        value['next_study'] = study + 1
+        value['reserved'].append(receipt)
+        temporary = SEED_LEDGER.with_suffix('.tmp')
+        with temporary.open('w') as stream:
+            json.dump(value, stream, indent=2, sort_keys=True)
+            stream.write('\n'); stream.flush(); os.fsync(stream.fileno())
+        os.replace(temporary, SEED_LEDGER)
+        directory = os.open(SEED_LEDGER.parent, os.O_RDONLY)
+        try: os.fsync(directory)
+        finally: os.close(directory)
+    return namespace, receipt
+
+
 def prepare_inputs(runner, bench, parent_run):
     """Disposable copies of every official input a benchmark campaign reads."""
     sys.path.insert(0, str(ROOT / 'tools'))
     import prepare_local_training as prep
     inputs = bench / 'art' / 'inputs'
-    official_parent = runner.final_parent(parent_run)  # the runner's own rule; reads only
+    official_parent = stopped_parent(parent_run)  # accepts the pinned successful state of the failed run, never its partial batch
+    for name, item in official_parent.items():
+        if binding(item['path']) != item:
+            refuse('parent binding changed: ' + name)
     for name, sha in EXPECTED_PARENT.items():
         if official_parent[name]['sha256'] != sha:
-            refuse(f'parent run {parent_run} is not the published final 629 checkpoint ({name})')
+            refuse(f'parent run {parent_run} is not the pinned final 699 checkpoint ({name})')
     # The official policy and its initial dependency are both named after-policy.pt; copies are named by role.
     if set(official_parent) != set(PARENT_FILES):
         refuse('unexpected parent descriptor fields: ' + ', '.join(sorted(official_parent)))
-    parent = {name: copy_pinned(item['path'], inputs / 'parent629' / PARENT_FILES[name])
+    parent = {name: copy_pinned(item['path'], inputs / 'parent699' / PARENT_FILES[name])
               for name, item in official_parent.items()}
-    write_new(inputs / 'parent629.json', dict(parent=parent, official_source=official_parent,
+    write_new(inputs / 'parent699.json', dict(parent=parent, official_source=official_parent,
               parent_run=str(parent_run), note='Disposable benchmark copy; never official lineage.'))
     for name, (relative, sha) in prep.INPUT_PINS.items():
         if copy_pinned(prep.DEFAULT_INPUT / relative, inputs / 'input412' / relative)['sha256'] != sha:
@@ -203,7 +263,7 @@ def frozen_site(bench):
     return folder, digest
 
 
-def machine_config(python, inputs, data, art, run_root, env):
+def machine_config(python, inputs, data, art, run_root, env, namespace):
     """The unchanged preparation code (imported, so the namespace mode applies), benchmark paths."""
     code = ('import json, sys; from pathlib import Path; sys.path.insert(0, "tools")\n'
             'import prepare_local_training as p\n'
@@ -213,7 +273,7 @@ def machine_config(python, inputs, data, art, run_root, env):
     out = subprocess.run([python, '-c', code], cwd=ROOT, env=env, check=True, capture_output=True, text=True,
                          start_new_session=True)
     value = json.loads(out.stdout.strip().splitlines()[-1])
-    if value['seed_namespace'] != NAMESPACE:
+    if value['seed_namespace'] != namespace:
         refuse('benchmark namespace did not apply; nothing was started')
     return value
 
@@ -286,15 +346,15 @@ def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
     campaign.mkdir(parents=True)
     run_root = bench / 'art' / 'runs' / name
     spec = campaign / 'bench-spec.json'
-    write_new(spec, dict(schema='heroes-local-mac-bench-spec-v1', mode='namespace', seed_namespace=NAMESPACE,
+    write_new(spec, dict(schema='heroes-local-mac-bench-spec-v1', mode='namespace', seed_namespace=args.namespace, batch_wall_seconds=args.batch_wall_seconds,
                          created_utc=utc(), purpose='Mac benchmark campaign; disposable copies; not official training.'))
     env = {**env_base, 'HEROES_LOCAL_BENCH_SPEC': str(spec)}
-    config = machine_config(args.python, inputs, data, bench / 'art', run_root, env)
+    config = machine_config(args.python, inputs, data, bench / 'art', run_root, env, args.namespace)
     write_new(campaign / 'machine.json', config)
     if INTERRUPT['requested']:
         return name, run_root, dict(name=name, letter=letter, not_started='interrupted during setup')
     command = [args.python, 'tools/run_local_training.py', 'start', '--config', str(campaign / 'machine.json'),
-               '--profile', 'original', '--parent', str(inputs / 'parent629.json'), '--hours', str(args.hours),
+               '--profile', 'original', '--parent', str(inputs / 'parent699.json'), '--hours', str(args.hours),
                '--eval-every', '100', '--max-updates', str(args.updates), *CAMPAIGNS[letter]]
     record = dict(name=name, letter=letter, command=command, started_utc=utc())
     started = time.monotonic()
@@ -308,7 +368,7 @@ def run_campaign(args, bench, inputs, site, letter, index, env_base, data):
     sampler = Sampler(process.pid, campaign / 'resources.jsonl'); sampler.start()
     stop = threading.Event()
     threading.Thread(target=request_stop_during, args=(run_root, args.updates, stop), daemon=True).start()
-    bound = args.hours * 3600 + 600
+    bound = min(args.hours * 3600 + 600, max(0, args.study_deadline_monotonic - time.monotonic() - 120))
     try:
         returncode = process.wait(timeout=bound)
         record['bound'] = 'not_reached'
@@ -410,20 +470,32 @@ def exact_verdict(campaigns):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--order', default='AF', help='campaign letters, e.g. AF (acceptance) or AFFA (timing)')
-    p.add_argument('--updates', type=int, default=1, help='training batches per campaign (1 to 4)')
-    p.add_argument('--hours', type=float, default=4.0,
+    p.add_argument('--order', default='AFT', help='campaign letters, e.g. AF (acceptance) or AFFA (timing)')
+    p.add_argument('--updates', type=int, default=2, help='training batches per campaign (1 to 4)')
+    p.add_argument('--hours', type=float, default=8.0,
                    help="each runner's own hard stop (0.25 to 12); the runner begins a training batch only while "
                         "more than six times its slowest recent batch remains, so --updates 2 or more needs a larger value")
+    p.add_argument('--total-hours', type=float, default=8.0,
+                   help='absolute wall budget for the entire study, including all paths and cleanup (0.5 to 24)')
     p.add_argument('--parent-run', type=Path, default=PARENT_RUN)
+    p.add_argument('--batch-wall-seconds', type=int, default=10800,
+                   help='equal operational allowance for accepted/candidate batches; 3600 to 21600')
     p.add_argument('--bench-root', type=Path)
     p.add_argument('--python', default=sys.executable)
+    p.add_argument('--study-deadline-unix', type=float, help=argparse.SUPPRESS)
+    p.add_argument('--study-deadline-monotonic', type=float, help=argparse.SUPPRESS)
     p.add_argument('--dry-run', action='store_true', help='checks and input copies only; no game')
     args = p.parse_args()
     if not args.order or set(args.order) - set(CAMPAIGNS) or len(args.order) > 6:
         p.error('--order takes one to six letters from ' + ''.join(CAMPAIGNS))
     if not 1 <= args.updates <= 4 or not 0.25 <= args.hours <= 12:
         p.error('--updates 1 to 4 and --hours 0.25 to 12')
+    if not 0.5 <= args.total_hours <= 24:
+        p.error('--total-hours must be 0.5 to 24')
+    if not 3600 <= args.batch_wall_seconds <= 21600:
+        p.error('--batch-wall-seconds must be 3600 to 21600')
+    if args.hours * 3600 - 300 <= args.batch_wall_seconds:
+        p.error('--hours must leave the declared batch allowance and five-minute finalization reserve')
     if sys.platform != 'darwin':
         refuse('this is the Mac acceptance tool; Linux benchmarks use run_local_bench.py')
     # From here a first Ctrl-C or SIGTERM only stops further work; the summary is still written.
@@ -433,11 +505,22 @@ def main():
     if lock is not None:
         os.set_inheritable(lock, True)
     args.lock_fd = lock
+    study_started = time.time()
+    external_monotonic = args.study_deadline_monotonic
+    args.study_deadline_monotonic = time.monotonic() + args.total_hours * 3600
+    study_deadline_unix = study_started + args.total_hours * 3600
+    if args.study_deadline_unix is not None or external_monotonic is not None:
+        if args.study_deadline_unix is None or external_monotonic is None:
+            refuse('both independent study deadlines are required')
+        study_deadline_unix = min(study_deadline_unix, args.study_deadline_unix)
+        args.study_deadline_monotonic = min(args.study_deadline_monotonic, external_monotonic)
+    requested_hours = args.hours
     bench = (args.bench_root or Path.home() / 'Projects/Heroes-bench' /
              ('original5000-acceleration-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))).expanduser().resolve()
     if inside_official(bench):
         refuse('the benchmark root must be outside the official artifact root')
     bench.mkdir(parents=True, exist_ok=False)
+    args.namespace, namespace_receipt = reserve_namespace(bench)
     inputs, official_parent = prepare_inputs(runner, bench, args.parent_run.expanduser().resolve())
     site, site_digest = frozen_site(bench)
     data = Path(json.loads(OFFICIAL_CONFIG.read_text())['data']) if OFFICIAL_CONFIG.exists() else \
@@ -445,10 +528,24 @@ def main():
     env = {**os.environ, 'PYTHONPATH': str(site), 'HEROES_ARTIFACT_ROOT': str(bench / 'art')}
     record = dict(schema='heroes-mac-fast-path-acceptance-v1', started_utc=utc(), checkout=str(ROOT), git_head=head,
                   accepted_implementation=runner.ACCEPTED_IMPLEMENTATION, order=args.order, updates=args.updates,
-                  hours=args.hours, official_lock=lock_state, parent_run=str(args.parent_run),
+                  hours=args.hours, total_hours=args.total_hours,
+                  study_deadline_unix=study_deadline_unix, study_deadline_utc=utc(study_deadline_unix),
+                  study_deadline_monotonic=args.study_deadline_monotonic, official_lock=lock_state, parent_run=str(args.parent_run),
                   official_parent={k: v['sha256'] for k, v in official_parent.items()}, shim_sha256=site_digest,
-                  seed_namespace=NAMESPACE, python=args.python,
+                  tool_sources={name: binding(HERE / name) for name in
+                      ('mac_acceptance.py', 'guarded_mac_acceptance.py', 'campaign_summary.py', 'bench_site/sitecustomize.py')},
+                  seed_namespace=args.namespace, namespace_reservation=namespace_receipt,
+                  batch_wall_seconds=args.batch_wall_seconds, python=args.python,
                   platform=dict(zip(('sysname', 'nodename', 'release', 'version', 'machine'), os.uname())), campaigns={})
+    record['hypotheses'] = [
+        'Exact acceleration reduces full verified original-map batch time on this Mac from full checkpoint699.',
+        'Identical captured games from the same parent yield bitwise-identical full model/Adam/RNG/progress/pool state.',
+        'A three-hour operational batch allowance avoids the earlier one-hour PPO timeout without changing learning settings.']
+    record['interpretation'] = ('A/F use one Torch intra-op thread and no helpers; T uses two replay threads and is reported separately. '
+        'Timing claims require completed comparable batches; a timeout is censored, not a completed baseline. '
+        'Native asynchronous game differences are reported as not comparable, never evidence of exactness. '
+        'No benchmark checkpoint is eligible for the official continuation.')
+    write_new(bench / 'preregistered.json', record)
     if args.dry_run:
         record['dry_run'] = True
         write_new(bench / 'summary.json', record)
@@ -460,6 +557,12 @@ def main():
                 break
             if git('rev-parse', 'HEAD') != head or git('status', '--porcelain'):
                 record['checkout_changed'] = utc(); break
+            remaining = min(study_deadline_unix - time.time(), args.study_deadline_monotonic - time.monotonic())
+            args.hours = min(requested_hours, (remaining - 120) / 3600)
+            if args.hours * 3600 <= args.batch_wall_seconds + 300:
+                record['remaining_paths_unstarted'] = dict(reason='study_budget_reserve', letters=args.order[index:],
+                                                          remaining_seconds=remaining)
+                break
             name, run_root, run = run_campaign(args, bench, inputs, site, letter, index, env, data)
             expected = runner.ACCEPTED_IMPLEMENTATION if letter == 'A' else head
             try:
@@ -494,6 +597,10 @@ def main():
                               + ([record['error']] if record.get('error') else [])
                               + ([] if len(record['campaigns']) == len(args.order) else ['not every campaign ran']))
         record['passed'] = record['exact_campaigns_identical'] is True and not record['problems']
+        record['official_parent_unchanged'] = all(binding(v['path']) == v for v in official_parent.values())
+        if not record['official_parent_unchanged']:
+            record['problems'].append('official parent changed')
+            record['passed'] = False
         record['finished_utc'] = utc()
         write_new(bench / 'summary.json', record)
         print(json.dumps(dict(bench=str(bench), passed=record['passed'], problems=record['problems'],

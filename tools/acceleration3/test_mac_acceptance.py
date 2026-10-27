@@ -76,7 +76,7 @@ class ParentCopyTests(unittest.TestCase):
         descriptor = {k: tool.binding(v) for k, v in files.items()}
         write(run / 'session.json', dict(run_dir=str(run)))
         write(run / 'campaign-report.json', dict(status='finished', owned_cleanup_verified=True, initial_state_unchanged=True,
-                                                  full_final_restore=dict(exact=True), latest_parent=descriptor))
+                                                  full_final_restore=dict(exact=True, progress=dict(updates=699)), latest_parent=descriptor))
         write(run / 'shutdown.json', dict(owned_cleanup_verified=True, worker_returncode=0, within_hard_deadline=True))
         return run, descriptor
 
@@ -92,18 +92,18 @@ class ParentCopyTests(unittest.TestCase):
                     mock.patch('prepare_local_training.INPUT_PINS', {}), \
                     mock.patch('prepare_local_training.PREREQUISITE_PINS', {}):
                 inputs, official = tool.prepare_inputs(runner, root / 'bench', run)
-            copied = json.loads((inputs / 'parent629.json').read_text())['parent']
+            copied = json.loads((inputs / 'parent699.json').read_text())['parent']
             self.assertEqual({k: v['sha256'] for k, v in copied.items()}, {k: v['sha256'] for k, v in descriptor.items()})
             self.assertEqual(len({v['path'] for v in copied.values()}), 5)
-            self.assertTrue(all(Path(v['path']).is_relative_to(root / 'bench') for v in copied.values()))
+            self.assertTrue(all(Path(v['path']).is_relative_to((root / 'bench').resolve()) for v in copied.values()))
 
-    def test_refuses_a_parent_that_is_not_final629(self):
+    def test_refuses_a_parent_that_is_not_final699(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             run, _ = self.fake_run(root, dict(plan='plan.json', report='report.json', policy='after-policy.pt',
                                               resume='after-resume.pt', initial_checkpoint='dep.pt'))
             with mock.patch.object(tool, 'OFFICIAL', root / 'official'):
-                with self.assertRaisesRegex(SystemExit, 'not the published final 629'):
+                with self.assertRaisesRegex(SystemExit, 'not the pinned final 699'):
                     tool.prepare_inputs(runner, root / 'bench', run)
 
     def test_refuses_an_unfinalized_parent_run(self):
@@ -111,9 +111,51 @@ class ParentCopyTests(unittest.TestCase):
             root = Path(tmp)
             run, _ = self.fake_run(root, dict(plan='plan.json', report='report.json', policy='after-policy.pt',
                                               resume='after-resume.pt', initial_checkpoint='dep.pt'))
-            write(run / 'shutdown.json', dict(owned_cleanup_verified=True, worker_returncode=1, within_hard_deadline=True))
-            with self.assertRaisesRegex(ValueError, 'not cleanly finalized'):
+            write(run / 'shutdown.json', dict(owned_cleanup_verified=False, worker_returncode=1, within_hard_deadline=True))
+            with self.assertRaisesRegex(SystemExit, 'not stopped with the verified full checkpoint'):
                 tool.prepare_inputs(runner, root / 'bench', run)
+
+
+class NamespaceTests(unittest.TestCase):
+    def test_reserved_studies_never_reuse_training_seed_ranges(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(tool, 'SEED_LEDGER', Path(tmp)/'ledger.json'):
+            namespaces = [tool.reserve_namespace(Path(tmp)/str(i))[0] for i in range(4)]
+            all_seeds = set()
+            for namespace in namespaces:
+                seeds = {base + 4 * seq + j for base in namespace.values()
+                         for seq in range(266, 270) for j in range(4)}
+                self.assertFalse(all_seeds & seeds)
+                self.assertFalse(seeds & {40_000_000 + 4 * 336 + j for j in range(4)})
+                all_seeds |= seeds
+            self.assertEqual(json.loads(tool.SEED_LEDGER.read_text())['next_study'], 4)
+
+    def test_invalid_ledger_is_rejected_not_reset(self):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(tool, 'SEED_LEDGER', Path(tmp)/'ledger.json'):
+            tool.SEED_LEDGER.write_text('{"schema":"different"}')
+            with self.assertRaisesRegex(SystemExit, 'unrecognized benchmark seed ledger'):
+                tool.reserve_namespace(Path(tmp)/'bench')
+
+
+class BatchAllowanceTests(unittest.TestCase):
+    def test_only_operational_allowance_changes_and_input_is_not_mutated(self):
+        from importlib.util import spec_from_file_location, module_from_spec
+        from types import SimpleNamespace
+        spec = spec_from_file_location('bench_site_test', tool.HERE/'bench_site/sitecustomize.py')
+        module = module_from_spec(spec)
+        with mock.patch.dict(os.environ, {}, clear=True): spec.loader.exec_module(module)
+        original = {'shared_wall_seconds':3600, 'phase_deadlines_seconds':{'training':2400,'update':3540,'evaluation':3540},
+                    'attempt_wall_seconds':600,'cleanup_reserve_seconds':30,'ppo':{'epochs':1}}
+        target = SimpleNamespace(SEED_NAMESPACES={'original':{}}, configuration=lambda _: original)
+        with mock.patch.object(module, '_spec', return_value={'seed_namespace':tool.NAMESPACE,'batch_wall_seconds':10800}):
+            module._patch_namespace(target)
+        actual = target.configuration(None)
+        self.assertEqual(actual['shared_wall_seconds'], 10800)
+        self.assertEqual(actual['phase_deadlines_seconds']['update'], 10740)
+        actual['shared_wall_seconds'] = original['shared_wall_seconds']
+        actual['phase_deadlines_seconds']['update'] = original['phase_deadlines_seconds']['update']
+        self.assertEqual(actual, original)
+        self.assertEqual(original['phase_deadlines_seconds']['update'],3540)
+
 
 
 class StopTests(unittest.TestCase):
@@ -189,6 +231,27 @@ class CommandTests(unittest.TestCase):
         self.assertFalse(self.parse(*tool.CAMPAIGNS['F']).experiment)
 
 
+class IndependentGuardTests(unittest.TestCase):
+    def test_guard_binds_original_absolute_deadline_before_harness_exec(self):
+        import guarded_mac_acceptance as guard
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)/'study'
+            process = mock.Mock()
+            process.wait.return_value = 0
+            with mock.patch.object(sys, 'argv', ['guarded_mac_acceptance.py','--bench-root',str(root),'--total-hours','8','--dry-run']), \
+                    mock.patch.object(guard, 'guarded_popen', return_value=process) as launch, \
+                    mock.patch.object(guard, 'close_owned_process') as close:
+                self.assertEqual(guard.main(), 0)
+            command = launch.call_args.args[0]
+            limits = launch.call_args.kwargs
+            self.assertEqual(float(command[command.index('--study-deadline-unix')+1]), limits['deadline_wall'])
+            self.assertEqual(float(command[command.index('--study-deadline-monotonic')+1]), limits['deadline_monotonic'])
+            self.assertIn('--dry-run', command)
+            self.assertEqual(close.call_args.kwargs['deadline_wall'], limits['deadline_wall'])
+            self.assertFalse(root.exists())  # only harness may create a fresh study
+
+
+
 class MainTests(unittest.TestCase):
     """main() end to end with the game replaced: dry run, verdict and exit status."""
     def run_main(self, tmp, *argv, campaign=None, batches=None):
@@ -205,11 +268,12 @@ class MainTests(unittest.TestCase):
         with mock.patch.object(sys, 'platform', 'darwin'), \
                 mock.patch.object(tool, 'release_of', side_effect=lambda run_dir: releases[run_dir]), \
                 mock.patch.object(tool, 'execution_of', side_effect=lambda run_dir: executions[run_dir]), \
-                mock.patch.object(sys, 'argv', ['mac_acceptance.py', '--bench-root', str(bench), *argv]), \
+                mock.patch.object(sys, 'argv', ['mac_acceptance.py', '--bench-root', str(bench), '--updates', '1', *argv]), \
                 mock.patch.object(tool, 'preflight', return_value=(runner, 'abc')), \
                 mock.patch.object(tool, 'hold_official_lock', return_value=(None, 'absent')), \
-                mock.patch.object(tool, 'prepare_inputs', return_value=(Path(tmp) / 'inputs', {'policy': {'sha256': 'p'}})), \
+                mock.patch.object(tool, 'prepare_inputs', return_value=(Path(tmp) / 'inputs', {'policy': tool.binding(write(Path(tmp)/'official-policy', b'policy'))})), \
                 mock.patch.object(tool, 'OFFICIAL_CONFIG', Path(tmp) / 'missing.json'), \
+                mock.patch.object(tool, 'SEED_LEDGER', Path(tmp) / 'seed-ledger.json'), \
                 mock.patch.object(tool, 'git', side_effect=lambda *a: 'abc' if a[0] == 'rev-parse' else ''), \
                 mock.patch.object(tool, 'run_campaign', side_effect=campaign), \
                 mock.patch.object(tool.campaign_summary, 'batches', side_effect=batches and batches_and_release), \
