@@ -26,7 +26,7 @@
   "remaining_games": 4720,
   "next_unused_sequence": 337,
   "private_package_commit": "f0f5c8f55a98fa4b31fec4e733aca94c01ad7315",
-  "private_receipt_commit": "b09963e",
+  "private_receipt_commit": "b09963e2788945a9587189ebd69d68e8953d613a",
   "private_repository": "tkorsi/heroes-rl-training-state",
   "private_branch": "codex/local-script-final699-checkpoint",
   "remote_full_restore": {
