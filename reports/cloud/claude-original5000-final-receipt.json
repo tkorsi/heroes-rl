@@ -1,0 +1,187 @@
+{
+ "schema": "claude-original5000-final-receipt-v1",
+ "generated_utc": "2026-10-27T10:50:37Z",
+ "deadlines": {
+  "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
+  "hard_stop_utc": "2026-10-27T11:00:00Z",
+  "recorded_utc": "2026-10-26T18:16:32.554529Z",
+  "never_moved": true
+ },
+ "watchdog": {
+  "pid": 238,
+  "heavy_stop_receipt": {
+   "reason": "heavy-work deadline",
+   "utc": "2026-10-27T10:50:00.004932Z",
+   "monotonic": 24299.110452384,
+   "targets": [],
+   "signals": [],
+   "remaining": [],
+   "all_stopped": true
+  },
+  "hard_stop_receipt": null,
+  "restarts": [
+   {
+    "utc": "2026-10-26T23:18:56.075050Z",
+    "pid": 294,
+    "starttime": 22589,
+    "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "utc": "2026-10-26T23:50:09.621962Z",
+    "pid": 238,
+    "starttime": 6576,
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+   },
+   {
+    "utc": "2026-10-27T04:06:01.239649Z",
+    "pid": 238,
+    "starttime": 6029,
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54"
+   }
+  ],
+  "reboots": [
+   {
+    "detected_utc": "2026-10-26T23:18:56.069505Z",
+    "previous_boot_id": "3b357b50-ab00-4565-9348-e736b0dd027a",
+    "boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+    "previous": {
+     "heavy_stop_monotonic": 77084.07492852677,
+     "hard_stop_monotonic": 77684.07492852677
+    },
+    "retired_registrations": [
+     "bench-m1-B-27772.json",
+     "bench-m1-CH-4244.json",
+     "bench-m1-XH-11817.json",
+     "bench-s4-B-15036.json",
+     "bench-s4-C-15038.json",
+     "driver-m1-B-27730.json",
+     "driver-m1-CH-4201.json",
+     "driver-m1-XH-11768.json",
+     "driver-s4-B-14950.json",
+     "driver-s4-C-14952.json",
+     "ppo-r0b0-C-16549.json",
+     "ppo266-matrix-24300.json",
+     "ppo266-matrix2-7652.json",
+     "schedule-m3-27710.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-3b357b50-ab00-4565-9348-e736b0dd027a"
+   },
+   {
+    "detected_utc": "2026-10-26T23:50:09.615305Z",
+    "previous_boot_id": "b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f",
+    "boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "previous": {
+     "heavy_stop_monotonic": 41689.85133165173,
+     "hard_stop_monotonic": 42289.85133165173
+    },
+    "retired_registrations": [
+     "bench-m1-F-482.json",
+     "driver-m1-F-407.json",
+     "ppo266-matrix3-473.json",
+     "ppo267-matrix4-2346.json",
+     "schedule-m3b-393.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-b9c386f7-eb11-4bfa-8e79-cdea4c1ac40f"
+   },
+   {
+    "detected_utc": "2026-10-27T04:06:01.222421Z",
+    "previous_boot_id": "72fdd1aa-b162-4a2f-88b5-00e272f441fb",
+    "boot_id": "3eb80ab8-76bf-45e4-95c9-18b3b5583a54",
+    "previous": {
+     "heavy_stop_monotonic": 39656.33168057152,
+     "hard_stop_monotonic": 40256.33168057152
+    },
+    "retired_registrations": [
+     "bench-m2-B-10549.json",
+     "bench-m3-R5H-7512.json",
+     "bench-m3-RAF-28722.json",
+     "bench-m3-RAH-20081.json",
+     "bench-m3-RBN-16385.json",
+     "bench-m3-RH-1237.json",
+     "bench-m6-RBH-18987.json",
+     "bench-m6-RBH-driver-18943.json",
+     "campaign-m3-R5H-driver-7440.json",
+     "driver-m2-B-10504.json",
+     "driver-m3-R5H-7440.json",
+     "driver-m3-RAF-28661.json",
+     "driver-m3-RAH-20028.json",
+     "driver-m3-RBN-16312.json",
+     "driver-m3-RH-1190.json",
+     "driver-m6-RBH-18943.json",
+     "ppo-B267-3716.json",
+     "ppo-P266-349.json",
+     "ppo-R266-4798.json",
+     "ppo-R267c-26370.json",
+     "ppo-R267d-22641.json",
+     "ppo-R8H267-18814.json",
+     "ppo-after-b267-3886.json",
+     "ppo-chain-r266-6577.json",
+     "ppo-matrix10-23603.json",
+     "ppo-matrix5-1534.json",
+     "ppo-matrix5-27622.json",
+     "ppo-matrix5-3886.json",
+     "ppo-matrix5-6577.json",
+     "ppo-matrix6-19729.json",
+     "ppo-matrix7-27622.json",
+     "ppo-matrix8-5008.json",
+     "ppo-matrix9-9489.json",
+     "schedule-after-m3r5h-12896.json",
+     "schedule-after-m3r5h-check-12896.json",
+     "schedule-after-m3raf-890.json",
+     "schedule-after-m3rh-6315.json",
+     "schedule-after-m6rbh-23537.json",
+     "schedule-m4-1173.json",
+     "schedule-m5-6315.json",
+     "schedule-m6-12896.json",
+     "schedule-m7-890.json",
+     "tests-cand6-9487.json"
+    ],
+    "retired_to": "/home/claude/overnight/owned-stale/boot-72fdd1aa-b162-4a2f-88b5-00e272f441fb"
+   }
+  ]
+ },
+ "registered_roots_alive": [],
+ "benchmark_processes_alive": [],
+ "git": {
+  "branch": "claude/project-thread-iba9jw-original5000",
+  "local_head": "dfd55d5bdfee7129145bf740f151e1544b3dcc91",
+  "remote_head": "dfd55d5bdfee7129145bf740f151e1544b3dcc91",
+  "worktree_clean": true
+ },
+ "deliverables": {
+  "docs/research/original5000-local-acceleration-2026-10-26.md": {
+   "sha256": "d437148cc495ffa8686124bfbfa8765f54f672cf55cd55ffa85b2d52ea14a8f5",
+   "bytes": 74031
+  },
+  "docs/research/original5000-local-acceleration-integration-2026-10-26.md": {
+   "sha256": "b4995a4acb8fe1543b5f08b26ce8cc2d31f41048448abcc934cbf795c08ef4e1",
+   "bytes": 17473
+  },
+  "validation/original5000-local-acceleration-linux-2026-10-27.json": {
+   "sha256": "09576321c4a7a6f2eb5f36728cfc2324aece07e9edf4b03f7ac0ee0b7005afe3",
+   "bytes": 132804
+  },
+  "reports/cloud/claude-original5000-status.json": {
+   "sha256": "91a4542e8511338dad25a50ab9bed781377c40da23f2a1b130ab16d57df26209",
+   "bytes": 31303
+  }
+ },
+ "private_data": {
+  "roots": [
+   "/home/claude/bench3",
+   "/home/claude/bench3c",
+   "/home/claude/bench2"
+  ],
+  "note": "raw episodes (losslessly compressed with per-file SHA-256 manifests), captures and benchmark checkpoints stay on this host; the validation record binds campaign states by digest; nothing raw was pushed"
+ },
+ "disk": {
+  "free_bytes": 8195264512
+ },
+ "official": {
+  "official_run_launched": false,
+  "official_lineage_touched": false,
+  "teacher_touched": false,
+  "paid_compute": false,
+  "auto_merge": false
+ }
+}
