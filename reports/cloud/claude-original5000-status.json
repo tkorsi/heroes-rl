@@ -1,6 +1,6 @@
 {
  "schema": "claude-original5000-status-v1",
- "generated_utc": "2026-10-27T01:52:27Z",
+ "generated_utc": "2026-10-27T02:20:40Z",
  "assignment": "docs/operations/claude-original5000-overnight-20261026.txt (main b4fe70c)",
  "deadlines": {
   "heavy_work_stop_utc": "2026-10-27T10:50:00Z",
@@ -20,8 +20,8 @@
    "run"
   ],
   "alive": true,
-  "heartbeat_utc": "2026-10-27T01:52:10.987585Z",
-  "seconds_to_heavy_stop": 32269.0,
+  "heartbeat_utc": "2026-10-27T02:20:11.135869Z",
+  "seconds_to_heavy_stop": 30588.9,
   "heavy_stop_receipt": null,
   "hard_stop_receipt": null,
   "restarts": [
@@ -86,6 +86,22 @@
  },
  "owned_processes": [
   {
+   "label": "bench-m2-B",
+   "pid": 10549,
+   "starttime": 908921,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "tools/run_local_training.py",
+    "start",
+    "--config",
+    "/home/claude/bench3/art/campaigns/m2-B/machine.json",
+    "--profile"
+   ],
+   "registered_utc": "2026-10-27T02:20:32.913809Z",
+   "live_descendants": 1
+  },
+  {
    "label": "bench-m3-R5H",
    "pid": 7512,
    "starttime": 283524,
@@ -105,7 +121,7 @@
    "label": "bench-m3-RAF",
    "pid": 28722,
    "starttime": 668761,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "tools/run_local_training.py",
@@ -115,7 +131,7 @@
     "--profile"
    ],
    "registered_utc": "2026-10-27T01:40:31.310334Z",
-   "live_descendants": 6
+   "live_descendants": 0
   },
   {
    "label": "bench-m3-RAH",
@@ -166,6 +182,22 @@
    "live_descendants": 0
   },
   {
+   "label": "driver-m2-B",
+   "pid": 10504,
+   "starttime": 908572,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
+    "--name",
+    "m2-B",
+    "--checkout",
+    "/home/claude/o5k-main"
+   ],
+   "registered_utc": "2026-10-27T02:20:29.458025Z",
+   "live_descendants": 2
+  },
+  {
    "label": "driver-m3-R5H",
    "pid": 7440,
    "starttime": 283220,
@@ -185,7 +217,7 @@
    "label": "driver-m3-RAF",
    "pid": 28661,
    "starttime": 668454,
-   "alive": true,
+   "alive": false,
    "command": [
     "/home/claude/heroes-rl/.venv/bin/python",
     "/home/claude/o5k-cand3/tools/acceleration3/run_local_bench.py",
@@ -195,7 +227,7 @@
     "/home/claude/o5k-cand10"
    ],
    "registered_utc": "2026-10-27T01:40:28.305297Z",
-   "live_descendants": 7
+   "live_descendants": 0
   },
   {
    "label": "driver-m3-RAH",
@@ -243,6 +275,22 @@
     "/home/claude/bench3/ppo267/parent630/plan.json"
    ],
    "registered_utc": "2026-10-27T00:16:04.212026Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-P266",
+   "pid": 349,
+   "starttime": 727447,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/bench3/tools/ppo_bench.py",
+    "--checkout",
+    "/home/claude/accel-fix",
+    "--parent-plan",
+    "/home/claude/bench3/art/inputs/parent629/plan.json"
+   ],
+   "registered_utc": "2026-10-27T01:58:39.111353Z",
    "live_descendants": 0
   },
   {
@@ -333,13 +381,13 @@
    "label": "ppo-matrix5",
    "pid": 27622,
    "starttime": 636503,
-   "alive": true,
+   "alive": false,
    "command": [
     "/bin/bash",
     "/home/claude/bench3/ppo5/run_matrix5.sh"
    ],
    "registered_utc": "2026-10-27T01:50:18.129822Z",
-   "live_descendants": 1
+   "live_descendants": 0
   },
   {
    "label": "ppo-matrix5",
@@ -381,12 +429,36 @@
    "label": "ppo-matrix7",
    "pid": 27622,
    "starttime": 636503,
-   "alive": true,
+   "alive": false,
    "command": [
     "/bin/bash",
     "./run_matrix7.sh"
    ],
    "registered_utc": "2026-10-27T01:35:08.729287Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix8",
+   "pid": 5008,
+   "starttime": 777645,
+   "alive": false,
+   "command": [
+    "/bin/bash",
+    "./run_matrix8.sh"
+   ],
+   "registered_utc": "2026-10-27T01:58:40.158370Z",
+   "live_descendants": 0
+  },
+  {
+   "label": "ppo-matrix9",
+   "pid": 9489,
+   "starttime": 878592,
+   "alive": true,
+   "command": [
+    "/bin/bash",
+    "./run_matrix9.sh"
+   ],
+   "registered_utc": "2026-10-27T02:15:29.627382Z",
    "live_descendants": 1
   },
   {
@@ -423,7 +495,7 @@
     "./after_m3raf.sh"
    ],
    "registered_utc": "2026-10-27T01:52:00.885248Z",
-   "live_descendants": 1
+   "live_descendants": 3
   },
   {
    "label": "schedule-after-m3rh",
@@ -477,6 +549,19 @@
    "live_descendants": 0
   },
   {
+   "label": "schedule-m7",
+   "pid": 890,
+   "starttime": 737718,
+   "alive": true,
+   "command": [
+    "/home/claude/heroes-rl/.venv/bin/python",
+    "/home/claude/o5k-cand3/tools/acceleration3/run_schedule.py",
+    "/home/claude/bench3/schedules/m7.json"
+   ],
+   "registered_utc": "2026-10-27T02:20:29.327691Z",
+   "live_descendants": 3
+  },
+  {
    "label": "tests-cand6",
    "pid": 9487,
    "starttime": 308705,
@@ -493,7 +578,7 @@
    "live_descendants": 0
   }
  ],
- "phase": "schedule m7 on CPUs 1-3 (after m3-RAF on a5b3568 ends): m2-B (accepted cold start, baselines only), m3-RBN (fallback switch, baselines only), m6-RBH (eight training batches 266-273 on the integration candidate 20b20f9 with two replay threads), then m4-RBH, m2-XH, m2-CH, m5-RBH, m3-RBF; CPU 0 queue runs PR30 on batches 266/267 (P266, P267), then the accepted and fast-path repeats on 266 (B2, C2)",
+ "phase": "schedule m7 on CPUs 1-3 (m3-RAF on a5b3568 finished 02:20): m2-B (accepted cold start, baselines only), m3-RBN (fallback switch, baselines only), m6-RBH (eight training batches 266-273 on the integration candidate 20b20f9 with two replay threads), then m4-RBH, m2-XH, m2-CH, m5-RBH, m3-RBF; CPU 0 queue runs PR30 on batches 266/267 (P266, P267), then the accepted and fast-path repeats on 266 (B2, C2)",
  "host": "Linux x86-64, 4 vCPU (1 thread per core), 16 GB RAM; Python 3.13, torch 2.9.1+cu128 on CPU; not a Mac measurement",
  "bindings": {
   "main": "a8ac411d32658387598376c792136bc586edc5f9",
@@ -631,6 +716,22 @@
    },
    "weights": "all 46439a9b (equal to the accepted path)",
    "note": "a5b3568 about 10% slower than 1721220 here, but the background differed (different campaign phases on CPUs 1-3); a 6000-occurrence micro-benchmark shows the recording hook variants within 0.5-2% of each other, so the hook was kept"
+  },
+  "m3_RAF": {
+   "commit": "a5b3568",
+   "variant": "macOS default: fast path, serial verification, no helpers, replay inside the backward (one CPU for PPO, as the accepted path)",
+   "training_batch_seconds": {
+    "266": 2017.0
+   },
+   "ppo_seconds": {
+    "266": 1838.3
+   },
+   "baseline_batch_seconds": {
+    "seat0": 113.4,
+    "seat1": 225.6
+   },
+   "checkpoint_digest_equal_to_every_exact_campaign": true,
+   "note": "batch 266 at least 1.75x the censored accepted batch (3,523 s) on the same single-CPU PPO; the accepted batch is estimated at about 4,600 to 4,900 s, about 2.3 to 2.4x"
   }
  },
  "completed_checks": [
