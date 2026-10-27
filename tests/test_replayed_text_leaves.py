@@ -3,6 +3,7 @@ from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import replace
 import pickle
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -152,6 +153,23 @@ class ReplayedTextLeafTests(unittest.TestCase):
             with self.model.replayed_text_leaves(2):
                 sum(e.log_prob for e in _evaluate_from_state(self.model, self.inputs[0], window, start, prefix)).backward()
         self.assertNotIn("_text_replay_deferred", self.model.__dict__)
+
+    def test_the_main_thread_takes_unstarted_replays_after_the_backward_bit_identically(self):
+        reference = self.window_gradients(torch.enable_grad())
+        taken, workers, replay = threading.Event(), [], cm._ReplayedText.replay
+
+        def tracked(leaf, grad):
+            worker = threading.current_thread() is not threading.main_thread()
+            if worker:
+                taken.wait(30)  # the single worker stays on its first replay until the main thread takes one
+            else:
+                taken.set()
+            workers.append(worker)
+            return replay(leaf, grad)
+        with patch.object(cm._ReplayedText, "replay", tracked):
+            self.assertTrue(bits_equal(self.deferred_window_gradients(1), reference))
+        self.assertIn(False, workers)
+        self.assertIn(True, workers)
 
     def test_a_direct_gradient_to_a_text_parameter_fails_closed_under_deferral(self):
         with self.assertRaisesRegex(RuntimeError, "outside its replayed occurrences"):

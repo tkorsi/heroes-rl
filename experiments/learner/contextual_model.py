@@ -421,7 +421,9 @@ class _DeferredTextReplays:
     strictly in that order, each occurrence's in its replay order, exactly the sequence of
     additions the engine makes in the immediate replay and in the reference, and ``finish``
     installs the sums as the gradients. A replay's values do not depend on the thread that
-    computes it: the same operations run on the same operands, one thread per operation.
+    computes it: the same operations run on the same operands, one thread per operation. Once
+    the backward is done, ``finish`` replays the queued occurrences that no worker has started,
+    last first, while the workers continue from the front.
     """
 
     def __init__(self, params, workers):
@@ -431,12 +433,13 @@ class _DeferredTextReplays:
         self.sums = [None] * len(params)
 
     def add(self, leaf, grad):
-        self.pending.append((leaf, self.pool.submit(leaf.replay, grad)))
-        while self.pending and self.pending[0][1].done():
-            self._fold(*self.pending.popleft())
+        self.pending.append((leaf, grad, self.pool.submit(leaf.replay, grad)))
+        while self.pending and self.pending[0][2].done():
+            leaf, _, future = self.pending.popleft()
+            self._fold(leaf, future.result())
 
-    def _fold(self, leaf, future):
-        values = iter(future.result())
+    def _fold(self, leaf, values):
+        values = iter(values)
         with torch.no_grad():
             for position, (param, count) in enumerate(zip(leaf.params, leaf.counts)):
                 if param is not self.params[position]:
@@ -451,8 +454,14 @@ class _DeferredTextReplays:
                         self.sums[position].add_(value)
 
     def finish(self):
-        while self.pending:
-            self._fold(*self.pending.popleft())
+        stolen = {}
+        for index in range(len(self.pending) - 1, -1, -1):
+            leaf, grad, future = self.pending[index]
+            if future.cancel():  # no worker has started it
+                stolen[index] = leaf.replay(grad)
+        for index, (leaf, _, future) in enumerate(self.pending):
+            self._fold(leaf, stolen[index] if index in stolen else future.result())
+        self.pending.clear()
         sums, self.sums = self.sums, [None] * len(self.params)
         for param, total in zip(self.params, sums):
             if total is None:
