@@ -290,6 +290,9 @@ _LEAF_REPLAY = object()
 # The replay (leaf, contribution lists) that this thread is running, for the leaves' node hooks.
 _REPLAY_CAPTURE = threading.local()
 _TOP_SAVED_TENSOR_HOOKS = getattr(torch._C._autograd, "_top_saved_tensors_default_hooks", None)
+_CURRENT_GRAPH_TASK = getattr(torch._C, "_current_graph_task_id", None)
+_FUNCTION_MODE = getattr(torch._C, "_is_torch_function_mode_enabled", None)
+_DISPATCH_STACK = getattr(torch._C, "_len_torch_dispatch_stack", None)
 # Signals a replay thread never takes, so that process-directed ones reach the main thread, whose masked
 # sections (prefix helpers, background checks) defer them. Faults stay with the thread that causes them.
 _REPLAY_THREAD_BLOCKED = signal.valid_signals() - {getattr(signal, name) for name in (
@@ -338,10 +341,15 @@ def _saved_tensor_hooks():
     return _TOP_SAVED_TENSOR_HOOKS is None or _TOP_SAVED_TENSOR_HOOKS(True) is not None
 
 
+def _operation_modes():
+    """True when a torch function or dispatch mode may intercept operations (and when this torch cannot tell)."""
+    return _FUNCTION_MODE is None or _DISPATCH_STACK is None or _FUNCTION_MODE() or _DISPATCH_STACK() > 0
+
+
 def _text_replay_blocked(byte, gru):
     """True when a text leaf must be computed as in the reference: a mode or hook the replay would bypass."""
     module = nn.modules.module
-    return bool(_saved_tensor_hooks() or torch._C._is_any_autocast_enabled() or torch.is_anomaly_enabled()
+    return bool(_saved_tensor_hooks() or _operation_modes() or torch._C._is_any_autocast_enabled() or torch.is_anomaly_enabled()
                 or module._global_forward_hooks or module._global_forward_pre_hooks
                 or module._global_backward_hooks or module._global_backward_pre_hooks
                 or any(m._forward_hooks or m._forward_pre_hooks or m._backward_hooks or m._backward_pre_hooks
@@ -449,11 +457,14 @@ class _DeferredTextReplays:
     """Occurrence replays computed by worker threads while one bracketed backward continues.
 
     Only ``ContextualActorCritic.backward_with_text_replays`` defers: ``begin`` before its
-    backward, ``finish`` after it (``fail`` if it raises). Every other backward or
-    ``autograd.grad`` in the context replays immediately, inside the engine. A bracket defers
-    only when the text leaf parameters are trainable, without gradients and without hooks, so
-    that they receive gradient from replayed occurrences alone; ``finish`` checks that this
-    still holds before it installs anything. Occurrences are queued in the order the engine
+    backward, ``finish`` after it (``fail`` if it raises). Only occurrences reached by that
+    backward's own graph task defer (a pre-hook on the loss's node records the task); every other
+    backward or ``autograd.grad`` in the context, nested in a hook or on another thread included,
+    replays immediately, inside the engine. A bracket defers only when the text leaf parameters
+    are trainable, without gradients and without hooks, so that they receive gradient from
+    replayed occurrences alone, and only when nothing the workers would not see is active (an
+    operation, autocast, anomaly or saved-tensor mode, module hooks, another intra-op thread
+    count); ``finish`` checks the parameters again before it installs anything. Occurrences are queued in the order the engine
     reaches them; their contributions are added to each parameter's sum strictly in that order,
     each occurrence's in its replay order, exactly the sequence of additions the engine makes
     in the immediate replay and in the reference, and ``finish`` installs the sums as the
@@ -466,26 +477,43 @@ class _DeferredTextReplays:
     refuses further brackets.
     """
 
-    def __init__(self, params, workers):
-        self.params = params
+    def __init__(self, params, workers, modules):
+        self.params, self.modules, self.threads = params, modules, torch.get_num_threads()
         self.pool = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="text-replay",
-                                       initializer=_start_replay_thread, initargs=(torch.get_num_threads(),))
+                                       initializer=_start_replay_thread, initargs=(self.threads,))
         self.pending = []  # (leaf, grad, future) from ``head`` on, in engine order
         self.head = 0
         self.sums = [None] * len(params)
-        self.state = None
+        self.state = self.task = self.hook = None
         self.active = self.broken = False
 
     def can_defer(self):
         if self.broken:
             raise RuntimeError("Deferred text leaf replays failed earlier in this context")
-        return all(param.requires_grad and param.grad is None and not _parameter_hooks(param) for param in self.params)
+        return (_CURRENT_GRAPH_TASK is not None and torch.get_num_threads() == self.threads
+                and not _text_replay_blocked(*self.modules)
+                and all(param.requires_grad and param.grad is None and not _parameter_hooks(param) for param in self.params))
 
-    def begin(self):
+    def begin(self, root):
         if self.active or self.pending or any(total is not None for total in self.sums):
             raise RuntimeError("Deferred text leaf replays are already in progress")
         self.state = _parameter_state(self.params)
+        self.hook = root.register_prehook(self._enter)
         self.active = True
+
+    def _enter(self, grad_outputs):
+        if self.task is None:  # the bracket's backward starts at the loss's node
+            self.task = _CURRENT_GRAPH_TASK()
+
+    def defers(self):
+        """True for an occurrence reached by the bracket's own backward on the bracket's thread count.
+
+        The engine runs every node of a backward under the thread-local state the backward started
+        with (operation modes, autocast, saved-tensor hooks), so what ``can_defer`` saw holds for
+        each occurrence; the intra-op thread count is not part of that state and is checked again.
+        """
+        return (self.active and self.task is not None and _CURRENT_GRAPH_TASK() == self.task
+                and torch.get_num_threads() == self.threads)
 
     def add(self, leaf, grad):
         self.pending.append((leaf, grad, self.pool.submit(leaf.replay, grad)))
@@ -513,6 +541,8 @@ class _DeferredTextReplays:
     def finish(self):
         """After the backward: fold every queued replay in order and install the sums as the gradients."""
         try:
+            if not self.active or self.broken:
+                raise RuntimeError("No deferred text leaf replays in progress")
             taken, cursor = {}, self.head
             while self.head < len(self.pending):
                 future = self.pending[self.head][2]
@@ -553,12 +583,16 @@ class _DeferredTextReplays:
         self._reset()
 
     def _reset(self):
-        self.pending, self.head, self.sums, self.state = [], 0, [None] * len(self.params), None
+        hook, self.hook = self.hook, None
+        if hook is not None:
+            hook.remove()
+        self.pending, self.head, self.sums, self.state, self.task = [], 0, [None] * len(self.params), None, None
         self.active = False
 
     def close(self):
-        """Stop the workers; True if a bracket was left unfinished."""
+        """Stop the workers; True if a bracket was left unfinished. The object is not used again."""
         unfinished = self.active or bool(self.pending) or any(total is not None for total in self.sums)
+        self.broken = True
         self.pool.shutdown(wait=True, cancel_futures=True)
         self._reset()
         return unfinished
@@ -591,7 +625,7 @@ class _TextOccurrence(torch.autograd.Function):
         if grad is None:
             # The reference chain receives no gradient and delivers none.
             return (None, None) + (None,) * len(leaf.arguments)
-        if deferred is not None and deferred.active:
+        if deferred is not None and deferred.defers():
             deferred.add(leaf, grad)
             return (None, None) + (None,) * len(leaf.arguments)
         return (None, None, *leaf.replay(grad))
@@ -1081,12 +1115,13 @@ class ContextualActorCritic(nn.Module):
         therefore optimizer states are bit-identical to separate recomputation; only the
         repeated forward work is saved. Within a frame the reference cache is unchanged.
         Callers must leave the context before any parameter change: an occurrence after a
-        parameter is replaced, frozen, or changed in place or through ``.data`` raises. Each
-        occurrence supports one backward. Yields False, replaying nothing, unless the model and
-        leaf modules are the plain modules this argument covers, with distinct, trainable leaf
-        parameters and without module, saved-tensor or anomaly-mode hooks or autocast;
-        occurrences under any of these, or after the context, are computed separately as in the
-        reference.
+        parameter is replaced (also through ``.data``), frozen or changed in place raises. A write
+        in place through ``.data`` bypasses version counters and is not detected, as for any
+        tensor autograd saves. Each occurrence supports one backward. Yields False, replaying
+        nothing, unless the model and leaf modules are the plain modules this argument covers,
+        with distinct, trainable leaf parameters and without module, saved-tensor, anomaly,
+        autocast or operation modes or hooks; occurrences under any of these, or after the
+        context, are computed separately as in the reference.
 
         With ``workers`` > 0, ``backward_with_text_replays(loss)`` runs occurrences' replays on
         that many threads while its backward continues (``_DeferredTextReplays``) and installs
@@ -1108,7 +1143,7 @@ class ContextualActorCritic(nn.Module):
             return
         deferred = None
         if workers > 0:
-            deferred = self.__dict__["_text_replay_deferred"] = _DeferredTextReplays(params, workers)
+            deferred = self.__dict__["_text_replay_deferred"] = _DeferredTextReplays(params, workers, (byte, gru))
         state = self.__dict__["_leaf_replay_state"] = {}
         unfinished = False
         try:
@@ -1131,21 +1166,24 @@ class ContextualActorCritic(nn.Module):
         """``loss.backward()``, with text leaf replays on the context's threads when it has them.
 
         Replays are deferred only when the leaf parameters are trainable, have no gradient and no
-        hooks, so that they receive gradient from replayed occurrences alone; otherwise, as for
-        any other backward, each occurrence replays inside the engine. Deferred replays' sums are
-        installed as the gradients before this returns, the same bits as the engine's.
+        hooks, so that they receive gradient from replayed occurrences alone, and nothing active
+        would escape the workers; otherwise, as for any other backward, each occurrence replays
+        inside the engine. Deferred replays' sums are installed as the gradients before this
+        returns, the same bits as the engine's. Hooks registered directly on a parameter's
+        gradient accumulator node are not visible from Python and, under deferral, run without
+        a gradient; the runner registers none.
         """
         deferred = self.__dict__.get("_text_replay_deferred")
-        if deferred is None or not deferred.can_defer():
+        if deferred is None or loss.grad_fn is None or not deferred.can_defer():
             loss.backward()
             return
-        deferred.begin()
+        deferred.begin(loss.grad_fn)
         try:
             loss.backward()
+            deferred.finish()
         except BaseException:
             deferred.fail()
             raise
-        deferred.finish()
 
     @contextmanager
     def shared_graph_encodings(self):

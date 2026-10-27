@@ -79,7 +79,7 @@ FAST_PATH_SOURCES = {
         '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f',),
-        'a955db9088096482bc3c2c9a56421092c6e3c29a94b6109527d0d81a83dbcb60'),
+        '1666ddd74d45b14dadc1bb18401ab2a960b6e2866a2bcf241a49f964a28a5f75'),
     'experiments/learner/contextual_rollout.py': (
         ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637',),
         'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205'),
@@ -136,11 +136,11 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '49eb68c9c9441020a857d97ab7609e777d263607e19bcc5535f02737522ae754'),
+        '8230cb170884791fa4f61319852489831e77e3d791169de2c6df2ec21483b4ee'),
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '220c87bde2be01b63730eda2b70e0f52cda249d7cc61d1944aebbd029c8686f7'
+LOCAL_ADAPTER_TRANSITION_AST = 'a0ee1abb562faff9301b889abbff42d415d8609118ddee82c1c024a4272a0d02'
 
 
 def write_new(path, value):
@@ -429,19 +429,26 @@ def check_clock(session, *, active=True):
 def check_execution(value):
     """The session's execution choices: exact by default; a numerical experiment only when named."""
     require(type(value) is dict
-            and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay', 'experiments'}
+            and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay',
+                               'replay_threads', 'experiments'}
             and value['implementation'] == 'exact-fast-path-v1' and type(value['overlapped_verification']) is bool
             and type(value['prefix_helpers']) is int and 0 <= value['prefix_helpers'] <= 8
             and type(value['text_leaf_replay']) is bool
+            and type(value['replay_threads']) is int and 0 <= value['replay_threads'] <= 8
+            and (value['text_leaf_replay'] or value['replay_threads'] == 0)
             and type(value['experiments']) is list and value['experiments'] == sorted(set(value['experiments']))
             and set(value['experiments']) <= set(NUMERICAL_EXPERIMENTS), 'Unknown execution choice')
     return value
 
 
-def execution_choice(*, overlapped_verification, prefix_helpers=0, text_leaf_replay=True, experiments=()):
+def execution_choice(*, overlapped_verification, prefix_helpers=0, text_leaf_replay=True, replay_threads=None,
+                     experiments=()):
+    """Replay threads default to the prefix helpers (the extra CPUs declared), and are 0 without the replay."""
+    if replay_threads is None:
+        replay_threads = prefix_helpers if text_leaf_replay else 0
     return check_execution({'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped_verification,
                             'prefix_helpers': prefix_helpers, 'text_leaf_replay': text_leaf_replay,
-                            'experiments': sorted(set(experiments))})
+                            'replay_threads': replay_threads, 'experiments': sorted(set(experiments))})
 
 
 def apply_execution(plan):
@@ -452,6 +459,7 @@ def apply_execution(plan):
     background_check.FORK = value['overlapped_verification']
     ppo.PREFIX_HELPERS = value['prefix_helpers']
     ppo.REPLAY_TEXT_LEAVES = value['text_leaf_replay']
+    ppo.TEXT_REPLAY_WORKERS = value['replay_threads']
     ppo.EXPERIMENTS = frozenset(value['experiments'])
     return value
 

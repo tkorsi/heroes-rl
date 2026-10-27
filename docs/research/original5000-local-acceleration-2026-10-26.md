@@ -600,3 +600,67 @@ fixes the guide (same-release lineage rule, the continuation command through `tr
 validation command list that runs). A fourth review of 20b20f9 is running. Schedule m7 (after
 m3-RAF on a5b3568) measures 2ba42ac, whose learner bytes are those of 20b20f9: the accepted cold
 start (m2-B), the fallback switch (m3-RBN), eight training batches from 266 (m6-RBH), and repeats.
+
+### O16. The macOS default from 629, the fallback switch end to end, a fourth review, and graph-task gating (02:10 to 03:00 UTC)
+
+Campaign m3-RAF (a5b3568, the macOS fast-path default: serial verification, no prefix helpers, the
+text-leaf replay inside the engine, so PPO on one CPU; CPUs 1 to 3, the same 629 copy): baselines
+113.4 s and 225.6 s, batch 266 passed in 2017.0 s (PPO 1838.3 s) with the same update 630 weights as
+every exact campaign. Against the accepted path's stopped batch (3,523 s at the 3,540 s budget with
+83 of 125 optimizer steps done) that is at least 1.75x; the accepted path's own per-game deadline
+evidence (games end at 362 s, then 83 steps in about 3,160 s) puts its complete batch at about 4,600
+to 4,900 s, about 2.3 to 2.4x. This is the setting the Mac would run without `--prefix-helpers`.
+
+m2-B (a8ac411, baselines only, the counterbalancing repeat of m1-B): 219.2 s and 417.1 s, against
+318.1 s and 557.7 s in m1-B. The same eight games took 30% less time in the later campaign, the
+largest run-to-run drift seen on this host; the cold-start comparison therefore uses both. m3-RBN
+(2ba42ac with `--serial-verification --no-text-replay`, baselines only): 109.4 s and 225.4 s, and
+its session and batch plans record `text_leaf_replay: false`, so the in-lineage fallback switch
+works end to end.
+
+Fourth independent review (of 20b20f9, read-only: 13 agents, 19 findings, the 10 non-minor ones
+verified by adversarial refutation, none refuted). None is reachable from the PPO update. The
+deferral flag was shared by every graph task: a backward or `autograd.grad` nested in a hook inside
+the bracket, or run on another thread while the bracket was active, deferred its occurrences into
+the bracket, so a nested `autograd.grad` returned no gradient for the text parameters and the
+bracket installed it into `.grad` (wrong destination), and a nested `.backward()` changed the
+grouping of the additions. The caller's thread-local state at the bracket (a torch function or
+dispatch mode, another intra-op thread count) was neither given to the workers nor refused. Hooks
+registered on a parameter's gradient accumulator node are invisible from Python and would be
+skipped under deferral. Test gaps: nested backwards; modes at the bracket; a backward failure only
+after replays are queued (the window test failed before any); that a failed `finish` installs
+nothing; that every parameter is checked before any gradient is assigned; a negative control for
+the deferred fold order; and that every minibatch, not just one, defers. Minor: an in-place write
+through `.data` is not detected (it keeps the data pointer and the version), contrary to the guide;
+a signal at the entry of `finish` could leave the bracket active; `close` did not mark the object
+broken.
+
+Fixes (candidate cand13, the commit after c71fb44's successors on this branch). The bracket now
+records its own graph task: a pre-hook on the loss's node, which the engine runs first, stores
+`torch._C._current_graph_task_id()`, and an occurrence defers only when it runs in that task and
+on the bracket's intra-op thread count. Every other backward, nested or on another thread, replays
+inside the engine; a nested `autograd.grad` is exact and a nested `.backward()` that reaches the
+text parameters makes `finish` raise. At the bracket, deferral is refused (the engine replays)
+under a function or dispatch mode, another thread count, saved-tensor hooks, autocast, anomaly mode
+or module hooks. During the backward the engine runs every node under the thread-local state the
+backward started with: a function mode, a dispatch mode, autocast and saved-tensor hooks entered
+without exit inside a hook were not visible in later nodes (checked on this torch, and pinned by a
+test), so the per-occurrence check is the graph task and the thread count (0.09 us; the full mode
+and hook check costs 2.2 us per occurrence). `finish` raises unless a bracket is active, the
+bracket's `backward` and `finish` are one guarded block whose failure drops the queue, and `close`
+marks the object broken. The two undetected cases (`.data` in-place writes, accumulator-node
+hooks) are stated as limitations in the code and the guide. The `--replay-threads N` option (0 to
+8, default the number of prefix helpers, recorded as `replay_threads` in the execution choice)
+lets the replay threads run without forked helpers; the Mac tool's campaign T is the serial
+macOS default with two replay threads.
+
+New tests: a nested `autograd.grad` inside the bracket is exact and the bracket's own gradients
+are bit-identical; a function mode or another thread count at the bracket keeps the engine replay,
+exactly, and a thread count changed during the backward does too; a mode entered inside the
+backward does not reach later occurrences; the deferred fold order reversed changes the bits
+(negative control); every PPO minibatch defers (one bracket per optimizer step, each with its own
+occurrences, all of them deferred); every bracket in one context defers the same number of
+occurrences; a backward interrupted after replays are queued and a failed `finish` leave no partial
+gradient; a parameter frozen or hooked during the backward fails closed for the last checked
+parameter as for the first, with nothing installed. Mutations: gating on the flag alone fails the
+nested and mode tests; dropping the thread-count check fails the mode test.

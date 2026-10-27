@@ -134,21 +134,27 @@ class ReviewedTreeTests(unittest.TestCase):
 
 class ExecutionChoiceTests(unittest.TestCase):
     def setUp(self):
-        saved = background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS
+        saved = background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS, ppo.EXPERIMENTS
         def restore():
-            background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS = saved
+            background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS, ppo.EXPERIMENTS = saved
         self.addCleanup(restore)
 
     def test_only_known_exact_choices_and_named_experiments(self):
         value = local.execution_choice(overlapped_verification=True, prefix_helpers=3)
         self.assertEqual(value, {'implementation': 'exact-fast-path-v1', 'overlapped_verification': True,
-                                 'prefix_helpers': 3, 'text_leaf_replay': True, 'experiments': []})
+                                 'prefix_helpers': 3, 'text_leaf_replay': True, 'replay_threads': 3, 'experiments': []})
         self.assertIs(local.execution_choice(overlapped_verification=True, text_leaf_replay=False)['text_leaf_replay'], False)
+        self.assertEqual(local.execution_choice(overlapped_verification=False, prefix_helpers=2, text_leaf_replay=False)
+                         ['replay_threads'], 0)
+        self.assertEqual(local.execution_choice(overlapped_verification=False, replay_threads=2)
+                         ['replay_threads'], 2)  # threads without forked helpers
         self.assertEqual(local.execution_choice(overlapped_verification=False, experiments=['shared_graph_encodings'])['experiments'],
                          ['shared_graph_encodings'])
         bad = [dict(value, implementation='accepted'), dict(value, overlapped_verification=1), dict(value, prefix_helpers=9),
                dict(value, prefix_helpers=-1), dict(value, prefix_helpers=True), dict(value, experiments=['faster']),
                dict(value, text_leaf_replay=1), {k: v for k, v in value.items() if k != 'text_leaf_replay'},
+               dict(value, replay_threads=9), dict(value, replay_threads=-1), dict(value, replay_threads=True),
+               {k: v for k, v in value.items() if k != 'replay_threads'}, dict(value, text_leaf_replay=False),
                dict(value, experiments=['shared_graph_encodings', 'shared_graph_encodings']), dict(value, extra=0),
                {k: v for k, v in value.items() if k != 'experiments'}]
         for item in bad:
@@ -159,11 +165,13 @@ class ExecutionChoiceTests(unittest.TestCase):
         local.apply_execution({'execution': local.execution_choice(overlapped_verification=False, prefix_helpers=2,
                                                                    text_leaf_replay=False,
                                                                    experiments=['shared_graph_encodings'])})
-        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS),
-                         (False, 2, False, frozenset({'shared_graph_encodings'})))
+        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS,
+                          ppo.EXPERIMENTS), (False, 2, False, 0, frozenset({'shared_graph_encodings'})))
         local.apply_execution({'execution': local.execution_choice(overlapped_verification=True)})
-        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.EXPERIMENTS),
-                         (True, 0, True, frozenset()))
+        self.assertEqual((background_check.FORK, ppo.PREFIX_HELPERS, ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS,
+                          ppo.EXPERIMENTS), (True, 0, True, 0, frozenset()))
+        local.apply_execution({'execution': local.execution_choice(overlapped_verification=False, replay_threads=3)})
+        self.assertEqual((ppo.PREFIX_HELPERS, ppo.TEXT_REPLAY_WORKERS), (0, 3))
         with self.assertRaises(ValueError):
             local.apply_execution({'execution': {'implementation': 'exact-fast-path-v1'}})
 
@@ -251,7 +259,9 @@ class RunnerDefaultTests(unittest.TestCase):
 
     def test_fast_options_require_the_explicit_fast_path(self):
         for extra in [('--prefix-helpers', '2'), ('--experiment', 'shared_graph_encodings'), ('--serial-verification',),
-                      ('--overlap-verification',), ('--no-text-replay',), ('--fast-path', '--prefix-helpers', '9'),
+                      ('--overlap-verification',), ('--no-text-replay',), ('--replay-threads', '2'),
+                      ('--fast-path', '--replay-threads', '9'), ('--fast-path', '--no-text-replay', '--replay-threads', '1'),
+                      ('--fast-path', '--prefix-helpers', '9'),
                       ('--fast-path', '--experiment', 'unknown')]:
             with self.subTest(extra=extra), patch.object(controller.sys, 'argv', self.arguments(*extra)), \
                     patch.object(controller, 'start') as start, redirect_stderr(io.StringIO()):
@@ -273,7 +283,11 @@ class RunnerDefaultTests(unittest.TestCase):
         config = {'artifact_root': '/artifacts', 'run_root': '/artifacts/run', 'default_profile': 'original'}
         for extra, expected, tail in [((), controller.ACCEPTED_IMPLEMENTATION, []),
                                       (('--fast-path', '--serial-verification', '--prefix-helpers', '2'), None,
-                                       ['--fast-path', '--prefix-helpers', '2', '--serial-verification']),
+                                       ['--fast-path', '--prefix-helpers', '2', '--serial-verification',
+                                        '--replay-threads', '2']),
+                                      (('--fast-path', '--serial-verification', '--replay-threads', '3'), None,
+                                       ['--fast-path', '--prefix-helpers', '0', '--serial-verification',
+                                        '--replay-threads', '3']),
                                       (('--fast-path', '--serial-verification', '--no-text-replay'), None,
                                        ['--fast-path', '--prefix-helpers', '0', '--serial-verification',
                                         '--no-text-replay'])]:

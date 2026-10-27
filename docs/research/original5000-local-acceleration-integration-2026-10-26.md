@@ -16,7 +16,8 @@ Nothing, unless `--fast-path` is given.
   rejected without `--fast-path`.
 - `./train-original-5000.sh --fast-path` releases the current commit. Its session and every batch
   plan record `execution` (implementation `exact-fast-path-v1`, verification mode, prefix helpers,
-  text-leaf replay, experiments), and the runner prints the choice before the first game.
+  text-leaf replay, replay threads, experiments), and the runner prints the choice before the first
+  game.
 
 Design consequence for review: once merged, the default no longer follows main's HEAD. A later
 reviewed change to the default learner has to move `ACCEPTED_IMPLEMENTATION` explicitly. This is
@@ -31,6 +32,7 @@ become the default by accident), but it changes how future learner work reaches 
 | `--fast-path` | exact fast path; on macOS serial verification and no prefix helpers |
 | `--fast-path --overlap-verification` | also overlap per-game native replay and behaviour report in forked children (Linux default) |
 | `--fast-path --prefix-helpers N` | also compute PPO prefix frame encodings in N forked helpers (0 to 8), bit for bit, and replay text leaves on N threads during the backward |
+| `--fast-path --replay-threads N` | replay text leaves on N threads (0 to 8) during the backward, bit for bit; threads only, no fork (default: as many as `--prefix-helpers`) |
 | `--fast-path --no-text-replay` | compute every text leaf occurrence separately, as the accepted learner does (bit-identical; the in-lineage fallback if the replay ever refuses) |
 | `--fast-path --experiment shared_graph_encodings` | NUMERICAL experiment: reordered gradient summation; reported separately; never a default |
 
@@ -43,14 +45,19 @@ parameters separately, in the reference order (log O13 to O15). With helpers dec
 of the minibatch's one bracketed backward run on that many threads while the backward continues,
 and their contributions are added in the same order, and installed as the gradients, before
 gradient clipping and the optimizer step. The bracket defers only onto trainable leaf parameters
-without gradients or hooks; any other backward replays inside the autograd engine. The replay
-refuses (raises; the update is rolled back) on anything outside its exactness argument: a leaf
-parameter replaced, frozen or changed inside the minibatch (in place or through `.data`), a
+without gradients or hooks, and only the occurrences that its own backward reaches (identified by
+the autograd graph task, on the bracket's intra-op thread count); any other backward, including one
+nested in a hook or run on another thread, replays inside the autograd engine. The replay refuses
+(raises; the update is rolled back) on anything outside its exactness argument: a leaf parameter
+replaced, frozen or changed by an autograd-visible in-place operation inside the minibatch, a
 contribution count that differs from its graph, with replay threads a gradient to a leaf parameter
-from elsewhere or a parameter frozen or hooked during the backward, a failed replay or interrupted
-backward (no further deferral in that minibatch), or a higher-order or second backward. It keeps
-the reference path, silently and exactly, for tied or frozen leaf parameters, autocast, anomaly
-mode, module, global module or saved-tensor hooks.
+from elsewhere (a nested `.backward()` included) or a parameter frozen or hooked during the
+backward, a failed replay or interrupted backward (no further deferral in that minibatch), or a
+higher-order or second backward. It keeps the reference path, silently and exactly, for tied or
+frozen leaf parameters, autocast, anomaly mode, torch function or dispatch modes, module, global
+module or saved-tensor hooks. Two changes are not detected and are outside the exactness argument
+(neither occurs in the training loop): an in-place write through `.data` (it bypasses the version
+counter) and a hook registered on a leaf parameter's gradient accumulator node.
 
 The exact options produce bitwise-identical games, PPO updates, Adam state, RNG streams and
 checkpoint weights to the accepted implementation (tests and paired Linux campaigns below). The
@@ -139,7 +146,8 @@ as a problem: it means the accepted implementation cannot run that batch on the 
 the official run would meet as a failed batch and a stop. Optional:
 `--order AOOA` tests forked verification on macOS (fork safety with Torch loaded is unverified
 there), `--order AHHA` adds two prefix helpers (and two replay threads), `--order AFFA` gives a
-counterbalanced timing pair, `N` checks the `--no-text-replay` fallback, `X` adds the numerical
+counterbalanced timing pair, `N` checks the `--no-text-replay` fallback, `T` adds two replay
+threads without any fork (the candidate macOS setting if forked helpers are not wanted), `X` adds the numerical
 experiment (reported apart). Ctrl-C stops after the current batch as with
 `train-local.sh`; every runner also has its own `--hours` hard stop.
 

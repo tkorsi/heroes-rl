@@ -15,10 +15,12 @@ from disposable copies of the final 629 checkpoint, exactly through ``run_local_
     H  ``--fast-path --overlap-verification --prefix-helpers 2``
     N  ``--fast-path --no-text-replay`` (the macOS defaults with every text leaf occurrence computed
        separately: the in-lineage fallback if the text-leaf replay ever refuses)
+    T  ``--fast-path --replay-threads 2`` (the macOS defaults with text-leaf replays on two threads
+       during the backward: threads only, no fork)
     X  ``--fast-path --experiment shared_graph_encodings`` (numerically different; reported apart)
 
 Every campaign of one invocation starts at the same benchmark sequence, so all play the same seeds.
-Each exact campaign (F, O, H, N, and any repeated A) is compared with the A campaigns batch by batch
+Each exact campaign (F, O, H, N, T, and any repeated A) is compared with the A campaigns batch by batch
 while both still share the same parent; wherever their games are identical their checkpoints must
 be bitwise identical, and every exact campaign needs at least one such comparable batch.
 ``summary.json`` gives each campaign's status (identical, diverged, not comparable). The default
@@ -82,15 +84,17 @@ CAMPAIGNS = {'A': [], 'F': ['--fast-path', '--serial-verification'],
              'O': ['--fast-path', '--overlap-verification'],
              'H': ['--fast-path', '--overlap-verification', '--prefix-helpers', '2'],
              'N': ['--fast-path', '--serial-verification', '--no-text-replay'],
+             'T': ['--fast-path', '--serial-verification', '--replay-threads', '2'],
              'X': ['--fast-path', '--serial-verification', '--experiment', 'shared_graph_encodings']}
-EXACT = set('AFOHN')
+EXACT = set('AFOHNT')
 # The execution choices each campaign's session must record (the accepted runner records none).
 EXECUTION = {letter: None if letter == 'A' else {
     'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped, 'prefix_helpers': helpers,
-    'text_leaf_replay': replay, 'experiments': experiments}
-    for letter, (overlapped, helpers, replay, experiments) in {
-        'A': (None, None, None, None), 'F': (False, 0, True, []), 'O': (True, 0, True, []), 'H': (True, 2, True, []),
-        'N': (False, 0, False, []), 'X': (False, 0, True, ['shared_graph_encodings'])}.items()}
+    'text_leaf_replay': replay, 'replay_threads': threads, 'experiments': experiments}
+    for letter, (overlapped, helpers, replay, threads, experiments) in {
+        'A': (None, None, None, None, None), 'F': (False, 0, True, 0, []), 'O': (True, 0, True, 0, []),
+        'H': (True, 2, True, 2, []), 'N': (False, 0, False, 0, []), 'T': (False, 0, True, 2, []),
+        'X': (False, 0, True, 0, ['shared_graph_encodings'])}.items()}
 
 
 def utc(value=None):

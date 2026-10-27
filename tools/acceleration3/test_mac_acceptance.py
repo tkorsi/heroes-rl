@@ -166,17 +166,19 @@ class CommandTests(unittest.TestCase):
     def test_campaign_flags(self):
         self.assertEqual(tool.CAMPAIGNS['A'], [])
         self.assertIn('--serial-verification', tool.CAMPAIGNS['F'])
-        self.assertEqual(tool.EXACT, set('AFOHN'))
+        self.assertEqual(tool.EXACT, set('AFOHNT'))
         self.assertIn('--no-text-replay', tool.CAMPAIGNS['N'])
         self.assertNotIn('X', tool.EXACT)
         parsed = [self.parse('--config', '/bench/machine.json', *flags) for flags in tool.CAMPAIGNS.values()]
-        self.assertEqual([a.fast_path for a in parsed], [False, True, True, True, True, True])
-        self.assertEqual([a.text_leaf_replay for a in parsed], [True, True, True, True, False, True])
-        self.assertEqual(parsed[5].experiment, ['shared_graph_encodings'])
+        self.assertEqual([a.fast_path for a in parsed], [False, True, True, True, True, True, True])
+        self.assertEqual([a.text_leaf_replay for a in parsed], [True, True, True, True, False, True, True])
+        self.assertEqual([a.replay_threads for a in parsed], [0, 0, 0, 2, 0, 2, 0])
+        self.assertEqual([a.prefix_helpers for a in parsed], [0, 0, 0, 2, 0, 0, 0])  # T: threads, no fork
+        self.assertEqual(parsed[6].experiment, ['shared_graph_encodings'])
         for letter, args in zip(tool.CAMPAIGNS, parsed):  # what each session must record, from the runner's own choice
             expected = None if letter == 'A' else training.execution_choice(
                 overlapped_verification=args.overlap_verification, prefix_helpers=args.prefix_helpers,
-                text_leaf_replay=args.text_leaf_replay, experiments=args.experiment)
+                text_leaf_replay=args.text_leaf_replay, replay_threads=args.replay_threads, experiments=args.experiment)
             self.assertEqual(tool.EXECUTION[letter], expected, letter)
 
     def test_an_experiment_never_uses_the_official_configuration_or_run_root(self):
