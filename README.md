@@ -244,6 +244,12 @@ checkpoint 699 and performs no optimizer updates. This opt-in implementation
 does not change the official continuation's four-game configuration, source
 release, checkpoint pointer or seed ledger. Collection and full verified-batch
 timings are reported separately; neither is a complete PPO-cycle speedup.
+The measured eight-Red-game cohort collected in 53.69 seconds versus 161.20
+seconds serially (3.00x); including verification it took 189.10 versus 293.08
+seconds (1.55x). All 16 games passed their individual checks, but two paired
+histories differed before later decisions, so strict whole-cohort equivalence
+did not pass. These are observed timings under concurrent official training,
+with no benchmark PPO update or change to the official run.
 
 ## Experiment agreement
 

@@ -80,7 +80,52 @@ and cannot separate warm-cache, background-load and thermal effects.
 
 ## Results
 
-Pending implementation checks and the bounded native comparison.
+The corrected comparison used implementation
+`e9c23b7f7c311e3a4de51e36afd0e84e24af07a4` on an Apple M4 Max with 16 CPU cores
+and 128 GiB RAM. Both arms completed eight independently verified games with
+18,945 sampled decisions: seven natural losses and one choice-limit cutoff per
+arm. Native supervision records confirm a peak of one versus eight concurrent
+engines. The complete diagnostic took 495.43 seconds.
+
+| Measured stage | One collector | Eight collectors | Observed ratio |
+| --- | ---: | ---: | ---: |
+| Collection, including child startup and cleanup | 161.20 s | 53.69 s | 3.00x |
+| Independent verification | 131.80 s | 135.29 s | 0.97x |
+| Complete verified collection call | 293.08 s | 189.10 s | 1.55x |
+
+These are **observed ratios**, not a successful exact-workload comparison.
+Six full semantic history pairs match; episodes 1 and 3 contain different
+observed enemy-hero positions before later learner decisions. All sampled
+actions and decision counts match, but seven decisions in episode 1 and one
+decision in episode 3 have different value/log-probability records. The strict
+comparison remains `verified_nonidentical_games`, with
+`identical_workload_speedup=null` and supervisor return code 1 retained. Equal
+seeds did not produce identical native behavior. No history was normalized,
+replaced or rerun to make the result pass.
+
+All 16 games individually passed native replay and exact policy reconstruction.
+Both arms preserved the frozen weights and coordinator Python/Torch RNG. All
+16 fresh receipts were revoked after verification, zero samples were admitted
+to PPO, and no optimizer update occurred. All 32 recorded child/native groups
+closed under the independent guard before the original deadline. The bound
+checkpoint, map and native-runtime inputs remained byte-identical.
+
+The user's official continuation was active during the measurement and
+continued afterwards. Its mutable checkpoint/sequence pointers changed as it
+progressed; the benchmark never acquired its owner lock, wrote those files,
+changed its release or signalled its processes. This concurrent workload limits
+the interpretation of the timing ratio. The benchmark does not establish a
+3x speedup for complete training: verification remains serial and PPO was not
+timed here.
+
+All 83 targeted tests completed: 80 passed and three Linux-specific checks were
+skipped on macOS. They cover real harmless process overlap/ordering, cancellation
+and descendant cleanup, deadlines, forged/replayed/cross-slot transfers,
+complete eight-game admission, and a small synthetic eight-game PPO update.
+The isolated generated engine also passed the exact canonical-recipe check.
+See the [compact result](../../validation/parallel-eight-collection-2026-10-27.json).
+Raw captures and guard records remain outside Git under
+`/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/`.
 
 The initial diagnostic at implementation `8af8d98` stopped after its first
 serial game with `missing_source_identity`: this isolated checkout lacked the
