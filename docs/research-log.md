@@ -541,3 +541,5 @@ The earlier zero-game preparation path error is also retained. Full raw evidence
 and these corrections are privately preserved. See the [complete results and
 limitations](research/interaction-guard-2026-10-27.md) and
 [compact report](../validation/interaction-guard-results-2026-10-27.json).
+
+The final offline check passed from the actual main checkout at `5b683ea`: complete717 restoration,4,648 remaining games and fresh sequence355. The guard version is bound explicitly. [Main readiness](../validation/interaction-guard-main-readiness-2026-10-27.json) started no games or updates.

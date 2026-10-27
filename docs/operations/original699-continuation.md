@@ -123,3 +123,5 @@ confirms the offline check passed in `/Users/orsi/Projects/Heroes`. The preserve
 source-inventory correction excludes only inactive ignored generated virtualenvs;
 tracked/pinned and other authored Python remain verified. This check starts no
 native game or PPO update.
+
+The [guarded717 main-checkout check](../../validation/interaction-guard-main-readiness-2026-10-27.json) supersedes the earlier699 launch-readiness snapshot: it restores717 and reports4,648 remaining games with visible-interaction-budget-v1 enabled.

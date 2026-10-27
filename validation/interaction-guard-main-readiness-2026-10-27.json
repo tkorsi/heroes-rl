@@ -1,0 +1,30 @@
+{
+  "checkpoint": {
+    "decisions": 471200,
+    "rollouts": 2868,
+    "updates": 717
+  },
+  "command": "./continue-original-4720.sh check",
+  "exact_restore": true,
+  "exit_code": 0,
+  "gameplay_performed": false,
+  "native_validation": "validation/interaction-guard-results-2026-10-27.json",
+  "next_sequence": 355,
+  "parent_preservation": "validation/local-script-final717-sync-2026-10-27.json",
+  "phase_deadlines_seconds": {
+    "evaluation": 3540,
+    "training": 2400,
+    "update": 10740
+  },
+  "policy_support": "visible-interaction-budget-v1",
+  "ppo_updates": 0,
+  "private_raw_preservation": "validation/interaction-guard-native-preservation-2026-10-27.json",
+  "remaining_training_games": 4648,
+  "schema": "heroes-interaction-guard-main-readiness-v1",
+  "session_safety_cap_hours": 336,
+  "shared_wall_seconds": 10800,
+  "source_commit": "5b683ea139e3bde36cb18088fd37cac1c3de4c60",
+  "status": "continuation_offline_checks_passed",
+  "timestamp_utc": "2026-10-27T19:41:29.408414+00:00",
+  "working_directory": "/Users/orsi/Projects/Heroes"
+}
