@@ -1,0 +1,50 @@
+{
+  "schema": "heroes-original699-continuation-offline-v1",
+  "timestamp_utc": "2026-10-27T12:17:14.443754+00:00",
+  "candidate_base": "573f3d1",
+  "validation": "Offline only; no games or PPO updates performed",
+  "restored_progress": {
+    "updates": 699,
+    "rollouts": 2796,
+    "decisions": 366475
+  },
+  "restored_optimizer_steps": 12424,
+  "exact_model_adam_rng_progress_pool": true,
+  "remaining_training_games": 4720,
+  "next_unused_sequence": 337,
+  "failed_sequence_336": {
+    "update_status": "rolled_back",
+    "attempted_optimizer_steps": 466,
+    "optimizer_updates": 0,
+    "training_samples": 0,
+    "after_checkpoint_absent": true
+  },
+  "operational_change": {
+    "shared_wall_seconds": [
+      3600,
+      10800
+    ],
+    "update_phase_seconds": [
+      3540,
+      10740
+    ],
+    "all_other_configuration_unchanged": true,
+    "campaign_deadline_clamp_unchanged": true
+  },
+  "tests": {
+    "command": "python -m unittest tests.test_original_continuation tests.test_local_script_controller tests.test_local_script_integration tests.test_local_script_training tests.test_local_fast_path -q",
+    "run": 82,
+    "passed": 81,
+    "skipped": 1
+  },
+  "manual_check_command": "./continue-original-4720.sh check",
+  "manual_check_passed": true,
+  "source_files": {
+    "tools/run_local_training.py": "4cde048f068f7f2c7f2b3d82b921eb3c98dd04ed7f4d64a5704a9b3cda7ac715",
+    "experiments/learner/local_script_training.py": "1b57dab88f4198921513bf8ee7194d9f574e0f2c6f41e06160d8b1c9b5810f6c",
+    "continue-original-4720.sh": "491dcad075639cc05e45da0274b57cfbd7142c9b3f8c5f7a37dc56d9ddafab02"
+  },
+  "pending": [
+    "Complete and independently review the separately authorized Mac checkpoint699 performance comparison before recommending the launch command."
+  ]
+}

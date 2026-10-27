@@ -197,12 +197,20 @@ changed by this diagnostic.
 ## Manual local execution
 
 Training is launched by the user with a local script, without continuous cloud
-LLM supervision. The current easier8x8 run continues in its frozen checkout.
-The next authorized experiment is **5,000 newly admitted training games on the
-original two-Castle 20x20 map**, starting from the fully finalized state of that
-current run. Use `./train-original-5000.sh` after it finishes. This command
-refuses an active/unverified parent and shares its execution lock across profiles.
-It does not roll back to checkpoint 412 or start a parallel trainer.
+LLM supervision. The easier8x8 parent closed at checkpoint 629. The user-launched
+original two-Castle 20x20 experiment then admitted **280 of its 5,000 games**
+(70 updates), ending at **checkpoint 699**. Its next batch 336 exceeded the inner
+update allowance and rolled back completely; no partial update was admitted.
+The official next unused sequence is 337. Preserve 699 and the failed attempt.
+
+The prepared `./continue-original-4720.sh` continues that verified lineage and
+recalculates the remaining target after each manually stopped/restarted session.
+It does not select 629 or a disposable performance checkpoint. Before manual use,
+complete the separately authorized Mac 699 acceleration validation. The wrapper
+uses the reviewed exact fast path with a three-hour batch allowance, unchanged
+PPO/native collection limits and the existing 48-hour session cap. The user starts
+training; preparing or checking the wrapper starts no games. See
+[continuation details](docs/operations/original699-continuation.md).
 
 The policy samples its own current distribution and PPO updates every complete
 four-game batch: at most 1,250 updates and 2,500 training games per seat. Rewards

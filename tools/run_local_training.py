@@ -176,6 +176,139 @@ def final_parent(run):
     return report['latest_parent']
 
 
+def original_continuation(anchor, config):
+    """Audit the closed 699 lineage and calculate the *remaining* original target.
+
+    This never resumes a consumed session. The durable seed ledger survives fresh
+    manual sessions, including failed reservations. Checkpoint ancestry prevents a
+    disposable benchmark or an easy-map latest pointer from entering this run.
+    """
+    from experiments.learner import local_script_training as adapter
+    from experiments.learner.builtin_training_resume import binding, require
+    anchor = Path(anchor).expanduser().resolve()
+    root = Path(config['run_root']).resolve()
+    evidence = {}
+
+    def closed(run, label):
+        values = [read(run / name) for name in ('session.json', 'campaign-report.json', 'shutdown.json')]
+        session, report, shutdown = values
+        require(Path(session['run_dir']).resolve() == run and Path(session['run_root']).resolve() == root
+                and session['profile'] == 'original', 'Continuation campaign path/profile changed')
+        require(report.get('status') in ('finished', 'stopped_requested', 'stopped_budget', 'stopped_failure')
+                and report.get('owned_cleanup_verified') is True
+                and report.get('initial_state_unchanged') is True
+                and report.get('full_final_restore', {}).get('exact') is True
+                and shutdown.get('owned_cleanup_verified') is True
+                and shutdown.get('within_hard_deadline') is True
+                and shutdown.get('worker_returncode') in (0, 1),
+                'Continuation requires verified closed processes and an exact final checkpoint')
+        for name in ('session.json', 'campaign-report.json', 'shutdown.json'):
+            evidence[label + '/' + name] = binding(run / name)
+        return session, report
+
+    require(config['default_profile'] == 'original' and anchor.parent == root,
+            'Continuation must use the existing official original-map artifact root')
+    origin, origin_report = closed(anchor, 'origin')
+    anchor_parent = origin_report['latest_parent']
+    pins = {'policy': '045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046',
+            'resume': 'c5f8e601040e738bbda9fee987f996829107dda3737e2954e1cc4ba371c0afcf',
+            'plan': '89b8b69bf2b451e62de73b36f80e3201724259ff15f77649762cfa5760b8b6a6'}
+    require(origin['target_games'] == 5000 and origin_report['latest_progress'] ==
+            dict(updates=699, rollouts=2796, decisions=366475)
+            and all(anchor_parent[key]['sha256'] == sha for key, sha in pins.items()),
+            'The original continuation anchor is not the preserved official checkpoint699')
+    require(sum(bool(row.get('checkpoint_verified')) for row in origin_report['batches']) == 70,
+            'Original admitted batch count changed')
+    _, anchor_batch_report = adapter.read_descriptor(anchor_parent)
+    require(verified_batch(anchor_batch_report, 0)
+            and anchor_batch_report.get('optimizer_updates') == 1
+            and anchor_batch_report.get('update_status') == 'checkpoint_verified',
+            'Checkpoint699 is not a verified complete four-game update')
+    failed = [row for row in origin_report['batches'] if row.get('mode') == 'training' and row.get('sequence') == 336]
+    require(len(failed) == 1 and failed[0].get('status') == 'failed'
+            and not failed[0].get('checkpoint_verified'), 'Failed official batch336 must remain rejected')
+    failed = failed[0]
+    for key in ('plan', 'report'):
+        require(binding(failed[key]['path']) == failed[key], 'Failed batch336 evidence changed')
+        evidence['failed336/' + key] = failed[key]
+    failed_plan, failed_report = read(failed['plan']['path']), read(failed['report']['path'])
+    require(failed_plan['batch_sequence'] == 336 and failed_plan['parent_descriptor'] == anchor_parent
+            and failed_report['plan_sha256'] == failed['plan']['sha256']
+            and failed_report.get('update_status') == 'rolled_back'
+            and failed_report.get('training_performed') is False
+            and failed_report.get('optimizer_steps') == failed_report.get('optimizer_updates')
+                == failed_report.get('training_samples') == 0
+            and failed_report.get('after_checkpoint') is None
+            and not list(Path(failed_plan['execution_output']).glob('after-*.pt')),
+            'Failed batch336 was not fully rolled back without an after checkpoint')
+    latest = read(root / 'latest-checkpoint.json')
+    _, last_report = closed(Path(latest['run_dir']).resolve(), 'latest')
+    parent = latest['parent']
+    require(parent == last_report['latest_parent']
+            and latest['progress'] == last_report['full_final_restore']['progress'],
+            'Latest pointer differs from the closed campaign and restoration receipt')
+    cursor, seen, continued = parent, set(), 0
+    while cursor != anchor_parent:
+        digest = cursor['plan']['sha256']
+        require(digest not in seen and continued < 1180, 'Continuation ancestry loops or exceeds target')
+        seen.add(digest)
+        plan, report = adapter.read_descriptor(cursor)
+        require(plan.get('profile') == 'original' and plan.get('mode') == 'training'
+                and plan.get('scope') == adapter.SCOPE and verified_batch(report, 0)
+                and report.get('optimizer_updates') == 1
+                and report.get('update_status') == 'checkpoint_verified',
+                'Latest checkpoint is not a complete verified original-map descendant of699')
+        require(binding(plan['local_session']['path']) == plan['local_session'], 'Descendant session binding changed')
+        parent_session = read(plan['local_session']['path'])
+        require(Path(parent_session['run_root']).resolve() == root
+                and parent_session.get('original_continuation', {}).get('origin_run') == str(anchor),
+                'A foreign/benchmark checkpoint cannot continue the official lineage')
+        cursor = plan['parent_descriptor']; continued += 1
+    progress = latest['progress']
+    require(progress['updates'] == 699 + continued and progress['rollouts'] == 2796 + 4*continued,
+            'Continuation counters differ from the verified four-game ancestry')
+    ledger = read(root / 'sequence-ledger.json')
+    sequences = [row['sequence'] for row in ledger['consumed']]
+    require(sequences and all(type(n) is int for n in sequences)
+            and len(sequences) == len(set(sequences)) and 336 in sequences
+            and ledger['next_sequence'] == max(sequences)+1 and ledger['next_sequence'] >= 337,
+            'Original seed ledger is missing, inconsistent, or would reuse failed batch336')
+    scheduled = set()
+    for row in origin_report['batches']:
+        if row.get('mode') != 'training':
+            continue
+        require(binding(row['plan']['path']) == row['plan'], 'Original training plan binding changed')
+        plan = read(row['plan']['path'])
+        sequence = row['sequence']
+        require(sequence in sequences and plan['batch_sequence'] == sequence
+                and len(plan['schedule']) == 4, 'Original schedule is absent from the seed ledger')
+        for i, item in enumerate(plan['schedule']):
+            key = (item['engine_seed'], item['policy_seed'], item['learner_player'])
+            require(key == (40_000_000+4*sequence+i, 50_000_000+4*sequence+i, sequence % 2)
+                    and key not in scheduled, 'Original training seeds changed or were reused')
+            scheduled.add(key)
+    # Every completed descendant must already be in the durable reservation ledger.
+    cursor = parent
+    while cursor != anchor_parent:
+        plan, _ = adapter.read_descriptor(cursor)
+        sequence = plan['batch_sequence']
+        require(sequence in sequences and len(plan['schedule']) == 4,
+                'A completed sequence is absent from the seed ledger')
+        for i, item in enumerate(plan['schedule']):
+            key = (item['engine_seed'], item['policy_seed'], item['learner_player'])
+            require(key == (40_000_000+4*sequence+i, 50_000_000+4*sequence+i, sequence % 2)
+                    and key not in scheduled, 'Continuation training seeds changed or were reused')
+            scheduled.add(key)
+        cursor = plan['parent_descriptor']
+    remaining = 4720 - 4*continued
+    require(remaining > 0, 'The original 5000-game target is already complete')
+    return parent, remaining, dict(schema='heroes-original5000-continuation-v1', origin_run=str(anchor),
+        origin_checkpoint=699, origin_admitted_games=280, target_games=5000,
+        admitted_before_session=280+4*continued, remaining_before_session=remaining,
+        next_sequence=ledger['next_sequence'], seed_ledger_snapshot=ledger, evidence=evidence,
+        rule='Fresh manual session; failed or partial experience excluded; no reused reservation or target reset')
+
+
 def release_checkout(artifact_root, commit=None):
     """Freeze code in a separate checkout so editing main cannot change a run.
 
@@ -220,6 +353,10 @@ def summarize(value):
     profile = value.get('profile', 'easier8x8')
     return dict(schema='heroes-local-script-summary-v1', timestamp_utc=utc(), status=value['status'],
         profile=profile, target_games=target, target_games_met=None if target is None else 4*len(training) == target,
+        original_campaign=(None if not value.get('original_continuation') else dict(
+            target_games=value['original_continuation']['target_games'],
+            admitted_games=value['original_continuation']['admitted_before_session']+4*len(training),
+            remaining_games=max(0, value['original_continuation']['remaining_before_session']-4*len(training)))),
         remaining_training_games=None if target is None else max(0, target-4*len(training)),
         stop_reason=value.get('stop_reason'),
         new_ppo_updates=len(training), admitted_training_games=4 * len(training),
@@ -330,7 +467,8 @@ def worker(session_path):
         raise RuntimeError('Worker must be launched by its live owned supervisor')
     state = adapter.restore_parent(parent)
     value = dict(status='running', batches=[], latest_parent=parent, latest_progress=vars(state.progress),
-                 profile=session.get('profile', 'easier8x8'), target_games=session.get('target_games'))
+                 profile=session.get('profile', 'easier8x8'), target_games=session.get('target_games'),
+                 original_continuation=session.get('original_continuation'))
     save(run, value)
     durations = [60.0]
     try:
@@ -355,7 +493,7 @@ def worker(session_path):
             print(f"PPO +{updates} | games {4*updates} | checkpoint {value['latest_progress']['updates']} | "
                   f"remaining {max(0, int(left(session)))}s", flush=True)
             reached = session.get('target_games') is not None and 4*updates >= session['target_games']
-            if not reached and updates % session.get('evaluation_interval_updates', 5) == 0 and enough(session, durations, gamesets=2):
+            if not reached and (updates + (session.get('original_continuation') or {}).get('admitted_before_session', 0)//4) % session.get('evaluation_interval_updates', 5) == 0 and enough(session, durations, gamesets=2):
                 for seat in (0, 1):
                     execute_batch(session_path, parent, value['latest_progress']['updates'], seat, 'periodic', value)
         if enough(session, durations, gamesets=2):
@@ -388,6 +526,7 @@ def start(args):
     run_root = Path(config['run_root'])
     with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
         if args.parent_final is not None: final_parent(args.parent_final)
+        if args.continue_original is not None: original_continuation(args.continue_original, config)
         release, commit = release_checkout(config['artifact_root'], None if args.fast_path else ACCEPTED_IMPLEMENTATION)
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
@@ -402,6 +541,8 @@ def start(args):
         if args.games is not None: command += ['--games', str(args.games)]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
         if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
+        if args.continue_original is not None: command += ['--continue-original', str(args.continue_original.resolve())]
+        if args.batch_wall_seconds is not None: command += ['--batch-wall-seconds', str(args.batch_wall_seconds)]
     os.chdir(release)
     os.execv(sys.executable, command)
     raise AssertionError("exec returned")
@@ -429,6 +570,9 @@ def launch_owned(args):
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
               else read(latest)['parent'] if latest.exists() else config['parent'])
+    continuation = None
+    if args.continue_original is not None:
+        parent, args.games, continuation = original_continuation(args.continue_original, config)
     initial = adapter.restore_parent(parent)
     adapter.check_lineage(adapter.read_descriptor(parent)[0], execution)  # before any session or game
     parent_final_evidence = None
@@ -442,10 +586,12 @@ def launch_owned(args):
     run.mkdir(exist_ok=False)
     session = dict(schema='heroes-local-script-session-v1', scope='heroes-local-script-training-v1',
         source=source_identity('adventure-capabilities-v1'), implementation=pilot.implementation(), prerequisites=pilot.prerequisites(),
-        configuration=adapter.configuration(parent), execution=execution, asset_config=binding(args.config),
+        configuration=adapter.operational_configuration(parent, args.batch_wall_seconds),
+        batch_wall_seconds=args.batch_wall_seconds, original_continuation=continuation,
+        execution=execution, asset_config=binding(args.config),
         runtime_bin=config['runtime_bin'], runtime=config['runtime'], data=config['data'], maps=config['maps'],
         artifact_root=config['artifact_root'], run_root=str(run_root), run_dir=str(run), initial_parent=parent,
-        next_sequence=config.get('next_sequence', 266), supervisor_pid=os.getpid(),
+        next_sequence=continuation['next_sequence'] if continuation else config.get('next_sequence', 266), supervisor_pid=os.getpid(),
         training_engine_seed_base=config.get('seed_namespace', {}).get('engine_base', 20_000_000),
         training_policy_seed_base=config.get('seed_namespace', {}).get('policy_base', 30_000_000),
         max_updates=args.max_updates, target_games=args.games, profile=config['default_profile'],
@@ -541,9 +687,13 @@ def main():
     parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
     parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
+    parser.add_argument('--batch-wall-seconds', type=int,
+                        help='Bounded per-batch update allowance (3600..21600); collection and PPO settings unchanged')
     parents = parser.add_mutually_exclusive_group()
     parents.add_argument('--parent', type=Path, help='Explicit latest-checkpoint.json; otherwise continue the last verified profile state')
     parents.add_argument('--parent-final', type=Path, help='Restore only the fully finalized state of this prior run')
+    parents.add_argument('--continue-original', type=Path,
+                         help='Continue the preserved699 lineage toward the original total5000-game target')
     parser.add_argument('--session', type=Path)
     fast = parser.add_argument_group('opt-in exact fast path (default: the accepted implementation)')
     fast.add_argument('--fast-path', action='store_true', help='Run the reviewed exact fast path of this commit')
@@ -560,6 +710,14 @@ def main():
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
                       help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
     args = parser.parse_args()
+    if (args.continue_original is not None or args.batch_wall_seconds is not None) and not args.fast_path:
+        parser.error('Continuation and operational budget changes require the reviewed --fast-path release')
+    if args.continue_original is not None:
+        if args.profile != 'original' or args.games is not None or args.max_updates is not None or args.experiment:
+            parser.error('--continue-original fixes the original target and forbids numerical experiments')
+        if args.batch_wall_seconds is None: args.batch_wall_seconds = 10800
+    if args.batch_wall_seconds is not None and not 3600 <= args.batch_wall_seconds <= 21600:
+        parser.error('--batch-wall-seconds must be between 3600 and 21600')
     if not args.fast_path and (args.overlap_verification is not None or args.prefix_helpers or args.experiment
                                or not args.text_leaf_replay or args.replay_threads is not None):
         parser.error('Fast-path options require --fast-path')
@@ -570,8 +728,8 @@ def main():
     if args.replay_threads is None: args.replay_threads = args.prefix_helpers if args.text_leaf_replay else 0
     if args.overlap_verification is None: args.overlap_verification = sys.platform != 'darwin'
     args.config = args.config or (ORIGINAL_CONFIG if args.profile == 'original' else DEFAULT_CONFIG)
-    args.hours = args.hours if args.hours is not None else (48 if args.games is not None else 2)
-    args.eval_every = args.eval_every if args.eval_every is not None else (100 if args.games is not None else 5)
+    args.hours = args.hours if args.hours is not None else (48 if args.games is not None or args.continue_original is not None else 2)
+    args.eval_every = args.eval_every if args.eval_every is not None else (100 if args.games is not None or args.continue_original is not None else 5)
     if args.games is not None and (args.games <= 0 or args.games % 4): parser.error('--games must be a positive multiple of four')
     if args.games is not None and args.max_updates is not None: parser.error('Choose --games or --max-updates, not both')
     if args.eval_every < 1: parser.error('--eval-every must be positive')
@@ -592,8 +750,20 @@ def main():
     if args.command == 'check':
         from prepare_local_training import validate_config
         checked = validate_config(config)
-        print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],
-                              exact_restore=True, backend=checked['backend'], gameplay_performed=False, ppo_updates=0), indent=2))
+        if args.continue_original is not None:
+            from experiments.learner import local_script_training as adapter
+            with campaign_locks(config):
+                parent, remaining, continuation = original_continuation(args.continue_original, config)
+                state = adapter.restore_parent(parent)
+                operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
+            print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
+                exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
+                shared_wall_seconds=operational['shared_wall_seconds'],
+                phase_deadlines_seconds=operational['phase_deadlines_seconds'],
+                gameplay_performed=False, ppo_updates=0), indent=2))
+        else:
+            print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],
+                                  exact_restore=True, backend=checked['backend'], gameplay_performed=False, ppo_updates=0), indent=2))
         return 0
     budget(args.hours)  # Validate before filesystem/session mutation.
     return launch(args) if args.command == '_launch' else start(args)

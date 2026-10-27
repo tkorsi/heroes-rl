@@ -53,6 +53,8 @@ LOCAL_ADAPTER_ORIGINS = {
     '3268f2f8cae6a01277c1629c5d0a9fb8958b5786': 'd2bba1396dceafd47d61dcec839e1ec4376d3bc18b763a7e8b1ee44308876518',
     # The accepted implementation (run_local_training.ACCEPTED_IMPLEMENTATION) that the default path releases.
     ACCEPTED_ADAPTER_COMMIT: '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
+    # Official original-map run629->699: byte-identical accepted local adapter.
+    'b4fe70cc0285a76716430b5f41b17b43ba828b12': '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
 }
 # Reviewed exact fast path: for each replaced learner/collector file, the accepted digests it may
 # replace (3268f2f and a8ac411 hold the same bytes) and the exact digest it must have here. Policy,
@@ -136,11 +138,11 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '8230cb170884791fa4f61319852489831e77e3d791169de2c6df2ec21483b4ee'),
+        '4cde048f068f7f2c7f2b3d82b921eb3c98dd04ed7f4d64a5704a9b3cda7ac715'),
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '2913e44bfc004e0e9e5516c62ddbd0973d5060636fddb7e2e7f0b4ae232e6ae5'
+LOCAL_ADAPTER_TRANSITION_AST = 'b8b805ba9844b18e1a8392507c07316aa96721d5eb90dad6d5f3533ba1e4eaf1'
 
 
 def write_new(path, value):
@@ -322,6 +324,22 @@ def configuration(descriptor):
     return cfg
 
 
+def operational_configuration(descriptor, batch_wall_seconds=None):
+    """Change only the bounded update allowance; keep historical metadata intact.
+
+    The four native games retain their original attempt/collection limits. A long
+    exact PPO update gets a larger declared ceiling, still clamped by the fresh
+    campaign's immutable compute deadline and the existing rollback watchdog.
+    """
+    cfg = configuration(descriptor)
+    if batch_wall_seconds is not None:
+        require(type(batch_wall_seconds) is int and 3600 <= batch_wall_seconds <= 21600,
+                'Batch wall allowance must be an integer between 3600 and 21600 seconds')
+        cfg['shared_wall_seconds'] = batch_wall_seconds
+        cfg['phase_deadlines_seconds']['update'] = batch_wall_seconds - 60
+    return cfg
+
+
 def restore_parent(descriptor):
     """Restore full historical state without rewriting paths inside metadata."""
     original_torch, original_python = torch.get_rng_state().clone(), random.getstate()
@@ -487,7 +505,10 @@ def read_session(path, *, active=True):
             'Frozen learner source drift')
     require(pilot.implementation() == session['implementation'] and pilot.prerequisites() == session['prerequisites'],
             'Frozen implementation or acceptance evidence drift')
-    require(configuration(session['initial_parent']) == session['configuration'], 'PPO configuration changed')
+    require(operational_configuration(session['initial_parent'], session.get('batch_wall_seconds'))
+            == session['configuration'], 'PPO configuration or declared operational budget changed')
+    for value in (session.get('original_continuation') or {}).get('evidence', {}).values():
+        _bound(value)
     _bound(session['asset_config'])
     assets = json.loads(Path(session['asset_config']['path']).read_text())
     check_profile(session, assets)
@@ -575,7 +596,8 @@ def prepare_batch(session_path, parent_descriptor, sequence, seat, evaluate=Fals
     session = read_session(session_path)
     state = restore_parent(parent_descriptor)
     check_lineage(read_descriptor(parent_descriptor)[0], session['execution'])
-    require(configuration(parent_descriptor) == session['configuration'], 'Parent PPO configuration differs')
+    require(operational_configuration(parent_descriptor, session.get('batch_wall_seconds'))
+            == session['configuration'], 'Parent PPO configuration differs')
     rows = schedule(session, sequence, seat, evaluate)
     label = label or ('eval' if evaluate else 'train')
     require(label in ('train', 'eval', 'baseline', 'final', 'periodic'), 'Unknown batch label')
