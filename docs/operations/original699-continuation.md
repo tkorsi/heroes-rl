@@ -96,3 +96,9 @@ benchmark. The measured Mac ratios describe one fixed long workload and are not
 a new whole-campaign forecast. See the compact [historical timing and budget
 record](../../validation/original699-duration-plan-2026-10-27.json) and
 [Mac validation](../../validation/mac699-acceleration-results-2026-10-27.json).
+
+The final [main-checkout readiness receipt](../../validation/original699-main-readiness-2026-10-27.json)
+confirms the offline check passed in `/Users/orsi/Projects/Heroes`. The preserved
+source-inventory correction excludes only inactive ignored generated virtualenvs;
+tracked/pinned and other authored Python remain verified. This check starts no
+native game or PPO update.

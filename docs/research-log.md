@@ -501,3 +501,10 @@ sequence337, selected exact two-thread execution, a three-hour batch allowance
 and a bounded14-day fresh-session cap. It recalculates the remainder after later
 manual closures; no automatic retry,629 reset or benchmark promotion is allowed.
 The official training campaign has not been launched by this preparation.
+
+The final readiness check was run from the user's actual main checkout at
+`32b3adf`, after a narrowly scoped source-discovery correction for a pre-existing
+ignored generated virtualenv. The earlier main refusal is retained; learner math
+and native runtime were unchanged. [Main readiness](../validation/original699-main-readiness-2026-10-27.json)
+confirms exact699 restoration,4,720 remaining games and fresh sequence337, with
+zero launched official games or updates. Both ownership locks are free.

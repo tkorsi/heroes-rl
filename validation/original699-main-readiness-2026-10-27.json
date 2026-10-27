@@ -1,0 +1,65 @@
+{
+  "schema": "heroes-original699-main-readiness-v1",
+  "verified_utc": "2026-10-27T15:53:43.039352+00:00",
+  "checkout": "/Users/orsi/Projects/Heroes",
+  "source_commit": "32b3adfce0b7b422d95887089f9884191bcf6c81",
+  "command": [
+    "./continue-original-4720.sh",
+    "check"
+  ],
+  "returncode": 0,
+  "check_result": {
+    "status": "continuation_offline_checks_passed",
+    "checkpoint": {
+      "updates": 699,
+      "rollouts": 2796,
+      "decisions": 366475
+    },
+    "exact_restore": true,
+    "remaining_training_games": 4720,
+    "next_sequence": 337,
+    "session_safety_cap_hours": 336.0,
+    "shared_wall_seconds": 10800,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "gameplay_performed": false,
+    "ppo_updates": 0
+  },
+  "selected_execution": {
+    "fast_path": true,
+    "serial_verification": true,
+    "prefix_helpers": 0,
+    "replay_threads": 2,
+    "numerical_experiments": []
+  },
+  "source_sha256": {
+    "continue-original-4720.sh": "26fbc021393819d32c96496893c841c99ae383287450d01f1c902d88debea7aa",
+    "train-local.sh": "44e789d9eb1c45f949469335c75c91302674a0c4c424193eb35ace3d2a9a0a5a",
+    "tools/run_local_training.py": "4ca2d18a83010b2817d934e3990e5d755d425def3f1f89ab4d2177beeca7f881",
+    "experiments/learner/local_script_training.py": "3195c79c5d0a0e62e499fd659a2815334236348b10ed4f7870959347f2d18363"
+  },
+  "validation": {
+    "tests_run": 69,
+    "passed": 68,
+    "skipped": 1,
+    "pins_match": true,
+    "shell_syntax": "passed",
+    "independent_review": "no blocker"
+  },
+  "official_parent_pointer_ledger_hashes_unchanged_from_benchmark_closure": true,
+  "owner_locks_free": [
+    "/Users/orsi/Projects/Heroes-artifacts/local-script-training/owner.lock",
+    "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/owner.lock"
+  ],
+  "live_owned_training_or_benchmark_processes_observed": [],
+  "previous_main_failure_retained": "validation/original699-generated-env-correction-2026-10-27.json",
+  "benchmark_results": "validation/mac699-acceleration-results-2026-10-27.json",
+  "private_official699_receipt": "validation/local-script-final699-sync-2026-10-27.json",
+  "private_benchmark_receipt": "validation/mac699-preservation-2026-10-27.json",
+  "manual_launch_only": true,
+  "official_training_started": false,
+  "benchmark_checkpoints_eligible": false
+}

@@ -213,3 +213,12 @@ with no PPO mathematics or native runtime change and no repeated gameplay.
 The [correction receipt](../../validation/original699-generated-env-correction-2026-10-27.json)
 retains the failure and regression tests. A new main-checkout receipt must pass
 before the script is described as ready to launch.
+
+The actual main-checkout `./continue-original-4720.sh check` subsequently passed
+at `32b3adf`: full699 restoration,4,720 remaining games, next sequence337,
+10,800-second batch allowance and336-hour fresh-session cap. All69 targeted tests
+completed (68 passed, one platform skip); source pins and shell syntax passed.
+The official checkpoint, latest pointer and sequence ledger hashes still match
+the benchmark-closure audit, both ownership locks are free and no owned training
+or benchmark process remains. No official games or updates were launched.
+See the [main readiness receipt](../../validation/original699-main-readiness-2026-10-27.json).
