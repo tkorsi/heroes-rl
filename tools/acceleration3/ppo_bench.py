@@ -156,11 +156,18 @@ def main():
     p.add_argument('--experiment', action='append', default=[], choices=['shared_graph_encodings'],
                    help='enable a separate numerical experiment (never a default)')
     p.add_argument('--prefix-helpers', type=int, default=0, help='exact forked prefix-encoding helpers (0: serial)')
+    p.add_argument('--no-text-replay', dest='text_leaf_replay', action='store_false',
+                   help='compute every text leaf occurrence separately (the --no-text-replay fallback)')
+    p.add_argument('--text-replay-workers', type=int, help='replay threads (default: as many as prefix helpers)')
     a = p.parse_args()
     if a.experiment or a.prefix_helpers:
         require(hasattr(ppo, 'EXPERIMENTS') and hasattr(ppo, 'PREFIX_HELPERS'), 'This checkout has no such execution choice')
         ppo.EXPERIMENTS = frozenset(a.experiment)
         ppo.PREFIX_HELPERS = a.prefix_helpers
+    if not a.text_leaf_replay or a.text_replay_workers is not None:
+        require(hasattr(ppo, 'REPLAY_TEXT_LEAVES') and hasattr(ppo, 'TEXT_REPLAY_WORKERS'), 'This checkout has no text-leaf replay')
+        ppo.REPLAY_TEXT_LEAVES = a.text_leaf_replay
+        ppo.TEXT_REPLAY_WORKERS = a.text_replay_workers
     items = rollouts(a.batch)
     results = []
     for index in range(a.repeat):
@@ -187,7 +194,9 @@ def main():
         print(json.dumps({k: result[k] for k in ('seconds', 'weights_sha256', 'model_sha256', 'adam_sha256', 'gradient_sha256')}
                          | {'reference_equal': result.get('reference_equal'), 'difference': result.get('difference'), 'timings': result['timings']}))
     record = dict(checkout_head=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=a.checkout, text=True).strip(),
-                  experiments=sorted(getattr(ppo, 'EXPERIMENTS', ())), prefix_helpers=getattr(ppo, 'PREFIX_HELPERS', 0), samples=sum(len(i.samples) for i in items), frames=[len(i.history) for i in items],
+                  experiments=sorted(getattr(ppo, 'EXPERIMENTS', ())), prefix_helpers=getattr(ppo, 'PREFIX_HELPERS', 0),
+                  text_leaf_replay=getattr(ppo, 'REPLAY_TEXT_LEAVES', None), text_replay_workers=getattr(ppo, 'TEXT_REPLAY_WORKERS', None),
+                  samples=sum(len(i.samples) for i in items), frames=[len(i.history) for i in items],
                   decisions=[len(i.decisions) for i in items], torch=str(torch.__version__), repetitions=results,
                   identical_across_repetitions=len({r['model_sha256'] + r['adam_sha256'] + r['gradient_sha256'] for r in results}) == 1)
     if a.output: a.output.write_text(json.dumps(record, indent=2) + '\n')

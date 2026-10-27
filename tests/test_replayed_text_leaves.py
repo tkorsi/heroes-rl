@@ -588,6 +588,13 @@ class ReplayedTextLeafTests(unittest.TestCase):
                 self.assertEqual(param._version, version)  # what the version alone would miss
                 with self.assertRaisesRegex(RuntimeError, "parameters changed"):
                     self.model._encode_tree(("text", "a"), {cm._LEAF_REPLAY: state})
+        model = deepcopy(self.model)
+        with model.replayed_text_leaves():
+            state = model.__dict__["_leaf_replay_state"]
+            model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
+            model.double()  # every parameter's data replaced by another dtype
+            with self.assertRaisesRegex(RuntimeError, "parameters changed"):
+                model._encode_tree(("text", "ab"), {cm._LEAF_REPLAY: state})
 
     def test_autocast_anomaly_mode_and_forward_hooks_keep_the_reference(self):
         module = torch.nn.modules.module
@@ -668,6 +675,90 @@ class ReplayedTextLeafTests(unittest.TestCase):
             loss.backward(retain_graph=True)
             with self.assertRaisesRegex(RuntimeError, "single backward"):
                 loss.backward()
+
+    def test_finish_keeps_a_bounded_number_of_replay_results(self):
+        param = torch.zeros(4, requires_grad=True)
+        live, peak = [], [0]
+
+        class Leaf:
+            params, counts = (param,), (1,)
+
+            def replay(self, grad):
+                value = torch.full((4,), float(grad))
+                live.append(weakref.ref(value))
+                peak[0] = max(peak[0], sum(ref() is not None for ref in live))
+                return [value]
+        deferred, gate, leaf = cm._DeferredTextReplays((param,), 1), threading.Event(), Leaf()
+        try:
+            deferred.pool.submit(gate.wait, 30)  # the single worker starts no replay
+            deferred.begin()
+            for k in range(200):
+                deferred.pending.append((leaf, k, deferred.pool.submit(leaf.replay, k)))
+            deferred.finish()
+        finally:
+            gate.set()
+            self.assertFalse(deferred.close())
+        self.assertEqual(param.grad.tolist(), [float(sum(range(200)))] * 4)
+        self.assertLessEqual(peak[0], 2)  # folded and dropped one by one, not kept until the queue is done
+
+    def test_deferred_updates_are_bit_identical_with_several_intra_op_threads(self):
+        torch.set_num_threads(4)
+        try:
+            torch.manual_seed(2711)
+            self.model = ContextualActorCritic(ModelConfig(hidden_size=128, feature_size=64))  # threaded kernels
+            self.rollouts = (synthetic_rollout(self.model, turns=5, episode="threads-a"),
+                             synthetic_rollout(self.model, turns=3, episode="threads-b", boundary="cutoff"))
+            config = PPOConfig(decisions_per_window=2, windows_per_minibatch=4)
+            right = self.update(deepcopy(self.model), False, config, 51)
+            for workers in (0, 2):
+                left = self.update(deepcopy(self.model), True, config, 51, workers)
+                self.assertEqual(left[1], right[1])
+                for a, b in zip(left[2:], right[2:]):
+                    self.assertTrue(bits_equal(a, b))
+        finally:
+            torch.set_num_threads(1)
+
+    def test_a_failure_with_queued_deferred_replays_leaves_nothing_and_the_next_update_is_exact(self):
+        backward = cm._TextOccurrence.backward
+        for where in ("backward", "finish", "clip"):
+            model = deepcopy(self.model)
+            ppo.REPLAY_TEXT_LEAVES, ppo.TEXT_REPLAY_WORKERS = True, 2
+            optimizer = torch.optim.Adam(model.parameters(), lr=0.0003)
+
+            def interrupted(ctx, grad):  # as the wall limit's alarm handler raises inside the engine
+                deferred = ctx.deferred
+                if where == "backward" and deferred is not None and deferred.active and deferred.pending:
+                    raise TimeoutError("wall limit")
+                return backward(ctx, grad)
+
+            def failing(*args, **kwargs):
+                raise RuntimeError("injected")
+            with patch.object(cm._TextOccurrence, "backward", staticmethod(interrupted)), \
+                    (patch.object(cm._DeferredTextReplays, "_fold_head", failing) if where == "finish" else nullcontext()), \
+                    (patch.object(torch.nn.utils, "clip_grad_norm_", failing) if where == "clip" else nullcontext()), \
+                    self.assertRaises((TimeoutError, RuntimeError)):
+                ppo._update(model, optimizer, self.rollouts, config=PPOConfig(), generator=torch.Generator().manual_seed(1))
+            self.assertNotIn("_text_replay_deferred", model.__dict__)
+            self.assertNotIn("_leaf_replay_state", model.__dict__)
+            self.assertFalse([t for t in threading.enumerate() if t.name.startswith("text-replay")])
+            # No optimizer step ran, so a fresh update with replay threads still equals the reference bit for bit.
+            config = PPOConfig(decisions_per_window=2, windows_per_minibatch=2)
+            left = self.update(model, True, config, 52, 2)
+            right = self.update(deepcopy(self.model), False, config, 52)
+            self.assertEqual(left[1], right[1])
+            for a, b in zip(left[2:], right[2:]):
+                self.assertTrue(bits_equal(a, b))
+
+    def test_a_reference_path_occurrence_under_deferral_fails_closed(self):
+        direction = torch.linspace(-1.0, 1.0, self.model.config.feature_size)
+        self.model.zero_grad(set_to_none=True)
+        with self.model.replayed_text_leaves(2):
+            state = self.model.__dict__["_leaf_replay_state"]
+            loss = sum((self.model._encode_tree(("text", text), {cm._LEAF_REPLAY: state}) * direction).sum()
+                       for text in ("ab", Text("ab"), "abc"))
+            with self.assertRaisesRegex(RuntimeError, "outside its replayed occurrences"):
+                self.model.backward_with_text_replays(loss)
+            self.assertTrue(self.model.__dict__["_text_replay_deferred"].broken)
 
 
 if __name__ == "__main__":
