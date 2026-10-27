@@ -88,27 +88,70 @@ class CapturedStressTests(unittest.TestCase):
         self.assertNotEqual(b.tensor_digest(after), digest)
         self.assertEqual(before['python_rng'], random.getstate())
 
-    def test_guard_owns_a_new_group_and_kills_only_its_unreaped_child(self):
-        process = SimpleNamespace(pid=12345)
-        process.wait = unittest.mock.Mock(side_effect=[subprocess.TimeoutExpired('diagnostic', .1),
-                                                       subprocess.TimeoutExpired('diagnostic', 10), -9])
-        with patch.object(b.subprocess, 'Popen', return_value=process) as launch, \
-             patch.object(b.os, 'killpg') as kill:
-            code, receipt = b._supervise_locked(['--output', '/tmp/unused-test.json'], .1, 99)
-        self.assertTrue(launch.call_args.kwargs['start_new_session'])
-        self.assertEqual(kill.call_args_list, [unittest.mock.call(12345, b.signal.SIGTERM),
-                                              unittest.mock.call(12345, b.signal.SIGKILL)])
+    def test_guard_uses_original_deadline_and_ownership_cleanup_after_timeout(self):
+        process = SimpleNamespace(pid=12345, returncode=-9,
+            wait=unittest.mock.Mock(side_effect=subprocess.TimeoutExpired('diagnostic', 40)))
+        with patch.object(b, 'guarded_popen', return_value=process) as launch, \
+             patch.object(b, 'close_owned_process') as close, \
+             patch.object(b.time, 'time', return_value=100), patch.object(b.time, 'monotonic', return_value=200):
+            code, receipt = b._supervise_locked(['--output', '/tmp/unused-test.json'], 10800, '/tmp/guard.jsonl',
+                                               deadline_unix=150, deadline_monotonic=250)
+        self.assertEqual(launch.call_args.kwargs, dict(deadline_monotonic=240, deadline_wall=140,
+                                                      evidence_path='/tmp/guard.jsonl'))
+        self.assertEqual(launch.call_args.args[0][-4:], ['--deadline-unix', '150', '--deadline-monotonic', '250'])
+        close.assert_called_once_with(process, timeout=10, deadline_monotonic=250, deadline_wall=150)
+        process.wait.assert_called_once_with(timeout=40)
         self.assertEqual(code, -9)
         self.assertTrue(receipt['child_reaped'])
+        self.assertTrue(receipt['cleanup_verified'])
         self.assertEqual(receipt['status'], 'timed_out_or_interrupted')
-        self.assertAlmostEqual(receipt['deadline_unix'] - receipt['started_unix'], .1, places=5)
+        self.assertEqual(receipt['deadline_unix'], 150)
 
-    def test_guard_does_not_signal_a_finished_child(self):
-        process = SimpleNamespace(pid=12345, wait=unittest.mock.Mock(return_value=0))
-        with patch.object(b.subprocess, 'Popen', return_value=process), patch.object(b.os, 'killpg') as kill:
-            code, receipt = b._supervise_locked([], 10, 99)
-        kill.assert_not_called()
+    def test_guard_verifies_cleanup_even_after_success(self):
+        process = SimpleNamespace(pid=12345, returncode=0, wait=unittest.mock.Mock(return_value=0))
+        with patch.object(b, 'guarded_popen', return_value=process), patch.object(b, 'close_owned_process') as close:
+            code, receipt = b._supervise_locked([], 20, '/tmp/guard.jsonl')
+        close.assert_called_once()
         self.assertEqual((code, receipt['status']), (0, 'finished'))
+        self.assertTrue(receipt['cleanup_verified'])
+
+    def test_guard_does_not_claim_cleanup_after_exhausted_deadline(self):
+        process = SimpleNamespace(pid=12345, returncode=0, wait=unittest.mock.Mock(return_value=0))
+        with patch.object(b, 'guarded_popen', return_value=process), \
+             patch.object(b, 'close_owned_process', side_effect=TimeoutError('closure is not verified')):
+            code, receipt = b._supervise_locked([], 20, '/tmp/guard.jsonl')
+        self.assertEqual(code, 1)
+        self.assertFalse(receipt['cleanup_verified'])
+        self.assertIn('closure is not verified', receipt['cleanup_error'])
+
+    def test_deadlines_cannot_reset_expired_or_nearly_exhausted_study(self):
+        with patch.object(b.time, 'time', return_value=100), patch.object(b.time, 'monotonic', return_value=200):
+            with self.assertRaisesRegex(ValueError, 'both original'):
+                b.effective_deadlines(10800, deadline_unix=1000)
+            for wall, mono in ((90, 300), (200, 205), (200, 200)):
+                with self.assertRaisesRegex(ValueError, 'No original study time'):
+                    b.effective_deadlines(10800, deadline_unix=wall, deadline_monotonic=mono)
+            self.assertEqual(b.effective_deadlines(20, deadline_unix=99999, deadline_monotonic=99999), (120, 220))
+
+    def test_worker_shared_lease_blocks_official_exclusive_owner(self):
+        import fcntl
+        import os
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lock = root / 'Projects/Heroes-artifacts/local-script-training/owner.lock'
+            lock.parent.mkdir(parents=True); lock.touch()
+            with patch.object(b.Path, 'home', return_value=root):
+                with b.official_exclusion() as supervisor:
+                    fcntl.flock(supervisor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                    with b.official_exclusion(shared=True):
+                        other = os.open(lock, os.O_RDONLY)
+                        try:
+                            with self.assertRaises(BlockingIOError):
+                                fcntl.flock(other, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        finally:
+                            os.close(other)
+                with b.official_exclusion():
+                    pass
 
 
 if __name__ == '__main__':

@@ -11,26 +11,29 @@ minibatch order. Progress remains unchanged. Nothing is written into any checkpo
                  --output JSON [--reference-resume F] [--save-state F] [--compare-state F]
                  [--experiment shared_graph_encodings] [--prefix-helpers N] [--profile OUT] [--output JSON]
                  [--capture-plan P] [--capture-report R] [--require-rolled-back] [--audit-only]
-                 [--wall-seconds 10800]
+                 [--wall-seconds 10800] [--deadline-unix T --deadline-monotonic T]
 
 The checkout's own code is imported (the accepted implementation or the fast path); a historical
 checkpoint written by another Torch build is read through the loader's explicit historical-version
 argument (on this Linux host together with ``bench_site/sitecustomize.py``).
-The independent parent watchdog owns a fresh child process group for at most 10800 seconds,
-inherits the official owner lock into it, and retains a guard receipt beside the result. The
-bound includes audit/restore time, not just the timed optimizer kernel.
+An independent guardian is armed before child execution, holds a fresh process group for at
+most 10800 seconds, and stops it if the supervisor disappears. Parent and worker retain shared
+official owner locks after an exclusive admission check. A supplied original study deadline
+always wins; ten seconds within that deadline are reserved for cleanup. The bound includes
+audit/restore time, not just the timed optimizer kernel. Guard evidence stays beside the result.
 """
 import argparse
+from contextlib import contextmanager
 import cProfile
 import ctypes
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import pstats
 import random
-import signal
 import subprocess
 import sys
 import time
@@ -47,6 +50,7 @@ from experiments.learner.builtin_gameplay import _samples
 from experiments.learner import ppo
 from experiments.learner.ppo import PPOConfig, _update
 from experiments.headless.contextual_evidence import strict_json
+from experiments.headless.process_deadline import guarded_popen, close_owned_process
 
 
 def file_binding(path):
@@ -267,50 +271,78 @@ def full_state(model, optimizer, generator, parent):
         progress=vars(parent.progress), sampler=parent.sampler_state, pool=parent.opponent_pool.state_dict()))
 
 
-def supervise(arguments, wall_seconds):
-    """Own one diagnostic child/process group; terminate it after the fixed wall limit.
+@contextmanager
+def official_exclusion(*, shared=False):
+    """Every diagnostic starts exclusively; its guarded worker then holds a shared lease.
 
-    The unreaped child PID owns the new process group, so no saved PID or unrelated process
-    is signalled. This parent is independent of the child's Python signal handling/autograd.
+    Official training requires an exclusive lock. Shared parent/worker leases avoid passing
+    arbitrary file descriptors through the deadline guard. If the parent dies before worker
+    acquisition and an official runner wins the lock, the worker fails before any PPO work.
     """
     lock = Path.home() / 'Projects/Heroes-artifacts/local-script-training/owner.lock'
-    # Existing official lock, opened read-only. The child inherits it so a lost supervisor
-    # cannot permit the user-launched campaign to overlap this diagnostic.
     descriptor = os.open(lock, os.O_RDONLY)
     try:
-        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BaseException:
-        os.close(descriptor)
-        raise
-    try:
-        return _supervise_locked(arguments, wall_seconds, descriptor)
+        fcntl.flock(descriptor, (fcntl.LOCK_SH if shared else fcntl.LOCK_EX) | fcntl.LOCK_NB)
+        yield descriptor
     finally:
         os.close(descriptor)
 
 
-def _supervise_locked(arguments, wall_seconds, descriptor):
-    command = [sys.executable, str(Path(__file__).resolve()), *arguments, '--worker']
+def supervise(arguments, wall_seconds, evidence_path, *, deadline_unix=None, deadline_monotonic=None):
+    with official_exclusion() as descriptor:
+        # guarded_popen forbids pass_fds. Both holders independently block the official EX lock.
+        fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        return _supervise_locked(arguments, wall_seconds, evidence_path,
+                                deadline_unix=deadline_unix, deadline_monotonic=deadline_monotonic)
+
+
+def effective_deadlines(wall_seconds, *, deadline_unix=None, deadline_monotonic=None):
+    require(math.isfinite(wall_seconds) and 10 < wall_seconds <= 10800, 'Wall budget must include ten seconds for cleanup')
+    require((deadline_unix is None) == (deadline_monotonic is None), 'Supply both original study deadlines')
+    wall, monotonic = time.time(), time.monotonic()
+    hard_wall, hard_monotonic = wall + wall_seconds, monotonic + wall_seconds
+    if deadline_unix is not None:
+        require(all(math.isfinite(value) and value > 0 for value in (deadline_unix, deadline_monotonic)),
+                'Original study deadlines must be finite positive timestamps')
+        hard_wall, hard_monotonic = min(hard_wall, deadline_unix), min(hard_monotonic, deadline_monotonic)
+    require(min(hard_wall - wall, hard_monotonic - monotonic) > 10, 'No original study time remains for update and cleanup')
+    return hard_wall, hard_monotonic
+
+
+def _supervise_locked(arguments, wall_seconds, evidence_path, *, deadline_unix=None, deadline_monotonic=None):
+    hard_wall, hard_monotonic = effective_deadlines(wall_seconds, deadline_unix=deadline_unix,
+                                                 deadline_monotonic=deadline_monotonic)
+    command = [sys.executable, str(Path(__file__).resolve()), *arguments, '--worker',
+               '--deadline-unix', repr(hard_wall), '--deadline-monotonic', repr(hard_monotonic)]
     started = time.time()
-    process = subprocess.Popen(command, start_new_session=True, pass_fds=(descriptor,))
+    process = guarded_popen(command, deadline_monotonic=hard_monotonic - 10,
+                            deadline_wall=hard_wall - 10, evidence_path=evidence_path)
+    cleanup_verified, cleanup_error = False, None
+    code = None
     try:
-        code = process.wait(timeout=wall_seconds)
+        code = process.wait(timeout=max(0, min(hard_wall - time.time(), hard_monotonic - time.monotonic()) - 10))
         status = 'finished' if code == 0 else 'failed'
     except (subprocess.TimeoutExpired, KeyboardInterrupt):
         status = 'timed_out_or_interrupted'
-        # Do not reap the leader before signalling its known-owned process group.
-        try: os.killpg(process.pid, signal.SIGTERM)
-        except ProcessLookupError: pass
-        try: code = process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            try: os.killpg(process.pid, signal.SIGKILL)
-            except ProcessLookupError: pass
-            code = process.wait()
-    return code, {'pid': process.pid, 'command': command, 'started_unix': started,
-                  'deadline_unix': started + wall_seconds, 'finished_unix': time.time(),
-                  'status': status, 'returncode': code, 'child_reaped': True}
+    finally:
+        try:
+            close_owned_process(process, timeout=10, deadline_monotonic=hard_monotonic, deadline_wall=hard_wall)
+            cleanup_verified = True
+        except Exception as error:
+            cleanup_error = type(error).__name__ + ': ' + str(error)
+        code = process.returncode
+    result_code = code if code is not None else 1
+    if not cleanup_verified or status != 'finished': result_code = result_code or 1
+    return result_code, {'pid': process.pid, 'command': command, 'started_unix': started,
+                  'deadline_unix': hard_wall, 'deadline_monotonic': hard_monotonic,
+                  'compute_deadline_unix': hard_wall - 10, 'compute_deadline_monotonic': hard_monotonic - 10,
+                  'finished_unix': time.time(), 'guard_evidence': str(evidence_path),
+                  'guardian_armed_before_exec': True, 'official_owner_lock': 'parent and worker shared after exclusive admission',
+                  'status': status, 'returncode': code, 'child_reaped': code is not None,
+                  'cleanup_verified': cleanup_verified, 'cleanup_error': cleanup_error}
 
 
-def main():
+def _main():
     p = argparse.ArgumentParser()
     p.add_argument('--checkout', type=Path, required=True)
     for name in ('parent-plan', 'parent-report', 'policy', 'resume', 'batch'):
@@ -330,9 +362,12 @@ def main():
     p.add_argument('--require-rolled-back', action='store_true', help='require zero admission and no after checkpoint in the original attempt')
     p.add_argument('--audit-only', action='store_true', help='verify persisted capture/parent bindings; run no PPO')
     p.add_argument('--wall-seconds', type=float, default=10800, help='fixed independent diagnostic wall limit (maximum 10800 seconds)')
+    p.add_argument('--deadline-unix', type=float, help='original enclosing study hard deadline; never extended')
+    p.add_argument('--deadline-monotonic', type=float, help='original same-host monotonic hard deadline; paired with --deadline-unix')
     p.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     a = p.parse_args()
-    require(0 < a.wall_seconds <= 10800 and a.repeat == 1, 'One bounded update only; wall limit at most 10800 seconds')
+    require(a.repeat == 1, 'One bounded update only')
+    effective_deadlines(a.wall_seconds, deadline_unix=a.deadline_unix, deadline_monotonic=a.deadline_monotonic)
     require(a.output is not None, 'A fresh diagnostic output path is required')
     for path in (a.output, a.save_state, a.profile):
         if path is not None:
@@ -340,9 +375,11 @@ def main():
             official = Path.home() / 'Projects/Heroes-artifacts/local-script-training'
             require(not path.resolve().is_relative_to(official.resolve()), 'Never write diagnostic output into official lineage')
     if not a.worker:
-        require(not a.output.with_suffix(a.output.suffix + '.guard.json').exists(), 'Diagnostic guard receipt already exists')
-        code, guard = supervise(sys.argv[1:], a.wall_seconds)
         guard_path = a.output.with_suffix(a.output.suffix + '.guard.json')
+        evidence_path = a.output.with_suffix(a.output.suffix + '.guard.jsonl')
+        require(not guard_path.exists() and not evidence_path.exists(), 'Diagnostic guard receipt already exists')
+        code, guard = supervise(sys.argv[1:], a.wall_seconds, evidence_path,
+                                deadline_unix=a.deadline_unix, deadline_monotonic=a.deadline_monotonic)
         with guard_path.open('x') as stream:
             json.dump(guard, stream, indent=2, sort_keys=True); stream.write('\n')
         return code
@@ -414,6 +451,13 @@ def main():
     if a.output: a.output.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({k: record[k] for k in ('samples', 'frames', 'decisions', 'identical_across_repetitions')}))
     return 1 if any(r.get('full_state_exact') is False for r in results) else 0
+
+
+def main():
+    if '--worker' in sys.argv:
+        with official_exclusion(shared=True):
+            return _main()
+    return _main()
 
 
 if __name__ == '__main__':
