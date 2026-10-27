@@ -877,3 +877,10 @@ against the accepted path and 1.52x against PR30), all with bitwise-equal update
 separate second 2x against PR30 is not reached on one CPU. On the same three CPUs the fast path's PPO
 of batch 266 is 2.9x PR30's single-CPU PPO for m4-RDH (1,114.4 s against P266) and 2.7x for m6-REH
 (1,259.7 s against P266b, 40 minutes earlier), a gain that uses the two CPUs PR30's optimizer leaves idle.
+
+A second independent read-only check of the final figures (two checkers and a verifier per reported
+discrepancy, 8 agents, 09:59 to 10:10 UTC) confirmed 6 discrepancies, all fixed: the accepted update is
+stopped at its update deadline less the 30 s cleanup reserve rather than after passing 3,540 s; the
+extrapolated accepted batch is about 3,790 s (3,786.8 s, including the 6.5 s after the worker's
+execution), not 3,780 s (no stated ratio changes at its precision except the macOS default's upper
+"about" figure, 1.88x); m3-REF's batch started at 09:15 UTC; RAF's lower bound is 1.74x.
