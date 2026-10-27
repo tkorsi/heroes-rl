@@ -86,3 +86,17 @@ a reliable 4,720-game duration from one short batch.
 ## Results
 
 Pending: no gameplay or PPO had been launched when this protocol was committed.
+
+## Prospective long-update supplement — 2026-10-27T12:30:41.592814+00:00
+
+Before the first native benchmark PPO update completed, the timeout regression
+check was made explicit: if the native comparison does not itself complete an
+update beyond the old effective wall bound, or if native histories are not
+comparable, reconstruct the four immutable failed336 captures from disposable
+full699 copies. Compare the accepted optimizer with the fastest exact candidate
+that passed the Mac correctness gates. This includes all16058 recorded samples
+and is diagnostic only: no native game is replayed or official sample admitted.
+Compare full model, gradients, Adam, every RNG, unchanged progress/sampler/pool
+and before/after input hashes. Its independent guardian uses the original
+20:21:52.592870UTC study hard deadline and a per-update maximum10800seconds;
+no supplementary window is added. Optimizer-only timing is reported separately.
