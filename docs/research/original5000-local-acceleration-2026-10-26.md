@@ -733,7 +733,7 @@ a model without hooks and never changes its thread count):
   occurrence is queued (after it, the later occurrences write `.grad` and `finish` raises).
 - Minor: an asynchronous exception inside the installation loop could leave part of the sums installed.
 
-Fixes (candidate after 9aebc1c): every replay, on a worker or on the main thread, raises unless its
+Fixes (5635c7c): every replay, on a worker or on the main thread, raises unless its
 thread's intra-op count is the bracket's, and each worker runs its lazy initialization before taking
 the count; the bracket now runs `backward()` from a fresh view of the loss and records its task on that
 view's node, which nothing else can reach or hook (the view's backward is the identity, so the
