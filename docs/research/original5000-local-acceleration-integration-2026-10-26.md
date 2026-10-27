@@ -16,7 +16,7 @@ Nothing, unless `--fast-path` is given.
   rejected without `--fast-path`.
 - `./train-original-5000.sh --fast-path` releases the current commit. Its session and every batch
   plan record `execution` (implementation `exact-fast-path-v1`, verification mode, prefix helpers,
-  experiments), and the runner prints the choice before the first game.
+  text-leaf replay, experiments), and the runner prints the choice before the first game.
 
 Design consequence for review: once merged, the default no longer follows main's HEAD. A later
 reviewed change to the default learner has to move `ACCEPTED_IMPLEMENTATION` explicitly. This is
@@ -30,8 +30,22 @@ become the default by accident), but it changes how future learner work reaches 
 | (none) | accepted implementation a8ac411, unchanged |
 | `--fast-path` | exact fast path; on macOS serial verification and no prefix helpers |
 | `--fast-path --overlap-verification` | also overlap per-game native replay and behaviour report in forked children (Linux default) |
-| `--fast-path --prefix-helpers N` | also compute PPO prefix frame encodings in N forked helpers (0 to 8), bit for bit |
+| `--fast-path --prefix-helpers N` | also compute PPO prefix frame encodings in N forked helpers (0 to 8), bit for bit, and replay text leaves on N threads during the backward |
+| `--fast-path --no-text-replay` | compute every text leaf occurrence separately, as the accepted learner does (bit-identical; the in-lineage fallback if the replay ever refuses) |
 | `--fast-path --experiment shared_graph_encodings` | NUMERICAL experiment: reordered gradient summation; reported separately; never a default |
+
+What the exact fast path changes, all bit for bit: per-game verification without repeated work and
+optionally overlapped; PPO prefix states reconstructed with a call-local node memo and optionally in
+forked helpers; and the replay of repeated text leaves. Within one minibatch graph, each distinct
+text leaf (`text_gru(byte(...))`) is computed once, and every occurrence replays that leaf's own
+backward graph with its own incoming gradient, returning each contribution to the five leaf
+parameters separately, in the reference order (log O13 to O15). With helpers declared, the replays
+run on that many threads while the backward continues, and their contributions are added in the same
+order before the optimizer step. The replay refuses (raises; the update is rolled back) on anything
+outside its exactness argument: a replaced or changed leaf parameter inside the minibatch, a
+contribution count that differs from its graph, with replay threads a gradient to a leaf parameter
+from elsewhere, or a higher-order or second backward. It keeps the reference path, silently and
+exactly, for tied leaf parameters, module or saved-tensor hooks.
 
 The exact options produce bitwise-identical games, PPO updates, Adam state, RNG streams and
 checkpoint weights to the accepted implementation (tests and paired Linux campaigns below). The
@@ -52,9 +66,10 @@ review, not a substitute for the exact learner in the official lineage.
   pins after a reviewed change and otherwise reports any difference.
 - A fast-path checkpoint can be continued only by the fast path. The pinned accepted release has no
   reverse transition and refuses it. So once the official run starts with `--fast-path`, the in-lineage
-  fallback is `--fast-path --serial-verification --prefix-helpers 0`, which executes every
-  verification step serially in the worker in main's order, with no fork. Returning to the accepted
-  path means restarting from an accepted checkpoint (for example the original 629 parent).
+  fallback is `--fast-path --serial-verification --prefix-helpers 0 --no-text-replay`, which
+  executes every verification step serially in the worker in main's order, with no fork, and
+  computes every text leaf separately. Returning to the accepted path means restarting from an
+  accepted checkpoint (for example the original 629 parent).
 - A run with `--experiment` writes `numerical_experiments` into every checkpoint's metadata, and a
   continuation must request the same experiment set; an exact run refuses an experimental parent.
 
@@ -97,8 +112,9 @@ that batch, sequence 266 from 629, within the fixed 3,540 s worker budget), the 
 as a problem: it means the accepted implementation cannot run that batch on the Mac either, which
 the official run would meet as a failed batch and a stop. Optional:
 `--order AOOA` tests forked verification on macOS (fork safety with Torch loaded is unverified
-there), `--order AHHA` adds two prefix helpers, `--order AFFA` gives a counterbalanced timing pair,
-`X` adds the numerical experiment (reported apart). Ctrl-C stops after the current batch as with
+there), `--order AHHA` adds two prefix helpers (and two replay threads), `--order AFFA` gives a
+counterbalanced timing pair, `N` checks the `--no-text-replay` fallback, `X` adds the numerical
+experiment (reported apart). Ctrl-C stops after the current batch as with
 `train-local.sh`; every runner also has its own `--hours` hard stop.
 
 ## Measured on Linux (not a Mac estimate)
