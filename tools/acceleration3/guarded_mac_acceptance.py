@@ -17,6 +17,7 @@ import time
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from experiments.headless.process_deadline import guarded_popen, close_owned_process
+from mac_acceptance import inside_official
 
 
 def main():
@@ -29,6 +30,8 @@ def main():
     if any(x.startswith('--study-deadline') for x in rest):
         parser.error('the independent guard owns the study deadline')
     root = args.bench_root.expanduser().resolve()
+    if inside_official(root):
+        parser.error('benchmark root must be outside official artifacts')
     if root.exists():
         parser.error('benchmark directory already exists; attempts are never reused')
     root.parent.mkdir(parents=True, exist_ok=True)
@@ -48,6 +51,7 @@ def main():
     process = guarded_popen(command, deadline_monotonic=mono, deadline_wall=wall,
                             evidence_path=evidence, cwd=ROOT)
     status = None
+    cleanup = {'verified': False}
     try:
         status = process.wait(timeout=max(0, min(mono-time.monotonic(), wall-time.time())))
     except (subprocess.TimeoutExpired, KeyboardInterrupt):
@@ -56,9 +60,14 @@ def main():
     finally:
         try:
             close_owned_process(process, timeout=3, deadline_monotonic=mono, deadline_wall=wall)
-        except (TimeoutError, subprocess.TimeoutExpired):
+            cleanup = {'verified': True}
+        except (TimeoutError, subprocess.TimeoutExpired) as error:
             # The guardian enforces the original bound independently. Do not wait beyond it.
-            pass
+            cleanup = {'verified': False, 'error': type(error).__name__ + ': ' + str(error)}
+    with root.with_name(root.name + '.guard-result.json').open('x') as stream:
+        json.dump(dict(schema='heroes-mac699-study-guard-result-v1', returncode=status, cleanup=cleanup,
+                       finished_unix=time.time(), hard_deadline_unix=wall, evidence=str(evidence)), stream, indent=2)
+        stream.write('\n')
     return status if status is not None else 124
 
 
