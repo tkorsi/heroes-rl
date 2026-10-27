@@ -82,6 +82,20 @@ and cannot separate warm-cache, background-load and thermal effects.
 
 Pending implementation checks and the bounded native comparison.
 
+The initial diagnostic at implementation `8af8d98` stopped after its first
+serial game with `missing_source_identity`: this isolated checkout lacked the
+generated `vcmi/` source checkout required by finalization. The game is an
+unscored technical failure, seven serial slots and all eight parallel slots
+remain unstarted, and the independent guard verified all owned processes closed.
+No receipt was admitted and no optimizer ran. Evidence is retained under
+`/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-8af8d98/`.
+
+Preparation now checks the generated engine recipe before launching any native
+process. The corrected study uses its own prepared dependency, new diagnostic
+seeds and a new output directory, with only the time remaining before the
+initial study's hard deadline (2026-10-27 16:47:03.662968 UTC). The failed game
+is neither retried nor substituted into the corrected cohort.
+
 ## Reproduce a separate diagnostic
 
 From the committed experimental checkout, using the locked macOS interpreter:
@@ -95,6 +109,9 @@ The command allocates a fresh output directory under
 seeds. It requires checkpoint 699 and the accepted runtime at the bound local
 paths. Use `--seat blue` only for an explicitly requested separate Blue study.
 The source checkout must stay unchanged until both arms have finished.
+Prepare its ignored engine dependency with `python3 tools/prepare_vcmi.py`;
+the harness checks exact agreement before launch. This dependency supplies
+source identity only; the native binaries still come from the frozen runtime.
 
 The native diagnostic exercises training-mode collection and the full fresh
 receipt verifier. It explicitly revokes those capabilities with

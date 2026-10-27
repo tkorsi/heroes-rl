@@ -1,5 +1,7 @@
 """Offline checks for benchmark isolation, input pinning and honest comparisons."""
 from pathlib import Path
+from types import SimpleNamespace
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -8,6 +10,35 @@ from tools import benchmark_parallel_collection as bench
 
 
 class ParallelCollectionBenchmarkTests(unittest.TestCase):
+    def test_inherited_absolute_deadline_never_extends_the_original_window(self):
+        with mock.patch.object(bench.time, 'time', return_value=1000), \
+                mock.patch.object(bench.time, 'monotonic', return_value=200):
+            self.assertEqual(bench.study_deadlines(2700, 1120), (320, 1120))
+            self.assertEqual(bench.study_deadlines(60, 1120), (260, 1060))
+            with self.assertRaises(ValueError):
+                bench.study_deadlines(2700, 1005)
+
+    def test_missing_prepared_engine_fails_before_any_guarded_launch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output = root/'not-started'
+            args = SimpleNamespace(output=output, total_seconds=2700, seat='red')
+            failure = subprocess.CalledProcessError(1, ['prepare_vcmi.py', '--check'],
+                                                    output='', stderr='missing source identity')
+            with mock.patch.object(bench, 'BENCH_ROOT', root), \
+                    mock.patch.object(bench, 'clean_source', return_value='frozen'), \
+                    mock.patch.object(bench, 'pinned_inputs', return_value={}), \
+                    mock.patch.object(bench.subprocess, 'run', side_effect=failure) as checked, \
+                    mock.patch('experiments.headless.process_deadline.guarded_popen') as launched:
+                with self.assertRaises(subprocess.CalledProcessError):
+                    bench.launch(args)
+                launched.assert_not_called()
+                checked.assert_called_once_with(
+                    [bench.sys.executable, str(bench.ROOT/'tools/prepare_vcmi.py'), '--check'],
+                    cwd=bench.ROOT, capture_output=True, text=True, timeout=60, check=True)
+            self.assertFalse(output.exists())
+            self.assertFalse((root/'seed-ledger.json').exists())
+
     def test_seed_reservations_are_fresh_and_bound_to_all_eight_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

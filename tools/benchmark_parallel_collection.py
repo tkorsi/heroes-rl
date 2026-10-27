@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -166,6 +167,16 @@ def clean_source():
     return subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
 
 
+def check_prepared_engine_sources():
+    """Fail before any guarded/native launch if generated engine sources differ."""
+    command = [sys.executable, str(ROOT / 'tools/prepare_vcmi.py'), '--check']
+    result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
+                            timeout=60, check=True)
+    return {'command': command, 'returncode': result.returncode,
+            'stdout': result.stdout.strip(), 'stderr': result.stderr.strip(),
+            'checked_utc': utc(), 'read_only': True}
+
+
 def hardware():
     result = {'cpu_count': os.cpu_count(), 'platform': platform.uname()._asdict()}
     if sys.platform == 'darwin':
@@ -181,6 +192,16 @@ def hardware():
 def parent_rng_fingerprints(torch):
     return {'torch_cpu_sha256': hashlib.sha256(bytes(torch.get_rng_state().tolist())).hexdigest(),
             'python_sha256': hashlib.sha256(repr(random.getstate()).encode()).hexdigest()}
+
+
+def study_deadlines(total_seconds, not_after_unix=None):
+    now_wall, now_mono = time.time(), time.monotonic()
+    wall = now_wall + total_seconds
+    if not_after_unix is not None:
+        require(math.isfinite(not_after_unix), 'Absolute study cutoff must be finite')
+        wall = min(wall, not_after_unix)
+    require(wall - now_wall > 15, 'Inherited study cutoff leaves no time for launch and cleanup')
+    return now_mono + (wall - now_wall), wall
 
 
 def comparison(serial, parallel):
@@ -242,6 +263,8 @@ def run_study(output, seat, hard_mono, hard_wall):
         source_commit = clean_source()
         before = pinned_inputs()
         summary['original_inputs_before'] = before
+        summary['prepared_engine_source_check'] = json.loads(
+            (output / 'launch.json').read_text())['prepared_engine_source_check']
         summary['official_state_before'] = official_state_snapshot()
         policy = checked_copy(POLICY, output / 'input/after-policy.pt')
         resume = checked_copy(RESUME, output / 'input/after-resume.pt')
@@ -387,13 +410,16 @@ def launch(args):
     require(60 <= args.total_seconds <= TOTAL_SECONDS, 'Study budget must be 60 to 2700 seconds')
     clean_source()
     pinned_inputs()
+    prepared_engine_source_check = check_prepared_engine_sources()
+    hard_mono, hard_wall = study_deadlines(args.total_seconds, getattr(args, 'not_after_unix', None))
     output.mkdir(parents=True)
-    hard_mono, hard_wall = time.monotonic()+args.total_seconds, time.time()+args.total_seconds
     command = [sys.executable, str(Path(__file__).resolve()), '--study-child', '--output', str(output),
                '--seat', args.seat, '--hard-monotonic', repr(hard_mono), '--hard-wall', repr(hard_wall)]
     write_new(output / 'launch.json', {'schema': SCHEMA+'-launch', 'command': command,
               'created_utc': utc(), 'hard_deadline_unix': hard_wall, 'hard_deadline_monotonic': hard_mono,
-              'total_seconds': args.total_seconds, 'training_samples_admitted': 0, 'optimizer_updates': 0})
+              'prepared_engine_source_check': prepared_engine_source_check,
+              'total_seconds': args.total_seconds, 'not_after_unix': getattr(args, 'not_after_unix', None),
+              'training_samples_admitted': 0, 'optimizer_updates': 0})
     process = None
     status = None
     cleanup = {'verified': False}
@@ -431,6 +457,8 @@ def main():
     parser.add_argument('--output', type=Path, default=default)
     parser.add_argument('--seat', choices=('red', 'blue'), default='red')
     parser.add_argument('--total-seconds', type=int, default=TOTAL_SECONDS)
+    parser.add_argument('--not-after-unix', type=float,
+                        help='Optional inherited absolute cutoff; never extends the relative budget')
     parser.add_argument('--study-child', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--hard-monotonic', type=float, help=argparse.SUPPRESS)
     parser.add_argument('--hard-wall', type=float, help=argparse.SUPPRESS)
