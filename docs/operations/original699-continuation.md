@@ -21,8 +21,8 @@ cd /Users/orsi/Projects/Heroes
 
 The first command checks/restores files only. The second is the explicit user
 launch. No agent, LLM API, cloud trainer or automatic retry is involved. Do not
-use the older `train-original-5000.sh` for this continuation: it selects 629 and
-would describe 5,000 new games rather than the existing experiment's remainder.
+use the older `train-original-5000.sh` for this continuation: it now refuses when
+an official original-map run exists, preventing a reset to 629 and a new target.
 
 Each invocation audits the immutable checkpoint 699 anchor, closed processes, exact final
 restore and the official latest pointer. Later invocations may use only complete,
