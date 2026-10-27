@@ -446,3 +446,75 @@ standalone check with 32 occurrences per distinct leaf: forward 16.3 s to 0.7 s,
 to 13.8 s (the replay's own cost), bit-identical. The real-data checks (optimizer-only on batch
 267 from the exact update 630, compared with m1-CH's own update 631; on batch 266 against the
 fast path's C) and the campaign m3-RH are running.
+
+### O14. The replay on real data, its review, and the successor candidates (00:00 to 00:50 UTC)
+
+Optimizer-only on CPU 0, batch 267 (seat 1, 1359 decisions) from the exact update 630, each result
+compared with m1-CH's own update 631: accepted a8ac411 739.3 s, fast exact 15ed404 609.4 s
+(forward 187.1, backward 380.1 s), replay 1721220 419.0 s (forward 43.1, backward 339.9 s). All
+three end in the same bytes (weights 46439a9b..., the same model, gradients and Adam state), so the
+replay is 1.76x the accepted path and 1.45x the fast path on this batch. A profile of the same
+batch counts 30,113 replays of 718 distinct leaves in its six minibatches; the replays are 81% of
+the exact backward, which is why the backward barely moves while the forward falls by 77%.
+
+Campaign m3-RH (1721220, overlapped verification and two prefix helpers, CPUs 1 to 3, from the
+same 629 copy): baseline batches 110.4 s and 195.8 s, the same eight games as m1-B. Training batch
+266 passed in 1646.3 s (PPO 1528.1 s: prefix reconstruction 178.3, loss forward 153.9, backward
+and clip 1169.9, behaviour verification 15.9 s), with the same four games as m1-B and update 630
+weights fe1378ef..., the bytes the accepted path computes from those games (O11). Batch 267 passed
+in 460.7 s with update 631 weights 46439a9b..., equal to m1-CH. So game to checkpoint the
+replay reproduces the accepted computation exactly, and batch 266, which the accepted path cannot
+finish within its 3,540 s update budget (stopped at 3,523 s), takes 1,646 s: at least 2.14x
+(a lower bound, because the accepted batch is censored), about 2.9x against the estimate of
+O12 (about 4,800 s), and 1.76x against m1-CH. Batch 267: 1.88x against m1-CH.
+
+Candidate 4f02a10 (on top of 1721220) runs the occurrence replays on the declared helper CPUs
+while the main backward continues. An occurrence then returns nothing to the engine and queues its
+replay; worker threads compute the replays, and the main thread adds every contribution to a
+per-parameter sum in queue order (the order the engine reaches the occurrences), each occurrence's
+contributions in replay order: the same additions in the same order as the immediate replay and
+the reference. After the backward, `finish_text_replays` folds the rest and installs the sums
+as the gradients; it refuses if anything else gave a text-leaf parameter a gradient. Deferral is
+used only with helpers declared (`--prefix-helpers N` gives N replay threads) and no hooks on the
+leaf parameters; with no helpers, the macOS default, the replay stays immediate (1721220's path).
+Tests: complete updates with one to three workers and window gradients with one, two and four
+workers are bit-identical to the reference; an unfinished context raises; a direct gradient to a
+text parameter fails closed. Its campaign m3-R5H started at 00:36 UTC.
+
+Independent read-only review of 1721220 (two reviewers, adversarial verification of each finding).
+The engine-order argument was checked against the torch 2.9.1 engine and held for the PPO path:
+contiguous sequence numbers per chain, the nested replay sharing the CPU ready queue at a higher
+reentrant depth, post hooks running after output validation and before the input buffers, one
+buffer addition per edge in edge order, and in-place against out-of-place accumulation giving the
+same bits. Findings, none reachable from the PPO update: tied text-leaf parameters (two GRU
+tensors made the same Parameter by hand) would group contributions by position instead of
+execution order (verified real, reachable only by tying weights by hand); the documented
+fail-closed check on in-place parameter changes covered only tensors the graph saves (one-byte
+texts, the biases and the byte table were unchecked); a frame cache kept after its context could
+serve stale values; the identity check read `_flat_weights` instead of the module attributes; a
+second backward through a retained graph failed with an AttributeError; saved-tensor hooks were
+not excluded; a late finalizer of a failed context could remove a newer context's state; the
+nested engine also summed every contribution into the alias buffers and discarded the sums; and
+the existing exact-update test ran the replay on both sides. The verifiers refuted the
+reachability of all but the first and confirmed the mechanisms.
+
+Candidate aa19dcc fixes all of them: tied leaf parameters or active saved-tensor hooks keep the
+reference (the context yields False); an occurrence after any leaf parameter was replaced or
+changed in place raises (Parameter identity against the module attributes and version counters
+recorded when the leaf was built); a cache used after its context, or an occurrence under
+saved-tensor hooks pushed inside it, is computed as in the reference; a second backward raises a
+clear error; the context removes only its own state; the recording hook passes undefined
+gradients to the aliases (the recorded values and their order are unchanged); and the exact-update
+test computes its reference without replay. New tests: undefined incoming gradients mixed with
+reference-path leaves (a str subclass) in one graph, an in-place change of each of the five leaf
+parameters before a one-byte occurrence, a late cache, tied parameters, saved-tensor hooks at entry
+and inside, and a second backward. 109 learner and runner tests pass.
+
+Candidate b14fb73 (on top of aa19dcc) addresses the next bottleneck of the deferred replay: with
+replays at four fifths of the backward and two workers, the rest of the backward ends long before
+the replay queue does and the main thread waited. `finish` now replays the queued occurrences
+that no worker has started, from the back of the queue, while the workers continue from the
+front, and adds every result in queue order as before. A test holds the single worker on its
+first replay until the main thread has taken one and checks bit-identical gradients. b14fb73 is
+the integration candidate; schedule m6 measures it after m3-R5H (with helpers, and with the macOS
+default), together with the accepted cold start and repeats.
