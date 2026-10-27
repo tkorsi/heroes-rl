@@ -478,3 +478,26 @@ model/Adam/RNG/progress/pool restoration. Full raw evidence remains in the origi
 artifact directory; this audit does not claim a new remote full-archive copy.
 The user authorized disposable Mac performance checks and timeout/continuation
 preparation. The official continuation remains a manual user launch.
+
+## 27 October 2026 — exact Mac699 acceleration and manual continuation
+
+Disposable full699 copies on the user's M4 Max produced a matched long Red batch
+in90.57 minutes with accepted code,43.34 minutes with exact serial acceleration,
+and35.53 minutes with two replay threads (2.55x versus accepted). Semantic
+training histories and full model/Adam/RNG/progress/sampler/pool state matched.
+The captured Blue supplement also matched accepted and selected exact execution,
+including gradients, without new games or official admission.
+
+The planned two-update full-cycle gate remains incomplete: accepted A preserved
+its conservative reserve before its second update and ran its ordinary final
+pair. Retain all52 diagnostic native games and the original failed completeness
+verdict. This is one ordered workload, not a whole-campaign duration forecast.
+The [research record](research/mac699-acceleration-2026-10-27.md) and
+[compact evidence](../validation/mac699-acceleration-results-2026-10-27.json)
+preserve this deviation, the late baseline-only view difference and exactness.
+
+The manual wrapper continues official699 with4720 games remaining and fresh
+sequence337, selected exact two-thread execution, a three-hour batch allowance
+and a bounded14-day fresh-session cap. It recalculates the remainder after later
+manual closures; no automatic retry,629 reset or benchmark promotion is allowed.
+The official training campaign has not been launched by this preparation.

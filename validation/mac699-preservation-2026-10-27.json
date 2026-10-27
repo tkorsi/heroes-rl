@@ -1,0 +1,40 @@
+{
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "branch": "codex/mac699-acceleration-20261027",
+  "package_commit": "c83d311fc27f6396011e28582fdcd4c692527c7b",
+  "remote_tree": "2353acb88a9f3e05485d2017b977ce86149cd722",
+  "remote_package_blobs_verified": 298,
+  "raw_capture_storage": "durable local only; no full remote archive claimed",
+  "official_training_states_promoted": 0,
+  "verified_utc": "2026-10-27T15:38:41.001646+00:00",
+  "independent_remote_restoration": {
+    "700": {
+      "exact": true,
+      "progress": {
+        "updates": 700,
+        "rollouts": 2800,
+        "decisions": 381985
+      },
+      "state_digest": "64eaeeb6586b9a567606724cba200d962941af03f3aad83ad45237098251b229"
+    },
+    "701": {
+      "exact": true,
+      "progress": {
+        "updates": 701,
+        "rollouts": 2804,
+        "decisions": 382022
+      },
+      "state_digest": "1ffc33b84e769170e68ae3ba26780dcbfd43652cc3d2a4ba04b3b2198298ce5b"
+    }
+  },
+  "eligible_for_official_continuation": false,
+  "receipt_commit": "f697c31bdd45174f5b74a1bab1b53879d558409b",
+  "independently_downloaded_checkpoint_files": 8,
+  "package_manifest_sha256": "2f8782a2e1c9e8a35ec4c1186c77984c7cf872e839839dfa2314aa2e3a5418b7",
+  "full_raw_captures_remain_local": true,
+  "package_path": "benchmarks/mac699-20261027",
+  "acknowledgement_receipt": {
+    "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/private-preservation-receipt.json",
+    "sha256": "56118ed37d5ca0c5e7bda123f0dffa1549bbe7105b6aac0ea94c2518afea6713"
+  }
+}

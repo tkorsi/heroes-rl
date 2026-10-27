@@ -8,8 +8,19 @@ clock after 466 attempted Adam steps; the transaction rolled back, admitted no
 samples or update, and produced no after checkpoint. That attempt stays consumed.
 
 The user authorized a disposable Mac acceleration comparison, a bounded timeout
-fix and preparation of the remaining 4,720 games. This documentation does not
-claim a Mac speedup before that comparison is completed and reviewed.
+fix and preparation of the remaining 4,720 games. The completed comparable long
+Red batch took 90.57 minutes with accepted code, 43.34 minutes with exact serial
+acceleration and 35.53 minutes with two replay threads on the user's M4 Max.
+Identical training histories produced identical complete model/Adam/RNG/progress,
+sampler and pool state. A separate captured Blue update also matched model,
+gradients, Adam and all RNG state exactly. The selected default uses two replay
+threads and no fork helpers or numerical experiment.
+
+The measured 2.55x ratio applies to that long batch, not all 4,720 future games.
+The original two-update full-cycle protocol remains incomplete: the accepted
+runner declined its second update under its unchanged conservative time reserve.
+Its ordinary final evaluation added eight diagnostic games. All attempts and
+this deviation remain in the [Mac research record](../research/mac699-acceleration-2026-10-27.md).
 
 ## Manual commands after the Mac validation
 
@@ -23,6 +34,11 @@ The first command checks/restores files only. The second is the explicit user
 launch. No agent, LLM API, cloud trainer or automatic retry is involved. Do not
 use the older `train-original-5000.sh` for this continuation: it now refuses when
 an official original-map run exists, preventing a reset to 629 and a new target.
+
+The measured serial fallback is `./continue-original-4720.sh --replay-threads 0`.
+Choose it only on a fresh manual invocation after the previous process has
+closed; this changes execution parallelism, not the checkpoint or remaining
+target. Neither command automatically relaunches a failed session.
 
 Each invocation audits the immutable checkpoint 699 anchor, closed processes, exact final
 restore and the official latest pointer. Later invocations may use only complete,
@@ -76,5 +92,7 @@ speedup would imply roughly 115–175 hours using those observed rates. A 48-hou
 cap would therefore probably stop substantially before the requested target.
 The 14-day bound is a prospective operational choice for a new explicit manual
 launch, not an extension of the failed session or of the current eight-hour Mac
-benchmark. The benchmark supplies its own measured speedup before final launch
-advice. See the compact [timing and budget record](../../validation/original699-duration-plan-2026-10-27.json).
+benchmark. The measured Mac ratios describe one fixed long workload and are not
+a new whole-campaign forecast. See the compact [historical timing and budget
+record](../../validation/original699-duration-plan-2026-10-27.json) and
+[Mac validation](../../validation/mac699-acceleration-results-2026-10-27.json).

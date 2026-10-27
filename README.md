@@ -205,13 +205,20 @@ The official next unused sequence is 337. Preserve 699 and the failed attempt.
 
 The prepared `./continue-original-4720.sh` continues that verified lineage and
 recalculates the remaining target after each manually stopped/restarted session.
-It does not select 629 or a disposable performance checkpoint. Before manual use,
-complete the separately authorized Mac 699 acceleration validation. The wrapper
-uses the reviewed exact fast path with a three-hour batch allowance, unchanged
+It does not select 629 or a disposable performance checkpoint. The Mac validation
+measured one identical long original-map batch at 90.57 minutes for the accepted
+implementation, 43.34 minutes for exact serial acceleration and 35.53 minutes
+with two replay threads (2.55x versus accepted). Complete training state matched;
+the missing accepted Blue update was checked separately on existing captures.
+The original two-update full-cycle protocol remains incomplete because the
+accepted runner preserved its conservative budget reserve. These results do not
+predict the duration of all remaining games. The wrapper uses the measured exact
+two-thread path with a three-hour batch allowance, unchanged
 PPO/native collection limits and a bounded 14-day manual session cap. The generic
 runner retains its 48-hour maximum; `--hours 48` selects a shorter continuation. The user starts
 training; preparing or checking the wrapper starts no games. See
-[continuation details](docs/operations/original699-continuation.md).
+[continuation details](docs/operations/original699-continuation.md) and the
+[Mac comparison](docs/research/mac699-acceleration-2026-10-27.md).
 
 The policy samples its own current distribution and PPO updates every complete
 four-game batch: at most 1,250 updates and 2,500 training games per seat. Rewards

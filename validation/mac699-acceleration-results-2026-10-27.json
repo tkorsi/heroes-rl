@@ -1,0 +1,463 @@
+{
+  "blue_optimizer_supplement": {
+    "capture_sequence": 267,
+    "completed_utc": "2026-10-27T15:28:41.234466+00:00",
+    "differences": {
+      "adam": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 117
+      },
+      "gradients": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 35
+      },
+      "model": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 39
+      }
+    },
+    "full_state_exact": true,
+    "native_games_added": 0,
+    "official_samples": 0,
+    "official_updates": 0,
+    "parent_update": 700,
+    "progress_intentionally_unchanged": true,
+    "reference_native_model_adam_generator_equal": {
+      "adam": true,
+      "minibatch_generator": true,
+      "model": true
+    },
+    "samples": 37,
+    "scope": "Optimizer-only diagnostic on existing captures, not an accepted Blue full-cycle timing or an official update."
+  },
+  "cleanup_and_restore": {
+    "00-A": {
+      "bound": "not_reached",
+      "cleanup_verified": true,
+      "execution": null,
+      "restore": {
+        "exact": true,
+        "optimizer_steps": 12909,
+        "progress": {
+          "decisions": 381985,
+          "rollouts": 2800,
+          "updates": 700
+        }
+      },
+      "source": "a8ac411d32658387598376c792136bc586edc5f9"
+    },
+    "01-F": {
+      "bound": "not_reached",
+      "cleanup_verified": true,
+      "execution": {
+        "experiments": [],
+        "implementation": "exact-fast-path-v1",
+        "overlapped_verification": false,
+        "prefix_helpers": 0,
+        "replay_threads": 0,
+        "text_leaf_replay": true
+      },
+      "restore": {
+        "exact": true,
+        "optimizer_steps": 12911,
+        "progress": {
+          "decisions": 382022,
+          "rollouts": 2804,
+          "updates": 701
+        }
+      },
+      "source": "2948231c800d0f57d0fe40f507742d113fc69353"
+    },
+    "02-T": {
+      "bound": "not_reached",
+      "cleanup_verified": true,
+      "execution": {
+        "experiments": [],
+        "implementation": "exact-fast-path-v1",
+        "overlapped_verification": false,
+        "prefix_helpers": 0,
+        "replay_threads": 2,
+        "text_leaf_replay": true
+      },
+      "restore": {
+        "exact": true,
+        "optimizer_steps": 12911,
+        "progress": {
+          "decisions": 382022,
+          "rollouts": 2804,
+          "updates": 701
+        }
+      },
+      "source": "2948231c800d0f57d0fe40f507742d113fc69353"
+    }
+  },
+  "completed_training_batches": [
+    {
+      "adam_steps": 485,
+      "complete_state_sha256": "d360418850669629534f59f2a6a5cc311c195536c540c537df584e9dcca6f71f",
+      "full_cycle_seconds": 5434.367762,
+      "game_digests": [
+        "b7bad13733baf389a96a5595f54214527107ebc662cbbbc0887b8dce48046c8b",
+        "cacbc18e3a9915b29c37f020c4a936fb973fa0e17f5d0d505fdd3e18741e932a",
+        "0f4704ff9cd6237fdc1b606996678d19f0362afb862a5f21e699f974c95ba51e",
+        "40c45f47c6edc0bc3cae56b8ec95352eeb49a8f3a9b71dfe12bd5b12c428b70b"
+      ],
+      "ppo_seconds": 4968.596295833006,
+      "samples": 15510,
+      "seat": 0,
+      "sequence": 266,
+      "variant": "00-A",
+      "weights_sha256": "c4f62b7bd8710fe47769efd712b39af8c7eac26adff86d89950952b189d5fe61"
+    },
+    {
+      "adam_steps": 485,
+      "complete_state_sha256": "d360418850669629534f59f2a6a5cc311c195536c540c537df584e9dcca6f71f",
+      "full_cycle_seconds": 2600.235746,
+      "game_digests": [
+        "b7bad13733baf389a96a5595f54214527107ebc662cbbbc0887b8dce48046c8b",
+        "cacbc18e3a9915b29c37f020c4a936fb973fa0e17f5d0d505fdd3e18741e932a",
+        "0f4704ff9cd6237fdc1b606996678d19f0362afb862a5f21e699f974c95ba51e",
+        "40c45f47c6edc0bc3cae56b8ec95352eeb49a8f3a9b71dfe12bd5b12c428b70b"
+      ],
+      "ppo_seconds": 2322.9778448340367,
+      "samples": 15510,
+      "seat": 0,
+      "sequence": 266,
+      "variant": "01-F",
+      "weights_sha256": "c4f62b7bd8710fe47769efd712b39af8c7eac26adff86d89950952b189d5fe61"
+    },
+    {
+      "adam_steps": 2,
+      "complete_state_sha256": "c011608059db53f57136d5ca867cad18b1e0479fd1dfbf14fc94e8f65b797f73",
+      "full_cycle_seconds": 10.827061,
+      "game_digests": [
+        "a5fc31ecb1d952461836d466561bd59a550bad42fd734c8a5468ec0f02f441c7",
+        "f2142ea31f28b1dfd4f77df9c86acef9d94f58709232479c400cfc438354dd15",
+        "20c8bff9cac84aeae6b79c2022362fb0109568aebbf5a761f8e8c5c58df425c0",
+        "281b66413f6806a7481af014c005ef7afdcc32c0bb2bcd54fcc08b08336367d2"
+      ],
+      "ppo_seconds": 1.9379806669894606,
+      "samples": 37,
+      "seat": 1,
+      "sequence": 267,
+      "variant": "01-F",
+      "weights_sha256": "369c729a10277efc69c82e738aaaade652896ce52e25d189deb6dbffbd1b29e3"
+    },
+    {
+      "adam_steps": 485,
+      "complete_state_sha256": "d360418850669629534f59f2a6a5cc311c195536c540c537df584e9dcca6f71f",
+      "full_cycle_seconds": 2132.064055,
+      "game_digests": [
+        "b7bad13733baf389a96a5595f54214527107ebc662cbbbc0887b8dce48046c8b",
+        "cacbc18e3a9915b29c37f020c4a936fb973fa0e17f5d0d505fdd3e18741e932a",
+        "0f4704ff9cd6237fdc1b606996678d19f0362afb862a5f21e699f974c95ba51e",
+        "40c45f47c6edc0bc3cae56b8ec95352eeb49a8f3a9b71dfe12bd5b12c428b70b"
+      ],
+      "ppo_seconds": 1862.603445209039,
+      "samples": 15510,
+      "seat": 0,
+      "sequence": 266,
+      "variant": "02-T",
+      "weights_sha256": "c4f62b7bd8710fe47769efd712b39af8c7eac26adff86d89950952b189d5fe61"
+    },
+    {
+      "adam_steps": 2,
+      "complete_state_sha256": "c011608059db53f57136d5ca867cad18b1e0479fd1dfbf14fc94e8f65b797f73",
+      "full_cycle_seconds": 9.754294,
+      "game_digests": [
+        "a5fc31ecb1d952461836d466561bd59a550bad42fd734c8a5468ec0f02f441c7",
+        "f2142ea31f28b1dfd4f77df9c86acef9d94f58709232479c400cfc438354dd15",
+        "20c8bff9cac84aeae6b79c2022362fb0109568aebbf5a761f8e8c5c58df425c0",
+        "281b66413f6806a7481af014c005ef7afdcc32c0bb2bcd54fcc08b08336367d2"
+      ],
+      "ppo_seconds": 1.2703260830021463,
+      "samples": 37,
+      "seat": 1,
+      "sequence": 267,
+      "variant": "02-T",
+      "weights_sha256": "369c729a10277efc69c82e738aaaade652896ce52e25d189deb6dbffbd1b29e3"
+    }
+  ],
+  "configuration": {
+    "adam": {
+      "lr": 0.0003
+    },
+    "allow_verified_training_prefix": false,
+    "attempt_wall_seconds": 600,
+    "cleanup_reserve_seconds": 30,
+    "evaluation_engine_seed": 160101,
+    "evaluation_policy_seeds": [
+      160201,
+      160202
+    ],
+    "hard_stop_reserve_seconds": 2,
+    "interface": "adventure-capabilities-v1",
+    "max_days": 365,
+    "max_optimizer_steps": 640,
+    "max_total_choices": 5120,
+    "max_updates": 1,
+    "minibatch_seed": 160403,
+    "ordinary_choice_limit": 4960,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "ppo": {
+      "clip_ratio": 0.2,
+      "decisions_per_window": 16,
+      "entropy_coefficient": 0.0,
+      "epochs": 1,
+      "gae_lambda": 1.0,
+      "gamma": 1.0,
+      "max_grad_norm": 0.5,
+      "normalize_advantages": true,
+      "value_clip": 0.2,
+      "value_coefficient": 0.5,
+      "windows_per_minibatch": 2
+    },
+    "python_seed": 160402,
+    "reserved_dialog_choices": 160,
+    "schema": "heroes-builtin-ppo-pilot-config-v1",
+    "shared_wall_seconds": 10800,
+    "torch_seed": 160401,
+    "torch_threads": 1,
+    "training_engine_seeds": [
+      160111,
+      160112
+    ],
+    "training_policy_seeds": [
+      160211,
+      160212,
+      160213,
+      160214
+    ]
+  },
+  "diagnostic_seed_namespace": {
+    "engine_base": 80100000,
+    "policy_base": 80150000
+  },
+  "engineering_decision": {
+    "basis": "One complete comparable long Red batch, identical full state, both-seat native verification, F/T Blue match, accepted-versus-T captured Blue equality, focused tests and independent review. This does not relabel the incomplete preregistered study as passed.",
+    "batch_wall_seconds": 10800,
+    "cleanup_reserve_seconds": 30,
+    "fallback": "same wrapper with --replay-threads 0 on a fresh manual invocation",
+    "manual_default": "exact fast path,serial verification,prefix_helpers0,replay_threads2,no numerical experiment",
+    "manual_session_cap_hours": 336,
+    "official_launch_performed": false,
+    "update_offset_seconds": 10740
+  },
+  "evidence": {
+    "accepted.json": {
+      "bytes": 23291,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/blue-supplement/accepted.json",
+      "sha256": "0446e0313bffc4276abc83fc24b2079bbcd769ecc612b831d5c0d26e7175e452"
+    },
+    "accepted.json.guard.json": {
+      "bytes": 2300,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/blue-supplement/accepted.json.guard.json",
+      "sha256": "f040dab0f9ac22ee98f6eefca4104220ba4141c9b91e0059019cf19a77ae9459"
+    },
+    "final-safety-audit.json": {
+      "bytes": 1480,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/final-safety-audit.json",
+      "sha256": "e33774022d7c7125ca50073330f3c2315ea59a97d47923e82ef31d27d045f46c"
+    },
+    "mac699-live-20261027T1222Z.guard-result.json": {
+      "bytes": 284,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z.guard-result.json",
+      "sha256": "0f283b67f02cc19fae199d6d4ab08285efc640045d2d960e81206f18bbef041d"
+    },
+    "preregistered.json": {
+      "bytes": 3769,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/preregistered.json",
+      "sha256": "98fe1964b2da68a2f80f3159ad84db11724983562beda5f3a566f4c58b093da4"
+    },
+    "summary.json": {
+      "bytes": 38701,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/summary.json",
+      "sha256": "9ba06a086bf2959612fd4bc01811cbaddacad1c7afff9accbf0808ae8b37723f"
+    },
+    "two-thread.json": {
+      "bytes": 23779,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/blue-supplement/two-thread.json",
+      "sha256": "a3eff04220a5cde3f5a600718303723e7470a92d57897cb02bb64cac8d50621b"
+    },
+    "two-thread.json.guard.json": {
+      "bytes": 2396,
+      "path": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z/blue-supplement/two-thread.json.guard.json",
+      "sha256": "f0faa172fff7c3522b61c66be1265a547cfd7a16cabe7aff93a9550abc5a2f1d"
+    }
+  },
+  "final_safety": {
+    "official_checkpoint_bindings": {
+      "policy": {
+        "bytes": 638131,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a/batches/train-000335-seat1/execution/after-policy.pt",
+        "sha256": "045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046"
+      },
+      "resume": {
+        "bytes": 1266165,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a/batches/train-000335-seat1/execution/after-resume.pt",
+        "sha256": "c5f8e601040e738bbda9fee987f996829107dda3737e2954e1cc4ba371c0afcf"
+      }
+    },
+    "official_latest_pointer": {
+      "bytes": 1902,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/latest-checkpoint.json",
+      "sha256": "b67a849a2c939dc99d752442bf0140ecabadcb20c37517cb909b36c19d2b2af5"
+    },
+    "official_ledger": {
+      "bytes": 6650,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/sequence-ledger.json",
+      "sha256": "27ea6cc4d71c84a06db3a2af52f7e627c6d1208ebf4eded362ecce67abe8dce5"
+    },
+    "official_lock_free": true,
+    "official_next_sequence": 337,
+    "official_parent_unchanged": true,
+    "official_training_launched": false,
+    "official_update": 699,
+    "official_updates": 0,
+    "outer_guard_cleanup_verified": true,
+    "owned_active_processes": [],
+    "supplemental_guard_cleanup_verified": true,
+    "timestamp_utc": "2026-10-27T15:31:01.714327+00:00"
+  },
+  "final_verification_utc": "2026-10-27T15:31:01.714327+00:00",
+  "full_cycle_speedups": {
+    "serial_vs_accepted": 2.0899519477646624,
+    "two_thread_vs_accepted": 2.5488764041847705,
+    "two_thread_vs_serial": 1.2195861282413487
+  },
+  "host": {
+    "machine": "Apple M4 Max,16CPUcores,128GiB; CPU Torch2.9.1",
+    "platform": {
+      "machine": "arm64",
+      "nodename": "Yehors-MacBook-Pro.local",
+      "release": "25.5.0",
+      "sysname": "Darwin",
+      "version": "Darwin Kernel Version 25.5.0: Tue Jun  9 22:28:34 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6041"
+    },
+    "python": "/Users/orsi/Projects/Heroes/.venv/bin/python"
+  },
+  "limitations": [
+    "One ordered long Red workload per variant; no repetitions,counterbalancing or statistical confidence interval.",
+    "Accepted Blue267 was unstarted under the unchanged conservative reserve; eight ordinary final evaluations ran instead. Actual native total52 versus nominal48.",
+    "One A/F Red baseline history differs in three late native view frames after the learner has no heroes; no later learner choice differs. It contains zero PPO samples and is not a matched timing claim.",
+    "Raw records differ in incidental timestamps; compared semantic training histories and full learner state are identical.",
+    "No reliable4720-game duration, original-map strategic improvement or Mac-versus-PR30 additional ratio is inferred. Linux timings are not substituted.",
+    "Approximately16GiB full native captures remain durable locally. Private publication contains full checkpoints and bound compact evidence, not a full off-site capture archive."
+  ],
+  "map": {
+    "bytes": 2354,
+    "fixture": false,
+    "layout_seed": 0,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/maps/hero-management-v2.vmap",
+    "profile": "original",
+    "scenario": "hero-management-v2",
+    "seat": 0,
+    "semantics_verified": true,
+    "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+  },
+  "native_counts": {
+    "baseline": {
+      "cutoffs": 0,
+      "games": 24,
+      "losses": 24,
+      "optimizer_steps": 0,
+      "training_samples": 0,
+      "wins": 0
+    },
+    "final": {
+      "cutoffs": 1,
+      "games": 8,
+      "losses": 7,
+      "optimizer_steps": 0,
+      "training_samples": 0,
+      "wins": 0
+    },
+    "training": {
+      "cutoffs": 6,
+      "games": 20,
+      "losses": 14,
+      "optimizer_steps": 1459,
+      "training_samples": 46604,
+      "wins": 0
+    }
+  },
+  "parent": {
+    "bindings": {
+      "policy": {
+        "bytes": 638131,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a/batches/train-000335-seat1/execution/after-policy.pt",
+        "sha256": "045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046"
+      },
+      "resume": {
+        "bytes": 1266165,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261026T181133Z-062cd75a/batches/train-000335-seat1/execution/after-resume.pt",
+        "sha256": "c5f8e601040e738bbda9fee987f996829107dda3737e2954e1cc4ba371c0afcf"
+      }
+    },
+    "next_unused_official_sequence": 337,
+    "official_update": 699,
+    "remaining_official_games": 4720,
+    "unchanged": true
+  },
+  "private_preservation": {
+    "branch": "codex/mac699-acceleration-20261027",
+    "package_commit": "c83d311fc27f6396011e28582fdcd4c692527c7b",
+    "package_path": "benchmarks/mac699-20261027",
+    "private_repository": "tkorsi/heroes-rl-training-state",
+    "public_receipt": {
+      "path": "validation/mac699-preservation-2026-10-27.json",
+      "sha256": "d2fdadb44c72461d6a42f9cd013a7dabe65d5193c0e3b2ed2d22a4910f7fd556"
+    },
+    "receipt_commit": "f697c31bdd45174f5b74a1bab1b53879d558409b",
+    "remote_package_blobs_verified": 298,
+    "remote_tree": "2353acb88a9f3e05485d2017b977ce86149cd722"
+  },
+  "private_preservation_receipt": "validation/mac699-preservation-2026-10-27.json",
+  "recorded_utc": "2026-10-27T15:37:01.816186+00:00",
+  "runtime_hashes": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  },
+  "schema": "heroes-mac699-acceleration-results-v1",
+  "study": {
+    "accepted_source": "a8ac411d32658387598376c792136bc586edc5f9",
+    "actual_disposable_updates": 5,
+    "exact_completed_training_comparisons_passed": true,
+    "finished_utc": "2026-10-27T15:26:51.396690+00:00",
+    "hard_deadline_utc": "2026-10-27T20:21:52.592870+00:00",
+    "official_training_launched": false,
+    "official_updates": 0,
+    "order": "AFT",
+    "original_protocol_passed": false,
+    "original_protocol_problems": [
+      "00-A: runner status stopped_budget",
+      "00-A: 1 of 2 training batches admitted"
+    ],
+    "planned_updates_per_path": 2,
+    "root": "/Users/orsi/Projects/Heroes-bench/mac699-live-20261027T1222Z",
+    "source": "2948231c800d0f57d0fe40f507742d113fc69353",
+    "started_utc": "2026-10-27T12:21:52.758567+00:00"
+  },
+  "verification": {
+    "fast_source_pins": "matched12learner+16tree pins and adapter AST",
+    "focused_tests_run": 65,
+    "passed": 64,
+    "shell_syntax": "passed",
+    "skipped": 1
+  }
+}

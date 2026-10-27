@@ -83,7 +83,7 @@ all attempts, failures, unstarted paths, raw-evidence bindings, parent hashes
 before/after, cleanup receipts and practical ratio limitations. Do not infer
 a reliable 4,720-game duration from one short batch.
 
-## Results
+## Status at preregistration
 
 Pending: no gameplay or PPO had been launched when this protocol was committed.
 
@@ -119,3 +119,76 @@ all results. There are no new native games, official samples or promoted weights
 This optimizer-only supplement must fit the same20:21:52.592870UTC study deadline
 and cannot be reported as completion of the missing accepted Blue full-cycle
 measurement. A supplemental exactness failure prevents candidate adoption.
+
+## Completed observations and engineering decision — 27 October 2026
+
+The native study closed at 15:26 UTC and its outer guardian verified cleanup.
+The additional captured Blue comparison also closed and passed its independent
+guards. The official parent remains 699; its owner lock is free and its next
+unused sequence remains 337. No official game or update was launched.
+
+| Implementation | Matched Red full cycle | PPO portion | Full-cycle ratio versus accepted |
+| --- | ---: | ---: | ---: |
+| Accepted A, one Torch thread | 90.57 min | 82.81 min | 1.00x |
+| Exact F, no replay threads | 43.34 min | 38.72 min | 2.09x |
+| Exact T, two replay threads | 35.53 min | 31.04 min | 2.55x |
+
+These are intent-to-durable-checkpoint-and-restore measurements, including native
+collection and verification. There is no GitHub publication latency in this local
+cycle. T uses additional CPU parallelism and is 1.22x faster than F on this case.
+The primary prefix-reconstruction component fell from 50.71 to 18.66 minutes
+(A to T); backward/clipping fell from 18.61 to 9.08 minutes. All three processed
+the same 15,510 samples with 485 Adam steps. Their semantic native histories and
+complete model, Adam, RNG, progress, sampler and pool state matched exactly.
+The full-state digest is `d360418850669629534f59f2a6a5cc311c195536c540c537df584e9dcca6f71f`.
+F and T also completed Blue267 (37 samples, two Adam steps), with identical
+histories and full state. The separately preregistered captured Blue supplement
+restored identical full700 parents and compared accepted A with selected T:
+model, gradients, Adam and all RNG state matched exactly, as did the native
+reference model/Adam/minibatch generator. Diagnostic progress stayed unchanged;
+this was not new native gameplay or an official update.
+
+The original two-update full-cycle protocol remains **incomplete**, with its
+original `passed=false` and outer return code1 preserved. A completed only its
+first update because the unchanged conservative admission rule required more
+remaining time than the original eight-hour budget allowed. Its ordinary final
+pair then ran. The actual count is52 native games:24 baseline evaluations,
+20 disposable training games (five updates), and8 A final evaluations, rather
+than the nominal48. The diagnostic training outcomes were0 wins,14 losses and6
+collection cutoffs; baseline was24 losses and final evaluation7 losses/1 cutoff.
+All evaluation data had zero PPO samples and Adam steps. A Blue267 is explicitly
+unstarted; no deadline was extended or admission rule weakened.
+
+One A/F Red baseline history comparison differs in three late view frames after
+the learner has no heroes, without a subsequent differing learner decision.
+The nonidentical evaluation-history finding is retained. A/T baseline histories
+match. Raw file hashes also differ in incidental timing records; only the
+specified semantic training histories are claimed identical.
+
+The selected manual default is T: exact text-leaf replay with two threads,
+serial verification, no prefix helpers and no numerical experiment. The measured
+F mode remains a manual fallback using `--replay-threads 0`. This engineering
+choice rests on the matched long update, the Blue supplement, exactness tests,
+full restoration and independent review; it does not turn the incomplete
+original protocol into a pass. The beyond-old-limit A update also demonstrates
+the timeout correction:5,432.96 seconds of worker execution completed under the
+new allowance, compared with the old3,510-second effective bound.
+
+One ordered workload per implementation supplies no confidence interval or
+counterbalanced estimate. The result is not a forecast for all4,720 games,
+proof of strategic learning, an original-map win, or a Mac measurement against
+the separate older PR30 optimized baseline. Linux measurements are kept separate.
+All benchmark checkpoints remain disposable. Approximately16GiB of full captures
+remain in durable local storage; the separate private publication contains full
+copied checkpoints and compact bound verification evidence, not a full new
+remote capture archive. See the [compact result](../../validation/mac699-acceleration-results-2026-10-27.json)
+and [manual continuation](../operations/original699-continuation.md).
+
+The [private preservation receipt](../../validation/mac699-preservation-2026-10-27.json)
+binds package commit `c83d311fc27f6396011e28582fdcd4c692527c7b` and
+receipt commit `f697c31bdd45174f5b74a1bab1b53879d558409b` on private
+`tkorsi/heroes-rl-training-state`, branch `codex/mac699-acceleration-20261027`,
+path `benchmarks/mac699-20261027`. All298 package blobs were
+acknowledged remotely; eight checkpoint files were independently downloaded and
+full700/701 states restored exactly. These states are explicitly ineligible for
+the official continuation.
