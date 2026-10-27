@@ -747,3 +747,30 @@ as any second backward through replayed occurrences does). A first version of th
 recursed without bound, because the nested backward runs the loss's hook again, and was killed by
 the session's memory limit before it could affect the campaign's processes; the test now guards its
 hook, and test runs carry a memory limit.
+
+### O19. Host drift, a contemporaneous accepted repeat, and the last schedule (05:45 to 06:15 UTC)
+
+m4-RDH finished its six training batches (266 to 271) in 1248.0, 350.3, 622.1, 900.5, 1810.3 and
+479.3 s (3,968, 1,359, 2,084, 2,969, 5,831 and 1,751 decisions; mean 901.7 s, median 761.3 s), cold
+start 360.7 s, baselines 114.8 and 222.2 s, peak 8.53 GB RSS, 45 descriptors, 21 threads and 10
+processes. Memory follows the batch size (the peak is in batch 270's PPO) and falls back after it.
+
+The CPU 0 repeat B2 of the accepted optimizer-only batch 266 (a8ac411, 05:14 to 06:08 UTC) took
+3,230.4 s, with the same update 630 bytes, against 4,214.9 s for the same job B at 21:11 to 22:21 UTC
+the evening before; every phase is shorter by a similar fraction (prefix reconstruction 1,267 to 952 s,
+loss forward 858 to 679 s, backward 1,696 to 1,363 s). The accepted baseline games show the same: 876 s
+in m1-B (20:33 UTC) against 636 s in m2-B (02:20 UTC). The host was about 25% slower for the accepted
+path in the early evening, which is when m1-B measured the accepted batch 266 and B its optimizer-only
+time. The fast path's baselines vary much less over the night (291 to 339 s from 21:48 onward). Two
+consequences: ratios between an evening accepted measurement and a night-time fast-path measurement
+are inflated by the drift, and the estimate of the accepted complete batch (4,600 to 4,900 s, O10) holds
+only for the evening host. On one CPU at nearly the same time, the accepted path and PR30 take the same
+time on batch 266 (B2 3,230.4 s, P266 3,243.7 s at 01:50 UTC; the same per-phase times to 2%), and the
+exact replay RD266 (480aa1a, 04:43 UTC, just before B2) 1,839.2 s, 1.76x.
+
+So that the accepted batch 266 has a measurement bracketed by fast-path campaigns of the same night,
+schedule m9 was stopped during m3-RET (its driver kept running) and replaced by m10 (06:10 UTC):
+m6-B (the accepted campaign again, one training batch, named so that m6-REH pairs with it), then
+m6-REH (the final learner, five training batches), m3-REF and m2-XH if time allows; no campaign starts
+after 09:55 UTC. CPU 0 continues with C2, P266b and RD266b, which repeat C, P266 and RD266 at other
+times of the night. `tools/prepare_vcmi.py --check` passes in the final release (fe0d083).
