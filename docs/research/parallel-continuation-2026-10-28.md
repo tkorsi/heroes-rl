@@ -78,3 +78,22 @@ receipts for the study lifetime, without clearing admission history. An initial
 pytest invocation could not run because pytest is not installed; all reported
 suite results use the project's unittest runner. None of these attempts ran
 native games or modified official training state.
+
+## Initial native preflight refusal and acceptance refresh
+
+Attempt `run-20261028T184411Z-aed69e44` on merge candidate `497ce29` failed
+before reserving seeds or launching a game. The existing runtime acceptance
+correctly rejected changed `builtin_gameplay.py`, `builtin_training.py` and the
+new parallel collector. Generated engine agreement passed; binary hashes and
+engine source were unchanged. Cleanup passed and official files were unchanged.
+This is a source/acceptance mismatch, not an engine failure or failed episode.
+
+The strict acceptance checks remain unchanged. Refresh all 16 native garrison
+controls and 28 legacy controls with fresh seed ranges, then eight frozen-1095
+evaluation games through the existing candidate-runtime protocol. Reuse the
+immutable binary freeze and loader evidence, and create new acceptance and
+machine descriptors rather than overwrite historical bytes. This is a separate
+preregistered validation phase, not an extension of the failed study's deadline.
+The parallel harness now accepts an explicitly bound `--machine` descriptor; its
+seven offline controls passed. The original machine file and all official
+checkpoint pointers remain unchanged.

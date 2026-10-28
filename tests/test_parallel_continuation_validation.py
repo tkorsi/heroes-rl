@@ -9,6 +9,25 @@ from tools import validate_parallel_continuation as probe
 
 
 class ParallelContinuationValidationTests(unittest.TestCase):
+    def test_cli_forwards_an_explicit_read_only_machine_descriptor(self):
+        selected = Path('/private/diagnostic/machine.json')
+        with mock.patch.object(probe.sys, 'argv', ['validate_parallel_continuation.py', '--machine', str(selected)]), \
+                mock.patch.object(probe, 'launch', return_value=0) as launch:
+            self.assertEqual(probe.main(), 0)
+        self.assertEqual(launch.call_args.args[0].machine, selected)
+
+    def test_official_snapshot_keeps_canonical_machine_when_another_is_selected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            canonical, selected = root/'official-machine.json', root/'candidate-machine.json'
+            canonical.write_text('official'); selected.write_text('candidate')
+            with mock.patch.object(probe, 'MACHINE', canonical), mock.patch.object(probe, 'ARTIFACTS', root):
+                before = probe.official_snapshot(root/'parent', selected)
+                self.assertEqual(before[str(canonical)]['sha256'], probe.binding(canonical)['sha256'])
+                self.assertEqual(before[str(selected)]['sha256'], probe.binding(selected)['sha256'])
+                selected.write_text('changed')
+                self.assertNotEqual(before, probe.official_snapshot(root/'parent', selected))
+
     def test_fresh_sequences_cover_both_seats_without_reusing_arm_seeds(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

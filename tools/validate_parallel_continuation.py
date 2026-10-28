@@ -148,8 +148,8 @@ def fingerprint(value):
     return digest.hexdigest()
 
 
-def official_snapshot(parent_run):
-    paths = [MACHINE, parent_run/'session.json', parent_run/'campaign-report.json', parent_run/'shutdown.json']
+def official_snapshot(parent_run, selected_machine=MACHINE):
+    paths = [MACHINE, Path(selected_machine), parent_run/'session.json', parent_run/'campaign-report.json', parent_run/'shutdown.json']
     paths.extend(ARTIFACTS/'local-script-training/original'/name for name in
                  ('latest-checkpoint.json', 'latest-run.json', 'sequence-ledger.json'))
     return {str(path): binding(path) if path.exists() else None for path in paths}
@@ -226,7 +226,7 @@ def run_child(args):
                                'Four games per arm exercise one checkpoint on the original map only.',
                                'The parallel evaluation dispatch has offline coverage only; fixed held-out seeds are not replayed here.',
                                'Native game rules and runtime are unchanged; no embedded engine is enabled.'])
-    before = official_snapshot(parent_run)
+    before = official_snapshot(parent_run, args.machine)
     report['official_before'] = before
     # Admission remembers object identities. Keep consumed receipts alive until
     # every arm finishes so Python cannot reuse an old receipt's identity.
@@ -237,7 +237,8 @@ def run_child(args):
             cwd=ROOT, capture_output=True, text=True, timeout=60, check=True)
         report['prepared_engine_check'] = dict(returncode=prepared.returncode,
                                                stdout=prepared.stdout, stderr=prepared.stderr)
-        config = json.loads(MACHINE.read_text())
+        require(binding(args.machine) == launch['machine'], 'Selected machine descriptor changed after launch')
+        config = json.loads(args.machine.read_text())
         validate_config(config)
         require(config['default_profile'] == 'original'
                 and Path(config['runtime_bin']).parent.name == 'local-v8-terminal-replay-repair1',
@@ -368,7 +369,7 @@ def run_child(args):
             except Exception as error:
                 cleanup_errors.append(f'{path.name}: {error}')
         report.update(cleanup_verified=not cleanup_errors, cleanup_errors=cleanup_errors,
-                      official_after=official_snapshot(parent_run), finished_utc=utc())
+                      official_after=official_snapshot(parent_run, args.machine), finished_utc=utc())
         report['official_files_unchanged'] = before == report['official_after']
         if cleanup_errors or not report['official_files_unchanged']:
             report['status'] = 'failed'
@@ -388,10 +389,11 @@ def launch(args):
         started_unix=started_wall, started_monotonic=started_mono,
         absolute_deadline_unix=wall, hard_deadline_monotonic=mono,
         compute_deadline_unix=wall-300, compute_deadline_monotonic=mono-300,
-        parent_run=str(args.parent_run.resolve()), parent_update=args.parent_update)
+        parent_run=str(args.parent_run.resolve()), parent_update=args.parent_update, machine=binding(args.machine))
     write(output/'launch.json', receipt, new=True)
     command = [sys.executable, str(Path(__file__).resolve()), '--child', '--output', str(output),
-               '--parent-run', str(args.parent_run.resolve()), '--parent-update', str(args.parent_update)]
+               '--parent-run', str(args.parent_run.resolve()), '--parent-update', str(args.parent_update),
+               '--machine', str(args.machine.resolve())]
     process, rc, errors = None, None, []
     try:
         with (output/'worker.log').open('x') as log:
@@ -420,6 +422,8 @@ def main():
     parser.add_argument('--output', type=Path, default=VALIDATION_ROOT / (datetime.now(timezone.utc).strftime('run-%Y%m%dT%H%M%SZ-')+uuid.uuid4().hex[:8]))
     parser.add_argument('--parent-run', type=Path, default=DEFAULT_PARENT)
     parser.add_argument('--parent-update', type=int, default=1095)
+    parser.add_argument('--machine', type=Path, default=MACHINE,
+                        help='Read-only reviewed machine descriptor; defaults to the official descriptor')
     parser.add_argument('--total-seconds', type=int, default=900)
     parser.add_argument('--child', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
