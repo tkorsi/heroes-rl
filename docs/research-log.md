@@ -594,7 +594,7 @@ inputs, 532 packets and 777 transactions, without changing the failed cohort.
 The clean rebuilt runtime passed 594 accounting checks, 16 garrison controls,
 28 legacy controls and eight frozen-916 policy games (591 choices, eight losses),
 with exact reconstruction and no training samples or updates. Full checkpoint
-state remained unchanged. The stable offline suite passed 1,628 tests, 33 skipped.
+state remained unchanged. The stable offline suite ran 1,628 tests: 1,595 passed, 33 skipped.
 These results establish repair coverage, not improved game strategy. Fresh
 policy games did not reproduce the rare artifact-transfer cancellation; the
 original captured-command replay and native fixtures cover it explicitly.
@@ -605,3 +605,11 @@ interaction budget remain unchanged. [Preservation](../validation/local-script-f
 and [manual readiness](../validation/terminal-replay-main-readiness-2026-10-28.json)
 record the complete state and exact ten-hour check. No official training or
 cloud work was launched by this repair.
+
+
+Checkpoint916 and all failed-run evidence are now privately published and
+independently restored. All 19,536 archived run files and 1,707 diagnostic files
+passed remote read-back; Adam, all RNG state, sampler, progress and pool matched
+exactly. Final private receipt commit is `0082b8317f386e443af55d84d48534ddc47e405b`.
+The intermittent publication/read-back transport failures are recorded separately
+from the native replay rejection and supplied no training data.

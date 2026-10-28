@@ -80,9 +80,9 @@ failed admission remain unchanged; this diagnostic cannot admit the old batch.
 The runtime was built from an empty build directory (782 build steps), frozen
 with nine signed artifacts and 592 resource files, checked for actual local
 library loading, and verified against the canonical dependency recipe. Native
-packet-codec tests passed 594 checks. The stable full offline run passed 1,628
-tests with 33 platform/optional skips. After acceptance pinning, 97 targeted tests
-passed with one skip.
+packet-codec tests passed 594 checks. The stable full offline suite ran 1,628
+tests: 1,595 passed and 33 platform/optional cases were skipped. After acceptance
+pinning, 97 targeted tests ran: 96 passed and one was skipped.
 
 All 16 fresh garrison controls and 28 fresh legacy controls passed strict history,
 independent native replay and bounded owned cleanup. Eight actual frozen-916
@@ -130,3 +130,47 @@ support, rewards, architecture and PPO.
 See [compact repair evidence](../../validation/terminal-replay-results-2026-10-28.json)
 and [checkpoint-916 preservation](../../validation/local-script-final916-sync-2026-10-28.json).
 The user alone starts any continuation; preparing and checking it starts no games.
+
+
+## Actual main-checkout readiness
+
+At source `7997ca10ef5c46b831571b087a1ae61927eaa830`, the clean main checkout
+passed the default `./continue-original-4720.sh check --hours 10` after activation
+under the global and original-profile owner locks. It restored checkpoint 916
+exactly, calculated 3,852 remaining games and unused sequence 556, and confirmed
+a ten-hour cap. Owner locks were available afterward and no native processes
+remained. The old machine descriptor is preserved privately. No check launched
+a game, sampled training experience or applied an update.
+
+The exact user command is:
+
+```sh
+cd ~/Projects/Heroes
+./continue-original-4720.sh --hours 10
+```
+
+The historical filename does not determine the remaining target. Sequence 555
+and all four reserved seed pairs remain consumed, including its unstarted fourth
+game. Unknown terminal request types still fail closed; this repair admits only
+the five reviewed concrete types under the unchanged terminal constraints.
+
+
+## Complete private preservation
+
+Private branch `codex/local-script-final916-checkpoint` preserves the complete
+checkpoint and run package at `78d793355b17a099eb906870a3368e7972bceb7c`, the
+excluded diagnostics at `f481857133b49b48e6bd83215d7bfaaf9e015554`, and final
+read-back receipts at `0082b8317f386e443af55d84d48534ddc47e405b`.
+Independent remote bytes restored the exact 916 model, Adam, Python/Torch/minibatch
+RNG, sampler, progress and pool: 3,664 cumulative rollouts, 526,188 decisions and
+17,676 Adam steps. All 146 successful batches and the unique consumed-seed
+lineage were audited. The official pointers and original evidence were unchanged.
+
+All 15 run-archive parts were independently downloaded and all 19,536 files
+plus 603 symlinks verified. The separate diagnostic archive passed remote
+read-back for all 1,707 files and 53 symlinks. Runtime binaries and external
+game-data targets are excluded; symlinks are retained without dereferencing.
+Transient DNS/TCP/HTTP failures, the bounded shallow-clone alternative and the
+initial missing-manifest read-back aggregation are retained in the preservation
+receipt. Final remote ref and receipt read-back passed; no transfer processes
+remain.

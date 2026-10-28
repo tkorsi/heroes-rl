@@ -7,8 +7,6 @@
   "official_run": "run-20261028T131340Z-684287b9",
   "official_checkpoint": 916,
   "official_training_launched": false,
-  "new_official_games": 0,
-  "new_official_optimizer_updates": 0,
   "original_target_games": 5000,
   "original_admitted_games": 1148,
   "original_remaining_games": 3852,
@@ -278,6 +276,55 @@
     "ExchangeArtifacts cancellation did not recur in fresh policy games; coverage uses actual preserved failed capture plus native packet-codec controls.",
     "Marketplace cancellation has native packet-codec and Python coverage, without a new natural-game trigger.",
     "Allied-garrison behavior retains offline-only coverage.",
-    "Historical session records two hours despite reported ten-hour invocation; no argument propagation defect was found and failure preceded either deadline."
-  ]
+    "Historical session records two hours despite reported ten-hour invocation; no argument propagation defect was found and failure preceded either deadline.",
+    "Only the five reviewed terminal native-request types are supported; other types continue to fail closed."
+  ],
+  "main_readiness": {
+    "status": "passed",
+    "source_commit": "7997ca10ef5c46b831571b087a1ae61927eaa830",
+    "branch": "main",
+    "checkpoint": 916,
+    "remaining_games": 3852,
+    "next_sequence": 556,
+    "session_hours": 10,
+    "gameplay_performed": false,
+    "ppo_updates": 0,
+    "receipt": "validation/terminal-replay-main-readiness-2026-10-28.json"
+  },
+  "official_run_results": {
+    "started_checkpoint": 770,
+    "final_checkpoint": 916,
+    "source_commit": "cb3849c376331aafdb940fb59dd45e143e5b4218",
+    "new_admitted_games": 584,
+    "complete_ppo_updates": 146,
+    "training_outcomes": {
+      "loss": 584
+    },
+    "separate_evaluation_games": 16,
+    "evaluation_outcomes": {
+      "loss": 16
+    },
+    "failed_batch_attempts": {
+      "completed_but_excluded": 2,
+      "natural_terminal_replay_rejected": 1,
+      "not_started": 1
+    },
+    "full_failed_batch_admitted_games": 0
+  },
+  "new_official_games_during_repair": 0,
+  "new_official_optimizer_updates_during_repair": 0,
+  "private_evidence": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local-script-final916-checkpoint",
+    "checkpoint_and_run_commit": "78d793355b17a099eb906870a3368e7972bceb7c",
+    "diagnostic_commit": "f481857133b49b48e6bd83215d7bfaaf9e015554",
+    "receipt_commit": "0082b8317f386e443af55d84d48534ddc47e405b",
+    "full_checkpoint_restore": true,
+    "all_raw_members_remote_readback_verified": true,
+    "raw_files": 19536,
+    "diagnostic_files": 1707,
+    "raw_archive_sha256": "0cba80bd6d99535898c656c738a61f577f3d62588a25314ed5dd593fb0ec0f8c",
+    "diagnostic_archive_sha256": "c28ecc291c92e1e7ec867dec42649704e97487ecdd0fa1d04e2cd56ca4a87162",
+    "preservation_report_sha256": "831b2d086578c6c8270b1022b28c321bebd84069010057a9cdbc7e019a16e0b5"
+  }
 }

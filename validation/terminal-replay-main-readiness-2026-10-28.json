@@ -1,0 +1,81 @@
+{
+  "schema": "heroes-terminal-replay-main-readiness-v1",
+  "timestamp_utc": "2026-10-28T15:19:55.783253+00:00",
+  "checkout": "/Users/orsi/Projects/Heroes",
+  "branch": "main",
+  "source_commit": "7997ca10ef5c46b831571b087a1ae61927eaa830",
+  "main_clean_at_check": true,
+  "command": "./continue-original-4720.sh check --hours 10",
+  "result": {
+    "status": "continuation_offline_checks_passed",
+    "checkpoint": {
+      "updates": 916,
+      "rollouts": 3664,
+      "decisions": 526188
+    },
+    "exact_restore": true,
+    "remaining_training_games": 3852,
+    "next_sequence": 556,
+    "session_safety_cap_hours": 10.0,
+    "shared_wall_seconds": 10800,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "policy_support": "visible-interaction-budget-v1",
+    "gameplay_performed": false,
+    "ppo_updates": 0
+  },
+  "log": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/main-continuation-check.log",
+    "sha256": "78ad54efd52a355d1813f22e988c59506894a2d31ce84f3a7ff06f22530bb6f8",
+    "bytes": 844
+  },
+  "runtime_release": {
+    "descriptor": {
+      "bytes": 13317,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1/accepted-runtime.json",
+      "sha256": "fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8"
+    },
+    "id": "terminal-replay-v1"
+  },
+  "configuration_activation": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/machine-config-activation.json",
+    "sha256": "044e14d1c22701e352616de05affb146c5738576cde285bcd68f044e175fc42e",
+    "bytes": 827
+  },
+  "canonical_recipe_check": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/final-canonical-check.log",
+    "sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac",
+    "bytes": 104
+  },
+  "latest_checkpoint_pointer": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/latest-checkpoint.json",
+    "sha256": "98f77381b22a19b575a38dd7391b72bf0fbccecfac1c11e8a60ea1b545b36fed",
+    "bytes": 1902
+  },
+  "sequence_ledger": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/sequence-ledger.json",
+    "sha256": "0b3c6e93c4769033ba54abee1fea89512944d51fae7b61ec2256b1a88bdcead7",
+    "bytes": 27017
+  },
+  "owner_locks_available": true,
+  "live_native_processes": [],
+  "official_training_launched": false,
+  "manual_command": "cd ~/Projects/Heroes && ./continue-original-4720.sh --hours 10",
+  "private_evidence": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local-script-final916-checkpoint",
+    "checkpoint_and_run_commit": "78d793355b17a099eb906870a3368e7972bceb7c",
+    "diagnostic_commit": "f481857133b49b48e6bd83215d7bfaaf9e015554",
+    "receipt_commit": "0082b8317f386e443af55d84d48534ddc47e405b",
+    "full_checkpoint_restore": true,
+    "all_raw_members_remote_readback_verified": true,
+    "raw_files": 19536,
+    "diagnostic_files": 1707,
+    "raw_archive_sha256": "0cba80bd6d99535898c656c738a61f577f3d62588a25314ed5dd593fb0ec0f8c",
+    "diagnostic_archive_sha256": "c28ecc291c92e1e7ec867dec42649704e97487ecdd0fa1d04e2cd56ca4a87162",
+    "preservation_report_sha256": "831b2d086578c6c8270b1022b28c321bebd84069010057a9cdbc7e019a16e0b5"
+  }
+}

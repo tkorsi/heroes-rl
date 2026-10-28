@@ -1,0 +1,150 @@
+{
+  "schema": "heroes-local-final916-preservation-v1",
+  "timestamp_utc": "2026-10-28T15:38:54.039403+00:00",
+  "run_id": "run-20261028T131340Z-684287b9",
+  "source_commit": "cb3849c376331aafdb940fb59dd45e143e5b4218",
+  "source_files_hash_verified": 393,
+  "status": "stopped_failure",
+  "shutdown_utc": "2026-10-28T14:14:22.339416+00:00",
+  "new_admitted_games": 584,
+  "new_ppo_updates": 146,
+  "new_admitted_decisions": 45623,
+  "new_adam_steps": 1596,
+  "training_outcomes": {
+    "loss": 584
+  },
+  "evaluation_games": 16,
+  "evaluation_outcomes": {
+    "loss": 16
+  },
+  "checkpoint_update": 916,
+  "progress": {
+    "decisions": 526188,
+    "rollouts": 3664,
+    "updates": 916
+  },
+  "optimizer_steps": 17676,
+  "original_target_games": 5000,
+  "original_admitted_games": 1148,
+  "remaining_games": 3852,
+  "failed_batch": 555,
+  "failed_batch_admitted_samples": 0,
+  "failed_batch_optimizer_updates": 0,
+  "failed_batch_after_checkpoint_absent": true,
+  "failed_attempt": {
+    "episode": 3,
+    "learner_player": 1,
+    "engine_seed": 40002222,
+    "policy_seed": 50002222,
+    "sampled_choices": 30,
+    "native_termination": "natural_terminal",
+    "classification": "validation_rejection",
+    "error": "Training requires exact-runtime native replay, never supplemental diagnostic compatibility",
+    "prior_two_completed_games_in_same_batch_excluded": true,
+    "fourth_game_not_started": true
+  },
+  "next_unused_training_sequence": 556,
+  "next_training_engine_seed": 40002224,
+  "next_training_policy_seed": 50002224,
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_branch": "codex/local-script-final916-checkpoint",
+  "private_package_commit": "78d793355b17a099eb906870a3368e7972bceb7c",
+  "private_diagnostic_commit": "f481857133b49b48e6bd83215d7bfaaf9e015554",
+  "private_receipt_commit": "0082b8317f386e443af55d84d48534ddc47e405b",
+  "remote_full_restore": {
+    "exact_model_adam_rng_progress_sampler_pool": true,
+    "progress": {
+      "decisions": 526188,
+      "rollouts": 3664,
+      "updates": 916
+    },
+    "optimizer_steps": 17676,
+    "weights_sha256": "0ae84824f9f66da79458cd86c7e525c7bd47c77031b0230c9926327f0a8ce373",
+    "frozen_source_commit": "cb3849c376331aafdb940fb59dd45e143e5b4218",
+    "files_hashed": 26,
+    "historical_metadata_unchanged": true
+  },
+  "remote_complete_raw_archive": {
+    "all_raw_archive_entries_verified": true,
+    "archive_bytes": 754799179,
+    "archive_sha256": "0cba80bd6d99535898c656c738a61f577f3d62588a25314ed5dd593fb0ec0f8c",
+    "copyrighted_data_not_dereferenced": true,
+    "files_hashed": 19536,
+    "original_file_bytes": 9777699452,
+    "symlinks_verified": 603,
+    "timestamp_utc": "2026-10-28T15:35:35.285904+00:00"
+  },
+  "remote_diagnostic_archive": {
+    "timestamp_utc": "2026-10-28T15:34:19.350599+00:00",
+    "archive_sha256": "c28ecc291c92e1e7ec867dec42649704e97487ecdd0fa1d04e2cd56ca4a87162",
+    "archive_bytes": 13222517,
+    "files_hashed": 1707,
+    "original_file_bytes": 313617737,
+    "symlinks_verified": 53,
+    "all_archive_entries_verified": true,
+    "excluded_paths": [
+      "diagnostics/supplemental-runtime/bin",
+      "runtime/bin",
+      "runtime/maps"
+    ]
+  },
+  "remote_verification": {
+    "independent_remote_git_tree_verified": true,
+    "package_git_blobs_downloaded_and_hash_verified": 49,
+    "all_15_raw_parts_downloaded": true,
+    "all_raw_members_rehashed": true,
+    "method": "Fresh remote Git tree and authenticated raw Git blob downloads; no local object alternates"
+  },
+  "checkpoint_file_sha256": {
+    "plan": "56d92dd51fe336cf8981a76a68083d7cbf6040d59cceb90feb9b79e2d74d4543",
+    "report": "039626005fb4df42f6b0b648a9cd2219c3d4e1b0d139e87c7d2881c7268a41b6",
+    "policy": "c687669ba8ad74b642be2ce587fcdcedc898397700f05a686e2dd3dbd762f22a",
+    "resume": "41b4fb0bfa0b571412f23782ba274b57aed6ced874f517867d4aacb050b72c01",
+    "initial_checkpoint": "912a30d29b02e657aa5b10723ff77ccdbcc0d0c4c004d35c2b25267951a3fb1b"
+  },
+  "all_successful_batches_admission_and_hash_audited": 146,
+  "original_ancestry_and_unique_seed_schedule_audited": true,
+  "official_pointers_ledger_and_run_reports_unchanged": true,
+  "owned_cleanup_verified": true,
+  "process_identity_audit": {
+    "timestamp_utc": "2026-10-28T14:49:39.064785+00:00",
+    "deadline_files_read": 906,
+    "recorded_pids_checked": 1813,
+    "recorded_process_groups_checked": 906,
+    "live_owned_processes": []
+  },
+  "new_games_during_preservation": 0,
+  "new_optimizer_updates_during_preservation": 0,
+  "source_evidence_sha256": {
+    "summary.json": "da2f89b8b25f01daa5da52d43464d3f00b06f8d4eb9e3ce49d8928c32c2071ea",
+    "campaign-report.json": "545c7c127598374a8cb8e184a4c10523ed96df0845fc4159560886761417b81c",
+    "shutdown.json": "418b64673ea607f3b1eca4d41c5ef5d2109e77c29a7c69eb1f809ff6410a9cb7",
+    "session.json": "828b84d4455fd986990abb9a93a65add76e6b7d0bac3546e1e106c242f3c60fb"
+  },
+  "failed_runtime": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1/bin",
+    "release_id": "garrison-dialogs-v1",
+    "descriptor_sha256": "772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98",
+    "session_bound_binary_hashes_verified": 7
+  },
+  "observed_failed_session_cap_hours": 2.0,
+  "preservation_failures_and_recovery": [
+    "A bulk private push timed out; incremental publication of all15 parts succeeded with remote ref checks.",
+    "Intermittent DNS, TCP and HTTP/2 errors interrupted uploads and readback; bounded retries and raw Git blob downloads completed.",
+    "The full shallow-clone alternative reached its240-second bound and was terminated; it was not used as restoration proof.",
+    "The first full-archive readback aggregation lacked a queued per-file manifest after an earlier transfer failed; fetching the remaining metadata and repeating verification passed."
+  ],
+  "limitations": [
+    "All584 admitted games and16 evaluations in this run were natural losses; preservation does not demonstrate strategic improvement.",
+    "The historical failed session records a two-hour cap, although the user reported a ten-hour command; its failure occurred within the recorded cap. Current manual readiness is reported separately.",
+    "Runtime binaries and copyrighted game-data targets are excluded from the diagnostic archive; symlink metadata is retained without dereferencing."
+  ],
+  "private_receipt_remote_readback_verified": true,
+  "private_receipt_git_blob": "46485de2e60d7bbf04ddce3f4fca9e4788dff589",
+  "private_receipt_sha256": "f223dc149e30f2577d852cf05af9ae8c835e555efc0c70afa48040c8c205b833",
+  "private_branch_final_head_verified": true,
+  "preservation_transfer_cleanup": {
+    "timestamp_utc": "2026-10-28T15:39:48.715242+00:00",
+    "live_owned_transfer_processes": []
+  }
+}

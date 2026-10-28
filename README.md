@@ -26,7 +26,8 @@ accepted before the next user launch. The latest manual run advanced **770 to
 sequence 555 on a terminal native-request replay rejection. That entire failed
 batch admitted no samples or update, including its two completed games.
 
-Checkpoint **916** is preserved and restored exactly. The original 5,000-game
+Checkpoint **916** is preserved and independently restored from its private
+remote copy, including Adam, RNG, sampler, progress and pool state. The original 5,000-game
 target has **1,148 admitted games and 3,852 remaining**, with unused sequence
 **556** next. The [terminal replay repair](docs/research/terminal-replay-repair-2026-10-28.md)
 aligns Python and native accounting for a cancelled Nullkiller artifact-transfer
