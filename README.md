@@ -19,15 +19,24 @@ rewards and the PPO/model architecture stay unchanged. The
 record eight individually verified games with frozen checkpoint 717: 2–117 choices,
 all natural losses. Postcollection harness bookkeeping failed and was separately
 corrected and audited; its original failure is retained. Full restoration and owned
-shutdown are verified. The next user-launched guarded run advanced checkpoint717 to770 in53 complete
-batches (212 natural losses), then stopped on an unsupported owned-mine garrison
-query. Failed sequence408 admitted no samples or updates. Checkpoint770 is
-privately preserved and independently restored; 4,436 original-map games remain,
-and the next unused sequence is409. The [garrison adapter repair](docs/research/garrison-adapter-2026-10-28.md)
-is accepted after16 new native controls,28 native regressions and8 frozen770
-policy games, all passing replay and cleanup. The manual continuation retains
-770, the visible interaction budget and terminal-only rewards. No official
-continuation has been launched.
+shutdown are verified. The guarded run from checkpoint 717 to 770 stopped on an unsupported owned-mine
+query; its [garrison repair](docs/research/garrison-adapter-2026-10-28.md) was
+accepted before the next user launch. The latest manual run advanced **770 to
+916** in **146 complete updates / 584 admitted natural losses**, then stopped in
+sequence 555 on a terminal native-request replay rejection. That entire failed
+batch admitted no samples or update, including its two completed games.
+
+Checkpoint **916** is preserved and restored exactly. The original 5,000-game
+target has **1,148 admitted games and 3,852 remaining**, with unused sequence
+**556** next. The [terminal replay repair](docs/research/terminal-replay-repair-2026-10-28.md)
+aligns Python and native accounting for a cancelled Nullkiller artifact-transfer
+request and an existing marketplace case. All packet, terminal-barrier, history
+and admission checks remain enforced. Its clean rebuilt runtime passed 594 native
+accounting checks, 16 garrison controls, 28 legacy controls and eight frozen-916
+policy games (591 choices, all natural losses); diagnostics supplied no PPO data.
+The manual continuation keeps the original map, architecture, PPO, opponent,
+terminal-only rewards and existing visible interaction budget. No official
+continuation was launched during repair.
 Improvement in winning on the original map has not been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work

@@ -1,0 +1,283 @@
+{
+  "schema": "heroes-terminal-replay-repair-v1",
+  "timestamp_utc": "2026-10-28T15:18:59.008223+00:00",
+  "status": "accepted_for_manual_continuation",
+  "implementation_commit": "c6d2cb21f391b595d35b25f5b9378b2b971c30b8",
+  "accepted_source_commit": "5a9e254d7657b10bdd5599958e674416b6768784",
+  "official_run": "run-20261028T131340Z-684287b9",
+  "official_checkpoint": 916,
+  "official_training_launched": false,
+  "new_official_games": 0,
+  "new_official_optimizer_updates": 0,
+  "original_target_games": 5000,
+  "original_admitted_games": 1148,
+  "original_remaining_games": 3852,
+  "failed_sequence": 555,
+  "next_unused_training_sequence": 556,
+  "failed_batch_training_samples": 0,
+  "failed_batch_optimizer_updates": 0,
+  "failure_classification": "native replay validation rejection, before native verifier execution; not engine/adapter query failure, timeout or publication failure",
+  "terminal_native_input": {
+    "type": 198,
+    "name": "MakeAction",
+    "request_id": 90,
+    "packet_interval": [
+      509,
+      532
+    ]
+  },
+  "cancelled_native_tail": {
+    "type": 190,
+    "name": "ExchangeArtifacts",
+    "request_id": 91,
+    "completed_packet": 526,
+    "authoritative_execution": false
+  },
+  "last_learner_action": "end_turn",
+  "failed_episode_choices": 30,
+  "related_fix": "Python terminal-tail accounting now includes TradeOnMarketplace193 already supported in native code",
+  "runtime_release": "terminal-replay-v1",
+  "runtime": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1",
+  "accepted_runtime_descriptor": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1/accepted-runtime.json",
+    "sha256": "fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8",
+    "bytes": 13317
+  },
+  "runtime_freeze": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1/freeze-receipt.json",
+    "sha256": "6b386da1d0f24b3bc2706e9f5c6b1bae854daf0de52fe0ac9468e175c0198048",
+    "bytes": 152730
+  },
+  "runtime_preflight": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1/preflight.json",
+    "sha256": "65047d6b37e7b3ceb9a2bc02c6fe4e42e5135b44a112b05fea3a75dc30404d15",
+    "bytes": 1800
+  },
+  "clean_build": {
+    "steps": 782,
+    "existing_build_directory": false,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/build-clean.log",
+      "sha256": "76961a9d50db09f6a3a37043c3a71d6312ffc10f44bc6578b32c69bc9e06ab59",
+      "bytes": 75837
+    },
+    "configure": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/configure-clean.log",
+      "sha256": "4dd39d7e80a5e2c14c1b649abe62640b01cac41d9acebdf434731983df10c125",
+      "bytes": 4275
+    }
+  },
+  "python_reproduction": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/python-failure-reproduction.json",
+    "sha256": "af6c32d7bff72915be29149041f72377bcec28be8e497f540b65e247b1881c14",
+    "bytes": 1992
+  },
+  "supplemental_failed_capture": {
+    "report": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/failed-capture-native-replay1/builtin-replay-diagnostic.json",
+      "sha256": "620c560a2613eed01d27275e3f3ad5f527bc95286ba2b1d5f2de7676f721ba50",
+      "bytes": 12875
+    },
+    "shutdown": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/supplemental-shutdown.json",
+      "sha256": "d853775e0794b343f378ee9cdec6e9139f60b2449bf38d63b42633d687a4f79c",
+      "bytes": 458
+    },
+    "diagnostic_verified": true,
+    "original_cohort_admission": false,
+    "original_cohort_result_unchanged": true,
+    "authoritative_inputs": 90,
+    "packets": 532,
+    "transactions": 777,
+    "requests": 91,
+    "choices": 30,
+    "unchecked_operations": 0,
+    "runtime_change": "vcmireplay only; all original nonverifier native bytes retained"
+  },
+  "offline_tests": {
+    "run": 1628,
+    "skipped": 33,
+    "failures": 0,
+    "errors": 0,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/offline-full-suite-final.log",
+      "sha256": "493a1f90c01dd9b66d6163a68a89ef9a975adde55e7d498cbf0ac16c087f80e7",
+      "bytes": 4300
+    }
+  },
+  "native_accounting": {
+    "checks": 594,
+    "python_test_cases": 2,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-accounting-tests.log",
+      "sha256": "5a2ba84bad2638ccb817ad3035d30cba587e544bf6d77e237f83572d6d46e49f",
+      "bytes": 522
+    }
+  },
+  "acceptance_targeted_tests": {
+    "run": 97,
+    "skipped": 1,
+    "failures": 0,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/accepted-targeted-tests.log",
+      "sha256": "faf0d6dc711852b982ea4e025c735601b4d5918300f11227782916e90999bf56",
+      "bytes": 552
+    }
+  },
+  "garrison_controls": {
+    "cases": 16,
+    "all_passed": true,
+    "both_seats": true,
+    "training_input": false,
+    "reports": {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-garrison-16/execution/plan.json",
+        "sha256": "c62f0cf284d32f4c65196ac6ba360c79cb508eafa32e7a51e811deca18ec1e3c",
+        "bytes": 32189
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-garrison-16/execution/report.json",
+        "sha256": "4515f909b418e6ece4b16ea30b4d373332177f456889794b401824e40caca5f5",
+        "bytes": 265400
+      },
+      "shutdown": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-garrison-16/shutdown.json",
+        "sha256": "70a6780ef4283ea17bac520c727d211497e2cc8edfbe9990023b1d359dae10f7",
+        "bytes": 198
+      }
+    }
+  },
+  "legacy_controls": {
+    "cases": 28,
+    "all_passed": true,
+    "both_seats": true,
+    "training_input": false,
+    "reports": {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-regression-28/execution/plan.json",
+        "sha256": "bfc368f5c968132323f2693ad3970e75deaa8283317a2ec8db6dbe1667d1b87b",
+        "bytes": 39208
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-regression-28/execution/report.json",
+        "sha256": "b2e81a132e080a3f2253f9a31a6c2947ddeab05ae26c8ae8ab53b9de2221581c",
+        "bytes": 167846
+      },
+      "shutdown": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/native-regression-28/shutdown.json",
+        "sha256": "df856bb2d092966ce8df55a6897d04e721d68809c025fb2b28eb02c2ff24b8d3",
+        "bytes": 248
+      }
+    }
+  },
+  "frozen916_policy": {
+    "games": 8,
+    "choices": 591,
+    "outcomes": {
+      "win": 0,
+      "loss": 8,
+      "cutoff": 0
+    },
+    "all_identity_replay_reconstruction_cleanup_passed": true,
+    "full_parent_unchanged": true,
+    "full_parent_restore": true,
+    "training_samples": 0,
+    "optimizer_steps": 0,
+    "plan": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/policy916-diagnostic1/plan.json",
+      "sha256": "519615acd0ccc34e96d97d536c92baa5f7bdc22dd0b9c4d722af5997919e9b33",
+      "bytes": 57027
+    },
+    "report": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/policy916-diagnostic1/execution/report.json",
+      "sha256": "b8a5afacf0cea36f68f42789c445b5884d3734d2b7e1b6f457e2897f29a7c748",
+      "bytes": 21039
+    },
+    "shutdown": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/policy916-diagnostic1/shutdown.json",
+      "sha256": "d744fefc569650f3e25bd4154c537e4643f27dce9a870c22f667af402bdf21be",
+      "bytes": 1387
+    },
+    "policy_acceptance": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1/policy-reconstruction-acceptance.json",
+      "sha256": "b3c6223046e4ca7307769bd49e658adc3e1c69f72d190d5984fa92b064e0baca",
+      "bytes": 47379
+    },
+    "fresh_terminal_tails": {
+      "MoveHero": 5,
+      "EndTurn": 2,
+      "ExchangeArtifacts": 0,
+      "TradeOnMarketplace": 0
+    }
+  },
+  "unchanged_experiment": {
+    "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+    "architecture": true,
+    "ppo": true,
+    "opponent": "Nullkiller Easy / BattleAI",
+    "rewards": "terminal-only +1/-1/0",
+    "policy_support": "visible-interaction-budget-v1",
+    "demonstrations": false,
+    "strategic_masks_added": false
+  },
+  "preservation_receipt": "validation/local-script-final916-sync-2026-10-28.json",
+  "main_readiness_receipt": "validation/terminal-replay-main-readiness-2026-10-28.json",
+  "observed_failed_session_cap_hours": 2.0,
+  "requested_manual_continuation_hours": 10,
+  "cli_audit": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/offline-cli-propagation-audit.json",
+    "sha256": "fba287b1ef88969e14abe1fb0f50fa89acaca7d95a550c0e9f9c93bac79061e2",
+    "bytes": 6197
+  },
+  "retained_unsuccessful_attempts": [
+    {
+      "attempt": "initial fresh dependency preparation",
+      "reason": "canonical header changed during expected-tree verification",
+      "log": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/prepare-fresh.log",
+        "sha256": "c40050f795c36f325f027201012e921aa6034eed5f8a8b0155ff94475795d5f4",
+        "bytes": 141
+      }
+    },
+    {
+      "attempt": "first full offline suite",
+      "reason": "source-pin edits overlapped test imports; integrity gates rejected change",
+      "failures": 9,
+      "errors": 5,
+      "log": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/offline-full-suite.log",
+        "sha256": "59971e29f0c498dd126591ece4aee3e417c328c1ce8ddfb69594add201145783",
+        "bytes": 20702
+      }
+    },
+    {
+      "attempt": "first offline CLI probe",
+      "reason": "import-path setup error before any game",
+      "evidence": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/offline-cli-propagation-audit.json",
+        "sha256": "fba287b1ef88969e14abe1fb0f50fa89acaca7d95a550c0e9f9c93bac79061e2",
+        "bytes": 6197
+      }
+    },
+    {
+      "attempt": "first offline acceptance aggregation",
+      "reason": "source.commit field absent; corrected to source.git_commit before output write",
+      "evidence": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/terminal-replay-repair-20261028/acceptance-aggregation-attempt1.json",
+        "sha256": "11bc226d92c576316bf243811cd55fb082bbda787e658860a36c08b481d10118",
+        "bytes": 544
+      }
+    },
+    {
+      "attempt": "bulk private publication",
+      "reason": "transport timeout; incremental retry/readback recorded in preservation receipt"
+    }
+  ],
+  "limitations": [
+    "No improvement in original-map strategy is established; all diagnostic games were losses.",
+    "ExchangeArtifacts cancellation did not recur in fresh policy games; coverage uses actual preserved failed capture plus native packet-codec controls.",
+    "Marketplace cancellation has native packet-codec and Python coverage, without a new natural-game trigger.",
+    "Allied-garrison behavior retains offline-only coverage.",
+    "Historical session records two hours despite reported ten-hour invocation; no argument propagation defect was found and failure preceded either deadline."
+  ]
+}

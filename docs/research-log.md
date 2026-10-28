@@ -576,3 +576,32 @@ offline check with the accepted runtime:770 restored,4,436 games left, sequence4
 10-hour cap. [Main readiness](../validation/garrison-main-readiness-2026-10-28.json)
 records configuration activation and independently verified private receipts.
 No official training was launched.
+
+
+## 28 October 2026 — checkpoint916 and terminal-request replay repair
+
+The latest manual original-map run admitted 584 natural losses in 146 complete
+updates, advancing 770 to 916. Sixteen evaluation losses were separate. Sequence
+555's third game ended naturally but replay accounting rejected a cancelled
+Nullkiller artifact-transfer request; its two preceding completed games were
+also excluded, and no batch update began. The next unused sequence is 556;
+1,148 of 5,000 original-map games are admitted and 3,852 remain.
+
+The [repair and retained unsuccessful attempts](research/terminal-replay-repair-2026-10-28.md)
+identify a Python/native terminal-tail allowlist gap and a related marketplace
+drift. Supplemental replay of the preserved failure checked all 90 native
+inputs, 532 packets and 777 transactions, without changing the failed cohort.
+The clean rebuilt runtime passed 594 accounting checks, 16 garrison controls,
+28 legacy controls and eight frozen-916 policy games (591 choices, eight losses),
+with exact reconstruction and no training samples or updates. Full checkpoint
+state remained unchanged. The stable offline suite passed 1,628 tests, 33 skipped.
+These results establish repair coverage, not improved game strategy. Fresh
+policy games did not reproduce the rare artifact-transfer cancellation; the
+original captured-command replay and native fixtures cover it explicitly.
+
+The runtime release is `terminal-replay-v1`. Original map, architecture, PPO,
+Nullkiller Easy/BattleAI, terminal-only +1/-1/0 rewards and the existing visible
+interaction budget remain unchanged. [Preservation](../validation/local-script-final916-sync-2026-10-28.json)
+and [manual readiness](../validation/terminal-replay-main-readiness-2026-10-28.json)
+record the complete state and exact ten-hour check. No official training or
+cloud work was launched by this repair.

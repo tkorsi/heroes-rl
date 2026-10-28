@@ -58,5 +58,75 @@ launch command in this investigation. The recorded failure occurred after about
 one hour, before that deadline. No inference about the original shell invocation
 is made; the final readiness check must explicitly verify ten hours.
 
-Results are pending. Preparation alone is not successful native validation or
-permission to launch official training.
+## Repair and validation results
+
+Implementation commit `c6d2cb21f391b595d35b25f5b9378b2b971c30b8` adds only the
+concrete `ExchangeArtifacts` terminal tail to native accounting and aligns Python
+with that type and the existing native `TradeOnMarketplace` type. Unknown adjacent
+request types, query replies, bulk artifact exchange, duplicate tails, altered
+serialized identities and requests outside the verified terminal interval remain
+rejected. Admission now reports the actual replay failure before refusing a
+receipt. No engine gameplay rule or ExplorerRL action changed; canonical verifier
+source is tracked in `engine/ExperimentReplay/RequestAccounting.h`.
+
+A byte-identical diagnostic copy reproduces the original Python rejection.
+Supplemental native replay uses the original client, libvcmi and AI binary bytes
+with only the rebuilt verifier replaced. It checks all 90 authoritative inputs,
+532 outgoing/client packets, 91 requests and 777 transactions with no unchecked
+operations or divergences, and reconstructs all 30 learner choices. The cancelled
+request remains separately accounted and unexecuted. Original evidence and its
+failed admission remain unchanged; this diagnostic cannot admit the old batch.
+
+The runtime was built from an empty build directory (782 build steps), frozen
+with nine signed artifacts and 592 resource files, checked for actual local
+library loading, and verified against the canonical dependency recipe. Native
+packet-codec tests passed 594 checks. The stable full offline run passed 1,628
+tests with 33 platform/optional skips. After acceptance pinning, 97 targeted tests
+passed with one skip.
+
+All 16 fresh garrison controls and 28 fresh legacy controls passed strict history,
+independent native replay and bounded owned cleanup. Eight actual frozen-916
+original-map policy games then passed exact replay and policy reconstruction:
+591 choices, eight natural losses, zero training samples and zero optimizer steps.
+Model, Adam, Python/Torch/minibatch RNG, sampler, progress and pool remained exact.
+Seven games exercised terminal cancellation (five MoveHero and two EndTurn);
+ExchangeArtifacts and marketplace cancellation did not recur in these eight.
+Their coverage is the preserved actual ExchangeArtifacts replay and native
+packet/accounting fixtures. Allied-garrison native coverage remains unproven;
+its existing permission tests are offline only. No strategic improvement is
+claimed.
+
+Release `terminal-replay-v1` binds runtime
+`/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair1`.
+Accepted descriptor SHA256:
+`fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8`.
+The acceptance gate requires the preserved-failure diagnostic, full native proof,
+all 44 interface controls and all eight frozen-policy reconstruction proofs.
+
+## Retained unsuccessful preparation and publication attempts
+
+- Initial fresh dependency preparation overlapped a canonical header edit and
+  correctly rejected the expected-tree mismatch. The preserved old dependency
+  was copied back, synchronized from canonical overlays/patch0030, and verified
+  before the empty-directory build. No game used the rejected preparation.
+- The first full offline suite overlapped the final source-pin edits: nine
+  failures and five errors were source-integrity rejections. Its log remains;
+  the stable committed-tree rerun passed all 1,628 tests with the same 33 skips.
+- An initial offline CLI probe had an import-path setup error. The corrected
+  intercepted shell/parser/re-execution probe verified 36,000 seconds on both
+  clocks without launching a campaign.
+- Initial acceptance aggregation used `source.commit` instead of
+  `source.git_commit`; it failed before writing output. Correct aggregation
+  reused the already passed evidence, with no repeated game or seed.
+- The first bulk private archive publication failed at transport, separate from
+  the training failure. Incremental publication and independent read-back are
+  recorded in the checkpoint preservation receipt.
+
+The historical migration proof uses generic policy-support transition labels
+for adapter source-pin updates. In this repair they do not represent an additional
+policy-support intervention: the source review establishes unchanged policy
+support, rewards, architecture and PPO.
+
+See [compact repair evidence](../../validation/terminal-replay-results-2026-10-28.json)
+and [checkpoint-916 preservation](../../validation/local-script-final916-sync-2026-10-28.json).
+The user alone starts any continuation; preparing and checking it starts no games.
