@@ -542,6 +542,7 @@ def start(args):
                    '--profile', args.profile, '--eval-every', str(args.eval_every)]
         if args.fast_path:
             command += ['--fast-path', '--prefix-helpers', str(args.prefix_helpers),
+                        '--collection-workers', str(args.collection_workers),
                         '--overlap-verification' if args.overlap_verification else '--serial-verification',
                         *(['--replay-threads', str(args.replay_threads)] if args.text_leaf_replay else ['--no-text-replay']),
                         *(x for name in args.experiment for x in ('--experiment', name))]
@@ -573,7 +574,7 @@ def launch_owned(args):
     require(args.fast_path, 'This release runs only as the explicit fast path; launch with start')
     execution = adapter.execution_choice(overlapped_verification=args.overlap_verification,
                                          prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
-                                         replay_threads=args.replay_threads,
+                                         replay_threads=args.replay_threads, collection_workers=args.collection_workers,
                                          experiments=args.experiment)
     policy_support = adapter.check_policy_support(args.interaction_guard)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
@@ -623,7 +624,7 @@ def launch_owned(args):
                        'remain unchanged. This is a new behavior-support experiment, not identical-policy acceleration.')
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
     print(f"Execution optimizations: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
-          f"verification, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
+          f"verification, {execution['collection_workers']} collectors, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
           + ('off' if not execution['text_leaf_replay'] else 'not used by the experiment' if execution['experiments']
              else f"on {execution['replay_threads']} threads" if execution['replay_threads'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
@@ -729,6 +730,8 @@ def main():
     fast.add_argument('--prefix-helpers', type=int, default=0, help='Exact forked PPO prefix helpers (0 to 8; default 0)')
     fast.add_argument('--no-text-replay', dest='text_leaf_replay', action='store_false',
                       help='Compute every text leaf occurrence separately (bit-identical; the fallback if the replay refuses)')
+    fast.add_argument('--collection-workers', type=int, choices=(1, 4), default=1,
+                      help='Independent collectors for the unchanged four-game batch (default: 1)')
     fast.add_argument('--replay-threads', type=int,
                       help='Threads (no fork) that replay text leaves during the backward, 0 to 8 (default: --prefix-helpers)')
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
@@ -743,7 +746,7 @@ def main():
     if args.batch_wall_seconds is not None and not 3600 <= args.batch_wall_seconds <= 21600:
         parser.error('--batch-wall-seconds must be between 3600 and 21600')
     if not args.fast_path and (args.overlap_verification is not None or args.prefix_helpers or args.experiment
-                               or not args.text_leaf_replay or args.replay_threads is not None):
+                               or not args.text_leaf_replay or args.replay_threads is not None or args.collection_workers != 1):
         parser.error('Fast-path options require --fast-path')
     if not 0 <= args.prefix_helpers <= 8: parser.error('--prefix-helpers must be between 0 and 8')
     if args.replay_threads is not None and not args.text_leaf_replay: parser.error('--replay-threads needs the text-leaf replay')
@@ -785,12 +788,12 @@ def main():
                 adapter.check_lineage(adapter.read_descriptor(parent)[0],
                     adapter.execution_choice(overlapped_verification=args.overlap_verification,
                         prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
-                        replay_threads=args.replay_threads, experiments=args.experiment), args.interaction_guard)
+                        replay_threads=args.replay_threads, collection_workers=args.collection_workers, experiments=args.experiment), args.interaction_guard)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
                 exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
                 session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],
-                policy_support=args.interaction_guard,
+                policy_support=args.interaction_guard, collection_workers=args.collection_workers,
                 gameplay_performed=False, ppo_updates=0), indent=2))
         else:
             print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],

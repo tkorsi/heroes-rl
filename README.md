@@ -21,14 +21,14 @@ all natural losses. Postcollection harness bookkeeping failed and was separately
 corrected and audited; its original failure is retained. Full restoration and owned
 shutdown are verified. The guarded run from checkpoint 717 to 770 stopped on an unsupported owned-mine
 query; its [garrison repair](docs/research/garrison-adapter-2026-10-28.md) was
-accepted before the next user launch. The latest manual run advanced **770 to
+accepted before the next user launch. The earlier failed manual run advanced **770 to
 916** in **146 complete updates / 584 admitted natural losses**, then stopped in
 sequence 555 on a terminal native-request replay rejection. That entire failed
 batch admitted no samples or update, including its two completed games.
 
 Checkpoint **916** is preserved and independently restored from its private
 remote copy, including Adam, RNG, sampler, progress and pool state. The original 5,000-game
-target has **1,148 admitted games and 3,852 remaining**, with unused sequence
+target then had **1,148 admitted games and 3,852 remaining**, with unused sequence
 **556** next. The [terminal replay repair](docs/research/terminal-replay-repair-2026-10-28.md)
 aligns Python and native accounting for a cancelled Nullkiller artifact-transfer
 request and an existing marketplace case. All packet, terminal-barrier, history
@@ -38,7 +38,12 @@ policy games (591 choices, all natural losses); diagnostics supplied no PPO data
 The manual continuation keeps the original map, architecture, PPO, opponent,
 terminal-only rewards and existing visible interaction budget. No official
 continuation was launched during repair.
-Improvement in winning on the original map has not been demonstrated.
+Subsequent user-launched one-hour sessions stopped normally at their compute
+reserve: **916 to 992**, then **992 to 1,095**. The latest completed session
+admitted 412 games in 103 updates, all losses, with exact final restoration and
+owned cleanup. The original target now has **1,864 admitted games and 3,136
+remaining**; sequence **735** is next. These are observations from the closed
+session, not authorization to launch another. Improvement in winning on the original map has not been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate
@@ -271,6 +276,28 @@ at manual launch. The old `./train-local.sh --hours 2` remains the easier8x8
 preset. See the [launch and result instructions](docs/operations/local-script-training.md)
 and [prospective original-map experiment](configs/local-original-5000-20261026.json).
 Preparing this next experiment does not start games or alter the active release.
+
+The [four-process integration](docs/research/parallel-continuation-2026-10-28.md)
+adapts the isolated eight-process collector to the existing **four-game** batch.
+`--collection-workers 4` collects its four independently seeded games concurrently;
+the generic runner defaults to one collector. Workers activate the immutable
+plan's visible interaction budget and execution choices. Every game must pass
+native replay and policy reconstruction after verified worker cleanup; an
+incomplete batch cannot update PPO. Batch size, optimizer cap, schedule ordering,
+map, opponent and terminal rewards remain unchanged.
+
+Claude's latest Python performance work is already incorporated through merges
+`8b81931` and `3e2a268`, including the later text-leaf replay fixes. The older
+experimental embedded native backend remains unaccepted on the current Mac
+runtime; its stale branch is not restored over the garrison and terminal repairs.
+
+The historical [eight-process experiment](docs/research/parallel-eight-collection-2026-10-27.md)
+remains a separate diagnostic contract. Its checkpoint-699 benchmark performed no
+PPO update: collection took 53.69 versus 161.20 seconds, and collection plus
+verification took 189.10 versus 293.08 seconds. Two paired histories differed,
+so these observed timings do not establish identical-workload acceleration or
+current four-process performance. Eight-game batches are not enabled by the
+manual continuation.
 
 ## Experiment agreement
 

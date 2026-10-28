@@ -1,0 +1,663 @@
+{
+  "arms": [
+    {
+      "attempts": [
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 13.396241542010102,
+          "engine_seed": 1500000016,
+          "episode": 1,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000016,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2292,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 14.695336874981876
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 5.280153583968058,
+          "engine_seed": 1500000017,
+          "episode": 2,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000017,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 854,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 6.045063249999657
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 7.047430250036996,
+          "engine_seed": 1500000018,
+          "episode": 3,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000018,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 1125,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 8.164640167029575
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 15.729990584019106,
+          "engine_seed": 1500000019,
+          "episode": 4,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000019,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2731,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 19.87292954098666
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 5.704211207979824,
+          "engine_seed": 1500000020,
+          "episode": 5,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000020,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 1042,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 6.297591792012099
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 12.231809250020888,
+          "engine_seed": 1500000021,
+          "episode": 6,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000021,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2312,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 14.708243625005707
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 31.59396824997384,
+          "engine_seed": 1500000022,
+          "episode": 7,
+          "episode_status": "truncated",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 1600000022,
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4960,
+          "status": "passed",
+          "termination_reason": "collection_window",
+          "verification_seconds": 37.644638833007775
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 20.10154408297967,
+          "engine_seed": 1500000023,
+          "episode": 8,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000023,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 3629,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 24.230790374975186
+        }
+      ],
+      "collection_seconds": 161.19575941597577,
+      "decisions": 18945,
+      "fresh_training_receipts_discarded": 8,
+      "name": "serial-1",
+      "parent_rng_unchanged": true,
+      "peak_concurrent_native_processes": 1,
+      "status": "passed",
+      "verification_seconds": 131.80072029097937,
+      "verified_batch_seconds": 293.077962499985,
+      "weights_unchanged": true,
+      "workers": 1
+    },
+    {
+      "attempts": [
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 14.181429582997225,
+          "engine_seed": 1500000016,
+          "episode": 1,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000016,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2292,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 15.449902833031956
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 5.7413582089939155,
+          "engine_seed": 1500000017,
+          "episode": 2,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000017,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 854,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 5.948722124972846
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 7.99417545797769,
+          "engine_seed": 1500000018,
+          "episode": 3,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000018,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 1125,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 8.491558666981291
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 17.642254249949474,
+          "engine_seed": 1500000019,
+          "episode": 4,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000019,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2731,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 20.463813541980926
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 6.776892499998212,
+          "engine_seed": 1500000020,
+          "episode": 5,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000020,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 1042,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 7.183515000040643
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 13.649152666970622,
+          "engine_seed": 1500000021,
+          "episode": 6,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000021,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 2312,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 14.882589125016239
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 33.96933562500635,
+          "engine_seed": 1500000022,
+          "episode": 7,
+          "episode_status": "truncated",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": null,
+            "red": null
+          },
+          "policy_seed": 1600000022,
+          "replay_verified": true,
+          "rewards": {
+            "blue": null,
+            "red": null
+          },
+          "sampled_choices": 4960,
+          "status": "passed",
+          "termination_reason": "collection_window",
+          "verification_seconds": 37.4685316249961
+        },
+        {
+          "cleanup_verified": true,
+          "collection_seconds": 22.288479958020616,
+          "engine_seed": 1500000023,
+          "episode": 8,
+          "episode_status": "completed",
+          "identity_verified": true,
+          "learner_player": 0,
+          "outcomes": {
+            "blue": "win",
+            "red": "loss"
+          },
+          "policy_seed": 1600000023,
+          "replay_verified": true,
+          "rewards": {
+            "blue": 1,
+            "red": -1
+          },
+          "sampled_choices": 3629,
+          "status": "passed",
+          "termination_reason": "natural_terminal",
+          "verification_seconds": 25.25979845802067
+        }
+      ],
+      "collection_seconds": 53.69385120802326,
+      "decisions": 18945,
+      "fresh_training_receipts_discarded": 8,
+      "name": "parallel-8",
+      "parent_rng_unchanged": true,
+      "peak_concurrent_native_processes": 8,
+      "status": "passed",
+      "verification_seconds": 135.293235750054,
+      "verified_batch_seconds": 189.096311625035,
+      "weights_unchanged": true,
+      "workers": 8
+    }
+  ],
+  "checkpoint": {
+    "bytes": 638131,
+    "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/input/after-policy.pt",
+    "sha256": "045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046"
+  },
+  "comparison": {
+    "all_semantic_matches": false,
+    "both_arms_verified": true,
+    "identical_workload_speedup": null,
+    "observed_speedup": {
+      "collection_seconds": 3.002126980824369,
+      "verification_seconds": 0.9741855870346183,
+      "verified_batch_seconds": 1.5498872504776215
+    },
+    "pairs": [
+      {
+        "parallel_game_digest": "9c65d224131b54de327056a5e559109271d704ba5db1859743ace5f0e8ed35a0",
+        "parallel_status": "passed",
+        "schedule_index": 0,
+        "semantic_match": false,
+        "serial_game_digest": "c34a19ddcbde4098b89bf12048c0c6005428d1551a4c4929f0559eeeba969bd6",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "ab16f4dc1fc3ddb198dfbe516c90a1e9eecd57f4c188da1a4f54ab36b42cea1a",
+        "parallel_status": "passed",
+        "schedule_index": 1,
+        "semantic_match": true,
+        "serial_game_digest": "ab16f4dc1fc3ddb198dfbe516c90a1e9eecd57f4c188da1a4f54ab36b42cea1a",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "48373ab1a45a9fcaed6a3aeb3a27395db035ed21595c4f6c70fbbcf185c46093",
+        "parallel_status": "passed",
+        "schedule_index": 2,
+        "semantic_match": false,
+        "serial_game_digest": "958c59f7263acc3e800a5ebafa1689caf8db3fdbb4dda91d676915859cf46b44",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "7e5773cf0d7d8f06c8cf83e7c81933c9d2a43047523566981964989208d8198c",
+        "parallel_status": "passed",
+        "schedule_index": 3,
+        "semantic_match": true,
+        "serial_game_digest": "7e5773cf0d7d8f06c8cf83e7c81933c9d2a43047523566981964989208d8198c",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "d94dd5ed33479f4817c40ae7eafdc0aeecd5e86fa937483efa3feb0ebea6214a",
+        "parallel_status": "passed",
+        "schedule_index": 4,
+        "semantic_match": true,
+        "serial_game_digest": "d94dd5ed33479f4817c40ae7eafdc0aeecd5e86fa937483efa3feb0ebea6214a",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "447b8412a8a6b0918834e82a6d92cfbf782664513d24d9be96619457c6526d71",
+        "parallel_status": "passed",
+        "schedule_index": 5,
+        "semantic_match": true,
+        "serial_game_digest": "447b8412a8a6b0918834e82a6d92cfbf782664513d24d9be96619457c6526d71",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "ec5c44196fb5e586ae7f565e14e9a5497f1539b468e64a2a81aaa4753c052faf",
+        "parallel_status": "passed",
+        "schedule_index": 6,
+        "semantic_match": true,
+        "serial_game_digest": "ec5c44196fb5e586ae7f565e14e9a5497f1539b468e64a2a81aaa4753c052faf",
+        "serial_status": "passed"
+      },
+      {
+        "parallel_game_digest": "9fa7962814cbf3afe6a98c56a1005afe1c374ba9c69c843a00591a571d19b37d",
+        "parallel_status": "passed",
+        "schedule_index": 7,
+        "semantic_match": true,
+        "serial_game_digest": "9fa7962814cbf3afe6a98c56a1005afe1c374ba9c69c843a00591a571d19b37d",
+        "serial_status": "passed"
+      }
+    ]
+  },
+  "external_activity_note": "Official state changed while the isolated benchmark ran. A user-launched process may have progressed; the benchmark never writes or locks these files. Do not claim that official state remained unchanged.",
+  "implementation_commit": "e9c23b7f7c311e3a4de51e36afd0e84e24af07a4",
+  "initial_failed_setup": {
+    "guard": {
+      "bytes": 729,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-8af8d98/guard-result.json",
+      "sha256": "662b539fb7fb3a6ed1163f65b4e44395b273d7345c6260cbea096340338c08db"
+    },
+    "implementation_commit": "8af8d98",
+    "native_games": 1,
+    "reason": "missing_source_identity",
+    "summary": {
+      "bytes": 19579,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-8af8d98/summary.json",
+      "sha256": "ede7e182165086e74047908895b797f24345a40a10eccd056a23c573f1242710"
+    },
+    "unstarted_slots": 15
+  },
+  "limitations": [
+    "One serial arm followed by one concurrent arm; no repetitions or counterbalancing.",
+    "Collection timing includes child startup, checkpoint loading and owned collection cleanup.",
+    "Verification runs sequentially after all collection and is included in complete batch timing.",
+    "Eight games from one seat measure this fixed workload only; no general training-throughput claim.",
+    "Fresh training receipts exercise collection/admission but are discarded without a PPO call.",
+    "Identical seeds do not guarantee identical Nullkiller choices; semantic histories are compared.",
+    "Other workloads on this Mac can affect both timings; no existing process is controlled.",
+    "Only six of eight full semantic history pairs match. Observed ratios are not an exact identical-workload comparison.",
+    "No native eight-game PPO update was performed; eight-game optimizer admission was tested with synthetic data.",
+    "The official campaign continued during the benchmark; mutable official pointers advanced independently."
+  ],
+  "machine": {
+    "cpu_count": 16,
+    "cpu_model": "Apple M4 Max",
+    "memory_bytes": 137438953472,
+    "platform": {
+      "machine": "arm64",
+      "node": "Yehors-MacBook-Pro.local",
+      "processor": "arm",
+      "release": "25.5.0",
+      "system": "Darwin",
+      "version": "Darwin Kernel Version 25.5.0: Tue Jun  9 22:28:34 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T6041"
+    }
+  },
+  "native": {
+    "binary": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-update92-artifact-fix2/bin/vcmiclient",
+    "binary_sha256": "79e527665872bed791f2a3fed88e5087880964211dcbedebd0ba57917c541540",
+    "explorer_rl_sha256": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "log_level": "info",
+    "map": {
+      "name": "hero-management-v2.vmap",
+      "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+    }
+  },
+  "official_state_unchanged": false,
+  "official_training_observed_after": [
+    {
+      "command": "/Users/orsi/Projects/Heroes/.venv/bin/python -m experiments.learner.local_script_training worker --plan /Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261027T155928Z-49ef925a/batches/train-000341-seat1/plan.json --sha256 c9ace359369af8d330fe59af2e18ce713c131c995c5aa978ecacc67930c6c374 --started 292640.940155125 --wall-started 1793117734.909127",
+      "cpu_percent": 189.0,
+      "elapsed": "00:08",
+      "parent_pid": 41375,
+      "pid": 41380,
+      "rss_kib": 511584
+    }
+  ],
+  "optimizer_updates": 0,
+  "original_inputs_unchanged": true,
+  "owned_cleanup_verified": true,
+  "raw_evidence": {
+    "concurrent-training-observation.json": {
+      "bytes": 682,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/concurrent-training-observation.json",
+      "sha256": "f218c0e78ec6a2921bcc3a03ba84449d2f0bc8abca1a150cd34e38ce2b51b4e6"
+    },
+    "guard-result.json": {
+      "bytes": 7602,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/guard-result.json",
+      "sha256": "8544003ebd573526140fef635e5539b0b09e79016d88e31b94a0d678e1aa1fd1"
+    },
+    "post-benchmark-training-observation.json": {
+      "bytes": 683,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/post-benchmark-training-observation.json",
+      "sha256": "a2e23d17f95c67421317b6c80f872edff43e731049d18329881ea9827c2fce45"
+    },
+    "preregistered.json": {
+      "bytes": 67839,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/preregistered.json",
+      "sha256": "a63a55fa73447366c5866ecc1ece58eae03e33f177695bfbe13efead41b6d0a3"
+    },
+    "semantic-difference-audit.json": {
+      "bytes": 44955,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/semantic-difference-audit.json",
+      "sha256": "061085a1c01d8ad5dac4974e2948112234337644dc81cce8749342a9047af0fc"
+    },
+    "summary.json": {
+      "bytes": 47645,
+      "path": "/Users/orsi/Projects/Heroes-bench/parallel-eight/run-20261027-preflight-fixed/summary.json",
+      "sha256": "7c514e3b20f5263277fcd33663cd0cbca133f00e9c99e5451627e546acf0bb54"
+    }
+  },
+  "recorded_groups_closed": 32,
+  "runtime": {
+    "AI/libBattleAI.dylib": "73e9b2b7e714a4440552cd502d8c767df56b787f367cf1a513062bfbb16995b1",
+    "AI/libEmptyAI.dylib": "8351b6e36945796fbd3215c537afea120eb59adf83275c589604ab61ac12213c",
+    "AI/libExplorerRL.dylib": "27a37adc672fdfa18499d40f72ec4e4be35afe820057987752b6b6b0834abf41",
+    "AI/libNullkiller.dylib": "bc9d458abb32b1d9da92bf822dc4b8a9d01bb998386f6f044ab96572bbbfa8db",
+    "AI/libStupidAI.dylib": "30e8a58a8754f1cf888f896d2a9a1d1bd466a0bd2181acc978c03a6940d7a205",
+    "libvcmi.dylib": "53370138f2db6a3cefab07c57a6239931876411cf96bdced7d9d6a132204a243",
+    "vcmireplay": "0a00c7b8d01aa004070ee724c120387b4b454966b6eb66ae5aab2dd166ac1b13"
+  },
+  "schema": "heroes-parallel-eight-collection-result-v1",
+  "scope": "Eight Red original-map games from fixed checkpoint699, serial collection versus eight process collection. No PPO campaign.",
+  "semantic_difference_analysis": {
+    "differing_decision_records": 8,
+    "episodes": [
+      {
+        "different_decisions": [
+          12953,
+          12959,
+          12965,
+          12971,
+          12977,
+          12983,
+          12989
+        ],
+        "enemy_position_parallel": [
+          7,
+          10,
+          0
+        ],
+        "enemy_position_serial": [
+          7,
+          11,
+          0
+        ],
+        "episode": 1,
+        "first_different_frame_day": 1,
+        "first_different_frame_kind": "view",
+        "first_different_frame_seq": 12949,
+        "maximum_absolute_logprob_difference": 1.0728836059570312e-06,
+        "maximum_absolute_value_difference": 1.3828277587890625e-05
+      },
+      {
+        "different_decisions": [
+          6689
+        ],
+        "enemy_position_parallel": [
+          4,
+          10,
+          0
+        ],
+        "enemy_position_serial": [
+          4,
+          9,
+          0
+        ],
+        "episode": 3,
+        "first_different_frame_day": 1,
+        "first_different_frame_kind": "view",
+        "first_different_frame_seq": 6687,
+        "maximum_absolute_logprob_difference": 5.364418029785156e-07,
+        "maximum_absolute_value_difference": 5.9723854064941406e-05
+      }
+    ],
+    "identical_full_history_pairs": 6,
+    "interpretation": "Real enemy position/occupancy observations differ before later learner choices. Underlying native cause is not established. Preserve strict comparison failure; these are not bookkeeping-only differences.",
+    "sampled_actions_equal": 18945,
+    "support_sets_equal": true
+  },
+  "status": "verified_nonidentical_games",
+  "test_validation": {
+    "engine_recipe_check": "Passed in isolated generated checkout",
+    "passed": 80,
+    "skipped": 3,
+    "skips": "Linux-only process-state/descriptor checks",
+    "tests_run": 83
+  },
+  "timestamp_utc": "2026-10-27T16:15:42.816402+00:00",
+  "training_samples_admitted": 0,
+  "valid_native_games": 16,
+  "within_hard_deadline": true
+}

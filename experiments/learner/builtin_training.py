@@ -272,17 +272,48 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
             heldout_checker(state, plan['runtime'], plan['native'])
         model = state.model
         receipts = []
-        for index, row in enumerate(plan['schedule']):
-            def save_attempt(value, index=index):
-                report['attempts'][index] = value; save()
+        if 'parallel_collection' in cfg or plan.get('execution', {}).get('collection_workers', 1) == 4:
+            from .parallel_collection import collect_batch
+            from .builtin_gameplay import _parallel_collection_contract
+            collection = _parallel_collection_contract(plan)
+            batch_size = collection['batch_size']
             phase = 'evaluation' if plan['mode']=='evaluation' else 'training'
-            # A passed attempt ended with a passed identity check; nothing runs between it and the next.
-            attempt, receipt = pilot.run_attempt(plan, args.plan, args.sha256, index, model, state.checkpoint,
-                budget(phase).capped(cfg['attempt_wall_seconds']), save_attempt, identity_verified=index > 0)
-            pilot.require(attempt['status']=='passed' and attempt.get('identity_verified') is True,
-                          'Attempt failed; batch stopped without replacement')
-            if phase == 'training':
-                pilot.require(receipt is not None, 'Missing fresh receipt'); receipts.append(receipt)
+            limits = budget(phase)
+            def save_parallel(index, value):
+                report['attempts'][index] = value; save()
+            collected = collect_batch(args.plan, args.sha256, model, state.checkpoint,
+                workers=collection['workers'],
+                deadline_monotonic=limits.deadline, deadline_wall=limits.wall_deadline,
+                save=save_parallel)
+            pilot.require(len(collected.attempts) == len(plan['schedule']) == batch_size
+                          and all(item['status'] == 'passed'
+                                  and item.get('identity_verified') is True
+                                  and item.get('cleanup_verified') is True
+                                  for item in collected.attempts),
+                          'Parallel collection did not verify the complete declared batch')
+            pilot.require(len(collected.receipts) == (batch_size if phase == 'training' else 0),
+                          'Parallel collection returned an incomplete receipt set')
+            report['attempts'] = list(collected.attempts)
+            report['parallel_collection'] = {
+                'workers': collection['workers'],
+                'games': len(collected.attempts),
+                'collection_seconds': collected.collection_seconds,
+                'verification_seconds': collected.verification_seconds,
+            }
+            receipts = list(collected.receipts)
+            save()
+        else:
+            for index, row in enumerate(plan['schedule']):
+                def save_attempt(value, index=index):
+                    report['attempts'][index] = value; save()
+                phase = 'evaluation' if plan['mode']=='evaluation' else 'training'
+                # A passed attempt ended with a passed identity check; nothing runs between it and the next.
+                attempt, receipt = pilot.run_attempt(plan, args.plan, args.sha256, index, model, state.checkpoint,
+                    budget(phase).capped(cfg['attempt_wall_seconds']), save_attempt, identity_verified=index > 0)
+                pilot.require(attempt['status']=='passed' and attempt.get('identity_verified') is True,
+                              'Attempt failed; batch stopped without replacement')
+                if phase == 'training':
+                    pilot.require(receipt is not None, 'Missing fresh receipt'); receipts.append(receipt)
         if plan['mode'] == 'training':
             report['update_status']='started'; save()
             model.train().requires_grad_(True)

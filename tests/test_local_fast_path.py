@@ -252,7 +252,8 @@ class ExecutionChoiceTests(unittest.TestCase):
     def test_only_known_exact_choices_and_named_experiments(self):
         value = local.execution_choice(overlapped_verification=True, prefix_helpers=3)
         self.assertEqual(value, {'implementation': 'exact-fast-path-v1', 'overlapped_verification': True,
-                                 'prefix_helpers': 3, 'text_leaf_replay': True, 'replay_threads': 3, 'experiments': []})
+                                 'prefix_helpers': 3, 'text_leaf_replay': True, 'replay_threads': 3, 'experiments': [],
+                                 'collection_workers': 1})
         self.assertIs(local.execution_choice(overlapped_verification=True, text_leaf_replay=False)['text_leaf_replay'], False)
         self.assertEqual(local.execution_choice(overlapped_verification=False, prefix_helpers=2, text_leaf_replay=False)
                          ['replay_threads'], 0)
@@ -263,13 +264,21 @@ class ExecutionChoiceTests(unittest.TestCase):
         bad = [dict(value, implementation='accepted'), dict(value, overlapped_verification=1), dict(value, prefix_helpers=9),
                dict(value, prefix_helpers=-1), dict(value, prefix_helpers=True), dict(value, experiments=['faster']),
                dict(value, text_leaf_replay=1), {k: v for k, v in value.items() if k != 'text_leaf_replay'},
-               dict(value, replay_threads=9), dict(value, replay_threads=-1), dict(value, replay_threads=True),
+               dict(value, collection_workers=True), dict(value, collection_workers=8),
+               dict(value, collection_workers=0), dict(value, replay_threads=9), dict(value, replay_threads=-1), dict(value, replay_threads=True),
                {k: v for k, v in value.items() if k != 'replay_threads'}, dict(value, text_leaf_replay=False),
                dict(value, experiments=['shared_graph_encodings', 'shared_graph_encodings']), dict(value, extra=0),
                {k: v for k, v in value.items() if k != 'experiments'}]
         for item in bad:
             with self.subTest(item=item), self.assertRaisesRegex(ValueError, 'execution choice'):
                 local.check_execution(item)
+
+    def test_historical_execution_keeps_serial_collection_without_rewriting_it(self):
+        value = local.execution_choice(overlapped_verification=False, collection_workers=4)
+        self.assertEqual(local.check_execution(value)['collection_workers'], 4)
+        historical = {k: v for k, v in value.items() if k != 'collection_workers'}
+        self.assertIs(local.check_execution(historical), historical)
+        self.assertNotIn('collection_workers', historical)
 
     def test_choices_take_effect_only_from_a_plan(self):
         local.apply_execution({'execution': local.execution_choice(overlapped_verification=False, prefix_helpers=2,
@@ -401,7 +410,8 @@ class RunnerDefaultTests(unittest.TestCase):
 
     def test_fast_options_require_the_explicit_fast_path(self):
         for extra in [('--prefix-helpers', '2'), ('--experiment', 'shared_graph_encodings'), ('--serial-verification',),
-                      ('--overlap-verification',), ('--no-text-replay',), ('--replay-threads', '2'),
+                      ('--overlap-verification',), ('--collection-workers', '4'),
+                      ('--fast-path', '--collection-workers', '8'), ('--no-text-replay',), ('--replay-threads', '2'),
                       ('--fast-path', '--replay-threads', '9'), ('--fast-path', '--no-text-replay', '--replay-threads', '1'),
                       ('--fast-path', '--prefix-helpers', '9'),
                       ('--fast-path', '--experiment', 'unknown')]:
@@ -411,6 +421,10 @@ class RunnerDefaultTests(unittest.TestCase):
                     controller.main()
                 self.assertEqual(stopped.exception.code, 2)
                 start.assert_not_called()
+
+    def test_parallel_collection_is_explicit_and_preserves_four_game_contract(self):
+        self.assertEqual(self.parse('--fast-path').collection_workers, 1)
+        self.assertEqual(self.parse('--fast-path', '--collection-workers', '4').collection_workers, 4)
 
     def test_overlap_default_is_serial_on_macos(self):
         for platform, expected in (('darwin', False), ('linux', True)):
@@ -424,14 +438,17 @@ class RunnerDefaultTests(unittest.TestCase):
             releases.append(commit); return Path('/release'), commit or 'HEAD'
         config = {'artifact_root': '/artifacts', 'run_root': '/artifacts/run', 'default_profile': 'original'}
         for extra, expected, tail in [((), controller.ACCEPTED_IMPLEMENTATION, []),
+                                      (('--fast-path', '--serial-verification', '--collection-workers', '4'), None,
+                                       ['--fast-path', '--prefix-helpers', '0', '--collection-workers', '4',
+                                        '--serial-verification', '--replay-threads', '0']),
                                       (('--fast-path', '--serial-verification', '--prefix-helpers', '2'), None,
-                                       ['--fast-path', '--prefix-helpers', '2', '--serial-verification',
+                                       ['--fast-path', '--prefix-helpers', '2', '--collection-workers', '1', '--serial-verification',
                                         '--replay-threads', '2']),
                                       (('--fast-path', '--serial-verification', '--replay-threads', '3'), None,
-                                       ['--fast-path', '--prefix-helpers', '0', '--serial-verification',
+                                       ['--fast-path', '--prefix-helpers', '0', '--collection-workers', '1', '--serial-verification',
                                         '--replay-threads', '3']),
                                       (('--fast-path', '--serial-verification', '--no-text-replay'), None,
-                                       ['--fast-path', '--prefix-helpers', '0', '--serial-verification',
+                                       ['--fast-path', '--prefix-helpers', '0', '--collection-workers', '1', '--serial-verification',
                                         '--no-text-replay'])]:
             with self.subTest(extra=extra):
                 args = self.parse(*extra)

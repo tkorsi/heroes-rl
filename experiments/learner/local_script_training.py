@@ -61,6 +61,10 @@ LOCAL_ADAPTER_ORIGINS = {
     'a92250fe96feedcb7c21c169bd69ad9c7281b5ef': '3195c79c5d0a0e62e499fd659a2815334236348b10ed4f7870959347f2d18363',
     # Guarded original-map run717->770, stopped on an unsupported mine query.
     '6921700f0570d68c0275b7fe837bb03fe58f01d4': 'a2dddd49fc5026fd2cd6842845dd00283400f4378d6092af88ee6492709827ef',
+    # Verified manual run916->992, before concurrent collection.
+    '36e0b90fca216dfa189403c7d008d14d26ef6a05': '2f9068c8f41ad3de82dd4df035515355301c1a5c47edf825cba2363bd1052686',
+    # Verified manual run992->1095, before concurrent collection.
+    '32a9a3b36a19a7f105753b1e9fb9d1ab949aa4a1': '2f9068c8f41ad3de82dd4df035515355301c1a5c47edf825cba2363bd1052686',
     # Official run770->916, stopped by terminal request replay accounting.
     'cb3849c376331aafdb940fb59dd45e143e5b4218': '5d42d69d0157849c85aa7201e1d6cfcf5850a0d96ac3272d1b25ed4d772ff9d9',
 }
@@ -85,19 +89,19 @@ FAST_PATH_SOURCES = {
         ('80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2', 'a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
         '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
     'experiments/learner/builtin_gameplay.py': (
-        ('ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
-        '21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540'),
+        ('21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540', 'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
+        '39859d22d19b0dcaff2add4ab0299475acc63dbb55ded700af9ce7dc9aab8a65'),
     'experiments/learner/builtin_rollout.py': (
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
         ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600',),
-        '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600'),
+        '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d'),
     'experiments/learner/builtin_training_resume.py': (
         ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb', '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423',),
         '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
     'experiments/learner/contextual.py': (
-        ('070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
+        ('01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358', '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
         '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72',),
@@ -165,12 +169,14 @@ FAST_PATH_TREE = {
         '1f5fb796cb67cd68bc9a755197f73128c16ee22bf19118428babf5ef281c519b'),
     'experiments/learner/interaction_guard.py': ('',
         '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f'),
+    'experiments/learner/parallel_collection.py': ('',
+        '7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10'),
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
         'cda0e3fbdcd4a227b9de5e1332391d000d9fdbb90ec16a28eb84272ba2d7b299'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '1a3849d1f8c1917f1c9a181f360c8fb057e3e4ebb9e710f1eb273d656cc883b4'),
+        '466b063d4bf94f26377d2a4c1f9fa7f8b3650cecf806f098ec6ead9f865aa866'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_garrison_dialogs.py': ('',
@@ -180,7 +186,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '67b203b3620dd5e475102db143aa81354ffc5f613f5e2bc5a2a9a7064b45e9ea'
+LOCAL_ADAPTER_TRANSITION_AST = 'bc6fd40f1a45bcc87c277a7f89a1ec1298fabea68eafefbfc3aeca48d7a0728d'
 
 
 def write_new(path, value):
@@ -527,8 +533,12 @@ def check_clock(session, *, active=True):
 def check_execution(value):
     """The session's execution choices: exact by default; a numerical experiment only when named."""
     require(type(value) is dict
-            and set(value) == {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay',
-                               'replay_threads', 'experiments'}
+            and set(value) in ({'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay',
+                               'replay_threads', 'experiments'},
+                              {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay',
+                               'replay_threads', 'experiments', 'collection_workers'})
+            and type(value.get('collection_workers', 1)) is int
+            and value.get('collection_workers', 1) in (1, 4)
             and value['implementation'] == 'exact-fast-path-v1' and type(value['overlapped_verification']) is bool
             and type(value['prefix_helpers']) is int and 0 <= value['prefix_helpers'] <= 8
             and type(value['text_leaf_replay']) is bool
@@ -540,13 +550,14 @@ def check_execution(value):
 
 
 def execution_choice(*, overlapped_verification, prefix_helpers=0, text_leaf_replay=True, replay_threads=None,
-                     experiments=()):
+                     experiments=(), collection_workers=1):
     """Replay threads default to the prefix helpers (the extra CPUs declared), and are 0 without the replay."""
     if replay_threads is None:
         replay_threads = prefix_helpers if text_leaf_replay else 0
     return check_execution({'implementation': 'exact-fast-path-v1', 'overlapped_verification': overlapped_verification,
                             'prefix_helpers': prefix_helpers, 'text_leaf_replay': text_leaf_replay,
-                            'replay_threads': replay_threads, 'experiments': sorted(set(experiments))})
+                            'replay_threads': replay_threads, 'experiments': sorted(set(experiments)),
+                            'collection_workers': collection_workers})
 
 
 def apply_execution(plan):
