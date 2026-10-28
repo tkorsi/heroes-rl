@@ -24,7 +24,10 @@ batches (212 natural losses), then stopped on an unsupported owned-mine garrison
 query. Failed sequence408 admitted no samples or updates. Checkpoint770 is
 privately preserved and independently restored; 4,436 original-map games remain,
 and the next unused sequence is409. The [garrison adapter repair](docs/research/garrison-adapter-2026-10-28.md)
-is under isolated validation; no official continuation has been launched.
+is accepted after16 new native controls,28 native regressions and8 frozen770
+policy games, all passing replay and cleanup. The manual continuation retains
+770, the visible interaction budget and terminal-only rewards. No official
+continuation has been launched.
 Improvement in winning on the original map has not been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work

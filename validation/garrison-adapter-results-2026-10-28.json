@@ -1,7 +1,7 @@
 {
   "schema": "heroes-map-garrison-repair-v1",
-  "timestamp_utc": "2026-10-28T12:45:57.322923+00:00",
-  "status": "native_passed_policy_pending",
+  "timestamp_utc": "2026-10-28T13:03:07.601940+00:00",
+  "status": "accepted_for_manual_continuation",
   "implementation_commit": "84fb492c1f8b1a92de639578ff7c5c8ab61af72d",
   "native_runtime": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1",
   "runtime_freeze": {
@@ -105,11 +105,102 @@
     {
       "attempt": "policy770-diagnostic1",
       "reason": "zero-game preparation failed on Linux default artifact-root lookup; fresh diagnostic seed range required"
+    },
+    {
+      "attempts": [
+        "policy770-native-history-audit1",
+        "policy770-native-history-audit2"
+      ],
+      "reason": "Offline inference audit setup failures; corrected audit3 references both; zero new games or PPO updates."
     }
   ],
   "limitations": [
     "Allied-garrison permission/history/model coverage is offline only; actual allied native queries were not tested by the two-player terminal protocol.",
     "Scripted interface controls are not learner demonstrations and supply no PPO data.",
     "No original-map learning improvement is claimed by an adapter repair."
-  ]
+  ],
+  "accepted_source_commit": "0df9db5de5f4df2f40273fba2f9bc6d52ce0268c",
+  "accepted_runtime_descriptor": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1/accepted-runtime.json",
+    "sha256": "772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98",
+    "bytes": 12889
+  },
+  "frozen770_policy": {
+    "games": 8,
+    "choices": 580,
+    "outcomes": {
+      "win": 0,
+      "loss": 8,
+      "cutoff": 0
+    },
+    "training_samples": 0,
+    "optimizer_steps": 0,
+    "full_parent_restore": true,
+    "full_parent_unchanged": true,
+    "all_identity_replay_reconstruction_cleanup_passed": true,
+    "reports": {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/policy770-diagnostic2/plan.json",
+        "sha256": "944fdbbcb7152babef90b1c62f9b6a9838bde879b4829bc7e69d18fc6350a9a1",
+        "bytes": 56984
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/policy770-diagnostic2/execution/report.json",
+        "sha256": "cef9267e1a7b7caeefeaa69f9bb4e125b245d3f8944321a8a1f93bf0950ce35a",
+        "bytes": 20891
+      },
+      "shutdown": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/policy770-diagnostic2/shutdown.json",
+        "sha256": "cb6248679a12921c95362a73e7451e2a66bed79b56b14fbf2424bbddba537520",
+        "bytes": 1324
+      }
+    }
+  },
+  "fixed770_native_history_inference": {
+    "histories": 16,
+    "decisions_per_pass": 126,
+    "repeated_inference_exact": true,
+    "new_games": 0,
+    "fixture_actions_sampled_by_770": false,
+    "audit": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/policy770-native-history-audit3/audit.json",
+      "sha256": "4e347a45f346ba1aa1ee710e6bdb51cf16cc74655ccc2a95fd314445c3dc734e",
+      "bytes": 29815
+    }
+  },
+  "post_acceptance_offline_tests": {
+    "run": 67,
+    "skipped": 1,
+    "failures": 0,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/accepted-config-tests.log",
+      "sha256": "dd708f4edc65981a8e46a9d2286628312aacf8eee25bf7d322fc1ade12f64b84",
+      "bytes": 522
+    }
+  },
+  "worktree_manual_check": {
+    "status": "passed",
+    "source_commit": "0df9db5de5f4df2f40273fba2f9bc6d52ce0268c",
+    "checkpoint": 770,
+    "remaining_games": 4436,
+    "next_sequence": 409,
+    "hours": 10,
+    "gameplay_performed": false,
+    "ppo_updates": 0,
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/worktree-continuation-check.log",
+      "sha256": "832d0684737550124e2cc9f7eea22a95351acafeacec43ea40aa8ab232ab3bae",
+      "bytes": 844
+    }
+  },
+  "private_evidence": {
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local-script-final770-checkpoint",
+    "path": "diagnostics/garrison-repair-20261028",
+    "remote_commit": "000897d9ec410173fc315aa00f98a0844635116e",
+    "archive_sha256": "4489ed09c3b36efea1ff3a5b2959d5689ae4a2154541cb85df6dcefccc61ae96",
+    "files_verified": 1816,
+    "readback_hashes_verified": true,
+    "raw_archive_bytes": 16534105
+  }
 }

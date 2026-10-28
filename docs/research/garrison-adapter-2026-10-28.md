@@ -107,3 +107,38 @@ Mac artifact-root environment had not been initialized before imports. Its
 parent copy and eight reserved seed pairs remain preserved and are not reused.
 A corrected launcher and a fresh diagnostic attempt are required; this failed
 preparation is not native acceptance or learning.
+
+### Final frozen-policy acceptance and manual continuation
+
+The corrected launcher used fresh seeds in `policy770-diagnostic2`. All eight
+actual frozen770 policy games completed naturally (eight losses,580 choices).
+Native replay, strict policy reconstruction, source/runtime identity, guarded
+choice support and owned cleanup passed for every game. Full model/Adam/RNG/
+progress/pool state restored exactly and remained unchanged; zero diagnostic
+samples or optimizer steps were admitted. The preparation failure above and
+its consumed diagnostic seed range remain retained.
+
+A separate offline audit applied the actual770 model twice to16 completed
+scripted native histories (126 decisions per pass). Both inference passes matched
+exactly, including new garrison history tokens and available close/back actions.
+Those fixture actions were scripted controls, not choices sampled by770 and not
+training demonstrations. Two failed audit setup attempts remain referenced.
+
+Release `garrison-dialogs-v1` now requires the frozen runtime manifest/load
+preflight, canonical source agreement,16 new native controls,28 legacy native
+regressions and the eight policy reconstruction proofs. Its accepted descriptor
+SHA256 is `772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98`.
+The final targeted offline checks ran67 tests with one skip and no failures.
+
+The read-only continuation check passed from source0df9db5: exact770 restore,
+4,436 remaining games, fresh sequence409 and a10-hour session cap. The existing
+visible interaction budget, architecture, PPO settings and terminal-only rewards
+are unchanged. No official training was launched. Main-checkout readiness is
+recorded separately after configuration activation.
+
+Private commit `000897d9ec410173fc315aa00f98a0844635116e` on
+`tkorsi/heroes-rl-training-state`, branch `codex/local-script-final770-checkpoint`,
+preserves all1,816 diagnostic evidence/receipt files in a16.5MB archive. An
+independent remote read-back verified every member hash. External game-data
+symlinks and runtime binaries are excluded. Checkpoint770 has its separate
+full-state restoration receipt. See the compact results for immutable hashes.

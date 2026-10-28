@@ -561,3 +561,12 @@ terminal-only rewards, and test native replay and permission boundaries.
 Related validation exposed a mixed C++ object build and a native locked-garrison
 deposit-direction defect. Rejected candidates and evidence remain retained;
 only a fully rebuilt runtime with complete acceptance may become the manual default.
+
+The rebuilt adapter is now accepted:16 new native controls,28 legacy native
+regressions and8 actual frozen770 policy games passed identity/replay/cleanup.
+The policy games were8 natural losses and580 decisions, with0 PPO samples or
+optimizer steps. A separate126-decision offline inference audit on scripted
+fixture histories also passed. All rejected candidates and diagnostics are
+privately preserved with independent remote hash read-back. The manual runtime
+gate requires these proofs. [Final repair results](../validation/garrison-adapter-results-2026-10-28.json)
+record770,4,436 remaining games and unused sequence409; no launch occurred.
