@@ -142,3 +142,17 @@ preserves all1,816 diagnostic evidence/receipt files in a16.5MB archive. An
 independent remote read-back verified every member hash. External game-data
 symlinks and runtime binaries are excluded. Checkpoint770 has its separate
 full-state restoration receipt. See the compact results for immutable hashes.
+
+### Main checkout readiness
+
+The main checkout at25ce435 passed the actual default wrapper's read-only
+`check --hours 10` after the accepted machine descriptor was activated under
+the global and original-profile owner locks. It restored770 exactly and reported
+4,436 remaining games and sequence409. The previous machine descriptor is
+retained privately. The user alone launches the next training session:
+`cd ~/Projects/Heroes && ./continue-original-4720.sh --hours 10`.
+The wrapper's historical4720 name does not reset its target.
+
+[Main readiness](../../validation/garrison-main-readiness-2026-10-28.json) binds
+the log, runtime descriptor and private publication/read-back receipt. The check
+performed no gameplay or optimizer update.

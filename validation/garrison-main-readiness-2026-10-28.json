@@ -1,0 +1,58 @@
+{
+  "schema": "heroes-garrison-main-readiness-v1",
+  "timestamp_utc": "2026-10-28T13:05:17.308060+00:00",
+  "checkout": "/Users/orsi/Projects/Heroes",
+  "source_commit": "25ce435b2abeb8a35151a212c264c8e7d7f7af4e",
+  "command": "./continue-original-4720.sh check --hours 10",
+  "result": {
+    "status": "continuation_offline_checks_passed",
+    "checkpoint": {
+      "updates": 770,
+      "rollouts": 3080,
+      "decisions": 480565
+    },
+    "exact_restore": true,
+    "remaining_training_games": 4436,
+    "next_sequence": 409,
+    "session_safety_cap_hours": 10.0,
+    "shared_wall_seconds": 10800,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "policy_support": "visible-interaction-budget-v1",
+    "gameplay_performed": false,
+    "ppo_updates": 0
+  },
+  "runtime_release": {
+    "descriptor": {
+      "bytes": 12889,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1/accepted-runtime.json",
+      "sha256": "772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98"
+    },
+    "id": "garrison-dialogs-v1"
+  },
+  "machine_config_sha256": "451df0ae55d38ac7dfa6b8f1ff864403b8d48d12781503d110e1a4d5a083adcc",
+  "previous_machine_config_sha256": "84b6153fc6d6614be537f093d70213b6a5fb31929a44cf232452e2591330c1b4",
+  "owner_locks_acquired_during_activation": true,
+  "checks": {
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/main-continuation-check.log",
+      "sha256": "832d0684737550124e2cc9f7eea22a95351acafeacec43ea40aa8ab232ab3bae",
+      "bytes": 844
+    },
+    "activation": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/main-config-activation.json",
+      "sha256": "ff87d012add4b18734f008eb2f61ea7190766325a1ba2f1cd27dc452dfacf3bb",
+      "bytes": 829
+    }
+  },
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_branch": "codex/local-script-final770-checkpoint",
+  "private_readiness_commit": "c38d1fb2096036e3027cca6040bb5674695fbf26",
+  "remote_readback_hashes_verified": true,
+  "training_launch_owner": "user",
+  "manual_command": "cd ~/Projects/Heroes && ./continue-original-4720.sh --hours 10",
+  "note": "The historical wrapper name4720 is retained; the audited remaining target is4436. Check mode launches no games or PPO."
+}

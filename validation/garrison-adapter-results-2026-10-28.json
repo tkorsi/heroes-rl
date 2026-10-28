@@ -202,5 +202,12 @@
     "files_verified": 1816,
     "readback_hashes_verified": true,
     "raw_archive_bytes": 16534105
+  },
+  "main_readiness": {
+    "status": "passed",
+    "receipt": "validation/garrison-main-readiness-2026-10-28.json",
+    "source_commit": "25ce435b2abeb8a35151a212c264c8e7d7f7af4e",
+    "default_runtime_activated": true,
+    "gameplay_performed": false
   }
 }

@@ -570,3 +570,9 @@ fixture histories also passed. All rejected candidates and diagnostics are
 privately preserved with independent remote hash read-back. The manual runtime
 gate requires these proofs. [Final repair results](../validation/garrison-adapter-results-2026-10-28.json)
 record770,4,436 remaining games and unused sequence409; no launch occurred.
+
+The actual main checkout at25ce435 now passes the default manual wrapper's
+offline check with the accepted runtime:770 restored,4,436 games left, sequence409,
+10-hour cap. [Main readiness](../validation/garrison-main-readiness-2026-10-28.json)
+records configuration activation and independently verified private receipts.
+No official training was launched.
