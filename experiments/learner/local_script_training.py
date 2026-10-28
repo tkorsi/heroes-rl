@@ -168,7 +168,7 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        'b17ce139ab80a1a34de3632391c8b78e966c30097eae2d458b270f5af6534909'),
+        'cda0e3fbdcd4a227b9de5e1332391d000d9fdbb90ec16a28eb84272ba2d7b299'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         '1a3849d1f8c1917f1c9a181f360c8fb057e3e4ebb9e710f1eb273d656cc883b4'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
@@ -180,7 +180,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '399b926ca4cadcfd4045f03029780fd23fff37703b8fd0195fb5bfdfebf8081c'
+LOCAL_ADAPTER_TRANSITION_AST = '67b203b3620dd5e475102db143aa81354ffc5f613f5e2bc5a2a9a7064b45e9ea'
 
 
 def write_new(path, value):

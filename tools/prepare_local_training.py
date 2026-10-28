@@ -43,7 +43,7 @@ ACCEPTED_RUNTIME_RELEASES = {
     },
     "terminal-replay-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair1/accepted-runtime.json",
-        "sha256": None,
+        "sha256": "fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8",
     },
 }
 PREREQUISITE_PINS = {
