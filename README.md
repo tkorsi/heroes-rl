@@ -130,6 +130,13 @@ completed v8 continuation uses **hero-management-v2**, which removes only the na
 level-one cap; see its [configuration](configs/hero-management-v2.json). Historical
 map bytes and reports remain unchanged.
 
+The map's authored hero inventories are empty, but native lobby defaults also
+request a **random starting bonus** for each player (artifact, gold or resources).
+The [recorded inventory audit](docs/research/artifact-inventory-audit-2026-10-28.md)
+confirmed that the failed game gave Orrin a Collar of Conjuring and Edric a
+Necklace of Swiftness. Orrin looted Edric's necklace before attempting the
+cancelled equipment replacement. No starting-bonus rule was changed.
+
 Latest evidence is timestamped, not a live activity guarantee:
 
 - [Completed frozen transfer comparison](docs/research/transfer-eval-2026-10-26.md),

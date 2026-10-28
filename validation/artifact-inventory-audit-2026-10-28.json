@@ -1,0 +1,194 @@
+{
+  "schema": "heroes-artifact-inventory-audit-results-v1",
+  "timestamp_utc": "2026-10-28T16:07:08.647826+00:00",
+  "status": "passed",
+  "historical_run": "run-20261028T131340Z-684287b9",
+  "failed_batch": 555,
+  "episode": 3,
+  "map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "authored_hero_inventories_empty": true,
+  "map_artifact_objects": 0,
+  "requested_starting_bonuses": [
+    {
+      "bonus": -1,
+      "bonus_name": "random",
+      "player": 0
+    },
+    {
+      "bonus": -1,
+      "bonus_name": "random",
+      "player": 1
+    }
+  ],
+  "resolved_starting_bonuses": [
+    {
+      "bonus": 0,
+      "bonus_name": "artifact",
+      "player": 0
+    },
+    {
+      "bonus": 0,
+      "bonus_name": "artifact",
+      "player": 1
+    }
+  ],
+  "initial_hero_equipment": [
+    {
+      "hero": "Orrin",
+      "hero_id": 1,
+      "neck": {
+        "instance_id": 241,
+        "json_key": "core:collarOfConjuring",
+        "name": "Collar of Conjuring",
+        "present": true,
+        "type_id": 76,
+        "type_present": true
+      }
+    },
+    {
+      "hero": "Edric",
+      "hero_id": 3,
+      "neck": {
+        "instance_id": 242,
+        "json_key": "core:necklaceOfSwiftness",
+        "name": "Necklace of Swiftness",
+        "present": true,
+        "type_id": 97,
+        "type_present": true
+      }
+    }
+  ],
+  "necklace_instance": 242,
+  "loot_transfer": {
+    "client_packet": 523,
+    "packet_type": 149,
+    "packet_name": "BattleResultsApplied",
+    "from_hero": 3,
+    "from_slot": 2,
+    "to_hero": 1,
+    "to_slot": 19
+  },
+  "cancelled_equipment_request": {
+    "request_id": 91,
+    "client_receipt": 526,
+    "source_present": true,
+    "source_instance": 242,
+    "source_type": 97,
+    "destination_instance": 241,
+    "destination_type": 76,
+    "destination_compatible": true,
+    "slots_locked": false,
+    "request_applied": false
+  },
+  "checked": {
+    "client_packets": 532,
+    "messages": 62,
+    "native_opponent_requests": 58,
+    "requests": 91,
+    "responses": 30,
+    "transactions": 777
+  },
+  "authoritative_inputs": 90,
+  "unchecked": {
+    "client_packets": 0,
+    "messages": 0,
+    "native_opponent_requests": 0,
+    "requests": 0,
+    "responses": 0,
+    "transactions": 0
+  },
+  "divergence": null,
+  "negative_controls": {
+    "missing_holder_absent": true,
+    "empty_slot_absent": true
+  },
+  "tooling_tests": {
+    "run": 4,
+    "passed": 4
+  },
+  "canonical_recipe_check": true,
+  "accepted_runtime_recipe_unchanged": true,
+  "machine_configuration_unchanged": true,
+  "original_evidence_unchanged": true,
+  "new_games": 0,
+  "optimizer_updates": 0,
+  "official_training_admission": false,
+  "diagnostic_schema": "heroes-artifact-inventory-diagnostic-v1",
+  "evidence": {
+    "native": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/reconstruction-final/native-report.json",
+      "sha256": "fce428c79ecefbd7a31b8baaed5a53e4e4656ff97bba6ec7b28045a32f341947",
+      "bytes": 3294
+    },
+    "inventory": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/reconstruction-final/inventory-audit.jsonl",
+      "sha256": "74972e2fa0bf930f3aabf6763b990db83d878d38f6c1fc22b49ef6ce6bbd476f",
+      "bytes": 8299
+    },
+    "completion": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/reconstruction-final/completion.json",
+      "sha256": "cf35902f0e35073d0084e5f6560506f00981c4e70bcbec2cf9907084b542dfd2",
+      "bytes": 680
+    },
+    "instrumentation": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/instrumented-final/instrumentation.json",
+      "sha256": "afb71dae7829c1b1a514a3676b7841c54e575936af8ec43f3aae4a91f3944fb2",
+      "bytes": 2093
+    },
+    "plan": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/plan.json",
+      "sha256": "7af94b30ee90ec2db152bce9b7ec3452de69b70d2bbaf90fce64414973c4ac4b",
+      "bytes": 7709
+    },
+    "active_run_observation": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/active-run-observation.json",
+      "sha256": "a0ec8e9c155e5037f2ee997be9c1cdd543881f311bd83a1d5bd6ad32c1499003",
+      "bytes": 7748
+    },
+    "canonical_check": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/canonical-check.log",
+      "sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac",
+      "bytes": 104
+    },
+    "focused_tests": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/artifact-inventory-audit-20261028/focused-tests.log",
+      "sha256": "eb2e8a8e1b01e5d4ada4cd30a8f3562be6f600bbffa04d18c2393924115c4ef6",
+      "bytes": 832
+    }
+  },
+  "manual_check": {
+    "command": "./continue-original-4720.sh check --hours 10",
+    "status": "refused_active_owner",
+    "exit_code": 2,
+    "active_run": "run-20261028T154330Z-f18fbc81",
+    "active_frozen_release": "36e0b90fca216dfa189403c7d008d14d26ef6a05",
+    "observed_update": 953,
+    "observation_is_not_final_campaign_audit": true,
+    "workers_stopped": false,
+    "locks_bypassed": false
+  },
+  "failures_and_limits": [
+    "First invocation combined incompatible --observations and --contextual; rejected before replay.",
+    "Inventory compatibility is not full server authorization.",
+    "Production cancellation accounting proves provenance and nonexecution; the separate offline audit establishes item existence.",
+    "Unsupported holder/creature inventory kinds are unknown rather than empty.",
+    "No production runtime or gameplay rule was changed."
+  ],
+  "private_preservation": {
+    "schema": "heroes-artifact-audit-private-readback-v1",
+    "timestamp_utc": "2026-10-28T16:09:08.021026+00:00",
+    "repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/local-script-final916-checkpoint",
+    "commit": "03c5f00206c734b5e03396f6e8e2f05463a46ca7",
+    "archive_sha256": "ffad9bbe87e15765a020fa223ea5c6412c4039c0eb01c201175eb124cd3d4be5",
+    "files_verified": 64,
+    "independent_remote_bytes_verified": true,
+    "transport": "GitHub contents API base64 response decoded and every archived file rehashed",
+    "prior_failure": {
+      "attempt": 1,
+      "stage": "remote_archive_readback",
+      "error": "gh api raw content failed: transform: short source buffer",
+      "original_archive_changed": false
+    }
+  }
+}

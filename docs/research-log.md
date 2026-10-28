@@ -613,3 +613,26 @@ passed remote read-back; Adam, all RNG state, sampler, progress and pool matched
 exactly. Final private receipt commit is `0082b8317f386e443af55d84d48534ddc47e405b`.
 The intermittent publication/read-back transport failures are recorded separately
 from the native replay rejection and supplied no training data.
+
+## 28 October 2026 — transparent artifact-origin audit
+
+The user questioned whether the cancelled terminal request addressed a real
+artifact on the simple map. The [inventory audit](research/artifact-inventory-audit-2026-10-28.md)
+confirms empty authored inventories but native random starting bonuses: Orrin
+received Collar of Conjuring and Edric received Necklace of Swiftness. Exact
+recorded-state reconstruction follows necklace instance 242 from Edric's neck
+through battle loot into Orrin's backpack. It existed at request 91; replacing
+the collar was slot-compatible but the equipment request remained unexecuted.
+
+A separately compiled diagnostic records presence, identity, source/destination
+contents and execution status without changing the accepted runtime or exposing
+opponent inventory to the policy. Missing-holder and empty-slot controls report
+absence. All 90 inputs, 532 packets and 777 transactions replayed exactly.
+The initial incompatible CLI-option attempt and intermediate successful capture
+are retained. No training samples, optimizer updates or new games were produced.
+Production cancellation accounting remains a provenance check, not a statement
+of full gameplay legality. Historical checkpoint 916 was not modified. The
+follow-up manual check refused an occupied training lock: a separate user run
+was already active on frozen release `36e0b90` and reported checkpoint 953 at
+16:06 UTC. Its workers and locks were left alone. The old 3,852-game remaining
+count belongs to the earlier handoff and is not a current active-run count.

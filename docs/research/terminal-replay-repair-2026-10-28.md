@@ -77,6 +77,13 @@ operations or divergences, and reconstructs all 30 learner choices. The cancelle
 request remains separately accounted and unexecuted. Original evidence and its
 failed admission remain unchanged; this diagnostic cannot admit the old batch.
 
+Cancellation accounting alone does not establish inventory validity. The
+subsequent [artifact inventory audit](artifact-inventory-audit-2026-10-28.md)
+separately reconstructs the exact source item: Orrin's backpack contained
+Necklace of Swiftness, looted from Edric, and the attempted replacement of his
+Collar of Conjuring was compatible but unexecuted. Both artifacts originated
+from native random starting bonuses, despite empty authored map inventories.
+
 The runtime was built from an empty build directory (782 build steps), frozen
 with nine signed artifacts and 592 resource files, checked for actual local
 library loading, and verified against the canonical dependency recipe. Native
