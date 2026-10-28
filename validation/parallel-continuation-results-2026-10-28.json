@@ -1,0 +1,228 @@
+{
+  "claude_latest_already_integrated": true,
+  "defaults": {
+    "collection_workers": 1,
+    "max_optimizer_steps": 640,
+    "opt_in_workers": 4,
+    "policy_support": "visible-interaction-budget-v1",
+    "ppo_batch_games": 4,
+    "rewards": [
+      1,
+      -1,
+      0
+    ]
+  },
+  "embedded_native_backend_enabled": false,
+  "failed_attempts": [
+    {
+      "error": "Native acceptance source/runtime differs from the current release",
+      "games_started": 0,
+      "official_files_unchanged": true,
+      "phase": "preflight",
+      "resolution": "Fresh 44 native controls and 8 frozen policy evaluations; new immutable acceptance and machine descriptors.",
+      "run_id": "run-20261028T184411Z-aed69e44",
+      "seeds_reserved": false
+    }
+  ],
+  "frozen_evaluation": {
+    "checkpoint": 1095,
+    "choices": 530,
+    "exact_state_restore": true,
+    "games": 8,
+    "losses": 8,
+    "ppo_updates": 0
+  },
+  "implementation_commit": "06c55bf7fa078699ed561e9d3f507db35113c7b5",
+  "limitations": [
+    "Different fresh seeds per arm; no paired workload speedup or policy-equivalence claim.",
+    "Four games per arm exercise one checkpoint on the original map only.",
+    "The parallel evaluation dispatch has offline coverage only; fixed held-out seeds are not replayed here.",
+    "Native game rules and runtime are unchanged; no embedded engine is enabled.",
+    "The complete test suite preceded the two additional harness machine-binding tests; subsequent focused acceptance tests passed.",
+    "No paired same-seed equivalence or speedup claim; no official training was launched."
+  ],
+  "main_readiness": null,
+  "merged_branch": "codex/parallel-eight",
+  "merged_head": "16e60daf5e3dea4ef83b1f8f9ee7cf3f069d7bfe",
+  "native_binary_changes": false,
+  "native_controls": {
+    "garrison_passed": 16,
+    "legacy_passed": 28,
+    "replay_cleanup_passed": true
+  },
+  "official": {
+    "admitted_diagnostic_games": 0,
+    "checkpoint": 1095,
+    "next_sequence": 735,
+    "original_admitted_games": 1864,
+    "ppo_updates_from_diagnostics": 0,
+    "remaining_games": 3136,
+    "training_launched": false
+  },
+  "offline_tests": {
+    "acceptance_followup": {
+      "passed": 127,
+      "run": 128,
+      "skipped": 1,
+      "status": "passed"
+    },
+    "focused": {
+      "passed": 129,
+      "run": 130,
+      "skipped": 1,
+      "status": "passed"
+    },
+    "full": {
+      "passed": 1633,
+      "run": 1680,
+      "skipped": 47,
+      "status": "passed"
+    }
+  },
+  "parallel_validation": {
+    "arms": [
+      {
+        "choices": 212,
+        "collection_seconds": null,
+        "diagnostic_checkpoint_exact": true,
+        "diagnostic_optimizer_steps": 7,
+        "full_frozen_state_unchanged": true,
+        "full_original_restore_exact": true,
+        "games": 4,
+        "losses": 4,
+        "ppo_and_roundtrip_seconds": 9.804130875039846,
+        "rng_unchanged": {
+          "minibatch_generator": true,
+          "python": true,
+          "torch_cpu": true
+        },
+        "seat": 0,
+        "sequence": 415000000,
+        "status": "passed",
+        "verification_seconds": null,
+        "verified_batch_seconds": 8.689242500055116,
+        "workers": 1
+      },
+      {
+        "choices": 549,
+        "collection_seconds": 5.153273375006393,
+        "diagnostic_checkpoint_exact": true,
+        "diagnostic_optimizer_steps": 18,
+        "full_frozen_state_unchanged": true,
+        "full_original_restore_exact": true,
+        "games": 4,
+        "losses": 4,
+        "ppo_and_roundtrip_seconds": 28.81695712497458,
+        "rng_unchanged": {
+          "minibatch_generator": true,
+          "python": true,
+          "torch_cpu": true
+        },
+        "seat": 0,
+        "sequence": 415000001,
+        "status": "passed",
+        "verification_seconds": 8.427107584022451,
+        "verified_batch_seconds": 13.828773708024528,
+        "workers": 4
+      },
+      {
+        "choices": 208,
+        "collection_seconds": null,
+        "diagnostic_checkpoint_exact": true,
+        "diagnostic_optimizer_steps": 8,
+        "full_frozen_state_unchanged": true,
+        "full_original_restore_exact": true,
+        "games": 4,
+        "losses": 4,
+        "ppo_and_roundtrip_seconds": 9.972785709018353,
+        "rng_unchanged": {
+          "minibatch_generator": true,
+          "python": true,
+          "torch_cpu": true
+        },
+        "seat": 1,
+        "sequence": 415000002,
+        "status": "passed",
+        "verification_seconds": null,
+        "verified_batch_seconds": 8.641636541986372,
+        "workers": 1
+      },
+      {
+        "choices": 104,
+        "collection_seconds": 3.1928063749801368,
+        "diagnostic_checkpoint_exact": true,
+        "diagnostic_optimizer_steps": 5,
+        "full_frozen_state_unchanged": true,
+        "full_original_restore_exact": true,
+        "games": 4,
+        "losses": 4,
+        "ppo_and_roundtrip_seconds": 5.295429875026457,
+        "rng_unchanged": {
+          "minibatch_generator": true,
+          "python": true,
+          "torch_cpu": true
+        },
+        "seat": 1,
+        "sequence": 415000003,
+        "status": "passed",
+        "verification_seconds": 3.657513333018869,
+        "verified_batch_seconds": 7.146540499990806,
+        "workers": 4
+      }
+    ],
+    "choices": 1073,
+    "cleanup_verified": true,
+    "full_state_sha256": "2347b0ea15ea93a2dfc9c4cfca571655ab8082c4af2ae89f609f6690df897369",
+    "games": 16,
+    "isolated_ppo_updates": 4,
+    "losses": 16,
+    "official_files_unchanged": true,
+    "shutdown_binding": {
+      "bytes": 160,
+      "sha256": "f8408ce7eee65921e6f22700122c20a75335e94b4cbca9f5ccf582a81b7225a7"
+    },
+    "state_component_sha256": {
+      "generator": "1c36cd3dfab43e762936031779fd75a006646e9d279a41f5f0e62e3fe11021eb",
+      "model": "47c8969d9e68d90d09c0ec419efa93f182ce0b093adfecc6ccb50042e2e8f57c",
+      "optimizer": "036bc9f5c724e3ed6d00b352addaeceb20398b98651acd3b7c9ce2351d24b167",
+      "pool": "bc71081af8e13679d27d32f5e0d3af9ed59de133fbe99dc6feca2419dc1cfa3c",
+      "progress": "8f9ade2815f120151368be1f20f32aadad9cef948b03a3d65422dcf0d8d3b7a9",
+      "python_rng": "cf2fcb0ec1a2e6393f9e9ca1dcca7cda545b50a21fdb2d9895331786b36cf01f",
+      "sampler": "7d6857672b11d988c43589f9ce7d2b12dd381168d75352dfabdd376308ea20d3",
+      "torch_rng": "bc98b05d04067037a2057a835fed34425084bf9b3ce6c932b19fd9abf72de655"
+    },
+    "summary_binding": {
+      "bytes": 64042,
+      "sha256": "837b11c8a28b6daf8605a5c2f964541fe60638d2b7b1a549d77333c4c650c682"
+    },
+    "within_hard_deadline": true
+  },
+  "private_evidence_run": "run-20261028T185606Z-0b5b875b",
+  "runtime_acceptance_sha256": "f1b730d6d2d05771b694db738e337e0e6abe0080da0534d62dd09a704c6c30c7",
+  "runtime_release": "terminal-replay-parallel-v1",
+  "schema": "heroes-parallel-continuation-integration-v1",
+  "status": "passed",
+  "timestamp_utc": "2026-10-28T18:59:46.860922+00:00",
+  "worktree_readiness": {
+    "checkpoint": {
+      "decisions": 597916,
+      "rollouts": 4380,
+      "updates": 1095
+    },
+    "collection_workers": 4,
+    "exact_restore": true,
+    "gameplay_performed": false,
+    "next_sequence": 735,
+    "phase_deadlines_seconds": {
+      "evaluation": 3540,
+      "training": 2400,
+      "update": 10740
+    },
+    "policy_support": "visible-interaction-budget-v1",
+    "ppo_updates": 0,
+    "remaining_training_games": 3136,
+    "session_safety_cap_hours": 1.0,
+    "shared_wall_seconds": 10800,
+    "status": "continuation_offline_checks_passed"
+  }
+}

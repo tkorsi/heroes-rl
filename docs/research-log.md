@@ -636,3 +636,30 @@ follow-up manual check refused an occupied training lock: a separate user run
 was already active on frozen release `36e0b90` and reported checkpoint 953 at
 16:06 UTC. Its workers and locks were left alone. The old 3,852-game remaining
 count belongs to the earlier handoff and is not a current active-run count.
+
+
+## 28 October 2026 — reviewed concurrent collection integration
+
+[The integration report](research/parallel-continuation-2026-10-28.md) records
+merging Codex's parallel collector while preserving four-game PPO batches and
+the 640-step cap. Child interpreters now activate the plan's execution/visible
+interaction budget, load the exact parent metadata, and independently reject
+recorded support that differs from the plan. Failed batches revoke receipts and
+preserve retention/cleanup errors. Claude's latest Python improvements were
+already merged; its old embedded native experiment remains unaccepted here.
+
+An initial preflight failed before games because the old native acceptance bound
+older collector source. The strict gate was retained: 44 fresh native controls
+and eight frozen-1095 evaluations (530 choices) refreshed acceptance on the same
+binaries. Historical acceptance and machine files remain unchanged. A separate
+16-game diagnostic then passed 1,073 choices, four isolated PPO updates, exact
+checkpoint round trips and full original-state restoration. All 24 policy games
+were losses; none entered official training. Different fresh-seed cohorts mean
+these timings establish no identical-workload speedup. Four collectors remain
+opt-in; parallel evaluation has offline coverage only.
+
+The latest user-run session closed normally at checkpoint 1,095 with budget
+reserve, 103 updates / 412 admitted losses and complete cleanup. The original target
+has 1,864 admitted games, 3,136 remaining, and next sequence 735. The merge does not
+launch a campaign or consume official seeds. The report retains failed
+preflight/development attempts and the full validation limits.

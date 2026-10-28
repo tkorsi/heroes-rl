@@ -59,12 +59,12 @@ Engine source is unchanged. The generated dependency must match the canonical
 recipe, and native validation must identify the accepted runtime binaries.
 No official training, cloud worker, Teacher or Claude launch is part of this work.
 
-Validation results will be recorded after execution, including failed attempts.
+The following sections record the executed validation, including failed attempts.
 
 ## Offline validation before native launch
 
-The focused integration suite passed 130 tests (one skip). The complete test
-suite passed 1,680 tests (47 skips) in 222.774 seconds. The native diagnostic
+The focused integration suite ran 130 tests: 129 passed and one skipped. The
+complete suite ran 1,680 tests: 1,633 passed and 47 skipped in 222.774 seconds. The native diagnostic
 harness has five unit controls and independent review. The generated VCMI
 checkout exactly matches the unchanged canonical recipe.
 
@@ -110,4 +110,40 @@ does not claim a new engine build. The old acceptance descriptor remains exact.
 The new default original-map machine filename is
 `machine-original-parallel-v1.json`. Its historical predecessor is retained
 unchanged for completed sessions. The acceptance/source-transition and launcher
-suite passed 128 tests (one skip) after these changes.
+suite ran 128 tests after these changes: 127 passed and one skipped.
+
+## Complete collection and PPO diagnostic
+
+Candidate `06c55bf` passed all 16 fresh games in four independent arms on both
+seats. All 1,073 choices passed replay and exact policy reconstruction, and all
+16 games were natural losses. Each arm performed one isolated four-game PPO
+update, verified its checkpoint round trip, and restored the original complete
+1095 state. The four updates remain private diagnostic evidence and are not
+official descendants. Collection preserved model, Adam, Python/Torch/minibatch
+RNG, sampler, progress and pool exactly. Cleanup and the 15-minute deadline
+passed; every snapshotted official file remained unchanged.
+
+| Collection | Seat | Choices | Collection + verification | PPO + checkpoint round trip | Adam steps |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Serial | Red | 212 | 8.69 s | 9.80 s | 7 |
+| Four workers | Red | 549 | 13.83 s | 28.82 s | 18 |
+| Serial | Blue | 208 | 8.64 s | 9.97 s | 8 |
+| Four workers | Blue | 104 | 7.15 s | 5.30 s | 5 |
+
+Fresh seeds differ across arms and the trajectories differ substantially. These
+figures do not establish a paired workload speedup. The generic runner and
+existing continuation wrapper retain one collector by default. Four collectors
+are explicitly selected with `--collection-workers 4`. Parallel evaluation
+dispatch has offline coverage only; the eight fresh native evaluation games
+above used the existing serial candidate protocol. No same-seed equivalence or
+long-run stability claim is made.
+
+The actual continuation wrapper passed offline check mode from this worktree
+with four collectors and a one-hour cap: checkpoint 1,095 restored exactly,
+3,136 games remained and sequence 735 was next. Main-checkout synchronization
+and its independent check are recorded in the compact results file.
+
+[Compact results](../../validation/parallel-continuation-results-2026-10-28.json)
+contain source identities, state component hashes, test results and limitations.
+All raw captures, checkpoints, detailed reports and failed-attempt evidence
+remain under the private durable artifact root.

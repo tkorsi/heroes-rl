@@ -147,3 +147,21 @@ seeds remain 710001–710004 and 720001–720004 for descriptive before/after ch
 Offline tests and actual checkpoint restoration validate this launcher before
 handoff. No gameplay campaign was launched while preparing it for the user.
 The first explicit invocation still has to pass its real current-runtime gate.
+
+
+### Explicit four-process collection
+
+The reviewed parallel collector keeps the four-game PPO batch and existing
+visible interaction budget. To check and then manually try it for one hour:
+
+```sh
+cd ~/Projects/Heroes
+./continue-original-4720.sh check --hours 1 --collection-workers 4
+./continue-original-4720.sh --hours 1 --collection-workers 4
+```
+
+The check command starts no games. The second command is the user's explicit
+launch. Omit `--collection-workers 4` to retain serial collection. The current
+validation used different fresh-seed cohorts; it establishes correctness, not
+an identical-workload speedup. See the
+[integration evidence](../research/parallel-continuation-2026-10-28.md).
