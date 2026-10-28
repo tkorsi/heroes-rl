@@ -23,7 +23,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 ACCEPTED = ('3268f2f8cae6a01277c1629c5d0a9fb8958b5786', 'a8ac411d32658387598376c792136bc586edc5f9',
-            'a92250fe96feedcb7c21c169bd69ad9c7281b5ef')
+            'a92250fe96feedcb7c21c169bd69ad9c7281b5ef',
+            '6921700f0570d68c0275b7fe837bb03fe58f01d4')
 ADAPTER = 'experiments/learner/local_script_training.py'
 
 

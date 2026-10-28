@@ -543,3 +543,21 @@ limitations](research/interaction-guard-2026-10-27.md) and
 [compact report](../validation/interaction-guard-results-2026-10-27.json).
 
 The final offline check passed from the actual main checkout at `5b683ea`: complete717 restoration,4,648 remaining games and fresh sequence355. The guard version is bound explicitly. [Main readiness](../validation/interaction-guard-main-readiness-2026-10-27.json) started no games or updates.
+
+
+## 28 October 2026 — map-garrison adapter repair and checkpoint770 preservation
+
+The manual guarded original-map run stopped after53 complete batches and212
+natural losses, advancing717 to770. Sixteen evaluation losses remain separate.
+The valid `move_to` in failed sequence408 revisited an owned sawmill, whose
+native garrison query was unsupported by the adapter. No failed experience
+entered PPO; the next unused sequence is409 and4,436 games remain.
+[Full-state preservation and remote restoration](../validation/local-script-final770-sync-2026-10-28.json)
+passed. The user will launch any continuation manually.
+
+The [prospective repair protocol and retained attempts](research/garrison-adapter-2026-10-28.md)
+extend query support to map garrisons, preserve explicit policy choices and
+terminal-only rewards, and test native replay and permission boundaries.
+Related validation exposed a mixed C++ object build and a native locked-garrison
+deposit-direction defect. Rejected candidates and evidence remain retained;
+only a fully rebuilt runtime with complete acceptance may become the manual default.

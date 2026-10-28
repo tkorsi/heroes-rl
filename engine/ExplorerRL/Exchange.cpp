@@ -64,6 +64,16 @@ void ExplorerRL::installOwnHeroExchange()
 			if(!source || source->ID != Obj::MONSTER || source->getOwner().isValidPlayer())
 				throw std::runtime_error("Joining neutral became unavailable");
 		}
+		else if(exchange.objectGarrison && id == exchange.second)
+		{
+			const auto * source = dynamic_cast<const CArmedInstance *>(callback->getObj(ObjectInstanceID(id), false));
+			const bool self = source && source->getOwner() == playerID;
+			const bool allied = source && source->getOwner().isValidPlayer()
+				&& callback->getPlayerRelations(playerID, source->getOwner()) == PlayerRelations::ALLIES;
+			if(!source || (source->ID != Obj::MINE && source->ID != Obj::GARRISON && source->ID != Obj::GARRISON2)
+				|| (exchange.allied ? !allied : !self))
+				throw std::runtime_error("Received object garrison became unavailable");
+		}
 		else if(!hero || hero->getOwner() != playerID)
 			throw std::runtime_error("Owned hero exchange participant became unavailable");
 	}
@@ -75,7 +85,8 @@ void ExplorerRL::installOwnHeroExchange()
 	auto record = contextState.record("context_opened", callback->getDate(Date::DAY));
 	record["context"] = contextState.contextJson();
 	record["revision"].Integer() = ++contextState.revision;
-	record["reason"].String() = exchange.joiningNeutral ? "neutral_join" : "own_hero_exchange";
+	record["reason"].String() = exchange.joiningNeutral ? "neutral_join"
+		: exchange.objectGarrison ? "object_garrison" : "own_hero_exchange";
 	contextState.records.push_back(std::move(record));
 }
 

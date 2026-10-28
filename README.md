@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**27 October 2026**. Earlier stages are preserved in
+**28 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -19,9 +19,13 @@ rewards and the PPO/model architecture stay unchanged. The
 record eight individually verified games with frozen checkpoint 717: 2–117 choices,
 all natural losses. Postcollection harness bookkeeping failed and was separately
 corrected and audited; its original failure is retained. Full restoration and owned
-shutdown are verified. The manual continuation now uses this guard, starts from
-717 with 4,648 games remaining and fresh sequence 355. Preparation launched no
-official games or PPO updates; improvement in winning has not been demonstrated.
+shutdown are verified. The next user-launched guarded run advanced checkpoint717 to770 in53 complete
+batches (212 natural losses), then stopped on an unsupported owned-mine garrison
+query. Failed sequence408 admitted no samples or updates. Checkpoint770 is
+privately preserved and independently restored; 4,436 original-map games remain,
+and the next unused sequence is409. The [garrison adapter repair](docs/research/garrison-adapter-2026-10-28.md)
+is under isolated validation; no official continuation has been launched.
+Improvement in winning on the original map has not been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate

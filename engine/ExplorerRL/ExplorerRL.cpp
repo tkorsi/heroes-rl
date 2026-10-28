@@ -796,7 +796,21 @@ bool ExplorerRL::executeRequest(const std::function<void()> & request, bool wait
 			return accepted;
 		}
 		if(changed.wait_until(lock, deadline) == std::cv_status::timeout)
+		{
+			// Native routing diagnostics stay in the private engine log, never in
+			// the policy observation or the public failure message.
+			std::string received;
+			for(const auto & [id, accepted] : acknowledgements)
+				received += (received.empty() ? "" : ",") + std::to_string(id) + (accepted ? ":1" : ":0");
+			logAi->error("ExplorerRL request timeout state: request=%d pending=%d acknowledgements=[%s] "
+				"waitForAdventure=%d moving=%d inBattle=%d armyManagement=%d exchange=%d exchangeInstalled=%d "
+				"adventureDialog=%d adventureInstalled=%d capabilityDialog=%d capabilityInstalled=%d",
+				requestID, pendingRequest, received, waitForAdventure, moving, inBattle, armyManagement,
+				bool(contextState.ownHeroExchange), contextState.ownHeroExchange && contextState.ownHeroExchange->installed,
+				bool(contextState.adventureDialog), contextState.adventureDialog && contextState.adventureDialog->installed,
+				bool(contextState.capabilityDialog), contextState.capabilityDialog && contextState.capabilityDialog->installed);
 			throw std::runtime_error("Engine request or battle completion timed out");
+		}
 	}
 }
 

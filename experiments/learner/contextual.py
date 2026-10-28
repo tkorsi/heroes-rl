@@ -461,6 +461,18 @@ class ArmySlot:
                 raise ValueError("Occupied army slot requires a positive count")
 
 
+OBJECT_GARRISON_ROLES = ("object_garrison", "locked_garrison", "allied_garrison", "allied_locked_garrison")
+LOCKED_GARRISON_ROLES = ("locked_garrison", "allied_locked_garrison")
+ALLIED_GARRISON_ROLES = ("allied_garrison", "allied_locked_garrison")
+GARRISON_EVENTS = ("garrison_requested", "garrison_locked_requested")
+GARRISON_OBJECT_KINDS = (33, 53, 219)
+
+
+def _object_garrison_role(owner, locked):
+    return ("allied_locked_garrison" if locked else "allied_garrison") if owner == "ally" else (
+        "locked_garrison" if locked else "object_garrison")
+
+
 @dataclass(frozen=True)
 class ArmyView:
     ref: str
@@ -472,9 +484,9 @@ class ArmyView:
     def __post_init__(self):
         _text(self.ref)
         _text(self.subject)
-        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero", "hero", "joining_neutral"):
-            raise ValueError("Unsupported displayed town army role")
-        if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role not in ("town_garrison", "joining_neutral")):
+        if self.role not in ("town_garrison", "garrison_hero", "visiting_hero", "hero", "joining_neutral", *OBJECT_GARRISON_ROLES):
+            raise ValueError("Unsupported displayed army role")
+        if type(self.requires_nonempty) is not bool or self.requires_nonempty != (self.role not in ("town_garrison", "joining_neutral", *OBJECT_GARRISON_ROLES)):
             raise ValueError("Last-stack rule must match the displayed army role")
         _tuple(self.slots, ArmySlot, "displayed army slots")
         if tuple(slot.slot for slot in self.slots) != tuple(range(7)):
@@ -536,6 +548,15 @@ def army_operation_maximum(armies, kind, source_ref, destination_ref):
     if kind == "split_stack" and source_army.role == "joining_neutral":
         return 0
     crossing = source_army.subject != destination_army.subject
+    # Map garrison permissions are delivered by the active native query and
+    # encoded only in its new roles. Historical hero/neutral rows are unchanged.
+    if kind == "swap_stacks":
+        for army, outgoing in ((source_army, source), (destination_army, destination)):
+            if outgoing.count and (army.role in ALLIED_GARRISON_ROLES
+                    or crossing and army.role in LOCKED_GARRISON_ROLES):
+                return 0
+    elif source_army.role in ALLIED_GARRISON_ROLES or crossing and source_army.role in LOCKED_GARRISON_ROLES:
+        return 0
     if kind == "swap_stacks":
         if not source.count and not destination.count:
             return 0
@@ -1020,10 +1041,10 @@ class Window:
                 raise ValueError("Army exchange/stack popup cannot expose another window's private fields")
             if self.context.kind == "exchange":
                 if self.stack_panel is not None or self.armies is None or len(self.armies) != 2:
-                    raise ValueError("Exchange displays exactly its two own hero armies")
+                    raise ValueError("Exchange displays exactly its two native participant armies")
                 if (tuple(army.subject for army in self.armies) != (self.context.subject, self.context.selection)
-                        or self.armies[0].role != "hero" or self.armies[1].role not in ("hero", "joining_neutral")):
-                    raise ValueError("Exchange rows must bind its two ordered hero participants")
+                        or self.armies[0].role != "hero" or self.armies[1].role not in ("hero", "joining_neutral", *OBJECT_GARRISON_ROLES)):
+                    raise ValueError("Exchange rows must bind its two ordered native participants")
             else:
                 if type(self.stack_panel) is not StackPanel or self.armies != () or self.stack_panel.source.ref != self.context.selection:
                     raise ValueError("Stack popup displays only its selected stack and no parent armies")
@@ -1113,7 +1134,8 @@ class Observation:
             stack = self.window.stack_panel
             if (stack is not None and stack.parent_context.kind == "exchange"
                     and self.window.context.subject == stack.parent_context.selection):
-                own = (*own, *(obj for obj in self.objects if obj.owner == "neutral"))
+                own = (*own, *(obj for obj in self.objects if obj.owner == "neutral"
+                    or obj.kind in GARRISON_OBJECT_KINDS and obj.owner in ("self", "opponent")))
             if self.window.context.subject not in {entry.handle for entry in own}:
                 raise ValueError("Window subject must be an accessible owned object")
             if self.window.armies is not None:
@@ -1125,6 +1147,12 @@ class Observation:
                     elif army.role == "joining_neutral":
                         if (self.window.context.kind != "exchange" or army.subject != self.window.context.selection):
                             raise ValueError("Joining army must bind the delivered neutral exchange")
+                    elif army.role in OBJECT_GARRISON_ROLES:
+                        obj = next((obj for obj in self.objects if obj.handle == army.subject), None)
+                        expected_owner = "opponent" if army.role in ALLIED_GARRISON_ROLES else "self"
+                        if (self.window.context.kind != "exchange" or army.subject != self.window.context.selection
+                                or obj is None or obj.kind not in GARRISON_OBJECT_KINDS or obj.owner != expected_owner):
+                            raise ValueError("Object garrison row must bind its visible owned or allied exchange participant")
                     elif army.subject not in own_heroes:
                         raise ValueError("Displayed hero army must be currently owned")
                     elif own_heroes[army.subject].in_garrison is not None and army.role in ("garrison_hero", "visiting_hero") and own_heroes[army.subject].in_garrison != (army.role == "garrison_hero"):
@@ -1812,6 +1840,16 @@ class VisibleEvent:
             return
         if self.dialog is not None:
             raise ValueError("Only a dialog-requested event carries a delivered query payload")
+        if self.kind in GARRISON_EVENTS:
+            _text(self.subject)
+            _text(self.partner)
+            if (self.subject == self.partner or self.object_kind not in GARRISON_OBJECT_KINDS
+                    or self.owner not in ("self", "ally")
+                    or self.object_kind == 53 and (self.owner != "self" or self.kind == "garrison_locked_requested")
+                    or any(value is not None for value in (
+                        self.object_subtype, self.side, self.won, self.notice))):
+                raise ValueError("Garrison request binds the executing hero and visible object with native permissions")
+            return
         if self.kind in ("army_exchange_requested", "army_join_requested"):
             _text(self.subject)
             _text(self.partner)
@@ -1960,12 +1998,12 @@ def _validate_observation(observation, profile):
             if not profile.capabilities:
                 raise ValueError("Capability contents require v8")
             _validate_context(window.capability_panel.parent_context, profile)
-        if not profile.capabilities and any(army.role == "joining_neutral" for army in (window.armies or ())):
-            raise ValueError("Delivered neutral overflow requires v8")
+        if not profile.capabilities and any(army.role in ("joining_neutral", *OBJECT_GARRISON_ROLES) for army in (window.armies or ())):
+            raise ValueError("Delivered neutral and object garrisons require v8")
         if (window.stack_panel is not None and window.context.subject not in
                 {item.handle for item in (*observation.heroes, *observation.towns)}):
             if not profile.capabilities or window.stack_panel.offers:
-                raise ValueError("A joining neutral stack is inspection-only in v8")
+                raise ValueError("A neutral or object garrison stack is inspection-only in v8")
         if profile.army_management != (window.armies is not None):
             raise ValueError("General displayed army rows belong only to v6 windows")
         if window.stack_panel is not None:
@@ -2051,14 +2089,14 @@ class Frame:
             raise ValueError("Army management records require v6")
         opened_contexts = (("own_hero_exchange", "exchange"),) + ((("adventure_dialog", "dialog"),) if profile.dialogs else ())
         if profile.capabilities:
-            opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"))
+            opened_contexts += (("capability_dialog", "capability"), ("neutral_join", "exchange"), ("object_garrison", "exchange"))
         if self.kind == "context_opened" and (self.reason, self.context.kind) not in opened_contexts:
             raise ValueError("Only a supported delivered query can open a context asynchronously")
         if not profile.dialogs and (self.event is not None and self.event.kind == "dialog_requested"
                                    or self.result is not None and self.result.status == "dialog_answered"):
             raise ValueError("Adventure dialog records require v7")
         if not profile.capabilities and (self.event is not None and self.event.kind in
-                ("capability_requested", "level_gained", "army_join_requested")
+                ("capability_requested", "level_gained", "army_join_requested", *GARRISON_EVENTS)
                 or self.result is not None and self.result.status == "capability_applied"):
             raise ValueError("Expanded capability records require v8")
         if self.event is not None and self.event.notice is not None:
@@ -2134,6 +2172,8 @@ class PlayerHistory:
         self.capability_refs = set()
         self.pending_join = False
         self.active_join = False
+        self.pending_garrison = None
+        self.active_garrison = None
         self.inspected_subject = None
         self.stack_origin = None
         self.context_changes = 0
@@ -2194,9 +2234,19 @@ class PlayerHistory:
                     raise ValueError("Visions details require this history's explicit target inspection")
             if self.context.kind == "exchange" and any(army.role == "joining_neutral" for army in frame.observation.window.armies) != self.active_join:
                 raise ValueError("Neutral army exposure requires its recorded live joining query")
+            if self.context.kind == "exchange":
+                rows = tuple(army for army in frame.observation.window.armies if army.role in OBJECT_GARRISON_ROLES)
+                expected = self.active_garrison
+                if bool(rows) != (expected is not None) or rows and (rows[0].subject, rows[0].role) != expected[:2]:
+                    raise ValueError("Object garrison exposure and permissions require its recorded live native query")
+                if expected is not None and not any(obj.handle == expected[0] and obj.kind == expected[2]
+                        for obj in frame.observation.objects):
+                    raise ValueError("Object garrison query cannot change its visible object kind")
             if (self.context.kind == "stack" and self.context.subject not in
-                    {item.handle for item in (*frame.observation.heroes, *frame.observation.towns)} and not self.active_join):
-                raise ValueError("Neutral stack inspection requires its active native joining query")
+                    {item.handle for item in (*frame.observation.heroes, *frame.observation.towns)}
+                    and not (self.active_join or self.active_garrison is not None
+                             and self.context.subject == self.active_garrison[0])):
+                raise ValueError("Non-hero stack inspection requires its active native joining or garrison query")
         if kind in ("view", "event") and self.decision is not None and self.action is None:
             raise ValueError("Supersede held decision before adding visible history")
         if kind == "decision":
@@ -2275,6 +2325,7 @@ class PlayerHistory:
                 self.active_capability = None
             if self.action.kind == "close":
                 self.active_join = False
+                self.active_garrison = None
         elif kind == "context_opened":
             if frame.reason == "capability_dialog":
                 if (self.decision is not None or self.action is not None or self.pending_capability is None
@@ -2298,7 +2349,10 @@ class PlayerHistory:
                 self.pending_exchange, self.exchange_ready = None, False
                 if (frame.reason == "neutral_join") != self.pending_join:
                     raise ValueError("Exchange type must match the delivered native query")
+                if (frame.reason == "object_garrison") != (self.pending_garrison is not None):
+                    raise ValueError("Garrison opening must match the delivered object query")
                 self.active_join, self.pending_join = self.pending_join, False
+                self.active_garrison, self.pending_garrison = self.pending_garrison, None
             self.context, self.revision = frame.context, frame.revision
         elif kind == "event" and frame.event.kind in ("capability_requested", "level_gained"):
             event = frame.event
@@ -2332,17 +2386,25 @@ class PlayerHistory:
                 raise ValueError("Dialog request must bind the current own-hero native action and fresh opaque choices")
             self.pending_dialog = (Context("dialog", event.subject, None, event.dialog.ref), event.dialog)
             self.dialog_refs.update(refs)
-        elif kind == "event" and frame.event.kind in ("army_exchange_requested", "army_join_requested"):
+        elif kind == "event" and frame.event.kind in ("army_exchange_requested", "army_join_requested", *GARRISON_EVENTS):
             observed = next((item.observation for item in reversed(self._frames) if item.observation is not None), None)
             own = {hero.handle for hero in observed.heroes} if observed else set()
             joining = frame.event.kind == "army_join_requested"
             visible_neutrals = {item.handle for item in observed.objects if item.owner == "neutral"} if observed else set()
-            if (self.action is None or self.action.kind not in (("move_to", "choose_dialog") if joining else ("move_to",)) or not self.consumed or self.commands < 1
+            garrison = frame.event.kind in GARRISON_EVENTS
+            participants = visible_neutrals if joining else own
+            if garrison:
+                participants = {item.handle for item in observed.objects if item.kind == frame.event.object_kind
+                                and item.owner == ("opponent" if frame.event.owner == "ally" else "self")} if observed else set()
+            if (self.action is None or self.action.kind not in (("move_to", "choose_dialog") if joining or garrison else ("move_to",))
+                    or not self.consumed or self.consumer != "engine" or self.commands < 1
                     or self.pending_exchange is not None or self.pending_dialog is not None or frame.event.subject != self.action.subject
-                    or frame.event.subject not in own or frame.event.partner not in (visible_neutrals if joining else own) or self.context != Context()):
-                raise ValueError("Exchange encounter must belong to the current native move between two own heroes")
+                    or frame.event.subject not in own or frame.event.partner not in participants or self.context != Context()):
+                raise ValueError("Exchange encounter must bind the current native action and its visible participants")
             self.pending_exchange = Context("exchange", frame.event.subject, None, frame.event.partner)
             self.pending_join = joining
+            self.pending_garrison = ((frame.event.partner, _object_garrison_role(
+                frame.event.owner, frame.event.kind == "garrison_locked_requested"), frame.event.object_kind) if garrison else None)
         elif kind == "event" and frame.event.notice is not None and _garrison_notice(frame.event.notice):
             if (self.action is None or self.action.kind != "swap_garrison" or not self.consumed
                     or self.consumer != "adapter" or self.commands or self.garrison_notice):
@@ -2366,7 +2428,7 @@ class PlayerHistory:
                 raise ValueError("Action result precedes native acknowledgement")
             self._check_result(frame.result)
             if self.pending_exchange is not None:
-                allowed_parent = (("move_to", "interaction"), ("choose_dialog", "dialog_answered")) if self.pending_join else (("move_to", "interaction"),)
+                allowed_parent = (("move_to", "interaction"), ("choose_dialog", "dialog_answered")) if self.pending_join or self.pending_garrison is not None else (("move_to", "interaction"),)
                 if (self.action.kind, frame.result.status) not in allowed_parent:
                     raise ValueError("Pending exchange requires the parent move interaction result")
                 self.exchange_ready = True
@@ -2383,6 +2445,7 @@ class PlayerHistory:
             self.pending_exchange, self.exchange_ready = None, False
             self.pending_dialog, self.dialog_ready = None, False
             self.pending_capability, self.pending_join = None, False
+            self.pending_garrison = None
             self._clear_action()
         elif kind == "terminal":
             if self.decision is not None or self.action is not None:
@@ -2390,6 +2453,7 @@ class PlayerHistory:
             self.pending_exchange, self.exchange_ready = None, False
             self.pending_dialog, self.dialog_ready = None, False
             self.pending_capability, self.pending_join = None, False
+            self.pending_garrison = None
             self.terminal = frame.outcome
         elif kind == "finalized":
             proof = frame.verification

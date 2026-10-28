@@ -45,7 +45,7 @@ class ReviewedTransitionTests(unittest.TestCase):
         self.assertEqual(local.LOCAL_ADAPTER_TRANSITION_AST, pins.adapter_ast())
 
     def test_accepted_parents_name_the_separate_policy_support_transition(self):
-        for commit in (ACCEPTED_629, local.ACCEPTED_ADAPTER_COMMIT, pins.ACCEPTED[2]):
+        for commit in pins.ACCEPTED:
             with self.subTest(commit=commit):
                 parent = accepted_parent(commit)
                 proof = local.source_compatibility(parent)
@@ -75,7 +75,14 @@ class ReviewedTransitionTests(unittest.TestCase):
         accepted, fast = local.FAST_PATH_SOURCES[name]
         current = (ROOT/name).read_bytes()
         self.assertEqual(local.fast_path_transition(name, accepted[0], current)['current_sha256'], fast)
-        for expected, data in [('0'*64, current), (accepted[0], current + b'\n'), (fast, current)]:
+        # Later official parents may already contain this exact fast-path file.
+        # Its committed hash is then a reviewed origin, not an unknown digest.
+        rejected = [('0'*64, current), (accepted[0], current + b'\n')]
+        if fast not in accepted:
+            rejected.append((fast, current))
+        else:
+            self.assertEqual(local.fast_path_transition(name, fast, current)['current_sha256'], fast)
+        for expected, data in rejected:
             with self.subTest(expected=expected[:8]), self.assertRaisesRegex(ValueError, 'implementation changed'):
                 local.fast_path_transition(name, expected, data)
         with self.assertRaisesRegex(ValueError, 'implementation changed'):

@@ -51,6 +51,70 @@ def write_shutdown(output, rc, cleanup):
     write(output/'shutdown.json', dict(returncode=rc, **cleanup))
 
 
+def diagnostic_schedule(engine_base, policy_base):
+    if (type(engine_base) is not int or type(policy_base) is not int
+            or not 83_400_000 <= engine_base < 2**31 - 8 or not 83_400_000 <= policy_base < 2**31 - 8
+            or abs(engine_base - policy_base) < 8):
+        raise ValueError('Candidate diagnostics require distinct explicit fresh seed ranges starting at83400000 or above')
+    return [dict(episode=i+1, phase='evaluation', learner_player=i//4,
+                 engine_seed=engine_base+i, policy_seed=policy_base+i) for i in range(8)]
+
+
+def reserve_diagnostic_seeds(path, schedule, *, output, parent_run, candidate):
+    """Consume the diagnostic seed ranges under the already held official lock.
+
+    Failed and unstarted attempts keep their reservations; this ledger never
+    participates in the official training sequence namespace.
+    """
+    path = Path(path)
+    old = [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+    keys = ('engine_seed', 'policy_seed')
+    wanted = {row[key] for row in schedule for key in keys}
+    used = {row[key] for entry in old for row in entry['schedule'] for key in keys}
+    if wanted & used:
+        raise ValueError('Candidate diagnostic seeds were already consumed; use a fresh explicit range')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('a') as stream:
+        stream.write(json.dumps(dict(schema='heroes-garrison-policy-seed-reservation-v1', created_utc=utc(),
+            output=str(output), parent_run=str(parent_run), runtime_candidate=candidate,
+            schedule=schedule), sort_keys=True) + '\n')
+        stream.flush(); os.fsync(stream.fileno())
+
+
+def load_runtime_candidate(path, expected=None):
+    from tools.prepare_local_training import binding, candidate_runtime_origin, require
+    from experiments.headless.contextual_evidence import runtime_identity
+    bound = binding(path)
+    require(expected is None or bound == expected, 'Candidate runtime descriptor changed')
+    value = json.loads(Path(bound['path']).read_text())
+    require(value.get('schema') == 'heroes-local-training-runtime-candidate-v1'
+            and value.get('change_classification') == 'adapter-support-extension',
+            'Expected an explicit garrison candidate descriptor; not machine acceptance')
+    runtime_bin = Path(value['runtime_bin']).expanduser().resolve()
+    native = runtime_identity(runtime_bin)
+    candidate_runtime_origin(runtime_bin, native, value)
+    return value, bound
+
+
+def stopped_candidate_parent(run, config):
+    """Permit the known failed official770 parent only after exact preservation."""
+    from experiments.learner.builtin_training_resume import require
+    run = Path(run).expanduser().resolve()
+    session, report, shutdown = [json.loads((run/name).read_text()) for name in
+                                ('session.json', 'campaign-report.json', 'shutdown.json')]
+    require(config.get('default_profile') == 'original' and run.parent == Path(config['run_root']).resolve()
+            and Path(session['run_dir']).resolve() == run and Path(session['run_root']).resolve() == run.parent
+            and session.get('profile') == 'original', 'Candidate parent must be the closed official original-map run')
+    require(report.get('status') in ('finished', 'stopped_requested', 'stopped_budget', 'stopped_failure')
+            and report.get('owned_cleanup_verified') is True and report.get('initial_state_unchanged') is True
+            and report.get('full_final_restore', {}).get('exact') is True
+            and report.get('latest_progress', {}).get('updates') == 770
+            and shutdown.get('owned_cleanup_verified') is True and shutdown.get('within_hard_deadline') is True
+            and shutdown.get('worker_returncode') in (0, 1),
+            'Candidate requires stopped official770, owned cleanup and exact final preservation')
+    return report['latest_parent']
+
+
 def execute(plan_path, sha):
     import torch
     from experiments.learner import builtin_first_run as pilot
@@ -69,23 +133,33 @@ def execute(plan_path, sha):
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     require(plan['policy_support'] == guard.VERSION and plan['mode'] == 'evaluation'
             and len(plan['schedule']) == 8, 'Wrong diagnostic scope')
-    require(plan['schedule'] == [dict(episode=i+1, phase='evaluation', learner_player=i//4,
-            engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)], 'Schedule changed')
+    candidate = plan.get('runtime_candidate')
+    expected_schedule = (diagnostic_schedule(plan['engine_seed_base'], plan['policy_seed_base']) if candidate else
+        [dict(episode=i+1, phase='evaluation', learner_player=i//4,
+              engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)])
+    require(plan['schedule'] == expected_schedule, 'Schedule changed')
+    if candidate:
+        require(binding(ROOT/'tools/prepare_local_training.py') == plan['runtime_gate'], 'Candidate runtime gate changed')
+        load_runtime_candidate(candidate['path'], candidate)
     guard.ACTIVE_VERSION = guard.VERSION
     background_check.FORK = False
     output = Path(plan['execution_output'])
-    report = dict(schema='heroes-interaction-guard-diagnostic-v1', started_utc=utc(),
-                  plan_sha256=sha, status='running', training_samples=0, optimizer_steps=0,
+    report = dict(schema='heroes-garrison-policy-diagnostic-v1' if candidate else 'heroes-interaction-guard-diagnostic-v1', started_utc=utc(),
+                  plan_sha256=sha, status='running', training_samples=0, training_performed=False, optimizer_steps=0,
                   attempts=[pilot.empty_attempt(row) for row in plan['schedule']])
     report_path = output / 'report.json'
     write(report_path, report)
     state = local.restore_parent(plan['parent_descriptor'])
+    require(state.progress.updates == (770 if candidate else 717), 'Frozen diagnostic parent changed')
     before = state_snapshot(state)
     # ParentState's pool field is checked again by the exact historical loader.
     try:
         for i, row in enumerate(plan['schedule']):
             require(binding(plan_path)['sha256'] == sha, 'Diagnostic plan changed')
             require(binding(__file__) == plan['harness'], 'Diagnostic harness changed')
+            if candidate:
+                require(binding(ROOT/'tools/prepare_local_training.py') == plan['runtime_gate'], 'Candidate runtime gate changed')
+                load_runtime_candidate(candidate['path'], candidate)
             pilot.check_identity(plan)
             remaining = min(plan['compute_deadline_unix']-time.time(),
                             plan['compute_deadline_monotonic']-time.monotonic())
@@ -108,6 +182,10 @@ def execute(plan_path, sha):
         restored = local.restore_parent(plan['parent_descriptor'])
         assert_same_state(before['model'], dict(restored.model.state_dict()))
         assert_same_state(before['optimizer'], restored.optimizer.state_dict())
+        if candidate:
+            verify_state_snapshot(before, restored)
+            require(binding(ROOT/'tools/prepare_local_training.py') == plan['runtime_gate'], 'Candidate runtime gate changed')
+            load_runtime_candidate(candidate['path'], candidate)
         report.update(status='passed', full_parent_unchanged=True, full_parent_restore=True,
                       parent_progress=vars(restored.progress))
     except Exception as error:
@@ -133,6 +211,10 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--parent-run', type=Path)
     parser.add_argument('--machine', type=Path)
+    parser.add_argument('--runtime-candidate', type=Path,
+                        help='Native-validated frozen candidate descriptor; diagnostics only, never machine acceptance')
+    parser.add_argument('--engine-seed-base', type=int)
+    parser.add_argument('--policy-seed-base', type=int)
     parser.add_argument('--worker-plan', type=Path)
     parser.add_argument('--sha256')
     args = parser.parse_args()
@@ -154,15 +236,39 @@ def main():
     from experiments.learner.builtin_v8_migration import map_identity
     from experiments.headless.process_deadline import guarded_popen, close_owned_process
     from run_local_training import final_parent
-    from prepare_local_training import validate_config
+    from prepare_local_training import validate_config, original_map_identity, durable
     require(args.output and args.parent_run and args.machine, 'Output, stopped parent and machine are required')
-    config = json.loads(args.machine.read_text()); validate_config(config)
+    config = json.loads(args.machine.read_text())
+    candidate = None
+    schedule = [dict(episode=i+1, phase='evaluation', learner_player=i//4,
+                     engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)]
+    if args.runtime_candidate:
+        runtime, candidate = load_runtime_candidate(args.runtime_candidate)
+        schedule = diagnostic_schedule(args.engine_seed_base, args.policy_seed_base)
+        require(config.get('default_profile') == 'original' and len(config.get('maps', [])) == 2
+                and config['maps'][0] == config['maps'][1]
+                and original_map_identity(config['maps'][0]['path']) == config['maps'][0],
+                'Candidate diagnostics require the unchanged official original map')
+        artifact_root, run_root = durable(config['artifact_root']), durable(config['run_root'])
+        require(run_root.is_relative_to(artifact_root) and run_root != artifact_root,
+                'Candidate machine paths are outside the official artifact scope')
+        config = {**config, 'runtime_bin': runtime['runtime_bin'],
+                  'runtime': {key: value for key, value in runtime['runtime_files'].items() if key != 'vcmiclient'}}
+    else:
+        require(args.engine_seed_base is None and args.policy_seed_base is None,
+                'Historical diagnostics keep their exact original seed schedule')
+        validate_config(config)
     require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip(),
             'Freeze a clean committed release before diagnostics')
-    parent = final_parent(args.parent_run.resolve())
+    parent = stopped_candidate_parent(args.parent_run, config) if candidate else final_parent(args.parent_run.resolve())
     lock = os.open(Path(config['artifact_root'])/'local-script-training/owner.lock', os.O_RDONLY)
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     output = args.output.resolve()
+    if candidate:
+        durable(output)
+        require(not output.exists(), 'Preserve previous diagnostic attempts; output already exists')
+        reserve_diagnostic_seeds(Path(config['artifact_root'])/'garrison-policy-diagnostics/seed-ledger.jsonl',
+            schedule, output=output, parent_run=args.parent_run.resolve(), candidate=candidate)
     output.mkdir(parents=True, exist_ok=False)
     copied = output/'parent'; copied.mkdir()
     descriptor = {}
@@ -172,11 +278,11 @@ def main():
         descriptor[name] = binding(destination)
         require(descriptor[name]['sha256'] == value['sha256'], 'Parent copy changed')
     state = local.restore_parent(descriptor)
-    require(state.progress.updates == 717, 'This protocol binds the stopped update717 parent')
+    require(state.progress.updates == (770 if candidate else 717), 'This protocol binds its exact stopped parent')
     binary = Path(config['runtime_bin'])/'vcmiclient'
     game_map = Path(config['maps'][0]['path'])
     started_wall, started_mono = time.time(), time.monotonic()
-    plan = dict(schema='heroes-interaction-guard-diagnostic-plan-v1', mode='evaluation',
+    plan = dict(schema='heroes-garrison-policy-diagnostic-plan-v1' if candidate else 'heroes-interaction-guard-diagnostic-plan-v1', mode='evaluation',
         scope='visible-interaction-budget-v1-diagnostic', policy_support=guard.VERSION,
         source=source_identity(local.INTERFACE), implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), configuration=local.configuration(descriptor),
@@ -186,11 +292,14 @@ def main():
         checkpoint=descriptor['policy'], replay_binary=binding(binary.parent/'vcmireplay'),
         parent_descriptor=descriptor, harness=binding(__file__), execution_output=str(output/'execution'),
         official_lock=str(Path(config['artifact_root'])/'local-script-training/owner.lock'),
-        schedule=[dict(episode=i+1, phase='evaluation', learner_player=i//4,
-                       engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)],
+        schedule=schedule,
         started_unix=started_wall, started_monotonic=started_mono,
         compute_deadline_unix=started_wall+2640, compute_deadline_monotonic=started_mono+2640,
         absolute_deadline_unix=started_wall+2700, hard_deadline_monotonic=started_mono+2700)
+    if candidate:
+        plan.update(runtime_candidate=candidate, engine_seed_base=args.engine_seed_base,
+                    policy_seed_base=args.policy_seed_base, runtime_gate=binding(ROOT/'tools/prepare_local_training.py'),
+                    scope='map-garrison-frozen-policy-v1-diagnostic')
     (output/'execution').mkdir()
     write(output/'plan.json', plan)
     command = [sys.executable, __file__, '--worker-plan', str(output/'plan.json'),

@@ -38,6 +38,9 @@ struct ContextualState
 		int query;
 		bool installed = false;
 		bool joiningNeutral = false;
+		bool objectGarrison = false;
+		bool removableUnits = true;
+		bool allied = false;
 	};
 	std::optional<OwnHeroExchange> ownHeroExchange; ///< private native query, never policy input
 	struct AdventureDialog

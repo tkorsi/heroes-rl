@@ -1,6 +1,7 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
 #include "ArmyOperationRules.h"
+#include "GarrisonRules.h"
 
 #include "../../lib/IGameSettings.h"
 #include "../../lib/callback/CCallback.h"
@@ -19,7 +20,7 @@ using explorer_rl::TransferArmy;
 using State = explorer_rl::ContextualState;
 using Resources = std::array<int64_t, 7>;
 using ExchangeCheck = std::function<bool(int, int)>;
-struct Row { const CArmedInstance * army; const char * role; };
+struct Row { const CArmedInstance * army; const char * role; bool removable = true; };
 using Rows = std::vector<Row>;
 using Armies = std::map<int, TransferArmy>;
 
@@ -71,13 +72,34 @@ Rows displayedRows(const CCallback & callback, const State & state, const JsonNo
 				throw std::runtime_error("Received joining army is unavailable");
 			rows.push_back({joining, "joining_neutral"});
 		}
+		else if(state.ownHeroExchange && state.ownHeroExchange->objectGarrison && state.ownHeroExchange->second == second)
+		{
+			const auto & received = *state.ownHeroExchange;
+			const auto * garrison = dynamic_cast<const CArmedInstance *>(callback.getObj(ObjectInstanceID(second), false));
+			const bool self = garrison && garrison->getOwner() == callback.getPlayerID();
+			const bool allied = garrison && garrison->getOwner().isValidPlayer()
+				&& callback.getPlayerID() && callback.getPlayerRelations(*callback.getPlayerID(), garrison->getOwner()) == PlayerRelations::ALLIES;
+			if(!garrison || (garrison->ID != Obj::MINE && garrison->ID != Obj::GARRISON && garrison->ID != Obj::GARRISON2)
+				|| (received.allied ? !allied : !self))
+				throw std::runtime_error("Received object garrison is unavailable or changed ownership");
+			rows.push_back({garrison, explorer_rl::objectGarrisonRole(received.allied, received.removableUnits), received.removableUnits});
+		}
 		else rows.push_back({ownedHero(callback, second), "hero"});
 	}
 	else throw std::runtime_error("Army operations require an explicitly opened army window");
 	for(const auto & row : rows)
-		if(!row.army || (row.army->getOwner() != callback.getPlayerID() && std::string(row.role) != "joining_neutral"))
+		if(!row.army || (row.army->getOwner() != callback.getPlayerID() && std::string(row.role) != "joining_neutral"
+			&& std::string(row.role) != "allied_garrison" && std::string(row.role) != "allied_locked_garrison"))
 			throw std::runtime_error("Displayed army row is not owned");
 	return rows;
+}
+
+explorer_rl::ArmyAccess access(const CCallback & callback, const Rows & rows, const CArmedInstance * army)
+{
+	for(const auto & row : rows)
+		if(row.army == army)
+			return {army->getOwner() == callback.getPlayerID(), army->getOwner() == PlayerColor::UNFLAGGABLE, row.removable};
+	throw std::runtime_error("Army permissions require its received displayed row");
 }
 
 TransferArmy snapshot(const CArmedInstance & army)
@@ -322,11 +344,12 @@ bool ExplorerRL::executeArmyAction(const JsonNode & action, int64_t decision)
 		const auto & wire = contextState.lastObservation["window"]["armies"];
 		const auto [source, from] = selectedSlot(contextState, current, wire, action["selection"].String());
 		const auto [destination, to] = selectedSlot(contextState, current, wire, action["destination"].String());
-		if(splitting && source->getOwner() != playerID)
-			throw std::runtime_error("Native split requires an owned source army");
 		sourceID = source->id.getNum(); destinationID = destination->id.getNum();
 		sourceSlot = from; destinationSlot = to;
 		before = snapshot(current);
+		explorer_rl::validateArmyOperationAccess(operation, sourceID == destinationID,
+			before.at(sourceID).at(from).count, before.at(destinationID).at(to).count,
+			access(*callback, current, source), access(*callback, current, destination));
 		effect = explorer_rl::armyOperationEffect(operation, before.at(sourceID), before.at(destinationID),
 			from, to, count, sourceID == destinationID, source->needsLastStack(), destination->needsLastStack());
 		expected = before;

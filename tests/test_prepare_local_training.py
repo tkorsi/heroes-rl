@@ -147,5 +147,175 @@ class MachineConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "engine recipe"): prep.validate_config(self.config)
 
 
+class AcceptedRuntimeTests(MachineConfigurationTests):
+    def setUp(self):
+        super().setUp()
+        from experiments.explorer.create_garrison_scenarios import CASES, COLORS
+        self.candidate = self.root / "garrison/bin"
+        pins = {name: self.file(self.candidate / name, "garrison binary " + name)["sha256"] for name in prep.RUNTIME_PINS}
+        runtime = {name: sha for name, sha in pins.items() if name != "vcmiclient"}
+        recipe = prep.current_engine_recipe()
+        implementation = {**recipe, "experiments/learner/contextual.py": "synthetic-contract-sha"}
+        patch('validation.probes.validate_garrison_dialogs.implementation_identity', return_value=implementation).start()
+        frozen = json.loads((self.origin / 'freeze.json').read_text())
+        frozen.update(schema='heroes-local-runtime-freeze-v2', frozen_bin=str(self.candidate),
+            source_recipe_check=True, donor_load_references_removed=True, old_runtime_modified=False,
+            training_started=False, gameplay_started=False,
+            source_inputs={name: {'sha256': sha} for name, sha in recipe.items()},
+            artifacts=[dict(path=name, frozen_sha256=sha) for name, sha in pins.items()])
+        server = self.file(self.candidate/'vcmiserver', 'frozen native server')
+        frozen['artifacts'].append(dict(path='vcmiserver', frozen_sha256=server['sha256'], bytes=server['bytes']))
+        dependency = self.file(self.origin/'dependency-check.stdout', 'exact canonical dependency recipe')
+        frozen['dependency_check'] = {key: dependency[key] for key in ('sha256', 'bytes')}
+        game_map = self.file(self.root/'frozen-original.vmap', 'unchanged preflight map')
+        frozen['map'] = game_map
+        for item in frozen['resources']:
+            self.file(self.candidate / item['path'], 'fixed engine settings')
+        (self.candidate/'Mods').mkdir()
+        self.freeze = self.file(self.origin/'candidate-freeze.json', json.dumps(frozen))
+        preflight = dict(schema='heroes-local-runtime-preflight-v2', launcher_preflight_passed=True,
+            client_help_exit_code=0, donor_load_detected=False, gameplay_started=False, training_started=False,
+            runtime=runtime, map=game_map, actual_client_libvcmi_load=[str(self.candidate/'libvcmi.dylib')],
+            native=dict(binary=str(self.candidate/'vcmiclient'), binary_sha256=pins['vcmiclient'],
+                        explorer_rl_sha256=pins['AI/libExplorerRL.dylib'], map={'sha256': game_map['sha256']}))
+        self.preflight = self.file(self.origin/'preflight.json', json.dumps(preflight))
+        schedule = [dict(case=case, player=color, seed=83010000+i*2+j)
+                    for i, case in enumerate(CASES) for j, color in enumerate(COLORS)]
+        plan = dict(schema='heroes-garrison-diagnostic-plan-v1', implementation=implementation,
+            native_runtime=runtime, binary_sha256=pins['vcmiclient'], replay_binary_sha256=pins['vcmireplay'],
+            schedule=schedule, training_performed=False, training_input=False, optimizer_steps=0)
+        self.native_plan = self.file(self.origin/'native-plan.json', json.dumps(plan))
+        report = dict(schema='heroes-garrison-native-validation-v1', plan_sha256=self.native_plan['sha256'],
+            status='passed', not_started=0, training_performed=False, training_input=False, optimizer_steps=0,
+            cases=[dict(**row, status='passed', replay_verified=True,
+                   mechanics=dict(history_audit_passed=True, probe_status='passed')) for row in schedule])
+        self.native_report = self.file(self.origin/'native-report.json', json.dumps(report))
+        shutdown = dict(training_performed=False, optimizer_steps=0, owned_cleanup_verified=True,
+                        within_hard_deadline=True, returncode=0, errors=[])
+        self.shutdown = self.file(self.origin/'native-shutdown.json', json.dumps(shutdown))
+        policy = dict(schema='heroes-garrison-policy-reconstruction-v1', status='passed', implementation=implementation,
+            runtime=runtime, native_report_sha256=self.native_report['sha256'], decisions_checked=128,
+            mismatches=0, parameters_unchanged=True, exact_model_adam_rng_progress_pool=True,
+            training_performed=False, optimizer_steps=0,
+            checkpoint={name: self.file(self.origin/(name+'.pt'), 'frozen770-'+name)
+                        for name in ('plan', 'report', 'policy', 'resume', 'initial_checkpoint')},
+            evidence=[self.file(self.origin/'policy-report.json', 'synthetic policy evidence')],
+            attempts=[dict(phase='evaluation', learner_player=i//4, engine_seed=83410000+i, policy_seed=83450000+i,
+                status='passed', replay_verified=True, identity_verified=True, cleanup_verified=True,
+                completion_receipt=True, weights_unchanged=True, training_samples=0, optimizer_steps=0,
+                reconstruction={'passed': True}) for i in range(8)])
+        self.policy = self.file(self.origin/'policy-reconstruction.json', json.dumps(policy))
+        self.descriptor = dict(schema=prep.RUNTIME_ACCEPTANCE_SCHEMA, release_id='garrison-dialogs-v1',
+            status='accepted', change_classification='adapter-support-extension', runtime_bin=str(self.candidate),
+            runtime_files=pins, engine_recipe=recipe, freeze=self.freeze, preflight=self.preflight,
+            native=dict(plan=self.native_plan, report=self.native_report, shutdown=self.shutdown),
+            policy_reconstruction=self.policy)
+        self.pin_descriptor()
+
+    def pin_descriptor(self):
+        receipt = self.file(self.origin/'accepted-runtime.json', json.dumps(self.descriptor))
+        patch.object(prep, 'ACCEPTED_RUNTIME_RELEASES', {'garrison-dialogs-v1':
+            {'descriptor': receipt['path'], 'sha256': receipt['sha256']}}).start()
+
+    def accepted(self):
+        return prep.build_configuration(self.inputs, self.candidate, self.data, self.root, self.output,
+                                        runtime_release='garrison-dialogs-v1')
+
+    def test_explicit_reviewed_release_roundtrips_without_changing_legacy_defaults(self):
+        before = {str(p): p.read_bytes() for p in self.root.rglob('*') if p.is_file()}
+        value = self.accepted()
+        self.assertEqual(value['runtime_bin'], str(self.candidate))
+        self.assertEqual(value['runtime_release']['id'], 'garrison-dialogs-v1')
+        self.assertEqual(prep.validate_config(value), value)
+        self.assertEqual(prep.validate_config(self.config), self.config)
+        self.assertEqual(before, {str(p): p.read_bytes() for p in self.root.rglob('*') if p.is_file()})
+
+    def test_unreviewed_missing_or_changed_descriptor_fails_closed(self):
+        with patch.object(prep, 'ACCEPTED_RUNTIME_RELEASES', {'garrison-dialogs-v1': {'sha256': None}}):
+            with self.assertRaisesRegex(ValueError, 'reviewed acceptance pin'): self.accepted()
+        with self.assertRaisesRegex(ValueError, 'reviewed acceptance pin'):
+            prep.accepted_runtime_descriptor('arbitrary-release')
+        path = self.origin/'accepted-runtime.json'
+        path.write_text(path.read_text() + ' ')
+        with self.assertRaisesRegex(ValueError, 'accepted identity'): self.accepted()
+
+    def test_native_candidate_can_be_checked_without_becoming_machine_acceptance(self):
+        from tools.validate_interaction_guard import load_runtime_candidate
+        candidate = dict(self.descriptor, schema='heroes-local-training-runtime-candidate-v1')
+        candidate.pop('policy_reconstruction')
+        bound = self.file(self.origin/'candidate.json', json.dumps(candidate))
+        with patch.object(prep, 'ACCEPTED_RUNTIME_RELEASES', {}):
+            value, actual = load_runtime_candidate(bound['path'], bound)
+            self.assertEqual(value, candidate)
+            self.assertEqual(actual, bound)
+            with self.assertRaisesRegex(ValueError, 'reviewed acceptance pin'): self.accepted()
+        with self.assertRaisesRegex(ValueError, 'descriptor changed'):
+            load_runtime_candidate(bound['path'], {**bound, 'sha256': '0'*64})
+
+    def test_incomplete_native_case_and_cleanup_cannot_be_accepted(self):
+        for field in ('replay_verified', 'history_audit_passed', 'owned_cleanup_verified'):
+            report = json.loads(Path(self.native_report['path']).read_text())
+            shutdown = json.loads(Path(self.shutdown['path']).read_text())
+            if field == 'owned_cleanup_verified':
+                shutdown[field] = False
+                self.descriptor['native']['shutdown'] = self.file(self.root/(field+'.json'), json.dumps(shutdown))
+            else:
+                row = report['cases'][0]
+                (row['mechanics'] if field == 'history_audit_passed' else row)[field] = False
+                self.descriptor['native']['report'] = self.file(self.root/(field+'.json'), json.dumps(report))
+            self.pin_descriptor()
+            with self.subTest(field=field), self.assertRaises(ValueError): self.accepted()
+            self.descriptor['native'] = dict(plan=self.native_plan, report=self.native_report, shutdown=self.shutdown)
+
+    def test_policy_reconstruction_cannot_be_omitted_or_admit_learning(self):
+        for field, bad in (('mismatches', 1), ('parameters_unchanged', False), ('decisions_checked', 0),
+                           ('optimizer_steps', 1), ('attempts', [])):
+            policy = json.loads(Path(self.policy['path']).read_text()); policy[field] = bad
+            self.descriptor['policy_reconstruction'] = self.file(self.root/(field+'.json'), json.dumps(policy))
+            self.pin_descriptor()
+            with self.subTest(field=field), self.assertRaises(ValueError): self.accepted()
+
+    def test_native_identity_and_freeze_must_match_current_source_and_inventory(self):
+        with patch.object(prep, 'current_engine_recipe', return_value={'engine/changed': 'different'}):
+            with self.assertRaisesRegex(ValueError, 'engine recipe'): self.accepted()
+        with patch('validation.probes.validate_garrison_dialogs.implementation_identity', return_value={}):
+            with self.assertRaisesRegex(ValueError, 'source/runtime'): self.accepted()
+        self.file(self.candidate/'AI/libUnexpected.dylib', 'not accepted')
+        with self.assertRaisesRegex(ValueError, 'inventory'): self.accepted()
+
+    def test_actual_nine_artifact_freeze_binds_server_separately(self):
+        value = self.accepted()
+        frozen = json.loads(Path(self.freeze['path']).read_text())
+        self.assertEqual(len(frozen['artifacts']), 9)
+        self.assertNotIn('vcmiserver', value['runtime'])
+        self.assertNotIn('vcmiserver', value['runtime_files'])
+        self.assertEqual(value['runtime_origin']['server'], prep.binding(self.candidate/'vcmiserver'))
+        self.file(self.candidate/'vcmiserver', 'changed server outside runtime_identity')
+        with self.assertRaisesRegex(ValueError, 'accepted identity'): self.accepted()
+
+    def test_preflight_cannot_hide_loader_failure_and_dependency_check_is_bound(self):
+        for field, bad in (('launcher_preflight_passed', False), ('donor_load_detected', True),
+                           ('runtime', {}), ('actual_client_libvcmi_load', [])):
+            preflight = json.loads(Path(self.preflight['path']).read_text()); preflight[field] = bad
+            self.descriptor['preflight'] = self.file(self.root/(field+'.json'), json.dumps(preflight))
+            self.pin_descriptor()
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'preflight'):
+                self.accepted()
+        self.descriptor['preflight'] = self.preflight; self.pin_descriptor()
+        self.file(self.origin/'dependency-check.stdout', 'changed dependency audit')
+        with self.assertRaisesRegex(ValueError, 'accepted identity'): self.accepted()
+
+    def test_extra_resource_and_replaced_resource_symlink_are_rejected(self):
+        added = self.candidate/'Mods/unreviewed/mod.json'
+        self.file(added, 'new mod changes loaded rules')
+        with self.assertRaisesRegex(ValueError, 'resource inventory'): self.accepted()
+        added.unlink()
+        target = self.candidate/'config/settings.json'
+        original = target.read_bytes(); target.unlink()
+        donor = self.root/'moved-settings.json'; donor.write_bytes(original)
+        target.symlink_to(donor)
+        with self.assertRaisesRegex(ValueError, 'resource symlink'): self.accepted()
+
+
 if __name__ == "__main__":
     unittest.main()

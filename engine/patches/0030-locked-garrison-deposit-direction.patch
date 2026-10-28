@@ -1,0 +1,22 @@
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -2111,7 +2111,7 @@
+ 			const auto * g = dynamic_cast<const CGGarrison *>(army);
+ 			if (g && !g->removableUnits)
+ 			{
+-				complain("Stacks in this garrison are not removable!\n");
++				logGlobal->trace("Checked a garrison with non-removable stacks");
+ 				return true;
+ 			}
+ 		}
+@@ -2197,7 +2197,9 @@
+ 			}
+ 			else if (notRemovable(s2))
+ 			{
+-				if (s2->getStackCount(p1) < countLeftOnSrc)
++				// A locked destination may receive troops. Only a negative
++				// transfer removes them; unrelated slot p1 cannot decide this.
++				if (countToMove < 0)
+ 					return false;
+ 			}
+ 

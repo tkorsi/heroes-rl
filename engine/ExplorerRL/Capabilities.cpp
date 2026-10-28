@@ -153,7 +153,8 @@ JsonNode ExplorerRL::capabilityControls()
 			if(artifact && artifact->getWarMachine().hasValue() && current->isWarMachineAvailable(artifact->getId())) purchase = true;
 		if(purchase) result.Vector().emplace_back("purchases");
 	}
-	else if(contextState.context == "exchange" && contextState.ownHeroExchange && !contextState.ownHeroExchange->joiningNeutral)
+	else if(contextState.context == "exchange" && contextState.ownHeroExchange
+		&& !contextState.ownHeroExchange->joiningNeutral && !contextState.ownHeroExchange->objectGarrison)
 		result.Vector().emplace_back("artifacts");
 	return result;
 }
@@ -657,20 +658,42 @@ void ExplorerRL::receiveGarrison(const CArmedInstance * joining, const CGHeroIns
 {
 	try
 	{
-		if(!joining || !owner || owner->getOwner() != playerID || joining->ID != Obj::MONSTER
-			|| joining->getOwner().isValidPlayer() || !removable || query == QueryID(-1)
+		if(!joining || !owner || owner->getOwner() != playerID || query == QueryID(-1)
 			|| !callback->getObj(joining->id, false)) throw std::runtime_error("Unsupported garrison query");
+		const bool neutral = joining->ID == Obj::MONSTER && !joining->getOwner().isValidPlayer() && removable;
+		const bool mine = joining->ID == Obj::MINE;
+		const bool garrison = joining->ID == Obj::GARRISON || joining->ID == Obj::GARRISON2;
+		const bool self = joining->getOwner() == playerID;
+		const bool allied = joining->getOwner().isValidPlayer()
+			&& callback->getPlayerRelations(playerID, joining->getOwner()) == PlayerRelations::ALLIES;
+		if(!neutral && !((mine && self && removable) || (garrison && (self || allied))))
+			throw std::runtime_error("Unsupported garrison participants");
 		std::lock_guard lock(stateMutex);
 		if(contextState.ownHeroExchange || contextState.adventureDialog || contextState.capabilityDialog
 			|| contextState.context != "map" || !contextState.executing || !contextState.decision)
-			throw std::runtime_error("Unexpected joining-army lifecycle");
-		contextState.ownHeroExchange = State::OwnHeroExchange{owner->id.getNum(), joining->id.getNum(), query.getNum(), false, true};
+			throw std::runtime_error("Unexpected garrison-dialog lifecycle");
+		contextState.ownHeroExchange = State::OwnHeroExchange{
+			owner->id.getNum(), joining->id.getNum(), query.getNum(), false, neutral, !neutral, removable, allied};
 		auto record = contextState.record("event", callback->getDate(Date::DAY));
-		record["event"]["kind"].String() = "army_join_requested";
+		record["event"]["kind"].String() = neutral ? "army_join_requested"
+			: removable ? "garrison_requested" : "garrison_locked_requested";
 		record["event"]["subject"].String() = contextState.handle(owner->id.getNum());
 		record["event"]["partner"].String() = contextState.handle(joining->id.getNum());
+		if(!neutral)
+		{
+			record["event"]["object_kind"].Integer() = joining->ID.getNum();
+			record["event"]["owner"].String() = allied ? "ally" : "self";
+		}
 		contextState.records.push_back(std::move(record));
 		++contextState.interactions; changed.notify_all();
 	}
-	catch(const std::exception &) { unsupported("unsupported_interaction: joining neutral army"); }
+	catch(const std::exception & error)
+	{
+		// Report the delivered visible window type, never native query IDs,
+		// private armies or arbitrary game text. Do not call every garrison
+		// error a neutral join: mines and map garrisons share this callback.
+		unsupported("unsupported_interaction: garrison dialog: " + std::string(error.what())
+			+ "; object_kind=" + (joining ? std::to_string(joining->ID.getNum()) : "missing")
+			+ "; removable=" + (removable ? "true" : "false"));
+	}
 }

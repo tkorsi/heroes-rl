@@ -59,12 +59,15 @@ LOCAL_ADAPTER_ORIGINS = {
     'b4fe70cc0285a76716430b5f41b17b43ba828b12': '499246f8ff707ddda8f166a4ed3dbd9c1d62928786f893e2d98da835bbcee3f3',
     # Official checkpoint699 continuation, closed before the support intervention.
     'a92250fe96feedcb7c21c169bd69ad9c7281b5ef': '3195c79c5d0a0e62e499fd659a2815334236348b10ed4f7870959347f2d18363',
+    # Guarded original-map run717->770, stopped on an unsupported mine query.
+    '6921700f0570d68c0275b7fe837bb03fe58f01d4': 'a2dddd49fc5026fd2cd6842845dd00283400f4378d6092af88ee6492709827ef',
 }
 # These changes implement a declared policy-support intervention. Their exact
 # source pins are checked alongside the execution pins, but they must never be
 # reported as an identical-policy acceleration transition.
 POLICY_SUPPORT_SOURCES = frozenset({
     'experiments/learner/builtin_rollout.py',
+    'experiments/learner/contextual.py',
     'experiments/learner/contextual_model.py',
     'experiments/learner/contextual_rollout.py',
     'experiments/learner/evaluate_continuation.py',
@@ -83,7 +86,7 @@ FAST_PATH_SOURCES = {
         ('ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
         'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d'),
     'experiments/learner/builtin_rollout.py': (
-        ('a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
+        ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
         ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600',),
@@ -93,30 +96,30 @@ FAST_PATH_SOURCES = {
         '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
     'experiments/learner/contextual.py': (
         ('070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
-        '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda'),
+        '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
     'experiments/learner/contextual_model.py': (
-        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d',),
+        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72',),
         'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72'),
     'experiments/learner/contextual_rollout.py': (
-        ('afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
+        ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
         '2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346'),
     'experiments/learner/evaluate_builtin_opponent.py': (
         ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
     'experiments/learner/evaluate_continuation.py': (
-        ('6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d',),
+        ('0a52b1e1a73ce78a4b7d1d3a59951bf7e93c32dd44f0dee100fa58dbdd655ed3', '6c64ef89d47f3986ff47a589a292d538ad75ae662589ae8cd643e46a1ba7470d',),
         '0a52b1e1a73ce78a4b7d1d3a59951bf7e93c32dd44f0dee100fa58dbdd655ed3'),
     'experiments/learner/first_run.py': (
         ('645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a', '8253af03d91cc6d5244a1d0be834c3aaadee1cca914923321ceb59035cb4da1c',),
         '645e1ca237b2eee9f0338d0a8b8e388aac7ee5d952e205ea666e55481fecd81a'),
     'experiments/learner/gameplay.py': (
-        ('f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f',),
+        ('9688b93ba526704df51c7d376d27f46c013ec7bdc1ad09432e3de2a0f1fa99c4', 'f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f',),
         '9688b93ba526704df51c7d376d27f46c013ec7bdc1ad09432e3de2a0f1fa99c4'),
     'experiments/learner/inference.py': (
         ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54', 'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14',),
         'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14'),
     'experiments/learner/ppo.py': (
-        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682',),
+        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd',),
         '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
@@ -132,6 +135,8 @@ FAST_PATH_TREE = {
         '8bdd7158233685a3a90e08977c23702d60e1d2c596b07f9f303d29119964ec78'),
     'experiments/explorer/create_curriculum_scenario.py': ('',
         'd887ace1ba78c095f6485f2b0e894d40eb8a1eadd21482215b6625ed23db573a'),
+    'experiments/explorer/create_garrison_scenarios.py': ('',
+        '177f10c5a062476feff4f5503f7d62f878855a4fe66e41446299c77c1dd83aa0'),
     'experiments/headless/background_check.py': ('',
         'eb79612ff90cd684f3832b97b44c9a5fa84d16e905dca06b60c04d901801db5b'),
     'experiments/headless/builtin_env.py': ('e2290432ef893081d7e5beccb897c717ed4444b3',
@@ -160,16 +165,20 @@ FAST_PATH_TREE = {
         '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f'),
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
+    'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
+        'b97e94da4e7488d0aeb1494ae1fc21b094319b4a309515afe7d9dc849baf6e52'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         '1a3849d1f8c1917f1c9a181f360c8fb057e3e4ebb9e710f1eb273d656cc883b4'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
+    'validation/probes/validate_garrison_dialogs.py': ('',
+        '1b4ebbebe5232bc13283ec052a7d18acdf80041552fe429f5d727fa0cc871f1a'),
     'validation/probes/validate_hero_policy.py': ('55badab454804f7fc2e1d544840ad830c1aab5ec',
         '574850634c7f617b0e9e5a9dada02cdb08e211ca7e05379af98133f2089d85f2'),
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '13de226ed1cda4eacc688de3391c9fb910469ee2e1bf88ee6f2317f69513c91c'
+LOCAL_ADAPTER_TRANSITION_AST = '362d873afe4941f4396f2129fbd7074054edfc1c1f47d69abea7e1e3f90ab688'
 
 
 def write_new(path, value):
@@ -260,6 +269,7 @@ def local_adapter_transition(commit, expected, historical, current):
             'Local adapter differs from the reviewed profile transition')
     return {'transition': 'reviewed_policy_support_adapter',
             'policy_support_contract': interaction_guard.VERSION,
+            'native_interface_extension': 'map-garrison-v1',
             'policy_support_activation': 'explicit_session_and_plan_only',
             'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
             'current_ast_sha256': LOCAL_ADAPTER_TRANSITION_AST,
@@ -274,6 +284,7 @@ def fast_path_transition(name, expected, current):
     return {'transition': 'reviewed_policy_support_transition' if support_change else 'reviewed_exact_fast_path',
             'historical_sha256': expected, 'current_sha256': fast,
             'policy_support_contract': interaction_guard.VERSION if support_change else None,
+            'native_interface_extension': 'map-garrison-v1' if support_change else None,
             'policy_ppo_mathematics_unchanged': not support_change, 'historical_code_executed': False}
 
 
@@ -375,6 +386,7 @@ def source_compatibility(parent):
             'policy_ppo_unchanged': not (fast or support), 'reviewed_exact_fast_path': fast,
             'reviewed_policy_support_transition': support,
             'policy_support_contract': interaction_guard.VERSION if support else None,
+            'native_interface_extension': 'map-garrison-v1' if support else None,
             'terminal_reward_and_ppo_formula_unchanged': True,
             'reviewed_fast_path_tree': reviewed_tree(), 'historical_metadata_rewritten': False}
 

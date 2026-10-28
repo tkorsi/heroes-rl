@@ -1,0 +1,69 @@
+{
+  "schema": "heroes-local-final770-preservation-v1",
+  "timestamp_utc": "2026-10-28T12:14:45.853615+00:00",
+  "run_id": "run-20261027T200505Z-a76f85a2",
+  "source_commit": "6921700f0570d68c0275b7fe837bb03fe58f01d4",
+  "status": "stopped_failure",
+  "shutdown_utc": "2026-10-27T20:20:39.306459+00:00",
+  "new_admitted_games": 212,
+  "new_ppo_updates": 53,
+  "training_outcomes": {
+    "win": 0,
+    "loss": 212,
+    "cutoff": 0
+  },
+  "evaluation_games": 16,
+  "evaluation_outcomes": {
+    "loss": 16
+  },
+  "checkpoint_update": 770,
+  "progress": {
+    "updates": 770,
+    "rollouts": 3080,
+    "decisions": 480565
+  },
+  "optimizer_steps": 16080,
+  "original_target_games": 5000,
+  "original_admitted_games": 564,
+  "remaining_games": 4436,
+  "failed_batch": 408,
+  "failed_batch_admitted_samples": 0,
+  "failed_batch_optimizer_updates": 0,
+  "next_unused_training_sequence": 409,
+  "private_repository": "tkorsi/heroes-rl-training-state",
+  "private_branch": "codex/local-script-final770-checkpoint",
+  "private_package_commit": "9dcb734d3ce00524981670e06da43f876ef38f9b",
+  "private_receipt_commit": "4d794f78a42e598121f45d3c238fa2a5b1b746a1",
+  "remote_full_restore": {
+    "exact_model_adam_rng_progress_pool": true,
+    "progress": {
+      "decisions": 480565,
+      "rollouts": 3080,
+      "updates": 770
+    },
+    "optimizer_steps": 16080,
+    "weights_sha256": "e7fb7f78082b1c16594ae16d6d1fcd29615f7cee10a01b56c6b033e3d8be7d6f",
+    "frozen_source_commit": "6921700f0570d68c0275b7fe837bb03fe58f01d4",
+    "files_hashed": 25
+  },
+  "remote_receipt_and_failed_archive_readback_verified": true,
+  "checkpoint_file_sha256": {
+    "initial_checkpoint": "e6714ddd2d246832b6ba66b4f87c446852309c51183ee6cb2228fd6d2a2bc5d0",
+    "plan": "24fdfa2836947aae4303470375eaac795d453085ee3ffa43590d816ecbcd8927",
+    "policy": "79c376dcf8e91bd79ece87af851239e5318e3b3f73197a7e1490db1ac89dcb9e",
+    "report": "056aea6d2f3a519667727d5589e60277d806bc9a3ca1ef44d42af8acbe644aab",
+    "resume": "cea9c4bf3486813524fc1c5720865543554a31793f46906028b3a24698dc4566"
+  },
+  "owned_cleanup_verified": true,
+  "new_games_during_preservation": 0,
+  "new_optimizer_updates_during_preservation": 0,
+  "source_evidence_sha256": {
+    "summary.json": "d62479c6fd569af6750ab72d49910e5652476dd80d159b5c9b143092f9c914c7",
+    "campaign-report.json": "f0499bfc6c31b564fd578380660cb649046d019e74a5b64c60ac2e3318fc934c",
+    "shutdown.json": "dbeeb812a2b5911fb1564955d2144226bdc5250e5e023076c212ff087fb3a3b6"
+  },
+  "limitations": [
+    "All original raw gameplay remains local; the remote package includes complete checkpoint dependencies, compact session evidence and the rejected batch408 archive.",
+    "Preservation helper corrections are retained in the private receipt; official state was never edited."
+  ]
+}
