@@ -147,3 +147,29 @@ and its independent check are recorded in the compact results file.
 contain source identities, state component hashes, test results and limitations.
 All raw captures, checkpoints, detailed reports and failed-attempt evidence
 remain under the private durable artifact root.
+
+## Main checkout handoff
+
+Main was fast-forwarded without unrelated changes. Its generated engine check
+passed, and the real `continue-original-4720.sh check` command passed with
+`--collection-workers 4` under both one-hour and ten-hour caps. Both checks
+restored checkpoint 1,095 exactly and reported 3,136 remaining games / sequence 735,
+with no gameplay or PPO update. The historical machine descriptor and original
+checkpoint remain unchanged.
+
+Manual one-hour trial:
+
+```sh
+cd ~/Projects/Heroes
+./continue-original-4720.sh --hours 1 --collection-workers 4
+```
+
+For the originally requested ten-hour continuation:
+
+```sh
+cd ~/Projects/Heroes
+./continue-original-4720.sh --hours 10 --collection-workers 4
+```
+
+Omitting the collection flag retains one collector. No training was started by
+this integration or its check-mode verification.

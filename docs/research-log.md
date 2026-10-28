@@ -663,3 +663,8 @@ reserve, 103 updates / 412 admitted losses and complete cleanup. The original ta
 has 1,864 admitted games, 3,136 remaining, and next sequence 735. The merge does not
 launch a campaign or consume official seeds. The report retains failed
 preflight/development attempts and the full validation limits.
+
+Main checkout check mode also passed for one- and ten-hour continuations with
+four collectors: exact 1095 restore, 3,136 remaining games, next sequence 735. Main
+engine preparation matched the unchanged recipe. Historical machine bytes and
+official checkpoints remain preserved; no official training was launched.

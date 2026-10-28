@@ -41,7 +41,61 @@
     "The complete test suite preceded the two additional harness machine-binding tests; subsequent focused acceptance tests passed.",
     "No paired same-seed equivalence or speedup claim; no official training was launched."
   ],
-  "main_readiness": null,
+  "main_readiness": {
+    "checked_source_commit": "1cbc922d0a3628edde6948322a838994c382cd4b",
+    "checks": [
+      {
+        "checkpoint": {
+          "decisions": 597916,
+          "rollouts": 4380,
+          "updates": 1095
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 735,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 3136,
+        "session_safety_cap_hours": 1.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      },
+      {
+        "checkpoint": {
+          "decisions": 597916,
+          "rollouts": 4380,
+          "updates": 1095
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 735,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 3136,
+        "session_safety_cap_hours": 10.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      }
+    ],
+    "gameplay_performed": false,
+    "manual_commands": [
+      "./continue-original-4720.sh --hours 1 --collection-workers 4",
+      "./continue-original-4720.sh --hours 10 --collection-workers 4"
+    ],
+    "prepared_engine_check": "passed"
+  },
   "merged_branch": "codex/parallel-eight",
   "merged_head": "16e60daf5e3dea4ef83b1f8f9ee7cf3f069d7bfe",
   "native_binary_changes": false,
