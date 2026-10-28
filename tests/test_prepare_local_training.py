@@ -193,6 +193,25 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
         shutdown = dict(training_performed=False, optimizer_steps=0, owned_cleanup_verified=True,
                         within_hard_deadline=True, returncode=0, errors=[])
         self.shutdown = self.file(self.origin/'native-shutdown.json', json.dumps(shutdown))
+        from validation.probes import validate_capabilities as capability
+        regression_implementation = {**implementation, 'tools/validate_garrison_regressions.py': 'synthetic-wrapper-sha'}
+        patch('tools.validate_garrison_regressions.implementation_identity', return_value=regression_implementation).start()
+        legacy_schedule = capability.schedule(tuple(capability.CASES), capability.fixtures.COLORS, 83210000, 1)
+        legacy_plan = dict(schema='heroes-capability-diagnostic-plan-v1', interface=capability.INTERFACE,
+            implementation=regression_implementation, native_runtime=runtime, binary_sha256=pins['vcmiclient'],
+            replay_binary_sha256=pins['vcmireplay'], schedule=legacy_schedule,
+            training_performed=False, training_input=False, optimizer_steps=0)
+        legacy_plan_bound = self.file(self.origin/'regression-plan.json', json.dumps(legacy_plan))
+        legacy_report = dict(schema='heroes-capability-native-validation-v1', plan_sha256=legacy_plan_bound['sha256'],
+            status='passed', not_started=0, training_performed=False, training_input=False, optimizer_steps=0,
+            cases=[dict(**row, status='passed', replay_verified=True,
+                mechanics=dict(history_audit_passed=True, probe_status='passed', episode_status='truncated',
+                    training_performed=False, checks=[dict(check='independent_native_replay', status='passed')]))
+                   for row in legacy_schedule])
+        self.regression = dict(plan=legacy_plan_bound,
+            report=self.file(self.origin/'regression-report.json', json.dumps(legacy_report)),
+            shutdown=self.file(self.origin/'regression-shutdown.json',
+                               json.dumps(dict(shutdown, training_input=False, cleanup_errors=[]))))
         policy = dict(schema='heroes-garrison-policy-reconstruction-v1', status='passed', implementation=implementation,
             runtime=runtime, native_report_sha256=self.native_report['sha256'], decisions_checked=128,
             mismatches=0, parameters_unchanged=True, exact_model_adam_rng_progress_pool=True,
@@ -209,7 +228,7 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
             status='accepted', change_classification='adapter-support-extension', runtime_bin=str(self.candidate),
             runtime_files=pins, engine_recipe=recipe, freeze=self.freeze, preflight=self.preflight,
             native=dict(plan=self.native_plan, report=self.native_report, shutdown=self.shutdown),
-            policy_reconstruction=self.policy)
+            regression=self.regression, policy_reconstruction=self.policy)
         self.pin_descriptor()
 
     def pin_descriptor(self):
@@ -251,6 +270,57 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
             with self.assertRaisesRegex(ValueError, 'reviewed acceptance pin'): self.accepted()
         with self.assertRaisesRegex(ValueError, 'descriptor changed'):
             load_runtime_candidate(bound['path'], {**bound, 'sha256': '0'*64})
+
+    def test_legacy_regression_is_required_and_keeps_paired_fog_seeds(self):
+        value = self.accepted()
+        self.assertEqual(value['runtime_origin']['regression'], self.regression)
+        schedule = json.loads(Path(self.regression['plan']['path']).read_text())['schedule']
+        self.assertEqual(len(schedule), 28)
+        self.assertEqual(len({row['seed'] for row in schedule}), 26)
+        self.assertEqual([row['seed'] for row in schedule[-4:-2]], [row['seed'] for row in schedule[-2:]])
+        self.descriptor.pop('regression')
+        self.pin_descriptor()
+        with self.assertRaisesRegex(ValueError, 'regression bindings'): self.accepted()
+
+    def test_failed_missing_or_learning_legacy_case_fails_closed(self):
+        for mutation in ('missing', 'failed', 'replay', 'history', 'learning', 'unverified_check', 'cleanup'):
+            legacy = deepcopy(self.regression)
+            report = json.loads(Path(legacy['report']['path']).read_text())
+            if mutation == 'cleanup':
+                shutdown = json.loads(Path(legacy['shutdown']['path']).read_text())
+                shutdown['cleanup_errors'] = ['still alive']
+                legacy['shutdown'] = self.file(self.root/('regression-'+mutation+'.json'), json.dumps(shutdown))
+            else:
+                row = report['cases'][0]
+                if mutation == 'missing': report['cases'].pop()
+                elif mutation == 'failed': row['status'] = 'failed'
+                elif mutation == 'replay': row['replay_verified'] = False
+                elif mutation == 'history': row['mechanics']['history_audit_passed'] = False
+                elif mutation == 'learning': row['mechanics']['training_performed'] = True
+                else: row['mechanics']['checks'][0]['status'] = 'unverified'
+                legacy['report'] = self.file(self.root/('regression-'+mutation+'.json'), json.dumps(report))
+            self.descriptor['regression'] = legacy
+            self.pin_descriptor()
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'regression'): self.accepted()
+        self.descriptor['regression'] = self.regression
+
+    def test_legacy_regression_binds_source_runtime_and_exact_schedule(self):
+        for mutation in ('source', 'runtime', 'seed', 'fixture', 'repeat'):
+            legacy = deepcopy(self.regression)
+            plan = json.loads(Path(legacy['plan']['path']).read_text())
+            if mutation == 'source': plan['implementation'] = {}
+            elif mutation == 'runtime': plan['binary_sha256'] = '0'*64
+            elif mutation == 'seed': plan['schedule'][1]['seed'] = plan['schedule'][0]['seed']
+            elif mutation == 'fixture': plan['schedule'][0]['fixture'] = 'artifacts'
+            else: plan['schedule'][0]['repeat'] = 1
+            legacy['plan'] = self.file(self.root/('regression-'+mutation+'.json'), json.dumps(plan))
+            report = json.loads(Path(legacy['report']['path']).read_text())
+            report['plan_sha256'] = legacy['plan']['sha256']
+            legacy['report'] = self.file(self.root/('regression-'+mutation+'-report.json'), json.dumps(report))
+            self.descriptor['regression'] = legacy
+            self.pin_descriptor()
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'regression'): self.accepted()
+        self.descriptor['regression'] = self.regression
 
     def test_incomplete_native_case_and_cleanup_cannot_be_accepted(self):
         for field in ('replay_verified', 'history_audit_passed', 'owned_cleanup_verified'):

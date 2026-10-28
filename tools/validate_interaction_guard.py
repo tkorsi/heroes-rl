@@ -9,6 +9,7 @@ of the accepted built-in-opponent evaluator, without PPO admission.
 from copy import deepcopy
 from datetime import datetime, timezone
 import fcntl
+import hashlib
 import json
 import os
 import random
@@ -49,6 +50,18 @@ def verify_state_snapshot(before, state):
 
 def write_shutdown(output, rc, cleanup):
     write(output/'shutdown.json', dict(returncode=rc, **cleanup))
+
+
+def configure_artifact_root(value):
+    """Bind preservation defaults before importing any learner dependency."""
+    root = Path(value).expanduser().resolve()
+    if not Path(value).expanduser().is_absolute() or not root.is_dir():
+        raise ValueError('Diagnostic artifact root must be an existing absolute directory')
+    loaded = sys.modules.get('experiments.learner.builtin_preservation')
+    if loaded is not None and loaded.DURABLE_ROOT != root:
+        raise ValueError('Preservation was already imported with a different artifact root')
+    os.environ['HEROES_ARTIFACT_ROOT'] = str(root)
+    return root
 
 
 def diagnostic_schedule(engine_base, policy_base):
@@ -116,6 +129,13 @@ def stopped_candidate_parent(run, config):
 
 
 def execute(plan_path, sha):
+    content = plan_path.read_bytes()
+    if hashlib.sha256(content).hexdigest() != sha:
+        raise ValueError('Diagnostic plan changed')
+    plan = json.loads(content)
+    # Fresh worker imports must use the same durable root as preparation; the
+    # preservation module captures it in function defaults at import time.
+    configure_artifact_root(plan['artifact_root'])
     import torch
     from experiments.learner import builtin_first_run as pilot
     from experiments.learner import interaction_guard as guard
@@ -127,7 +147,6 @@ def execute(plan_path, sha):
     from experiments.headless import background_check
     from experiments.headless.process_deadline import cleanup_from_evidence
     torch.set_num_threads(1)
-    plan = json.loads(plan_path.read_text())
     require(binding(plan_path)['sha256'] == sha, 'Diagnostic plan changed')
     lock = os.open(plan['official_lock'], os.O_RDONLY)
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -227,6 +246,10 @@ def main():
                   dict(timestamp_utc=utc(), error=f'{type(error).__name__}: {error}',
                        training_samples=0, optimizer_steps=0))
             raise
+    if not (args.output and args.parent_run and args.machine):
+        parser.error('Output, stopped parent and machine are required')
+    config = json.loads(args.machine.read_text())
+    configure_artifact_root(config['artifact_root'])
     from experiments.learner import local_script_training as local
     from experiments.learner import builtin_first_run as pilot
     from experiments.learner import interaction_guard as guard
@@ -237,8 +260,6 @@ def main():
     from experiments.headless.process_deadline import guarded_popen, close_owned_process
     from run_local_training import final_parent
     from prepare_local_training import validate_config, original_map_identity, durable
-    require(args.output and args.parent_run and args.machine, 'Output, stopped parent and machine are required')
-    config = json.loads(args.machine.read_text())
     candidate = None
     schedule = [dict(episode=i+1, phase='evaluation', learner_player=i//4,
                      engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)]
@@ -286,7 +307,7 @@ def main():
         scope='visible-interaction-budget-v1-diagnostic', policy_support=guard.VERSION,
         source=source_identity(local.INTERFACE), implementation=pilot.implementation(),
         prerequisites=pilot.prerequisites(), configuration=local.configuration(descriptor),
-        runtime=config['runtime'], binary=str(binary), data=config['data'],
+        runtime=config['runtime'], binary=str(binary), data=config['data'], artifact_root=config['artifact_root'],
         game_map=str(game_map), map=map_identity(game_map),
         native=VcmiLauncher(binary, Path(config['data']), game_map).identity(),
         checkpoint=descriptor['policy'], replay_binary=binding(binary.parent/'vcmireplay'),

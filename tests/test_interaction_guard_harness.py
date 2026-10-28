@@ -1,14 +1,18 @@
 """Regression checks for postcollection diagnostic bookkeeping; no native work."""
 from copy import deepcopy
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
+from unittest.mock import patch
 import unittest
 import torch
 
 from tools.validate_interaction_guard import (state_snapshot, verify_state_snapshot, write_shutdown,
-    diagnostic_schedule, reserve_diagnostic_seeds, stopped_candidate_parent)
+    diagnostic_schedule, reserve_diagnostic_seeds, stopped_candidate_parent, configure_artifact_root)
 
 
 class HarnessFinalizationTests(unittest.TestCase):
@@ -47,6 +51,29 @@ class HarnessFinalizationTests(unittest.TestCase):
 
 
 class GarrisonCandidateTests(unittest.TestCase):
+    def test_machine_root_is_set_before_preservation_import(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code = """import sys
+from pathlib import Path
+from tools.validate_interaction_guard import configure_artifact_root
+configure_artifact_root(sys.argv[1])
+from experiments.learner.builtin_preservation import DURABLE_ROOT
+assert DURABLE_ROOT == Path(sys.argv[1]).resolve(), DURABLE_ROOT
+"""
+            result = subprocess.run([sys.executable, '-c', code, directory],
+                env=dict(os.environ, HEROES_ARTIFACT_ROOT='/workspace/stale-diagnostic-root'),
+                cwd=Path(__file__).resolve().parents[1], capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_conflicting_cached_preservation_root_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(os.environ):
+            old = SimpleNamespace(DURABLE_ROOT=Path('/workspace/stale-diagnostic-root'))
+            with patch.dict(sys.modules, {'experiments.learner.builtin_preservation': old}):
+                with self.assertRaisesRegex(ValueError, 'already imported'):
+                    configure_artifact_root(directory)
+            with self.assertRaisesRegex(ValueError, 'absolute'):
+                configure_artifact_root('relative-root')
+
     def test_fresh_candidate_schedule_is_eight_evaluations_with_separate_seed_ranges(self):
         schedule = diagnostic_schedule(83410000, 83450000)
         self.assertEqual([row['learner_player'] for row in schedule], [0]*4+[1]*4)

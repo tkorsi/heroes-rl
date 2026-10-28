@@ -85,3 +85,25 @@ locked destination, preserving the withdrawal restriction and allowing deposits.
 The predicate no longer emits an ERROR/system complaint merely for checking a
 locked army. This is a native valid-action correction, not a performance change.
 The failed attempt supplies no training and remains separate from acceptance.
+
+### Rebuilt native acceptance
+
+Frozen runtime `local-v8-garrison-repair1`, source84fb492, passed all16 new
+map-garrison controls and all28 existing native-capability regressions for both
+seats. Every control passed strict history audit, independent native replay and
+owned shutdown within its independent deadline. These are scripted interface
+controls only, with zero PPO samples or optimizer steps. Allied-garrison rights
+have offline coverage only; the accepted two-player terminal protocol does not
+provide a nonterminal allied native fixture.
+
+The complete offline suite ran1,614 tests,33 skipped, with no failures. Historical
+batch407 was independently reconstructed under the new parser:4 games,876frames,
+130actions/values and362 conditional probabilities, all exact. The official770
+model/Adam/RNG/progress/pool state also restored exactly.
+
+The first frozen770 policy diagnostic failed during preparation, before any
+worker/game: its launcher used the default Linux prerequisite path because the
+Mac artifact-root environment had not been initialized before imports. Its
+parent copy and eight reserved seed pairs remain preserved and are not reused.
+A corrected launcher and a fresh diagnostic attempt are required; this failed
+preparation is not native acceptance or learning.

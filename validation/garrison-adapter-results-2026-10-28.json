@@ -1,0 +1,115 @@
+{
+  "schema": "heroes-map-garrison-repair-v1",
+  "timestamp_utc": "2026-10-28T12:45:57.322923+00:00",
+  "status": "native_passed_policy_pending",
+  "implementation_commit": "84fb492c1f8b1a92de639578ff7c5c8ab61af72d",
+  "native_runtime": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1",
+  "runtime_freeze": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1/freeze-receipt.json",
+    "sha256": "a63a6d85c548fc0d9b23505ac8476270ec0d745e43791a449ebfb9857e16d8b5",
+    "bytes": 152999
+  },
+  "runtime_preflight": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-garrison-repair1/preflight.json",
+    "sha256": "e11e905f8f074dc3b8358d85ca456f4298a78cda16c430f1983914b1c6ba80e7",
+    "bytes": 1779
+  },
+  "official_checkpoint": 770,
+  "original_remaining_games": 4436,
+  "next_unused_training_sequence": 409,
+  "official_training_launched": false,
+  "reward": "terminal-only +1/-1/0",
+  "model_and_ppo_architecture_changed": false,
+  "new_interface_support": [
+    "owned mine capture and revisit",
+    "owned normal and anti-magic garrisons",
+    "vertical garrison",
+    "removable and locked troop permissions",
+    "stack inspection/back",
+    "full-army close/revisit"
+  ],
+  "native_correction": "patch0030 permits positive deposits into occupied locked garrison slots and still rejects withdrawal",
+  "offline_tests": {
+    "run": 1614,
+    "skipped": 33,
+    "failures": 0,
+    "source_commit": "84fb492c1f8b1a92de639578ff7c5c8ab61af72d",
+    "log": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/offline-full-suite.log",
+      "sha256": "6d040bb3f63a04b8736df49947db513d19762298ddf9e73302fc0cb0459e2c86",
+      "bytes": 4460
+    }
+  },
+  "native_garrisons": {
+    "cases": 16,
+    "all_passed": true,
+    "both_seats": true,
+    "reports": {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/native-final-16/execution/plan.json",
+        "sha256": "cb469a5f6805b3582b5328762bbcab3ab0495eee9bdff72745c092c41bc6d909",
+        "bytes": 31965
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/native-final-16/execution/report.json",
+        "sha256": "778c22b6a07fdd89f706cd42bf6d26556dec416b6e954fb406faf35f7eff8e9a",
+        "bytes": 264920
+      },
+      "shutdown": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/native-final-16/shutdown.json",
+        "sha256": "3bffb9fbe51d1c016c18b8e46924821850859cf3a5ad435900751e32a41f3ca9",
+        "bytes": 197
+      }
+    }
+  },
+  "legacy_capabilities": {
+    "cases": 28,
+    "all_passed": true,
+    "both_seats": true,
+    "reports": {
+      "plan": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/capability-regression-28/execution/plan.json",
+        "sha256": "dc2437c5ba526b3ac3e4932d54d05ad03f1ab09aa8a2983eeafc57df8767627e",
+        "bytes": 39136
+      },
+      "report": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/capability-regression-28/execution/report.json",
+        "sha256": "6cbda8dd4a0d93dfcf61881b40be12775efb517789469d5be1407f6158fb4bb0",
+        "bytes": 167729
+      },
+      "shutdown": {
+        "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/capability-regression-28/shutdown.json",
+        "sha256": "1267f9ca3c679853b1a8fb22b3da00554ac75a782e1d4170d1e78f1706c117df",
+        "bytes": 248
+      }
+    }
+  },
+  "historical_checkpoint_audit": {
+    "path": "/Users/orsi/Projects/Heroes-artifacts/garrison-repair-20261028/historical770-python-audit/report.json",
+    "sha256": "1ebff1c34467d3fd1a3e807a3eac6bc832d58812ca2eac04eeec249122193ed9",
+    "bytes": 14274
+  },
+  "retained_diagnostic_failures": [
+    {
+      "attempt": "locked-repro-1",
+      "reason": "mixed native object ABI: timeout after delivered garrison query"
+    },
+    {
+      "attempt": "locked-repro-2",
+      "reason": "mixed native object ABI: query not installed before next map decision"
+    },
+    {
+      "attempt": "locked-repro-3",
+      "reason": "native server rejected valid occupied locked-garrison deposit; corrected in patch0030"
+    },
+    {
+      "attempt": "policy770-diagnostic1",
+      "reason": "zero-game preparation failed on Linux default artifact-root lookup; fresh diagnostic seed range required"
+    }
+  ],
+  "limitations": [
+    "Allied-garrison permission/history/model coverage is offline only; actual allied native queries were not tested by the two-player terminal protocol.",
+    "Scripted interface controls are not learner demonstrations and supply no PPO data.",
+    "No original-map learning improvement is claimed by an adapter repair."
+  ]
+}

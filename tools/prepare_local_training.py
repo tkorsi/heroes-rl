@@ -162,11 +162,14 @@ def candidate_runtime_origin(runtime_bin, runtime, descriptor):
     """Check source/freeze/native evidence for isolated candidate diagnostics only.
 
     The candidate descriptor contains runtime_bin, runtime_files (name->SHA256),
-    engine_recipe, freeze/preflight (file bindings), native (plan/report/shutdown bindings),
+    engine_recipe, freeze/preflight (file bindings), native and regression
+    (plan/report/shutdown bindings),
     but grants no machine configuration acceptance. Official preparation also
     requires a reviewed descriptor pin and independent frozen-policy evidence.
     """
     from validation.probes.validate_garrison_dialogs import implementation_identity
+    from validation.probes import validate_capabilities as capability
+    from tools.validate_garrison_regressions import implementation_identity as regression_identity
     from experiments.explorer.create_garrison_scenarios import CASES, COLORS
 
     def checked(item):
@@ -263,9 +266,52 @@ def candidate_runtime_origin(runtime_bin, runtime, descriptor):
             and shutdown.get("owned_cleanup_verified") is True and shutdown.get("within_hard_deadline") is True
             and shutdown.get("returncode") == 0 and shutdown.get("errors") == [],
             "Native acceptance training exclusion or owned cleanup is incomplete")
+
+    regression = descriptor.get("regression")
+    require(type(regression) is dict and set(regression) == {"plan", "report", "shutdown"},
+            "Complete legacy capability regression bindings are required")
+    old_plan, old_report, old_shutdown = [checked(regression[name]) for name in ("plan", "report", "shutdown")]
+    require(old_plan.get("schema") == "heroes-capability-diagnostic-plan-v1"
+            and old_plan.get("interface") == capability.INTERFACE
+            and old_plan.get("implementation") == regression_identity()
+            and old_plan.get("native_runtime") == runtime
+            and old_plan.get("binary_sha256") == pins["vcmiclient"]
+            and old_plan.get("replay_binary_sha256") == pins["vcmireplay"],
+            "Legacy capability regression source/runtime differs from the current release")
+    old_schedule = old_plan.get("schedule")
+    require(type(old_schedule) is list and len(old_schedule) == 28
+            and type(old_schedule[0]) is dict and type(old_schedule[0].get("seed")) is int
+            and 1 <= old_schedule[0]["seed"] <= 2147480000,
+            "Legacy capability regression requires its complete 28-case schedule")
+    # Clear/blocked Dimension Door deliberately share an engine seed so their
+    # only difference is hidden landing occupancy. All other schedule fields
+    # and seed offsets must equal the original fixed acceptance harness.
+    expected = capability.schedule(tuple(capability.CASES), capability.fixtures.COLORS,
+                                   old_schedule[0]["seed"], 1)
+    require(old_schedule == expected, "Legacy capability regression schedule changed or reused an unintended seed")
+    require(old_report.get("schema") == "heroes-capability-native-validation-v1"
+            and old_report.get("plan_sha256") == regression["plan"]["sha256"]
+            and old_report.get("status") == "passed" and old_report.get("not_started") == 0
+            and type(old_report.get("cases")) is list and len(old_report["cases"]) == len(expected),
+            "Legacy capability regression did not pass all 28 cases")
+    for intended, observed in zip(expected, old_report["cases"]):
+        mechanics = observed.get("mechanics", {})
+        require(all(observed.get(key) == value for key, value in intended.items())
+                and observed.get("status") == "passed" and observed.get("replay_verified") is True
+                and mechanics.get("history_audit_passed") is True and mechanics.get("probe_status") == "passed"
+                and mechanics.get("episode_status") in ("completed", "truncated")
+                and mechanics.get("training_performed") is False
+                and all(check.get("status") == "passed" for check in mechanics.get("checks", [])),
+                "Legacy capability regression case lacks complete excluded history/replay acceptance")
+    require(all(item.get("training_performed") is False and item.get("training_input") is False
+                and item.get("optimizer_steps") == 0 for item in (old_plan, old_report, old_shutdown))
+            and old_shutdown.get("owned_cleanup_verified") is True
+            and old_shutdown.get("within_hard_deadline") is True and old_shutdown.get("returncode") == 0
+            and old_shutdown.get("errors") == [] and old_shutdown.get("cleanup_errors") == [],
+            "Legacy capability regression training exclusion or owned cleanup is incomplete")
     return {"receipts": {"freeze": descriptor["freeze"], "preflight": descriptor["preflight"], **evidence},
             "engine_recipe": recipe, "server": server, "dependency_check": dependency,
-            "external_dependencies": external, "resources": resources}
+            "external_dependencies": external, "resources": resources, "regression": regression}
 
 
 def accepted_runtime_origin(runtime_bin, runtime, descriptor):
