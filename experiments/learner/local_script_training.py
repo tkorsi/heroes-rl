@@ -61,6 +61,8 @@ LOCAL_ADAPTER_ORIGINS = {
     'a92250fe96feedcb7c21c169bd69ad9c7281b5ef': '3195c79c5d0a0e62e499fd659a2815334236348b10ed4f7870959347f2d18363',
     # Guarded original-map run717->770, stopped on an unsupported mine query.
     '6921700f0570d68c0275b7fe837bb03fe58f01d4': 'a2dddd49fc5026fd2cd6842845dd00283400f4378d6092af88ee6492709827ef',
+    # Official run770->916, stopped by terminal request replay accounting.
+    'cb3849c376331aafdb940fb59dd45e143e5b4218': '5d42d69d0157849c85aa7201e1d6cfcf5850a0d96ac3272d1b25ed4d772ff9d9',
 }
 # These changes implement a declared policy-support intervention. Their exact
 # source pins are checked alongside the execution pins, but they must never be
@@ -84,7 +86,7 @@ FAST_PATH_SOURCES = {
         '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
     'experiments/learner/builtin_gameplay.py': (
         ('ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
-        'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d'),
+        '21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540'),
     'experiments/learner/builtin_rollout.py': (
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
@@ -144,7 +146,7 @@ FAST_PATH_TREE = {
     'experiments/headless/builtin_evidence.py': ('0638d2ec9bc8c3a7a3588325316fbb59ae5f2515',
         'ec56c09ab106e29747e74a4acfe9754763a125886dbde7136797fab3214f6d8a'),
     'experiments/headless/builtin_replay.py': ('d7bde5cffd1124000838c1ba0f20b765b07efd39',
-        '87f46edf8d67fe7dbdb2680428c7912170ac3a89f5c1cc9663f164a39a302df1'),
+        '0cb7d936c5361c009b40ced053b56ca7f5f34e7d0cd5d7268439993c1e31a708'),
     'experiments/headless/contextual_env.py': ('e2a75d2327589a8ea27518823dc24318a95109ab',
         '4d555029eb5902f02a5883ca5386066fa150a4a91441b2163dfb8dc286de9ff5'),
     'experiments/headless/contextual_evidence.py': ('44b664e57028145c573d6397bd00f7c1227c5dc1',
@@ -166,7 +168,7 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '97a0167b9fa619538e7efd380a95c68178cd202bf8d5995127b52f369529f967'),
+        'b17ce139ab80a1a34de3632391c8b78e966c30097eae2d458b270f5af6534909'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         '1a3849d1f8c1917f1c9a181f360c8fb057e3e4ebb9e710f1eb273d656cc883b4'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
@@ -178,7 +180,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '4ff4c8e786aa8c3ffe376d13277e6f780902e445c511933435e37441ce58600e'
+LOCAL_ADAPTER_TRANSITION_AST = '399b926ca4cadcfd4045f03029780fd23fff37703b8fd0195fb5bfdfebf8081c'
 
 
 def write_new(path, value):

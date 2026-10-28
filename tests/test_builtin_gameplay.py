@@ -274,7 +274,7 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
         return captured, bound, model, folder
 
     def verify(self, captured, bound, model, folder, *, diagnostic=False, mutate=False, native_error=None, native_delay=0,
-               started=None):
+               started=None, replay_error=None):
         from experiments.headless import builtin_replay as replay
         from experiments.headless.background_check import BackgroundCheck
         from experiments.headless.builtin_replay_history import verify_history
@@ -290,6 +290,8 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
             result = {"schema": replay.DIAGNOSTIC_SCHEMA if diagnostic else replay.REPORT_SCHEMA,
                 "verified": not diagnostic, "identity_check": {"mode": "diagnostic_verifier_only" if diagnostic else "exact_capture"},
                 "history": history, "wire": {}, "native": {"synthetic": True, "returncode": 0, "seconds": 0.0}}
+            if replay_error is not None:
+                result.update(verified=False, error=replay_error)
             (output / "native-report.json").write_text('{"synthetic":true}')
             (output / "builtin-replay-verification.json").write_text(json.dumps(result))
             if mutate:
@@ -331,6 +333,14 @@ class FreshTrainingIntegrationTests(unittest.TestCase):
                     self.verify(captured, bound, model, folder, diagnostic=diagnostic, mutate=mutate)
                 self.assertFalse((folder / "training-receipt.json").exists())
 
+
+    def test_replay_rejection_reports_its_actual_cause_without_a_receipt(self):
+        with tempfile.TemporaryDirectory() as temp:
+            captured, bound, model, folder = self.collect(Path(temp).resolve(), 1, "natural")
+            cause = "ReplayError: Unsupported terminal native-opponent request"
+            with self.assertRaisesRegex(ValueError, "Exact-runtime native replay failed: " + cause):
+                self.verify(captured, bound, model, folder, replay_error=cause)
+            self.assertFalse((folder / "training-receipt.json").exists())
 
     def test_overlapped_failures_keep_the_serial_error_and_stop_the_replay(self):
         from validation.probes import validate_hero_policy

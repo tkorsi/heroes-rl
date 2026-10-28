@@ -101,17 +101,18 @@ def load_runtime_candidate(path, expected=None):
     require(expected is None or bound == expected, 'Candidate runtime descriptor changed')
     value = json.loads(Path(bound['path']).read_text())
     require(value.get('schema') == 'heroes-local-training-runtime-candidate-v1'
-            and value.get('change_classification') == 'adapter-support-extension',
-            'Expected an explicit garrison candidate descriptor; not machine acceptance')
+            and value.get('change_classification') in ('adapter-support-extension', 'replay-verifier-support-extension'),
+            'Expected an explicit supported runtime candidate descriptor; not machine acceptance')
     runtime_bin = Path(value['runtime_bin']).expanduser().resolve()
     native = runtime_identity(runtime_bin)
     candidate_runtime_origin(runtime_bin, native, value)
     return value, bound
 
 
-def stopped_candidate_parent(run, config):
-    """Permit the known failed official770 parent only after exact preservation."""
+def stopped_candidate_parent(run, config, expected_update=770):
+    """Bind one explicitly selected closed parent after exact preservation."""
     from experiments.learner.builtin_training_resume import require
+    require(type(expected_update) is int and expected_update > 0, 'Expected parent update must be a positive integer')
     run = Path(run).expanduser().resolve()
     session, report, shutdown = [json.loads((run/name).read_text()) for name in
                                 ('session.json', 'campaign-report.json', 'shutdown.json')]
@@ -121,10 +122,10 @@ def stopped_candidate_parent(run, config):
     require(report.get('status') in ('finished', 'stopped_requested', 'stopped_budget', 'stopped_failure')
             and report.get('owned_cleanup_verified') is True and report.get('initial_state_unchanged') is True
             and report.get('full_final_restore', {}).get('exact') is True
-            and report.get('latest_progress', {}).get('updates') == 770
+            and report.get('latest_progress', {}).get('updates') == expected_update
             and shutdown.get('owned_cleanup_verified') is True and shutdown.get('within_hard_deadline') is True
             and shutdown.get('worker_returncode') in (0, 1),
-            'Candidate requires stopped official770, owned cleanup and exact final preservation')
+            'Candidate requires the exact selected stopped official parent, owned cleanup and full preservation')
     return report['latest_parent']
 
 
@@ -164,12 +165,13 @@ def execute(plan_path, sha):
     background_check.FORK = False
     output = Path(plan['execution_output'])
     report = dict(schema='heroes-garrison-policy-diagnostic-v1' if candidate else 'heroes-interaction-guard-diagnostic-v1', started_utc=utc(),
-                  plan_sha256=sha, status='running', training_samples=0, training_performed=False, optimizer_steps=0,
+                  plan_sha256=sha, status='running', parent_update=plan.get('parent_update', 770) if candidate else 717,
+                  training_samples=0, training_performed=False, optimizer_steps=0,
                   attempts=[pilot.empty_attempt(row) for row in plan['schedule']])
     report_path = output / 'report.json'
     write(report_path, report)
     state = local.restore_parent(plan['parent_descriptor'])
-    require(state.progress.updates == (770 if candidate else 717), 'Frozen diagnostic parent changed')
+    require(state.progress.updates == (plan.get('parent_update', 770) if candidate else 717), 'Frozen diagnostic parent changed')
     before = state_snapshot(state)
     # ParentState's pool field is checked again by the exact historical loader.
     try:
@@ -230,6 +232,8 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--parent-run', type=Path)
     parser.add_argument('--machine', type=Path)
+    parser.add_argument('--parent-update', type=int, default=770,
+                        help='Exact closed candidate parent update; bound into the immutable diagnostic plan')
     parser.add_argument('--runtime-candidate', type=Path,
                         help='Native-validated frozen candidate descriptor; diagnostics only, never machine acceptance')
     parser.add_argument('--engine-seed-base', type=int)
@@ -276,12 +280,12 @@ def main():
         config = {**config, 'runtime_bin': runtime['runtime_bin'],
                   'runtime': {key: value for key, value in runtime['runtime_files'].items() if key != 'vcmiclient'}}
     else:
-        require(args.engine_seed_base is None and args.policy_seed_base is None,
+        require(args.engine_seed_base is None and args.policy_seed_base is None and args.parent_update == 770,
                 'Historical diagnostics keep their exact original seed schedule')
         validate_config(config)
     require(not subprocess.check_output(['git', 'status', '--porcelain'], cwd=ROOT, text=True).strip(),
             'Freeze a clean committed release before diagnostics')
-    parent = stopped_candidate_parent(args.parent_run, config) if candidate else final_parent(args.parent_run.resolve())
+    parent = stopped_candidate_parent(args.parent_run, config, args.parent_update) if candidate else final_parent(args.parent_run.resolve())
     lock = os.open(Path(config['artifact_root'])/'local-script-training/owner.lock', os.O_RDONLY)
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     output = args.output.resolve()
@@ -299,7 +303,7 @@ def main():
         descriptor[name] = binding(destination)
         require(descriptor[name]['sha256'] == value['sha256'], 'Parent copy changed')
     state = local.restore_parent(descriptor)
-    require(state.progress.updates == (770 if candidate else 717), 'This protocol binds its exact stopped parent')
+    require(state.progress.updates == (args.parent_update if candidate else 717), 'This protocol binds its exact stopped parent')
     binary = Path(config['runtime_bin'])/'vcmiclient'
     game_map = Path(config['maps'][0]['path'])
     started_wall, started_mono = time.time(), time.monotonic()
@@ -318,9 +322,11 @@ def main():
         compute_deadline_unix=started_wall+2640, compute_deadline_monotonic=started_mono+2640,
         absolute_deadline_unix=started_wall+2700, hard_deadline_monotonic=started_mono+2700)
     if candidate:
-        plan.update(runtime_candidate=candidate, engine_seed_base=args.engine_seed_base,
+        plan.update(runtime_candidate=candidate, parent_update=args.parent_update, engine_seed_base=args.engine_seed_base,
                     policy_seed_base=args.policy_seed_base, runtime_gate=binding(ROOT/'tools/prepare_local_training.py'),
-                    scope='map-garrison-frozen-policy-v1-diagnostic')
+                    scope=('terminal-replay-frozen-policy-v1-diagnostic'
+                           if runtime.get('change_classification') == 'replay-verifier-support-extension'
+                           else 'map-garrison-frozen-policy-v1-diagnostic'))
     (output/'execution').mkdir()
     write(output/'plan.json', plan)
     command = [sys.executable, __file__, '--worker-plan', str(output/'plan.json'),

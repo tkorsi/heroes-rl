@@ -100,7 +100,7 @@ assert DURABLE_ROOT == Path(sys.argv[1]).resolve(), DURABLE_ROOT
             self.assertTrue(ledger.read_bytes().startswith(first))
             self.assertEqual(len(ledger.read_text().splitlines()), 2)
 
-    def test_failed_parent_requires_exact770_preservation_and_owned_shutdown(self):
+    def test_failed_parent_requires_exact_selected_update_preservation_and_owned_shutdown(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); run = root/'official'; run.mkdir()
             config = dict(default_profile='original', run_root=str(root))
@@ -122,6 +122,15 @@ assert DURABLE_ROOT == Path(sys.argv[1]).resolve(), DURABLE_ROOT
                 values[filename][field] = original
             save()
             with self.assertRaises(ValueError): stopped_candidate_parent(run, dict(config, default_profile='easier8x8'))
+
+            values['campaign-report.json']['latest_progress']['updates'] = 916
+            save()
+            with self.assertRaises(ValueError): stopped_candidate_parent(run, config)
+            self.assertEqual(stopped_candidate_parent(run, config, 916),
+                             values['campaign-report.json']['latest_parent'])
+            for expected in (770, 915, 917, 0, -1, True, '916', None):
+                with self.subTest(expected=expected), self.assertRaises(ValueError):
+                    stopped_candidate_parent(run, config, expected)
 
 
 if __name__ == '__main__': unittest.main()

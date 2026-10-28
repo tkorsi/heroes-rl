@@ -95,6 +95,14 @@ struct Fixture
 			trade.val = {1};
 			return request(trade, "native_opponent");
 		}
+		if(tailKind == 4)
+		{
+			ExchangeArtifacts exchange;
+			exchange.player = PlayerColor(player); exchange.requestID = id;
+			exchange.src = ArtifactLocation(ObjectInstanceID(1), ArtifactPosition(19));
+			exchange.dst = ArtifactLocation(ObjectInstanceID(1), ArtifactPosition(2));
+			return request(exchange, "native_opponent");
+		}
 		MoveHero move;
 		move.player = PlayerColor(player);
 		move.requestID = id;
@@ -142,7 +150,7 @@ struct Fixture
 void rejected(const std::function<void(Fixture &)> & mutate)
 {
 	for(const int side : {0, 1})
-		for(const int tailKind : {0, 1, 2, 3})
+		for(const int tailKind : {0, 1, 2, 3, 4})
 		{
 			Fixture fixture(side, tailKind);
 			mutate(fixture);
@@ -158,7 +166,7 @@ int main()
 	try
 	{
 		for(const int side : {0, 1})
-		for(const int tailKind : {0, 1, 2, 3})
+		for(const int tailKind : {0, 1, 2, 3, 4})
 		{
 			Fixture f(side, tailKind);
 			const auto actual = f.run();
@@ -167,7 +175,7 @@ int main()
 			check(actual["terminal_unapplied"][0]["pack"] == f.tape[7]["pack"]);
 			check(actual["terminal_unapplied"][0]["receipt"] == f.tape[6]["packet"]);
 			check(actual["final_terminal_input"] == f.terminal);
-			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (tailKind == 3 ? 193 : tailKind == 2 ? 180 : tailKind == 1 ? 185 : 182));
+			check(actual["terminal_unapplied"][0]["pack_type"].Integer() == (tailKind == 4 ? 190 : tailKind == 3 ? 193 : tailKind == 2 ? 180 : tailKind == 1 ? 185 : 182));
 			for(const int position : {11, 19})
 			{
 				f.tape[6]["packet"]["completed"].Integer() = position;
@@ -204,6 +212,10 @@ int main()
 			rejected([id](auto & f) { f.tape[7] = f.tailRequest(1 - f.learner, id); });
 		rejected([](auto & f) { f.tape[7] = f.tailRequest(f.learner, 12); });
 		rejected([](auto & f) { DismissHero other; other.player = PlayerColor(1 - f.learner); other.requestID = 12;
+			f.tape[7] = f.request(other, "native_opponent"); });
+		rejected([](auto & f) { QueryReply other; other.player = PlayerColor(1 - f.learner); other.requestID = 12;
+			f.tape[7] = f.request(other, "native_opponent"); });
+		rejected([](auto & f) { BulkExchangeArtifacts other; other.player = PlayerColor(1 - f.learner); other.requestID = 12;
 			f.tape[7] = f.request(other, "native_opponent"); });
 		rejected([](auto & f) { const std::vector<JsonNode> extra(f.tape.begin() + 6, f.tape.begin() + 9);
 			f.tape.insert(f.tape.begin() + 9, extra.begin(), extra.end()); });

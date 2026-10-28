@@ -436,10 +436,13 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
         replay = replaying.result(timeout=_time_left(remaining))
     finally:
         replaying.stop()
-    require(replay.get("schema") == builtin_replay.REPORT_SCHEMA and replay.get("verified") is True
+    require(replay.get("schema") == builtin_replay.REPORT_SCHEMA
             and replay.get("identity_check", {}).get("mode") == "exact_capture"
-            and "diagnostic_verified" not in replay and replay.get("history") == history_report,
+            and "diagnostic_verified" not in replay,
             "Training requires exact-runtime native replay, never supplemental diagnostic compatibility")
+    require(replay.get("verified") is True,
+            "Exact-runtime native replay failed: " + str(replay.get("error") or "verification did not pass"))
+    require(replay.get("history") == history_report, "Native replay history differs from independent reconstruction")
     require(canonical(native.strict_json((folder / "training-verification/builtin-replay-verification.json").read_bytes()))
             == canonical(replay), "Native verification report differs from its persisted evidence")
     native_document = native.strict_json((folder / "training-verification/native-report.json").read_bytes())

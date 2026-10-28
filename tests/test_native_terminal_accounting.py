@@ -47,7 +47,7 @@ class NativeTerminalAccountingTests(unittest.TestCase):
             self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
             result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("460 checks passed", result.stdout)
+            self.assertIn("594 checks passed", result.stdout)
 
     def test_verified_range_is_granted_only_after_final_native_state_and_effect_checks(self):
         source = (ROOT / "engine/ExperimentReplay/ReplayMain.cpp").read_text()

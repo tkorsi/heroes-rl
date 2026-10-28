@@ -345,6 +345,12 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
             self.pin_descriptor()
             with self.subTest(field=field), self.assertRaises(ValueError): self.accepted()
 
+    def test_replay_repair_classification_requires_its_additional_terminal_receipt(self):
+        self.descriptor['change_classification'] = 'replay-verifier-support-extension'
+        self.pin_descriptor()
+        with self.assertRaisesRegex(ValueError, "original failure's diagnostic evidence"):
+            self.accepted()
+
     def test_native_identity_and_freeze_must_match_current_source_and_inventory(self):
         with patch.object(prep, 'current_engine_recipe', return_value={'engine/changed': 'different'}):
             with self.assertRaisesRegex(ValueError, 'engine recipe'): self.accepted()
@@ -385,6 +391,105 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
         donor = self.root/'moved-settings.json'; donor.write_bytes(original)
         target.symlink_to(donor)
         with self.assertRaisesRegex(ValueError, 'resource symlink'): self.accepted()
+
+
+class TerminalReplayAcceptanceTests(unittest.TestCase):
+    """Synthetic proof admission checks; these do not claim native replay."""
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.path = self.root / 'diagnostic.json'
+        self.runtime = {'vcmireplay': 'a' * 64}
+        from tests.test_builtin_terminal_replay import TerminalReportTests
+        native = TerminalReportTests(); native.setUp(); native.add_accounting(190)
+        native.wire['request_order_verified'] = True
+        self.proof = dict(schema='heroes-contextual-builtin-replay-diagnostic-v1',
+            diagnostic_verified=True, verified=False, original_cohort_result_unchanged=True,
+            original_cohort_admission=False, optimization_eligible=False, training_performed=False,
+            training_samples=0,
+            identity_check=dict(mode='diagnostic_verifier_only', client_unchanged=True,
+                adapter_sources_unchanged=True, nonverifier_runtime_unchanged=True, nonverifier_recipe_unchanged=True,
+                runtime_changes={'vcmireplay': {'captured': 'b' * 64, 'current': 'a' * 64}}),
+            wire=native.wire, native=native.native,
+            history=dict(schema='heroes-builtin-history-reconstruction-v1', verified=True,
+                         boundary='natural', opponent_history=None),
+            effective_engine={'verified': True},
+            prefix=dict(server_partial_bytes=0, server_unpaired_inputs=0, contextual_partial_bytes=0))
+
+    def descriptor(self, proof=None):
+        self.path.write_text(json.dumps(self.proof if proof is None else proof))
+        return {'terminal_replay': prep.binding(self.path)}
+
+    def test_exact_excluded_diagnostic_is_read_only_and_bound_to_the_new_verifier(self):
+        descriptor = self.descriptor()
+        before = self.path.read_bytes()
+        self.assertEqual(prep.terminal_replay_acceptance(descriptor, self.runtime), descriptor['terminal_replay'])
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_missing_or_mutated_diagnostic_binding_fails_closed(self):
+        for bound in (None, {}, {'path': str(self.path)}, {'path': str(self.path), 'sha256': 'a'*64, 'bytes': 1, 'extra': 1}):
+            with self.subTest(bound=bound), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance({'terminal_replay': bound}, self.runtime)
+        descriptor = self.descriptor()
+        self.path.write_text(self.path.read_text() + '\n')
+        with self.assertRaisesRegex(ValueError, 'accepted identity'):
+            prep.terminal_replay_acceptance(descriptor, self.runtime)
+        descriptor = self.descriptor(); descriptor['terminal_replay']['bytes'] += 1
+        with self.assertRaisesRegex(ValueError, 'binding changed'):
+            prep.terminal_replay_acceptance(descriptor, self.runtime)
+
+    def test_failed_rescored_changed_original_or_learning_diagnostic_is_rejected(self):
+        changes = [('schema', 'heroes-contextual-builtin-replay-verification-v1'), ('diagnostic_verified', False),
+            ('verified', True), ('original_cohort_result_unchanged', False), ('original_cohort_admission', True),
+            ('optimization_eligible', True), ('training_performed', True), ('training_samples', 1)]
+        for key, bad in changes:
+            for remove in (False, True):
+                proof = deepcopy(self.proof)
+                if remove: proof.pop(key)
+                else: proof[key] = bad
+                with self.subTest(key=key, remove=remove), self.assertRaises(ValueError):
+                    prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+
+    def test_identity_changes_cannot_cross_the_verifier_boundary(self):
+        for key in ('client_unchanged', 'adapter_sources_unchanged', 'nonverifier_runtime_unchanged',
+                    'nonverifier_recipe_unchanged'):
+            proof = deepcopy(self.proof); proof['identity_check'][key] = False
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+        for changes in ({}, {'vcmiclient': {'current': 'a'*64}},
+                        {'vcmireplay': {'current': 'c'*64}},
+                        {'vcmireplay': {'current': 'a'*64}, 'libvcmi.dylib': {'current': 'd'*64}}):
+            proof = deepcopy(self.proof); proof['identity_check']['runtime_changes'] = changes
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+        proof = deepcopy(self.proof); proof['identity_check']['mode'] = 'exact_capture'
+        with self.assertRaises(ValueError):
+            prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+
+    def test_only_the_single_exchange_artifacts_tail_satisfies_this_repair_gate(self):
+        for tail in ([], [{'pack_type': 193}], [{'pack_type': 198}],
+                     [{'pack_type': 190}, {'pack_type': 190}], [{'pack_type': '190'}]):
+            proof = deepcopy(self.proof); proof['wire']['request_accounting']['terminal_unapplied'] = tail
+            with self.subTest(tail=tail), self.assertRaisesRegex(ValueError, 'ExchangeArtifacts tail'):
+                prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+
+    def test_native_history_and_effect_proofs_cannot_be_missing_or_incomplete(self):
+        changes = [lambda p: p.pop('native'), lambda p: p['native'].update(returncode=1),
+            lambda p: p['native'].update(verified=False), lambda p: p['native'].update(schema='wrong'),
+            lambda p: p['native']['summary']['checked'].update(requests=4),
+            lambda p: p['native']['summary']['unchecked'].update(requests=1),
+            lambda p: p['native']['summary']['request_accounting']['terminal_unapplied'][0].update(pack='aabb'),
+            lambda p: p['native']['summary']['server'].update(inputs=5),
+            lambda p: p['native']['summary']['terminal_barrier']['request'].update(id=41),
+            lambda p: p.pop('history'), lambda p: p['history'].update(verified=False),
+            lambda p: p['history'].update(boundary='cutoff'), lambda p: p['history'].update(opponent_history={}),
+            lambda p: p['effective_engine'].update(verified=False),
+            lambda p: p['wire'].update(request_order_verified=False),
+            lambda p: p['prefix'].update(server_unpaired_inputs=1)]
+        for change in changes:
+            proof = deepcopy(self.proof); change(proof)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
 
 
 if __name__ == "__main__":

@@ -41,6 +41,10 @@ ACCEPTED_RUNTIME_RELEASES = {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-garrison-repair1/accepted-runtime.json",
         "sha256": "772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98",
     },
+    "terminal-replay-v1": {
+        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair1/accepted-runtime.json",
+        "sha256": None,
+    },
 }
 PREREQUISITE_PINS = {
     "local-builtin-revalidation-v2-2026-10-25.json": "3515928087fdbafc4c3e3686ae370ed1be992fbd50faaed70475255c7113a09f",
@@ -153,7 +157,8 @@ def accepted_runtime_descriptor(release_id):
     descriptor = json.loads(Path(receipt["path"]).read_text())
     require(descriptor.get("schema") == RUNTIME_ACCEPTANCE_SCHEMA and descriptor.get("release_id") == release_id
             and descriptor.get("status") == "accepted"
-            and descriptor.get("change_classification") == "adapter-support-extension",
+            and descriptor.get("change_classification") in
+                ("adapter-support-extension", "replay-verifier-support-extension"),
             "Unsupported or incomplete runtime acceptance descriptor")
     return descriptor, {"id": release_id, "descriptor": receipt}
 
@@ -343,8 +348,58 @@ def accepted_runtime_origin(runtime_bin, runtime, descriptor):
                 and row.get("training_samples") == 0 and row.get("optimizer_steps") == 0
                 and row.get("reconstruction", {}).get("passed") is True for row in attempts),
             "Policy acceptance lacks complete replay/reconstruction without learning")
+    terminal = {}
+    meaning = "Accepted garrison adapter support extension; explicit launch still owns fresh acceptance and its original continuation ledger."
+    if descriptor.get("change_classification") == "replay-verifier-support-extension":
+        terminal = {"terminal_replay": terminal_replay_acceptance(descriptor, runtime)}
+        meaning = "Accepted runtime repair; explicit launch still owns fresh acceptance and its original continuation ledger."
     return {**origin, "receipts": {**origin["receipts"], "policy_reconstruction": bound},
-            "meaning": "Accepted garrison adapter support extension; explicit launch still owns fresh acceptance and its original continuation ledger."}
+            **terminal, "meaning": meaning}
+
+
+def terminal_replay_acceptance(descriptor, runtime):
+    """Bind the failed capture's excluded replay to the accepted native verifier."""
+    from experiments.headless import builtin_replay
+    bound = descriptor.get("terminal_replay")
+    require(type(bound) is dict and set(bound) == {"path", "sha256", "bytes"},
+            "Terminal replay repair requires the original failure's diagnostic evidence")
+    require(pinned(bound["path"], bound["sha256"]) == bound, "Terminal replay diagnostic binding changed")
+    proof = json.loads(Path(bound["path"]).read_text())
+    identity = proof.get("identity_check", {})
+    require(proof.get("schema") == "heroes-contextual-builtin-replay-diagnostic-v1"
+            and proof.get("diagnostic_verified") is True and proof.get("verified") is False
+            and proof.get("original_cohort_result_unchanged") is True
+            and proof.get("original_cohort_admission") is False
+            and proof.get("optimization_eligible") is False and proof.get("training_performed") is False
+            and proof.get("training_samples") == 0
+            and identity.get("mode") == "diagnostic_verifier_only"
+            and all(identity.get(key) is True for key in ("client_unchanged", "adapter_sources_unchanged",
+                                                          "nonverifier_runtime_unchanged", "nonverifier_recipe_unchanged"))
+            and set(identity.get("runtime_changes", {})) == {"vcmireplay"}
+            and identity["runtime_changes"]["vcmireplay"]["current"] == runtime["vcmireplay"],
+            "Terminal replay repair lacks exact excluded native replay with unchanged original evidence")
+    accounting = proof.get("wire", {}).get("request_accounting", {})
+    tail = accounting.get("terminal_unapplied", [])
+    require(len(tail) == 1 and tail[0].get("pack_type") == 190,
+            "Terminal replay repair did not verify the original ExchangeArtifacts tail")
+    history = proof.get("history", {})
+    require(history.get("schema") == "heroes-builtin-history-reconstruction-v1"
+            and history.get("verified") is True and history.get("boundary") == "natural"
+            and history.get("opponent_history") is None
+            and proof.get("effective_engine", {}).get("verified") is True
+            and proof.get("wire", {}).get("request_order_verified") is True
+            and proof.get("prefix") == {"server_partial_bytes": 0, "server_unpaired_inputs": 0,
+                                        "contextual_partial_bytes": 0},
+            "Terminal replay repair lacks complete history, effective settings and captured inputs")
+    native = proof.get("native", {})
+    require(native.get("returncode") == 0 and native.get("verified") is True,
+            "Terminal replay repair lacks a successful native verifier result")
+    # Recheck complete native coverage and the report's accounting/barrier
+    # consistency. The pinned diagnostic above binds the preserved originals.
+    barrier = native.get("summary", {}).get("terminal_barrier")
+    builtin_replay.validate_native_report(native, proof["wire"],
+        {"terminal_barrier": {"client": barrier}}, cutoff=False)
+    return bound
 
 
 def original_map_identity(path):
