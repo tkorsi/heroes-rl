@@ -174,9 +174,9 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        'cda0e3fbdcd4a227b9de5e1332391d000d9fdbb90ec16a28eb84272ba2d7b299'),
+        '66e350e3603b30d0e7c8040e4e2acb5af8e802d1f5e01f081a13a780664e8969'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '466b063d4bf94f26377d2a4c1f9fa7f8b3650cecf806f098ec6ead9f865aa866'),
+        '3e1234f8fc17ff37037d043c248ae3e95e0d03b6d2e0f427d6e184b1edeb815e'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_garrison_dialogs.py': ('',
@@ -186,7 +186,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'bc6fd40f1a45bcc87c277a7f89a1ec1298fabea68eafefbfc3aeca48d7a0728d'
+LOCAL_ADAPTER_TRANSITION_AST = '16d7fa43441937c0bf02892cf14ae4e56aae78d552525113cff2cf2f3ef37357'
 
 
 def write_new(path, value):

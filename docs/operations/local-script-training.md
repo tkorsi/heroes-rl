@@ -46,7 +46,8 @@ and `stop_reason` distinguish reaching 5,000 from an incomplete stop. No automat
 restart, recovery, model supervision or deadline extension is scheduled.
 
 Original-map outputs use `Heroes-artifacts/local-script-training/original/` and
-`machine-original.json`. Engine/policy seed bases are 40,000,000/50,000,000,
+`machine-original-parallel-v1.json`. The historical `machine-original.json`
+is retained unchanged for completed sessions. Engine/policy seed bases are 40,000,000/50,000,000,
 separate from the current easy run. At sequence266 the first seeds are40,001,064
 and50,001,064; reservations persist before launch, including failed attempts.
 The fixed evaluation seeds remain710001--710004 and720001--720004 on the original

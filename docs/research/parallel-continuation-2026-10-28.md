@@ -97,3 +97,17 @@ preregistered validation phase, not an extension of the failed study's deadline.
 The parallel harness now accepts an explicitly bound `--machine` descriptor; its
 seven offline controls passed. The original machine file and all official
 checkpoint pointers remain unchanged.
+
+The refresh passed on `884e7c3`: all 16 garrison and 28 legacy controls passed
+exact replay and cleanup. Eight fresh frozen-1095 policy games then passed with
+530 exactly reconstructed choices, eight natural losses, zero PPO updates and
+exact full-state preservation/restoration. The new immutable release descriptor
+is `terminal-replay-parallel-v1`, SHA-256
+`f1b730d6d2d05771b694db738e337e0e6abe0080da0534d62dd09a704c6c30c7`.
+It refreshes Python source acceptance on the identical native binary/recipe; it
+does not claim a new engine build. The old acceptance descriptor remains exact.
+
+The new default original-map machine filename is
+`machine-original-parallel-v1.json`. Its historical predecessor is retained
+unchanged for completed sessions. The acceptance/source-transition and launcher
+suite passed 128 tests (one skip) after these changes.

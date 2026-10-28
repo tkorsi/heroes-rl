@@ -280,7 +280,8 @@ Preparing this next experiment does not start games or alter the active release.
 The [four-process integration](docs/research/parallel-continuation-2026-10-28.md)
 adapts the isolated eight-process collector to the existing **four-game** batch.
 `--collection-workers 4` collects its four independently seeded games concurrently;
-the generic runner defaults to one collector. Workers activate the immutable
+the generic runner defaults to one collector. Current original-map launches use
+`machine-original-parallel-v1.json`; the old machine descriptor stays immutable. Workers activate the immutable
 plan's visible interaction budget and execution choices. Every game must pass
 native replay and policy reconstruction after verified worker cleanup; an
 incomplete batch cannot update PPO. Batch size, optimizer cap, schedule ordering,
