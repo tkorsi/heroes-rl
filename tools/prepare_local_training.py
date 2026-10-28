@@ -39,7 +39,7 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 ACCEPTED_RUNTIME_RELEASES = {
     "garrison-dialogs-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-garrison-repair1/accepted-runtime.json",
-        "sha256": None,
+        "sha256": "772444aa025f27208226af18796262cf807d4646c047f4e9f5504cf046ac3e98",
     },
 }
 PREREQUISITE_PINS = {
