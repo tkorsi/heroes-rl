@@ -179,7 +179,7 @@ def final_parent(run):
     return report['latest_parent']
 
 
-def original_continuation(anchor, config, recovery_receipt=None):
+def original_continuation(anchor, config, recovery_receipt=None, *, artifacts=None):
     """Audit the closed 699 lineage and calculate the *remaining* original target.
 
     This never resumes a consumed session. The durable seed ledger survives fresh
@@ -189,6 +189,13 @@ def original_continuation(anchor, config, recovery_receipt=None):
     from experiments.learner import local_script_training as adapter
     from experiments.learner.builtin_training_resume import binding, require
     from experiments.headless.contextual_evidence import strict_json
+    # A Linux handoff supplies a pinned resolver. Logical historical paths and
+    # records stay unchanged; all the same admission/lineage checks still run.
+    read = artifacts.read if artifacts is not None else globals()['read']
+    read_bytes = artifacts.read_bytes if artifacts is not None else lambda path: Path(path).read_bytes()
+    describe = artifacts.descriptor if artifacts is not None else adapter.read_descriptor
+    if artifacts is not None:
+        binding = artifacts.binding
     anchor = Path(anchor).expanduser().resolve()
     root = Path(config['run_root']).resolve()
     evidence, recoveries, clean_runs = {}, {}, set()
@@ -219,7 +226,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
         if key not in recovery_ledgers:
             from tools.recover_interrupted_training import MOVING, SCHEMA
             require(binding(value['path']) == value, 'Inherited recovery evidence changed')
-            receipt = strict_json(Path(value['path']).read_bytes())
+            receipt = strict_json(read_bytes(value['path']))
             require(type(receipt) is dict and receipt.get('schema') == SCHEMA
                     and type(receipt.get('verification')) is dict,
                     'Inherited recovery receipt schema changed')
@@ -309,7 +316,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
             'The original continuation anchor is not the preserved official checkpoint699')
     require(sum(bool(row.get('checkpoint_verified')) for row in origin_report['batches']) == 70,
             'Original admitted batch count changed')
-    _, anchor_batch_report = adapter.read_descriptor(anchor_parent)
+    _, anchor_batch_report = describe(anchor_parent)
     require(verified_batch(anchor_batch_report, 0)
             and anchor_batch_report.get('optimizer_updates') == 1
             and anchor_batch_report.get('update_status') == 'checkpoint_verified',
@@ -329,7 +336,8 @@ def original_continuation(anchor, config, recovery_receipt=None):
             and failed_report.get('optimizer_steps') == failed_report.get('optimizer_updates')
                 == failed_report.get('training_samples') == 0
             and failed_report.get('after_checkpoint') is None
-            and not list(Path(failed_plan['execution_output']).glob('after-*.pt')),
+            and not (artifacts.inventory(failed_plan['execution_output'], 'after-*.pt') if artifacts is not None
+                     else list(Path(failed_plan['execution_output']).glob('after-*.pt'))),
             'Failed batch336 was not fully rolled back without an after checkpoint')
     newest = read(root / 'latest-run.json')
     newest_run = Path(newest['run_dir']).resolve()
@@ -353,7 +361,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
         digest = cursor['plan']['sha256']
         require(digest not in seen and continued < 1180, 'Continuation ancestry loops or exceeds target')
         seen.add(digest)
-        plan, report = adapter.read_descriptor(cursor)
+        plan, report = describe(cursor)
         require(plan.get('profile') == 'original' and plan.get('mode') == 'training'
                 and plan.get('scope') == adapter.SCOPE and verified_batch(report, 0)
                 and report.get('optimizer_updates') == 1
@@ -369,7 +377,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
     progress = latest['progress']
     require(progress['updates'] == 699 + continued and progress['rollouts'] == 2796 + 4*continued,
             'Continuation counters differ from the verified four-game ancestry')
-    ledger = ledger_shape(strict_json((root / 'sequence-ledger.json').read_bytes()), 'current')
+    ledger = ledger_shape(strict_json(read_bytes(root / 'sequence-ledger.json')), 'current')
     for label, snapshot in ledger_snapshots:
         require(ledger['consumed'][:len(snapshot['consumed'])] == snapshot['consumed']
                 and ledger['next_sequence'] >= snapshot['next_sequence'],
@@ -398,7 +406,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
     # Every completed descendant must already be in the durable reservation ledger.
     cursor = parent
     while cursor != anchor_parent:
-        plan, _ = adapter.read_descriptor(cursor)
+        plan, _ = describe(cursor)
         sequence = plan['batch_sequence']
         require(sequence in sequences and len(plan['schedule']) == 4,
                 'A completed sequence is absent from the seed ledger')

@@ -34,6 +34,7 @@ FLAGS = dict(original_deadline_met=False, historical_shutdown_rewritten=False,
              games_launched=0, optimizer_updates=0, signals_sent=0)
 VERIFY_LIMIT_SECONDS = 120
 VERIFY_DEADLINE = ContextVar('interrupted_recovery_deadline', default=None)
+ARTIFACT_ACCESS = ContextVar('interrupted_recovery_artifact_access', default=None)
 
 
 def require(condition, message):
@@ -53,11 +54,15 @@ def remaining_time():
 def read(path):
     from experiments.headless.contextual_evidence import strict_json
     remaining_time()
-    return strict_json(Path(path).read_bytes())
+    access = ARTIFACT_ACCESS.get()
+    return access.read(path) if access is not None else strict_json(Path(path).read_bytes())
 
 
 def binding(path):
     remaining_time()
+    access = ARTIFACT_ACCESS.get()
+    if access is not None:
+        return access.binding(path)
     path = Path(path).resolve()
     with path.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
@@ -116,6 +121,9 @@ def fingerprint(value):
 
 
 def inventory(root, pattern='*'):
+    access = ARTIFACT_ACCESS.get()
+    if access is not None:
+        return access.inventory(root, pattern)
     root = Path(root)
     paths = sorted(p for p in root.rglob(pattern) if p.is_file())
     require(all(not p.is_symlink() and p.resolve().is_relative_to(root.resolve()) for p in paths),
@@ -153,6 +161,9 @@ def existing_campaign_locks(config):
 
 def process_closure(deadlines, run):
     """One bounded read-only snapshot; old numeric identities never grant signals."""
+    access = ARTIFACT_ACCESS.get()
+    if access is not None:
+        return access.process_closure(deadlines, run)
     pids, groups = set(), set()
     for item in deadlines:
         bound(item)
@@ -237,7 +248,8 @@ def verify_batches(run, session, campaign, audit, ledger):
         cursor = dict(plan=row['plan'], report=row['report'], policy=report['after_checkpoint']['policy'],
                       resume=report['after_checkpoint']['resume'],
                       initial_checkpoint=resume._metadata(plan, row['plan']['sha256'])['initial_checkpoint'])
-        local.read_descriptor(cursor)
+        access = ARTIFACT_ACCESS.get()
+        (access.descriptor if access is not None else local.read_descriptor)(cursor)
         preservation = row['preservation']
         target = run/'checkpoints'/Path(row['plan']['path']).parent.name
         require(Path(preservation['destination']) == target and read(target/'preservation-receipt.json') == preservation,
@@ -269,6 +281,9 @@ def verify_state(parent, backup, expected):
         snapshots = []
         for descriptor in (parent, backup):
             remaining_time()
+            access = ARTIFACT_ACCESS.get()
+            if access is not None:
+                descriptor = access.rebind(descriptor)
             state = local.restore_parent(descriptor)
             remaining_time()
             snapshot = dict(model=dict(state.model.state_dict()), optimizer=state.optimizer.state_dict(),
@@ -309,7 +324,9 @@ def read_moving_inputs(profile, run, snapshots=None):
         require(Path(expected['path']) == Path(run).resolve().parent/name, 'Original moving input path differs')
         if snapshots is None:
             bound(expected)
-            contents = Path(expected['path']).read_bytes()
+            access = ARTIFACT_ACCESS.get()
+            contents = (access.read_bytes(expected['path']) if access is not None
+                        else Path(expected['path']).read_bytes())
             result[name] = contents.decode('utf-8')
         else:
             result[name] = snapshots[name]
@@ -363,7 +380,8 @@ def _audit_current(run, config, *, moving_snapshots=None):
     require(worker['optimizer_updates'] == worker['training_samples'] == 0
             and worker['worker_complete'] is False and final['status'] == 'running'
             and [row['status'] for row in worker['attempts']] == ['passed']*3+['pending_verification']
-            and not list(pending.rglob('after-*.pt'))
+            and not (inventory(pending, 'after-*.pt') if ARTIFACT_ACCESS.get() is not None
+                     else list(pending.rglob('after-*.pt')))
             and not any(row.get('status') == 'passed' and row['mode'] == 'periodic'
                         and row.get('sequence') == 1229 and row['seat'] == 1 for row in campaign['batches']),
             'Interrupted evaluation cohort must remain excluded without any update')
