@@ -785,3 +785,21 @@ and ownership were not changed. A later verified cloud closure and latest-state
 import must precede local continuation; local checkpoint 1229 is not a substitute
 for the cloud's newer state. This work launched no official games or updates,
 reserved no seeds, changed no checkpoint and removed no fence.
+
+## 29 October 2026 — repeatable native load-check launcher
+
+The requested `./test-native-load.sh` now runs the accepted native/Python
+comparison on disposable copies of archived batch 846, with a 120-second bound.
+It reports actual PPO CPU use against host capacity and process lifetime peak
+RSS, while preserving all 13 exact-state and owned-cleanup checks. Review closed
+an output-symlink placement gap and rejected incomplete cleanup evidence before
+the real test. All 12 focused launcher/benchmark tests passed.
+
+The [actual main-checkout invocation](../validation/native-load-launcher-2026-10-29.json)
+on source `ea354ae` passed: native PPO took 15.77 seconds versus Python's 28.42
+(1.80x), averaging 4.59 of 16 CPU cores (28.7% of available capacity), with 15
+concurrent text replays and 0.77 GiB process lifetime peak RSS. This is one paired
+order and measures neither GPU use nor full campaign utilization. It confirms
+parallel work, not continuous use of every core. All official pointer/lock
+snapshots stayed unchanged; the cloud fence remains. No official training,
+gameplay, seed reservation or official update occurred.

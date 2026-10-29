@@ -1,0 +1,41 @@
+{
+  "actual_main_command": "./test-native-load.sh",
+  "available_cpu_capacity_percent": 28.717686403550672,
+  "available_cpus": 16,
+  "comparison_deadline_seconds": 120,
+  "cpu_budget": 16,
+  "exact_state_checks_passed": 13,
+  "focused_tests": {
+    "failed": 0,
+    "passed": 12
+  },
+  "full_campaign_utilization_measured": false,
+  "gpu_utilization_measured": false,
+  "launcher_audit_sha256": "b123ef728561d99ab5202e5f397f42d8a73bbcc2641226b47b30b2dd464b7e73",
+  "limitations": [
+    "CPU percentage is this PPO process against available CPU capacity, not total system activity.",
+    "Peak RSS includes this process lifetime through PPO, including imports, restoration and audits.",
+    "This test does not measure GPU use or full collection/replay campaign throughput.",
+    "One paired execution order is not a counterbalanced performance study."
+  ],
+  "load_report_sha256": "b08000747ab084a5bd33a2d23a0662a6ebaa721b04208cee0c6d47e4e45e2681",
+  "native_manifest_sha256": "5a575c084479ac163ad152890ef58ef9e4cb4f842eca23d9f330f8733ddc477a",
+  "native_mean_cpu_cores": 4.594829824568108,
+  "native_peak_concurrent_text_replays": 15.0,
+  "native_ppo_seconds": 15.76747883297503,
+  "native_process_lifetime_peak_rss_bytes": 827244544,
+  "official_files_unchanged": true,
+  "official_training_started": false,
+  "official_updates": 0,
+  "owned_cleanup_verified": true,
+  "ownership_locks_remain_readonly": true,
+  "paired_summary_sha256": "3ca9aff3be3ae7f4b3f8970efb4bf81bec1dc3c01c65cedec402b0f9ddfcc541",
+  "ppo_speedup": 1.8026741260365764,
+  "python_ppo_seconds": 28.42362612503348,
+  "schema": "heroes-native-load-test-v1",
+  "seed_reservations": 0,
+  "source_commit": "ea354ae212d3784c0915bcb70fcaf3ff673cdb57",
+  "timestamp_utc": "2026-10-29T17:01:34.577577+00:00",
+  "whole_comparison_seconds": 50.96793916699244,
+  "whole_launcher_seconds": 51.985265254974365
+}
