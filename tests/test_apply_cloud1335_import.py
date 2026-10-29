@@ -182,6 +182,20 @@ class ApplyCloudImportTests(unittest.TestCase):
         unlock.assert_not_called()
         self.assertEqual(self.modes(), [0o444, 0o444])
 
+    def test_journal_parent_sync_failure_prevents_all_official_writes(self):
+        before = {name: (self.root / name).read_bytes() for name in apply.MOVING}
+        original = apply.fsync_directory
+        def sync(path):
+            if path == self.private:
+                raise OSError('injected journal parent fsync failure')
+            original(path)
+        with patch.object(apply, 'fsync_directory', side_effect=sync):
+            with self.assertRaisesRegex(OSError, 'journal parent'):
+                self.run_apply()
+        self.assertEqual(self.modes(), [0o444, 0o444])
+        self.assertFalse((self.root / 'cloud-import.json').exists())
+        self.assertEqual({name: (self.root / name).read_bytes() for name in apply.MOVING}, before)
+
     def test_failure_after_both_unlocks_refences_before_propagating(self):
         original = apply.atomic_install
         def install(path, payload, previous):
@@ -235,6 +249,13 @@ class ProcessClosureTests(unittest.TestCase):
         command = f'123 1 123 {os.getuid()} /usr/bin/python unrelated.py\n'
         with patch.object(apply.subprocess, 'run', return_value=SimpleNamespace(stdout=command)):
             self.assertEqual(apply.local_process_closure({'artifact_root': '/private/artifacts'})['signals_sent'], 0)
+
+    def test_orphan_official_collector_is_rejected(self):
+        command = (f'123 1 123 {os.getuid()} /usr/bin/python -m experiments.learner.parallel_collection '
+                   'worker --plan /private/artifacts/local-script-training/original/run/batch/plan.json\n')
+        with patch.object(apply.subprocess, 'run', return_value=SimpleNamespace(stdout=command)):
+            with self.assertRaisesRegex(ValueError, 'official training processes remain'):
+                apply.local_process_closure({'artifact_root': '/private/artifacts'})
 
     def test_atomic_absent_install_does_not_overwrite_existing_file(self):
         with tempfile.TemporaryDirectory() as temporary:

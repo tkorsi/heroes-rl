@@ -209,7 +209,7 @@ FAST_PATH_TREE = {
     'tools/acceleration3/fast_path_pins.py': ('',
         '9b4dcf0c9d14b49fb3427369931094b5fb2bb3f9cd9431dbb81ebc56ff609d5c'),
     'tools/apply_cloud1335_import.py': ('',
-        '05d5f3d35df77f795551ecaee88538f99cd4abf189779a3bb32dd2bc5451d901'),
+        '40f233663871acaef141388de13980da1ff8dc110ca930a3b2b5b02f23201513'),
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
     'tools/cloud_state_import.py': ('',
@@ -235,7 +235,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '38064f2779deacadb7304ad417372396f4b212989945652ea29c25c8dd6c32b2'
+LOCAL_ADAPTER_TRANSITION_AST = '6466e3a816db532e35912f03109e7d5cba942ab64fbe003e3ae73426d61f0a90'
 
 
 def write_new(path, value):

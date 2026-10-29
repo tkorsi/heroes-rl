@@ -82,9 +82,10 @@ def local_process_closure(config):
         command = fields[4]
         if pid == os.getpid() or uid != os.getuid():
             continue
-        native = bool(re.search(r'(?:^|[/\s])vcmi(?:client|server)(?:\s|$)', command)
-                      and str(config['artifact_root']) + '/local-script-training/' in command)
-        if native or any(re.search(pattern, command) for pattern in patterns):
+        official_path = str(config['artifact_root']) + '/local-script-training/' in command
+        native = bool(re.search(r'(?:^|[/\s])vcmi(?:client|server)(?:\s|$)', command) and official_path)
+        collector = 'experiments.learner.parallel_collection' in command and official_path
+        if native or collector or any(re.search(pattern, command) for pattern in patterns):
             matches.append({'pid': pid, 'parent_pid': ppid, 'process_group': pgid, 'command': command})
     require(not matches, 'Current official training processes remain: ' + json.dumps(matches))
     return {'observed_utc': utc(), 'matching_official_processes': [], 'signals_sent': 0}
@@ -126,6 +127,14 @@ def expect_contents(path, previous):
                 'Official state changed since the reviewed handoff: ' + str(path))
 
 
+def fsync_directory(path):
+    descriptor = os.open(path, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
 def atomic_install(path, payload, previous):
     """Replace one expected file, or install an absent file without overwriting it."""
     path = safe_path(path)
@@ -144,11 +153,7 @@ def atomic_install(path, payload, previous):
             temporary.unlink()
         else:
             os.replace(temporary, path)
-        parent_fd = os.open(path.parent, os.O_RDONLY)
-        try:
-            os.fsync(parent_fd)
-        finally:
-            os.close(parent_fd)
+        fsync_directory(path.parent)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -248,6 +253,8 @@ def apply_import(config_path, receipt_path, *, apply=False, output=None):
                     'remaining_original_games': 2176, 'next_sequence': 975, 'process_closure': process_proof,
                     'marker': audit['receipt'], 'lock_evidence': initial_locks}
         journal_dir.mkdir(mode=0o700)
+        # Persist the journal directory entry before any official pointer can move.
+        fsync_directory(journal_dir.parent)
         journal_path = journal_dir / 'transaction.json'
         journal = {'schema': SCHEMA + '-journal', 'created_utc': utc(), 'status': 'prepared',
                    'config': config_bound, 'private_import_receipt': receipt_bound, 'fence': fence_bound,
@@ -264,6 +271,7 @@ def apply_import(config_path, receipt_path, *, apply=False, output=None):
         write_journal(journal_path, journal)
         try:
             import_run.mkdir(mode=0o700)
+            fsync_directory(import_run.parent)
             # The marker is installed while both locks deny official launches.
             writes = [(marker, marker_bytes, None), (import_run / 'summary.json', summary_bytes, None)]
             writes.extend((root / name, after[name], before[name]) for name in MOVING)
