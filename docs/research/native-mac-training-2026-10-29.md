@@ -55,8 +55,9 @@ The revised native path also reuses text encodings within each minibatch and
 replays their backward graphs on up to 15 worker threads. The main thread folds
 individual parameter-edge contributions in the original autograd encounter
 order. Workers never aggregate these contributions in completion order. The
-scope joins all workers and checks parameter identities, layouts and versions
-before installing text gradients or allowing Adam to update parameters.
+scope collects every replay result and checks parameter identities, layouts and
+versions before installing text gradients. It joins all workers before Adam
+updates parameters.
 
 Native builds require fresh external directories. Their manifests bind source,
 compile flags, Python ABI, Torch configuration, actual Torch library bytes and
@@ -128,9 +129,95 @@ four process groups and the outer guardian group were verified empty. These
 were archived replays, not new games, policy training, or a measured end-to-end
 training speedup.
 
-## Acceptance status
+## Final numerical and performance acceptance
 
-Implementation and performance validation continue. No native manual-training
-acceptance is claimed by the first candidate's numerical success. The current
-compiled-build decision and limitations belong in
-`validation/native-mac-learner-2026-10-29.json` once final validation is complete.
+The final implementation is `710163612323329e83c9ab85abdd5e1b243d207f`.
+Fresh build attempt 6 has manifest SHA256
+`5a575c084479ac163ad152890ef58ef9e4cb4f842eca23d9f330f8733ddc477a`.
+The installed extension itself was loaded and exercised; matching source alone
+is insufficient. All 12 compiled controls passed, including exact text gradients
+with zero, three and 15 workers, two complete model/Adam/RNG update comparisons,
+unsupported execution rejection and asynchronous failure cleanup.
+
+The broad offline suite passed 1,719 of 1,766 tests, with 47 platform/optional
+skips. Review then tightened the final module-order guard: parameter-free
+activations cannot be removed or reordered, GRU flat weights must identify the
+canonical parameters, and overridden model introspection rejects. The final
+focused suite passed 139 of 140 tests, with one platform skip; it includes the
+compiled controls and the native, replay, source-pin and continuation tests.
+Official worker entry now checks native acceptance before changing execution
+globals. Replay counters are read after joining workers. Independent final
+review found no remaining issue within the canonical execution contract.
+`python3 tools/prepare_vcmi.py --check` passed; no engine source changed.
+
+Four new pairs on the final source counterbalanced execution order. PN means
+Python first, NP means native first. Each PPO update used the same four recorded
+games and complete parent state. The reference includes its existing optimized
+text-leaf replay with two workers.
+
+| Historical batch / order | Samples / Adam steps | Python seconds | Native seconds | Python/native | Native mean CPU cores |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 763 / PN | 210 / 8 | 9.247 | 5.443 | 1.699x | 4.25 |
+| 763 / NP | 210 / 8 | 9.290 | 5.465 | 1.700x | 4.24 |
+| 846 / PN | 584 / 20 | 29.299 | 16.228 | 1.805x | 4.39 |
+| 846 / NP | 584 / 20 | 29.194 | 16.147 | 1.808x | 4.37 |
+
+Every pair passed all 13 exact comparisons: complete starting and resulting
+state, model, gradients, Adam, global and minibatch RNG, progress, sampler/pool,
+report, parent, source and input audits. All owned processes closed within their
+120-second bounds. The earlier revised candidate also passed batch 821 (15
+samples, two Adam steps), taking 0.564 versus 0.708 seconds. Those intermediate
+measurements are retained separately from the final-source pairs.
+
+Actual concurrent text replays reached 15 in every final pair. On batch 846 PN,
+prefix reconstruction fell from 3.962 to 0.883 seconds, forward from 6.114 to
+3.143, and backward/clipping from 17.792 to 9.873. Native recipe compilation
+added 0.899 seconds. The resource plan allows 16 prefix workers, 15 backward
+workers plus the coordinating thread, and four collection/replay processes in
+their respective phases. It does not oversubscribe every Torch process with 16
+intra-op threads.
+
+These are measured **PPO-update** gains, not full campaign throughput or learning
+quality gains. No new gameplay, seed reservation, official admission or official
+optimizer update occurred. No continuous 16-core occupancy is claimed: ordered
+recurrence, ordered gradient folding and the unchanged four-game on-policy batch
+limit independent work. Filling all RAM or switching this small exact CPU model
+to GPU would not by itself establish acceleration or numerical equivalence.
+Python still owns action enumeration, admission, the outer minibatch schedule,
+exact existing Adam object, serialization and supervision; numerical hot loops
+and parallel text backward run in C++. Only the canonical CPU float32 model is
+accepted, without custom hooks, module changes or higher-order gradients.
+
+The [compact acceptance record](../../validation/native-mac-learner-2026-10-29.json)
+binds the actual build and complete reviewed integration source. Raw captures,
+disposable checkpoint states, failed attempts, build logs and cleanup evidence
+remain private in the durable artifacts directory.
+
+## Manual continuation and cloud ownership
+
+The new `continue-original-native.sh` is an opt-in launcher. It defaults to one
+hour and all available CPU cores, accepts a smaller `--cpu-cap`, and requires the
+exact accepted manifest and SHA256. It uses the existing verified original-map
+ancestry and computes remaining games from admitted experience. It does not
+choose checkpoint 1229 or any fixed remaining-game count.
+
+The Mac's two ownership locks remain read-only because ownership was handed to
+the cloud. The real ten-hour check correctly refused at that fence, without
+reaching the runner or changing lock bytes, modes or inodes. Native backend
+acceptance is therefore **not current Mac launch readiness**. The cloud's latest
+complete model/Adam/RNG/progress/sampler/pool state and consumed-seed ledger must
+first return through a separately verified closure and import. Do not remove the
+fence or resume the older local checkpoint as part of this optimization.
+
+After that handoff, the exact check command from the main checkout is:
+
+```sh
+cd /Users/orsi/Projects/Heroes
+./continue-original-native.sh --check --hours 10 \
+  --native-learner /Users/orsi/Projects/Heroes-artifacts/native-learner-builds/mac-native-v1-attempt6/manifest.json \
+  --native-sha256 5a575c084479ac163ad152890ef58ef9e4cb4f842eca23d9f330f8733ddc477a
+```
+
+When the verified handoff and this check both pass, removing only `--check`
+requests the manual ten-hour continuation. This work did not run that command
+in start mode, restart training, alter cloud source or remove either fence.

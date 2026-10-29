@@ -743,3 +743,45 @@ confirmed that those locks are local flock files, not a cross-host lease. A
 cloud start still needs accepted Linux binaries, complete lineage relocation
 and enforceable ownership. No official experience or optimizer update occurred.
 See the [attempt record](../validation/cloud-launch-attempt-2026-10-29.json).
+
+## 29 October 2026 — native Mac learner accepted; cloud ownership retained
+
+The user's requested [C++ learner rewrite](research/native-mac-training-2026-10-29.md)
+now executes semantic/spatial encoders, recurrent windows, selected-action
+likelihoods, PPO losses and ordered parallel text backward in a freshly compiled
+ATen extension. Python retains admission, the existing Adam object, checkpoint
+serialization and process supervision. The four-game batch, original map,
+architecture, PPO settings, opponent, terminal rewards and disclosed visible
+interaction budget remain unchanged. Bounded fresh-process replay verification
+also passed four actual archived native captures with no unchecked requests.
+
+The first numerical candidate matched state exactly but was 0.528–0.546x as fast
+as the optimized Python reference. It was rejected for performance: it omitted
+the existing text-leaf reuse and concurrent backward replay. All attempts and
+failed preparation tests remain private. Review also exposed unsupported aliases,
+worker startup/error cleanup gaps, module-order checks and a lower-level worker
+acceptance bypass; these were corrected without weakening integrity gates.
+
+On final source `7101636`, both execution orders of two recorded four-game PPO
+updates matched all 13 comparisons, including gradients, model, Adam, all RNG and
+complete continuation state. The 210-sample update improved 1.699–1.700x and the
+584-sample update 1.805–1.808x. Fifteen simultaneous text replays were observed;
+mean whole-update use was 4.24–4.39 cores on the 16-core Mac. These results do not
+establish full campaign throughput, learning improvement or continuous use of
+all cores. The earlier small fixture and every failed performance pair remain
+separately identified in the [acceptance record](../validation/native-mac-learner-2026-10-29.json).
+
+The full offline suite passed 1,719 of 1,766 tests with 47 platform/optional skips.
+After the last module-order/introspection guard tightening, 139 of 140 focused
+checks passed, with one skip; these included the compiled controls, source gates,
+replay and continuation. Final recorded comparisons used that last source.
+Canonical engine preparation matched exactly. Independent review found no
+remaining issue within the supported canonical model contract.
+
+The manual native launcher and accepted build are prepared, but current Mac
+launch readiness is false: the real ten-hour check correctly refuses the existing
+read-only ownership fence. The separately authorized cloud run's frozen source
+and ownership were not changed. A later verified cloud closure and latest-state
+import must precede local continuation; local checkpoint 1229 is not a substitute
+for the cloud's newer state. This work launched no official games or updates,
+reserved no seeds, changed no checkpoint and removed no fence.

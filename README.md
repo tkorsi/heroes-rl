@@ -324,14 +324,24 @@ manual continuation.
 
 ## Experiment agreement
 
-The requested Mac native-learner rewrite is being validated on the separate
-`codex/mac-native-training` branch. It adds a source/ABI/binary-bound C++ tensor
-backend and bounded native prefix/replay concurrency. It preserves the four-game
-PPO batch, selected-action support, terminal rewards and complete checkpoint
-state. The existing Python admission, checkpoint and process-supervision layer
-remains authoritative. Native execution is opt-in and refuses official use until
-its compiled build and integration pass the recorded acceptance gate. This work
-does not change or restart the already running, separately frozen cloud session.
+The [Mac native learner](docs/research/native-mac-training-2026-10-29.md) now has
+an accepted source/ABI/binary-bound C++ numerical backend, parallel text backward,
+bounded prefix workers and four independent replay processes. Counterbalanced
+recorded PPO updates were 1.70x and 1.81x faster than the optimized Python path,
+with exact model, gradient, Adam, RNG and complete continuation-state equality.
+The 16-core Mac reached 15 concurrent text replays; mean whole-update CPU use was
+about 4.3 cores. These are PPO measurements, not full-training throughput or a
+claim of constant core saturation. The four-game batch, policy support, model,
+terminal rewards and original experiment remain fixed. Python admission,
+serialization, Adam ownership and supervision remain authoritative.
+
+`continue-original-native.sh` is an opt-in manual launcher with exact build and
+source acceptance gates. **The Mac is still fenced for cloud ownership.** Its
+real ten-hour check correctly refuses; a separately verified cloud closure and
+latest-state import are required before local continuation. This optimization
+does not restart training, replace the latest cloud checkpoint with local 1229,
+or modify the cloud's frozen source. See the report for the precise command and
+validation limitations.
 
 - Use existing VCMI rules, never a substitute simulator. macOS and Linux host
   the same rules; paths, transports and process supervision belong outside the
