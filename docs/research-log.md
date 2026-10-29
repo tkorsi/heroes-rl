@@ -911,3 +911,62 @@ no gameplay or PPO. All failed preparation, source-gate, PID, ownership-lock,
 acceptance and test-selection attempts are retained in the detailed report.
 No official training, seed reservation, duplicate update or automatic restart
 occurred. Raw captures, state and operational receipts remain private.
+
+## 29 October 2026 — checkpoint 1392 replay and rejected-batch repair
+
+The user-started 1,000-game session admitted 228 natural losses in 57 complete
+updates, advancing 1335 to 1392. Batch 1032 then failed replay verification on an
+unapplied terminal Nullkiller `GarrisonHeroSwap` request. A second reporting
+contract error obscured that cause after whole-batch receipt revocation. All four
+failed-batch games remain excluded and sequence 1032 remains consumed. The
+[repair report](research/checkpoint1392-repair-2026-10-29.md) records exact model,
+Adam, RNG, progress, sampler and pool restoration, with 772 games left in this
+manual goal and 1,948 left in the original target.
+
+Both Python and canonical C++ accounting now cover the reviewed town-hero swap
+without relaxing packet, identity, terminal or replay checks. Rejected batches
+retain individual verification evidence and their original cause; revoked
+histories receive rejected status and are not scored. The supervisor remains
+strict. A fresh nine-target runtime build passed actual library-load checks,
+715 native accounting controls, terminal cancellation controls and a supplemental
+replay of the copied failure. That supplemental record remains ineligible for
+PPO and does not change the failed cohort's result.
+
+Fresh native acceptance passed 16 garrison controls, 28 legacy controls and eight
+frozen-1392 games with 1,136 exactly reconstructed choices, all natural losses.
+The fresh policy cohort had no type-189 terminal tail (five type-182 tails);
+type 189 is covered by the exact failed capture and native accounting controls.
+Every diagnostic had bounded deadlines and verified cleanup; none entered PPO.
+The full suite passed 1,864/1,936 tests with 72 platform/optional skips. A separate
+41-test native learner suite and 178 focused tests passed; these overlapping
+counts are not additive. Small policy acceptance cohorts do not establish
+learning improvement, long-run stability or full CPU saturation.
+
+The first real `./continue-772.sh --check --hours 10` invocation exited 2 after
+2.14 seconds because the historical cloud-machine guard refused the new runtime.
+A narrowly registered immutable runtime transition passed 44 tests and independent
+review. The corrected final combined selection passed 182 tests, and the actual
+main-checkout retry at `9eb67debd056ea8426eb70331b153177cb46251d` passed in 10.42
+seconds: exact checkpoint 1392, 772 remaining goal games, next sequence 1033,
+ten-hour cap, four collectors and four verifiers within a 16-CPU budget. It
+launched no gameplay or PPO. Failed test-selection imports and a macOS fixture
+path-normalization mismatch are retained and disclosed.
+An inherited acceptance annotation was separately corrected with a supersedes
+binding, preserving the original descriptor and all native/policy evidence.
+
+Private commit `a489c0e4ae133616bf69569db740a57c0e4c63cb` passed fresh remote
+readback and full checkpoint restoration. It preserves 130 failed-batch regular
+files, undereferenced Data links and 1,378 run metadata files. Successful official
+raw histories and intermediate checkpoint pairs remain durable locally and are
+explicitly outside that package. Final private commit
+`375b61c2f22f99c65552aabd654e3ca53e82948f` separately passed fresh readback in
+21.54 seconds for 1,694 diagnostic/proof files and 52 undereferenced symlinks.
+It contains both acceptance descriptors and the final source/main-readiness
+proofs, without runtime binaries or game data.
+The final closure audit found no owned processes across 841 deadline records,
+verified both locks available and left all five official/original-machine
+bindings unchanged, with no signals. Official state and consumed seed
+reservations remain unchanged. The new launcher recalculates the same 772-game
+goal across manual windows, never resets the latest
+checkpoint, and prints total running time. This repair launched no official
+training or restart.

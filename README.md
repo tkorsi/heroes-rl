@@ -11,14 +11,24 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
-The latest verified state is **checkpoint 1,335**, recovered from the cloud's
-publication-only failure and imported to this Mac with exact model/Adam/RNG/
-progress/sampler/pool restoration. The original target has **2,824 admitted games
-and 2,176 remaining**; sequence 975 is next. The [recovery report](docs/research/cloud1335-recovery-2026-10-29.md)
-records 44 fresh native controls, 8 frozen-policy games and the passing real
-main-checkout preflight. Run `./train-1000.sh --hours 10` manually for 1,000 new
-admitted games with a ten-hour cap and printed total runtime. This repair did
-not launch official training. Earlier milestones below remain historical.
+The latest verified state is **checkpoint 1,392**. The user-started 1,000-game
+run admitted **228 games in 57 complete updates**, then stopped on an unsupported
+terminal opponent request in replay verification. The failed batch admitted no
+samples or update; full model/Adam/RNG/progress/sampler/pool state is preserved.
+The original target has **3,052 admitted games and 1,948 remaining**; sequence
+**1,033** is next. **772 games remain** in the interrupted 1,000-game goal.
+
+The [checkpoint 1392 repair report](docs/research/checkpoint1392-repair-2026-10-29.md)
+records both fixes, a clean rebuilt runtime, 44 fresh native controls and eight
+frozen-policy games with 1,136 exact reconstructed choices. The prepared manual
+launcher is `./continue-772.sh --hours 10`; it recalculates the remaining goal
+across manual windows and prints total runtime. The first main-checkout check
+exposed a historical cloud-machine guard; its narrow correction and the final
+real main-checkout check now pass. The check restored checkpoint 1,392 exactly,
+confirmed the 772-game goal and next sequence 1,033, and launched no gameplay.
+The checkpoint, failed-batch evidence and final diagnostic package passed private
+remote readback. No official training was launched during repair. Earlier
+milestones below remain historical.
 
 The user has authorized a **visible-history interaction budget** to prevent
 repeated window, army/artifact and no-effect movement loops. This is an explicit
@@ -351,10 +361,16 @@ source acceptance gates. The subsequent cloud run stopped on a private Git
 publication read-back timeout after computing checkpoint **1,335**. Its
 [recovery audit](docs/research/cloud1335-recovery-2026-10-29.md) verifies all 106
 cloud checkpoint pairs and the complete failed-batch raw inventory. Checkpoint
-1,335 restores exactly without another optimizer update. This gives **2,824
-admitted games and 2,176 remaining** in the original target; sequence **975** is
-next. The original failed cloud report remains unchanged. The Mac import and actual manual preflight have passed, as recorded in that
-recovery report.
+1,335 restored exactly without another optimizer update. At that historical
+boundary the original target had **2,824 admitted games and 2,176 remaining**,
+with sequence **975** next. The original failed cloud report remains unchanged.
+The subsequent Mac run and repair now preserve checkpoint **1,392**, as recorded
+in the current-state section above.
+
+For the interrupted 1,000-game goal, use `./continue-772.sh --check --hours 10`,
+then launch `./continue-772.sh --hours 10` manually. It verifies the checkpoint
+1,392 anchor and recalculates the remaining admitted games across manual windows;
+it never resets a later checkpoint or replays consumed batch-1,032 seeds.
 
 For a manual session targeting **1,000 additional admitted training games**, use
 `./train-1000.sh --check` for offline preflight, then `./train-1000.sh` to launch

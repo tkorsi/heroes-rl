@@ -1,0 +1,454 @@
+{
+  "checkpoint": {
+    "backup_restore_exact": true,
+    "failed_sequence_consumed": 1032,
+    "next_sequence": 1033,
+    "optimizer_steps": 24626,
+    "original_admitted_games": 3052,
+    "policy_sha256": "aeadf9e6cf3089edf8e0013cc439868d2cd7a6ad618cda2b688ed92de81fa0a7",
+    "progress": {
+      "decisions": 729985,
+      "rollouts": 5568,
+      "updates": 1392
+    },
+    "remaining_original_games": 1948,
+    "remaining_requested_games": 772,
+    "restore_exact": true,
+    "resume_complete_state_sha256": "1123e871f80e853bb4188706ad9c6fe1eae6c05072ec884a1e129fab0d5890ee",
+    "resume_sha256": "8e0b97d2aa34296c5177a8edb42bb7f7cce01ce1e211d08a194b9f454fef1959",
+    "session_admitted_games": 228,
+    "session_evaluation_games_excluded": 8,
+    "session_training_losses": 228,
+    "session_updates": 57,
+    "update": 1392
+  },
+  "confirmed_failure": {
+    "authoritative_input_count": 423,
+    "batch_sequence": 1032,
+    "classification": "unsupported_terminal_native_opponent_request_in_replay_accounting",
+    "client_request_count": 424,
+    "episode": 3,
+    "exact_ai_caller_known": false,
+    "failed_batch_admitted_games": 0,
+    "failed_batch_optimizer_updates": 0,
+    "final_packet_interval": [
+      1988,
+      2012
+    ],
+    "final_terminal_input_request_id": 423,
+    "pack_type": 189,
+    "receipt_packet": 2006,
+    "request_type": "GarrisonHeroSwap",
+    "run": "run-20261029T195027Z-64238b2b",
+    "secondary_error": "Passed attempt lacks durable post-verification completion",
+    "server_applied_tail": false,
+    "terminal_unapplied_request_id": 424
+  },
+  "continuation": {
+    "complete_updates_if_goal_reached": 193,
+    "consumed_failed_seeds_replayed": false,
+    "default_hours": 10,
+    "goal": "checkpoint1392-remaining772-v1",
+    "goal_games": 772,
+    "learning_settings_changed": false,
+    "manual_command": "cd ~/Projects/Heroes && ./continue-772.sh --hours 10",
+    "never_resets_latest_checkpoint": true,
+    "prints_total_elapsed_time": true,
+    "recomputes_admitted_descendants_each_launch": true,
+    "zero_work_when_goal_completed": true
+  },
+  "evidence": {
+    "build/build-result.json": {
+      "bytes": 62,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/build/build-result.json",
+      "sha256": "4bbc7192dc85e55a042bd7dfff1e619deb2f733e0423f2875f839cb2a3308888"
+    },
+    "build/configure-command.json": {
+      "bytes": 1381,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/build/configure-command.json",
+      "sha256": "95ba49f35283a57926db79cb94fe7a41809bf8dd43f1815fe57312ba5e215156"
+    },
+    "build/native-accounting-tests.log": {
+      "bytes": 707,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/build/native-accounting-tests.log",
+      "sha256": "d50af00a0ee0b10599166df82743928e2d7eeb3da1e9ed6a364e304cc83721e5"
+    },
+    "checkpoint1392-independent-audit.json": {
+      "bytes": 3445,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/checkpoint1392-independent-audit.json",
+      "sha256": "83a2a4fa10e61693ae3e750015feb27adb5577f4e1e9cea6d14d59b7a1f78804"
+    },
+    "cloud-gate-final-tests.log": {
+      "bytes": 18256,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/cloud-gate-final-tests.log",
+      "sha256": "7e8e8ca945197773a31e5e742eba0bd35da22f14c46df6ac9b30bbb738b427ec"
+    },
+    "cloud-gate-final-tests2.log": {
+      "bytes": 34716,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/cloud-gate-final-tests2.log",
+      "sha256": "0814805f335aad3f0a88a89ced5c09ec811ec70f7ab3e0681c8534eb26af7126"
+    },
+    "final-focused-tests.log": {
+      "bytes": 34239,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/final-focused-tests.log",
+      "sha256": "2899037d6f370db6e3f2000cebfc7de282d78cd1d9a53cb73799229370274481"
+    },
+    "final-main-engine-check.log": {
+      "bytes": 104,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/final-main-engine-check.log",
+      "sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac"
+    },
+    "final-source-review.json": {
+      "bytes": 4252,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/final-source-review.json",
+      "sha256": "96facb3bc5eebc3ed0e3b7628aa1ff8dfeee4534e189cca904fae1fb271f7450"
+    },
+    "final-state-audit.json": {
+      "bytes": 1236,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/final-state-audit.json",
+      "sha256": "e7cb9bd9bb56c7d24aea2debc072de1afc9e8a972bd5e4bc958b2e02473fa458"
+    },
+    "investigation.json": {
+      "bytes": 6940,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/investigation.json",
+      "sha256": "3fc3a7a65fde4d201ba78f40b349f1597d725b6b9b539026d5a9a02c674f214a"
+    },
+    "machine-activation.json": {
+      "bytes": 892,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/machine-activation.json",
+      "sha256": "712c7ed40eaf424005b558bbacb43d7f00783d25da7fd12eb31e2d8a76607126"
+    },
+    "machine-metadata-correction.json": {
+      "bytes": 825,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/machine-metadata-correction.json",
+      "sha256": "261f8c8b43a7848520cec1c3c8ecf4db360b3d27747341576b33d47a9014720b"
+    },
+    "main-readiness-check.log": {
+      "bytes": 658,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/main-readiness-check.log",
+      "sha256": "41ca7b7abcbf884c06fcfb854e96495ab451dd8de5520fd2d8e5521f7e84f387"
+    },
+    "main-readiness-check2.json": {
+      "bytes": 5674,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/main-readiness-check2.json",
+      "sha256": "78e82eb3dfc237d94590e56bb02530833c4803ecb7836f43605d5b5b441ef962"
+    },
+    "main-readiness-check2.log": {
+      "bytes": 6226,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/main-readiness-check2.log",
+      "sha256": "5a893ebac6152f233501b257e0ba984027483984d11e3fe01c7d1c05b090bcac"
+    },
+    "main-sync.json": {
+      "bytes": 228,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/main-sync.json",
+      "sha256": "21dfab75d64a29897169c5cc4530985f71787ea141674bd17203f9563dcc1a8a"
+    },
+    "main-sync2.json": {
+      "bytes": 226,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/main-sync2.json",
+      "sha256": "0521732da8455a0d83c827db79be33080928c55ec4e62fc7c6ea2d216511a67a"
+    },
+    "native-garrison16/execution/report.json": {
+      "bytes": 265800,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/native-garrison16/execution/report.json",
+      "sha256": "44188b6505693cbeac5f1c166194e848da969481c3425a11c70603f96cf0b7cb"
+    },
+    "native-learner-tests.log": {
+      "bytes": 8309,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/native-learner-tests.log",
+      "sha256": "ea4e5599156f6115e57765307a84663856eb25e56cbcdf24f4f787747e992fc8"
+    },
+    "native-legacy28/execution/report.json": {
+      "bytes": 168216,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/native-legacy28/execution/report.json",
+      "sha256": "337c39792fbbde001be9ee71a9209e92f052016df102ac74b30130f30b092f0a"
+    },
+    "native-source-review.json": {
+      "bytes": 4040,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/native-source-review.json",
+      "sha256": "f0a12806d6e63a0f68f1069178dd8d233cec5e0296c9f78c2716c87cd2c9ba2a"
+    },
+    "official-state-after-diagnostics.json": {
+      "bytes": 560,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/official-state-after-diagnostics.json",
+      "sha256": "c63218a95e352a201089dd2281f2fd128a91750e2a7e77bdf215e39480a1929a"
+    },
+    "offline-suite.log": {
+      "bytes": 345507,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/offline-suite.log",
+      "sha256": "c075363b1cd91109a3dc1593c9cc92000a9608757edd6d01abc80be5af916f4e"
+    },
+    "policy1392-runtime1/execution/report.json": {
+      "bytes": 21188,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/policy1392-runtime1/execution/report.json",
+      "sha256": "cbdd7b32557f52e116ba5824f182dbb8c0a407845ec4f72d04657f681ae8e543"
+    },
+    "policy1392-runtime1/shutdown.json": {
+      "bytes": 1441,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/policy1392-runtime1/shutdown.json",
+      "sha256": "6beff106fa4f213e04bf2027d2c193b2a7b5e1d6602207385c31e4cb7ee95a0e"
+    },
+    "preregistration.json": {
+      "bytes": 1799,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/preregistration.json",
+      "sha256": "8df7378f62e31164fc264a4f55379a83f8494e7f6238606a62d4cc71da473d87"
+    },
+    "private-preservation/final-readiness/publication-result.json": {
+      "bytes": 902,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/private-preservation/final-readiness/publication-result.json",
+      "sha256": "99ffd31b3b8297641143eb1872c98d0d50c3fc3b8d47b13435a5b1bcef319c0d"
+    },
+    "private-preservation/publication-result.json": {
+      "bytes": 1555,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/private-preservation/publication-result.json",
+      "sha256": "e94d24f2504b594562698f86da6ef80d98117eb99277a4f0c36a52dc839a36cf"
+    },
+    "supplemental-replay1/builtin-replay-diagnostic.json": {
+      "bytes": 12924,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/supplemental-replay1/builtin-replay-diagnostic.json",
+      "sha256": "0e1a55c79958f61082982582349f3c4e3f3b48882f95b9a19ea4a9615d62576c"
+    },
+    "supplemental-shutdown.json": {
+      "bytes": 111,
+      "private_artifact": "run-investigations/2026-10-29-batch1032/supplemental-shutdown.json",
+      "sha256": "a2f5ab9bd2601c2032d6914cd50672a769329c352d9d9a20e0b7397879c6c705"
+    }
+  },
+  "failed_preparation_attempts": [
+    {
+      "detail": "macOS /var versus /private/var path normalization mismatch; corrected",
+      "kind": "test_fixture"
+    },
+    {
+      "detail": "Nonexistent tests.test_cloud_import_application; corrected selection passed 44 tests",
+      "kind": "test_selection"
+    },
+    {
+      "detail": "Nonexistent tests.test_continue_772_games; 94 tests passed plus one import error; corrected invocation passed 182 tests",
+      "kind": "test_selection"
+    },
+    {
+      "detail": "Immutable historical cloud machine guard refused rebuilt runtime; narrow registered transition and final real main retry passed",
+      "kind": "actual_main_preflight"
+    },
+    {
+      "detail": "Inherited acceptance field still named ExchangeArtifacts; original retained, separately bound corrected accepted-runtime-v2.json passed full acceptance",
+      "kind": "metadata_annotation"
+    }
+  ],
+  "final_closure": {
+    "deadline_files_checked": 841,
+    "locks_available": true,
+    "matching_owned_processes": 0,
+    "observed_utc": "2026-10-29T20:54:54.553873+00:00",
+    "official_and_original_machine_bindings_unchanged": true,
+    "processes_examined": 985,
+    "recorded_groups": 841,
+    "recorded_pids": 1683,
+    "signals_sent": 0
+  },
+  "limitations": [
+    "Fresh eight-game policy cohort did not reproduce type189; that case is covered by the failed capture and native controls.",
+    "Eight frozen policy games do not establish strategic improvement or long-run stability.",
+    "No new native allied-garrison coverage.",
+    "Exact AI caller and swap direction for the terminal request are not recorded.",
+    "Full CPU saturation was not measured by this repair.",
+    "Successful official-game raw histories and intermediate checkpoint pairs remain local; initial private package covers latest checkpoint, failed batch and run metadata."
+  ],
+  "main_readiness": {
+    "command": "./continue-772.sh --check --hours 10",
+    "final_attempt": {
+      "budget_cpus": 16,
+      "checkpoint": 1392,
+      "collection_workers": 4,
+      "exact_restore": true,
+      "exit_status": 0,
+      "gameplay_performed": false,
+      "hours": 10,
+      "native_frame_threads": 16,
+      "native_prefix_threads": 16,
+      "native_text_replay_workers": 14,
+      "next_sequence": 1033,
+      "original_games_remaining": 1948,
+      "policy_support": "visible-interaction-budget-v1",
+      "ppo_updates": 0,
+      "seconds": 10.42,
+      "session_goal_games_remaining": 772,
+      "source_commit": "9eb67debd056ea8426eb70331b153177cb46251d",
+      "status": "continuation_offline_checks_passed",
+      "verification_workers": 4
+    },
+    "first_attempt": {
+      "error": "Cloud continuation may only refresh acceptance for the identical historical machine",
+      "exit_status": 2,
+      "learning_or_state_changed": false,
+      "seconds": 2.14
+    },
+    "pending": false,
+    "ready": true
+  },
+  "main_source_before_guard_correction": "ba7018b08800629934e67cf988ce94f1e0793c09",
+  "official_checkpoint_and_ledger_unchanged": true,
+  "official_optimizer_updates": 0,
+  "official_seed_reservations": 0,
+  "official_training_launched": false,
+  "official_training_samples": 0,
+  "preservation": {
+    "checkpoint_roundtrip_verified": true,
+    "copyrighted_game_data_included": false,
+    "excluded_successful_raw_remains_durable_locally": true,
+    "failed_raw_regular_files": 130,
+    "failed_raw_uncompressed_bytes": 150677409,
+    "files": 24,
+    "final_diagnostic_publication": {
+      "archive_bytes": 15588658,
+      "checkpoint_roundtrip_scope": "Initial-preservation transaction already independently restored checkpoint1392; this diagnostic-only transaction contains no checkpoint pair",
+      "commit": "375b61c2f22f99c65552aabd654e3ca53e82948f",
+      "copyrighted_game_data_included": false,
+      "diagnostic_inventory_sha256": "b04c9c5ab7fa60df057d9b8da73ac755bb3209ab54df393ba503e2c4430cceb3",
+      "explicit_blob_fetch_batches": 2,
+      "fresh_readback_verified": true,
+      "lazy_fetch_during_verification": false,
+      "manifest_sha256": "43c35386953959910d96f41dbac210347fe62ea0ea86d73d90f36875d334b08a",
+      "official_moving_unchanged": true,
+      "prefix": "handoffs/2026-10-29-checkpoint1392/final-readiness",
+      "ref": "refs/heads/codex/checkpoint1392-repair",
+      "regular_bytes": 407726793,
+      "regular_files": 1694,
+      "runtime_binaries_included": false,
+      "undereferenced_symlinks": 52,
+      "wall_seconds": 21.541600942611694
+    },
+    "fresh_readback_verified": true,
+    "initial_commit": "a489c0e4ae133616bf69569db740a57c0e4c63cb",
+    "intermediate_checkpoint_tensors_published": false,
+    "prefix": "handoffs/2026-10-29-checkpoint1392/initial-preservation",
+    "private_repository": "tkorsi/heroes-rl-training-state",
+    "readback_seconds": 17.81254482269287,
+    "ref": "refs/heads/codex/checkpoint1392-repair",
+    "run_metadata_files": 1378,
+    "successful_official_game_raw_published": false,
+    "undereferenced_data_symlinks": 4
+  },
+  "repairs": {
+    "automatic_policy_dialog_closure": false,
+    "cloud_machine_transition": "Specific accepted runtime descriptor and immutable historical machine hashes registered; nonruntime fields and complete current acceptance gate remain mandatory",
+    "failed_batch_reporting": "Verified histories become rejected when receipt capabilities are revoked; original error and individual verification evidence remain visible",
+    "new_strategic_mask": false,
+    "python_and_cpp_terminal_accounting": "GarrisonHeroSwap added as sixth reviewed terminal-unapplied request type; exact identity, bytes, order, final receipt, terminal and barrier checks retained",
+    "rejected_metrics_scored": false,
+    "report_reader_weakened": false
+  },
+  "runtime": {
+    "accepted_descriptor": {
+      "bytes": 14452,
+      "private_artifact": "runtime/local-v8-terminal-replay-repair2/accepted-runtime-v2.json",
+      "sha256": "9f9292bc8b5e959d7f7ed1152dc50b9d3404b5ed67b73ec0a11f2ec8331d313d"
+    },
+    "actual_client_library_load_verified": true,
+    "build_seconds": 61.47260022163391,
+    "canonical_engine_check_main": true,
+    "canonical_engine_check_worktree": true,
+    "compiler_cache_disabled": true,
+    "directory": "runtime/local-v8-terminal-replay-repair2",
+    "donor_build_load_detected": false,
+    "empty_build_directory": true,
+    "metadata_correction_changes_native_or_policy_proof": false,
+    "native_learner_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+    "native_learner_manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623",
+    "native_targets_built": 9,
+    "original_descriptor_retained": {
+      "bytes": 14025,
+      "private_artifact": "runtime/local-v8-terminal-replay-repair2/accepted-runtime.json",
+      "sha256": "dad02f0d1cb3af4512c2813deade2a8298dcc38d3c8eef93152e3d50e51118aa"
+    },
+    "release_id": "terminal-replay-1392-v1",
+    "runtime_file_sha256": {
+      "AI/libBattleAI.dylib": "cfb9539b80fd0996c920cc1b224752d82a35e2659f6f227e3b48151fc068e08e",
+      "AI/libEmptyAI.dylib": "e378a267571138f48927cc7914a294921ab74177f7bd224f761050b722de250e",
+      "AI/libExplorerRL.dylib": "b3be91fefc1427d48d6a2a9814cedca63648a40d014e4358cfd2ed1f7b8296e1",
+      "AI/libNullkiller.dylib": "0b4ae6cc8303781f42b598ebbe046f8b07211820ed2fef5b763101960f79e22c",
+      "AI/libStupidAI.dylib": "7ce951000d1e009a677ab5c14e3fc0d146c302ba385638e8dd671a84676655fc",
+      "libvcmi.dylib": "aef467216a094dbd22b0e07c28ed869ab4b4057a0753f90c2afad427c4283be7",
+      "vcmireplay": "e3f522d27d20d66133616041ca8e218d4d03e8d3a6c2f1ce59b619b213c43a5e"
+    }
+  },
+  "runtime_source_commit": "ba45482343feb39c6b9539ebc81c717fc4c47ef2",
+  "schema": "heroes-checkpoint1392-repair-v1",
+  "source_commit": "9eb67debd056ea8426eb70331b153177cb46251d",
+  "status": "repaired_runtime_validated_manual_preflight_passed",
+  "timestamp_utc": "2026-10-29T20:57:27.789003+00:00",
+  "validation": {
+    "additional_native_learner_suite": {
+      "passed": 41,
+      "seconds": 19.907,
+      "skipped": 0,
+      "tests": 41
+    },
+    "all_diagnostic_owned_cleanup_verified": true,
+    "cloud_gate_focused": {
+      "independent_review": true,
+      "passed": 44,
+      "tests": 44
+    },
+    "combined_final_gate_tests": {
+      "passed": 182,
+      "seconds": 6.674,
+      "skipped": 0,
+      "tests": 182
+    },
+    "diagnostic_optimizer_steps": 0,
+    "diagnostic_training_samples": 0,
+    "focused_before_cloud_gate": {
+      "passed": 178,
+      "seconds": 9.093,
+      "skipped": 0,
+      "tests": 178
+    },
+    "frozen_policy_choices": 1136,
+    "frozen_policy_games": 8,
+    "frozen_policy_games_per_seat": [
+      4,
+      4
+    ],
+    "frozen_policy_natural_losses": 8,
+    "frozen_policy_reconstruction_mismatches": 0,
+    "frozen_policy_terminal_tail_types": {
+      "182": 5,
+      "189": 0
+    },
+    "full_parent_restore": true,
+    "full_parent_unchanged": true,
+    "full_suite": {
+      "passed": 1864,
+      "seconds": 291.357,
+      "skipped": 72,
+      "tests": 1936
+    },
+    "garrison_games": 16,
+    "garrison_passed": 16,
+    "legacy_games": 28,
+    "legacy_passed": 28,
+    "native_accounting_and_cancellation_passed": 3,
+    "native_accounting_and_cancellation_unittest_methods": 3,
+    "native_accounting_controls": 715,
+    "new_type189_coverage": [
+      "exact captured failed episode supplemental replay",
+      "native packet-accounting positive and negative controls"
+    ],
+    "supplemental_failure_replay": {
+      "authoritative_inputs": 423,
+      "client_libvcmi_ai_adapter_unchanged": true,
+      "client_packets": 2012,
+      "diagnostic_verified": true,
+      "divergence": null,
+      "game_seed_rerun": false,
+      "optimization_eligible": false,
+      "original_cohort_admission": false,
+      "original_result_unchanged": true,
+      "requests": 424,
+      "transactions": 4122
+    },
+    "test_counts_overlap": true
+  }
+}
