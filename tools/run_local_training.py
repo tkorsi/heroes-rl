@@ -520,6 +520,9 @@ def execute_batch(session_path, parent, sequence, seat, mode, value):
     from experiments.learner.builtin_preservation import preserve, verify_pair
     from experiments.headless.process_deadline import guarded_popen
     session = read(session_path); run = Path(session['run_dir'])
+    if session.get('linux_cloud') is not None:
+        from tools.linux_publication import check_claim
+        check_claim(session)
     if (run / 'stop-requested').exists():
         raise StopRequested('Manual stop requested before the next batch')
     row = dict(sequence=sequence, seat=seat, mode=mode, parent=parent, status='preparing', started_utc=utc())
@@ -553,11 +556,22 @@ def execute_batch(session_path, parent, sequence, seat, mode, value):
             parent = adapter.binding_descriptor(plan_path, report_path,
                 report['after_checkpoint']['policy']['path'], report['after_checkpoint']['resume']['path'],
                 plan['checkpoint_metadata']['initial_checkpoint']['path'])
+            if session.get('linux_cloud') is not None:
+                from tools.linux_publication import publish_checkpoint
+                row['private_publication'] = publish_checkpoint(session, parent, proof['restore']['progress'],
+                                                               backup, plan_path)
             row.update(checkpoint_verified=True, preservation=proof)
             value.update(latest_parent=parent, latest_progress=proof['restore']['progress'])
             # Write only after a complete batch and independent copy restore; no interrupted update becomes latest.
             atomic(Path(session['run_root']) / 'latest-checkpoint.json', dict(parent=parent, run_dir=str(run),
                    backup=str(backup), progress=value['latest_progress'], timestamp_utc=utc()))
+            if session.get('linux_cloud') is not None:
+                pending = Path(session['run_root'])/'pending-checkpoint.json'
+                require(read(pending)['parent'] == parent, 'Pending published checkpoint differs')
+                pending.unlink()
+                directory = os.open(pending.parent, os.O_RDONLY)
+                try: os.fsync(directory)
+                finally: os.close(directory)
         else:
             require(report['optimizer_updates'] == report['optimizer_steps'] == report['training_samples'] == 0,
                     'Evaluation supplied training samples')
