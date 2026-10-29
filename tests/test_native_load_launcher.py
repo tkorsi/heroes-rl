@@ -26,7 +26,10 @@ def evidence():
                "native_seconds": 2.0, "python_seconds": 4.0, "kernel_speedup": 2.0}
     native = {"repetitions": [{"average_cpu_cores": 4.0,
                               "process_lifetime_peak_rss_bytes": 2**30,
-                              "timings": {"native_peak_parallel_replays": 7}}]}
+                              "timings": {"native_peak_parallel_replays": 7,
+                                          "native_peak_forward_workers": 8,
+                                          "native_forward_parallel_frames": 100,
+                                          "native_tape_replays": 200, "native_engine_replays": 0}}]}
     return request, summary, native
 
 
@@ -38,6 +41,10 @@ class NativeLoadResultTests(unittest.TestCase):
         self.assertEqual(result["available_cpu_capacity_percent"], 25.0)
         self.assertEqual(result["native_process_lifetime_peak_rss_bytes"], 2**30)
         self.assertEqual(result["native_peak_concurrent_text_replays"], 7)
+        self.assertEqual(result["native_peak_concurrent_frame_workers"], 8)
+        self.assertEqual(result["native_parallel_frames"], 100)
+        self.assertEqual(result["native_tape_replays"], 200)
+        self.assertEqual(result["native_engine_replays"], 0)
         self.assertEqual(result["exact_state_checks_passed"], 13)
         self.assertEqual(result["official_updates"], 0)
         self.assertEqual(result["seed_reservations"], 0)
@@ -145,7 +152,7 @@ class NativeLoadLauncherTests(unittest.TestCase):
                             ("--wall-seconds", "120"), ("--cpu-cap", "8"), ("--order", "PN")):
             self.assertEqual(command[command.index(name) + 1], value)
         self.accept.assert_called_once_with(
-            self.artifacts / "native-learner-builds/mac-native-v1-attempt6/manifest.json", SHA, cpu_cap=8)
+            self.artifacts / "native-learner-builds/mac-utilization-v1-attempt6/manifest.json", SHA, cpu_cap=8)
         output = self.written_output()
         result = json.loads((output / "load-report.json").read_text())
         self.assertEqual(result["available_cpu_capacity_percent"], 25.0)

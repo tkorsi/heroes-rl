@@ -37,6 +37,10 @@ def load_result(request, summary, native):
                 native_mean_cpu_cores=cores, available_cpu_capacity_percent=100 * cores / capacity,
                 native_process_lifetime_peak_rss_bytes=rss,
                 native_peak_concurrent_text_replays=repetition['timings']['native_peak_parallel_replays'],
+                native_peak_concurrent_frame_workers=repetition['timings']['native_peak_forward_workers'],
+                native_parallel_frames=repetition['timings']['native_forward_parallel_frames'],
+                native_tape_replays=repetition['timings']['native_tape_replays'],
+                native_engine_replays=repetition['timings']['native_engine_replays'],
                 native_ppo_seconds=summary['native_seconds'], python_ppo_seconds=summary['python_seconds'],
                 ppo_speedup=summary['kernel_speedup'], exact_state_checks_passed=13,
                 owned_cleanup_verified=True, official_updates=0, seed_reservations=0,
@@ -54,7 +58,7 @@ def main(argv=None):
     from experiments.learner.native_execution import native_execution_choice
     from tools import benchmark_native_training as benchmark
     artifacts = Path.home() / 'Projects/Heroes-artifacts'
-    manifest = artifacts / 'native-learner-builds/mac-native-v1-attempt6/manifest.json'
+    manifest = artifacts / 'native-learner-builds/mac-utilization-v1-attempt6/manifest.json'
     accepted = json.loads((ROOT / 'validation/native-mac-learner-2026-10-29.json').read_text())
     sha = accepted['native_manifest_sha256']
     # Preflight official backend acceptance, even though this command is diagnostic.
@@ -90,6 +94,7 @@ def main(argv=None):
     print(f"Native mean CPU: {result['native_mean_cpu_cores']:.2f} of {result['available_cpus']} cores "
           f"({result['available_cpu_capacity_percent']:.1f}% of available CPU capacity).")
     print(f"Peak concurrent text replays: {result['native_peak_concurrent_text_replays']:.0f}.")
+    print(f"Peak concurrent frame workers: {result['native_peak_concurrent_frame_workers']:.0f}.")
     print(f"Native process lifetime peak RSS: {result['native_process_lifetime_peak_rss_bytes'] / 2**30:.2f} GiB.")
     print('Exact state: 13/13 checks passed. Owned workers cleaned up. Official updates and new seeds: 0.')
     print('These are PPO measurements, not full-system, GPU or full-campaign utilization.')
