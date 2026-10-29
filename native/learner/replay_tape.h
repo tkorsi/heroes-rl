@@ -128,6 +128,8 @@ class BuiltinReplayTape {
     }
 
 public:
+    static bool ordinary_execution_context() { return ordinary_context(nullptr); }
+
     // Only the caller's own contribution hooks may be accepted. All other hooks
     // force fallback before any backward node is executed.
     static std::shared_ptr<BuiltinReplayTape> compile(

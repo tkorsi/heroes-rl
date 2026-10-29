@@ -7,7 +7,6 @@ independent history audit; no training, learned checkpoint or reward is changed.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import math
 from pathlib import Path
@@ -33,6 +32,7 @@ from validation.probes.validate_army_management import (army_contents, exact_sta
     exact_exchange_stack_roundtrip, rows, native_receipt)
 from validation.probes.validate_capabilities import CapabilityRun, capability_implementation_identity, INTERFACE
 from validation.probes.validate_hero_policy import retain_failed_evidence, wall_limit
+from tools.isolated_diagnostic import diagnostic_lease
 
 
 class GarrisonRun(CapabilityRun):
@@ -52,6 +52,7 @@ def implementation_identity():
     # a receipt/pin cycle. Keep every actual adapter, replay and engine source.
     identity.pop("experiments/learner/local_script_training.py", None)
     for name in ("experiments/explorer/create_garrison_scenarios.py",
+                 "tools/isolated_diagnostic.py",
                  "validation/probes/validate_garrison_dialogs.py"):
         identity[name] = digest(ROOT / name)
     return dict(sorted(identity.items()))
@@ -211,6 +212,8 @@ def main(argv=None):
     parser.add_argument("--official-lock", type=Path,
                         default=Path.home() / "Projects/Heroes-artifacts/local-script-training/owner.lock")
     parser.add_argument("--wall-seconds", type=int, default=1800)
+    parser.add_argument("--isolated-diagnostic", action="store_true",
+                        help="Use a private diagnostic lease and fresh investigation output; never touch official state")
     parser.add_argument("--supervision", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--supervision-sha256", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -218,7 +221,8 @@ def main(argv=None):
             not math.isfinite(value) or not 0 < value <= 180 for value in (args.case_seconds, args.watchdog, args.startup_seconds)):
         parser.error("Use bounded positive seeds, days, decisions and wall limits")
     for name in ("binary", "replay_binary", "data", "output", "maps"):
-        setattr(args, name, getattr(args, name).expanduser().resolve())
+        value = getattr(args, name).expanduser()
+        setattr(args, name, value.absolute() if name == 'output' and args.isolated_diagnostic else value.resolve())
     base.ensure(not args.output.exists(), "Preserve previous attempts; output exists")
     if args.supervision is None:
         return supervise(args, list(sys.argv[1:] if argv is None else argv))
@@ -226,7 +230,9 @@ def main(argv=None):
                 "Supervisor plan binding changed")
     supervision = json.loads(args.supervision.read_text())
     base.ensure(supervision["harness_sha256"] == digest(__file__)
-                and args.output == Path(supervision["execution_output"]), "Worker supervision scope differs")
+                and args.output == Path(supervision["execution_output"])
+                and args.isolated_diagnostic == supervision.get("isolated_diagnostic", False),
+                "Worker supervision scope differs")
     args.deadline_wall = supervision["absolute_deadline_unix"] - 10
     args.deadline_monotonic = supervision["hard_deadline_monotonic"] - 10
     base.ensure(min(args.deadline_wall - time.time(), args.deadline_monotonic - time.monotonic()) > 0,
@@ -318,9 +324,9 @@ def main(argv=None):
 
 
 def supervise(args, argv):
-    """One immutable window, a training exclusion lock and an external guard."""
-    with args.official_lock.expanduser().resolve().open("r") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    """One immutable window, an explicit ownership lease and an external guard."""
+    with diagnostic_lease(args.output, isolated=getattr(args, 'isolated_diagnostic', False),
+                          official_lock=args.official_lock) as lease:
         args.output.mkdir(parents=True, exist_ok=False)
         wall, mono = time.time(), time.monotonic()
         plan = {"schema": "heroes-garrison-diagnostic-supervision-v1", "harness_sha256": digest(__file__),
@@ -328,6 +334,7 @@ def supervise(args, argv):
                 "absolute_deadline_unix": wall + args.wall_seconds,
                 "hard_deadline_monotonic": mono + args.wall_seconds,
                 "execution_output": str(args.output / "execution"), "official_lock": str(args.official_lock),
+                "isolated_diagnostic": getattr(args, 'isolated_diagnostic', False), "diagnostic_lease": lease,
                 "training_performed": False, "optimizer_steps": 0}
         supervision = args.output / "supervision.json"
         write_json(supervision, plan)

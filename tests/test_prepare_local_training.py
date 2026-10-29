@@ -258,6 +258,38 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
         path.write_text(path.read_text() + ' ')
         with self.assertRaisesRegex(ValueError, 'accepted identity'): self.accepted()
 
+    def test_new_release_binds_environment_without_changing_legacy_config(self):
+        release = 'cpu-next-launch-v1'
+        environment = dict(prep.NEXT_LAUNCH_ENVIRONMENT)
+        descriptor = dict(self.descriptor, release_id=release, python_environment=environment)
+        bound = self.file(self.origin/'next-accepted.json', json.dumps(descriptor))
+        entry = dict(descriptor=bound['path'], sha256=bound['sha256'], python_environment=environment)
+        with patch.dict(prep.ACCEPTED_RUNTIME_RELEASES, {release: entry}), \
+                patch.object(prep, 'verify_environment') as gate:
+            value = prep.build_configuration(self.inputs, self.candidate, self.data, self.root, self.output,
+                                             runtime_release=release)
+            self.assertEqual(value['python_environment'], environment)
+            gate.assert_called_once_with(environment, current_python=value['python'])
+            self.assertEqual(prep.validate_config(value), value)
+            for changed in ({**value, 'python_environment': {}},
+                            {key: item for key, item in value.items() if key != 'python_environment'}):
+                with self.assertRaisesRegex(ValueError, 'configuration'):
+                    prep.validate_config(changed)
+            gate.reset_mock()
+            self.assertEqual(prep.validate_config(self.config), self.config)
+            self.assertNotIn('python_environment', self.config)
+            gate.assert_not_called()
+            gate.side_effect = ValueError('prepared Python changed')
+            with self.assertRaisesRegex(ValueError, 'prepared Python changed'):
+                prep.validate_config(value)
+
+    def test_release_cannot_add_or_replace_unreviewed_environment_binding(self):
+        for identity in (dict(prep.NEXT_LAUNCH_ENVIRONMENT), {}):
+            self.descriptor['python_environment'] = identity
+            self.pin_descriptor()
+            with self.subTest(identity=identity), self.assertRaisesRegex(ValueError, 'Python environment binding'):
+                self.accepted()
+
     def test_native_candidate_can_be_checked_without_becoming_machine_acceptance(self):
         from tools.validate_interaction_guard import load_runtime_candidate
         candidate = dict(self.descriptor, schema='heroes-local-training-runtime-candidate-v1')
@@ -479,6 +511,10 @@ class TerminalReplayAcceptanceTests(unittest.TestCase):
             accounting['terminal_unapplied'][0]['pack_type'] = 189
         descriptor = dict(self.descriptor(proof), release_id='terminal-replay-1392-v1', checkpoint_update=1392)
         self.assertEqual(prep.terminal_replay_acceptance(descriptor, self.runtime), descriptor['terminal_replay'])
+        next_launch = dict(descriptor, release_id='cpu-next-launch-v1')
+        self.assertEqual(prep.terminal_replay_acceptance(next_launch, self.runtime), descriptor['terminal_replay'])
+        with self.assertRaisesRegex(ValueError, 'checkpoint1392'):
+            prep.terminal_replay_acceptance(dict(next_launch, checkpoint_update=1335), self.runtime)
         for release, update in (('terminal-replay-cloud1335-v1', 1335), ('terminal-replay-parallel-v1', 1095),
                                 ('terminal-replay-1392-v1', 1335), ('terminal-replay-1392-v1', None)):
             changed = dict(descriptor, release_id=release, checkpoint_update=update)

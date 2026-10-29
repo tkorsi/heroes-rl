@@ -142,8 +142,13 @@ class NativeLearnerKernelTests(unittest.TestCase):
                 self.assertLessEqual(statistics["peak_parallel_replays"], workers - 1 if workers >= 2 else 2)
                 self.assertLessEqual(statistics["max_pending_replays"], 1024)
                 self.assertGreater(statistics["fold_nanoseconds"], 0)
+                self.assertGreater(statistics["compacted_occurrences"], 0)
+                self.assertGreater(statistics["original_occurrence_edges"],
+                                   statistics["retained_occurrence_edges"])
                 if workers >= 2:
                     self.assertEqual(statistics["main_thread_replays"], 0)
+            else:
+                self.assertEqual(statistics["compacted_occurrences"], 0)
             self.assertGreater(statistics["producer_backward_nanoseconds"], 0)
             equal_tree(self, torch.get_rng_state(), rng)
             self.native.close()  # Cleanup is idempotent.
@@ -175,6 +180,179 @@ class NativeLearnerKernelTests(unittest.TestCase):
         self.assertGreater(statistics['max_pending_replays'], 0)
         self.assertLessEqual(statistics['max_pending_replays'], 1024)
 
+    def test_deferred_edge_compaction_preserves_hooks_unknown_graphs_and_direct_backward(self):
+        history = self.backend.NativeHistory([("text", b"repeated terminal contributions", [])], [])
+
+        def loss():
+            values = [self.native.tree(history, 0) * (i - 2) for i in range(5)]
+            return values, torch.stack(values).sum()
+
+        for mode in ('compact', 'node_hook', 'unknown_node', 'direct_backward'):
+            with self.subTest(mode=mode):
+                self.model.zero_grad(set_to_none=True)
+                _, reference = loss()
+                if mode == 'unknown_node': reference = reference.sin()
+                reference.backward()
+                expected = [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+                self.model.zero_grad(set_to_none=True)
+                self.native.begin_text_replay(3)
+                handle, hook_shapes = None, []
+                try:
+                    values, result = loss()
+                    if mode == 'node_hook':
+                        occurrence = values[0].grad_fn.next_functions[0][0]
+                        original_edges = len(occurrence.next_functions)
+                        self.assertGreater(original_edges, 5)
+                        handle = occurrence.register_hook(
+                            lambda inputs, outputs: hook_shapes.append((len(inputs), len(outputs))))
+                    elif mode == 'unknown_node':
+                        result = result.sin()
+                    if mode == 'direct_backward': result.backward()
+                    else: self.native.backward_with_text_replay(result)
+                    actual = [p.grad for p in self.model.parameters()]
+                    equal_tree(self, actual, expected)
+                    for left, right in zip(actual, expected):
+                        if left is not None:
+                            self.assertTrue(torch.equal(left.contiguous().view(torch.uint8),
+                                                        right.contiguous().view(torch.uint8)))
+                    self.native.end_text_replay()
+                    stats = self.native.text_replay_statistics()
+                    if mode == 'compact':
+                        self.assertEqual(stats['compacted_occurrences'], 5)
+                        self.assertLess(stats['retained_occurrence_edges'], stats['original_occurrence_edges'])
+                    else:
+                        self.assertEqual(stats['compacted_occurrences'], 0)
+                    if mode == 'node_hook': self.assertEqual(hook_shapes, [(original_edges, 1)])
+                finally:
+                    if handle is not None: handle.remove()
+                    self.native.close()
+
+    def test_replay_rejects_scalar_leaf_and_late_post_accumulate_hook_before_compaction(self):
+        history = self.backend.NativeHistory([("text", b"guarded replay", [])], [])
+        self.native.begin_text_replay(3)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'scalar differentiable loss'):
+                self.native.backward_with_text_replay(torch.tensor(1.0, requires_grad=True))
+            self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+            result = self.native.tree(history, 0).sum()
+            observed = []
+            handle = self.model.byte.weight.register_post_accumulate_grad_hook(
+                lambda parameter: observed.append(parameter.grad.clone()))
+            try:
+                with self.assertRaisesRegex(RuntimeError, 'parameters or hooks changed'):
+                    self.native.backward_with_text_replay(result)
+                self.assertEqual(observed, [])
+                self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+                self.assertTrue(all(p.grad is None for p in self.model.parameters()))
+            finally:
+                handle.remove()
+        finally:
+            self.native.close()
+
+    def test_nontext_terminal_tensor_hook_keeps_original_occurrence_edges(self):
+        history = self.backend.NativeHistory([("text", b"terminal hook visibility", [])], [])
+
+        def loss():
+            return self.native.tree(history, 0).sum() + self.model.value.weight.sum() * 0.25
+
+        loss().backward()
+        expected = [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(3)
+        observed = []
+        handle = self.model.value.weight.register_post_accumulate_grad_hook(
+            lambda parameter: observed.append(parameter.grad.clone()))
+        try:
+            self.native.backward_with_text_replay(loss())
+            self.native.end_text_replay()
+            equal_tree(self, [p.grad for p in self.model.parameters()], expected)
+            self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+            self.assertEqual(len(observed), 1)
+            equal_tree(self, observed[0], self.model.value.weight.grad)
+        finally:
+            handle.remove()
+            self.native.close()
+
+    def test_mixed_native_scopes_keep_original_edges_and_independent_gradients(self):
+        history = self.backend.NativeHistory([("text", b"independent replay owners", [])], [])
+        second_model = deepcopy(self.model)
+        second = self.backend.NativeModel(dict(second_model.named_parameters()), 4, 8)
+
+        def loss():
+            return (self.native.tree(history, 0) * 0.75 + second.tree(history, 0) * -0.25).sum()
+
+        loss().backward()
+        expected = [[None if p.grad is None else p.grad.clone() for p in model.parameters()]
+                    for model in (self.model, second_model)]
+        for model in (self.model, second_model): model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(2)
+        second.begin_text_replay(2)
+        try:
+            self.native.backward_with_text_replay(loss())
+            self.native.end_text_replay()
+            second.end_text_replay()
+            for model, gradients in zip((self.model, second_model), expected):
+                equal_tree(self, [p.grad for p in model.parameters()], gradients)
+            self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+            self.assertEqual(second.text_replay_statistics()['compacted_occurrences'], 0)
+        finally:
+            self.native.close()
+            second.close()
+
+    def test_active_saved_tensor_hook_context_keeps_original_occurrence_edges(self):
+        history = self.backend.NativeHistory([("text", b"saved tensor context", [])], [])
+        self.native.tree(history, 0).sum().backward()
+        expected = [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(2)
+        try:
+            loss = self.native.tree(history, 0).sum()
+            with torch.autograd.graph.saved_tensors_hooks(lambda value: value, lambda value: value):
+                self.native.backward_with_text_replay(loss)
+            self.native.end_text_replay()
+            equal_tree(self, [p.grad for p in self.model.parameters()], expected)
+            self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+        finally:
+            self.native.close()
+
+    def test_persisted_saved_tensor_hooks_keep_original_edges_after_context_exits(self):
+        history = self.backend.NativeHistory([("text", b"persisted saved hook", [])], [])
+        for hooked_graph in ('outer', 'leaf'):
+            reference = None
+            for deferred in (False, True):
+                self.model.zero_grad(set_to_none=True)
+                self.native.begin_text_replay(2)
+                try:
+                    observed = []
+
+                    def unpack(tensor):
+                        observed.append(len(occurrence.next_functions))
+                        return tensor
+
+                    if hooked_graph == 'outer':
+                        value = self.native.tree(history, 0)
+                        with torch.autograd.graph.saved_tensors_hooks(lambda tensor: tensor, unpack):
+                            loss = (value * value).sum()
+                    else:
+                        with torch.autograd.graph.saved_tensors_hooks(lambda tensor: tensor, unpack):
+                            value = self.native.tree(history, 0)
+                        loss = value.sum()
+                    occurrence = value.grad_fn
+                    original_edges = len(occurrence.next_functions)
+                    # The context has ended, but its saved-variable unpack hooks
+                    # can still observe the original graph during backward.
+                    if deferred: self.native.backward_with_text_replay(loss)
+                    else: loss.backward()
+                    self.native.end_text_replay()
+                    self.assertTrue(observed)
+                    self.assertEqual(set(observed), {original_edges})
+                    self.assertEqual(self.native.text_replay_statistics()['compacted_occurrences'], 0)
+                    gradients = [None if p.grad is None else p.grad.clone() for p in self.model.parameters()]
+                    if reference is None: reference = gradients
+                    else: equal_tree(self, gradients, reference)
+                finally:
+                    self.native.close()
+
     def test_outer_backward_failure_closes_reducer_after_work_was_queued(self):
         history = self.backend.NativeHistory([("text", b"queued cleanup", [])], [])
         self.native.begin_text_replay(3)
@@ -193,6 +371,31 @@ class NativeLearnerKernelTests(unittest.TestCase):
         self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
                             if name == 'byte.weight' or name.startswith('text_gru.')))
         self.native.begin_text_replay(3)
+        try:
+            self.native.backward_with_text_replay(self.native.tree(history, 0).sum())
+        finally:
+            self.native.end_text_replay()
+
+    def test_compacted_graph_failure_closes_queued_replays_without_installing_partial_gradients(self):
+        history = self.backend.NativeHistory([("text", b"compacted failure cleanup", [])], [])
+        self.native.begin_text_replay(2)
+        # Create this node first so the later text nodes run and queue their
+        # replays before Engine detects the independent saved-value mutation.
+        stale = self.model.value.weight.square().sum()
+        outputs = [self.native.tree(history, 0) for _ in range(128)]
+        loss = stale + torch.stack(outputs).sum()
+        with torch.no_grad(): self.model.value.weight.add_(0.01)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'modified by an inplace operation'):
+                self.native.backward_with_text_replay(loss)
+        finally:
+            self.native.close()
+        stats = self.native.text_replay_statistics()
+        self.assertEqual(stats['compacted_occurrences'], 128)
+        self.assertGreater(stats['max_pending_replays'], 0)
+        self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
+                            if name == 'byte.weight' or name.startswith('text_gru.')))
+        self.native.begin_text_replay(2)
         try:
             self.native.backward_with_text_replay(self.native.tree(history, 0).sum())
         finally:

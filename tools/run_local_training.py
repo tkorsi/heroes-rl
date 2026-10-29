@@ -807,6 +807,7 @@ def launch_owned(args):
               f"{execution['resource_plan']['native_text_replay_workers']} text replay workers and "
               f"{execution['resource_plan']['native_text_reducer_workers']} ordered reducer; "
               f"{execution['verification_workers']} isolated native replay workers; "
+              f"collection/verification pipeline {'on' if execution.get('pipeline_verification', False) else 'off'}; "
               f"binary manifest {execution['native_learner']['sha256']}", flush=True)
     if policy_support is not None:
         print(f"Policy support intervention: {policy_support}; terminal-only rewards unchanged. "

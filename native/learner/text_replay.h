@@ -14,6 +14,7 @@
 #include <condition_variable>
 #include <deque>
 #include <future>
+#include <typeindex>
 #include <unordered_set>
 
 namespace native_text {
@@ -305,6 +306,7 @@ struct Scope;
 struct Occurrence final : Node {
     std::shared_ptr<Leaf> leaf;
     std::shared_ptr<Scope> scope;
+    size_t compact_edges = 0;
     Occurrence(std::shared_ptr<Leaf> item, std::shared_ptr<Scope> context)
         : Node(torch::autograd::collect_next_edges(item->arguments)), leaf(std::move(item)), scope(std::move(context)) {}
     Occurrence(std::shared_ptr<Leaf> item, std::shared_ptr<Scope> context, const variable_list& arguments)
@@ -342,6 +344,9 @@ struct Scope : std::enable_shared_from_this<Scope> {
     int64_t producer_backward_nanoseconds = 0, fold_nanoseconds = 0, future_wait_nanoseconds = 0;
     int64_t backpressure_nanoseconds = 0, max_pending_replays = 0;
     int64_t prewarm_nanoseconds = 0, prewarmed_leaves = 0;
+    int64_t compacted_occurrences = 0, original_occurrence_edges = 0, retained_occurrence_edges = 0;
+
+    void compact_deferred_edges(const Tensor& loss);
 
     Scope(variable_list values, int count) : parameters(std::move(values)), workers(count) {
         TORCH_CHECK(workers >= 0 && workers <= 255, "Native text replay supports 0 to 255 workers");
@@ -624,6 +629,7 @@ struct Scope : std::enable_shared_from_this<Scope> {
         for (const auto& parameter : parameters)
             TORCH_CHECK(!parameter.grad().defined(), "Native text replay backward requires cleared parameter gradients");
         sums.resize(parameters.size());
+        compact_deferred_edges(loss);
         active = true;
         task = -1;
         Tensor root;
@@ -701,9 +707,142 @@ struct Scope : std::enable_shared_from_this<Scope> {
                        {"fold_nanoseconds", fold_nanoseconds}, {"future_wait_nanoseconds", future_wait_nanoseconds},
                        {"backpressure_nanoseconds", backpressure_nanoseconds}, {"max_pending_replays", max_pending_replays},
                        {"prewarm_nanoseconds", prewarm_nanoseconds}, {"prewarmed_leaves", prewarmed_leaves}});
+        result.insert({{"compacted_occurrences", compacted_occurrences},
+                       {"original_occurrence_edges", original_occurrence_edges},
+                       {"retained_occurrence_edges", retained_occurrence_edges}});
         return result;
     }
 };
+
+inline void Scope::compact_deferred_edges(const Tensor& loss) {
+    if (!pool || !BuiltinReplayTape::ordinary_execution_context()) return;
+    using namespace torch::autograd::generated;
+    // Unknown/custom graphs and observable hooks retain the original Engine
+    // graph. This optimization is restricted to the ordinary native PPO graph.
+    // A null inspector means the exact listed type has no SavedVariable fields
+    // in the ABI-bound ATen headers. Non-null inspectors check every such field:
+    // unpack hooks survive after their forward-time TLS context has ended.
+    using SavedInspector = bool (*)(const Node&);
+    static const std::unordered_map<std::type_index, SavedInspector> allowed{
+        {typeid(AddBackward0), nullptr}, {typeid(SubBackward0), nullptr},
+        {typeid(MulBackward0), [](const Node& node) {
+            const auto& value = static_cast<const MulBackward0&>(node);
+            return !value.self_.has_hooks() && !value.other_.has_hooks(); }},
+        {typeid(DivBackward0), [](const Node& node) {
+            const auto& value = static_cast<const DivBackward0&>(node);
+            return !value.self_.has_hooks() && !value.other_.has_hooks(); }},
+        {typeid(DivBackward1), nullptr},
+        {typeid(PowBackward0), [](const Node& node) {
+            return !static_cast<const PowBackward0&>(node).self_.has_hooks(); }},
+        {typeid(ExpBackward0), [](const Node& node) {
+            return !static_cast<const ExpBackward0&>(node).result_.has_hooks(); }},
+        {typeid(ClampBackward1), [](const Node& node) {
+            return !static_cast<const ClampBackward1&>(node).self_.has_hooks(); }},
+        {typeid(MinimumBackward0), [](const Node& node) {
+            const auto& value = static_cast<const MinimumBackward0&>(node);
+            return !value.self_.has_hooks() && !value.other_.has_hooks(); }},
+        {typeid(MaximumBackward0), [](const Node& node) {
+            const auto& value = static_cast<const MaximumBackward0&>(node);
+            return !value.self_.has_hooks() && !value.other_.has_hooks(); }},
+        {typeid(NegBackward0), nullptr}, {typeid(MeanBackward0), nullptr},
+        {typeid(MeanBackward1), nullptr}, {typeid(SumBackward0), nullptr}, {typeid(SumBackward1), nullptr},
+        {typeid(StackBackward0), nullptr}, {typeid(SelectBackward0), nullptr}, {typeid(ViewBackward0), nullptr},
+        {typeid(UnsafeViewBackward0), nullptr}, {typeid(UnsqueezeBackward0), nullptr},
+        {typeid(LogSoftmaxBackward0), [](const Node& node) {
+            return !static_cast<const LogSoftmaxBackward0&>(node).result_.has_hooks(); }},
+        {typeid(SqueezeBackward1), nullptr},
+        {typeid(MmBackward0), [](const Node& node) {
+            const auto& value = static_cast<const MmBackward0&>(node);
+            return !value.self_.has_hooks() && !value.mat2_.has_hooks(); }},
+        {typeid(MvBackward0), [](const Node& node) {
+            const auto& value = static_cast<const MvBackward0&>(node);
+            return !value.self_.has_hooks() && !value.vec_.has_hooks(); }},
+        {typeid(AddmmBackward0), [](const Node& node) {
+            const auto& value = static_cast<const AddmmBackward0&>(node);
+            return !value.mat1_.has_hooks() && !value.mat2_.has_hooks(); }},
+        {typeid(TBackward0), nullptr}, {typeid(CatBackward0), nullptr},
+        {typeid(SigmoidBackward0), [](const Node& node) {
+            return !static_cast<const SigmoidBackward0&>(node).result_.has_hooks(); }},
+        {typeid(TanhBackward0), [](const Node& node) {
+            return !static_cast<const TanhBackward0&>(node).result_.has_hooks(); }},
+        {typeid(UnbindBackward0), nullptr}, {typeid(UnsafeSplitBackward0), nullptr},
+        {typeid(TransposeBackward0), nullptr},
+        {typeid(EmbeddingBackward0), [](const Node& node) {
+            return !static_cast<const EmbeddingBackward0&>(node).indices_.has_hooks(); }},
+        {typeid(ConvolutionBackward0), [](const Node& node) {
+            const auto& value = static_cast<const ConvolutionBackward0&>(node);
+            return !value.input_.has_hooks() && !value.weight_.has_hooks(); }},
+        {typeid(IndexAddBackward0), [](const Node& node) {
+            const auto& value = static_cast<const IndexAddBackward0&>(node);
+            return !value.index_.has_hooks() && !value.source_.has_hooks(); }},
+        {typeid(AdaptiveAvgPool2DBackward0), [](const Node& node) {
+            return !static_cast<const AdaptiveAvgPool2DBackward0&>(node).self_.has_hooks(); }},
+        {typeid(PermuteBackward0), nullptr}, {typeid(SliceBackward0), nullptr}, {typeid(ExpandBackward0), nullptr},
+        {typeid(IndexSelectBackward0), [](const Node& node) {
+            return !static_cast<const IndexSelectBackward0&>(node).index_.has_hooks(); }},
+        {typeid(CloneBackward0), nullptr}, {typeid(ReshapeAliasBackward0), nullptr},
+        {typeid(torch::autograd::AccumulateGrad), nullptr}, {typeid(Occurrence), nullptr}};
+    struct Replacement {
+        std::shared_ptr<Occurrence> occurrence;
+        torch::autograd::edge_list edges;
+    };
+    std::vector<Replacement> replacements;
+    std::vector<std::shared_ptr<Node>> pending{loss.grad_fn()};
+    std::unordered_set<Node*> seen{loss.grad_fn().get()};
+    while (!pending.empty()) {
+        auto node = std::move(pending.back()); pending.pop_back();
+        const auto& function = *node;
+        const auto inspector = allowed.find(typeid(function));
+        if (inspector == allowed.end() || (inspector->second && !inspector->second(function)) ||
+            !node->pre_hooks().empty() ||
+            !node->tensor_pre_hooks().empty() || !node->retains_grad_hooks().empty() ||
+            !node->post_hooks().empty() || seen.size() > 1000000) return;
+        if (typeid(function) == typeid(torch::autograd::AccumulateGrad) &&
+            parameter_hooks(static_cast<const torch::autograd::AccumulateGrad&>(function).variable)) return;
+        if (typeid(function) == typeid(Occurrence)) {
+            auto occurrence = std::static_pointer_cast<Occurrence>(node);
+            if (occurrence->scope.get() != this || !occurrence->leaf || occurrence->compact_edges) return;
+            const auto& leaf = *occurrence->leaf;
+            // The leaf's private graph is outside this outer traversal. A
+            // compiled tape proves that it has no external saved-tensor hooks.
+            if (!leaf.tape) return;
+            const auto& edges = node->next_edges();
+            if (leaf.parameters.size() != parameters.size() || edges.size() != leaf.arguments.size()) return;
+            torch::autograd::edge_list unique;
+            size_t cursor = 0;
+            for (size_t i = 0; i < parameters.size(); ++i) {
+                if (!parameters[i].is_same(leaf.parameters[i])) return;
+                const auto accumulator = torch::autograd::impl::try_get_grad_accumulator(parameters[i]);
+                const auto* terminal = accumulator.get();
+                if (!terminal || typeid(*terminal) != typeid(torch::autograd::AccumulateGrad)) return;
+                for (size_t j = 0; j < leaf.counts[i]; ++j) {
+                    if (cursor >= edges.size() || edges[cursor].function != accumulator || edges[cursor].input_nr != 0)
+                        return;
+                    if (j == 0) unique.push_back(edges[cursor]);
+                    ++cursor;
+                }
+            }
+            if (cursor != edges.size() || unique.empty()) return;
+            if (unique.size() < edges.size()) replacements.push_back({std::move(occurrence), std::move(unique)});
+        }
+        for (const auto& edge : node->next_edges())
+            if (edge.is_valid() && seen.insert(edge.function.get()).second) pending.push_back(edge.function);
+    }
+    // Every original contribution is still computed and folded by the same
+    // ordered reducer. The outer Engine only receives undefined gradients for
+    // these edges. Duplicate edges all arrive together from one Occurrence, so
+    // retaining one per parameter preserves each terminal's readiness event.
+    // Nonterminal dependencies, sequence numbers and numerical calls are intact.
+    // Validate the complete graph before replacing any edge list.
+    for (auto& replacement : replacements) {
+        auto& occurrence = *replacement.occurrence;
+        original_occurrence_edges += occurrence.next_edges().size();
+        retained_occurrence_edges += replacement.edges.size();
+        occurrence.compact_edges = replacement.edges.size();
+        occurrence.next_edges() = std::move(replacement.edges);
+        ++compacted_occurrences;
+    }
+}
 
 inline variable_list Occurrence::apply(variable_list&& gradients) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -713,10 +852,13 @@ inline variable_list Occurrence::apply(variable_list&& gradients) {
     auto saved_scope = std::move(scope);
     TORCH_CHECK(!saved_scope->closed && !saved_scope->broken, "Native text occurrence belongs to a released scope");
     TORCH_CHECK(gradients.size() == 1, "Native text occurrence expects one output gradient");
-    if (!gradients[0].defined()) return variable_list(saved_leaf->arguments.size());
+    TORCH_CHECK(!compact_edges || saved_scope->defers(),
+                "Compacted native text edges require their owned deferred backward");
+    const auto output_edges = compact_edges ? compact_edges : saved_leaf->arguments.size();
+    if (!gradients[0].defined()) return variable_list(output_edges);
     if (saved_scope->defers()) {
         saved_scope->add(saved_leaf, gradients[0]);
-        return variable_list(saved_leaf->arguments.size());
+        return variable_list(output_edges);
     }
     return saved_leaf->replay(gradients[0]);
 }

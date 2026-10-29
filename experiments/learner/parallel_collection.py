@@ -37,8 +37,16 @@ class BatchCollection:
     captures: tuple
     bindings: tuple
     receipts: tuple
+    # Exclusive coordinator wall time remains additive. In pipeline mode the
+    # elapsed collection span also contains coordinator verification work;
+    # overlap is that work's wall time, not a measurement of simultaneous CPU use.
     collection_seconds: float
     verification_seconds: float
+    collection_elapsed_seconds: float | None = None
+    overlapped_verification_seconds: float = 0.0
+    verified_batch_seconds: float | None = None
+    pipeline_verification: bool = False
+    timing_scope: str = 'coordinator-exclusive-wall-v1'
 
     def discard(self):
         """Revoke this batch's in-memory admission capabilities after a probe.
@@ -171,12 +179,14 @@ def _retain_worker_failure(args, env, collector, error, budget):
     return failure
 
 
-def _supervise(jobs, *, workers, budget, launch, finish, cleanup_reserve=0):
+def _supervise(jobs, *, workers, budget, launch, finish, cleanup_reserve=0, after_finished=None):
     """Own every child from launch through cleanup, retaining input order.
 
     ``launch(job)`` assigns its guarded Popen to ``job.process`` immediately.
     ``finish(job)`` reads that child's private result pipe after a successful
-    exit. Both callbacks run only on this coordinator's main thread.
+    exit. All callbacks run only on this coordinator's main thread. The optional
+    ``after_finished`` callback drains verification after every currently exited
+    collector has transferred its sealed capture; live collectors keep running.
     """
     pending, active, results = list(jobs), [], {}
     require(type(workers) is int and 1 <= workers <= 8, 'Expected one to eight workers')
@@ -194,6 +204,8 @@ def _supervise(jobs, *, workers, budget, launch, finish, cleanup_reserve=0):
                         f'Collector slot {job.index} exited with status {job.process.returncode}')
                 results[job.index] = finish(job)
                 active.remove(job)
+            if finished and after_finished is not None:
+                after_finished()
             if not finished and active:
                 time.sleep(min(0.02, budget.remaining(cleanup_reserve)))
         return tuple(results[job.index] for job in jobs)
@@ -266,6 +278,7 @@ def _stop_verifications(jobs, prepared, budget, primary=None):
 
 
 def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verification_workers=1,
+                  pipeline_verification=False,
                   deadline_monotonic, deadline_wall, save=None):
     """Collect the declared fresh games and return only a complete verified batch.
 
@@ -290,6 +303,10 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
     require(type(verification_workers) is int and verification_workers in (1, 4)
             and verification_workers == plan.get('execution', {}).get('verification_workers', 1),
             'Verification worker count differs from the immutable plan')
+    require(type(pipeline_verification) is bool
+            and pipeline_verification == plan.get('execution', {}).get('pipeline_verification', False)
+            and (not pipeline_verification or (workers == verification_workers == 4)),
+            'Pipeline verification differs from the declared four-worker execution')
     _check_identity(plan)
     before = weights_sha256(model)
     budget = pilot.Budget(deadline_monotonic, deadline_wall)
@@ -299,6 +316,10 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
     attempts = [pilot.empty_attempt(row) for row in plan['schedule']]
     bindings, captures, receipts = [None]*batch_size, [None]*batch_size, [None]*batch_size
     jobs = []
+    replay_jobs, prepared, ready_to_verify = {}, {}, []
+    completed_verifications = set()
+    verification_error = None
+    pipelined_verification_seconds = 0.0
     collectors_closed = False
     training = plan['schema'] == 'heroes-builtin-training-v1-plan'
 
@@ -327,6 +348,7 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
         job.process.stdin.close()
 
     def finish(job):
+        nonlocal pipelined_verification_seconds
         index, row = job.index, plan['schedule'][job.index]
         folder = output / f"episode-{row['episode']:06d}"
         if training:
@@ -343,93 +365,140 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
             gameplay._check_policy_support(capture, plan)
         captures[index] = capture
         progress(index, **message['attempt'], stage='collected', status='pending_verification')
+        if pipeline_verification:
+            require(message['attempt'].get('cleanup_verified') is True
+                    and message['attempt'].get('identity_verified') is True,
+                    'Pipeline verification requires the exited collector and its native cleanup proof')
+            # The child writes its private completion only after its native
+            # process group is closed. Independently confirm that group before
+            # allowing verification to overlap another collector's work.
+            cleanup_from_evidence(control / f'worker-{index:02d}-native-deadline.jsonl',
+                timeout=min(10, budget.remaining()), deadline_monotonic=budget.deadline,
+                deadline_wall=budget.wall_deadline)
+            checking = time.monotonic()
+            start_verification(index)
+            pipelined_verification_seconds += time.monotonic()-checking
+            ready_to_verify.append(index)
         return message
+
+    def start_verification(index):
+        require(index not in replay_jobs and (not pipeline_verification or captures[index] is not None),
+                'Each sealed capture starts native replay exactly once')
+        require(sum(slot not in completed_verifications for slot in replay_jobs) < verification_workers,
+                'Native replay jobs exceed the declared verification budget')
+        from experiments.headless.spawned_replay import SpawnedReplay
+        replay_folder = output / f"episode-{plan['schedule'][index]['episode']:06d}"
+        options = dict(binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
+            deadline_monotonic=budget.deadline-cfg['cleanup_reserve_seconds'],
+            deadline_wall=budget.wall_deadline-cfg['cleanup_reserve_seconds'])
+        if training:
+            prepared[index] = gameplay.start_training_verification(replay_folder, captures[index],
+                bindings[index], model, replay_binary=options.pop('binary'), **options,
+                remaining=lambda: budget.remaining(cfg['cleanup_reserve_seconds']))
+            replay_jobs[index] = prepared[index].job
+        else:
+            manifest = evidence.strict_json((replay_folder / 'manifest.json').read_bytes())
+            originals = gameplay._capture_file_bindings(replay_folder, manifest,
+                                                        capture_name='builtin-rollout.json')
+            job = SpawnedReplay(replay_folder, original_files=originals, **options)
+            replay_jobs[index] = job  # cleanup owns even a partially failed launch
+            job.start()
+
+    def verify(index):
+        row = plan['schedule'][index]
+        folder = output / f"episode-{row['episode']:06d}"
+        progress(index, stage='verification')
+        checked_at = time.monotonic()
+        with wall_limit(budget.remaining(cfg['cleanup_reserve_seconds'])):
+            if training:
+                receipts[index] = gameplay.verify_training_capture(folder, captures[index], bindings[index], model,
+                    replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
+                    remaining=lambda: budget.remaining(cfg['cleanup_reserve_seconds']),
+                    **({'prepared': prepared[index]} if index in prepared else {}))
+            else:
+                reconstructed = audit_persisted_builtin_policy(folder, model, checkpoint, row['policy_seed'],
+                    pilot.native_opponent(plan['runtime'], row['learner_player']))
+                pilot.write(folder / 'policy-reconstruction.json', reconstructed)
+                if index in replay_jobs:
+                    replay = replay_jobs[index].result(timeout=budget.remaining(cfg['cleanup_reserve_seconds']))
+                    replay_jobs[index].stop()
+                else:
+                    replay = verify_episode(folder, binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
+                        timeout=budget.remaining(cfg['cleanup_reserve_seconds']))
+                require(replay.get('verified') is True, 'Independent native replay failed')
+                progress(index, reconstruction=reconstructed)
+            pilot.write(folder / 'behavior.json', analyze_episode(folder))
+        require(weights_sha256(model) == before, 'Frozen learner changed during parallel collection')
+        progress(index, status='passed', stage='finished', reason=None, replay_verified=True,
+                 completion_receipt=True, weights_unchanged=True,
+                 behavior=pilot.binding(folder / 'behavior.json'),
+                 verification_seconds=time.monotonic()-checked_at)
+        completed_verifications.add(index)
+
+    def drain_verification():
+        nonlocal pipelined_verification_seconds
+        checking = time.monotonic()
+        try:
+            while ready_to_verify:
+                verify(ready_to_verify.pop(0))
+        finally:
+            pipelined_verification_seconds += time.monotonic()-checking
 
     started = time.monotonic()
     try:
-        for index, row in enumerate(plan['schedule']):
-            folder = output / f"episode-{row['episode']:06d}"
-            require(not folder.exists(), 'Never overwrite or retry an existing episode')
-            lease = None
-            if training:
-                bindings[index] = gameplay.TrainingBinding.create(plan_path=plan_path,
-                    plan_sha256=plan_sha256, schedule_index=index, folder=folder,
-                    checkpoint=checkpoint, checkpoint_file=plan['checkpoint']['path'], weights_sha256=before,
-                    opponent_identity=pilot.native_opponent(plan['runtime'], row['learner_player']),
-                    source_identity=plan['source'], native_identity=plan['native'], max_days=cfg['max_days'],
-                    nominal_choices=cfg['ordinary_choice_limit'], max_choices=cfg['max_total_choices'])
-                lease = gameplay._begin_parallel_capture(bindings[index])
-            jobs.append(_Job(index, lease.token if lease is not None else secrets.token_hex(32), lease))
-        _supervise(jobs, workers=workers, budget=budget, launch=launch, finish=finish,
-                   cleanup_reserve=cfg['cleanup_reserve_seconds'])
-        collectors_closed = True
-        for path in sorted(control.glob('*native-deadline.jsonl')):
-            cleanup_from_evidence(path, timeout=min(10, budget.remaining()),
-                                  deadline_monotonic=budget.deadline, deadline_wall=budget.wall_deadline)
-        collection_seconds = time.monotonic()-started
-        verified_started = time.monotonic()
-        replay_jobs, prepared, verification_error = {}, {}, None
         try:
             for index, row in enumerate(plan['schedule']):
-                if verification_workers > 1 and index % verification_workers == 0:
-                    # A bounded wave starts before its coordinator policy checks.
-                    # Schedule order and all receipt creation remain in this process.
-                    from experiments.headless.spawned_replay import SpawnedReplay
-                    for slot in range(index, min(index+verification_workers, batch_size)):
-                        replay_folder = output / f"episode-{plan['schedule'][slot]['episode']:06d}"
-                        options = dict(binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                            deadline_monotonic=budget.deadline-cfg['cleanup_reserve_seconds'],
-                            deadline_wall=budget.wall_deadline-cfg['cleanup_reserve_seconds'])
-                        if training:
-                            prepared[slot] = gameplay.start_training_verification(replay_folder, captures[slot],
-                                bindings[slot], model, replay_binary=options.pop('binary'), **options,
-                                remaining=lambda: budget.remaining(cfg['cleanup_reserve_seconds']))
-                            replay_jobs[slot] = prepared[slot].job
-                        else:
-                            manifest = evidence.strict_json((replay_folder / 'manifest.json').read_bytes())
-                            originals = gameplay._capture_file_bindings(replay_folder, manifest,
-                                                                       capture_name='builtin-rollout.json')
-                            replay_jobs[slot] = SpawnedReplay(replay_folder, original_files=originals, **options)
-                            replay_jobs[slot].start()
                 folder = output / f"episode-{row['episode']:06d}"
-                progress(index, stage='verification')
-                checked_at = time.monotonic()
-                with wall_limit(budget.remaining(cfg['cleanup_reserve_seconds'])):
-                    if training:
-                        receipts[index] = gameplay.verify_training_capture(folder, captures[index], bindings[index], model,
-                            replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                            remaining=lambda: budget.remaining(cfg['cleanup_reserve_seconds']),
-                            **({'prepared': prepared[index]} if index in prepared else {}))
-                    else:
-                        reconstructed = audit_persisted_builtin_policy(folder, model, checkpoint, row['policy_seed'],
-                            pilot.native_opponent(plan['runtime'], row['learner_player']))
-                        pilot.write(folder / 'policy-reconstruction.json', reconstructed)
-                        if index in replay_jobs:
-                            replay = replay_jobs[index].result(timeout=budget.remaining(cfg['cleanup_reserve_seconds']))
-                            replay_jobs[index].stop()
-                        else:
-                            replay = verify_episode(folder, binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                                timeout=budget.remaining(cfg['cleanup_reserve_seconds']))
-                        require(replay.get('verified') is True, 'Independent native replay failed')
-                        progress(index, reconstruction=reconstructed)
-                    pilot.write(folder / 'behavior.json', analyze_episode(folder))
-                require(weights_sha256(model) == before, 'Frozen learner changed during parallel collection')
-                progress(index, status='passed', stage='finished', reason=None, replay_verified=True,
-                         completion_receipt=True, weights_unchanged=True,
-                         behavior=pilot.binding(folder / 'behavior.json'),
-                         verification_seconds=time.monotonic()-checked_at)
+                require(not folder.exists(), 'Never overwrite or retry an existing episode')
+                lease = None
+                if training:
+                    bindings[index] = gameplay.TrainingBinding.create(plan_path=plan_path,
+                        plan_sha256=plan_sha256, schedule_index=index, folder=folder,
+                        checkpoint=checkpoint, checkpoint_file=plan['checkpoint']['path'], weights_sha256=before,
+                        opponent_identity=pilot.native_opponent(plan['runtime'], row['learner_player']),
+                        source_identity=plan['source'], native_identity=plan['native'], max_days=cfg['max_days'],
+                        nominal_choices=cfg['ordinary_choice_limit'], max_choices=cfg['max_total_choices'])
+                    lease = gameplay._begin_parallel_capture(bindings[index])
+                jobs.append(_Job(index, lease.token if lease is not None else secrets.token_hex(32), lease))
+            _supervise(jobs, workers=workers, budget=budget, launch=launch, finish=finish,
+                       cleanup_reserve=cfg['cleanup_reserve_seconds'],
+                       **({'after_finished': drain_verification} if pipeline_verification else {}))
+            collectors_closed = True
+            for path in sorted(control.glob('*native-deadline.jsonl')):
+                cleanup_from_evidence(path, timeout=min(10, budget.remaining()),
+                                      deadline_monotonic=budget.deadline, deadline_wall=budget.wall_deadline)
+            collection_elapsed_seconds = time.monotonic()-started
+            collection_seconds = collection_elapsed_seconds-pipelined_verification_seconds
+            verified_started = time.monotonic()
+            if pipeline_verification:
+                require(not ready_to_verify and len(replay_jobs) == batch_size
+                        and all(attempt['status'] == 'passed' for attempt in attempts),
+                        'Pipeline did not independently verify every planned capture')
+            else:
+                for index, row in enumerate(plan['schedule']):
+                    if verification_workers > 1 and index % verification_workers == 0:
+                        # A bounded wave starts before its coordinator policy checks.
+                        for slot in range(index, min(index+verification_workers, batch_size)):
+                            start_verification(slot)
+                    verify(index)
         except BaseException as error:
             verification_error = error
             raise
         finally:
             _stop_verifications(replay_jobs, prepared, budget, verification_error)
         _check_identity(_read_plan(plan_path, plan_sha256))
-        verification_seconds = time.monotonic()-verified_started
+        verification_seconds = pipelined_verification_seconds+time.monotonic()-verified_started
         result = BatchCollection(tuple(attempts), tuple(captures), tuple(bindings), tuple(receipts) if training else (),
-                                 collection_seconds, verification_seconds)
+                                 collection_seconds, verification_seconds, collection_elapsed_seconds,
+                                 pipelined_verification_seconds, collection_seconds+verification_seconds,
+                                 pipeline_verification)
         pilot.write(control / 'result.json', {'schema': SCHEMA, 'status': 'passed', 'workers': workers,
             'verification_workers': verification_workers,
             'batch_size': batch_size, 'collection_seconds': collection_seconds, 'verification_seconds': verification_seconds,
+            'pipeline_verification': pipeline_verification, 'timing_scope': 'coordinator-exclusive-wall-v1',
+            'collection_elapsed_seconds': collection_elapsed_seconds,
+            'overlapped_verification_seconds': pipelined_verification_seconds,
+            'verified_batch_seconds': collection_seconds+verification_seconds,
             'attempts': attempts, 'optimizer_updates': 0, 'training_samples_admitted': 0})
         return result
     except BaseException as error:
@@ -470,6 +539,7 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
                          completion_receipt=False, batch_admission='rejected')
         pilot.write(control / 'result.json', {'schema': SCHEMA, 'status': 'failed', 'workers': workers,
             'verification_workers': verification_workers,
+            'pipeline_verification': pipeline_verification,
             'batch_size': batch_size, 'wall_seconds': time.monotonic()-started, 'attempts': attempts,
             'optimizer_updates': 0, 'training_samples_admitted': 0, 'error': f'{type(error).__name__}: {error}',
             'cleanup_verified': cleanup_verified, 'cleanup_errors': cleanup_errors,

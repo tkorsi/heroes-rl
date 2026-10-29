@@ -204,8 +204,10 @@ def discover_resources():
     }
 
 
-def make_resource_plan(cpu_cap=None, *, resources=None):
-    """Budget each mutually exclusive phase without changing the four-game batch."""
+def make_resource_plan(cpu_cap=None, *, resources=None, pipeline_verification=False):
+    """Budget sequential or pipelined phases without changing the four-game batch."""
+    if type(pipeline_verification) is not bool:
+        raise ValueError("Verification pipelining must be an explicit boolean")
     resources = discover_resources() if resources is None else dict(resources)
     if resources.get("schema") != SCHEMA or type(resources.get("available_cpus")) is not int or resources["available_cpus"] < 1:
         raise ValueError("Expected a valid observed training-resource snapshot")
@@ -215,7 +217,7 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
     budget = available if cpu_cap is None else cpu_cap
     background = max(0, budget - 1)
     reducers = int(background >= 2)
-    return {
+    plan = {
         "schema": PLAN_SCHEMA,
         "resources": resources,
         "requested_cpu_cap": cpu_cap,
@@ -239,3 +241,15 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
             "Memory figures describe observed capacity; no unmeasured per-worker memory guarantee is inferred.",
         ],
     }
+    if pipeline_verification:
+        # Four collectors, four isolated replay processes and their coordinator
+        # may compute together. Smaller budgets retain the accepted serial phases.
+        overlap = budget >= 9
+        plan.update(schema="heroes-training-resource-plan-v2",
+                    pipeline_verification=overlap,
+                    collection_verification_cpu_budget=9 if overlap else max(
+                        plan["collection_workers"], plan["verification_workers"]),
+                    phases_run_concurrently=overlap)
+        plan["utilization_limits"].append(
+            "Collection and verification overlap only with room for four collectors, four replay workers and their coordinator; PPO starts after all verification and cleanup.")
+    return plan

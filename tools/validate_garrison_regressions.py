@@ -7,7 +7,6 @@ episode is training input and no optimizer or learned checkpoint is loaded.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 from pathlib import Path
 import subprocess
@@ -23,6 +22,7 @@ from experiments.headless.process_deadline import guarded_popen, close_owned_pro
 from experiments.learner.inference import digest, write_json
 from validation.probes import validate_capabilities as capability
 from validation.probes import validate_garrison_dialogs as garrison
+from tools.isolated_diagnostic import diagnostic_lease
 
 
 def implementation_identity():
@@ -83,9 +83,9 @@ def run_worker(path, expected_hash):
 
 
 def supervise(args):
-    # Never overlap the official local training owner or reuse prior evidence.
-    with args.official_lock.open("r") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    # The explicit private mode keeps all original controls and deadlines.
+    with diagnostic_lease(args.output, isolated=getattr(args, 'isolated_diagnostic', False),
+                          official_lock=args.official_lock) as lease:
         args.output.mkdir(parents=True, exist_ok=False)
         wall, mono = time.time(), time.monotonic()
         plan = {"schema": "heroes-garrison-regression-supervision-v1", "implementation": implementation_identity(),
@@ -98,6 +98,7 @@ def supervise(args):
                 "started_unix": wall, "started_monotonic": mono,
                 "absolute_deadline_unix": wall + args.wall_seconds,
                 "hard_deadline_monotonic": mono + args.wall_seconds, "official_lock": str(args.official_lock),
+                "isolated_diagnostic": getattr(args, 'isolated_diagnostic', False), "diagnostic_lease": lease,
                 "training_performed": False, "training_input": False, "optimizer_steps": 0}
         path = args.output / "supervision.json"
         write_json(path, plan)
@@ -145,6 +146,8 @@ def main(argv=None):
     parser.add_argument("--seed", type=int)
     parser.add_argument("--wall-seconds", type=int, default=1800)
     parser.add_argument("--case-seconds", type=int, default=180)
+    parser.add_argument("--isolated-diagnostic", action="store_true",
+                        help="Use a private diagnostic lease and fresh investigation output; never touch official state")
     parser.add_argument("--official-lock", type=Path,
                         default=Path.home() / "Projects/Heroes-artifacts/local-script-training/owner.lock")
     parser.add_argument("--worker-plan", type=Path, help=argparse.SUPPRESS)
@@ -159,7 +162,8 @@ def main(argv=None):
     if not 1 <= args.seed <= 2147480000 or not 60 <= args.wall_seconds <= 1800 or not 1 <= args.case_seconds <= 180:
         parser.error("Use bounded seeds and at most a 30-minute diagnostic window")
     for name in ("binary", "replay_binary", "data", "output", "official_lock"):
-        setattr(args, name, getattr(args, name).expanduser().resolve())
+        value = getattr(args, name).expanduser()
+        setattr(args, name, value.absolute() if name == 'output' and args.isolated_diagnostic else value.resolve())
     return supervise(args)
 
 

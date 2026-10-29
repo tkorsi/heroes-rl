@@ -581,6 +581,66 @@ class HistoricalMachineTests(unittest.TestCase):
                 cloud.historical_machine(current, receipt)
             gate.assert_not_called()
 
+    def environment_upgrade_fixture(self):
+        previous, current, receipt, machine, upgrades = self.runtime_upgrade_fixture()
+        old_release = current['runtime_release']['id']
+        release = 'cpu-next-launch-v1'
+        environment = dict(cloud.NEXT_LAUNCH_ENVIRONMENT)
+        current['runtime_release']['id'] = release
+        current['python'] = {'executable': '/separate/venv/bin/python', 'version': 'same'}
+        current['python_environment'] = environment
+        upgrades = {release: {**upgrades[old_release], 'python_environment': environment}}
+        return previous, current, receipt, machine, upgrades
+
+    def test_reviewed_environment_transition_preserves_historical_machine_and_all_full_gates(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.environment_upgrade_fixture()
+        original = machine.read_bytes()
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(cloud, 'verify_environment') as environment, \
+                patch.object(prepare, 'validate_config', return_value=current) as gate:
+            self.assertEqual(cloud.historical_machine(current, receipt), previous)
+            environment.assert_called_once_with(current['python_environment'], previous_python=previous['python'],
+                                               current_python=current['python'], probe_current=False)
+            gate.assert_called_once_with(current)
+            self.assertEqual(machine.read_bytes(), original)
+            gate.reset_mock()
+            environment.side_effect = ValueError('NumPy transition differs')
+            with self.assertRaisesRegex(ValueError, 'NumPy transition differs'):
+                cloud.historical_machine(current, receipt)
+            gate.assert_not_called()
+
+    def test_new_environment_cannot_change_learning_lineage_or_bypass_reviewed_pin(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.environment_upgrade_fixture()
+        permitted = {'created_utc', 'runtime_origin', 'runtime_release', 'runtime_bin',
+                     'runtime_files', 'runtime', 'python', 'python_environment'}
+        variants = [{**current, key: 'changed'} for key in set(current) - permitted]
+        variants += [{**current, 'extra': True}, {**current, 'python_environment': {}},
+                     {k: v for k, v in current.items() if k != 'python_environment'}]
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(cloud, 'verify_environment') as environment, \
+                patch.object(prepare, 'validate_config') as gate:
+            for changed in variants:
+                with self.subTest(changed=changed), self.assertRaises(ValueError):
+                    cloud.historical_machine(changed, receipt)
+            for key in ('descriptor_sha256', 'historical_machine_sha256'):
+                wrong = deepcopy(upgrades); wrong['cpu-next-launch-v1'][key] = None
+                with patch.dict(cloud.RUNTIME_UPGRADES, wrong, clear=True), self.assertRaises(ValueError):
+                    cloud.historical_machine(current, receipt)
+            environment.assert_not_called()
+            gate.assert_not_called()
+
+    def test_unregistered_environment_is_rejected_for_existing_runtime_release(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.runtime_upgrade_fixture()
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(cloud, 'verify_environment') as environment, \
+                patch.object(prepare, 'validate_config') as gate, self.assertRaisesRegex(ValueError, 'historical machine'):
+            cloud.historical_machine({**current, 'python_environment': cloud.NEXT_LAUNCH_ENVIRONMENT}, receipt)
+        environment.assert_not_called()
+        gate.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

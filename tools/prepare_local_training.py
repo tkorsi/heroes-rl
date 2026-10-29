@@ -18,6 +18,8 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from tools.training_environment import NEXT_LAUNCH_ENVIRONMENT, verify_environment
+
 DEFAULT_ARTIFACT_ROOT = Path.home() / "Projects/Heroes-artifacts"
 DEFAULT_INPUT = DEFAULT_ARTIFACT_ROOT / "acceleration-update412-2026-10-26/input"
 DEFAULT_RUNTIME = DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-update92-artifact-fix2/bin"
@@ -37,6 +39,11 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 # has been reviewed and its immutable hash is pinned here. A supplied pathname
 # or a newly built binary is never sufficient authorization to select a runtime.
 ACCEPTED_RUNTIME_RELEASES = {
+    "cpu-next-launch-v1": {
+        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/cpu-next-launch-acceptance-v1.json",
+        "sha256": None,
+        "python_environment": NEXT_LAUNCH_ENVIRONMENT,
+    },
     "terminal-replay-1392-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/accepted-runtime-v2.json",
         "sha256": "9f9292bc8b5e959d7f7ed1152dc50b9d3404b5ed67b73ec0a11f2ec8331d313d",
@@ -172,6 +179,8 @@ def accepted_runtime_descriptor(release_id):
             and descriptor.get("change_classification") in
                 ("adapter-support-extension", "replay-verifier-support-extension"),
             "Unsupported or incomplete runtime acceptance descriptor")
+    require(descriptor.get("python_environment") == entry.get("python_environment"),
+            "Runtime release changed its reviewed Python environment binding")
     return descriptor, {"id": release_id, "descriptor": receipt}
 
 
@@ -392,7 +401,7 @@ def terminal_replay_acceptance(descriptor, runtime):
             "Terminal replay repair lacks exact excluded native replay with unchanged original evidence")
     accounting = proof.get("wire", {}).get("request_accounting", {})
     tail = accounting.get("terminal_unapplied", [])
-    town_swap = descriptor.get("release_id") == "terminal-replay-1392-v1"
+    town_swap = descriptor.get("release_id") in ("terminal-replay-1392-v1", "cpu-next-launch-v1")
     require(not town_swap or descriptor.get("checkpoint_update") == 1392,
             "Town-swap replay acceptance must bind checkpoint1392")
     expected_type = 189 if town_swap else 190
@@ -441,6 +450,11 @@ def build_configuration(input_root, runtime_bin, data, artifact_root, run_root, 
     require(runtime_bin == (Path(descriptor["runtime_bin"]).resolve() if descriptor else DEFAULT_RUNTIME.resolve()),
             "This preparation recipe pins its accepted Mac runtime in place; a different build needs a new recipe/gate")
     require(str(torch.__version__) in ("2.9.1", "2.9.1+cpu"), "Use the existing Torch2.9.1 environment")
+    python = {"executable": str(Path(sys.executable).absolute()), "version": sys.version,
+              "torch": str(torch.__version__)}
+    environment = descriptor.get("python_environment") if descriptor else None
+    if environment is not None:
+        verify_environment(environment, current_python=python)
     parent = {name: pinned(input_root / path, sha) for name, (path, sha) in INPUT_PINS.items()}
     maps = profile_maps(input_root, profile)
     pins = descriptor["runtime_files"] if descriptor else RUNTIME_PINS
@@ -464,8 +478,8 @@ def build_configuration(input_root, runtime_bin, data, artifact_root, run_root, 
         **({"runtime_release": release_binding} if release_binding else {}),
         "data": str(data), "artifact_root": str(artifact_root), "run_root": str(run_root),
         "prerequisites": prerequisites,
-        "python": {"executable": str(Path(sys.executable).absolute()), "version": sys.version,
-                   "torch": str(torch.__version__)},
+        "python": python,
+        **({"python_environment": environment} if environment is not None else {}),
         "checkpoint_restore": proof, "next_sequence": 266, "seed_namespace": dict(SEED_NAMESPACES[profile]),
         "default_profile": profile, "backend": "cold", "gameplay_performed": False,
         "ppo_updates": 0, "training_authorized_by_preparation": False,

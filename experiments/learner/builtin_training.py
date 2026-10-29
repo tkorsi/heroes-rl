@@ -284,6 +284,7 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
             collected = collect_batch(args.plan, args.sha256, model, state.checkpoint,
                 workers=collection['workers'],
                 verification_workers=plan.get('execution', {}).get('verification_workers', 1),
+                pipeline_verification=plan.get('execution', {}).get('pipeline_verification', False),
                 deadline_monotonic=limits.deadline, deadline_wall=limits.wall_deadline,
                 save=save_parallel)
             pilot.require(len(collected.attempts) == len(plan['schedule']) == batch_size
@@ -300,6 +301,11 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
                 'games': len(collected.attempts),
                 'collection_seconds': collected.collection_seconds,
                 'verification_seconds': collected.verification_seconds,
+                'collection_elapsed_seconds': collected.collection_elapsed_seconds,
+                'overlapped_verification_seconds': collected.overlapped_verification_seconds,
+                'verified_batch_seconds': collected.verified_batch_seconds,
+                'timing_scope': collected.timing_scope,
+                'pipeline_verification': collected.pipeline_verification,
             }
             receipts = list(collected.receipts)
             save()

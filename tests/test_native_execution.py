@@ -38,6 +38,26 @@ class NativeExecutionSchemaTests(unittest.TestCase):
         self.assertEqual(limited["native_learner"]["prefix_threads"], 2)
         self.assertEqual((limited["collection_workers"], limited["verification_workers"]), (1, 1))
 
+    def test_pipeline_requires_room_for_all_independent_phases_and_coordinator(self):
+        for cap in (1, 2, 4, 8, 9, 16):
+            value = choice(cap)
+            self.assertEqual(value['implementation'], 'native-cpu-v2')
+            self.assertEqual(value['pipeline_verification'], cap >= 9)
+            self.assertEqual(value['resource_plan']['phases_run_concurrently'], cap >= 9)
+            self.assertLessEqual(value['resource_plan']['collection_verification_cpu_budget'], cap)
+            for bad in (not value['pipeline_verification'], 1, None):
+                with self.subTest(cap=cap, bad=bad), self.assertRaises(ValueError):
+                    native_execution.check_native_execution({**value, 'pipeline_verification': bad})
+
+    def test_historical_native_v1_resource_contract_still_validates_exactly(self):
+        value = choice()
+        value['implementation'] = 'native-cpu-v1'
+        value.pop('pipeline_verification')
+        value['resource_plan'] = resources.make_resource_plan(resources=OBSERVED)
+        self.assertIs(local.check_execution(value), value)
+        with self.assertRaises(ValueError):
+            native_execution.check_native_execution({**value, 'pipeline_verification': False})
+
     def test_fork_python_replay_numerical_experiments_and_unknown_fields_are_rejected(self):
         changes = {"overlapped_verification": True, "prefix_helpers": 1, "text_leaf_replay": True,
                    "replay_threads": 2, "experiments": ["shared_graph_encodings"],
@@ -54,7 +74,7 @@ class NativeExecutionSchemaTests(unittest.TestCase):
     def test_mutated_resource_snapshot_derivatives_or_worker_counts_are_rejected(self):
         changes = (("budget_cpus", 8), ("batch_size", 16), ("torch_intraop_threads", 2),
                    ("verification_workers", 1), ("native_prefix_threads", 4),
-                   ("phases_run_concurrently", True), ("requested_cpu_cap", 32))
+                   ("phases_run_concurrently", False), ("requested_cpu_cap", 32))
         for field, changed in changes:
             value = choice()
             value["resource_plan"][field] = changed

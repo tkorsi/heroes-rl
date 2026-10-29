@@ -20,9 +20,12 @@ def check_native_execution(value):
     fields = {'implementation', 'overlapped_verification', 'prefix_helpers', 'text_leaf_replay',
               'replay_threads', 'experiments', 'collection_workers', 'verification_workers',
               'resource_plan', 'native_learner'}
+    version2 = type(value) is dict and value.get('implementation') == 'native-cpu-v2'
+    if version2:
+        fields.add('pipeline_verification')
     if type(value) is not dict or set(value) != fields:
         raise ValueError('Unknown native execution choice')
-    if (value['implementation'] != 'native-cpu-v1' or value['overlapped_verification'] is not False
+    if (value['implementation'] not in ('native-cpu-v1', 'native-cpu-v2') or value['overlapped_verification'] is not False
             or type(value['prefix_helpers']) is not int or value['prefix_helpers'] != 0
             or value['text_leaf_replay'] is not False or type(value['replay_threads']) is not int
             or value['replay_threads'] != 0 or value['experiments'] != []):
@@ -30,10 +33,14 @@ def check_native_execution(value):
     native, plan = value['native_learner'], value['resource_plan']
     from .resources import make_resource_plan
     try:
-        if make_resource_plan(plan.get('requested_cpu_cap'), resources=plan['resources']) != plan:
+        if make_resource_plan(plan.get('requested_cpu_cap'), resources=plan['resources'],
+                              pipeline_verification=version2) != plan:
             raise ValueError('Native resource plan changed after discovery')
     except (KeyError, TypeError, AttributeError) as error:
         raise ValueError('Malformed native resource plan') from error
+    if version2 and (type(value['pipeline_verification']) is not bool
+                     or value['pipeline_verification'] != plan['pipeline_verification']):
+        raise ValueError('Verification pipeline differs from its bounded resource plan')
     if (type(native) is not dict or set(native) != {'manifest', 'sha256', 'prefix_threads'}
             or type(native['manifest']) is not str or not Path(native['manifest']).is_absolute()
             or type(native['sha256']) is not str or not re.fullmatch('[0-9a-f]{64}', native['sha256'])
@@ -77,8 +84,9 @@ def native_execution_choice(manifest, sha256, *, cpu_cap=None, require_acceptanc
         require_native_acceptance(manifest, sha256)
     else:
         verified_manifest(manifest, sha256)
-    plan = make_resource_plan(cpu_cap)
-    value = dict(implementation='native-cpu-v1', overlapped_verification=False, prefix_helpers=0,
+    plan = make_resource_plan(cpu_cap, pipeline_verification=True)
+    value = dict(implementation='native-cpu-v2', overlapped_verification=False, prefix_helpers=0,
+                 pipeline_verification=plan['pipeline_verification'],
                  text_leaf_replay=False, replay_threads=0, experiments=[],
                  collection_workers=plan['collection_workers'], verification_workers=plan['verification_workers'],
                  resource_plan=plan, native_learner=dict(manifest=str(manifest), sha256=sha256,

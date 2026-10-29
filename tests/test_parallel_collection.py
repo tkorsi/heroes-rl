@@ -220,7 +220,8 @@ class ParallelRunnerDispatchTests(unittest.TestCase):
             state = SimpleNamespace(model=object(), checkpoint='synthetic')
             attempts = tuple({**row, 'status': 'passed', 'identity_verified': True,
                               'cleanup_verified': True} for row in rows)
-            collected = SimpleNamespace(attempts=attempts, receipts=(), collection_seconds=1., verification_seconds=1.)
+            collected = parallel_collection.BatchCollection(attempts, (), (), (), 1., 1.,
+                                                            collection_elapsed_seconds=1., verified_batch_seconds=2.)
             with patch.object(runner.pilot, 'check_identity'), \
                     patch.object(parallel_collection, 'collect_batch', return_value=collected) as parallel, \
                     patch.object(runner.pilot, 'run_attempt') as serial, \
@@ -229,6 +230,8 @@ class ParallelRunnerDispatchTests(unittest.TestCase):
             self.assertEqual(parallel.call_args.kwargs['workers'], 4)
             self.assertEqual(result['status'], 'finished')
             self.assertEqual(result['parallel_collection']['games'], 4)
+            self.assertEqual(result['parallel_collection']['verified_batch_seconds'], 2.)
+            self.assertEqual(result['parallel_collection']['timing_scope'], 'coordinator-exclusive-wall-v1')
             self.assertEqual(plan['configuration'], runner.configuration())
             self.assertNotIn('parallel_collection', cfg)
             self.assertEqual(cfg['max_optimizer_steps'], 640)
@@ -513,6 +516,198 @@ class ParallelFailedBatchTests(unittest.TestCase):
         self.assertFalse(result['cleanup_verified'])
         self.assertEqual(result['exception_notes'], failure.__notes__)
         self.assertEqual(error.__notes__, failure.__notes__)
+
+
+@unittest.skipUnless(os.name == 'posix' and hasattr(os, 'fork'), 'POSIX collection guardians')
+class CollectionVerificationOverlapTests(unittest.TestCase):
+    """Real owned collectors plus synthetic verification; no native gameplay."""
+
+    def run_case(self, root, *, collector_failure=False, verification_failure=False,
+                 early_verification_failure=False, cleanup_proof=True):
+        from contextlib import ExitStack
+        from experiments.learner import parallel_collection as parallel
+        # Import before patching weights_sha256: this module keeps its own alias,
+        # and a lazy import under the mock would contaminate subsequent tests.
+        from validation.probes import validate_hero_policy
+        rows = runner.schedule(1)
+        plan = dict(schema='heroes-builtin-training-v1-plan', mode='training',
+            configuration={**runner.configuration(), 'cleanup_reserve_seconds': 0},
+            execution=dict(collection_workers=4, verification_workers=4, pipeline_verification=True),
+            execution_output=str(root), schedule=rows, runtime={}, native={}, source={},
+            checkpoint={'path': '/synthetic/checkpoint'}, data='/synthetic/data',
+            replay_binary={'path': '/synthetic/replay'})
+        leases, replay_jobs, events, minted, capabilities = {}, {}, [], [], []
+        marker = root/'verification-started'
+
+        def command(path, sha, index, deadline, wall):
+            # Collector zero cannot exit until a different capture is verified.
+            # Waiting for the entire batch before verification deadlocks this
+            # fixture and is bounded by its independent deadline guardians.
+            code = f'''import json, pathlib, sys, time
+payload = json.loads(sys.stdin.buffer.readline())
+root = pathlib.Path({str(root)!r})
+index = {index}
+(root / f'episode-{{index+1:06d}}').mkdir()
+if index == 0:
+    while not (root / 'verification-started').exists(): time.sleep(.01)
+    time.sleep(.05)
+    if {collector_failure!r}: raise SystemExit(7)
+print(json.dumps(dict(token=payload['token'], schedule_index=index, plan_sha256='plan-hash',
+    status='passed', attempt=dict(identity_verified=True, cleanup_verified={cleanup_proof!r}))), flush=True)
+'''
+            return [sys.executable, '-c', code]
+
+        def begin(binding):
+            lease = SimpleNamespace(binding=binding, token=f'{binding.schedule_index:064x}',
+                                    process=None, consumed=False)
+            leases[binding.schedule_index] = lease
+            return lease
+
+        def complete(lease):
+            self.assertEqual(lease.process.poll(), 0)
+            message = json.loads(lease.process.stdout.read())
+            self.assertEqual(message['token'], lease.token)
+            self.assertEqual(message['schedule_index'], lease.binding.schedule_index)
+            lease.consumed = True
+            capture = object(); gameplay._CAPTURES[id(capture)] = capture
+            capabilities.append((capture, gameplay._CAPTURES))
+            events.append(('captured', lease.binding.schedule_index))
+            return capture, message
+
+        class Replay:
+            def __init__(self, index): self.index, self.closed = index, False
+            def release(self): events.append(('release', self.index))
+            def stop(self, **kwargs):
+                self.closed = True
+                events.append(('stop', self.index))
+
+        def start(folder, capture, binding, model, **kwargs):
+            index = binding.schedule_index
+            self.assertEqual(leases[index].process.poll(), 0)
+            self.assertIn(('native_closed', index), events)
+            replay = Replay(index); replay_jobs[index] = replay
+            self.assertLessEqual(sum(not job.closed for job in replay_jobs.values()), 4)
+            context = SimpleNamespace(job=replay)
+            gameplay._PREPARED_VERIFICATIONS[id(context)] = context
+            capabilities.append((context, gameplay._PREPARED_VERIFICATIONS))
+            events.append(('replay_started', index))
+            return context
+
+        def verify(folder, capture, binding, model, *, prepared, **kwargs):
+            index = binding.schedule_index
+            self.assertIn(('captured', index), events)
+            self.assertIn(('replay_started', index), events)
+            if not marker.exists():
+                self.assertNotEqual(index, 0)
+                self.assertIsNone(leases[0].process.poll())
+                events.append(('verified_while_straggler_running', index))
+                if early_verification_failure:
+                    raise ValueError('synthetic rejection while a collector remains live')
+                marker.touch()
+            events.append(('verified', index))
+            prepared.job.stop()
+            if verification_failure and index == 0:
+                raise ValueError('synthetic policy reconstruction rejection')
+            receipt = object(); gameplay._RECEIPTS[id(receipt)] = receipt
+            minted.append((index, receipt)); capabilities.append((receipt, gameplay._RECEIPTS))
+            return receipt
+
+        def native_closed(path, **kwargs):
+            events.append(('native_closed', int(path.name.split('-')[1])))
+
+        try:
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(parallel, '_read_plan', return_value=plan))
+                stack.enter_context(patch.object(parallel, '_check_identity'))
+                stack.enter_context(patch.object(parallel, '_worker_command', side_effect=command))
+                stack.enter_context(patch.object(parallel, 'cleanup_from_evidence', side_effect=native_closed))
+                stack.enter_context(patch('experiments.learner.contextual_model.weights_sha256', return_value='fixed'))
+                stack.enter_context(patch.object(runner.pilot, 'native_opponent', return_value={}))
+                stack.enter_context(patch.object(gameplay.TrainingBinding, 'create',
+                    side_effect=lambda **kwargs: SimpleNamespace(schedule_index=kwargs['schedule_index'])))
+                stack.enter_context(patch.object(gameplay, '_begin_parallel_capture', side_effect=begin))
+                stack.enter_context(patch.object(gameplay, '_attach_parallel_process',
+                    side_effect=lambda lease, process: setattr(lease, 'process', process)))
+                stack.enter_context(patch.object(gameplay, '_complete_parallel_capture', side_effect=complete))
+                stack.enter_context(patch.object(gameplay, '_cancel_parallel_capture',
+                    side_effect=lambda lease: setattr(lease, 'consumed', True)))
+                stack.enter_context(patch.object(gameplay, 'start_training_verification', side_effect=start))
+                stack.enter_context(patch.object(gameplay, 'verify_training_capture', side_effect=verify))
+                stack.enter_context(patch('experiments.learner.builtin_behavior.analyze_episode', return_value={}))
+                update = stack.enter_context(patch.object(gameplay, 'native_update'))
+                if collector_failure or verification_failure or early_verification_failure or not cleanup_proof:
+                    with self.assertRaises(parallel.CollectionFailed) as failure:
+                        parallel.collect_batch(root/'plan.json', 'plan-hash', object(), 'checkpoint',
+                            workers=4, verification_workers=4, pipeline_verification=True,
+                            deadline_monotonic=time.monotonic()+8, deadline_wall=time.time()+8)
+                    result = None
+                    self.assertTrue(all(id(receipt) not in gameplay._RECEIPTS for _, receipt in minted))
+                else:
+                    result = parallel.collect_batch(root/'plan.json', 'plan-hash', object(), 'checkpoint',
+                        workers=4, verification_workers=4, pipeline_verification=True,
+                        deadline_monotonic=time.monotonic()+8, deadline_wall=time.time()+8)
+                    self.assertEqual(result.receipts, tuple(dict(minted)[i] for i in range(4)))
+                update.assert_not_called()
+            self.assertTrue(all(lease.process.poll() is not None for lease in leases.values()))
+            self.assertTrue(all(not process_deadline.group_live_members(lease.process.pid)
+                                for lease in leases.values()))
+            self.assertTrue(all(job.closed for job in replay_jobs.values()))
+            self.assertTrue(all(value not in gameplay._PREPARED_VERIFICATIONS
+                                for value in (id(item) for item, registry in capabilities
+                                              if registry is gameplay._PREPARED_VERIFICATIONS)))
+            report = json.loads((root/'parallel-collection/result.json').read_text())
+            return result, events, report
+        finally:
+            for value, registry in capabilities:
+                registry.pop(id(value), None)
+
+    def test_verified_work_overlaps_straggler_and_returns_only_complete_ordered_batch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result, events, report = self.run_case(Path(temporary).resolve())
+        self.assertTrue(any(event[0] == 'verified_while_straggler_running' for event in events))
+        self.assertEqual([row['episode'] for row in result.attempts], [1, 2, 3, 4])
+        self.assertTrue(all(row['status'] == 'passed' for row in result.attempts))
+        self.assertTrue(report['pipeline_verification'])
+        self.assertEqual(report['timing_scope'], 'coordinator-exclusive-wall-v1')
+        self.assertGreater(result.overlapped_verification_seconds, 0)
+        self.assertAlmostEqual(result.verified_batch_seconds,
+                               result.collection_seconds+result.verification_seconds)
+        self.assertEqual((report['optimizer_updates'], report['training_samples_admitted']), (0, 0))
+
+    def test_straggler_failure_revokes_receipts_already_verified_during_collection(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result, events, report = self.run_case(Path(temporary).resolve(), collector_failure=True)
+        self.assertIsNone(result)
+        self.assertTrue(any(event[0] == 'verified' for event in events))
+        self.assertTrue(all(row['completion_receipt'] is False and row['batch_admission'] == 'rejected'
+                            for row in report['attempts']))
+        self.assertIn('exited with status 7', report['error'])
+        self.assertTrue(report['cleanup_verified'])
+
+    def test_policy_failure_cleans_both_pipelines_and_revokes_prior_receipts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result, events, report = self.run_case(Path(temporary).resolve(), verification_failure=True)
+        self.assertIsNone(result)
+        self.assertIn('synthetic policy reconstruction rejection', report['error'])
+        self.assertTrue(all(row['completion_receipt'] is False for row in report['attempts']))
+        self.assertTrue(report['cleanup_verified'])
+
+    def test_collector_without_cleanup_proof_cannot_start_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result, events, report = self.run_case(Path(temporary).resolve(), cleanup_proof=False)
+        self.assertIsNone(result)
+        self.assertFalse(any(event[0] in ('replay_started', 'verified') for event in events))
+        self.assertIn('native cleanup proof', report['error'])
+        self.assertTrue(report['cleanup_verified'])
+
+    def test_verification_failure_stops_a_still_running_collector_and_every_replay(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            result, events, report = self.run_case(Path(temporary).resolve(), early_verification_failure=True)
+        self.assertIsNone(result)
+        self.assertTrue(any(event[0] == 'verified_while_straggler_running' for event in events))
+        self.assertIn('synthetic rejection while a collector remains live', report['error'])
+        self.assertTrue(all(row['completion_receipt'] is False for row in report['attempts']))
+        self.assertTrue(report['cleanup_verified'])
 
 
 if __name__ == '__main__':

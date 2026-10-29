@@ -1,2 +1,4 @@
 # Optional CPU prototype environment; existing recording tools remain stdlib-only.
 torch==2.9.1
+# Enable the optional Torch array bridge without changing the tensor backend.
+numpy==2.3.5

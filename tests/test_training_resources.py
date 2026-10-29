@@ -9,6 +9,21 @@ from experiments.learner import resources
 
 
 class TrainingResourcesTests(unittest.TestCase):
+    def test_pipeline_is_opt_in_and_respects_aggregate_phase_budget(self):
+        observed = {"schema": resources.SCHEMA, "available_cpus": 16}
+        legacy = resources.make_resource_plan(resources=observed)
+        self.assertFalse(legacy['phases_run_concurrently'])
+        self.assertNotIn('pipeline_verification', legacy)
+        for cap in (1, 4, 8, 9, 16):
+            plan = resources.make_resource_plan(cap, resources=observed, pipeline_verification=True)
+            self.assertEqual(plan['pipeline_verification'], cap >= 9)
+            self.assertEqual(plan['batch_size'], 4)
+            self.assertEqual(plan['torch_intraop_threads'], 1)
+            self.assertLessEqual(plan['collection_verification_cpu_budget'], cap)
+        for bad in (None, 0, 1, 'true'):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                resources.make_resource_plan(resources=observed, pipeline_verification=bad)
+
     def test_mac_topology_and_plan_are_serializable(self):
         values = {"hw.logicalcpu": 16, "hw.physicalcpu": 16, "hw.perflevel0.logicalcpu": 12,
                   "hw.perflevel1.logicalcpu": 4, "hw.memsize": 128 * 1024 ** 3}
