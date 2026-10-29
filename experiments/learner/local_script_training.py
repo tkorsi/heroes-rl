@@ -273,7 +273,7 @@ FAST_PATH_TREE = {
     'train-1000.sh': ('',
         'f8699aed9f5d629c21122ba15c20767e67ff0e4441ec912260f9fd7801947782'),
     'train-local.sh': ('c44f88f9c5ddcdeacce63951a81ee74c0c305a28',
-        '4fc8c21f6d005ba4eab9e14952bfbcb7d029fe6c58418f2ac3d8430d9d1b77b5'),
+        '1b121b2b7b4aa4039c986ec9c3215618a2d5de1d1db59b47eefed71b4c9a7997'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_garrison_dialogs.py': ('',
@@ -283,7 +283,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'd62859476fe1a088fa07a0fe96bae58096cfdcd0f97f9eb87c5c2c657beb9401'
+LOCAL_ADAPTER_TRANSITION_AST = 'e75cd330b31fdf5b1b783d6e71dc7df00b676d52f7f52139755b13249c982d0d'
 
 
 def write_new(path, value):
