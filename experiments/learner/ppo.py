@@ -481,12 +481,12 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             timings["backward_and_clip"] += perf_counter() - phase
             sharing.__exit__(None, None, None)
             if native_model is not None:
+                native_model.end_text_replay()
                 stats = native_model.text_replay_statistics()
                 for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays', 'main_thread_replays'):
                     timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
                 timings['native_peak_parallel_replays'] = max(timings.get('native_peak_parallel_replays', 0.0),
                                                              float(stats.get('peak_parallel_replays', 0)))
-                native_model.end_text_replay()
             if before_step is not None:
                 before_step()
             phase = perf_counter()

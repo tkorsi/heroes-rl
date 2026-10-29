@@ -25,7 +25,16 @@ class NativeModelGuardTests(unittest.TestCase):
                          lambda x: setattr(x.map_cnn[0], 'stride', (2, 2)),
                          lambda x: setattr(x.gru, 'bias', False),
                          lambda x: setattr(x.text_gru, 'bidirectional', True),
-                         lambda x: setattr(x, '_long', lambda v: torch.tensor(v))]
+                         lambda x: setattr(x, '_long', lambda v: torch.tensor(v)),
+                         lambda x: setattr(x, '_can_cache_prefix', lambda: True),
+                         lambda x: setattr(x, 'named_modules', lambda: iter(())),
+                         lambda x: setattr(x, 'number', torch.nn.Sequential(x.number[0])),
+                         lambda x: setattr(x.number, '_modules', dict(reversed(list(x.number._modules.items())))),
+                         lambda x: setattr(x, 'map_cnn', torch.nn.Sequential(*list(x.map_cnn.children())[:3])),
+                         lambda x: x.quantity.append(torch.nn.Tanh()),
+                         lambda x: setattr(x.text_gru, '_flat_weights',
+                                           [x.text_gru._flat_weights[0].clone(), *x.text_gru._flat_weights[1:]]),
+                         lambda x: setattr(x.ordered, '_flat_weights_names', list(reversed(x.ordered._flat_weights_names)))]
             for mutate in mutations:
                 model = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
                 require_native_model(model)

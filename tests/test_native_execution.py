@@ -77,6 +77,21 @@ class NativeExecutionSchemaTests(unittest.TestCase):
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_official_worker_cannot_bypass_acceptance_or_mutate_globals_before_it(self):
+        from experiments.headless import background_check
+        from experiments.learner import ppo, interaction_guard
+        value = choice()
+        names = ('PREFIX_HELPERS', 'REPLAY_TEXT_LEAVES', 'TEXT_REPLAY_WORKERS', 'EXPERIMENTS', 'NATIVE_EXECUTION')
+        before = [getattr(ppo, name) for name in names] + [background_check.FORK, interaction_guard.ACTIVE_VERSION]
+        with patch.object(native_backend, 'verified_manifest', return_value={}), \
+                patch.object(Path, 'read_text', return_value=json.dumps({'accepted_for_manual_training': False})), \
+                patch.object(local, 'restore_parent') as restore, \
+                self.assertRaisesRegex(ValueError, 'acceptance gate'):
+            local.worker_state({'execution': value, 'policy_support': None, 'parent_descriptor': {}})
+        restore.assert_not_called()
+        self.assertEqual([getattr(ppo, name) for name in names] +
+                         [background_check.FORK, interaction_guard.ACTIVE_VERSION], before)
+
     def test_manual_choice_requires_matching_accepted_actual_build(self):
         accepted = {"accepted_for_manual_training": True, "native_manifest_sha256": SHA,
                     "acceptance_source_sha256": native_execution.acceptance_source_hashes()}

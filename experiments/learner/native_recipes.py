@@ -109,7 +109,10 @@ def _map_recipe(model, observation, arena):
 
 def require_native_model(model):
     """Reject custom execution that a native tensor kernel would bypass."""
-    if (type(model) is not ContextualActorCritic or not model._can_cache_prefix()
+    if (type(model) is not ContextualActorCritic
+            or any(name in model.__dict__ for name, value in vars(ContextualActorCritic).items() if callable(value))
+            or any(name in model.__dict__ for name in ('modules', 'named_modules', 'parameters', 'named_parameters'))
+            or not model._can_cache_prefix()
             or _operation_modes() or _saved_tensor_hooks() or torch.is_anomaly_enabled()
             or torch.nn.modules.module._global_backward_hooks
             or torch.nn.modules.module._global_backward_pre_hooks
@@ -120,6 +123,28 @@ def require_native_model(model):
             or any(name in model.__dict__ for name in ("initial_state", "_float", "_long", "prefix_states"))
             or any(name in model.__dict__ for name in ("_graph_memo_state", "_leaf_replay_state"))):
         raise ValueError("Native learner requires the unmodified CPU float32 model without hooks or operation modes")
+    # Parameter names alone cannot detect a removed or reordered activation.
+    # Describe the canonical topology without constructing a model or using RNG.
+    nn = torch.nn
+    topology = {'': ContextualActorCritic, 'byte': nn.Embedding, 'text_gru': nn.GRU}
+    groups = {'number': (nn.Linear, nn.Tanh), 'tree': (nn.Linear, nn.Tanh),
+              'object_encoder': (nn.Linear, nn.Tanh),
+              'map_cnn': (nn.Conv2d, nn.Tanh, nn.Conv2d, nn.Tanh),
+              'map_global': (nn.AdaptiveAvgPool2d, nn.Flatten, nn.Linear, nn.Tanh),
+              'coordinate': (nn.Linear, nn.Tanh, nn.Linear),
+              'quantity': (nn.Linear, nn.Tanh, nn.Linear)}
+    topology.update(ordered=nn.GRU, terrain=nn.Embedding, road=nn.Embedding,
+                    gru=nn.GRUCell, policy_query=nn.Linear, value=nn.Linear)
+    for name, children in groups.items():
+        topology[name] = nn.Sequential
+        topology.update({f'{name}.{index}': kind for index, kind in enumerate(children)})
+    if {name: type(module) for name, module in model.named_modules()} != topology:
+        raise ValueError("Native learner requires the exact canonical module topology")
+    for name, children in groups.items():
+        # Sequential uses insertion order even when its numeric keys are intact.
+        actual = [(key, type(child)) for key, child in getattr(model, name)._modules.items()]
+        if actual != [(str(index), kind) for index, kind in enumerate(children)]:
+            raise ValueError("Native learner cannot bypass reordered Sequential children")
     for module in model.modules():
         if isinstance(module, torch.nn.Embedding):
             valid = (module.padding_idx == 0 and module.max_norm is None and module.norm_type == 2
@@ -127,6 +152,9 @@ def require_native_model(model):
         elif isinstance(module, torch.nn.GRU):
             valid = (module.num_layers == 1 and module.bias and module.batch_first
                      and not module.bidirectional and module.dropout == 0)
+            names = ['weight_ih_l0', 'weight_hh_l0', 'bias_ih_l0', 'bias_hh_l0']
+            valid = (valid and module._flat_weights_names == names and len(module._flat_weights) == len(names)
+                     and all(value is getattr(module, name) for name, value in zip(names, module._flat_weights)))
         elif isinstance(module, torch.nn.GRUCell):
             valid = module.bias
         elif isinstance(module, torch.nn.Conv2d):

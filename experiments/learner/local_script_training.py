@@ -128,7 +128,7 @@ FAST_PATH_SOURCES = {
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/ppo.py': (
         ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd',),
-        '843fa4348148d16f5f54d758b90f5b5b0b080770688740809163fab3e5b6b661'),
+        'e3f8557cc48206ba646c94293a4532a926c39d7fa7f11ebdf359f9360c2aa0f5'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
 # runner, lock), compared with the accepted implementation's git blobs: only these files may differ,
@@ -179,9 +179,9 @@ FAST_PATH_TREE = {
     'experiments/learner/native_backend.py': ('',
         '7b33829c62d3912a948a271a4ed82f56139961a8598373441e0ba0c622f132ae'),
     'experiments/learner/native_execution.py': ('',
-        'f75a3d382c55f4c9bf3e89863df82ecd632fa6472b7120226c26ef9d6c3e0d7a'),
+        'e1b934c146ff196e1da09477a3f307b2683a8f4760d5b0264f63e9be51ff85c9'),
     'experiments/learner/native_recipes.py': ('',
-        'f9db8e8d6f87473643ec301757dcf47999ca4ebcca98f38bbc5842a0e8434ac3'),
+        '52cfffc341f111dea9b62c80f9d9b8fab7c5cbd6a07926ae4b7690c68da35fab'),
     'experiments/learner/parallel_collection.py': ('',
         '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c'),
     'experiments/learner/prefix_pool.py': ('',
@@ -207,7 +207,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '481cd6a187e2fe024d8f33d886e9e6ddac1cbe27fcd00e188a9f8a38ff6665a1'
+LOCAL_ADAPTER_TRANSITION_AST = '6aa1641a163011fb6be97412ce0c856f5c2730cc1b43fa29ce17ddaf3d6d8406'
 
 
 def write_new(path, value):
@@ -590,15 +590,16 @@ def apply_execution(plan):
     from . import ppo
     value = check_execution(plan['execution'])
     policy_support = check_policy_support(plan.get('policy_support'))
+    if 'native_learner' in value:
+        from .native_execution import require_native_acceptance
+        native = value['native_learner']
+        require_native_acceptance(native['manifest'], native['sha256'])
     background_check.FORK = value['overlapped_verification']
     ppo.PREFIX_HELPERS = value['prefix_helpers']
     ppo.REPLAY_TEXT_LEAVES = value['text_leaf_replay']
     ppo.TEXT_REPLAY_WORKERS = value['replay_threads']
     ppo.EXPERIMENTS = frozenset(value['experiments'])
     ppo.NATIVE_EXECUTION = value.get('native_learner')
-    if ppo.NATIVE_EXECUTION is not None:
-        from .native_backend import verified_manifest
-        verified_manifest(ppo.NATIVE_EXECUTION['manifest'], ppo.NATIVE_EXECUTION['sha256'])
     interaction_guard.ACTIVE_VERSION = policy_support
     return value
 

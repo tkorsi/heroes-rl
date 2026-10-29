@@ -53,19 +53,29 @@ def check_native_execution(value):
     return value
 
 
+def require_native_acceptance(manifest, sha256):
+    """Require accepted source and actual binary at every official entry point."""
+    from .native_backend import verified_manifest
+    manifest = Path(manifest).resolve()
+    receipt = verified_manifest(manifest, sha256)
+    accepted = Path(__file__).resolve().parents[2] / 'validation/native-mac-learner-2026-10-29.json'
+    report = json.loads(accepted.read_text())
+    if (report.get('accepted_for_manual_training') is not True
+            or report.get('native_manifest_sha256') != sha256
+            or report.get('acceptance_source_sha256') != acceptance_source_hashes()):
+        raise ValueError('This built native learner has not passed the manual-training acceptance gate')
+    return receipt
+
+
 def native_execution_choice(manifest, sha256, *, cpu_cap=None, require_acceptance=True):
     from .native_backend import verified_manifest
     from .resources import make_resource_plan
     manifest = Path(manifest).resolve()
-    receipt = verified_manifest(manifest, sha256)
-    plan = make_resource_plan(cpu_cap)
     if require_acceptance:
-        accepted = Path(__file__).resolve().parents[2] / 'validation/native-mac-learner-2026-10-29.json'
-        report = json.loads(accepted.read_text())
-        if (report.get('accepted_for_manual_training') is not True
-                or report.get('native_manifest_sha256') != sha256
-                or report.get('acceptance_source_sha256') != acceptance_source_hashes()):
-            raise ValueError('This built native learner has not passed the manual-training acceptance gate')
+        require_native_acceptance(manifest, sha256)
+    else:
+        verified_manifest(manifest, sha256)
+    plan = make_resource_plan(cpu_cap)
     value = dict(implementation='native-cpu-v1', overlapped_verification=False, prefix_helpers=0,
                  text_leaf_replay=False, replay_threads=0, experiments=[],
                  collection_workers=plan['collection_workers'], verification_workers=plan['verification_workers'],
