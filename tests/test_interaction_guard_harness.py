@@ -12,7 +12,8 @@ import unittest
 import torch
 
 from tools.validate_interaction_guard import (state_snapshot, verify_state_snapshot, write_shutdown,
-    diagnostic_schedule, reserve_diagnostic_seeds, stopped_candidate_parent, configure_artifact_root)
+    diagnostic_schedule, reserve_diagnostic_seeds, stopped_candidate_parent, configure_artifact_root,
+    check_import_provenance)
 
 
 class HarnessFinalizationTests(unittest.TestCase):
@@ -154,6 +155,22 @@ assert DURABLE_ROOT == Path(sys.argv[1]).resolve(), DURABLE_ROOT
                     latest[field]=original
                 with self.assertRaisesRegex(ValueError,'pinned'):
                     stopped_candidate_parent(run,config,1334)
+
+    def test_imported_parent_lock_transfer_rejects_changed_official_selection(self):
+        from experiments.learner.builtin_training_resume import binding
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve()
+            for name in ('cloud-import.json','latest-run.json','latest-checkpoint.json','sequence-ledger.json'):
+                (root/name).write_text('{}')
+            plan=dict(cloud_import=binding(root/'cloud-import.json'),runtime_candidate={'bound':True},parent_update=1335,
+                cloud_import_moving={name:binding(root/name) for name in
+                    ('latest-run.json','latest-checkpoint.json','sequence-ledger.json')})
+            check_import_provenance(plan)
+            for name in plan['cloud_import_moving']:
+                (root/name).write_text('{"advanced":true}')
+                with self.subTest(name=name),self.assertRaisesRegex(ValueError,'selection changed'):
+                    check_import_provenance(plan)
+                (root/name).write_text('{}')
 
 
 if __name__ == '__main__': unittest.main()

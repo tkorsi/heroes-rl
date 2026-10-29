@@ -142,6 +142,23 @@ def stopped_candidate_parent(run, config, expected_update=770):
     return report['latest_parent']
 
 
+def check_import_provenance(plan):
+    """The copied1335 parent must still be the current selection after lock transfer."""
+    from experiments.learner.builtin_training_resume import binding, require
+    receipt = plan.get('cloud_import')
+    if receipt is None:
+        require('cloud_import_moving' not in plan, 'Import moving proof lacks its receipt')
+        return
+    require(plan.get('runtime_candidate') is not None and plan.get('parent_update') == 1335
+            and binding(receipt['path']) == receipt, 'Certified cloud import provenance changed')
+    root = Path(receipt['path']).parent
+    moving = plan.get('cloud_import_moving')
+    require(type(moving) is dict and set(moving) == {'latest-run.json','latest-checkpoint.json','sequence-ledger.json'},
+            'Imported diagnostic omitted its current selection bindings')
+    require(all(Path(value['path']) == root/name and binding(value['path']) == value
+                for name,value in moving.items()), 'Official selection changed during diagnostic lock transfer')
+
+
 def execute(plan_path, sha):
     content = plan_path.read_bytes()
     if hashlib.sha256(content).hexdigest() != sha:
@@ -167,10 +184,7 @@ def execute(plan_path, sha):
     require(plan['policy_support'] == guard.VERSION and plan['mode'] == 'evaluation'
             and len(plan['schedule']) == 8, 'Wrong diagnostic scope')
     candidate = plan.get('runtime_candidate')
-    if plan.get('cloud_import') is not None:
-        require(candidate is not None and plan.get('parent_update') == 1335
-                and binding(plan['cloud_import']['path']) == plan['cloud_import'],
-                'Certified cloud import provenance changed')
+    check_import_provenance(plan)
     expected_schedule = (diagnostic_schedule(plan['engine_seed_base'], plan['policy_seed_base']) if candidate else
         [dict(episode=i+1, phase='evaluation', learner_player=i//4,
               engine_seed=82010000+i, policy_seed=82050000+i) for i in range(8)])
@@ -224,9 +238,7 @@ def execute(plan_path, sha):
             verify_state_snapshot(before, restored)
             require(binding(ROOT/'tools/prepare_local_training.py') == plan['runtime_gate'], 'Candidate runtime gate changed')
             load_runtime_candidate(candidate['path'], candidate)
-        if plan.get('cloud_import') is not None:
-            require(binding(plan['cloud_import']['path']) == plan['cloud_import'],
-                    'Certified cloud import provenance changed')
+        check_import_provenance(plan)
         report.update(status='passed', full_parent_unchanged=True, full_parent_restore=True,
                       parent_progress=vars(restored.progress))
     except Exception as error:
@@ -349,6 +361,8 @@ def main():
                                else 'map-garrison-frozen-policy-v1-diagnostic'))
             if args.parent_run.resolve() == Path(config['run_root']).resolve() / 'cloud-import-1335':
                 plan['cloud_import'] = binding(Path(config['run_root']) / 'cloud-import.json')
+                plan['cloud_import_moving'] = {name:binding(Path(config['run_root'])/name)
+                    for name in ('latest-run.json','latest-checkpoint.json','sequence-ledger.json')}
         (output/'execution').mkdir()
         write(output/'plan.json', plan)
         command = [sys.executable, __file__, '--worker-plan', str(output/'plan.json'),
