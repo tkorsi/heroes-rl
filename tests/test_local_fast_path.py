@@ -33,13 +33,26 @@ pins_spec.loader.exec_module(pins)
 
 def accepted_parent(commit=ACCEPTED_629):
     names = subprocess.check_output(['git', 'ls-tree', '-r', '--name-only', commit, '--', 'experiments/learner',
-                                     'dependencies/learner.lock'], cwd=ROOT, text=True).split()
-    names = [n for n in names if (n.endswith('.py') and n.count('/') == 2) or n == 'dependencies/learner.lock']
+                                     'native/learner', 'dependencies/learner.lock'], cwd=ROOT, text=True).split()
+    names = [n for n in names if (n.endswith('.py') and n.count('/') == 2)
+             or n.startswith('native/learner/') or n == 'dependencies/learner.lock']
     digests = {n: hashlib.sha256(subprocess.check_output(['git', 'show', f'{commit}:{n}'], cwd=ROOT)).hexdigest() for n in names}
     return {'interface': local.INTERFACE, 'torch': str(torch.__version__), 'git_commit': commit, 'source_sha256': digests}
 
 
 class ReviewedTransitionTests(unittest.TestCase):
+    def test_native_header_transitions_are_explicit_and_tampering_is_rejected(self):
+        parent = accepted_parent('10d3d4f5038025a276b33a0a3d81096e5778130b')
+        for name in ('native/learner/replay_tape.h', 'native/learner/text_replay.h'):
+            with self.subTest(name=name):
+                accepted = parent['source_sha256'][name]
+                current = (ROOT/name).read_bytes()
+                proof = local.fast_path_transition(name, accepted, current)
+                self.assertEqual(proof['transition'], 'reviewed_exact_fast_path')
+                for digest, data in ((accepted, current+b'\n'), ('0'*64, current)):
+                    with self.assertRaisesRegex(ValueError, 'implementation changed'):
+                        local.fast_path_transition(name, digest, data)
+
     def test_pins_equal_the_tree_and_the_accepted_commits(self):
         self.assertEqual({k: (tuple(v[0]), v[1]) for k, v in local.FAST_PATH_SOURCES.items()}, pins.expected_pins())
         self.assertEqual(local.LOCAL_ADAPTER_TRANSITION_AST, pins.adapter_ast())

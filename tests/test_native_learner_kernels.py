@@ -492,6 +492,9 @@ class NativeLearnerKernelTests(unittest.TestCase):
                         patch.object(ppo, "EXPERIMENTS", frozenset()):
                     reports.append(ppo.ppo_update(model, optimizer, rollouts, config=config, generator=generator))
             self.assertEqual(replace(reports[0], timings_seconds=None), replace(reports[1], timings_seconds=None))
+            self.assertGreater(reports[1].timings_seconds['native_compacted_occurrences'], 0)
+            self.assertGreater(reports[1].timings_seconds['native_original_occurrence_edges'],
+                               reports[1].timings_seconds['native_retained_occurrence_edges'])
             equal_tree(self, candidate.state_dict(), reference.state_dict())
             equal_tree(self, [p.grad for p in candidate.parameters()], [p.grad for p in reference.parameters()])
             equal_tree(self, optimizers[1].state_dict(), optimizers[0].state_dict())

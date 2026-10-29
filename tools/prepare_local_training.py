@@ -342,6 +342,12 @@ def candidate_runtime_origin(runtime_bin, runtime, descriptor):
 
 def accepted_runtime_origin(runtime_bin, runtime, descriptor):
     origin = candidate_runtime_origin(runtime_bin, runtime, descriptor)
+    if descriptor.get("release_id") == "cpu-next-launch-v1":
+        from tools.accept_cpu_next_launch import pipeline_policy_acceptance
+        policy = pipeline_policy_acceptance(descriptor, runtime)
+        return {**origin, "pipeline_policy": policy,
+                "terminal_replay": terminal_replay_acceptance(descriptor, runtime),
+                "meaning": "Accepted CPU pipeline and separate Python environment; explicit launch owns fresh acceptance and the original continuation ledger."}
     evidence = descriptor["native"]
     plan = json.loads(Path(evidence["plan"]["path"]).read_text())
     bound = descriptor["policy_reconstruction"]

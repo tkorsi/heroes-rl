@@ -58,7 +58,8 @@ def main(argv=None):
     from experiments.learner.native_execution import native_execution_choice
     from tools import benchmark_native_training as benchmark
     artifacts = Path.home() / 'Projects/Heroes-artifacts'
-    manifest = artifacts / 'native-learner-builds/mac-utilization-v1-attempt6/manifest.json'
+    from tools.train_1000_games import NATIVE_MANIFEST_RELATIVE
+    manifest = artifacts / NATIVE_MANIFEST_RELATIVE
     accepted = json.loads((ROOT / 'validation/native-mac-learner-2026-10-29.json').read_text())
     sha = accepted['native_manifest_sha256']
     # Preflight official backend acceptance, even though this command is diagnostic.

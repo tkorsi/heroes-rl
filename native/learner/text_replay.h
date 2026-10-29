@@ -728,6 +728,7 @@ inline void Scope::compact_deferred_edges(const Tensor& loss) {
         {typeid(MulBackward0), [](const Node& node) {
             const auto& value = static_cast<const MulBackward0&>(node);
             return !value.self_.has_hooks() && !value.other_.has_hooks(); }},
+        {typeid(MulBackward1), nullptr},
         {typeid(DivBackward0), [](const Node& node) {
             const auto& value = static_cast<const DivBackward0&>(node);
             return !value.self_.has_hooks() && !value.other_.has_hooks(); }},

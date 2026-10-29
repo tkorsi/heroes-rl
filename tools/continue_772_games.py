@@ -9,7 +9,7 @@ import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from tools.train_1000_games import hours, positive_cpu_count, NATIVE_MANIFEST_SHA256
+from tools.train_1000_games import hours, positive_cpu_count, NATIVE_MANIFEST_SHA256, NATIVE_MANIFEST_RELATIVE
 
 
 def command(argv):
@@ -27,7 +27,7 @@ def command(argv):
     if len(options) != len(set(options)):
         parser.error('repeated options are not allowed')
     args = parser.parse_args(argv)
-    manifest = Path.home() / 'Projects/Heroes-artifacts/native-learner-builds/mac-utilization-v1-attempt6/manifest.json'
+    manifest = Path.home() / 'Projects/Heroes-artifacts' / NATIVE_MANIFEST_RELATIVE
     result = [str(ROOT / 'continue-original-native.sh'), '--session-goal', 'checkpoint1392-remaining772-v1',
               '--native-learner', str(manifest), '--native-sha256', NATIVE_MANIFEST_SHA256,
               '--hours', str(args.hours)]

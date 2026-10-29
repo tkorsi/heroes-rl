@@ -265,6 +265,7 @@ class AcceptedRuntimeTests(MachineConfigurationTests):
         bound = self.file(self.origin/'next-accepted.json', json.dumps(descriptor))
         entry = dict(descriptor=bound['path'], sha256=bound['sha256'], python_environment=environment)
         with patch.dict(prep.ACCEPTED_RUNTIME_RELEASES, {release: entry}), \
+                patch.object(prep, 'accepted_runtime_origin', return_value={'proof': 'separate accepted pipeline'}), \
                 patch.object(prep, 'verify_environment') as gate:
             value = prep.build_configuration(self.inputs, self.candidate, self.data, self.root, self.output,
                                              runtime_release=release)

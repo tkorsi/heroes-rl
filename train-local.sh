@@ -2,7 +2,7 @@
 # User-owned local training: no LLM API, recurring task, or cloud agent.
 set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes/.venv/bin/python"}
+TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes-artifacts/python/next-launch-numpy235-v1/venv/bin/python"}
 if [ ! -x "$TRAINER_PYTHON" ]; then
     echo "Set HEROES_PYTHON to the project's Python interpreter with the locked PyTorch dependencies." >&2
     exit 2

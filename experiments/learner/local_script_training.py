@@ -150,6 +150,12 @@ FAST_PATH_SOURCES = {
     'experiments/learner/resources.py': (
         ('ad885d6b377cc735670b3e753440e13f4119ed83815296fdcfea5b3ad98d49ee',),
         'cb465fbc53516c11f091e71c54b8d1f0de99d07f11569e86bf19e7e90d67198d'),
+    'native/learner/replay_tape.h': (
+        ('7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1',),
+        '87b912b275d7f6d982e76e389e8ed913d19f1944841cfbe549edeeeaebb199d8'),
+    'native/learner/text_replay.h': (
+        ('9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd',),
+        '212f5355238264431c6bcdcd9ca9580e423d82bf68d491c532eaa20fdaf550ef'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
 # runner, lock), compared with the accepted implementation's git blobs: only these files may differ,
@@ -160,6 +166,7 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'tools/prepare_local_training.py', 'tools/prepare_vcmi.py', 'train-local.sh',
                  'tools/training_environment.py', 'tools/prepare_next_training_environment.py',
                  'tools/isolated_diagnostic.py',
+                 'tools/accept_cpu_next_launch.py',
                  'train-1000.sh', 'tools/train_1000_games.py', 'continue-original-native.sh',
                  'continue-772.sh', 'tools/continue_772_games.py', 'tools/continuation_goal.py',
                  'configs/checkpoint1392-remaining772.json',
@@ -178,7 +185,7 @@ FAST_PATH_TREE = {
     'configs/interrupted1229-recovery.json': ('',
         'd6ba5bb257957b45be333ff723c6761a34ded7965429e63d96ff468edd9c41f8'),
     'continue-772.sh': ('',
-        '97863ef8a54f267290b5a82b7ecbf1b9406913a4c0d88763ba65daf6e8bb6264'),
+        'c66418fad5dac599e528b6de385e2cdce88fd1a70089737a9e9f7d4fef6e4851'),
     'continue-original-native.sh': ('',
         'fac7bb2f7820a2f9e06cf5e87347770f8316b0788f9318fb0597fbdec6b7cec3'),
     'experiments/episodes/scoring.py': ('2fee3829c13828963d0fec3a2aa215039656d4ff',
@@ -223,12 +230,10 @@ FAST_PATH_TREE = {
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'native/learner/kernels.cpp': ('',
         '99f698eac796f5dcf6a60a94f281dc1a746c826f6074e3764fab24a564a581e2'),
-    'native/learner/replay_tape.h': ('',
-        '87b912b275d7f6d982e76e389e8ed913d19f1944841cfbe549edeeeaebb199d8'),
-    'native/learner/text_replay.h': ('',
-        '137f976450bb790439895343bb5fc28066b235e7920092d66739121633f9de17'),
     'tools/acceleration3/fast_path_pins.py': ('',
-        'f0f9a25a82df7f181dd05abc9c932cbed1d25fca084a18cc93abe6ff2a76663d'),
+        '156faaedb5001726db7986173d44f7d369d3e950d60e1d756b94c086bdb91c46'),
+    'tools/accept_cpu_next_launch.py': ('',
+        '64c405e72e911ac4ee602ceefc404f1aa60a0455d62e1ff37aaf6fa4f0c632b9'),
     'tools/apply_cloud1335_import.py': ('',
         '40f233663871acaef141388de13980da1ff8dc110ca930a3b2b5b02f23201513'),
     'tools/audit_cloud1335_publication.py': ('',
@@ -238,13 +243,13 @@ FAST_PATH_TREE = {
     'tools/continuation_goal.py': ('',
         'ed19b6330f18005f15c33cc1f4ecd4f6a18455c2bd0be8bd2c6d9fb775e1b4f8'),
     'tools/continue_772_games.py': ('',
-        'fc1c66d83b598005ff401c9b8b3b4a14b4a050baf8965f070cf733939973c084'),
+        '88b779d122134de530cd2b390ee315f5af03f540a84a18fdbddac5dc1fbe810f'),
     'tools/isolated_diagnostic.py': ('',
         '512b67fd292f0e8c82e3974c529362eee02e45370c1656b9ce87fa5d32acdfd7'),
     'tools/linux_publication.py': ('',
         '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '1b38063a38f23a28f7409106741b9f56b75089c576a6d2a3b6c753adf637724f'),
+        'd28230d489702e39963943e0d434b8a87382a1fdd0064ae8f64a8b7cfddf9905'),
     'tools/prepare_next_training_environment.py': ('',
         'c034f3d8f0f45cf0eeeac2e4cce568df260844d509365bcf52153451a567b31a'),
     'tools/recover_interrupted_training.py': ('',
@@ -252,15 +257,17 @@ FAST_PATH_TREE = {
     'tools/refresh_parallel_runtime_acceptance.py': ('',
         '737df7211ab18abd299a851fc9a0340c2e959a0fc3b4248bf2272f0bf5edd836'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '4709cc51eefd7a5a8c1144d3ba3fd5ec06118fa380aa43fa866d4ab21fcf92bf'),
+        'a2436ac8b946ef0b67efa399543ba856cafb565039c1059fa2689061c9efb3a1'),
     'tools/train_1000_games.py': ('',
-        '47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4'),
+        '61be65b89badc235aeae467e74b755fea1c3ddec7e2e6fdb4fe459ac7def1ef9'),
     'tools/training_environment.py': ('',
         '71a4974c58259da0d65670adcd90dfe7b427d4476bb79f76ca54c648ec374030'),
     'tools/validate_interaction_guard.py': ('',
         '944738c56da82fe7bef5ed1e8e1ec7ee4de6c6ee235fd99cc3baff15ef711a34'),
     'train-1000.sh': ('',
-        '79b345528e052befbd804f0141311c315c01e10effa1e344f22872cbd4267e79'),
+        'f8699aed9f5d629c21122ba15c20767e67ff0e4441ec912260f9fd7801947782'),
+    'train-local.sh': ('c44f88f9c5ddcdeacce63951a81ee74c0c305a28',
+        '4fc8c21f6d005ba4eab9e14952bfbcb7d029fe6c58418f2ac3d8430d9d1b77b5'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_garrison_dialogs.py': ('',
@@ -270,7 +277,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '6e4fa2bcadbbb7d57760c01ee02e3e814480b1cbcbf8fdb78a89ebbfab24bae0'
+LOCAL_ADAPTER_TRANSITION_AST = '853f6a77a3d31f737873da5b42426f410a63fe76e74663010da1ee3c1fcb68a0'
 
 
 def write_new(path, value):

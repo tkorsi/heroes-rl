@@ -152,7 +152,7 @@ class NativeLoadLauncherTests(unittest.TestCase):
                             ("--wall-seconds", "120"), ("--cpu-cap", "8"), ("--order", "PN")):
             self.assertEqual(command[command.index(name) + 1], value)
         self.accept.assert_called_once_with(
-            self.artifacts / "native-learner-builds/mac-utilization-v1-attempt6/manifest.json", SHA, cpu_cap=8)
+            self.artifacts / "run-investigations/2026-10-29-cpu-next-launch/native-build-attempt4/manifest.json", SHA, cpu_cap=8)
         output = self.written_output()
         result = json.loads((output / "load-report.json").read_text())
         self.assertEqual(result["available_cpu_capacity_percent"], 25.0)
