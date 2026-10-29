@@ -1,0 +1,11 @@
+{
+  "closure_commit": "89550dba6c481653ffc38cd78997438e846947f2",
+  "cloud_source_commit": "c6ebc8327e8dfe65dfa384a3fe77da709343a4dd",
+  "handoff_id": "checkpoint1229-cloud-a08f55ff0c7548f58ff9d50ef5af8ba7",
+  "receipt": {
+    "bytes": 43157,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/cloud-import.json",
+    "sha256": "521177c64827722cd56a68f02c24865aa6fa93f5bc348c4928d0e00d4c74d06d"
+  },
+  "schema": "heroes-cloud1335-mac-import-v1-profile"
+}

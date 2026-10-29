@@ -192,6 +192,16 @@ def final_parent(run):
 
 
 def original_continuation(anchor, config, recovery_receipt=None):
+    """Select the audited local lineage, including an explicitly pinned cloud import."""
+    imported = Path(config['run_root']) / 'cloud-import.json'
+    from tools.cloud_state_import import continuation, import_required
+    if imported.exists() or imported.is_symlink() or import_required(config):
+        return continuation(anchor, config, imported, recovery_receipt,
+                            local_auditor=_local_original_continuation)
+    return _local_original_continuation(anchor, config, recovery_receipt)
+
+
+def _local_original_continuation(anchor, config, recovery_receipt=None, *, moving_snapshots=None):
     """Audit the closed 699 lineage and calculate the *remaining* original target.
 
     This never resumes a consumed session. The durable seed ledger survives fresh
@@ -201,6 +211,20 @@ def original_continuation(anchor, config, recovery_receipt=None):
     from experiments.learner import local_script_training as adapter
     from experiments.learner.builtin_training_resume import binding, require
     from experiments.headless.contextual_evidence import strict_json
+    # Only the pinned cloud-import verifier supplies the exact pre-handoff
+    # snapshots. The complete original ancestry and checkpoint1229 recovery are still
+    # recomputed; no historical files or current moving pointers are rewritten.
+    read = globals()['read']
+    if moving_snapshots is not None:
+        from tools.recover_interrupted_training import MOVING
+        require(type(moving_snapshots) is dict and set(moving_snapshots) == set(MOVING)
+                and all(type(value) is str for value in moving_snapshots.values()),
+                'Cloud import requires exact original moving snapshots')
+        def read(path):
+            path = Path(path).resolve()
+            if path.parent == Path(config['run_root']).resolve() and path.name in moving_snapshots:
+                return strict_json(moving_snapshots[path.name])
+            return globals()['read'](path)
     anchor = Path(anchor).expanduser().resolve()
     root = Path(config['run_root']).resolve()
     evidence, recoveries, clean_runs = {}, {}, set()
@@ -292,7 +316,8 @@ def original_continuation(anchor, config, recovery_receipt=None):
                     require(binding(selected_receipt) == inherited['receipt'], 'Inherited recovery receipt differs')
                     recoveries[str(run)] = validate_receipt(selected_receipt, run, config, inherited=True)
                 else:
-                    recoveries[str(run)] = validate_receipt(selected_receipt, run, config)
+                    options = {'inherited': True} if moving_snapshots is not None else {}
+                    recoveries[str(run)] = validate_receipt(selected_receipt, run, config, **options)
             recovery = recoveries[str(run)]
             require(recovery['parent'] == report['latest_parent']
                     and recovery['progress'] == report['latest_progress'],
@@ -381,7 +406,7 @@ def original_continuation(anchor, config, recovery_receipt=None):
     progress = latest['progress']
     require(progress['updates'] == 699 + continued and progress['rollouts'] == 2796 + 4*continued,
             'Continuation counters differ from the verified four-game ancestry')
-    ledger = ledger_shape(strict_json((root / 'sequence-ledger.json').read_bytes()), 'current')
+    ledger = ledger_shape(read(root / 'sequence-ledger.json'), 'current')
     for label, snapshot in ledger_snapshots:
         require(ledger['consumed'][:len(snapshot['consumed'])] == snapshot['consumed']
                 and ledger['next_sequence'] >= snapshot['next_sequence'],
