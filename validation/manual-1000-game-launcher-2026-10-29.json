@@ -15,6 +15,7 @@
       "kind": "expected_source_gate_rejection"
     }
   ],
+  "implementation_commit": "4f14064c881928af5cad7622abeaad490f076439",
   "implementation_sha256": {
     "continue-original-native.sh": "c95870dce36a7042e95b358980fc0a08317c0656c995024664adac9d4a6aafac",
     "experiments/learner/local_script_training.py": "abbce74435519a9c59e842c7b473e507e3ae8bb3b4e9e2ea4b21e42a30f22cbd",
@@ -33,7 +34,17 @@
     "Source and launcher changes only; unchanged numerical runtime was loaded and verified, not rebuilt or rebenchmarked.",
     "Clean manual or budget stops may return zero before 1000 games; target_games_met and admitted_training_games determine completion."
   ],
-  "main_checkout_check": null,
+  "main_checkout_canonical_engine_check_passed": true,
+  "main_checkout_check": {
+    "command": "./train-1000.sh --check",
+    "elapsed_output_verified": true,
+    "exit_status": 2,
+    "result": "refused_existing_cloud_ownership_fence_before_runner",
+    "source_commit": "4f14064c881928af5cad7622abeaad490f076439",
+    "timestamp_utc": "2026-10-29T18:40:32.887315+00:00",
+    "total_seconds": 0.29
+  },
+  "main_checkout_native_gate_and_actual_library_load_passed": true,
   "native_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
   "native_gate_and_actual_library_load_passed": true,
   "native_manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623",

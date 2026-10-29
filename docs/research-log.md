@@ -851,3 +851,9 @@ The real worktree preflight correctly refused the existing cloud ownership fence
 and printed its elapsed time. All six official pointer/lock snapshots remained
 unchanged. No seeds, games or official updates were created; verified cloud
 closure and latest-state import are still required before local continuation.
+
+The synchronized main checkout independently passed native-library loading and
+canonical engine agreement. Its exact `./train-1000.sh --check` command refused
+the unchanged fence with status 2 and printed total running time of 0.29 seconds.
+The final compact receipt binds implementation commit `4f14064` and preserves
+the separate historical performance acceptance evidence.

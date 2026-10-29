@@ -71,7 +71,10 @@ Reviewed fast-path pins, shell syntax and `tools/prepare_vcmi.py --check` passed
 **Mac launch readiness remains false.** The real worktree check refused the
 existing read-only cloud ownership fence with exit status 2 and printed elapsed
 time. Neither a fresh latest cloud checkpoint nor its current remaining-game
-count was verified here. Local checkpoint 1229 is not a substitute for a newer
+count was verified here. The synchronized main-checkout command also refused
+the fence with exit status 2 and printed `00:00:00 (0.29 seconds)`. Main passed
+canonical engine agreement and loaded the accepted native library under its
+updated source gate. Local checkpoint 1229 is not a substitute for a newer
 cloud state. All six official pointer/lock snapshots retain their exact hashes,
 modes and inode identities. This task does not authorize releasing the fence or
 starting another worker. Raw evidence and full state remain private.
