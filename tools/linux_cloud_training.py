@@ -33,6 +33,30 @@ def binding(path):
     return actual(path)
 
 
+def verify_lifetime(path):
+    """Require an observed post-turn interval, never infer it from nohup."""
+    receipt = read(path)
+    require(receipt['schema'] == 'heroes-cloud-post-turn-probe-v1'
+            and receipt['boot_id'] == Path('/proc/sys/kernel/random/boot_id').read_text().strip(),
+            'Post-turn lifetime evidence is for another VM')
+    for value in (receipt['completion'], receipt['heartbeats']):
+        require(binding(value['path']) == value, 'Lifetime evidence changed')
+    completion = read(receipt['completion']['path'])
+    from experiments.headless.contextual_evidence import strict_json
+    rows = [strict_json(line) for line in Path(receipt['heartbeats']['path']).read_bytes().splitlines()]
+    ended = receipt['agent_turn_completed_unix']
+    require(type(ended) in (int,float) and completion['status'] == 'deadline_reached'
+            and completion['gaps_observed'] == 0 and completion['started_unix'] < ended,
+            'No complete background observation across agent turn completion')
+    after = [row for row in rows if row['observed_unix'] > ended]
+    require(len(after) >= 12 and after[-1]['observed_unix']-after[0]['observed_unix'] >= 60
+            and all(row['pid'] == completion['pid'] and row['run_id'] == completion['run_id']
+                    and row['gap_observed'] is False for row in rows),
+            'Insufficient continuous post-turn background observations')
+    return dict(post_turn_seconds_observed=after[-1]['observed_unix']-ended,
+                run_id=completion['run_id'], ten_hour_service_guarantee=False)
+
+
 def validate_native(folder, runtime, expected_count):
     from validation.probes.validate_garrison_dialogs import implementation_identity
     from tools.validate_garrison_regressions import implementation_identity as regression_identity
@@ -95,6 +119,8 @@ def prepare(args):
     require(execution['collection_workers'] == 4 and execution['experiments'] == [], 'Original execution choices differ')
     require(old_session['policy_support'] == 'visible-interaction-budget-v1', 'Policy support changed')
     root = args.artifact_root.resolve()
+    require(not root.is_relative_to(ROOT), 'Private artifacts must stay outside the source checkout')
+    lifetime = verify_lifetime(args.lifetime_receipt)
     config = dict(schema='heroes-linux1229-cloud-job-v1', default_profile='original',
         seed_namespace=local.SEED_NAMESPACES['original'], source=source_identity(local.INTERFACE),
         implementation=pilot.implementation(), prerequisites=pilot.prerequisites(), parent=parent,
@@ -104,6 +130,7 @@ def prepare(args):
         policy_support='visible-interaction-budget-v1', handoff_id=HANDOFF, full_state_sha256=FULL_STATE,
         remaining_games=remaining, continuation=continuation,
         evidence=dict(freeze=binding(args.freeze), manifest=binding(args.bundle/'manifest.json'),
+                      lifetime=binding(args.lifetime_receipt),
                       fence=binding(args.bundle/'handoff-control.json'),
                       **{'native/'+k:v for k,v in native.items()},
                       **{'regression/'+k:v for k,v in regression.items()},
@@ -113,7 +140,7 @@ def prepare(args):
         base_ref='refs/heads/codex/checkpoint1229-full-handoff',
         base_commit='cc674fc0f7f455c74d34f139255ab8aefb85c3b1',
         bundle=str(args.bundle.resolve()), extracted=str(args.evidence.resolve()),
-        authorized_hours=10, automatic_restart=False, training_started=False)
+        authorized_hours=10, platform_lifetime_observation=lifetime, automatic_restart=False, training_started=False)
     require(not args.output.exists(), 'Existing machine descriptor will not be overwritten')
     from tools.run_local_training import atomic
     atomic(args.output, config)
@@ -136,6 +163,7 @@ def check_config(path, expected):
             and pilot.implementation() == value['implementation'] and pilot.prerequisites() == value['prerequisites'],
             'Frozen Linux source or prerequisites changed')
     for item in value['evidence'].values(): require(binding(item['path']) == item, 'Linux acceptance evidence changed')
+    verify_lifetime(value['evidence']['lifetime']['path'])
     check_freeze(value['evidence']['freeze']['path'])
     state = local.restore_parent(value['parent'])
     from tools.recover_interrupted_training import fingerprint
@@ -248,10 +276,22 @@ def supervisor(args):
         files={name:run/name for name in ('session.json','campaign-report.json','summary.json','shutdown.json')}
         files['sequence-ledger.json']=root/'sequence-ledger.json'
         if (root/'latest-checkpoint.json').exists(): files['latest-checkpoint.json']=root/'latest-checkpoint.json'
-        if (root/'pending-checkpoint.json').exists(): files['pending-checkpoint.json']=root/'pending-checkpoint.json'
+        if (root/'latest-checkpoint.json').exists():
+            latest = read(root/'latest-checkpoint.json')['parent']
+            for key,name in [('plan','plan.json'),('report','report.json'),('policy','after-policy.pt'),
+                             ('resume','after-resume.pt'),('initial_checkpoint','initial-checkpoint.pt')]:
+                files[name] = Path(latest[key]['path'])
+        if (root/'pending-checkpoint.json').exists():
+            files['pending-checkpoint.json']=root/'pending-checkpoint.json'
+            pending = read(root/'pending-checkpoint.json')['parent']
+            for key in ('plan','report','policy','resume','initial_checkpoint'):
+                files['pending-'+key+Path(pending[key]['path']).suffix] = Path(pending[key]['path'])
         closure=publish_transaction(base_ref=claim_ref,destination_ref=cloud['results_ref'],prefix='cloud/'+HANDOFF+'/closure',
             files=files,deadline=hard,temporary_root=Path(config['artifact_root'])/'publication-tmp')
         controller.atomic(root/'private-closure.json',closure)
+        live = read(root/'live-session.json')
+        live.update(training_supervisor_live=False, private_closure=closure, supervisor_returncode=rc)
+        controller.atomic(root/'live-session.json',live)
         return rc
 
 
@@ -259,7 +299,7 @@ def main():
     os.umask(0o077)
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='action',required=True)
     p=sub.add_parser('prepare')
-    for name in ('bundle','evidence','freeze','garrison','regression','policy','artifact-root','data','output'):
+    for name in ('bundle','evidence','freeze','garrison','regression','policy','artifact-root','data','output','lifetime-receipt'):
         p.add_argument('--'+name,type=Path,required=True)
     p=sub.add_parser('freeze-source');p.add_argument('--artifact-root',type=Path,required=True)
     for action in ('check','launch','_supervisor'):
