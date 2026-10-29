@@ -67,6 +67,17 @@ setup gate before downloads or training; see the
 No training was restarted. Improvement in winning on the original map has not
 been demonstrated.
 
+The current Debian 13 CPU cloud environment is prepared for **development only**.
+The native build and eight asset-free runtime checks pass. Its Python 3.12 full
+suite has a diagnosed Python 3.12/3.13 AST-hash portability defect; no integrity
+guard was relaxed. A private offline check restored checkpoint 1,229 to the
+recorded complete-state fingerprint, and 14 asset-backed native tests passed.
+The supplied handoff still lacks 133 of the last session's 134 admitted batch
+plan/report pairs. Linux continuation acceptance, enforceable cross-host
+ownership and persistent job execution remain outstanding. Private downloads
+were removed before the development snapshot; no training, PPO update or seed
+reservation occurred. See the [development handoff](validation/cloud-development-handoff-2026-10-29.json).
+
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate
 experiment branches and their PRs describe the history.

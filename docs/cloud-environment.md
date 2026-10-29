@@ -1,5 +1,49 @@
 # Cloud development and real-game handoff
 
+## Current development environment: 29 October 2026
+
+The prepared Debian 13 amd64 environment is **development-only, not
+training-ready**. CPython 3.12.14 and CPU Torch 2.9.1+cpu are installed from the
+existing Linux hash lock. All six documented native targets, the optional
+session host, and the session/shutdown contract targets build. Repeating the
+installer succeeds without rebuilding the six main targets. All eight
+asset-free runtime checks pass.
+
+The full suite ran 1,710 tests and reported eight failure events, nine error
+events and five skips. The failure/error events come from source-integrity
+checks in `test_local_fast_path.py` and `test_local_script_training.py`: the
+recorded adapter AST hash matches Python 3.13 serialization but differs on
+Python 3.12. This defect remains documented and unfixed in the development
+snapshot. Fix the serialization portability in the training task while retaining
+strict source identity and tamper rejection, then rerun validation.
+
+The supported managed status tool, enforced network-policy snapshot and native
+Git access now work. A separate private preflight restored checkpoint 1,229
+exactly through the standard loaders and passed 14 native tests with privately
+reconstructed original game content. This does not establish accepted Linux
+policy collection/replay or complete admitted ancestry: the restore-only bundle
+omits 133 of the last session's 134 admitted batch plan/report pairs. All 17
+advertised private repository branch tips were inspected; the other tips
+predate that session. A complete immutable lineage archive is still required.
+The existing runner has only host-local locks; no enforceable cross-host
+handoff or independent persistent job service has been established.
+
+The private audit and validation evidence were published to a separate private
+preflight branch and independently read back, along with the unchanged five
+checkpoint descriptor files. All downloaded private checkouts, checkpoints and
+game Data were then removed from the VM so they cannot enter its development
+snapshot. No game, official seed reservation or PPO update was launched.
+
+The tested `install_script` and activation/start instructions are saved in the
+environment draft. Publication is a separate user action in environment
+settings; neither saving that draft nor this handoff establishes publication or
+restoration in a fresh task. The authorized ten-hour training continuation
+remains pending its separate validation, full lineage, private inputs,
+exclusive ownership and process-lifetime gates. See the
+[compact handoff](../validation/cloud-development-handoff-2026-10-29.json).
+
+The sections below retain earlier cloud work and its historical scope.
+
 ## Purpose and current state
 
 The user requested the entire engineering loop in the cloud: code changes,

@@ -743,3 +743,31 @@ confirmed that those locks are local flock files, not a cross-host lease. A
 cloud start still needs accepted Linux binaries, complete lineage relocation
 and enforceable ownership. No official experience or optimizer update occurred.
 See the [attempt record](../validation/cloud-launch-attempt-2026-10-29.json).
+
+## 29 October 2026 — development cloud environment; training remains pending
+
+The current cloud preflight clears the earlier managed-status, network-policy
+and native Git access blockers. Its clean native build, repeated installation
+and eight asset-free runtime checks pass. The 1,710-test Linux suite retains
+eight failure events and nine error events from a Python 3.12/3.13 AST-hash
+serialization defect, plus five private-input skips. No integrity guard or
+experiment setting was weakened.
+
+An isolated standard-loader restore of the private checkpoint 1,229 matches the
+recorded full model/Adam/RNG/progress/sampler/pool fingerprint. Four original
+content archives passed their private manifest hashes, and all 14 selected
+asset-backed native tests passed. These checks ran no gameplay or PPO and do
+not replace fresh Linux policy/replay acceptance. The supplied bundle lacks
+133 of 134 latest-session admitted batch plan/report pairs. Cross-host ownership
+and independent persistent execution also remain unestablished.
+
+The user directed publication as a development environment with the known
+failures documented, explicitly not as training-ready. The private preflight
+evidence and unchanged checkpoint descriptor files passed fresh network
+readback; downloaded private material was then removed from the VM before its
+development snapshot. The environment draft records setup and activation.
+Actual environment publication remains a user UI operation. No training
+supervisor, ten-hour window, official reservation or optimizer update started.
+The [development handoff](../validation/cloud-development-handoff-2026-10-29.json)
+records the pending training gates; the existing launch authorization is not
+consumed by these checks.

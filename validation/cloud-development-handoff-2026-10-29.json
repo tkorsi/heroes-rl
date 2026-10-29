@@ -1,0 +1,114 @@
+{
+  "schema": "heroes-cloud-development-handoff-v1",
+  "timestamp_utc": "2026-10-29T02:23:15.308459+00:00",
+  "status": "development_prepared_training_not_ready",
+  "validated_source_commit": "3413de4e48352e55a177ad3fa374672b1c03cf46",
+  "environment": {
+    "os": "Debian 13 amd64",
+    "python": "3.12.14",
+    "torch": "2.9.1+cpu",
+    "compiler": "GCC 14.2.0",
+    "cmake": "3.31.6",
+    "ninja": "1.12.1",
+    "cpu_quota": 4,
+    "memory_limit_bytes": 34359738368,
+    "free_disk_bytes_at_handoff": 26890117120
+  },
+  "cloud_checks": {
+    "observations_current": true,
+    "runtime_running": true,
+    "connectivity": "connected",
+    "network_policy_file_version": 1,
+    "network_policy_state": "enforced",
+    "github_git_read": true,
+    "private_git_publication_and_fresh_readback": true
+  },
+  "development_validation": {
+    "initial_native_build": "all six documented targets built from a new build directory",
+    "additional_targets": [
+      "vcmisession",
+      "native_session_contract",
+      "native_headless_shutdown_order"
+    ],
+    "repeat_install": "passed; main targets reported ninja: no work to do",
+    "canonical_recipe_check": "passed",
+    "asset_free_runtime_checks": {
+      "passed": 8,
+      "failed": 0
+    },
+    "documented_python_help_commands_passed": 5,
+    "full_suite": {
+      "tests_run": 1710,
+      "failure_events": 8,
+      "error_events": 9,
+      "skipped": 5,
+      "diagnosis": "Adapter AST pin matches Python 3.13 serialization and differs on Python 3.12; all failure/error events are in test_local_fast_path.py and test_local_script_training.py.",
+      "integrity_checks_weakened": false
+    },
+    "separate_asset_backed_native_suite": {
+      "tests_run": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "gameplay_performed": false
+    },
+    "private_original_content_files_verified": 4
+  },
+  "checkpoint_preflight": {
+    "state_commit": "9f812e5d2b8ae85de42ce631e1df38840ad54d36",
+    "verified_manifest_files": 42,
+    "standard_pair_restore": true,
+    "full_state_sha256": "c5882092150d55b4c07df368534f63b0c742bdd74982f1228210007f67c5ad7e",
+    "all_component_hashes_match": true,
+    "progress": {
+      "updates": 1229,
+      "rollouts": 4916,
+      "decisions": 627977
+    },
+    "optimizer_steps": 21238,
+    "recorded_original_admitted_games": 2400,
+    "recorded_remaining_games": 2600,
+    "recorded_next_sequence": 869,
+    "recorded_counts_are_not_complete_lineage_reverification": true,
+    "source_compatibility_gate": "refused Python 3.12 AST identity; not bypassed",
+    "historical_metadata_rewritten": false
+  },
+  "remaining_training_gates": [
+    "Fix Python 3.12/3.13 AST serialization portability while preserving strict identity and tamper rejection; rerun validation.",
+    "Obtain and independently verify complete immutable admitted lineage and consumed reservations. The supplied bundle lacks 133 of 134 last-session admitted batch plan/report pairs. All 17 advertised private branch tips were inspected; other tips predate the last session.",
+    "Implement and validate Linux relocation and fresh frozen-policy collection/replay on actual accepted Linux binaries using isolated diagnostic state and fresh seeds.",
+    "Establish enforceable exclusive ownership across Mac and cloud; existing runner locks are host-local only.",
+    "Provide an approved persistent execution mechanism independent of this chat. No active system or user service manager or persistent job capability was established.",
+    "Recheck current checkpoint/ledger, private inputs, capacity, publication, and owned cleanup before the single authorized ten-hour launch."
+  ],
+  "private_preservation": {
+    "private_repository": "tkorsi/heroes-rl-training-state",
+    "branch": "codex/cloud1229-development-preflight-20261029",
+    "commit": "36fe45f6fc085289dc6b9fa77acc3b4e0a3a9e3a",
+    "receipt_sha256": "a0ba422152ff44dc7f3f931c92db688978dd3e9ce9077555365de395605e3a81",
+    "fresh_network_readback": true,
+    "audit_files_verified": 7,
+    "unchanged_checkpoint_descriptor_files_verified": 5,
+    "training_started": false,
+    "private_downloads_removed_before_environment_publication": true
+  },
+  "environment_configuration": {
+    "install_script_saved": true,
+    "start_skill_saved": true,
+    "training_ready": false,
+    "environment_publication_confirmed": false,
+    "publication_action": "Review and save the development draft in environment settings, then publish; no publication tool is exposed."
+  },
+  "launch": {
+    "authorized_hours": 10,
+    "training_started": false,
+    "supervisor_pid": null,
+    "session_receipt": null,
+    "window_started": false,
+    "hard_deadline_utc": null,
+    "official_games": 0,
+    "ppo_updates": 0,
+    "official_seed_reservations": 0,
+    "automatic_restart": false
+  }
+}
