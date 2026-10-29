@@ -155,3 +155,20 @@ output. Three synthetic clock cases (wall expiry, monotonic expiry, and a
 backward wall jump with monotonic expiry) each stopped after one wait and
 recorded the discontinuity. These are probe checks, not cloud-lifetime or
 training validation. No official artifact was changed.
+
+## Subsequent explicit launch request
+
+The user later authorized a new cloud chat to start a ten-hour script. That
+authorization supersedes the earlier preparation-only scope, but does not make
+the Mac package Linux-ready. The new chat `Setup blocked report` stopped before
+download or launch because its executor again lacked the managed status tool
+and required network-policy snapshot. No training window started. The
+[attempt record](../../validation/cloud-launch-attempt-2026-10-29.json) records
+current resource observations and the unchanged Mac checkpoint audit.
+
+The current runner has only host-local flock exclusion. Establish an enforceable
+exclusive handoff before any remote official game, and separately validate full
+lineage relocation and actual Linux runtime binaries. The app's computer-use
+policy denied opening its own settings, so environment configuration could not
+be repaired from the local task. Supported environment setup is documented in
+[Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments#create-and-publish-an-environment).

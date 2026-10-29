@@ -1,0 +1,73 @@
+{
+  "additional_prelaunch_gates": [
+    "Accepted Linux runtime and actual rebuilt binary validation",
+    "Full-state and immutable lineage relocation without weakening admission",
+    "Enforceable cross-host ownership; Mac flock files alone do not exclude a remote worker"
+  ],
+  "blockers": [
+    "Managed cloud environment_status tool not exposed",
+    "Required /etc/codex/network-policy.json absent; enforced networking not established",
+    "Repository credential readiness unverified"
+  ],
+  "chat_title": "Setup blocked report",
+  "cloud_observations": {
+    "absent_tools": [
+      "cmake",
+      "ninja",
+      "docker",
+      "tmux"
+    ],
+    "architecture": "x86_64",
+    "available_tools": [
+      "git",
+      "python",
+      "g++"
+    ],
+    "cgroup_cpu_quota_equivalent": 8,
+    "cgroup_memory_gib": 8,
+    "free_disk_gib_approx": 29.8,
+    "kernel": "Linux 6.18.55",
+    "launch_attempts": 0,
+    "outbound_identity_manifest_present": false,
+    "repository_downloads": 0,
+    "visible_cpus": 9
+  },
+  "conversation_id": "6ae2a223-538c-83eb-9bcc-b55cb9f7df99",
+  "executor_thread_id": "01a18549-6836-727e-8002-25d4da652064",
+  "lifetime_measured": false,
+  "local_observation": {
+    "check_hours": 10,
+    "check_returncode": 0,
+    "checked_files": 21,
+    "checked_files_unchanged": true,
+    "checkpoint": 1229,
+    "decisions": 627977,
+    "exact_restore": true,
+    "local_training_launched": false,
+    "matching_old_processes": 0,
+    "next_sequence": 869,
+    "owner_locks_free": true,
+    "recorded_groups": 1401,
+    "recorded_pids": 2803,
+    "remaining_games": 2600,
+    "rollouts": 4916,
+    "timestamp_utc": "2026-10-29T01:31:47Z"
+  },
+  "next_step": "Configure and publish a supported cloud environment with authorized repository access; then validate Linux relocation/runtime and exclusive ownership before one bounded ten-hour launch.",
+  "official_games": 0,
+  "official_ppo_updates": 0,
+  "requested_hours": 10,
+  "schema": "heroes-authorized-cloud-launch-attempt-v1",
+  "settings_fallback": {
+    "message": "Computer Use is not allowed to use the app 'com.openai.codex' for safety reasons.",
+    "method": "Computer Use getApp com.openai.codex",
+    "settings_changed": false,
+    "status": "denied_by_tool_policy"
+  },
+  "source_commit": "6b97244890af9bdc7d0ca14a289088d57dc5ffa2",
+  "status": "setup_blocked_before_download_or_launch",
+  "timestamp_utc": "2026-10-29T01:34:11.209062+00:00",
+  "training_launched": false,
+  "user_authorized_cloud_training": true,
+  "window_started": false
+}

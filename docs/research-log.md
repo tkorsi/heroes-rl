@@ -724,3 +724,22 @@ process probe: required environment status and network-policy inputs were
 unavailable. Cloud lifetime is unmeasured, not observed to fail. The standalone
 trainer has no model calls; no recurring model supervision or cloud training was
 started. No new strategic improvement or throughput claim is made.
+
+## 29 October 2026 — authorized ten-hour cloud launch blocked during setup
+
+The user explicitly authorized a new cloud chat and a ten-hour official script.
+The new chat `Setup blocked report` (conversation
+`6ae2a223-538c-83eb-9bcc-b55cb9f7df99`) stopped before any repository download or
+launch. Its executor again lacked the required managed status tool and
+network-policy snapshot; credential readiness remained unverified. An attempt
+to inspect cloud setup through Computer Use was denied by the app-access policy.
+No settings were changed and the ten-hour window never started. This is a setup
+block, not a gameplay failure or evidence about detached process lifetime.
+
+The current Mac ten-hour check still passed at checkpoint 1229, with 2,600 games
+remaining and sequence 869 next. Both owner locks were free, no matching old
+processes remained, and 21 checked files stayed byte-exact. Source inspection
+confirmed that those locks are local flock files, not a cross-host lease. A
+cloud start still needs accepted Linux binaries, complete lineage relocation
+and enforceable ownership. No official experience or optimizer update occurred.
+See the [attempt record](../validation/cloud-launch-attempt-2026-10-29.json).

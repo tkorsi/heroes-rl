@@ -61,6 +61,9 @@ collectors; use `--hours 10` for ten hours. Keep the Mac awake with its lid open
 The private checkpoint copy was independently downloaded and restored exactly.
 The authorized cloud lifetime probe was blocked before launch by missing
 managed-environment prerequisites; unattended cloud execution remains unverified.
+A subsequent explicitly authorized ten-hour cloud launch also stopped at that
+setup gate before downloads or training; see the
+[attempt record](validation/cloud-launch-attempt-2026-10-29.json).
 No training was restarted. Improvement in winning on the original map has not
 been demonstrated.
 
