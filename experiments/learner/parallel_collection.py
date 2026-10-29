@@ -458,12 +458,16 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
                     progress(index, worker_failure=failed)
                 except Exception as failure_error:
                     progress(index, failure_record_error=f'{type(failure_error).__name__}: {failure_error}')
-            # A verified individual history remains evidence, but its capability
-            # was revoked with the failed batch and cannot be reported as live.
-            progress(index, completion_receipt=False, batch_admission='rejected')
-            if attempt['status'] != 'passed':
+            # Keep individual verification evidence, but do not advertise a
+            # passed attempt after revoking its failed batch's capability.
+            if attempt['status'] == 'passed':
+                progress(index, status='rejected', reason='batch_aborted',
+                         error=f'{type(error).__name__}: {error}',
+                         completion_receipt=False, batch_admission='rejected')
+            else:
                 progress(index, status='failed' if attempt['status'] != 'not_started' else 'not_started',
-                         reason='batch_aborted', error=f'{type(error).__name__}: {error}', completion_receipt=False)
+                         reason='batch_aborted', error=f'{type(error).__name__}: {error}',
+                         completion_receipt=False, batch_admission='rejected')
         pilot.write(control / 'result.json', {'schema': SCHEMA, 'status': 'failed', 'workers': workers,
             'verification_workers': verification_workers,
             'batch_size': batch_size, 'wall_seconds': time.monotonic()-started, 'attempts': attempts,

@@ -97,7 +97,7 @@ inline JsonNode contextualRequestAccounting(const std::vector<JsonNode> & tape,
 		}
 
 		// Only a single opposite-seat MoveHero, BuildStructure, EndTurn,
-		// ExchangeArtifacts or TradeOnMarketplace sent while the
+		// GarrisonHeroSwap, ExchangeArtifacts or TradeOnMarketplace sent while the
 		// final native outcome packets were consumed may have no server application.
 		// The sealed server cannot accept it after the terminal input finishes.
 		if(prefix || learner < 0 || inputs.empty() || !unapplied.empty() || terminalInput.isNull()
@@ -109,7 +109,7 @@ inline JsonNode contextualRequestAccounting(const std::vector<JsonNode> & tape,
 			|| request->player != PlayerColor(1 - learner)
 			|| (!dynamic_cast<const MoveHero *>(request) && !dynamic_cast<const BuildStructure *>(request)
 				&& !dynamic_cast<const EndTurn *>(request) && !dynamic_cast<const ExchangeArtifacts *>(request)
-				&& !dynamic_cast<const TradeOnMarketplace *>(request))
+				&& !dynamic_cast<const TradeOnMarketplace *>(request) && !dynamic_cast<const GarrisonHeroSwap *>(request))
 			|| terminalInput["request_id"].Integer() == std::numeric_limits<uint32_t>::max()
 			|| item["request_id"].Integer() != terminalInput["request_id"].Integer() + 1
 			|| receipt["index"].getType() != JsonNode::JsonType::DATA_INTEGER

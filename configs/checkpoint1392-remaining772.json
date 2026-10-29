@@ -1,0 +1,57 @@
+{
+  "schema": "heroes-manual-continuation-goal-v1",
+  "id": "checkpoint1392-remaining772-v1",
+  "run_root_relative": "local-script-training/original",
+  "origin_run": "run-20261026T181133Z-062cd75a",
+  "anchor_parent": {
+    "plan": {
+      "path": "run-20261029T195027Z-64238b2b/batches/train-001031-seat1/plan.json",
+      "sha256": "34a7afefa465614eb4a1cedfc2725568a0a1da858d07d960effbe3db342bc6f1",
+      "bytes": 73266
+    },
+    "report": {
+      "path": "run-20261029T195027Z-64238b2b/batches/train-001031-seat1/execution/report.json",
+      "sha256": "a2654ef5462406c24bb21be1ce921f3212c744f844bd842dcb03cb6cffcbbbb8",
+      "bytes": 15658
+    },
+    "policy": {
+      "path": "run-20261029T195027Z-64238b2b/batches/train-001031-seat1/execution/after-policy.pt",
+      "sha256": "aeadf9e6cf3089edf8e0013cc439868d2cd7a6ad618cda2b688ed92de81fa0a7",
+      "bytes": 639347
+    },
+    "resume": {
+      "path": "run-20261029T195027Z-64238b2b/batches/train-001031-seat1/execution/after-resume.pt",
+      "sha256": "8e0b97d2aa34296c5177a8edb42bb7f7cce01ce1e211d08a194b9f454fef1959",
+      "bytes": 1267445
+    },
+    "initial_checkpoint": {
+      "path": "run-20261029T195027Z-64238b2b/batches/train-001030-seat0/execution/after-policy.pt",
+      "sha256": "0a7b6266df557802a47615eafcbe4fa9b0ee8175e743f5bd49aef33fa2693c74",
+      "bytes": 639347
+    }
+  },
+  "anchor_progress": {
+    "updates": 1392,
+    "rollouts": 5568,
+    "decisions": 729985
+  },
+  "admitted_original_at_anchor": 3052,
+  "additional_games": 772,
+  "minimum_next_sequence": 1033,
+  "failed_sequence": 1032,
+  "failed_worker": {
+    "path": "run-20261029T195027Z-64238b2b/batches/train-001032-seat0/execution/worker-report.json",
+    "sha256": "a791da5a23b9865dccc0767d8fbed1a1aff40ef55817daca9be816aa38119a3c",
+    "bytes": 12656
+  },
+  "failed_plan": {
+    "path": "run-20261029T195027Z-64238b2b/batches/train-001032-seat0/plan.json",
+    "sha256": "45d7f68e804cc2362f95969fa6f2434fdb20b25c7da36fdb65a1dfc742bf82dd",
+    "bytes": 73266
+  },
+  "failed_report": {
+    "path": "run-20261029T195027Z-64238b2b/batches/train-001032-seat0/execution/report.json",
+    "sha256": "535e4c7994cca8a4829a2e020ceb34b0bb38b792b746c2723b4fcb6ed8521225",
+    "bytes": 2914
+  }
+}

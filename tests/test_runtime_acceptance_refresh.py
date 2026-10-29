@@ -47,6 +47,75 @@ class RuntimeRefreshTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):refresh.write_new(path,{'second':True})
             self.assertEqual(path.read_bytes(),before)
 
+    def test1392_requires_its_explicit_private_diagnostic_and_reviewed_release(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            options = self.options(root)
+            options.checkpoint_update = 1392
+            options.release_id = 'terminal-replay-1392-v1'
+            diagnostic = root/'run-investigations/2026-10-29-batch1032/replay/diagnostic.json'
+            with patch.object(refresh, 'ARTIFACTS', root):
+                with self.assertRaisesRegex(ValueError, 'explicit excluded replay proof'):
+                    refresh.checked_options(deepcopy(options))
+                options.terminal_diagnostic = diagnostic
+                checked = refresh.checked_options(deepcopy(options))
+                self.assertEqual(checked.terminal_diagnostic, diagnostic)
+                for name, value in (('terminal_diagnostic', None), ('terminal_diagnostic', root/'diagnostic.json'),
+                                    ('terminal_diagnostic', root/'local-script-training/diagnostic.json'),
+                                    ('terminal_diagnostic', diagnostic.parent/'../../../outside.json'),
+                                    ('checkpoint_update', 1335), ('release_id', 'terminal-replay-cloud1335-v1')):
+                    changed = deepcopy(options); setattr(changed, name, value)
+                    with self.subTest(name=name, value=value), self.assertRaises(ValueError):
+                        refresh.checked_options(changed)
+
+    def test1392_candidate_binds_new_freeze_replay_and_native_controls(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            options = self.options(root)
+            options.checkpoint_update = 1392
+            options.release_id = 'terminal-replay-1392-v1'
+            options.terminal_diagnostic = root/'run-investigations/2026-10-29-batch1032/replay/diagnostic.json'
+            old_runtime, new_runtime = root/'runtime/old', root/'runtime/new'
+            old = old_runtime/'accepted-runtime.json'
+            write(old, dict(policy_reconstruction={'historical': True}, runtime_bin=str(old_runtime/'bin'),
+                runtime_files={'vcmiclient': 'old-client', 'vcmireplay': 'old-replay'},
+                freeze={'old': True}, preflight={'old': True}, terminal_replay={'old': True},
+                engine_recipe={'old': 'recipe'}, change_classification='replay-verifier-support-extension'))
+            write(new_runtime/'freeze-receipt.json', dict(artifacts=[
+                {'path': 'vcmiclient', 'frozen_sha256': 'new-client'},
+                {'path': 'vcmireplay', 'frozen_sha256': 'new-replay'},
+                {'path': 'vcmiserver', 'frozen_sha256': 'new-server'}]))
+            write(new_runtime/'preflight.json', {'new': 'preflight'})
+            write(options.terminal_diagnostic, {'new': 'excluded terminal replay'})
+            for output in (options.native_output, options.regression_output):
+                for name in ('execution/plan.json', 'execution/report.json', 'shutdown.json'):
+                    write(output/name, {'new': str(output/name)})
+            real_binding = refresh.binding
+            def bound(path):
+                result = real_binding(path)
+                if Path(path) == old:
+                    result['sha256'] = 'fffce8b1ee74c010f235b97a88547adc6ada3dce65251ac959a4b6dbe6e032b8'
+                return result
+            with patch.object(refresh, 'ARTIFACTS', root), patch.object(refresh, 'RUNTIME', old_runtime), \
+                    patch.object(refresh, 'TOWN_SWAP_RUNTIME', new_runtime), patch.object(refresh, 'binding', side_effect=bound), \
+                    patch.object(refresh.subprocess, 'check_output', return_value='c'*40+'\n'), \
+                    patch('tools.prepare_local_training.current_engine_recipe', return_value={'new': 'recipe'}), \
+                    patch.object(refresh, 'candidate_runtime_origin') as native_gate, \
+                    patch.object(refresh, 'terminal_replay_acceptance') as replay_gate, redirect_stdout(io.StringIO()):
+                refresh.candidate(options)
+            candidate = refresh.read(options.candidate_output)
+            self.assertEqual(candidate['runtime_bin'], str(new_runtime/'bin'))
+            self.assertEqual(candidate['runtime_files'], {'vcmiclient': 'new-client', 'vcmireplay': 'new-replay'})
+            self.assertEqual(candidate['engine_recipe'], {'new': 'recipe'})
+            self.assertEqual(candidate['freeze'], real_binding(new_runtime/'freeze-receipt.json'))
+            self.assertEqual(candidate['preflight'], real_binding(new_runtime/'preflight.json'))
+            self.assertEqual(candidate['terminal_replay'], real_binding(options.terminal_diagnostic))
+            self.assertEqual(candidate['native'], refresh.proof(options.native_output))
+            self.assertEqual(candidate['regression'], refresh.proof(options.regression_output))
+            self.assertNotIn('policy_reconstruction', candidate)
+            native_gate.assert_called_once_with(new_runtime/'bin', {'vcmireplay': 'new-replay'}, candidate)
+            replay_gate.assert_called_once_with(candidate, {'vcmireplay': 'new-replay'})
+
     def fixture(self,root):
         options=self.options(root)
         candidate=dict(schema='heroes-local-training-runtime-candidate-v1',status='candidate_native_validated',

@@ -433,12 +433,76 @@ class ParallelFailedBatchTests(unittest.TestCase):
     def test_later_rejection_revokes_earlier_completion_without_admitting_partial_batch(self):
         with tempfile.TemporaryDirectory() as temporary:
             result, error = self.collect(Path(temporary))
-        self.assertEqual(result['attempts'][0]['status'], 'passed')
+        self.assertEqual(result['attempts'][0]['status'], 'rejected')
         self.assertTrue(result['attempts'][0]['replay_verified'])
+        self.assertEqual(result['attempts'][0]['reason'], 'batch_aborted')
+        self.assertEqual(result['attempts'][0]['error'], 'RuntimeError: synthetic replay rejection')
         self.assertTrue(all(not item['completion_receipt'] for item in result['attempts']))
         self.assertTrue(all(item['batch_admission'] == 'rejected' for item in result['attempts']))
         self.assertEqual((result['optimizer_updates'], result['training_samples_admitted']), (0, 0))
         self.assertEqual(error.attempts, tuple(result['attempts']))
+
+    def test_later_training_rejection_survives_worker_and_supervisor_report_reader(self):
+        from contextlib import ExitStack
+        from experiments.learner import parallel_collection as parallel
+        from validation.probes import validate_hero_policy
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            rows = runner.schedule(1)
+            plan = dict(schema='heroes-builtin-training-v1-plan', mode='training',
+                configuration=runner.configuration(), execution={'collection_workers': 4},
+                execution_output=str(root), schedule=rows, runtime={}, native={}, source={},
+                parent={}, checkpoint={'path': '/synthetic/checkpoint'}, data='/synthetic/data',
+                replay_binary={'path': '/synthetic/replay'}, compute_deadline_unix=time.time()+60)
+            report = dict(plan_sha256='a'*64, attempts=[runner.pilot.empty_attempt(row) for row in rows],
+                update_status='not_started', optimizer_updates=0, optimizer_steps=0,
+                training_samples=0, training_performed=False)
+            runner.pilot.write(root/'report.json', report)
+            args = SimpleNamespace(plan=root/'plan.json', sha256='a'*64,
+                started=time.monotonic(), wall_started=time.time())
+            state = SimpleNamespace(model=object(), checkpoint='synthetic')
+            receipts = [object(), object()]
+            for receipt in receipts:
+                gameplay._RECEIPTS[id(receipt)] = receipt
+                self.addCleanup(gameplay._RECEIPTS.pop, id(receipt), None)
+
+            def supervise(*args, **kwargs):
+                for row in rows:
+                    (root/f"episode-{row['episode']:06d}").mkdir()
+
+            with ExitStack() as stack:
+                stack.enter_context(patch.object(parallel, '_read_plan', return_value=plan))
+                stack.enter_context(patch.object(parallel, '_check_identity'))
+                stack.enter_context(patch.object(runner.pilot, 'check_identity'))
+                stack.enter_context(patch.object(runner.pilot, 'native_opponent', return_value={}))
+                stack.enter_context(patch.object(parallel, '_supervise', side_effect=supervise))
+                stack.enter_context(patch('experiments.learner.contextual_model.weights_sha256', return_value='fixed'))
+                stack.enter_context(patch.object(gameplay.TrainingBinding, 'create', side_effect=lambda **kwargs: object()))
+                stack.enter_context(patch.object(gameplay, '_begin_parallel_capture',
+                    side_effect=lambda binding: SimpleNamespace(token='synthetic', consumed=True)))
+                stack.enter_context(patch.object(gameplay, 'verify_training_capture',
+                    side_effect=[*receipts, RuntimeError('synthetic terminal replay rejection')]))
+                stack.enter_context(patch('experiments.learner.builtin_behavior.analyze_episode', return_value={}))
+                update = stack.enter_context(patch.object(gameplay, 'native_update'))
+                serial = stack.enter_context(patch.object(runner.pilot, 'run_attempt'))
+                result = runner.worker(args, plan_reader=lambda *args: plan,
+                    state_reader=lambda plan: state, heldout_checker=lambda *args: None)
+                loaded = runner.pilot.read_worker_report(root/'worker-report.json', plan, args.sha256)
+                update.assert_not_called()
+                serial.assert_not_called()
+
+            self.assertEqual(loaded, result)
+            self.assertEqual(loaded['status'], 'stopped')
+            self.assertTrue(loaded['worker_complete'])
+            self.assertEqual(loaded['stop_reason'], 'CollectionFailed: synthetic terminal replay rejection')
+            self.assertEqual([row['status'] for row in loaded['attempts'][:2]], ['rejected', 'rejected'])
+            self.assertTrue(all(row['replay_verified'] for row in loaded['attempts'][:2]))
+            self.assertTrue(all(row['completion_receipt'] is False
+                                and row['batch_admission'] == 'rejected' for row in loaded['attempts']))
+            self.assertEqual((loaded['optimizer_updates'], loaded['optimizer_steps'], loaded['training_samples']), (0, 0, 0))
+            self.assertEqual(loaded['update_status'], 'not_started')
+            self.assertFalse(loaded['training_performed'])
+            self.assertTrue(all(id(receipt) not in gameplay._RECEIPTS for receipt in receipts))
 
     def test_uncertain_coordinator_cleanup_remains_visible_in_report_and_exception(self):
         failure = TimeoutError('collection deadline')

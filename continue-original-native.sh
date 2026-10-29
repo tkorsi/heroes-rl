@@ -7,7 +7,8 @@ usage() {
     cat <<'USAGE'
 Usage: ./continue-original-native.sh --native-learner /absolute/manifest.json \
     --native-sha256 SHA256 [--check] [--hours HOURS] [--cpu-cap CPUS] \
-    [--session-games GAMES] [--recovery-receipt /path/to/receipt.json]
+    [--session-games GAMES | --session-goal checkpoint1392-remaining772-v1] \
+    [--recovery-receipt /path/to/receipt.json]
 
 Defaults to one hour and all available CPUs. --check performs offline checks only.
 The existing runner verifies the exact native build and accepted source, restores
@@ -17,6 +18,8 @@ remain fixed. No checkpoint number or remaining-game count is hard-coded here.
 --session-games caps this invocation at that many additional admitted training
 games (a positive multiple of four), without changing the original campaign target.
 It must not exceed the verified remaining target. Evaluation games do not count.
+--session-goal instead finishes the pinned game goal across manual invocations;
+the controller recomputes its remaining count under the campaign locks.
 
 Cloud ownership must first be closed and the latest complete state and consumed-seed
 ledger imported through a separately verified handoff. This script does not release
@@ -32,12 +35,13 @@ NATIVE_SHA256=
 CPU_CAP=
 RECOVERY_RECEIPT=
 SESSION_GAMES=
+SESSION_GOAL=
 SEEN=' '
 while [ "$#" -gt 0 ]; do
     OPTION=$1
     case "$OPTION" in
         --help|-h) usage; exit 0 ;;
-        --check|--hours|--cpu-cap|--native-learner|--native-sha256|--recovery-receipt|--session-games) ;;
+        --check|--hours|--cpu-cap|--native-learner|--native-sha256|--recovery-receipt|--session-games|--session-goal) ;;
         *) fail "Unsupported or conflicting option: $OPTION (see --help)." ;;
     esac
     case "$SEEN" in *" $OPTION "*) fail "Repeated option: $OPTION." ;; esac
@@ -53,12 +57,15 @@ while [ "$#" -gt 0 ]; do
         --native-sha256) NATIVE_SHA256=$1 ;;
         --recovery-receipt) RECOVERY_RECEIPT=$1 ;;
         --session-games) SESSION_GAMES=$1 ;;
+        --session-goal) SESSION_GOAL=$1 ;;
     esac
     shift
 done
 case "$NATIVE_MANIFEST" in /*) ;; *) fail "An absolute --native-learner manifest is required." ;; esac
 [ "${#NATIVE_SHA256}" -eq 64 ] || fail "--native-sha256 must contain 64 lowercase hexadecimal characters."
 case "$NATIVE_SHA256" in *[!0-9a-f]*) fail "--native-sha256 must contain 64 lowercase hexadecimal characters." ;; esac
+[ -z "$SESSION_GOAL" ] || [ -z "$SESSION_GAMES" ] || fail "Choose --session-goal or --session-games, not both."
+case "$SESSION_GOAL" in ''|checkpoint1392-remaining772-v1) ;; *) fail "Unknown --session-goal." ;; esac
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 CAMPAIGN_ROOT="$HOME/Projects/Heroes-artifacts/local-script-training"
@@ -78,4 +85,5 @@ set -- "$COMMAND" --profile original --fast-path \
 if [ -n "$CPU_CAP" ]; then set -- "$@" --cpu-cap "$CPU_CAP"; fi
 if [ -n "$RECOVERY_RECEIPT" ]; then set -- "$@" --recovery-receipt "$RECOVERY_RECEIPT"; fi
 if [ -n "$SESSION_GAMES" ]; then set -- "$@" --session-games "$SESSION_GAMES"; fi
+if [ -n "$SESSION_GOAL" ]; then set -- "$@" --session-goal "$SESSION_GOAL"; fi
 exec "$SCRIPT_DIR/train-local.sh" "$@"

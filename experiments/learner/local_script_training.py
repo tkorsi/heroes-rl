@@ -51,6 +51,8 @@ ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
 # bytes may cross that orchestration transition; learner/PPO source stays exact.
 ACCEPTED_ADAPTER_COMMIT = 'a8ac411d32658387598376c792136bc586edc5f9'
 LOCAL_ADAPTER_ORIGINS = {
+    # Verified manual run1335->1392; town-swap replay and rejected-batch reporting repair.
+    'c6c668ee551e85b98b9982b91a5f1390a7d5b1bb': 'd6dcb8ca77fe351f40176a3731cf21e318210389427bdd627f3b14e2f39441b0',
     # Closed Linux continuation; exact state is imported through a separate audited handoff.
     'c6ebc8327e8dfe65dfa384a3fe77da709343a4dd': 'eca2eed49b498f866c17d3af4b792e25146832a8a9f1f5140e80abf613a96f00',
     # Four-collector run1095->1229; post-sleep recovery changes only orchestration.
@@ -93,14 +95,17 @@ FAST_PATH_SOURCES = {
         ('80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2', 'a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
         '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
     'experiments/learner/builtin_gameplay.py': (
-        ('21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540', '39859d22d19b0dcaff2add4ab0299475acc63dbb55ded700af9ce7dc9aab8a65', 'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
+        ('21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540', '39859d22d19b0dcaff2add4ab0299475acc63dbb55ded700af9ce7dc9aab8a65', '8edb0a7e26a976c2da0f5d9389a0ff598e056ed2e8e2b5573a2694418b7de401', 'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
         '8edb0a7e26a976c2da0f5d9389a0ff598e056ed2e8e2b5573a2694418b7de401'),
     'experiments/learner/builtin_rollout.py': (
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
-        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
+        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
         '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87'),
+    'experiments/learner/builtin_training_metrics.py': (
+        ('aab1a57558019be7ce09bf4bba0866dff7bdd90f4cdfec059e5e73967e10d98f',),
+        '785777db63972ba2868533ecb581fa699f5ac2866e955b837fad87f5b310ead6'),
     'experiments/learner/builtin_training_resume.py': (
         ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb', '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423',),
         '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
@@ -108,7 +113,7 @@ FAST_PATH_SOURCES = {
         ('01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358', '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
         '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
     'experiments/learner/contextual_model.py': (
-        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72',),
+        ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72',),
         'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
@@ -126,13 +131,13 @@ FAST_PATH_SOURCES = {
         ('9688b93ba526704df51c7d376d27f46c013ec7bdc1ad09432e3de2a0f1fa99c4', 'f1b21b0b740a7087859d8602e0d7c59feeb88f8ccea6f2a17df57dfad402358f',),
         '9688b93ba526704df51c7d376d27f46c013ec7bdc1ad09432e3de2a0f1fa99c4'),
     'experiments/learner/inference.py': (
-        ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54', 'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14',),
+        ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54', 'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8', 'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14',),
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/parallel_collection.py': (
-        ('7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10',),
-        '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c'),
+        ('7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10', '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c',),
+        '4d06e48ac4fb5d7afaedbc61407ccddae645c9237c42c966896c77145589b351'),
     'experiments/learner/ppo.py': (
-        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd',),
+        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd', 'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74',),
         'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
@@ -143,6 +148,8 @@ FAST_PATH_SOURCES = {
 REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependencies/learner.lock', 'tools/run_local_training.py',
                  'tools/prepare_local_training.py', 'tools/prepare_vcmi.py', 'train-local.sh',
                  'train-1000.sh', 'tools/train_1000_games.py', 'continue-original-native.sh',
+                 'continue-772.sh', 'tools/continue_772_games.py', 'tools/continuation_goal.py',
+                 'configs/checkpoint1392-remaining772.json',
                  'tools/linux_publication.py', 'tools/cloud_state_import.py',
                  'tools/audit_cloud1335_publication.py', 'tools/apply_cloud1335_import.py',
                  'tools/refresh_parallel_runtime_acceptance.py', 'tools/validate_interaction_guard.py',
@@ -151,12 +158,16 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json')
 REVIEWED_SCAN = ('experiments', 'validation/probes', 'native/learner')
 FAST_PATH_TREE = {
+    'configs/checkpoint1392-remaining772.json': ('',
+        '3ceddf0c4a71d128e6c678b7d1fa6354fe3266bcc7c7b709c9e84087792440c2'),
     'configs/cloud1335-import.json': ('',
         'fa81a9b700186bfc42a83f3773d060255cba9b861cac6d3c980eec27af807ef3'),
     'configs/interrupted1229-recovery.json': ('',
         'd6ba5bb257957b45be333ff723c6761a34ded7965429e63d96ff468edd9c41f8'),
+    'continue-772.sh': ('',
+        '97863ef8a54f267290b5a82b7ecbf1b9406913a4c0d88763ba65daf6e8bb6264'),
     'continue-original-native.sh': ('',
-        'c95870dce36a7042e95b358980fc0a08317c0656c995024664adac9d4a6aafac'),
+        'fac7bb2f7820a2f9e06cf5e87347770f8316b0788f9318fb0597fbdec6b7cec3'),
     'experiments/episodes/scoring.py': ('2fee3829c13828963d0fec3a2aa215039656d4ff',
         '8bdd7158233685a3a90e08977c23702d60e1d2c596b07f9f303d29119964ec78'),
     'experiments/explorer/create_curriculum_scenario.py': ('',
@@ -170,7 +181,7 @@ FAST_PATH_TREE = {
     'experiments/headless/builtin_evidence.py': ('0638d2ec9bc8c3a7a3588325316fbb59ae5f2515',
         'ec56c09ab106e29747e74a4acfe9754763a125886dbde7136797fab3214f6d8a'),
     'experiments/headless/builtin_replay.py': ('d7bde5cffd1124000838c1ba0f20b765b07efd39',
-        '0cb7d936c5361c009b40ced053b56ca7f5f34e7d0cd5d7268439993c1e31a708'),
+        '90e0e73702ac18ddbea89dff9d2a1e013808c23ef2cd797cd5fe5870f45cc2af'),
     'experiments/headless/contextual_env.py': ('e2a75d2327589a8ea27518823dc24318a95109ab',
         '4d555029eb5902f02a5883ca5386066fa150a4a91441b2163dfb8dc286de9ff5'),
     'experiments/headless/contextual_evidence.py': ('44b664e57028145c573d6397bd00f7c1227c5dc1',
@@ -208,23 +219,27 @@ FAST_PATH_TREE = {
     'native/learner/text_replay.h': ('',
         '9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd'),
     'tools/acceleration3/fast_path_pins.py': ('',
-        '9b4dcf0c9d14b49fb3427369931094b5fb2bb3f9cd9431dbb81ebc56ff609d5c'),
+        'd487b1b0528004ba8ff49e4a843684a1cbfed5aea4c51ea46bed77d1da72d4ec'),
     'tools/apply_cloud1335_import.py': ('',
         '40f233663871acaef141388de13980da1ff8dc110ca930a3b2b5b02f23201513'),
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
     'tools/cloud_state_import.py': ('',
         '2e14dbff1a886019c5b0aacd24492081a65a02a21a94b46d3e410c2fca82a8d7'),
+    'tools/continuation_goal.py': ('',
+        'ed19b6330f18005f15c33cc1f4ecd4f6a18455c2bd0be8bd2c6d9fb775e1b4f8'),
+    'tools/continue_772_games.py': ('',
+        'fc1c66d83b598005ff401c9b8b3b4a14b4a050baf8965f070cf733939973c084'),
     'tools/linux_publication.py': ('',
-        '824348baf281b3234569a86aade9b095242de7bdd5091af955babaf518d25536'),
+        '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '2dbec9f0dc7589498e023b10344ad13234286dc3cc1997ad83b17593d7fdd8d0'),
+        '47a8e65cb15ffb4c8a370a1be070583122ef06c81f873f8cd89c58738962ac93'),
     'tools/recover_interrupted_training.py': ('',
         'cc6695b19024c6e7f271f073e35fa1436e15417cf316f251e1e4d0a7fa10b576'),
     'tools/refresh_parallel_runtime_acceptance.py': ('',
-        '83bd5397140f28240749e378c8e2e4ecf8048e9582b9f93b58f0fe762dadbf84'),
+        'c2919ec25779c02cd248628b20098c5ee4093f579710d84077dbda285d97624d'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '4afb07fb3e34117759a27a22b38f33b40bc6ab1b69619e3670cd020675500fe5'),
+        '82a4c770477a7385b58a8c8f4e8a3dc81b6133811c7cff547d9c26ede1c34ea8'),
     'tools/train_1000_games.py': ('',
         '47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4'),
     'tools/validate_interaction_guard.py': ('',
@@ -240,7 +255,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '673052d2a92d02ed5d84d3b37f9f41f81b53f706c025c1e64d1c4e24750d12c2'
+LOCAL_ADAPTER_TRANSITION_AST = '7184debcfa6d33036849a6b141d7e471537e46a6289f7a917ef86f8d75e34460'
 
 
 def write_new(path, value):

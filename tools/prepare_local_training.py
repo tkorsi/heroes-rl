@@ -388,8 +388,12 @@ def terminal_replay_acceptance(descriptor, runtime):
             "Terminal replay repair lacks exact excluded native replay with unchanged original evidence")
     accounting = proof.get("wire", {}).get("request_accounting", {})
     tail = accounting.get("terminal_unapplied", [])
-    require(len(tail) == 1 and tail[0].get("pack_type") == 190,
-            "Terminal replay repair did not verify the original ExchangeArtifacts tail")
+    town_swap = descriptor.get("release_id") == "terminal-replay-1392-v1"
+    require(not town_swap or descriptor.get("checkpoint_update") == 1392,
+            "Town-swap replay acceptance must bind checkpoint1392")
+    expected_type = 189 if town_swap else 190
+    require(len(tail) == 1 and tail[0].get("pack_type") == expected_type,
+            "Terminal replay repair did not verify its required original request type")
     history = proof.get("history", {})
     require(history.get("schema") == "heroes-builtin-history-reconstruction-v1"
             and history.get("verified") is True and history.get("boundary") == "natural"

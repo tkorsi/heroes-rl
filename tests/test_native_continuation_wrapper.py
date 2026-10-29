@@ -78,6 +78,14 @@ class NativeContinuationWrapperTests(unittest.TestCase):
         self.assertFalse(self.args_file.exists())
         self.assertTrue(all(not lock.exists() for lock in self.locks))
 
+    def test_fixed_goal_is_forwarded_without_a_fresh_session_cap(self):
+        result = self.run_wrapper(*self.required, '--session-goal', 'checkpoint1392-remaining772-v1', '--check')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.called()
+        self.assertEqual(args[0], 'check')
+        self.assertEqual(args[args.index('--session-goal')+1], 'checkpoint1392-remaining772-v1')
+        self.assertNotIn('--session-games', args)
+
     def test_unknown_conflicting_and_duplicate_flags_never_reach_runner(self):
         invalid = [("--config", "/private/other.json"), ("--games", "4"), ("--parent", "old.json"),
                    ("--continue-original", "old-run"), ("--collection-workers", "1"),
@@ -85,6 +93,8 @@ class NativeContinuationWrapperTests(unittest.TestCase):
                    ("--replay-threads", "2"), ("_launch",), ("start",), ("--",),
                    ("--hours", "1", "--hours", "10"), ("--check", "--check"),
                    ("--session-games", "1000", "--session-games", "2000"), ("--session-games",),
+                   ("--session-goal", "unknown"),
+                   ("--session-goal", "checkpoint1392-remaining772-v1", "--session-games", "772"),
                    ("--native-sha256", SHA), ("--hours",), ("--cpu-cap", "--check")]
         for args in invalid:
             with self.subTest(args=args):

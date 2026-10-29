@@ -26,6 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = Path(os.environ.get('HEROES_ARTIFACT_ROOT', str(Path.home()/'Projects/Heroes-artifacts'))).expanduser().resolve()
 BASE = ARTIFACTS/'parallel-continuation-validation-20261028'
 RUNTIME = ARTIFACTS/'runtime/local-v8-terminal-replay-repair1'
+TOWN_SWAP_RUNTIME = ARTIFACTS/'runtime/local-v8-terminal-replay-repair2'
 CANDIDATE = BASE/'parallel-runtime-candidate-v1.json'
 POLICY = BASE/'policy1095-runtime-refresh1'
 ACCEPTANCE = RUNTIME/'parallel-collection-acceptance-v1.json'
@@ -59,8 +60,9 @@ def checked_options(options=None):
             native_output=BASE/'native-refresh/garrison-16', regression_output=BASE/'native-refresh/regression-28',
             candidate_output=CANDIDATE, policy_output=POLICY, acceptance_output=ACCEPTANCE,
             policy_acceptance_output=POLICY_ACCEPTANCE)
-    require(type(options.checkpoint_update) is int and options.checkpoint_update in (1095, 1335)
-            and options.release_id == {1095:'terminal-replay-parallel-v1', 1335:'terminal-replay-cloud1335-v1'}[options.checkpoint_update],
+    require(type(options.checkpoint_update) is int and options.checkpoint_update in (1095, 1335, 1392)
+            and options.release_id == {1095:'terminal-replay-parallel-v1', 1335:'terminal-replay-cloud1335-v1',
+                                      1392:'terminal-replay-1392-v1'}[options.checkpoint_update],
             'Use the reviewed checkpoint/release pair for this source refresh')
     paths = ('native_output', 'regression_output', 'candidate_output', 'policy_output',
              'acceptance_output', 'policy_acceptance_output')
@@ -70,10 +72,17 @@ def checked_options(options=None):
                 'Refresh evidence must remain private and outside official training state')
         setattr(options,name,value)
     require(len({getattr(options,name) for name in paths}) == len(paths), 'Refresh evidence paths must be distinct')
-    if options.checkpoint_update == 1335:
+    if options.checkpoint_update in (1335, 1392):
         require(all(getattr(options,name) != old for name,old in (
             ('candidate_output',CANDIDATE), ('policy_output',POLICY), ('acceptance_output',ACCEPTANCE),
-            ('policy_acceptance_output',POLICY_ACCEPTANCE))), 'The1335 refresh must not reuse historical output paths')
+            ('policy_acceptance_output',POLICY_ACCEPTANCE))), 'The refresh must not reuse historical output paths')
+    if options.checkpoint_update == 1392:
+        require(isinstance(getattr(options, 'terminal_diagnostic', None), (str, Path)),
+                'Town-swap acceptance requires its explicit excluded replay proof')
+        diagnostic = Path(options.terminal_diagnostic).expanduser().resolve()
+        require(diagnostic.is_relative_to(ARTIFACTS/'run-investigations/2026-10-29-batch1032'),
+                'Town-swap acceptance requires its separate private diagnostic evidence')
+        options.terminal_diagnostic = diagnostic
     return options
 
 
@@ -92,6 +101,14 @@ def candidate(options=None):
             ['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip(),
         acceptance_refresh_scope='Current Python collection/admission source on the unchanged accepted native binaries and engine recipe. Original terminal-replay support classification and proof are retained; no new native defect or game-rule change.',
         timestamp_utc=datetime.now(timezone.utc).isoformat())
+    if options.checkpoint_update == 1392:
+        from tools.prepare_local_training import current_engine_recipe
+        freeze = read(TOWN_SWAP_RUNTIME/'freeze-receipt.json')
+        value.update(runtime_bin=str(TOWN_SWAP_RUNTIME/'bin'),
+            runtime_files={row['path']:row['frozen_sha256'] for row in freeze['artifacts'] if row['path'] != 'vcmiserver'},
+            engine_recipe=current_engine_recipe(), freeze=binding(TOWN_SWAP_RUNTIME/'freeze-receipt.json'),
+            preflight=binding(TOWN_SWAP_RUNTIME/'preflight.json'), terminal_replay=binding(options.terminal_diagnostic),
+            acceptance_refresh_scope='Clean rebuilt runtime with reviewed GarrisonHeroSwap terminal accounting; exact excluded failure replay,44 native controls and8 frozen checkpoint1392 policy games required. No game-rule or learning-setting change.')
     runtime = {name:sha for name,sha in value['runtime_files'].items() if name != 'vcmiclient'}
     candidate_runtime_origin(Path(value['runtime_bin']), runtime, value)
     terminal_replay_acceptance(value, runtime)
@@ -176,6 +193,8 @@ def main():
     parser.add_argument('--policy-output',type=Path,default=POLICY)
     parser.add_argument('--acceptance-output',type=Path,default=ACCEPTANCE)
     parser.add_argument('--policy-acceptance-output',type=Path,default=POLICY_ACCEPTANCE)
+    parser.add_argument('--terminal-diagnostic',type=Path,
+                        help='Excluded replay proof for the checkpoint1392 town-swap failure')
     args = checked_options(parser.parse_args())
     require(not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip(),
             'Current source must be clean and committed')

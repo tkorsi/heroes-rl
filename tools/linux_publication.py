@@ -263,7 +263,7 @@ def publish_transaction(*, base_ref, destination_ref, prefix, files, deadline, t
         manifest_hash = binding(output/'manifest.json')['sha256']
         require(originals == source_entries(files), 'Publication sources changed before commit')
         git(['add', '--sparse', '--', str(prefix)], deadline, repo)
-        git(['commit', '-m', 'Preserve verified Linux continuation evidence '+prefix.name], deadline, repo)
+        git(['commit', '-m', 'Preserve verified training continuation evidence '+prefix.name], deadline, repo)
         commit = git(['rev-parse', 'HEAD'], deadline, repo)
         git(['push', '--force-with-lease='+destination_ref+':'+(previous or ''),
              'origin', 'HEAD:'+destination_ref], deadline, repo)

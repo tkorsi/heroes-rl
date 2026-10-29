@@ -672,8 +672,12 @@ def start(args):
     with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
         if args.parent_final is not None: final_parent(args.parent_final)
         if args.continue_original is not None:
-            _, remaining, _ = original_continuation(args.continue_original, config, args.recovery_receipt)
-            continuation_game_target(remaining, args.session_games)
+            parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
+            target, goal = session_game_target(args, config, parent, remaining, continuation)
+            if target == 0:
+                print(json.dumps(dict(status='continuation_goal_already_complete', session_goal=goal,
+                                      gameplay_performed=False, ppo_updates=0), indent=2))
+                return 0
         release, commit = release_checkout(config['artifact_root'], None if args.fast_path else ACCEPTED_IMPLEMENTATION)
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
@@ -691,6 +695,7 @@ def start(args):
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
         if args.games is not None: command += ['--games', str(args.games)]
         if args.session_games is not None: command += ['--session-games', str(args.session_games)]
+        if getattr(args, 'session_goal', None) is not None: command += ['--session-goal', args.session_goal]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
         if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
         if args.continue_original is not None: command += ['--continue-original', str(args.continue_original.resolve())]
@@ -717,6 +722,13 @@ def selected_execution(args):
         replay_threads=args.replay_threads, collection_workers=args.collection_workers, experiments=args.experiment)
 
 
+def session_game_target(args, config, parent, remaining, continuation):
+    if getattr(args, 'session_goal', None) is not None:
+        from tools.continuation_goal import remaining_games
+        return remaining_games(args.session_goal, config, parent, remaining, continuation)
+    return continuation_game_target(remaining, args.session_games), None
+
+
 def launch_owned(args):
     from experiments.learner import local_script_training as adapter
     from experiments.learner import builtin_first_run as pilot
@@ -732,11 +744,15 @@ def launch_owned(args):
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
               else read(latest)['parent'] if latest.exists() else config['parent'])
-    continuation = None
+    continuation, session_goal = None, None
     target_games = args.games
     if args.continue_original is not None:
         parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
-        target_games = continuation_game_target(remaining, args.session_games)
+        target_games, session_goal = session_game_target(args, config, parent, remaining, continuation)
+        if target_games == 0:
+            print(json.dumps(dict(status='continuation_goal_already_complete', session_goal=session_goal,
+                                  gameplay_performed=False, ppo_updates=0), indent=2))
+            return 0
     initial = adapter.restore_parent(parent)
     adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, policy_support)  # before any session or game
     parent_final_evidence = None
@@ -752,7 +768,7 @@ def launch_owned(args):
     session = dict(schema='heroes-local-script-session-v1', scope='heroes-local-script-training-v1',
         source=source_identity('adventure-capabilities-v1'), implementation=pilot.implementation(), prerequisites=pilot.prerequisites(),
         configuration=adapter.operational_configuration(parent, args.batch_wall_seconds),
-        batch_wall_seconds=args.batch_wall_seconds, original_continuation=continuation,
+        batch_wall_seconds=args.batch_wall_seconds, original_continuation=continuation, session_goal=session_goal,
         execution=execution, policy_support=policy_support, asset_config=binding(args.config),
         runtime_bin=config['runtime_bin'], runtime=config['runtime'], data=config['data'], maps=config['maps'],
         artifact_root=config['artifact_root'], run_root=str(run_root), run_dir=str(run), initial_parent=parent,
@@ -764,7 +780,10 @@ def launch_owned(args):
         parent_final_run=str(args.parent_final.resolve()) if args.parent_final else None,
         parent_final_evidence=parent_final_evidence,
         frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py',
-            'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json', 'train-local.sh')},
+            'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json', 'train-local.sh',
+            *(['tools/continuation_goal.py', 'configs/checkpoint1392-remaining772.json', 'continue-772.sh',
+               'tools/continue_772_games.py', 'tools/train_1000_games.py', 'continue-original-native.sh']
+              if session_goal else []))},
         authorization='Manual user invocation; no agent/model calls, no automatic retry or post-deadline restart',
         **budget(args.hours, continuation=args.continue_original is not None))
     require(not session['source']['tracked_worktree_dirty'], 'Frozen source is dirty')
@@ -872,6 +891,8 @@ def main():
     parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
     parser.add_argument('--session-games', type=int,
                         help='Cap newly admitted games for --continue-original, a positive multiple of four no larger than its verified remaining target; evaluations excluded')
+    parser.add_argument('--session-goal', choices=('checkpoint1392-remaining772-v1',),
+                        help='Finish a pinned admitted-game goal across manual invocations; never reset its count')
     parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
     parser.add_argument('--batch-wall-seconds', type=int,
@@ -923,6 +944,9 @@ def main():
         parser.error('--native-sha256 and --cpu-cap require --native-learner')
     if args.recovery_receipt is not None and args.continue_original is None:
         parser.error('--recovery-receipt requires --continue-original')
+    if args.session_goal is not None:
+        if args.continue_original is None or args.session_games is not None:
+            parser.error('--session-goal requires --continue-original and cannot combine with --session-games')
     if args.session_games is not None:
         if args.continue_original is None:
             parser.error('--session-games requires --continue-original')
@@ -977,13 +1001,14 @@ def main():
             from tools.recover_interrupted_training import existing_campaign_locks
             with existing_campaign_locks(config):
                 parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
-                session_target = continuation_game_target(remaining, args.session_games)
+                session_target, session_goal = session_game_target(args, config, parent, remaining, continuation)
                 state = adapter.restore_parent(parent)
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
                 adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, args.interaction_guard)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
                 exact_restore=True, remaining_training_games=remaining,
                 original_remaining_training_games=remaining, session_target_games=session_target,
+                session_goal=session_goal,
                 next_sequence=continuation['next_sequence'],
                 session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],

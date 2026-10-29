@@ -228,7 +228,8 @@ def aggregate(rows, *, phase, checkpoint):
     Rows are runner records with episode, learner_player, engine_seed, status,
     and metrics=per_episode(folder) (or None). Passed status must already mean
     durable policy/native/cleanup verification by the caller. This is reporting,
-    not a receipt constructor. Running rows remain explicitly unfinished.
+    not a receipt constructor. Running rows remain explicitly unfinished;
+    batch-rejected histories remain descriptive evidence without an outcome.
     """
     rows = list(rows)
     _require(type(phase) is str and bool(phase) and checkpoint is not None, "Phase and checkpoint labels required")
@@ -246,7 +247,7 @@ def aggregate(rows, *, phase, checkpoint):
         if "checkpoint" in row:
             _require(_canonical(row["checkpoint"]) == _canonical(checkpoint), "Mixed evaluation checkpoints")
         status = row["status"]
-        _require(status in ("passed", "failed", "not_started", "running", "pending_verification"), "Unknown attempt status")
+        _require(status in ("passed", "failed", "rejected", "not_started", "running", "pending_verification"), "Unknown attempt status")
         metric = row.get("metrics")
         if metric is not None:
             _require(metric.get("schema") == SCHEMA, "Wrong metrics schema")
@@ -263,7 +264,7 @@ def aggregate(rows, *, phase, checkpoint):
             category = metric["boundary"]
             passed.append(metric)
         else:
-            category = {"failed": "failure", "not_started": "not_started", "running": "unfinished",
+            category = {"failed": "failure", "rejected": "rejected", "not_started": "not_started", "running": "unfinished",
                         "pending_verification": "unfinished"}[status]
         counts[category] += 1
         by_seat[evidence.COLORS[player]][category] += 1
@@ -272,7 +273,7 @@ def aggregate(rows, *, phase, checkpoint):
                          "complete_history": bool(metric and metric["coverage"]["complete"])})
 
     def outcomes(counter):
-        values = {key: counter[key] for key in ("natural_win", "natural_loss", "cutoff", "failure", "not_started", "unfinished")}
+        values = {key: counter[key] for key in ("natural_win", "natural_loss", "cutoff", "failure", "rejected", "not_started", "unfinished")}
         natural = values["natural_win"] + values["natural_loss"]
         values.update(natural_endings=natural, attempted=sum(values.values())-values["not_started"],
             natural_win_rate=values["natural_win"] / natural if natural else None,

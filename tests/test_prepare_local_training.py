@@ -467,11 +467,41 @@ class TerminalReplayAcceptanceTests(unittest.TestCase):
             prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
 
     def test_only_the_single_exchange_artifacts_tail_satisfies_this_repair_gate(self):
-        for tail in ([], [{'pack_type': 193}], [{'pack_type': 198}],
+        for tail in ([], [{'pack_type': 189}], [{'pack_type': 193}], [{'pack_type': 198}],
                      [{'pack_type': 190}, {'pack_type': 190}], [{'pack_type': '190'}]):
             proof = deepcopy(self.proof); proof['wire']['request_accounting']['terminal_unapplied'] = tail
-            with self.subTest(tail=tail), self.assertRaisesRegex(ValueError, 'ExchangeArtifacts tail'):
+            with self.subTest(tail=tail), self.assertRaisesRegex(ValueError, 'required original request type'):
                 prep.terminal_replay_acceptance(self.descriptor(proof), self.runtime)
+
+    def test_town_swap_proof_is_exclusive_to_the_checkpoint1392_release(self):
+        proof = deepcopy(self.proof)
+        for accounting in (proof['wire']['request_accounting'], proof['native']['summary']['request_accounting']):
+            accounting['terminal_unapplied'][0]['pack_type'] = 189
+        descriptor = dict(self.descriptor(proof), release_id='terminal-replay-1392-v1', checkpoint_update=1392)
+        self.assertEqual(prep.terminal_replay_acceptance(descriptor, self.runtime), descriptor['terminal_replay'])
+        for release, update in (('terminal-replay-cloud1335-v1', 1335), ('terminal-replay-parallel-v1', 1095),
+                                ('terminal-replay-1392-v1', 1335), ('terminal-replay-1392-v1', None)):
+            changed = dict(descriptor, release_id=release, checkpoint_update=update)
+            with self.subTest(release=release, update=update), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance(changed, self.runtime)
+        # Historical artifact-transfer evidence cannot stand in for the new
+        # failure, even when all old proof bindings remain internally valid.
+        historical = dict(self.descriptor(), release_id='terminal-replay-1392-v1', checkpoint_update=1392)
+        with self.assertRaisesRegex(ValueError, 'required original request type'):
+            prep.terminal_replay_acceptance(historical, self.runtime)
+
+    def test_town_swap_proof_keeps_native_accounting_and_excluded_admission_checks(self):
+        for change in (lambda p: p['native']['summary']['request_accounting']['terminal_unapplied'][0].update(pack_type=190),
+                       lambda p: p['native']['summary']['request_accounting'].update(authoritative_inputs=5),
+                       lambda p: p.update(original_cohort_admission=True),
+                       lambda p: p.update(training_samples=1)):
+            proof = deepcopy(self.proof)
+            for accounting in (proof['wire']['request_accounting'], proof['native']['summary']['request_accounting']):
+                accounting['terminal_unapplied'][0]['pack_type'] = 189
+            change(proof)
+            descriptor = dict(self.descriptor(proof), release_id='terminal-replay-1392-v1', checkpoint_update=1392)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                prep.terminal_replay_acceptance(descriptor, self.runtime)
 
     def test_native_history_and_effect_proofs_cannot_be_missing_or_incomplete(self):
         changes = [lambda p: p.pop('native'), lambda p: p['native'].update(returncode=1),

@@ -205,6 +205,29 @@ class BoundMetricsTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Passed attempt"):
                 metrics.aggregate([altered], phase="evaluation", checkpoint="frozen")
 
+    def test_batch_rejected_verified_histories_are_separate_unscored_attempts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            rows = []
+            for player in (0, 1):
+                root = Path(tmp) / str(player)
+                HistoryFixture(root, player, natural=True)
+                item = metrics.per_episode(root)
+                item['episode']['episode'] = str(player+1)
+                rows.append(dict(episode=player+1, learner_player=player, engine_seed=99,
+                    status='rejected', batch_admission='rejected', completion_receipt=False,
+                    replay_verified=True, metrics=item))
+            result = metrics.aggregate(rows, phase='evaluation', checkpoint='frozen')
+        self.assertEqual(result['outcomes']['rejected'], 2)
+        self.assertEqual(result['outcomes']['failure'], 0)
+        self.assertEqual(result['outcomes']['attempted'], 2)
+        self.assertEqual(result['outcomes']['natural_endings'], 0)
+        self.assertEqual(result['passed_attempt_metrics']['basic']['episodes'], 0)
+        self.assertEqual(result['all_available_prefix_metrics']['basic']['episodes'], 2)
+        for color in ('red', 'blue'):
+            self.assertEqual(result['by_seat'][color]['rejected'], 1)
+            self.assertIsNone(result['by_seat'][color]['natural_win_rate'])
+        self.assertTrue(all(row['classification'] == 'rejected' for row in result['attempts']))
+
     def test_wilson_correct_denominator_edges_and_strict_counts(self):
         self.assertIsNone(metrics.wilson(0, 0))
         self.assertAlmostEqual(metrics.wilson(0, 10)["upper"], .2775327998628892)
