@@ -129,6 +129,12 @@ class ContinuationTests(unittest.TestCase):
     def select(self):
         return runner.original_continuation(self.anchor, self.config)
 
+    def recovery_receipt(self, path, ledger):
+        self.write(path, dict(schema='heroes-interrupted1229-recovery-v1', verification={
+            'original_moving_snapshots': {'latest-run.json': '{}', 'latest-checkpoint.json': '{}',
+                                        'sequence-ledger.json': json.dumps(ledger)}}))
+        return runner_binding(path)
+
     def test_failed_but_fully_rolled_back_closed_anchor_continues_at337(self):
         parent, remaining, proof = self.select()
         self.assertEqual(parent, self.parent)
@@ -157,6 +163,11 @@ class ContinuationTests(unittest.TestCase):
             self.select()
         self.write(failed/'shutdown.json', self.shutdown)
         self.assertEqual(self.select()[1], 4720)
+
+    def test_null_final_restore_is_an_unclosed_run(self):
+        self.write(self.anchor/'campaign-report.json', {**self.report, 'full_final_restore': None})
+        with self.assertRaisesRegex(ValueError, 'verified closed'):
+            self.select()
 
     def test_seed_ledger_cannot_reset_reuse_or_omit_failed336(self):
         for ledger in [dict(next_sequence=336, consumed=[dict(sequence=335)]),
@@ -227,6 +238,166 @@ class ContinuationTests(unittest.TestCase):
         with patch.object(adapter, 'read_descriptor', side_effect=lambda d: (plan, report) if d == child else ({}, self.valid_report())):
             with self.assertRaisesRegex(ValueError, 'foreign/benchmark'):
                 self.select()
+
+    def test_recovery_is_explicit_and_keeps_historical_failure_immutable(self):
+        child, plan, report = self.descendant()
+        run = self.root/'continued'
+        historical = runner.read(run/'campaign-report.json')
+        historical.update(owned_cleanup_verified=False, initial_state_unchanged=False,
+                          full_final_restore=None)
+        self.write(run/'campaign-report.json', historical)
+        self.write(run/'shutdown.json', dict(owned_cleanup_verified=False,
+                                           within_hard_deadline=False, worker_returncode=-9))
+        self.write(self.root/'latest-run.json', dict(run_dir=str(run), session=runner_binding(run/'session.json')))
+        receipt = self.root/'recovery.json'; self.write(receipt, {'separate': 'receipt'})
+        before = {p: p.read_bytes() for p in (run/'campaign-report.json', run/'shutdown.json')}
+        proof = dict(parent=child, progress=historical['latest_progress'],
+                     evidence={'receipt': runner_binding(receipt)})
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())), \
+                patch('tools.recover_interrupted_training.validate_receipt', return_value=proof) as validate:
+            with self.assertRaisesRegex(ValueError, 'verified closed'):
+                self.select()
+            selected, remaining, continuation = runner.original_continuation(self.anchor, self.config, receipt)
+            self.assertEqual(selected, child)
+            self.assertEqual(remaining, 4716)
+            self.assertEqual(continuation['evidence']['recovery/receipt'], runner_binding(receipt))
+            validate.assert_called_once_with(receipt, run, self.config)
+            proof['progress'] = dict(updates=699)
+            with self.assertRaisesRegex(ValueError, 'Recovery checkpoint differs'):
+                runner.original_continuation(self.anchor, self.config, receipt)
+        self.assertEqual(before, {p: p.read_bytes() for p in before})
+
+    def test_receipt_cannot_reset_a_later_clean_descendant(self):
+        child, plan, report = self.descendant()
+        inherited = self.root/'recovery-proof.json'; self.write(inherited, {'historical': 'proof'})
+        session_path = Path(plan['local_session']['path'])
+        session = runner.read(session_path)
+        session['original_continuation']['evidence'] = {'recovery/receipt': runner_binding(inherited)}
+        self.write(session_path, session)
+        plan['local_session'] = runner_binding(session_path)
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())), \
+                patch('tools.recover_interrupted_training.validate_receipt') as validate:
+            selected, remaining, proof = runner.original_continuation(self.anchor, self.config, self.root/'old-recovery.json')
+            self.assertEqual(proof['evidence']['recovery/receipt'], runner_binding(inherited))
+            inherited.write_text('{}')
+            with self.assertRaisesRegex(ValueError, 'Inherited recovery evidence changed'):
+                self.select()
+        self.assertEqual(selected, child)
+        self.assertEqual(remaining, 4716)
+        validate.assert_not_called()
+
+    def test_clean_zero_update_run_can_inherit_recovered_checkpoint_owner(self):
+        child, plan, report = self.descendant()
+        interrupted = self.root/'continued'
+        historical = runner.read(interrupted/'campaign-report.json')
+        self.write(interrupted/'campaign-report.json', {**historical,
+            'owned_cleanup_verified': False, 'full_final_restore': None})
+        self.write(interrupted/'shutdown.json', {**self.shutdown, 'within_hard_deadline': False})
+        receipt = self.root/'recovery.json'
+        self.recovery_receipt(receipt, runner.read(self.root/'sequence-ledger.json'))
+        newest = self.root/'clean-zero-update'; newest.mkdir()
+        session = {**self.session, 'run_dir': str(newest), 'initial_parent': child,
+            'original_continuation': {'origin_run': str(self.anchor),
+                'evidence': {'recovery/recovery_receipt': runner_binding(receipt)}}}
+        self.write(newest/'session.json', session)
+        self.write(newest/'campaign-report.json', {**historical, 'batches': []})
+        self.write(newest/'shutdown.json', self.shutdown)
+        self.write(self.root/'latest-run.json', dict(run_dir=str(newest), session=runner_binding(newest/'session.json')))
+        proof = dict(parent=child, progress=historical['latest_progress'],
+                     evidence={'recovery_receipt': runner_binding(receipt)})
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())), \
+                patch('tools.recover_interrupted_training.validate_receipt', return_value=proof) as validate:
+            selected, remaining, continuation = self.select()
+            self.assertEqual(selected, child)
+            self.assertEqual(remaining, 4716)
+            self.assertEqual(continuation['next_sequence'], 338)
+            validate.assert_called_once_with(str(receipt), interrupted, self.config, inherited=True)
+            # A newer report cannot authorize rolling the pointer backward.
+            self.write(newest/'campaign-report.json', {**historical, 'latest_parent': {'later': 'checkpoint'}})
+            with self.assertRaisesRegex(ValueError, 'cannot reset a later checkpoint'):
+                self.select()
+
+    def test_recovery_receipt_ledger_requires_exact_append_including_failed555(self):
+        child, plan, report = self.descendant()
+        ledger = runner.read(self.root/'sequence-ledger.json')
+        ledger['consumed'] += [dict(sequence=555, reserved_utc='failed reservation'),
+                               dict(sequence=556, reserved_utc='later reservation')]
+        ledger['next_sequence'] = 557
+        receipt = self.root/'recovery.json'
+        bound = self.recovery_receipt(receipt, ledger)
+        session_path = Path(plan['local_session']['path'])
+        session = runner.read(session_path)
+        session['original_continuation']['evidence'] = {'recovery/recovery_receipt': bound}
+        self.write(session_path, session); plan['local_session'] = runner_binding(session_path)
+        appended = deepcopy(ledger)
+        appended['consumed'].append(dict(sequence=557, reserved_utc='new reservation'))
+        appended['next_sequence'] = 558
+        self.write(self.root/'sequence-ledger.json', appended)
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())):
+            self.assertEqual(self.select()[2]['next_sequence'], 558)
+            dropped = deepcopy(appended)
+            dropped['consumed'] = [row for row in dropped['consumed'] if row['sequence'] != 555]
+            self.write(self.root/'sequence-ledger.json', dropped)
+            with self.assertRaisesRegex(ValueError, 'exact append.*recovery receipt'):
+                self.select()
+            changed = deepcopy(appended)
+            changed['consumed'][-3]['reserved_utc'] = 'changed existing reservation'
+            self.write(self.root/'sequence-ledger.json', changed)
+            with self.assertRaisesRegex(ValueError, 'exact append.*recovery receipt'):
+                self.select()
+
+    def test_ancestor_session_snapshot_preserves_prior_failed_reservations(self):
+        child, plan, report = self.descendant()
+        ledger = runner.read(self.root/'sequence-ledger.json')
+        ledger['consumed'] += [dict(sequence=555), dict(sequence=556)]
+        ledger['next_sequence'] = 557
+        session_path = Path(plan['local_session']['path'])
+        session = runner.read(session_path)
+        session['original_continuation']['seed_ledger_snapshot'] = deepcopy(ledger)
+        self.write(session_path, session); plan['local_session'] = runner_binding(session_path)
+        ledger['consumed'] = [row for row in ledger['consumed'] if row['sequence'] != 555]
+        self.write(self.root/'sequence-ledger.json', ledger)
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())):
+            with self.assertRaisesRegex(ValueError, 'exact append.*ancestor session'):
+                self.select()
+
+    def test_clean_zero_update_run_cannot_reuse_failed_or_preparing869(self):
+        child, plan, report = self.descendant()
+        interrupted = self.root/'continued'
+        historical = runner.read(interrupted/'campaign-report.json')
+        self.write(interrupted/'campaign-report.json', {**historical,
+            'owned_cleanup_verified': False, 'full_final_restore': None})
+        self.write(interrupted/'shutdown.json', {**self.shutdown, 'within_hard_deadline': False})
+        ledger = runner.read(self.root/'sequence-ledger.json')
+        receipt = self.root/'recovery.json'; receipt_binding = self.recovery_receipt(receipt, ledger)
+        newest = self.root/'clean-zero-update'; newest.mkdir()
+        session = {**self.session, 'run_dir': str(newest), 'initial_parent': child,
+            'original_continuation': {'origin_run': str(self.anchor), 'seed_ledger_snapshot': ledger,
+                'evidence': {'recovery/recovery_receipt': receipt_binding}}}
+        self.write(newest/'session.json', session); self.write(newest/'shutdown.json', self.shutdown)
+        self.write(self.root/'latest-run.json', dict(run_dir=str(newest), session=runner_binding(newest/'session.json')))
+        proof = dict(parent=child, progress=historical['latest_progress'],
+                     evidence={'recovery_receipt': receipt_binding})
+        with patch.object(adapter, 'read_descriptor', side_effect=lambda d:
+                          (plan, report) if d == child else ({}, self.valid_report())), \
+                patch('tools.recover_interrupted_training.validate_receipt', return_value=proof):
+            for status in ('failed', 'preparing'):
+                with self.subTest(status=status):
+                    self.write(newest/'campaign-report.json', {**historical, 'batches': [
+                        dict(mode='training', sequence=869, status=status, checkpoint_verified=False)]})
+                    with self.assertRaisesRegex(ValueError, 'omitted a consumed training attempt'):
+                        self.select()
+                    advanced = deepcopy(ledger)
+                    advanced['consumed'].append(dict(sequence=869, reserved_utc='consumed before failure'))
+                    advanced['next_sequence'] = 870
+                    self.write(self.root/'sequence-ledger.json', advanced)
+                    self.assertEqual(self.select()[2]['next_sequence'], 870)
+                    self.write(self.root/'sequence-ledger.json', ledger)
 
 
 if __name__ == '__main__':

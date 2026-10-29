@@ -179,7 +179,7 @@ def final_parent(run):
     return report['latest_parent']
 
 
-def original_continuation(anchor, config):
+def original_continuation(anchor, config, recovery_receipt=None):
     """Audit the closed 699 lineage and calculate the *remaining* original target.
 
     This never resumes a consumed session. The durable seed ledger survives fresh
@@ -188,30 +188,117 @@ def original_continuation(anchor, config):
     """
     from experiments.learner import local_script_training as adapter
     from experiments.learner.builtin_training_resume import binding, require
+    from experiments.headless.contextual_evidence import strict_json
     anchor = Path(anchor).expanduser().resolve()
     root = Path(config['run_root']).resolve()
-    evidence = {}
+    evidence, recoveries, clean_runs = {}, {}, set()
+    ledger_snapshots, recovery_ledgers = [], {}
+    training_reservations = set()
+    inherited_recovery = None
+
+    def ledger_shape(value, label):
+        require(type(value) is dict and set(value) == {'next_sequence', 'consumed'}
+                and type(value['next_sequence']) is int and value['next_sequence'] >= 0
+                and type(value['consumed']) is list, 'Malformed seed ledger: ' + label)
+        sequences = []
+        for row in value['consumed']:
+            require(type(row) is dict and 'sequence' in row
+                    and set(row) <= {'sequence', 'reserved_utc'}
+                    and type(row['sequence']) is int and row['sequence'] >= 0
+                    and ('reserved_utc' not in row or type(row['reserved_utc']) is str),
+                    'Malformed seed ledger reservation: ' + label)
+            sequences.append(row['sequence'])
+        require(sequences == sorted(set(sequences))
+                and (not sequences or value['next_sequence'] == sequences[-1] + 1),
+                'Inconsistent seed ledger: ' + label)
+        return value
+
+    def remember_recovery_ledger(value):
+        # Read one exact bound receipt once even when every descendant carries it.
+        key = (value['path'], value['sha256'], value['bytes'])
+        if key not in recovery_ledgers:
+            from tools.recover_interrupted_training import MOVING, SCHEMA
+            require(binding(value['path']) == value, 'Inherited recovery evidence changed')
+            receipt = strict_json(Path(value['path']).read_bytes())
+            require(type(receipt) is dict and receipt.get('schema') == SCHEMA
+                    and type(receipt.get('verification')) is dict,
+                    'Inherited recovery receipt schema changed')
+            snapshots = receipt['verification'].get('original_moving_snapshots')
+            require(type(snapshots) is dict and set(snapshots) == set(MOVING)
+                    and all(type(contents) is str for contents in snapshots.values()),
+                    'Inherited recovery receipt omitted original moving snapshots')
+            snapshot = ledger_shape(strict_json(snapshots['sequence-ledger.json']), 'recovery receipt')
+            require(binding(value['path']) == value, 'Inherited recovery evidence changed')
+            recovery_ledgers[key] = snapshot
+            ledger_snapshots.append(('recovery receipt', snapshot))
+
+    def inherit_recovery(session):
+        # Future clean descendants retain the immutable recovery proof without
+        # freezing today's ledger; it must remain an exact append of old snapshots.
+        continuation = session.get('original_continuation') or {}
+        if 'seed_ledger_snapshot' in continuation:
+            snapshot = ledger_shape(continuation['seed_ledger_snapshot'], 'ancestor session')
+            ledger_snapshots.append(('ancestor session', snapshot))
+        for name, value in continuation.get('evidence', {}).items():
+            if name.startswith('recovery/'):
+                require(binding(value['path']) == value, 'Inherited recovery evidence changed')
+                require(name not in evidence or evidence[name] == value, 'Conflicting recovery evidence')
+                evidence[name] = value
+                if name == 'recovery/recovery_receipt':
+                    remember_recovery_ledger(value)
 
     def closed(run, label):
         values = [read(run / name) for name in ('session.json', 'campaign-report.json', 'shutdown.json')]
         session, report, shutdown = values
         require(Path(session['run_dir']).resolve() == run and Path(session['run_root']).resolve() == root
                 and session['profile'] == 'original', 'Continuation campaign path/profile changed')
-        require(report.get('status') in ('finished', 'stopped_requested', 'stopped_budget', 'stopped_failure')
+        inherit_recovery(session)
+        for row in report['batches']:
+            if row.get('mode') == 'training':
+                require(type(row.get('sequence')) is int, 'Training attempt lost its consumed reservation')
+                training_reservations.add(row['sequence'])
+        historically_closed = (report.get('status') in ('finished', 'stopped_requested', 'stopped_budget', 'stopped_failure')
                 and report.get('owned_cleanup_verified') is True
                 and report.get('initial_state_unchanged') is True
-                and report.get('full_final_restore', {}).get('exact') is True
+                and (report.get('full_final_restore') or {}).get('exact') is True
                 and shutdown.get('owned_cleanup_verified') is True
                 and shutdown.get('within_hard_deadline') is True
-                and shutdown.get('worker_returncode') in (0, 1),
-                'Continuation requires verified closed processes and an exact final checkpoint')
+                and shutdown.get('worker_returncode') in (0, 1))
+        if historically_closed:
+            clean_runs.add(str(run))
+            restored_progress = report['full_final_restore']['progress']
+        else:
+            inherited = inherited_recovery if label == 'latest' else None
+            selected_receipt = recovery_receipt or (inherited['receipt']['path'] if inherited else None)
+            require(selected_receipt is not None,
+                    'Continuation requires verified closed processes and an exact final checkpoint')
+            # This separately reviewed recovery never rewrites the failed report,
+            # extends its deadline or admits its incomplete evaluation cohort.
+            from tools.recover_interrupted_training import validate_receipt
+            if str(run) not in recoveries:
+                if inherited:
+                    require(binding(selected_receipt) == inherited['receipt'], 'Inherited recovery receipt differs')
+                    recoveries[str(run)] = validate_receipt(selected_receipt, run, config, inherited=True)
+                else:
+                    recoveries[str(run)] = validate_receipt(selected_receipt, run, config)
+            recovery = recoveries[str(run)]
+            require(recovery['parent'] == report['latest_parent']
+                    and recovery['progress'] == report['latest_progress'],
+                    'Recovery checkpoint differs from the interrupted campaign')
+            if inherited:
+                require(inherited['parent'] == recovery['parent'] and inherited['progress'] == recovery['progress'],
+                        'Clean newest attempt cannot reset a later checkpoint to its recovered ancestor')
+            evidence.update({'recovery/'+name: value for name, value in recovery['evidence'].items()})
+            if 'recovery_receipt' in recovery['evidence']:
+                remember_recovery_ledger(recovery['evidence']['recovery_receipt'])
+            restored_progress = recovery['progress']
         for name in ('session.json', 'campaign-report.json', 'shutdown.json'):
             evidence[label + '/' + name] = binding(run / name)
-        return session, report
+        return session, report, restored_progress
 
     require(config['default_profile'] == 'original' and anchor.parent == root,
             'Continuation must use the existing official original-map artifact root')
-    origin, origin_report = closed(anchor, 'origin')
+    origin, origin_report, _ = closed(anchor, 'origin')
     anchor_parent = origin_report['latest_parent']
     pins = {'policy': '045d48215be54bd2bd3f438a12f2626ffe83b2a53445a6a8623254feeb0ac046',
             'resume': 'c5f8e601040e738bbda9fee987f996829107dda3737e2954e1cc4ba371c0afcf',
@@ -249,12 +336,17 @@ def original_continuation(anchor, config):
     require(binding(newest['session']['path']) == newest['session']
             and Path(newest['session']['path']).resolve() == newest_run/'session.json',
             'Newest attempt session binding changed')
-    closed(newest_run, 'newest_attempt')  # It can have failed before advancing latest-checkpoint.
+    newest_session, newest_report, newest_progress = closed(newest_run, 'newest_attempt')
+    # A clean stop before its first update keeps the older checkpoint pointer.
+    # The new run must already carry the exact recovery proof and restored state.
+    receipt = (newest_session.get('original_continuation') or {}).get('evidence', {}).get('recovery/recovery_receipt')
+    if str(newest_run) in clean_runs and receipt is not None:
+        inherited_recovery = dict(receipt=receipt, parent=newest_report['latest_parent'], progress=newest_progress)
     latest = read(root / 'latest-checkpoint.json')
-    _, last_report = closed(Path(latest['run_dir']).resolve(), 'latest')
+    _, last_report, restored_progress = closed(Path(latest['run_dir']).resolve(), 'latest')
     parent = latest['parent']
     require(parent == last_report['latest_parent']
-            and latest['progress'] == last_report['full_final_restore']['progress'],
+            and latest['progress'] == restored_progress,
             'Latest pointer differs from the closed campaign and restoration receipt')
     cursor, seen, continued = parent, set(), 0
     while cursor != anchor_parent:
@@ -269,6 +361,7 @@ def original_continuation(anchor, config):
                 'Latest checkpoint is not a complete verified original-map descendant of699')
         require(binding(plan['local_session']['path']) == plan['local_session'], 'Descendant session binding changed')
         parent_session = read(plan['local_session']['path'])
+        inherit_recovery(parent_session)
         require(Path(parent_session['run_root']).resolve() == root
                 and parent_session.get('original_continuation', {}).get('origin_run') == str(anchor),
                 'A foreign/benchmark checkpoint cannot continue the official lineage')
@@ -276,12 +369,18 @@ def original_continuation(anchor, config):
     progress = latest['progress']
     require(progress['updates'] == 699 + continued and progress['rollouts'] == 2796 + 4*continued,
             'Continuation counters differ from the verified four-game ancestry')
-    ledger = read(root / 'sequence-ledger.json')
+    ledger = ledger_shape(strict_json((root / 'sequence-ledger.json').read_bytes()), 'current')
+    for label, snapshot in ledger_snapshots:
+        require(ledger['consumed'][:len(snapshot['consumed'])] == snapshot['consumed']
+                and ledger['next_sequence'] >= snapshot['next_sequence'],
+                'Current seed ledger is not an exact append of the ' + label + ' snapshot')
     sequences = [row['sequence'] for row in ledger['consumed']]
     require(sequences and all(type(n) is int for n in sequences)
             and len(sequences) == len(set(sequences)) and 336 in sequences
             and ledger['next_sequence'] == max(sequences)+1 and ledger['next_sequence'] >= 337,
             'Original seed ledger is missing, inconsistent, or would reuse failed batch336')
+    require(training_reservations <= set(sequences),
+            'Current seed ledger omitted a consumed training attempt, including failed or preparing work')
     scheduled = set()
     for row in origin_report['batches']:
         if row.get('mode') != 'training':
@@ -535,7 +634,8 @@ def start(args):
     run_root = Path(config['run_root'])
     with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
         if args.parent_final is not None: final_parent(args.parent_final)
-        if args.continue_original is not None: original_continuation(args.continue_original, config)
+        if args.continue_original is not None:
+            original_continuation(args.continue_original, config, args.recovery_receipt)
         release, commit = release_checkout(config['artifact_root'], None if args.fast_path else ACCEPTED_IMPLEMENTATION)
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
@@ -552,6 +652,7 @@ def start(args):
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
         if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
         if args.continue_original is not None: command += ['--continue-original', str(args.continue_original.resolve())]
+        if args.recovery_receipt is not None: command += ['--recovery-receipt', str(args.recovery_receipt.resolve())]
         if args.batch_wall_seconds is not None: command += ['--batch-wall-seconds', str(args.batch_wall_seconds)]
         if args.interaction_guard is not None: command += ['--interaction-guard', args.interaction_guard]
     os.chdir(release)
@@ -584,7 +685,7 @@ def launch_owned(args):
               else read(latest)['parent'] if latest.exists() else config['parent'])
     continuation = None
     if args.continue_original is not None:
-        parent, args.games, continuation = original_continuation(args.continue_original, config)
+        parent, args.games, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
     initial = adapter.restore_parent(parent)
     adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, policy_support)  # before any session or game
     parent_final_evidence = None
@@ -610,7 +711,8 @@ def launch_owned(args):
         evaluation_interval_updates=args.eval_every,
         parent_final_run=str(args.parent_final.resolve()) if args.parent_final else None,
         parent_final_evidence=parent_final_evidence,
-        frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py', 'train-local.sh')},
+        frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py',
+            'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json', 'train-local.sh')},
         authorization='Manual user invocation; no agent/model calls, no automatic retry or post-deadline restart',
         **budget(args.hours, continuation=args.continue_original is not None))
     require(not session['source']['tracked_worktree_dirty'], 'Frozen source is dirty')
@@ -718,6 +820,8 @@ def main():
     parents.add_argument('--parent-final', type=Path, help='Restore only the fully finalized state of this prior run')
     parents.add_argument('--continue-original', type=Path,
                          help='Continue the preserved699 lineage toward the original total5000-game target')
+    parser.add_argument('--recovery-receipt', type=Path,
+                        help='Explicit reviewed interruption receipt; original failed session stays immutable')
     parser.add_argument('--session', type=Path)
     parser.add_argument('--interaction-guard', choices=('visible-interaction-budget-v1',),
                         help='Explicit visible-history policy-support intervention; disabled when omitted')
@@ -738,6 +842,8 @@ def main():
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
                       help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
     args = parser.parse_args()
+    if args.recovery_receipt is not None and args.continue_original is None:
+        parser.error('--recovery-receipt requires --continue-original')
     if (args.continue_original is not None or args.batch_wall_seconds is not None or args.interaction_guard is not None) and not args.fast_path:
         parser.error('Continuation and operational budget changes require the reviewed --fast-path release')
     if args.continue_original is not None:
@@ -782,8 +888,9 @@ def main():
         checked = validate_config(config)
         if args.continue_original is not None:
             from experiments.learner import local_script_training as adapter
-            with campaign_locks(config):
-                parent, remaining, continuation = original_continuation(args.continue_original, config)
+            from tools.recover_interrupted_training import existing_campaign_locks
+            with existing_campaign_locks(config):
+                parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
                 state = adapter.restore_parent(parent)
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
                 adapter.check_lineage(adapter.read_descriptor(parent)[0],

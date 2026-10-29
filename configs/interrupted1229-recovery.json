@@ -1,0 +1,93 @@
+{
+  "deadline_inventory": {
+    "count": 1401,
+    "sha256": "aefe20f1e7c45b0b06f0416487a872996a9588be11a035482492259612600b2f"
+  },
+  "full_state_sha256": "c5882092150d55b4c07df368534f63b0c742bdd74982f1228210007f67c5ad7e",
+  "immutable_evidence": {
+    "campaign-deadline.jsonl": {
+      "bytes": 1885,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/campaign-deadline.jsonl",
+      "sha256": "dda534c9d775e4695d53a6abe1eaf7a2e2981857d646aac962740339e52476ca"
+    },
+    "campaign-report.json": {
+      "bytes": 1029216,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/campaign-report.json",
+      "sha256": "3274b1b9e5a9c3399e09b93e70b3a065ee0e9245240566d947ea7aa711feedc4"
+    },
+    "checkpoint_audit": {
+      "bytes": 54290,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/checkpoint1229-readonly-audit-20261029T003158Z-8d25189c.json",
+      "sha256": "a692d97d80bdf728f5dfe4657b68c8524a6d74b7c7c8a679a9202cc8e9017c6a"
+    },
+    "interrupted/execution/report.json": {
+      "bytes": 2495,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/batches/periodic-001229-seat1/execution/report.json",
+      "sha256": "19c0b6378cc6704d7ca05a77a57ca9c1c61b687d9eaa9747e16c766f1f8c3de0"
+    },
+    "interrupted/execution/report.json.tmp-75356": {
+      "bytes": 13717,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/batches/periodic-001229-seat1/execution/report.json.tmp-75356",
+      "sha256": "4960c49c70e7450e4a559e0cae89a1fbfcd7afc859b54cfedd4d409015e24c04"
+    },
+    "interrupted/execution/worker-report.json": {
+      "bytes": 13453,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/batches/periodic-001229-seat1/execution/worker-report.json",
+      "sha256": "993c65724b931ecc3b3e7390906298e40213478a5b879f6c3d9e7019f225f4d6"
+    },
+    "interrupted/plan.json": {
+      "bytes": 66282,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/batches/periodic-001229-seat1/plan.json",
+      "sha256": "83564330b3e9219f7a299a5eb59313b4c56fccf5020ef7e0ee0f7c29f9092b71"
+    },
+    "process_power_audit": {
+      "bytes": 13352,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/process-power-audit-20261029T003103Z.json",
+      "sha256": "0645605aa2606ce5ceaa520446ff367a0953afafe598948afd11e8af286b708d"
+    },
+    "session.json": {
+      "bytes": 111827,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/session.json",
+      "sha256": "91e5189e95f8ba30fd9448a20495a32f261b8290f3cd12bc35c7ed91f4a6ba81"
+    },
+    "shutdown.json": {
+      "bytes": 693,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/shutdown.json",
+      "sha256": "273d73ba21f1678e64d05e82b8835817d460f3e2cc84458623785839a2cb7af8"
+    },
+    "state_audit": {
+      "bytes": 6816,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/state-audit.json",
+      "sha256": "66f3dcc810799383b4cf610b9fc8799ec9e52a48c8b6ac517f77da87dace4520"
+    },
+    "summary.json": {
+      "bytes": 12707,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc/summary.json",
+      "sha256": "bd72f699a22bbb8abe7f1f059412887649e2b04da1fe2e3d7e43dc61dee02dd7"
+    }
+  },
+  "interrupted_cohort": {
+    "count": 118,
+    "sha256": "9c6cc07c8be22ecc8c29416271cd694eb12fd6127b5493b49dc8b5f1e7d5ed95"
+  },
+  "moving_evidence": {
+    "latest-checkpoint.json": {
+      "bytes": 1903,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/latest-checkpoint.json",
+      "sha256": "6244b81bf15c79234db24a4e52f5047500da80fce8068c5f8b16184f181ac248"
+    },
+    "latest-run.json": {
+      "bytes": 367,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/latest-run.json",
+      "sha256": "4c587b257de70d7e60848834c4d6bcc4c452984afad9b4f6c47b1685cc7121b6"
+    },
+    "sequence-ledger.json": {
+      "bytes": 56126,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/sequence-ledger.json",
+      "sha256": "5cfd782b4a3a10248a2e6c0608381b4d4aa54ab80185ec352d28c868cb131a1d"
+    }
+  },
+  "run_dir": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/original/run-20261028T192106Z-44be2ecc",
+  "schema": "heroes-interrupted1229-recovery-v1-profile",
+  "scope": "Only the reviewed checkpoint1229 Mac sleep interruption; no arbitrary failed-run override."
+}

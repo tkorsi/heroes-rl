@@ -1,8 +1,10 @@
 # Checkpoint 1229: cloud lifetime and continuation preparation
 
 Reviewed on 29 October 2026. This document prepares a possible continuation; it
-does not establish cloud readiness or authorize a training launch. No cloud
-environment, task or training process was created during this preparation.
+does not establish cloud readiness or authorize a training launch. The user
+subsequently authorized one separate cloud probe chat and one inspection
+follow-up. Both completed without launching a probe or training process; the
+setup limitation is recorded below.
 
 ## What the official documentation establishes
 
@@ -120,6 +122,27 @@ short probe are only observations, not a platform SLA or a ten-hour guarantee.
 
 The probe is unrelated to checkpoint admission. Its output cannot satisfy a
 training recovery, runtime acceptance or publication gate.
+
+## Actual cloud attempt
+
+The authorized cloud chat, titled `Probe Launch Blocked`, was created as
+conversation `6ae29a37-5b44-83eb-85ea-1a6d208c1f07`, with executor task
+`01a1852a-b5d6-7768-a17a-ce34303db06b`. It stopped before download or execution.
+The managed-cloud runtime skill at
+`/root/.codex/plugins/cache/openai-curated-remote/cloud-environment/0.1.2/skills/runtime/SKILL.md`
+requires using `cloud_environment.environment_status` at startup and inspecting
+the selected executor's `/etc/codex/network-policy.json` before network work.
+The status tool was not exposed, and the policy file was absent.
+
+The single authorized inspection follow-up confirmed a Linux x86_64 executor
+with Python 3.12.14, no exposed managed-cloud readiness/network-policy tool, no
+probe process in `/proc`, and no probe outputs in the workspace or inspected
+temporary directories. Classification: **setup blocked, no probe launched,
+lifetime unmeasured**. This is not an observed process-survival failure. No
+download retry, replacement probe, configuration change or recurring model
+supervision was attempted. The cloud continuation remains unaccepted until a
+properly configured executor and an independently validated Linux runtime are
+available; Mac recovery readiness does not satisfy either condition.
 
 Local validation on 29 October used a fresh temporary directory and a real
 0.4-second run: five observations, no recorded gaps, deadline completion and
