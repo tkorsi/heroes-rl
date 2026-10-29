@@ -11,6 +11,15 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
+The latest verified state is **checkpoint 1,335**, recovered from the cloud's
+publication-only failure and imported to this Mac with exact model/Adam/RNG/
+progress/sampler/pool restoration. The original target has **2,824 admitted games
+and 2,176 remaining**; sequence 975 is next. The [recovery report](docs/research/cloud1335-recovery-2026-10-29.md)
+records 44 fresh native controls, 8 frozen-policy games and the passing real
+main-checkout preflight. Run `./train-1000.sh --hours 10` manually for 1,000 new
+admitted games with a ten-hour cap and printed total runtime. This repair did
+not launch official training. Earlier milestones below remain historical.
+
 The user has authorized a **visible-history interaction budget** to prevent
 repeated window, army/artifact and no-effect movement loops. This is an explicit
 policy-support intervention, not another exact acceleration. Terminal-only
@@ -51,7 +60,7 @@ evaluation, with no evidence of a new gameplay or adapter rejection. The
 [investigation](docs/research/local-sleep-interruption-2026-10-29.md) independently
 restored checkpoint **1,229** and its durable backup, including Adam, all RNG,
 progress, sampler and pool state, and found no remaining matching processes.
-The original target now has **2,400 admitted games and 2,600 remaining**;
+At that boundary, the original target had **2,400 admitted games and 2,600 remaining**;
 sequence **869** is next. The interrupted four-game evaluation cohort is excluded.
 A separate [audited manual recovery](docs/research/checkpoint1229-recovery-2026-10-29.md)
 now passes the real main-checkout one- and ten-hour prelaunch checks. It preserves
@@ -344,8 +353,8 @@ publication read-back timeout after computing checkpoint **1,335**. Its
 cloud checkpoint pairs and the complete failed-batch raw inventory. Checkpoint
 1,335 restores exactly without another optimizer update. This gives **2,824
 admitted games and 2,176 remaining** in the original target; sequence **975** is
-next. The original failed cloud report remains unchanged. Mac import and final
-manual readiness are recorded in that recovery report.
+next. The original failed cloud report remains unchanged. The Mac import and actual manual preflight have passed, as recorded in that
+recovery report.
 
 For a manual session targeting **1,000 additional admitted training games**, use
 `./train-1000.sh --check` for offline preflight, then `./train-1000.sh` to launch

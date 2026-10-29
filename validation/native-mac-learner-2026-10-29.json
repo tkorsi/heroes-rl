@@ -270,10 +270,11 @@
     "validation/probes/validate_town_transfer.py": "ad78ed396df50e5127329062b7d909425a795ab7dc676089de83b188a665becf"
   },
   "accepted_for_manual_training": true,
+  "cloud_import_source_commit": "c42b5bb8c5f77ddeabfbc2e018cf5ef556cc1845",
   "cloud_import_validation": "validation/cloud1335-recovery-2026-10-29.json",
   "current_validation": "validation/native-mac-utilization-2026-10-29.json",
   "initial_validation": "validation/native-mac-learner-initial-2026-10-29.json",
-  "mac_launch_ready": false,
+  "mac_launch_ready": true,
   "manual_launcher_validation": "validation/manual-1000-game-launcher-2026-10-29.json",
   "native_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
   "native_contract": "heroes-native-learner-v1",

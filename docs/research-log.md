@@ -890,12 +890,24 @@ observation or remote lock-mode change. The Mac import requires the exact pinned
 receipt, complete ancestry/seed audit and real continuation verification before
 unfencing. Partial application remains fenced with a durable journal.
 
-The initial focused run passed 83 tests; two added application controls make the
-expected final aggregate 85, pending rerun. Failed attempts remain disclosed:
-an unavailable `pytest` invocation, a stale apply-helper source pin rejected by
-the first import preview, and historical PID-number collisions rejected by the
-second preview. Neither preview changed official state or signalled processes.
-Linux behavior was not replayed as new Mac gameplay. Full-suite/native results,
-resolution of the second preview, official application and the actual
-main-checkout 1,000-game preflight remain pending at this entry's draft stage.
-No official training or automatic restart occurred.
+The import passed after correcting historical PID reuse with strict process-birth
+and group-leader proofs; no unrelated processes were signalled. The installed
+state passed continuation verification before both original lock modes were
+restored. The first real main preflight then exposed an acceptance record that
+predated the merged performance changes. Fresh validation passed 44 native
+controls and 8 frozen-1335 policy games, with 1,504 exact reconstructed choices,
+all natural losses, full state unchanged and no PPO input. A separate accepted
+runtime descriptor and new immutable machine file preserve the original machine;
+only acceptance metadata changes. Both the historical lineage and current
+acceptance remain independently mandatory.
+
+The full suite passed 1,861/1,908 tests with 47 platform/optional skips before the
+final refresh seams; final implementation passed 289/290 focused tests with one
+skip. The actual native library passed 13 exact disposable PPO comparisons and
+cleanup. Both canonical engine checks passed. Main's exact
+`./train-1000.sh --check` now passes in 6.81 seconds: checkpoint 1335, 1,000 new games,
+2,176 original games remaining, next sequence 975 and a ten-hour cap. It performs
+no gameplay or PPO. All failed preparation, source-gate, PID, ownership-lock,
+acceptance and test-selection attempts are retained in the detailed report.
+No official training, seed reservation, duplicate update or automatic restart
+occurred. Raw captures, state and operational receipts remain private.

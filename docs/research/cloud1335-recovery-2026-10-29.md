@@ -5,16 +5,16 @@
 The user authorized repairing the failed private publication, recovering the
 latest verified cloud state and preparing the Mac for a manually launched
 1,000-game continuation. This work runs no official games, replays no consumed
-training seeds and applies no optimizer update. Raw evidence, checkpoints and
+training seeds and applies no official optimizer update. Raw evidence, checkpoints and
 operational receipts remain in the private training-state repository and durable
 local artifact directory.
 
-**Draft acceptance status:** checkpoint 1335 has passed the separate publication
-recovery and complete-state checks described below. Application to the official
-Mac marker and moving pointers, final full-suite/native checks and the real
-main-checkout launch preflight remain pending. A recovered checkpoint is not yet
-a claim that the Mac is ready to launch. The final acceptance entry must record
-those results before removing this qualification.
+**Accepted manual readiness:** checkpoint 1335 is installed on the Mac, including
+complete state and the consumed-seed ledger. The actual main-checkout
+`./train-1000.sh --check` passed with 2,176 original-target games remaining,
+1,000 new games requested, sequence 975 next and a ten-hour cap. It launched no
+game or update. The [compact evidence](../../validation/cloud1335-recovery-2026-10-29.json)
+separates the original failed campaign from this certified recovery.
 
 ## Confirmed failure and retained evidence
 
@@ -73,7 +73,10 @@ blob-fetch batches were used and no lazy fetch occurred during local
 verification. The separate private return-to-Mac certificates were then
 published and read back in **8.75 seconds**. That certificate-only publication
 contains no new checkpoint pair; its receipt does not claim a second checkpoint
-roundtrip.
+roundtrip. The final Mac receipts, selected pointers, runtime acceptance and all
+new diagnostic captures were also published and freshly read back in 19.64
+seconds on private commit `5ae4c57e4de91cfd1f9d80478ebb65d996024835`.
+That branch retains the original verified checkpoint transaction in its ancestry.
 
 ## Recovered state and accounting
 
@@ -147,34 +150,72 @@ fenced, with the journal preserved for manual review; there is no automatic
 rollback, retry or training launch. Independent review corrected a missing
 parent-directory fsync before official writes.
 
-## Validation, failed attempts and limitations
+## Runtime refresh and final validation
 
-The initial focused validation passed 83 tests. The application-helper controls
-have since expanded from 16 to 18, so the corresponding final focused total is
-expected to be 85; that aggregate rerun is still pending in this draft. Controls
-cover corrupt/missing blobs and raw data, explicit post-push recovery, conflicting
-labels, denied lazy fetching, transfer-child cleanup, changed source/receipt
-bindings, cloud closure, seed and ancestry protection, concurrent ownership,
-partial pointer writes and re-fencing after unlock failures.
+The first real main preflight after import rejected the old native acceptance
+record: its Python dependency identity predated the merged performance work.
+Earlier checks had stopped at the ownership fence. The runtime binaries and
+engine recipe were unchanged; this was an acceptance-record mismatch, not a
+new engine failure. The strict gate was retained.
 
-An initial test invocation could not start because `pytest` was unavailable;
-validation continued through the repository's `unittest` route. The first real
-import preview failed on an unreviewed apply-helper source hash after the helper
-changed. Its source pin was corrected, with the failed receipt retained. The
-second preview rejected historical PID-number collisions with currently
-unrelated Chrome and system-service processes. No process was signalled and no
-official state was changed by either preview. Resolution and a successful
-preview must be recorded before application is accepted.
+Fresh diagnostics on the actual runtime passed all **16 garrison and 28 legacy
+controls**, with independent replay/history checks and owned cleanup. Eight
+fresh frozen-1335 policy games then passed replay and exact reconstruction of
+**1,504 choices**. All eight were natural losses; no training samples or updates
+were admitted. All five parent files were exact copies, full model/Adam/RNG/
+sampler/progress/pool state was restored unchanged, and all owned processes
+closed. The unchanged accepted native learner also passed all **13 exact-state
+comparisons** on an archived disposable PPO workload, with 16 peak frame workers.
+This is compatibility evidence, not policy improvement or a campaign speed claim.
 
-Stored Linux admission and replay evidence was audited; Linux-recorded behavior
-was not recomputed as new Mac gameplay. Complete restored state is exact, but
-identical future trajectories across architectures are not claimed. The
-9.58-second readback is one successful recovery measurement, not a network
-reliability guarantee. No policy-quality or campaign-throughput improvement is
-inferred from this repair.
+The new `terminal-replay-cloud1335-v1` acceptance and
+`machine-original-native-v1.json` are separate immutable artifacts. The original
+machine remains untouched. Only `created_utc`, `runtime_origin` and
+`runtime_release` differ; actual runtime, maps, learning settings, data, roots,
+parent and seed namespace remain identical. Cloud ancestry re-audits the
+receipt-bound historical machine and independently validates the new acceptance.
+The diagnostic binds and rechecks all three moving pointers across worker lock
+transfer, so an intervening launch cannot silently change the selected parent.
 
-Final full-suite results, generated-engine agreement, actual native-library
-loading, official application receipt, main-checkout synchronization and
-`./train-1000.sh --check` remain pending here. The intended user launch after
-those gates pass is `./train-1000.sh --hours 10`; the script reports total running
-time and stops at the session's admitted-game target or its safety boundary.
+The full suite passed **1,861 of 1,908 tests**, with 47 platform/optional skips,
+on `21c203f` before the final runtime-refresh extensions. On final implementation
+`c42b5bb`, **289 of 290 focused tests passed**, with one platform skip. Canonical
+engine preparation matched exactly in both checkouts. The actual native library
+loaded under the updated source and binary gates. The real main preflight passed
+in **6.81 seconds**, restored checkpoint 1335 and reported zero gameplay/updates.
+The application journal proves installed continuation verification preceded
+restoring both existing lock modes to `0644`. Historical failed evidence remains
+unchanged, and deleting the import marker cannot roll the campaign back to 1229.
+
+## Failed attempts and limits
+
+Retained failures include: unavailable `pytest`; a stale apply-helper source pin;
+reused historical PID numbers; a preview blocked by the owned native diagnostic
+lock; a native comparison and intermediate full-suite run rejected during source
+edits; the old runtime-acceptance mismatch; candidate preparation refused during
+a final review edit; a read-only post-audit JSON-key error; and a mistyped focused
+test module name. Each was corrected and rechecked. Failed preparation did not
+launch games; no failed policy game was retried. All raw evidence stays private.
+
+Process-generation checks compare UTC birth times with immutable historical
+observations. A reused group number additionally requires a newer live group
+leader and newer members. Missing, same-second or ambiguous identities and any
+matching run path still fail closed. No unrelated process was signalled.
+
+Stored Linux admission and replay evidence was audited, not recomputed as new
+Mac gameplay. Complete restored state is exact; identical future trajectories
+across architectures are not claimed. The successful remote readback is one
+measurement, not a network reliability guarantee. The deleted cloud environment
+prevents a fresh outer-supervisor inventory, as explained above.
+
+Run manually from the synchronized main checkout:
+
+```sh
+cd ~/Projects/Heroes
+./train-1000.sh --hours 10
+```
+
+The target is 1,000 additional admitted games (250 complete updates), with a
+ten-hour safety cap. Evaluation games are excluded. The script prints total
+running time; an early safe stop does not mean the 1,000-game target was reached.
+No official training or automatic restart was performed during this recovery.

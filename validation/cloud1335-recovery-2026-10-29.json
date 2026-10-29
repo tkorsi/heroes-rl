@@ -1,0 +1,241 @@
+{
+  "audit": {
+    "checkpoint_pairs_verified": 106,
+    "data_symlinks_followed": false,
+    "raw_regular_bytes": 212133096,
+    "raw_regular_files_verified": 134
+  },
+  "cloud_closure": {
+    "consumed_launch_claim_preserved": true,
+    "live_outer_supervisor_absence_verified": false,
+    "method": "published_terminal_training_closure_deleted_environment",
+    "remote_lock_mode_changed": false,
+    "training_workers_closed": true
+  },
+  "cloud_closure_commit": "89550dba6c481653ffc38cd78997438e846947f2",
+  "cloud_source_commit": "c6ebc8327e8dfe65dfa384a3fe77da709343a4dd",
+  "failed_attempts": [
+    "pytest unavailable; used unittest",
+    "Import preview rejected source pins changed during review",
+    "Import preview rejected reused historical PIDs; repaired generation checks",
+    "Import preview refused the native diagnostic ownership lock",
+    "Native comparison rejected concurrent documentation edits; rerun passed on clean source",
+    "Intermediate full suite rejected source pins changed during execution; clean rerun passed",
+    "First real main preflight rejected old runtime source acceptance; fresh44 native controls and8 frozen games resolved it",
+    "Candidate preparation refused source edits from review; clean committed retry passed",
+    "Read-only policy post-audit used an incorrect JSON key; corrected without replaying games",
+    "Final focused test selection named a nonexistent module; corrected290-test run passed"
+  ],
+  "failure": {
+    "classification": "publication_readback_timeout",
+    "engine_or_adapter_failure_observed": false,
+    "operation": "git show HEAD:cloud/.../batches/train-000974-seat0/raw.part00000",
+    "original_admitted_checkpoint": 1334,
+    "original_failed_report_preserved": true,
+    "pending_complete_checkpoint": 1335,
+    "raw_part_bytes": 5661006,
+    "sequence": 974,
+    "timeout_seconds": 120,
+    "underlying_network_stall_reason": "unknown"
+  },
+  "implementation_commit": "c42b5bb8c5f77ddeabfbc2e018cf5ef556cc1845",
+  "limitations": [
+    "Original network stall reason remains unknown.",
+    "Cloud outer supervisor was not freshly observed because the environment was deleted; frozen terminal control flow excludes further training.",
+    "Stored Linux admissions were audited, not recomputed as Mac gameplay.",
+    "Eight new frozen-policy losses demonstrate compatibility, not improved policy quality.",
+    "Native timings are diagnostics, not a full-campaign speed guarantee."
+  ],
+  "mac_import": {
+    "applied": true,
+    "historical_evidence_rewritten": false,
+    "installed_state_verified_before_unlock": true,
+    "lock_modes": [
+      "0644",
+      "0644"
+    ],
+    "marker_sha256": "521177c64827722cd56a68f02c24865aa6fa93f5bc348c4928d0e00d4c74d06d",
+    "process_id_reuse_disambiguated_by_start_time": true
+  },
+  "mac_launch_ready": true,
+  "manual_command": "cd ~/Projects/Heroes && ./train-1000.sh --hours 10",
+  "native_learner_build": {
+    "accepted_cpu_budget": 16,
+    "binary_changed_by_recovery": false,
+    "binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+    "manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623"
+  },
+  "official_game_seeds_reserved": 0,
+  "official_optimizer_updates_applied": 0,
+  "official_training_started": false,
+  "private_final_publication": {
+    "checkpoint_roundtrip_verified": false,
+    "commit": "5ae4c57e4de91cfd1f9d80478ebb65d996024835",
+    "contents": "Import receipts, exact selected pointers, machine and runtime acceptance, final checks and all new native/frozen-policy diagnostic captures; checkpoint pair remains in the verified original transaction inherited by this branch.",
+    "explicit_blob_fetch_batches": 2,
+    "fresh_readback_verified": true,
+    "lazy_fetch_during_verification": false,
+    "manifest_sha256": "2ea36b3c216e6a2f18d940583f545f1f1cc1435f065f81cfc357f6ddd4c1c39f",
+    "prefix": "handoffs/2026-10-29-cloud1335-to-mac/final-readiness",
+    "ref": "refs/heads/codex/cloud1335-return-to-mac",
+    "wall_seconds": 19.640866542002186
+  },
+  "publication_repair": {
+    "all_manifest_hashes_checked": true,
+    "explicit_bounded_blob_fetches": true,
+    "failed_batch_fresh_readback_seconds": 9.58265112497611,
+    "full_pair_restore_required": true,
+    "local_verification_network_disabled": true,
+    "original_transaction_republished": false
+  },
+  "recovered_state": {
+    "checkpoint": 1335,
+    "cloud_admitted_games": 424,
+    "cloud_complete_updates": 106,
+    "component_sha256": {
+      "generator": "a2eb4eb67313b1b42dde8c655c9c2ad0c04da5e26648fb4aa27f42a6ce19a038",
+      "model": "0a586875da0362c77fc94afb6b862ffbd572853d1ee9fec225a31f766f084b9c",
+      "optimizer": "525bc7d5412d0907cfcdf76d10419d9ae7598a13f036b4456be6253ef2f32745",
+      "pool": "bc71081af8e13679d27d32f5e0d3af9ed59de133fbe99dc6feca2419dc1cfa3c",
+      "progress": "77a9326ab8e3f0e2cae66aabc03e90ec1128eb1b9853e5aad836c7015f83bcd8",
+      "python_rng": "cf2fcb0ec1a2e6393f9e9ca1dcca7cda545b50a21fdb2d9895331786b36cf01f",
+      "sampler": "6899a6829ac6179e12902a7dc6c74346fbe81293943903ae54ca948034eb5398",
+      "torch_rng": "bc98b05d04067037a2057a835fed34425084bf9b3ce6c932b19fd9abf72de655"
+    },
+    "consumed_seeds_replayed": 0,
+    "decisions": 680677,
+    "full_state_sha256": "bd74f9dc658d2d68fcae330cd65af2940e97ddfdeda691b3dfec3580cfa9e472",
+    "next_sequence": 975,
+    "optimizer_steps": 23014,
+    "original_admitted_games": 2824,
+    "original_remaining_games": 2176,
+    "rollouts": 5340,
+    "update_reapplied": false
+  },
+  "runtime_refresh": {
+    "accepted_descriptor_sha256": "fe195632dedb22392e60049c1c12e0a488001fe617c12c59b20509f84f9d85b0",
+    "actual_engine_binaries_changed": false,
+    "changed_machine_fields": [
+      "created_utc",
+      "runtime_origin",
+      "runtime_release"
+    ],
+    "choices": 1504,
+    "exact_reconstruction": true,
+    "frozen_checkpoint": 1335,
+    "frozen_policy_games": 8,
+    "full_state_unchanged": true,
+    "native_controls_passed": 44,
+    "new_machine_sha256": "b62acd6be63cde6f3de75676143af5afba2f9a454a697d86e8ecdf69812525d2",
+    "official_training_samples": 0,
+    "official_updates": 0,
+    "old_machine_sha256": "51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c",
+    "outcomes": {
+      "cutoff": 0,
+      "loss": 8,
+      "win": 0
+    },
+    "policy_acceptance_sha256": "2a35cb0a77113168bf00941e3a40ef2fde939c4cfefb37cd65e62af3a59bca6d",
+    "release_id": "terminal-replay-cloud1335-v1"
+  },
+  "schema": "heroes-cloud1335-recovery-v1",
+  "status": "recovered_imported_manual_preflight_passed",
+  "timestamp_utc": "2026-10-29T19:46:39.862852+00:00",
+  "validation": {
+    "canonical_engine_check_passed": true,
+    "final_focused_suite": {
+      "passed": 289,
+      "skipped": 1,
+      "tests": 290
+    },
+    "full_suite_before_runtime_refresh_seams": {
+      "passed": 1861,
+      "skipped": 47,
+      "source_commit": "21c203fdbfe87623913dd00d0e82ae64a5e59095",
+      "tests": 1908
+    },
+    "main_preflight": {
+      "checkpoint": {
+        "decisions": 680677,
+        "rollouts": 5340,
+        "updates": 1335
+      },
+      "collection_workers": 4,
+      "console_elapsed_line": "Total running time: 00:00:06 (6.81 seconds); exit status: 0.",
+      "exact_restore": true,
+      "execution": {
+        "collection_workers": 4,
+        "experiments": [],
+        "implementation": "native-cpu-v1",
+        "native_learner": {
+          "manifest": "/Users/orsi/Projects/Heroes-artifacts/native-learner-builds/mac-utilization-v1-attempt6/manifest.json",
+          "prefix_threads": 16,
+          "sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623"
+        },
+        "overlapped_verification": false,
+        "prefix_helpers": 0,
+        "replay_threads": 0,
+        "resource_plan": {
+          "batch_size": 4,
+          "budget_cpus": 16,
+          "collection_workers": 4,
+          "memory_budget_enforced": false,
+          "native_frame_threads": 16,
+          "native_prefix_threads": 16,
+          "native_text_reducer_workers": 1,
+          "native_text_replay_workers": 14,
+          "phases_run_concurrently": false,
+          "requested_cpu_cap": null,
+          "resources": {
+            "affinity_cpus": null,
+            "available_cpus": 16,
+            "available_memory_bytes": null,
+            "cgroup_cpu_quota_cores": null,
+            "cgroup_cpus": null,
+            "effective_memory_limit_bytes": 137438953472,
+            "efficiency_cpus": 4,
+            "logical_cpus": 16,
+            "machine": "arm64",
+            "memory_availability_kind": "not_measured",
+            "performance_cpus": 12,
+            "physical_cpus": 16,
+            "physical_memory_bytes": 137438953472,
+            "platform": "Darwin",
+            "schema": "heroes-training-resources-v1"
+          },
+          "schema": "heroes-training-resource-plan-v1",
+          "torch_intraop_threads": 1,
+          "utilization_limits": [
+            "Four-game on-policy batches cap independent collection and verification jobs at four.",
+            "The accepted execution contract selects four workers or a single worker when the CPU budget is below four.",
+            "Native prefixes and differentiable frame features use at most the declared budget and available independent frames.",
+            "Text backward reserves one CPU for the main graph and, when at least three CPUs are available, one for ordered reduction; replay uses the remaining budget.",
+            "Recurrent transitions, minibatch order and gradient accumulation retain their original dependencies.",
+            "Memory figures describe observed capacity; no unmeasured per-worker memory guarantee is inferred."
+          ],
+          "verification_workers": 4
+        },
+        "text_leaf_replay": false,
+        "verification_workers": 4
+      },
+      "gameplay_performed": false,
+      "next_sequence": 975,
+      "original_remaining_training_games": 2176,
+      "phase_deadlines_seconds": {
+        "evaluation": 3540,
+        "training": 2400,
+        "update": 10740
+      },
+      "policy_support": "visible-interaction-budget-v1",
+      "ppo_updates": 0,
+      "remaining_training_games": 2176,
+      "session_safety_cap_hours": 10.0,
+      "session_target_games": 1000,
+      "shared_wall_seconds": 10800,
+      "source_commit": "c42b5bb",
+      "status": "continuation_offline_checks_passed"
+    },
+    "native_ppo_comparison_exact_checks": 13,
+    "native_ppo_owned_cleanup_verified": true
+  }
+}
