@@ -53,8 +53,14 @@ restored checkpoint **1,229** and its durable backup, including Adam, all RNG,
 progress, sampler and pool state, and found no remaining matching processes.
 The original target now has **2,400 admitted games and 2,600 remaining**;
 sequence **869** is next. The interrupted four-game evaluation cohort is excluded.
-The manual launcher currently refuses the unclean shutdown: the later audit
-does not retroactively certify the original deadline or authorize continuation.
+A separate [audited manual recovery](docs/research/checkpoint1229-recovery-2026-10-29.md)
+now passes the real main-checkout one- and ten-hour prelaunch checks. It preserves
+the failed shutdown, complete checkpoint state and every consumed reservation.
+`./continue-original-1229.sh --hours 1` starts a fresh manual window with four
+collectors; use `--hours 10` for ten hours. Keep the Mac awake with its lid open.
+The private checkpoint copy was independently downloaded and restored exactly.
+The authorized cloud lifetime probe was blocked before launch by missing
+managed-environment prerequisites; unattended cloud execution remains unverified.
 No training was restarted. Improvement in winning on the original map has not
 been demonstrated.
 

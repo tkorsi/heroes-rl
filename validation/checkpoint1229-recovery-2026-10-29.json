@@ -1,0 +1,323 @@
+{
+  "checkpoint": {
+    "failed_evaluation_admitted": false,
+    "full_state_sha256": "c5882092150d55b4c07df368534f63b0c742bdd74982f1228210007f67c5ad7e",
+    "next_sequence": 869,
+    "optimizer_steps": 21238,
+    "original_admitted_games": 2400,
+    "progress": {
+      "decisions": 627977,
+      "rollouts": 4916,
+      "updates": 1229
+    },
+    "remaining_games": 2600,
+    "update": 1229
+  },
+  "classification": "reviewed_manual_recovery_after_host_sleep_deadline_interruption",
+  "cloud_probe": {
+    "authorized_chats": 1,
+    "authorized_inspection_followups": 1,
+    "conversation_id": "6ae29a37-5b44-83eb-85ea-1a6d208c1f07",
+    "executor_thread_id": "01a1852a-b5d6-7768-a17a-ce34303db06b",
+    "linux_runtime_accepted": false,
+    "missing": [
+      "cloud_environment.environment_status",
+      "/etc/codex/network-policy.json"
+    ],
+    "probe_process_launched": false,
+    "status": "setup_blocked_no_probe_launched_lifetime_unmeasured",
+    "title": "Probe Launch Blocked",
+    "training_launched": false
+  },
+  "limitations": [
+    "Cloud detached-process lifetime and uninterrupted ten-hour command duration are unverified.",
+    "The private snapshot omits full raw run and full lineage; copied checkpoint restoration is not Linux acceptance.",
+    "Mac lid-close sleep can still suspend the process past its wall deadline.",
+    "No fresh native gameplay or learning validation was run for this controller-only change.",
+    "No claim of improved win rate or throughput."
+  ],
+  "manual_checks": {
+    "frozen-check-10h": {
+      "result": {
+        "checkpoint": {
+          "decisions": 627977,
+          "rollouts": 4916,
+          "updates": 1229
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 869,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 2600,
+        "session_safety_cap_hours": 10.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      },
+      "returncode": 0,
+      "stderr": {
+        "bytes": 343,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/frozen-check-10h.stderr",
+        "sha256": "735ac561d512813c9bd107b90c241ecada268390239c580974402078c5e16012"
+      },
+      "stdout": {
+        "bytes": 529,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/frozen-check-10h.stdout",
+        "sha256": "46ff4355e5ee25c2056cca9fabfe273c82f6f7ba1530ce0e9a1aa5c96cfa4703"
+      }
+    },
+    "main-check-10h": {
+      "result": {
+        "checkpoint": {
+          "decisions": 627977,
+          "rollouts": 4916,
+          "updates": 1229
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 869,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 2600,
+        "session_safety_cap_hours": 10.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      },
+      "returncode": 0,
+      "stderr": {
+        "bytes": 343,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/main-check-10h.stderr",
+        "sha256": "735ac561d512813c9bd107b90c241ecada268390239c580974402078c5e16012"
+      },
+      "stdout": {
+        "bytes": 529,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/main-check-10h.stdout",
+        "sha256": "46ff4355e5ee25c2056cca9fabfe273c82f6f7ba1530ce0e9a1aa5c96cfa4703"
+      }
+    },
+    "main-check-1h": {
+      "result": {
+        "checkpoint": {
+          "decisions": 627977,
+          "rollouts": 4916,
+          "updates": 1229
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 869,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 2600,
+        "session_safety_cap_hours": 1.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      },
+      "returncode": 0,
+      "stderr": {
+        "bytes": 343,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/main-check-1h.stderr",
+        "sha256": "735ac561d512813c9bd107b90c241ecada268390239c580974402078c5e16012"
+      },
+      "stdout": {
+        "bytes": 528,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/main-check-1h.stdout",
+        "sha256": "773bdde4bf680c83b886bd4ebf7dcceafd7c0a63f17a5135c576f22d49920fca"
+      }
+    },
+    "worktree-check-1h": {
+      "result": {
+        "checkpoint": {
+          "decisions": 627977,
+          "rollouts": 4916,
+          "updates": 1229
+        },
+        "collection_workers": 4,
+        "exact_restore": true,
+        "gameplay_performed": false,
+        "next_sequence": 869,
+        "phase_deadlines_seconds": {
+          "evaluation": 3540,
+          "training": 2400,
+          "update": 10740
+        },
+        "policy_support": "visible-interaction-budget-v1",
+        "ppo_updates": 0,
+        "remaining_training_games": 2600,
+        "session_safety_cap_hours": 1.0,
+        "shared_wall_seconds": 10800,
+        "status": "continuation_offline_checks_passed"
+      },
+      "returncode": 0,
+      "stderr": {
+        "bytes": 343,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/worktree-check-1h.stderr",
+        "sha256": "735ac561d512813c9bd107b90c241ecada268390239c580974402078c5e16012"
+      },
+      "stdout": {
+        "bytes": 528,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/worktree-check-1h.stdout",
+        "sha256": "773bdde4bf680c83b886bd4ebf7dcceafd7c0a63f17a5135c576f22d49920fca"
+      }
+    }
+  },
+  "missing_receipt_negative_control": {
+    "expected_refusal": true,
+    "returncode": 2,
+    "stderr": {
+      "bytes": 444,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/frozen-no-receipt.stderr",
+      "sha256": "d2af547a4229b6fecd15ac02d735893806dfa2a9ea8cab9f113f474f335c5467"
+    }
+  },
+  "official_inputs": {
+    "files_verified": 26,
+    "owner_lock_bytes_preserved": true,
+    "snapshot": {
+      "bytes": 6525,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/preparation-inputs-before.json",
+      "sha256": "b66adb532010e9372b8a131675ae20de5460d1de7105b4119351d4c09a21ad85"
+    },
+    "unchanged": true
+  },
+  "outcome": {
+    "cloud_training_ready": false,
+    "historical_failure_rewritten": false,
+    "manual_mac_continuation_prepared": true,
+    "official_games": 0,
+    "official_ppo_updates": 0,
+    "official_seed_reservations": 0,
+    "signals_sent": 0,
+    "training_launched": false
+  },
+  "private_preservation": {
+    "branch": "codex/checkpoint1229-handoff",
+    "downloaded_state_restored_exact": true,
+    "evidence_commit": "9f812e5d2b8ae85de42ce631e1df38840ad54d36",
+    "full_raw_run_uploaded": false,
+    "portable_cloud_launch_ready": false,
+    "recovery_readback": {
+      "bytes": 5641,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/private-recovery-readback-20261029T011052Z-7fbce6bf/receipt.json",
+      "sha256": "c055c462ae17e82ce596cd46936260e42183556811adbb27dc09c11adf34dcf8"
+    },
+    "repository": "tkorsi/heroes-rl-training-state",
+    "snapshot_bytes": 5486028,
+    "snapshot_commit": "ae985b40afec212aca0f2164016033f0e895283b",
+    "snapshot_files": 45,
+    "snapshot_readback": {
+      "bytes": 14398,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/private-readback-20261029T010759Z-d9035b2e/receipt.json",
+      "sha256": "e7b4ce47799b10f1e134b162e4fc306fc184b6586e0ac919b99d2fa4d1c09b84"
+    },
+    "visibility_verified": "private"
+  },
+  "recovery": {
+    "actual_runtime_binaries_rehashed": true,
+    "admitted_batches_reverified": 134,
+    "creation_process_closure": {
+      "historical_id_reuse_policy": "fail_closed_without_signals",
+      "matched_processes": [],
+      "observed_utc": "2026-10-29T01:09:12.855686+00:00",
+      "observer_pid": 1912,
+      "observer_present": true,
+      "processes_examined": 961,
+      "recorded_groups": 1401,
+      "recorded_pids": 2803,
+      "signals_sent": 0
+    },
+    "deadline_files": 1401,
+    "exact_full_canonical_and_backup_restore": true,
+    "fresh_manual_session_only": true,
+    "interrupted_cohort_files": 118,
+    "original_deadline_met": false,
+    "receipt": {
+      "bytes": 566673,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/recovery-receipt.json",
+      "sha256": "69d8d9da04b259584aba553a245040b8ef8337bdc58dd2b3a7a475d6e63d8d1d"
+    }
+  },
+  "review": {
+    "independent_reviews_passed": true,
+    "prepublication_findings_fixed": [
+      "Null historical full_final_restore handling",
+      "Empty or observer-free process inventory rejected",
+      "Profile identity relocates between source checkouts",
+      "Clean zero-update successor can inherit exact proof",
+      "Exact append ledger retains failed/preparing reservations and original reservation rows"
+    ]
+  },
+  "schema": "heroes-checkpoint1229-recovery-validation-v1",
+  "source_commit": "752b2ce6fd27a0e172e10c823d781ed8addf1a7e",
+  "source_runtime": {
+    "engine_code_changed": false,
+    "experiment_settings_changed": false,
+    "frozen_log": {
+      "bytes": 656,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/frozen-release-preparation.log",
+      "sha256": "5c357f7470eef801fa59e4b47910d43d12f413f487d33eeaa75c484ce461506e"
+    },
+    "main_log": {
+      "bytes": 104,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/main-prepare-vcmi-check.log",
+      "sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac"
+    },
+    "new_native_game_acceptance": false,
+    "prepare_vcmi_check": "passed_in_worktree_frozen_release_and_main",
+    "runtime_changed": false
+  },
+  "tests": {
+    "first_full_attempt": {
+      "cause": "Concurrent reviewed runner edit invalidated already-imported source pins; rerun on stable committed source passed.",
+      "failures": 3,
+      "log": {
+        "bytes": 319731,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/full-tests.log",
+        "sha256": "00548b20e587849ac6203683894249f9f74fd8603a87688f7427ee45f8b949db"
+      },
+      "skipped": 47,
+      "subtest_errors": 7,
+      "total": 1707
+    },
+    "full_stable": {
+      "errors": 0,
+      "failed": 0,
+      "log": {
+        "bytes": 304240,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/full-final-tests.log",
+        "sha256": "f46cf2641c6e614cd1b7c40d184b1b11ac7f452daed67f2a0b3eb18c79d432c0"
+      },
+      "passed": 1663,
+      "seconds": 211.907,
+      "skipped": 47,
+      "total": 1710
+    },
+    "targeted_final": {
+      "log": {
+        "bytes": 553,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-29-1229-sleep/targeted-final-tests.log",
+        "sha256": "fb048220c7171f4d1c0d2c31e4da2be978a5ecc257a92020a5a312e5ed517e7d"
+      },
+      "passed": 110,
+      "total": 110
+    }
+  },
+  "timestamp_utc": "2026-10-29T01:14:02.557339+00:00"
+}

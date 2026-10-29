@@ -79,9 +79,12 @@ cd /Users/orsi/Projects/Heroes
 ./continue-original-1229.sh check --hours 1
 ```
 
-This is check mode, not a training command. The current preparation's compact
-validation report records whether the actual checkout passed; this document
-does not claim a pending check has already succeeded. A later process audit
+This is check mode, not a training command. The actual main checkout passed
+one-hour and ten-hour checks, and a separate frozen release passed the ten-hour
+check. All restored checkpoint 1,229 exactly, calculated 2,600 remaining games
+and selected unused sequence 869. See the
+[validation record](../../validation/checkpoint1229-recovery-2026-10-29.json).
+A later process audit
 does not retroactively repair the original deadline/cleanup receipts. Recovery
 must bind the immutable failure evidence, exact complete checkpoint state,
 admitted lineage and consumed-seed ledger before a separate manual continuation.

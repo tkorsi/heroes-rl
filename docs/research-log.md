@@ -697,3 +697,30 @@ receipts retain sleep/process evidence and complete state hashes; remote
 publication of this latest run was not verified. An initial check-output
 redirection failed before script execution; the subsequent actual check returned
 the expected refusal. No new regression or speedup claim is made.
+
+## 29 October 2026 — audited manual recovery; cloud lifetime unmeasured
+
+The separate [checkpoint1229 recovery](research/checkpoint1229-recovery-2026-10-29.md)
+now permits a new manual window after revalidating all 134 admitted updates,
+exact canonical/backup state, actual runtime bytes, failed evidence and current
+process closure. The original missed deadline and failed shutdown remain true.
+No official games, updates, reservations or restart occurred. Main one-hour and
+ten-hour checks and a frozen-release ten-hour check passed with 2,600 games
+remaining and unused sequence869. Canonical engine preparation still matches.
+
+Review caught an inherited-recovery seed-ledger gap before publication: an
+unadmitted reservation could be removed while completed ancestry still passed.
+Exact ledger append checks now retain original rows and failed/preparing attempts.
+The first broad test run overlapped source edits and failed its source-pin checks
+(three failures, seven subtest errors); that log remains preserved. The stable
+rerun passed 1,663 of 1,710 tests, with 47 platform/optional skips. All 110 final
+focused tests passed. No integrity or replay gate was relaxed.
+
+A 45-file private checkpoint/evidence snapshot was independently downloaded and
+restored to the exact complete state; a separate private recovery receipt also
+passed remote readback. This is not a full raw-lineage or Linux-ready handoff.
+One authorized cloud chat and one inspection follow-up stopped before the
+process probe: required environment status and network-policy inputs were
+unavailable. Cloud lifetime is unmeasured, not observed to fail. The standalone
+trainer has no model calls; no recurring model supervision or cloud training was
+started. No new strategic improvement or throughput claim is made.
