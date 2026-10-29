@@ -225,7 +225,7 @@ FAST_PATH_TREE = {
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
     'tools/cloud_state_import.py': ('',
-        '2e14dbff1a886019c5b0aacd24492081a65a02a21a94b46d3e410c2fca82a8d7'),
+        '4f199f3b22e4125c13d416da087d85b377f7c3f06cfe9eda4fd19a17b06327dc'),
     'tools/continuation_goal.py': ('',
         'ed19b6330f18005f15c33cc1f4ecd4f6a18455c2bd0be8bd2c6d9fb775e1b4f8'),
     'tools/continue_772_games.py': ('',
@@ -233,13 +233,13 @@ FAST_PATH_TREE = {
     'tools/linux_publication.py': ('',
         '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '754d652543f78b32615faab186e3035812e050171a585fe10a038018e59539dd'),
+        '5b1751dfa36a6bb6753dd537bf8190d49a33ea42d6aa2ab3d5878dd65110f247'),
     'tools/recover_interrupted_training.py': ('',
         'cc6695b19024c6e7f271f073e35fa1436e15417cf316f251e1e4d0a7fa10b576'),
     'tools/refresh_parallel_runtime_acceptance.py': ('',
-        'c2919ec25779c02cd248628b20098c5ee4093f579710d84077dbda285d97624d'),
+        '737df7211ab18abd299a851fc9a0340c2e959a0fc3b4248bf2272f0bf5edd836'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        'ab197f8fb9478d762aa3f3c8c78743c0ca5b4e315baf629bb36876b9dc418388'),
+        'bcd1774c6ba21f4b4312728996f81d5960d3450406a43e1dc8d6c514d1f6d315'),
     'tools/train_1000_games.py': ('',
         '47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4'),
     'tools/validate_interaction_guard.py': ('',
@@ -255,7 +255,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'f4555a4ae924cbd8719fb15fee9258aec016ed7031ef18cfabbfe097dbd36a21'
+LOCAL_ADAPTER_TRANSITION_AST = 'e24c991b7f052703e50d8bc4e680422b4d270b7136295409bd3a173b1c540857'
 
 
 def write_new(path, value):

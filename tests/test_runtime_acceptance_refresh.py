@@ -80,7 +80,8 @@ class RuntimeRefreshTests(unittest.TestCase):
             write(old, dict(policy_reconstruction={'historical': True}, runtime_bin=str(old_runtime/'bin'),
                 runtime_files={'vcmiclient': 'old-client', 'vcmireplay': 'old-replay'},
                 freeze={'old': True}, preflight={'old': True}, terminal_replay={'old': True},
-                engine_recipe={'old': 'recipe'}, change_classification='replay-verifier-support-extension'))
+                engine_recipe={'old': 'recipe'}, change_classification='replay-verifier-support-extension',
+                native_engine_correction='Verifier-only ExchangeArtifacts accounting.'))
             write(new_runtime/'freeze-receipt.json', dict(artifacts=[
                 {'path': 'vcmiclient', 'frozen_sha256': 'new-client'},
                 {'path': 'vcmireplay', 'frozen_sha256': 'new-replay'},
@@ -112,19 +113,26 @@ class RuntimeRefreshTests(unittest.TestCase):
             self.assertEqual(candidate['terminal_replay'], real_binding(options.terminal_diagnostic))
             self.assertEqual(candidate['native'], refresh.proof(options.native_output))
             self.assertEqual(candidate['regression'], refresh.proof(options.regression_output))
+            self.assertEqual(candidate['native_engine_correction'], refresh.TOWN_SWAP_CORRECTION)
+            self.assertEqual(refresh.read(old)['native_engine_correction'], 'Verifier-only ExchangeArtifacts accounting.')
             self.assertNotIn('policy_reconstruction', candidate)
             native_gate.assert_called_once_with(new_runtime/'bin', {'vcmireplay': 'new-replay'}, candidate)
             replay_gate.assert_called_once_with(candidate, {'vcmireplay': 'new-replay'})
 
-    def fixture(self,root):
+    def fixture(self,root,checkpoint_update=1335):
         options=self.options(root)
+        options.checkpoint_update=checkpoint_update
+        if checkpoint_update == 1392:
+            options.release_id='terminal-replay-1392-v1'
+            options.terminal_diagnostic=root/'run-investigations/2026-10-29-batch1032/replay/diagnostic.json'
         candidate=dict(schema='heroes-local-training-runtime-candidate-v1',status='candidate_native_validated',
-            release_id=options.release_id,checkpoint_update=1335,runtime_bin=str(root/'runtime'),
-            runtime_files={'vcmiclient':'client','vcmireplay':'replay'},native={'report':{'sha256':'n'*64}})
+            release_id=options.release_id,checkpoint_update=checkpoint_update,runtime_bin=str(root/'runtime'),
+            runtime_files={'vcmiclient':'client','vcmireplay':'replay'},native={'report':{'sha256':'n'*64}},
+            native_engine_correction='Verifier-only ExchangeArtifacts accounting.')
         write(options.candidate_output,candidate)
         schedule=[dict(episode=i+1,phase='evaluation',learner_player=i//4,
                        engine_seed=1740000000+i,policy_seed=1750000000+i) for i in range(8)]
-        plan=dict(runtime_candidate=refresh.binding(options.candidate_output),mode='evaluation',parent_update=1335,
+        plan=dict(runtime_candidate=refresh.binding(options.candidate_output),mode='evaluation',parent_update=checkpoint_update,
             runtime={'vcmireplay':'replay'},source={'tracked_worktree_dirty':False,'git_commit':'c'*40},
             absolute_deadline_unix=1000,schedule=schedule,parent_descriptor={'copied':'full-state fixture'})
         write(options.policy_output/'plan.json',plan)
@@ -138,7 +146,7 @@ class RuntimeRefreshTests(unittest.TestCase):
                           'blue':'loss' if row['learner_player']==1 else 'win'}))
         report=dict(status='passed',plan_sha256=refresh.binding(options.policy_output/'plan.json')['sha256'],
             training_performed=False,optimizer_steps=0,training_samples=0,full_parent_unchanged=True,
-            full_parent_restore=True,cleanup_verified=True,parent_progress={'updates':1335},attempts=attempts)
+            full_parent_restore=True,cleanup_verified=True,parent_progress={'updates':checkpoint_update},attempts=attempts)
         write(options.policy_output/'execution/report.json',report)
         write(options.policy_output/'shutdown.json',dict(returncode=0,owned_cleanup_verified=True,
             hard_deadline_exhausted=False,errors=[],finished_utc='1970-01-01T00:16:00+00:00'))
@@ -159,6 +167,24 @@ class RuntimeRefreshTests(unittest.TestCase):
                              (1335,'terminal-replay-cloud1335-v1'))
             self.assertEqual((policy['decisions_checked'],policy['optimizer_steps'],policy['training_performed']),(8,0,False))
             self.assertEqual(policy['outcomes'],{'win':0,'loss':8,'cutoff':0})
+            self.assertEqual(accepted['native_engine_correction'], 'Verifier-only ExchangeArtifacts accounting.')
+
+    def test1392_acceptance_corrects_inherited_text_without_rewriting_captured_candidate(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve();options,_=self.fixture(root,1392)
+            before=options.candidate_output.read_bytes()
+            candidate_binding=refresh.binding(options.candidate_output)
+            with patch.object(refresh,'ARTIFACTS',root),patch.object(refresh,'candidate_runtime_origin'), \
+                    patch.object(refresh,'accepted_runtime_origin') as gate, \
+                    patch.object(refresh,'implementation_identity',return_value={'native':'unchanged'}), \
+                    redirect_stdout(io.StringIO()):
+                refresh.acceptance(options)
+            accepted=refresh.read(options.acceptance_output)
+            self.assertEqual(accepted['native_engine_correction'], refresh.TOWN_SWAP_CORRECTION)
+            self.assertEqual(options.candidate_output.read_bytes(), before)
+            self.assertEqual(refresh.binding(options.candidate_output), candidate_binding)
+            self.assertEqual(refresh.read(options.policy_output/'plan.json')['runtime_candidate'], candidate_binding)
+            self.assertEqual(gate.call_args.args[2]['native_engine_correction'], refresh.TOWN_SWAP_CORRECTION)
 
     def test_incomplete_policy_never_creates_acceptance(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -31,6 +31,15 @@ MAP_SHA256 = 'ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3'
 DESCRIPTOR_FILES = {'plan': 'plan.json', 'report': 'report.json', 'policy': 'after-policy.pt',
                     'resume': 'after-resume.pt', 'initial_checkpoint': 'initial-checkpoint.pt'}
 RECEIPT_KEY = 'cloud_import/receipt'
+# A later local runtime repair must not rewrite the machine used to prove the
+# cloud handoff. This reviewed transition changes only runtime fields, and the
+# complete current runtime acceptance gate still runs before it is selected.
+RUNTIME_UPGRADES = {
+    'terminal-replay-1392-v1': {
+        'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
+        'descriptor_sha256': '9f9292bc8b5e959d7f7ed1152dc50b9d3404b5ed67b73ec0a11f2ec8331d313d',
+    },
+}
 
 
 def require(condition, message):
@@ -230,13 +239,20 @@ def check_cloud_closure(closure, cloud):
 
 
 def historical_machine(config, base_receipt):
-    """Keep the1229 machine immutable when the same runtime gains new acceptance."""
+    """Keep the1229 machine immutable across acceptance refresh or reviewed repair."""
     audit = read(bound(base_receipt['verification']['immutable_evidence']['checkpoint_audit']))
-    previous = read(bound(audit['source_runtime']['machine']))
+    machine = audit['source_runtime']['machine']
+    previous = read(bound(machine))
     acceptance_fields = {'created_utc', 'runtime_origin', 'runtime_release'}
+    release = config.get('runtime_release', {})
+    upgrade = RUNTIME_UPGRADES.get(release.get('id')) if type(release) is dict else None
+    descriptor = release.get('descriptor', {}) if type(release) is dict else {}
+    if (upgrade is not None and machine['sha256'] == upgrade['historical_machine_sha256']
+            and type(descriptor) is dict and descriptor.get('sha256') == upgrade['descriptor_sha256']):
+        acceptance_fields |= {'runtime_bin', 'runtime_files', 'runtime'}
     require(set(config) == set(previous)
             and all(config[key] == previous[key] for key in set(previous) - acceptance_fields),
-            'Cloud continuation may only refresh acceptance for the identical historical machine')
+            'Cloud continuation requires the identical historical machine outside reviewed runtime changes')
     if config != previous:
         # The fresh current-source native and policy evidence must pass every
         # normal gate. Historical proof still uses its original machine bytes.

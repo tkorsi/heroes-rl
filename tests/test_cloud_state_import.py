@@ -499,6 +499,88 @@ class HistoricalMachineTests(unittest.TestCase):
                         cloud.historical_machine({**current,key:'changed'},receipt)
                     gate.assert_not_called()
 
+    def runtime_upgrade_fixture(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name).resolve()
+        previous = dict(created_utc='old', runtime_release={'id': 'historical'},
+            runtime_origin={'proof': 'historical'}, runtime_bin='/historical/runtime',
+            runtime_files={'client': {'path': '/historical/runtime/client', 'sha256': 'a'*64}},
+            runtime={'module': 'a'*64}, maps=['original-map'], parent={'checkpoint': 'unchanged'},
+            run_root='/official/runs', artifact_root='/official/artifacts', data='/same/game-data',
+            seed_namespace={'engine_base': 40_000_000, 'policy_base': 50_000_000},
+            default_profile='original', backend='cold', next_sequence=336,
+            checkpoint_restore={'exact': True}, prerequisites={'accepted': 'unchanged'},
+            python={'version': 'same'}, ppo_updates=0, gameplay_performed=False,
+            training_authorized_by_preparation=False)
+        machine = root / 'machine.json'; write(machine, previous)
+        audit = root / 'audit.json'; write(audit, {'source_runtime': {'machine': cloud.binding(machine)}})
+        receipt = {'verification': {'immutable_evidence': {'checkpoint_audit': cloud.binding(audit)}}}
+        release = 'terminal-replay-1392-v1'
+        descriptor_sha = 'b'*64
+        current = {**previous, 'created_utc': 'new', 'runtime_origin': {'proof': 'rebuilt-acceptance'},
+            'runtime_release': {'id': release, 'descriptor': {'sha256': descriptor_sha}},
+            'runtime_bin': '/rebuilt/runtime',
+            'runtime_files': {'client': {'path': '/rebuilt/runtime/client', 'sha256': 'c'*64}},
+            'runtime': {'module': 'c'*64}}
+        upgrades = {release: {'historical_machine_sha256': cloud.binding(machine)['sha256'],
+                              'descriptor_sha256': descriptor_sha}}
+        return previous, current, receipt, machine, upgrades
+
+    def test_reviewed_runtime_upgrade_keeps_exact_old_machine_and_requires_full_current_gate(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.runtime_upgrade_fixture()
+        original = machine.read_bytes()
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(prepare, 'validate_config', return_value=current) as gate:
+            self.assertEqual(cloud.historical_machine(current, receipt), previous)
+            gate.assert_called_once_with(current)
+        self.assertEqual(machine.read_bytes(), original)
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(prepare, 'validate_config', side_effect=ValueError('rebuilt runtime gate failed')):
+            with self.assertRaisesRegex(ValueError, 'rebuilt runtime gate failed'):
+                cloud.historical_machine(current, receipt)
+        self.assertEqual(machine.read_bytes(), original)
+
+    def test_runtime_upgrade_cannot_change_settings_roots_inputs_or_machine_schema(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.runtime_upgrade_fixture()
+        runtime_fields = {'created_utc', 'runtime_origin', 'runtime_release',
+                          'runtime_bin', 'runtime_files', 'runtime'}
+        changes = [{**current, key: 'changed'} for key in set(current)-runtime_fields]
+        changes += [{**current, 'new_field': True}, {k: v for k, v in current.items() if k != 'data'}]
+        original = machine.read_bytes()
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(prepare, 'validate_config') as gate:
+            for changed in changes:
+                with self.subTest(changed=[k for k in changed if changed[k] != current.get(k)]), \
+                        self.assertRaisesRegex(ValueError, 'identical historical machine'):
+                    cloud.historical_machine(changed, receipt)
+                gate.assert_not_called()
+        self.assertEqual(machine.read_bytes(), original)
+
+    def test_runtime_upgrade_requires_exact_reviewed_source_machine_and_target_descriptor(self):
+        from tools import prepare_local_training as prepare
+        previous, current, receipt, machine, upgrades = self.runtime_upgrade_fixture()
+        variants = []
+        for release in ({'id': 'other', 'descriptor': {'sha256': 'b'*64}},
+                        {'id': 'terminal-replay-1392-v1', 'descriptor': {'sha256': 'd'*64}},
+                        {'id': 'terminal-replay-1392-v1'},
+                        {'id': 'terminal-replay-1392-v1', 'descriptor': None}, {}, None):
+            variants.append({**current, 'runtime_release': release})
+        with patch.dict(cloud.RUNTIME_UPGRADES, upgrades, clear=True), \
+                patch.object(prepare, 'validate_config') as gate:
+            for changed in variants:
+                with self.subTest(release=changed['runtime_release']), \
+                        self.assertRaisesRegex(ValueError, 'identical historical machine'):
+                    cloud.historical_machine(changed, receipt)
+            wrong_source = deepcopy(upgrades)
+            wrong_source['terminal-replay-1392-v1']['historical_machine_sha256'] = 'e'*64
+            with patch.dict(cloud.RUNTIME_UPGRADES, wrong_source, clear=True), \
+                    self.assertRaisesRegex(ValueError, 'identical historical machine'):
+                cloud.historical_machine(current, receipt)
+            gate.assert_not_called()
+
 
 if __name__ == '__main__':
     unittest.main()

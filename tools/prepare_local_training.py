@@ -38,8 +38,8 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 # or a newly built binary is never sufficient authorization to select a runtime.
 ACCEPTED_RUNTIME_RELEASES = {
     "terminal-replay-1392-v1": {
-        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/accepted-runtime.json",
-        "sha256": "dad02f0d1cb3af4512c2813deade2a8298dcc38d3c8eef93152e3d50e51118aa",
+        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/accepted-runtime-v2.json",
+        "sha256": "9f9292bc8b5e959d7f7ed1152dc50b9d3404b5ed67b73ec0a11f2ec8331d313d",
     },
     "terminal-replay-cloud1335-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair1/cloud1335-acceptance-v1.json",

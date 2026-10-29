@@ -31,6 +31,8 @@ CANDIDATE = BASE/'parallel-runtime-candidate-v1.json'
 POLICY = BASE/'policy1095-runtime-refresh1'
 ACCEPTANCE = RUNTIME/'parallel-collection-acceptance-v1.json'
 POLICY_ACCEPTANCE = RUNTIME/'parallel-collection-policy-acceptance-v1.json'
+TOWN_SWAP_CORRECTION = ('Verifier-only GarrisonHeroSwap terminal-unapplied request accounting. '
+                        'Gameplay, policy-controlled actions and learning settings are unchanged.')
 os.environ['HEROES_ARTIFACT_ROOT'] = str(ARTIFACTS)
 sys.path.insert(0, str(ROOT))
 from tools.prepare_local_training import candidate_runtime_origin, accepted_runtime_origin, terminal_replay_acceptance
@@ -108,6 +110,7 @@ def candidate(options=None):
             runtime_files={row['path']:row['frozen_sha256'] for row in freeze['artifacts'] if row['path'] != 'vcmiserver'},
             engine_recipe=current_engine_recipe(), freeze=binding(TOWN_SWAP_RUNTIME/'freeze-receipt.json'),
             preflight=binding(TOWN_SWAP_RUNTIME/'preflight.json'), terminal_replay=binding(options.terminal_diagnostic),
+            native_engine_correction=TOWN_SWAP_CORRECTION,
             acceptance_refresh_scope='Clean rebuilt runtime with reviewed GarrisonHeroSwap terminal accounting; exact excluded failure replay,44 native controls and8 frozen checkpoint1392 policy games required. No game-rule or learning-setting change.')
     runtime = {name:sha for name,sha in value['runtime_files'].items() if name != 'vcmiclient'}
     candidate_runtime_origin(Path(value['runtime_bin']), runtime, value)
@@ -175,6 +178,10 @@ def acceptance(options=None):
     value.update(schema='heroes-local-training-runtime-acceptance-v1',status='accepted',
                  policy_reconstruction=binding(options.policy_acceptance_output), policy_acceptance_games=8,
                  policy_acceptance_choices=decisions, checkpoint_update=options.checkpoint_update)
+    if options.checkpoint_update == 1392:
+        # Older captured candidates inherited the previous artifact-transfer text.
+        # Correct only the new descriptor; the candidate and its policy binding stay exact.
+        value['native_engine_correction'] = TOWN_SWAP_CORRECTION
     accepted_runtime_origin(Path(value['runtime_bin']), runtime, value)
     write_new(options.acceptance_output,value)
     print(json.dumps({'accepted_descriptor':binding(options.acceptance_output),'policy_acceptance':binding(options.policy_acceptance_output),
