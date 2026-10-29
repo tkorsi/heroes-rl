@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "heroes-native-learner-build-v1"
 CONTRACT = "heroes-native-learner-v1"
 FLAGS = ["-O3", "-std=c++17", "-fno-fast-math", "-ffp-contract=off"]
-SOURCES = ("native/learner/kernels.cpp", "experiments/learner/native_backend.py", "tools/build_native_learner.py")
+SOURCES = ("native/learner/kernels.cpp", "native/learner/text_replay.h",
+           "experiments/learner/native_backend.py", "tools/build_native_learner.py")
 
 
 def sha256(path):

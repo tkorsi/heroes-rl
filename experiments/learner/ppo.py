@@ -345,10 +345,13 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
         native_backend = load_backend(NATIVE_EXECUTION["manifest"], NATIVE_EXECUTION["sha256"])
         native_model = native_backend.NativeModel(dict(model.named_parameters()), model.config.feature_size,
                                                  model.config.hidden_size)
+        if pools is not None:
+            pools.append(native_model)
         native_inputs = tuple(compile_history(model, encoded, item.decisions, native_backend)
                               for encoded, item in zip(inputs, rollouts))
         timings["native_recipe_compilation"] = perf_counter() - phase
         timings["native_prefix_threads"] = float(NATIVE_EXECUTION["prefix_threads"])
+        timings["native_text_replay_workers"] = float(max(0, NATIVE_EXECUTION["prefix_threads"] - 1))
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)
@@ -401,6 +404,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             sharing = (model.shared_graph_encodings() if shared
                        else model.replayed_text_leaves(workers) if replaying else nullcontext())
             sharing.__enter__()
+            if native_model is not None:
+                native_model.begin_text_replay(max(0, NATIVE_EXECUTION["prefix_threads"] - 1))
             phase = perf_counter()
             boundaries = {}
             if model._can_cache_prefix():
@@ -466,13 +471,22 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 before_step()
             phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
-            if replaying:
+            if native_model is not None:
+                native_model.backward_with_text_replay(loss)
+            elif replaying:
                 model.backward_with_text_replays(loss)
             else:
                 loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
             timings["backward_and_clip"] += perf_counter() - phase
             sharing.__exit__(None, None, None)
+            if native_model is not None:
+                stats = native_model.text_replay_statistics()
+                for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays', 'main_thread_replays'):
+                    timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
+                timings['native_peak_parallel_replays'] = max(timings.get('native_peak_parallel_replays', 0.0),
+                                                             float(stats.get('peak_parallel_replays', 0)))
+                native_model.end_text_replay()
             if before_step is not None:
                 before_step()
             phase = perf_counter()

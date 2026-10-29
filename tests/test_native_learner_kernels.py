@@ -110,6 +110,112 @@ class NativeLearnerKernelTests(unittest.TestCase):
         (torch.stack([item.log_prob for item in expected]) + torch.stack([item.value for item in expected])).sum().backward()
         equal_tree(self, actual, [p.grad for p in self.model.parameters()])
 
+    def test_native_text_graph_reuse_and_parallel_backward_preserve_every_gradient(self):
+        records = self.rollout.decisions
+        expected = ppo.evaluate_window(self.model, self.inputs, records, start_seq=0)
+        baseline = (torch.stack([item.log_prob for item in expected]) +
+                    torch.stack([item.value for item in expected])).sum()
+        baseline.backward()
+        gradients = [None if parameter.grad is None else parameter.grad.clone() for parameter in self.model.parameters()]
+        rng = torch.get_rng_state().clone()
+        for workers in (0, 3, 15):
+            self.model.zero_grad(set_to_none=True)
+            self.native.begin_text_replay(workers)
+            try:
+                values = self.native.evaluate_window(self.history, 0, records[-1].decision_seq,
+                    [item.decision_seq for item in records], self.model.initial_state())
+                loss = (values[0] + values[1]).sum()
+                equal_tree(self, loss, baseline)
+                self.native.backward_with_text_replay(loss)
+                equal_tree(self, [parameter.grad for parameter in self.model.parameters()], gradients)
+            finally:
+                self.native.end_text_replay()
+            statistics = self.native.text_replay_statistics()
+            self.assertEqual(statistics["workers"], workers)
+            self.assertGreater(statistics["occurrences"], statistics["unique_texts"])
+            if workers:
+                self.assertGreater(statistics["completed_replays"], 0)
+                self.assertGreater(statistics["folded_contributions"], statistics["completed_replays"])
+                self.assertGreaterEqual(statistics["peak_parallel_replays"], 1)
+                self.assertLessEqual(statistics["peak_parallel_replays"], workers + 1)
+            equal_tree(self, torch.get_rng_state(), rng)
+            self.native.close()  # Cleanup is idempotent.
+
+    def test_native_replay_rejects_hooks_mutation_higher_order_and_released_occurrences(self):
+        for workers in (-1, 256):
+            with self.assertRaises(RuntimeError):
+                self.native.begin_text_replay(workers)
+        hooked = deepcopy(self.model)
+        hooked_native = self.backend.NativeModel(dict(hooked.named_parameters()), 4, 8)
+        hook = hooked.byte.weight.register_hook(lambda value: value)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "hooks"):
+                hooked_native.begin_text_replay(3)
+        finally:
+            hook.remove()
+        records = self.rollout.decisions
+        def loss():
+            values = self.native.evaluate_window(self.history, 0, records[-1].decision_seq,
+                [item.decision_seq for item in records], self.model.initial_state())
+            return (values[0] + values[1]).sum()
+        self.native.begin_text_replay(3)
+        released = loss()
+        self.native.end_text_replay()
+        with self.assertRaisesRegex(RuntimeError, "released scope"):
+            released.backward()
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(3)
+        higher_order = loss()
+        try:
+            with self.assertRaisesRegex(RuntimeError, "higher-order"):
+                torch.autograd.grad(higher_order, self.model.parameters(), create_graph=True, allow_unused=True)
+        finally:
+            self.native.end_text_replay()
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(3)
+        changed = loss()
+        with torch.no_grad():
+            self.model.byte.weight.add_(0.01)
+        with self.assertRaisesRegex(RuntimeError, "changed"):
+            self.native.backward_with_text_replay(changed)
+        self.native.close()
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(3)
+        try:
+            self.native.backward_with_text_replay(loss())
+        finally:
+            self.native.close()
+
+    def test_native_replay_worker_failure_is_joined_without_installing_partial_text_gradients(self):
+        records = self.rollout.decisions
+        def loss():
+            values = self.native.evaluate_window(self.history, 0, records[-1].decision_seq,
+                [item.decision_seq for item in records], self.model.initial_state())
+            return (values[0] + values[1]).sum()
+        self.native.begin_text_replay(3)
+        changed = loss()
+        def mutate_after_the_bracket_started(gradient):
+            with torch.no_grad():
+                self.model.byte.weight.add_(0.01)
+            return gradient
+        handle = changed.register_hook(mutate_after_the_bracket_started)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "parameters changed"):
+                self.native.backward_with_text_replay(changed)
+            self.native.close()  # Cleanup must not replace the primary worker failure.
+        finally:
+            handle.remove()
+            self.native.close()
+        self.assertGreater(self.native.text_replay_statistics()["completed_replays"], 0)
+        self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
+                            if name == "byte.weight" or name.startswith("text_gru.")))
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(3)
+        try:
+            self.native.backward_with_text_replay(loss())
+        finally:
+            self.native.close()
+
     def test_two_complete_updates_preserve_adam_weights_gradients_and_rng_exactly(self):
         reference, candidate = deepcopy(self.model), deepcopy(self.model)
         models = (reference, candidate)
@@ -172,6 +278,10 @@ class NativeLearnerKernelTests(unittest.TestCase):
             self.backend.NativeHistory([("number", [float("nan"), 0.0], [])], [])
         with self.assertRaises(RuntimeError):
             self.backend.NativeModel({"byte.weight": self.model.byte.weight}, 4, 8)
+        duplicate = dict(self.model.named_parameters())
+        duplicate["text_gru.bias_hh_l0"] = duplicate["text_gru.bias_ih_l0"]
+        with self.assertRaisesRegex(RuntimeError, "distinct parameter identities"):
+            self.backend.NativeModel(duplicate, 4, 8)
         for count in (0, 257):
             with self.assertRaises(RuntimeError):
                 self.native.prefix(self.history, [1], count)

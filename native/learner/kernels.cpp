@@ -19,6 +19,8 @@ namespace py = pybind11;
 using at::Tensor;
 using Cache = std::unordered_map<int64_t, Tensor>;
 
+#include "text_replay.h"
+
 namespace {
 void require(bool condition, const std::string& message) {
     TORCH_CHECK(condition, message);
@@ -201,6 +203,8 @@ public:
 class NativeModel {
     std::map<std::string, Tensor> parameters;
     int64_t feature_size, hidden_size;
+    std::shared_ptr<native_text::Scope> text_replay;
+    std::map<std::string, int64_t> replay_statistics;
     Tensor p(const std::string& key) const {
         auto found = parameters.find(key);
         require(found != parameters.end(), "Missing native parameter: " + key);
@@ -223,6 +227,8 @@ class NativeModel {
         Tensor result;
         if (node.kind == "text") {
             if (node.text.empty()) result = at::zeros({feature_size}, p("byte.weight").options());
+            else if (text_replay && at::GradMode::is_enabled())
+                result = text_replay->occurrence(node.text, feature_size);
             else {
                 std::vector<int64_t> bytes;
                 bytes.reserve(node.text.size());
@@ -305,6 +311,38 @@ class NativeModel {
                 "Native recurrent state must match model dimensions, CPU and float32 dtype");
     }
 public:
+    void begin_text_replay(int workers) {
+        require(!text_replay, "A native text replay scope is already open");
+        std::vector<Tensor> values{p("byte.weight"), p("text_gru.weight_ih_l0"), p("text_gru.weight_hh_l0"),
+                                  p("text_gru.bias_ih_l0"), p("text_gru.bias_hh_l0")};
+        text_replay = std::make_shared<native_text::Scope>(std::move(values), workers);
+    }
+    void backward_with_text_replay(const Tensor& loss) {
+        require(static_cast<bool>(text_replay), "Native text backward requires an open replay scope");
+        text_replay->backward(loss);
+    }
+    void end_text_replay() {
+        if (!text_replay) return;
+        auto scope = std::move(text_replay);
+        try {
+            scope->close();
+        } catch (...) {
+            replay_statistics = scope->statistics();
+            throw;
+        }
+        replay_statistics = scope->statistics();
+    }
+    void close() {
+        if (!text_replay) return;
+        auto scope = std::move(text_replay);
+        // Cleanup joins every worker even after failure. The strict scope-end
+        // operation reports unfinished work; cleanup preserves the primary error.
+        scope->close(false);
+        replay_statistics = scope->statistics();
+    }
+    std::map<std::string, int64_t> text_replay_statistics() const {
+        return text_replay ? text_replay->statistics() : replay_statistics;
+    }
     NativeModel(const std::map<std::string, Tensor>& named, int64_t features, int64_t hidden)
         : parameters(named), feature_size(features), hidden_size(hidden) {
         require(feature_size > 0 && hidden_size > 0, "Native dimensions must be positive");
@@ -329,8 +367,11 @@ public:
         linear_shape("coordinate.0", hidden + features + 18, features); linear_shape("coordinate.2", features, 1);
         linear_shape("quantity.0", hidden + features + 4, features); linear_shape("quantity.2", features, 2);
         require(parameters.size() == expected.size(), "Native parameter inventory differs from the reference architecture");
+        std::unordered_set<c10::TensorImpl*> identities;
         for (const auto& [name, shape] : expected) {
             const auto tensor = p(name);
+            require(identities.insert(tensor.unsafeGetTensorImpl()).second,
+                    "Native model requires distinct parameter identities: " + name);
             require(tensor.device().is_cpu() && tensor.scalar_type() == at::kFloat && tensor.sizes() == at::IntArrayRef(shape),
                     "Native parameter shape, dtype or device differs: " + name);
             require(at::isfinite(tensor).all().item<bool>(), "Nonfinite native parameter: " + name);
@@ -485,6 +526,11 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
         .def_property_readonly("frame_count", [](const NativeHistory& value) { return value.frames.size(); });
     py::class_<NativeModel>(module, "NativeModel")
         .def(py::init<const std::map<std::string, Tensor>&, int64_t, int64_t>())
+        .def("begin_text_replay", &NativeModel::begin_text_replay, py::call_guard<py::gil_scoped_release>())
+        .def("backward_with_text_replay", &NativeModel::backward_with_text_replay, py::call_guard<py::gil_scoped_release>())
+        .def("end_text_replay", &NativeModel::end_text_replay, py::call_guard<py::gil_scoped_release>())
+        .def("close", &NativeModel::close, py::call_guard<py::gil_scoped_release>())
+        .def("text_replay_statistics", &NativeModel::text_replay_statistics, py::call_guard<py::gil_scoped_release>())
         .def("tree", &NativeModel::tree, py::call_guard<py::gil_scoped_release>())
         .def("encode_frame", &NativeModel::encode_frame, py::call_guard<py::gil_scoped_release>())
         .def("prefix", &NativeModel::prefix, py::arg("history"), py::arg("stops"), py::arg("workers") = 1,

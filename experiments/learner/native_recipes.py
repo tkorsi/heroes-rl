@@ -115,7 +115,7 @@ def require_native_model(model):
             or torch.nn.modules.module._global_backward_pre_hooks
             or any(module._backward_hooks or module._backward_pre_hooks for module in model.modules())
             or any(_parameter_hooks(param) for param in model.parameters())
-            or any(param.device.type != "cpu" or param.dtype != torch.float32 or not param.requires_grad
+            or any(type(param) is not torch.nn.Parameter or param.device.type != "cpu" or param.dtype != torch.float32 or not param.requires_grad
                    for param in model.parameters())
             or any(name in model.__dict__ for name in ("initial_state", "_float", "_long", "prefix_states"))
             or any(name in model.__dict__ for name in ("_graph_memo_state", "_leaf_replay_state"))):
