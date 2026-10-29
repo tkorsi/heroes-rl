@@ -43,7 +43,8 @@ def check_native_execution(value):
             or not 1 <= plan['budget_cpus'] <= 256
             or plan.get('batch_size') != 4 or plan.get('torch_intraop_threads') != 1
             or plan.get('native_prefix_threads') != native['prefix_threads']
-            or plan.get('native_text_replay_workers') != max(0, native['prefix_threads'] - 1)
+            or plan.get('native_text_reducer_workers') != int(native['prefix_threads'] >= 3)
+            or plan.get('native_text_replay_workers') != max(0, native['prefix_threads'] - 1) - int(native['prefix_threads'] >= 3)
             or native['prefix_threads'] != plan['budget_cpus']):
         raise ValueError('Native resource plan differs from the fixed numerical contract')
     for name in ('collection_workers', 'verification_workers'):

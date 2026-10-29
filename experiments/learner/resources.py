@@ -213,6 +213,8 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
     if cpu_cap is not None and (type(cpu_cap) is not int or not 1 <= cpu_cap <= available):
         raise ValueError(f"CPU cap must be a positive integer no greater than available capacity ({available})")
     budget = available if cpu_cap is None else cpu_cap
+    background = max(0, budget - 1)
+    reducers = int(background >= 2)
     return {
         "schema": PLAN_SCHEMA,
         "resources": resources,
@@ -222,7 +224,8 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
         "collection_workers": 4 if budget >= 4 else 1,
         "verification_workers": 4 if budget >= 4 else 1,
         "native_prefix_threads": budget,
-        "native_text_replay_workers": max(0, budget - 1),
+        "native_text_replay_workers": background - reducers,
+        "native_text_reducer_workers": reducers,
         "torch_intraop_threads": 1,
         "phases_run_concurrently": False,
         "memory_budget_enforced": False,
@@ -230,7 +233,7 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
             "Four-game on-policy batches cap independent collection and verification jobs at four.",
             "The accepted execution contract selects four workers or a single worker when the CPU budget is below four.",
             "Native prefix work uses at most the declared thread budget and available independent frames.",
-            "Text backward replay reserves one CPU for the main graph and uses the remaining budget for native workers.",
+            "Text backward reserves one CPU for the main graph and, when at least three CPUs are available, one for ordered reduction; replay uses the remaining budget.",
             "Recurrent transitions, minibatch order and gradient accumulation retain their original dependencies.",
             "Memory figures describe observed capacity; no unmeasured per-worker memory guarantee is inferred.",
         ],

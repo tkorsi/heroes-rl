@@ -93,6 +93,69 @@ class NativeTrainingParityTests(unittest.TestCase):
             self.exact(generators[0].get_state(), generators[1].get_state())
             self.exact(before_rng, torch.get_rng_state())
 
+    def test_prepared_window_text_preserves_outputs_gradients_and_rng(self):
+        torch.manual_seed(41731)
+        original = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
+        rollout = synthetic_rollout(original, turns=4, episode='native-text-preparation')
+        inputs = m.encode_history(rollout.history)
+        history = compile_history(original, inputs, rollout.decisions, self.backend)
+        decisions = [record.decision_seq for record in rollout.decisions]
+        before_rng = torch.get_rng_state().clone()
+
+        def evaluate(workers):
+            model = deepcopy(original)
+            machine = self.backend.NativeModel(dict(model.named_parameters()), 4, 8)
+            machine.begin_text_replay(3)
+            try:
+                if workers is not None:
+                    machine.prepare_window_text(history, 0, decisions[-1], decisions, workers)
+                    prepared = machine.text_replay_statistics()
+                    self.assertEqual(prepared['occurrences'], 0)
+                    self.assertGreater(prepared['unique_texts'], 0)
+                    machine.prepare_window_text(history, 0, decisions[-1], decisions, workers)
+                    self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared['unique_texts'])
+                logs, values, state, details = machine.evaluate_window_details(
+                    history, 0, decisions[-1], decisions, model.initial_state())
+                if workers is not None:
+                    self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared['unique_texts'])
+                loss = logs.sum() + values.square().sum() + state.square().sum() * 0.01
+                machine.backward_with_text_replay(loss)
+                machine.end_text_replay()
+                return ((logs.detach(), values.detach(), state.detach(), [item.detach() for item in details]),
+                        [None if parameter.grad is None else parameter.grad.clone() for parameter in model.parameters()])
+            finally:
+                machine.close()
+
+        expected = evaluate(None)
+        for workers in (1, 4, 16):
+            with self.subTest(workers=workers):
+                self.exact(evaluate(workers), expected)
+                self.exact(torch.get_rng_state(), before_rng)
+
+    def test_window_text_preparation_rejects_invalid_requests_before_warming(self):
+        torch.manual_seed(94113)
+        model = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
+        rollout = synthetic_rollout(model, turns=2, episode='native-text-preparation-invalid')
+        inputs = m.encode_history(rollout.history)
+        history = compile_history(model, inputs, rollout.decisions, self.backend)
+        decisions = [record.decision_seq for record in rollout.decisions]
+        end = decisions[-1]
+        machine = self.backend.NativeModel(dict(model.named_parameters()), 4, 8)
+        with self.assertRaisesRegex(RuntimeError, 'open replay scope'):
+            machine.prepare_window_text(history, 0, end, decisions, 4)
+        machine.begin_text_replay(0)
+        try:
+            requests = [(-1, end, decisions, 4), (0, len(inputs), decisions, 4),
+                        (0, end, [], 4), (0, end, [decisions[0], decisions[0]], 4),
+                        (0, end, decisions, 0), (0, end, decisions, 257)]
+            for request in requests:
+                with self.subTest(request=request), self.assertRaises(RuntimeError):
+                    machine.prepare_window_text(history, *request)
+                self.assertEqual(machine.text_replay_statistics()['unique_texts'], 0)
+                self.assertEqual(machine.text_replay_statistics()['occurrences'], 0)
+        finally:
+            machine.close()
+
     def check_history(self, history, actions):
         torch.manual_seed(5191)
         model = m.ContextualActorCritic(m.ModelConfig(schema=m.model_schema_for(history.frames[0].schema),
@@ -117,6 +180,16 @@ class NativeTrainingParityTests(unittest.TestCase):
             self.exact(vals[0], output.decision.value)
             self.exact(actual_state, state)
             self.exact(conditionals[0], torch.stack([v.log_prob for v in expected.conditionals]))
+            machine.begin_text_replay(0)
+            try:
+                machine.prepare_window_text(compiled, 0, len(inputs)-1, [len(inputs)-1], 4)
+                prepared = machine.text_replay_statistics()['unique_texts']
+                prepared_values = machine.evaluate_window_details(
+                    compiled, 0, len(inputs)-1, [len(inputs)-1], model.initial_state())
+                self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared)
+                self.exact(prepared_values, (logs, vals, actual_state, conditionals))
+            finally:
+                machine.close()
 
     def test_coordinates_quantities_management_dialogs_and_capabilities(self):
         from experiments.learner import contextual as c

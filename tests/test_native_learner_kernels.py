@@ -118,7 +118,7 @@ class NativeLearnerKernelTests(unittest.TestCase):
         baseline.backward()
         gradients = [None if parameter.grad is None else parameter.grad.clone() for parameter in self.model.parameters()]
         rng = torch.get_rng_state().clone()
-        for workers in (0, 3, 15):
+        for workers in (0, 1, 2, 3, 15):
             self.model.zero_grad(set_to_none=True)
             self.native.begin_text_replay(workers)
             try:
@@ -132,14 +132,71 @@ class NativeLearnerKernelTests(unittest.TestCase):
                 self.native.end_text_replay()
             statistics = self.native.text_replay_statistics()
             self.assertEqual(statistics["workers"], workers)
+            self.assertEqual(statistics["reducer_threads"], int(workers >= 2))
+            self.assertEqual(statistics["replay_threads"], workers - int(workers >= 2))
             self.assertGreater(statistics["occurrences"], statistics["unique_texts"])
             if workers:
                 self.assertGreater(statistics["completed_replays"], 0)
                 self.assertGreater(statistics["folded_contributions"], statistics["completed_replays"])
                 self.assertGreaterEqual(statistics["peak_parallel_replays"], 1)
-                self.assertLessEqual(statistics["peak_parallel_replays"], workers + 1)
+                self.assertLessEqual(statistics["peak_parallel_replays"], workers - 1 if workers >= 2 else 2)
+                self.assertLessEqual(statistics["max_pending_replays"], 1024)
+                self.assertGreater(statistics["fold_nanoseconds"], 0)
+                if workers >= 2:
+                    self.assertEqual(statistics["main_thread_replays"], 0)
+            self.assertGreater(statistics["producer_backward_nanoseconds"], 0)
             equal_tree(self, torch.get_rng_state(), rng)
             self.native.close()  # Cleanup is idempotent.
+
+    def test_ordered_reducer_bounds_backlog_and_preserves_repeated_leaf_additions(self):
+        history = self.backend.NativeHistory([("text", b"xy", [])], [])
+        def loss():
+            return torch.stack([self.native.tree(history, 0) * (index % 7 - 3)
+                                for index in range(2050)]).sum()
+        loss().backward()
+        expected = [None if parameter.grad is None else parameter.grad.clone() for parameter in self.model.parameters()]
+        self.model.zero_grad(set_to_none=True)
+        self.native.begin_text_replay(2)
+        try:
+            self.native.backward_with_text_replay(loss())
+        finally:
+            self.native.end_text_replay()
+        actual = [parameter.grad for parameter in self.model.parameters()]
+        equal_tree(self, actual, expected)
+        for left, right in zip(actual, expected):
+            if left is not None:
+                self.assertTrue(torch.equal(left.view(torch.int32), right.view(torch.int32)))
+        statistics = self.native.text_replay_statistics()
+        self.assertEqual(statistics['completed_replays'], 2050)
+        self.assertEqual(statistics['occurrences'], 2050)
+        self.assertEqual(statistics['main_thread_replays'], 0)
+        self.assertEqual(statistics['reducer_threads'], 1)
+        self.assertEqual(statistics['replay_threads'], 1)
+        self.assertGreater(statistics['max_pending_replays'], 0)
+        self.assertLessEqual(statistics['max_pending_replays'], 1024)
+
+    def test_outer_backward_failure_closes_reducer_after_work_was_queued(self):
+        history = self.backend.NativeHistory([("text", b"queued cleanup", [])], [])
+        self.native.begin_text_replay(3)
+        outputs = [self.native.tree(history, 0) for _ in range(128)]
+        def fail_after_other_occurrences(gradient):
+            raise RuntimeError('outer backward failure after queued work')
+        handle = outputs[0].register_hook(fail_after_other_occurrences)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'outer backward failure'):
+                self.native.backward_with_text_replay(torch.stack(outputs).sum())
+            self.native.close()
+        finally:
+            handle.remove()
+            self.native.close()
+        self.assertGreater(self.native.text_replay_statistics()['max_pending_replays'], 0)
+        self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
+                            if name == 'byte.weight' or name.startswith('text_gru.')))
+        self.native.begin_text_replay(3)
+        try:
+            self.native.backward_with_text_replay(self.native.tree(history, 0).sum())
+        finally:
+            self.native.end_text_replay()
 
     def test_native_replay_rejects_hooks_mutation_higher_order_and_released_occurrences(self):
         for workers in (-1, 256):

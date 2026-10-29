@@ -351,7 +351,9 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                               for encoded, item in zip(inputs, rollouts))
         timings["native_recipe_compilation"] = perf_counter() - phase
         timings["native_prefix_threads"] = float(NATIVE_EXECUTION["prefix_threads"])
-        timings["native_text_replay_workers"] = float(max(0, NATIVE_EXECUTION["prefix_threads"] - 1))
+        background_workers = max(0, NATIVE_EXECUTION["prefix_threads"] - 1)
+        timings["native_text_reducer_workers"] = float(background_workers >= 2)
+        timings["native_text_replay_workers"] = float(background_workers - (background_workers >= 2))
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)
@@ -423,6 +425,14 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 vectors = None if pool is None else pool.vectors(index, max(stops), keys)
                 prefixes[index] = model.prefix_states(inputs[index], stops, vectors=vectors, keys=keys)
             timings["prefix_reconstruction"] += perf_counter() - phase
+            if native_model is not None:
+                phase = perf_counter()
+                for window in selected:
+                    records = tuple(rollouts[window.rollout_index].samples[index].decision for index in window.sample_indices)
+                    native_model.prepare_window_text(native_inputs[window.rollout_index], window.start_seq,
+                        records[-1].decision_seq, [record.decision_seq for record in records],
+                        NATIVE_EXECUTION["prefix_threads"])
+                timings["native_text_preparation"] = timings.get("native_text_preparation", 0.0) + perf_counter() - phase
             phase = perf_counter()
             new_log_probs, new_values, old_log_probs, old_values, batch_advantages, returns = [], [], [], [], [], []
             for window in selected:
@@ -485,6 +495,12 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 stats = native_model.text_replay_statistics()
                 for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays', 'main_thread_replays'):
                     timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
+                for name in ('producer_backward', 'fold', 'future_wait', 'backpressure', 'prewarm'):
+                    key = 'native_' + name + '_seconds'
+                    timings[key] = timings.get(key, 0.0) + float(stats.get(name + '_nanoseconds', 0)) / 1e9
+                timings['native_prewarmed_leaves'] = timings.get('native_prewarmed_leaves', 0.0) + float(stats.get('prewarmed_leaves', 0))
+                timings['native_max_pending_replays'] = max(timings.get('native_max_pending_replays', 0.0),
+                                                            float(stats.get('max_pending_replays', 0)))
                 timings['native_peak_parallel_replays'] = max(timings.get('native_peak_parallel_replays', 0.0),
                                                              float(stats.get('peak_parallel_replays', 0)))
             if before_step is not None:

@@ -446,6 +446,53 @@ public:
         }
         return result;
     }
+    void prepare_window_text(const NativeHistory& history, int64_t start, int64_t end,
+                             const std::vector<int64_t>& decisions, int workers) {
+        require(static_cast<bool>(text_replay), "Native text preparation requires an open replay scope");
+        require(workers >= 1 && workers <= 256, "Native text preparation needs 1 to 256 workers");
+        require(start >= 0 && start <= end && end < static_cast<int64_t>(history.frames.size()) && !decisions.empty(),
+                "Invalid native loss-window boundary");
+        int64_t previous = start - 1;
+        for (auto index : decisions) {
+            require(index > previous && index >= start && index <= end && history.frames[index].decision,
+                    "Native decisions must be ordered and have recorded conditional recipes");
+            previous = index;
+        }
+        // Only the alias-owned inner leaf graphs are prepared in parallel. The
+        // outer occurrences, frame graphs, recurrence and heads retain their
+        // original serial creation order and backward scheduling priorities.
+        std::vector<uint8_t> visited(history.nodes.size(), 0);
+        std::unordered_set<std::string> seen;
+        std::vector<std::string> texts;
+        std::function<void(int64_t)> collect = [&](int64_t root) {
+            if (visited[root]) return;
+            visited[root] = 1;
+            const auto& node = history.nodes[root];
+            if (node.kind == "text") {
+                if (!node.text.empty() && seen.insert(node.text).second) texts.push_back(node.text);
+            } else if (node.kind != "number") {
+                for (auto child : node.children) collect(child);
+                collect(node.tag);
+            }
+        };
+        size_t wanted = 0;
+        for (int64_t index = start; index <= end; ++index) {
+            const auto& frame = history.frames[index];
+            if (frame.root < 0) continue;
+            if (frame.map) collect(frame.map->own);
+            collect(frame.root);
+            if (wanted < decisions.size() && index == decisions[wanted]) {
+                for (const auto& conditional : frame.conditionals) {
+                    if (conditional.kind == "categorical") {
+                        for (auto root : conditional.roots) collect(root);
+                    } else collect(conditional.root);
+                }
+                ++wanted;
+            }
+        }
+        require(wanted == decisions.size(), "Native text preparation omitted a requested decision");
+        text_replay->prewarm(texts, feature_size, workers);
+    }
     std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> evaluate_window_details(
             const NativeHistory& history, int64_t start, int64_t end,
             const std::vector<int64_t>& decisions, const Tensor& initial) const {
@@ -535,6 +582,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
         .def("encode_frame", &NativeModel::encode_frame, py::call_guard<py::gil_scoped_release>())
         .def("prefix", &NativeModel::prefix, py::arg("history"), py::arg("stops"), py::arg("workers") = 1,
              py::call_guard<py::gil_scoped_release>())
+        .def("prepare_window_text", &NativeModel::prepare_window_text, py::call_guard<py::gil_scoped_release>())
         .def("evaluate_window", &NativeModel::evaluate_window, py::call_guard<py::gil_scoped_release>())
         .def("evaluate_window_details", &NativeModel::evaluate_window_details, py::call_guard<py::gil_scoped_release>());
     module.def("clipped_losses", &clipped_losses, py::call_guard<py::gil_scoped_release>());
