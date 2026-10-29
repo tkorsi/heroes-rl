@@ -145,6 +145,7 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'train-1000.sh', 'tools/train_1000_games.py', 'continue-original-native.sh',
                  'tools/linux_publication.py', 'tools/cloud_state_import.py',
                  'tools/audit_cloud1335_publication.py', 'tools/apply_cloud1335_import.py',
+                 'tools/refresh_parallel_runtime_acceptance.py', 'tools/validate_interaction_guard.py',
                  'configs/cloud1335-import.json',
                  'tools/acceleration3/fast_path_pins.py',
                  'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json')
@@ -213,17 +214,21 @@ FAST_PATH_TREE = {
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
     'tools/cloud_state_import.py': ('',
-        'fac7cce89dec4cacf7b79503300c279490453c898fc65a4522c7fffb7ff907e5'),
+        '2e14dbff1a886019c5b0aacd24492081a65a02a21a94b46d3e410c2fca82a8d7'),
     'tools/linux_publication.py': ('',
         '824348baf281b3234569a86aade9b095242de7bdd5091af955babaf518d25536'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
         '66e350e3603b30d0e7c8040e4e2acb5af8e802d1f5e01f081a13a780664e8969'),
     'tools/recover_interrupted_training.py': ('',
         'cc6695b19024c6e7f271f073e35fa1436e15417cf316f251e1e4d0a7fa10b576'),
+    'tools/refresh_parallel_runtime_acceptance.py': ('',
+        '83bd5397140f28240749e378c8e2e4ecf8048e9582b9f93b58f0fe762dadbf84'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         'b01a0de81724a32baec41f2f8139f7b1d14a8bf5ab71410f73f7fc51ae409a8e'),
     'tools/train_1000_games.py': ('',
         '47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4'),
+    'tools/validate_interaction_guard.py': ('',
+        '4d23737420e02a0607806e32039ab38b4aa750340d0d257d40b355c1845cc33c'),
     'train-1000.sh': ('',
         '79b345528e052befbd804f0141311c315c01e10effa1e344f22872cbd4267e79'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
@@ -235,7 +240,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'b348fb48242748a66b485ba0047fd22a00837aa4eea20e6e49a6f0e5c62b48ed'
+LOCAL_ADAPTER_TRANSITION_AST = 'ede2bc56eec13e25ce3dd5e291b9d07df57f3ca50441fa1ae8f1d6e1e5f98eae'
 
 
 def write_new(path, value):

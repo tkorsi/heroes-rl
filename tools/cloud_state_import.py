@@ -229,6 +229,22 @@ def check_cloud_closure(closure, cloud):
             'The reviewed post-training supervisor control flow changed')
 
 
+def historical_machine(config, base_receipt):
+    """Keep the1229 machine immutable when the same runtime gains new acceptance."""
+    audit = read(bound(base_receipt['verification']['immutable_evidence']['checkpoint_audit']))
+    previous = read(bound(audit['source_runtime']['machine']))
+    acceptance_fields = {'created_utc', 'runtime_origin', 'runtime_release'}
+    require(set(config) == set(previous)
+            and all(config[key] == previous[key] for key in set(previous) - acceptance_fields),
+            'Cloud continuation may only refresh acceptance for the identical historical machine')
+    if config != previous:
+        # The fresh current-source native and policy evidence must pass every
+        # normal gate. Historical proof still uses its original machine bytes.
+        from tools.prepare_local_training import validate_config
+        validate_config(config)
+    return previous
+
+
 def audit_import(receipt_path, config, anchor, *, local_auditor, preview=False):
     """Recompute this exact handoff's immutable lineage and selected complete state."""
     from experiments.learner import local_script_training as local
@@ -261,7 +277,8 @@ def audit_import(receipt_path, config, anchor, *, local_auditor, preview=False):
         manifests[folder] = manifest_files(evidence_root, folder, receipt['manifests'][folder + '/manifest.json'])
 
     base_receipt = read(bound(receipt['base_recovery_receipt']))
-    base_parent, remaining, base = local_auditor(anchor, config, receipt['base_recovery_receipt']['path'],
+    base_config = historical_machine(config, base_receipt)
+    base_parent, remaining, base = local_auditor(anchor, base_config, receipt['base_recovery_receipt']['path'],
         moving_snapshots=base_receipt['verification']['original_moving_snapshots'])
     require(remaining == 2600 and base['admitted_before_session'] == 2400 and base['next_sequence'] == 869,
             'Imported cloud state does not follow the exact local1229 lineage')

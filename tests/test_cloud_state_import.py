@@ -45,9 +45,13 @@ class ImportFixture(unittest.TestCase):
         self.base = dict(admitted_before_session=2400, next_sequence=869,
                          seed_ledger_snapshot=self.base_ledger, evidence={})
         self.base_receipt = self.root / 'recovery1229.json'
+        self.historical_machine = self.root / 'historical-machine.json'; write(self.historical_machine, self.config)
+        self.historical_audit = self.root / 'historical-audit.json'
+        write(self.historical_audit, {'source_runtime': {'machine': cloud.binding(self.historical_machine)}})
         write(self.base_receipt, dict(verification=dict(original_moving_snapshots={
             'latest-run.json': '{}', 'latest-checkpoint.json': '{}',
-            'sequence-ledger.json': json.dumps(self.base_ledger)})))
+            'sequence-ledger.json': json.dumps(self.base_ledger)},
+            immutable_evidence={'checkpoint_audit': cloud.binding(self.historical_audit)})))
         self.session = dict(source=dict(git_commit=cloud.CLOUD_COMMIT, tracked_worktree_dirty=False),
             profile='original', scope=adapter.SCOPE, policy_support='visible-interaction-budget-v1',
             training_engine_seed_base=40_000_000, training_policy_seed_base=50_000_000,
@@ -467,6 +471,33 @@ class OriginalSnapshotSeamTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'exact original moving snapshots'):
             runner._local_original_continuation(fixture.anchor, fixture.config,
                                                 moving_snapshots={'latest-run.json': '{}'})
+
+
+class HistoricalMachineTests(unittest.TestCase):
+    def test_acceptance_only_refresh_keeps_immutable_machine_and_requires_current_gate(self):
+        from tools import prepare_local_training as prepare
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory).resolve()
+            previous=dict(created_utc='old',runtime_release={'id':'old'},runtime_origin={'proof':'old'},
+                runtime_bin='/exact/runtime',runtime_files={'binary':'exact'},maps=['original'],
+                run_root='/exact/runs',artifact_root='/exact/artifacts',seed_namespace={'engine_base':40_000_000})
+            machine=root/'machine.json'; write(machine,previous)
+            audit=root/'audit.json'; write(audit,{'source_runtime':{'machine':cloud.binding(machine)}})
+            receipt={'verification':{'immutable_evidence':{'checkpoint_audit':cloud.binding(audit)}}}
+            current={**previous,'created_utc':'new','runtime_release':{'id':'new'},'runtime_origin':{'proof':'new'}}
+            original=machine.read_bytes()
+            with patch.object(prepare,'validate_config',return_value=current) as gate:
+                self.assertEqual(cloud.historical_machine(current,receipt),previous)
+                gate.assert_called_once_with(current)
+                self.assertEqual(machine.read_bytes(),original)
+            with patch.object(prepare,'validate_config',side_effect=ValueError('fresh gate failed')):
+                with self.assertRaisesRegex(ValueError,'fresh gate failed'):
+                    cloud.historical_machine(current,receipt)
+            for key in ('runtime_bin','runtime_files','maps','run_root','seed_namespace'):
+                with self.subTest(key=key), patch.object(prepare,'validate_config') as gate:
+                    with self.assertRaisesRegex(ValueError,'identical historical machine'):
+                        cloud.historical_machine({**current,key:'changed'},receipt)
+                    gate.assert_not_called()
 
 
 if __name__ == '__main__':

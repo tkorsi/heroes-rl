@@ -132,5 +132,28 @@ assert DURABLE_ROOT == Path(sys.argv[1]).resolve(), DURABLE_ROOT
                 with self.subTest(expected=expected), self.assertRaises(ValueError):
                     stopped_candidate_parent(run, config, expected)
 
+    def test_imported_parent_requires_current_certified1335_boundary(self):
+        from tools import run_local_training as runner
+        from tools import cloud_state_import as cloud
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve(); run = root/'cloud-import-1335'
+            config = dict(default_profile='original', run_root=str(root))
+            parent = {'policy': {'sha256':'synthetic'}}
+            receipt = {'path':str(root/'cloud-import.json'),'sha256':'c'*64,'bytes':123}
+            proof = {'evidence':{cloud.RECEIPT_KEY:receipt}}
+            latest = dict(run_dir=str(run),parent=parent,progress={'updates':1335},cloud_import=receipt)
+            with patch.object(runner,'original_continuation',return_value=(parent,2176,proof)) as audit, \
+                    patch.object(cloud,'read',return_value=latest):
+                self.assertEqual(stopped_candidate_parent(run,config,1335),parent)
+                audit.assert_called_once_with(root/'run-20261026T181133Z-062cd75a',config)
+                for field,value in [('run_dir',str(root/'later')),('progress',{'updates':1336}),
+                                    ('cloud_import',{'changed':True})]:
+                    original=latest[field]; latest[field]=value
+                    with self.subTest(field=field), self.assertRaisesRegex(ValueError,'exact current certified'):
+                        stopped_candidate_parent(run,config,1335)
+                    latest[field]=original
+                with self.assertRaisesRegex(ValueError,'pinned'):
+                    stopped_candidate_parent(run,config,1334)
+
 
 if __name__ == '__main__': unittest.main()
