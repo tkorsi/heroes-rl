@@ -20,6 +20,7 @@ class TrainingResourcesTests(unittest.TestCase):
         self.assertEqual(plan["collection_workers"], 4)
         self.assertEqual(plan["verification_workers"], 4)
         self.assertEqual(plan["native_prefix_threads"], 16)
+        self.assertEqual(plan["native_frame_threads"], 16)
         self.assertEqual(plan["native_text_replay_workers"], 14)
         self.assertEqual(plan["native_text_reducer_workers"], 1)
         self.assertEqual(plan["torch_intraop_threads"], 1)
@@ -34,6 +35,7 @@ class TrainingResourcesTests(unittest.TestCase):
         for name in ("collection_workers", "verification_workers"):
             self.assertEqual(plan[name], 1)
         self.assertEqual(plan["native_prefix_threads"], 2)
+        self.assertEqual(plan["native_frame_threads"], 2)
         self.assertEqual(plan["native_text_replay_workers"], 1)
         self.assertEqual(plan["native_text_reducer_workers"], 0)
         for value in (0, -1, 17, True, 2.0, "2"):

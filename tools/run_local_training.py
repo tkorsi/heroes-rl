@@ -742,7 +742,7 @@ def launch_owned(args):
              else f"on {execution['replay_threads']} threads" if execution['replay_threads'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
     if execution.get('native_learner'):
-        print(f"Native C++ learner: {execution['native_learner']['prefix_threads']} prefix threads; "
+        print(f"Native C++ learner: {execution['native_learner']['prefix_threads']} prefix/frame threads; "
               f"{execution['resource_plan']['native_text_replay_workers']} text replay workers and "
               f"{execution['resource_plan']['native_text_reducer_workers']} ordered reducer; "
               f"{execution['verification_workers']} isolated native replay workers; "

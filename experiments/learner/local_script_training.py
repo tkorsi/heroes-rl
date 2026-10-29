@@ -128,7 +128,7 @@ FAST_PATH_SOURCES = {
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/ppo.py': (
         ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd',),
-        'bdc75d5e1028d3f94cfb4f7dee49a367656c484c236f60c6961328f55412b93c'),
+        'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
 # runner, lock), compared with the accepted implementation's git blobs: only these files may differ,
@@ -179,7 +179,7 @@ FAST_PATH_TREE = {
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_execution.py': ('',
-        'ec8b620c099cbd122a8583733ae4cfbeefe92f884a462f849a5ca56d53e8ac00'),
+        '5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56'),
     'experiments/learner/native_recipes.py': ('',
         '6a35dc0694ef1b28e18855cf1476678d505ef7cb2af434a489bfee8250db5f26'),
     'experiments/learner/parallel_collection.py': ('',
@@ -187,19 +187,19 @@ FAST_PATH_TREE = {
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'experiments/learner/resources.py': ('',
-        '0f50700a55daddf41b7454214d61c6c21378209aea2fa5ee08d6c0c61a789461'),
+        'ad885d6b377cc735670b3e753440e13f4119ed83815296fdcfea5b3ad98d49ee'),
     'native/learner/kernels.cpp': ('',
-        '61f128242142645c1c682fcd81d2c8b8160447eee61546bf5b6b14e64ddba700'),
+        '99f698eac796f5dcf6a60a94f281dc1a746c826f6074e3764fab24a564a581e2'),
     'native/learner/replay_tape.h': ('',
-        '96382f4bd0d07007e62b9402d97be8f3972912ab25817ee23775c5ef05900ac8'),
+        '7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1'),
     'native/learner/text_replay.h': ('',
-        '7e21e0e9e54748626d3883ec233d4df59df36ac2612cd9c08e52b24944b999a7'),
+        '9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
         '66e350e3603b30d0e7c8040e4e2acb5af8e802d1f5e01f081a13a780664e8969'),
     'tools/recover_interrupted_training.py': ('',
         '7f3951e69ef993a2b51bce56bb615896d20e3f94d60fa71cf1b21582082f364e'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        '6de067dec70843f8d4f806bd63c9f66b3284de33264e39c8acdd56045fc74d9f'),
+        '7242e204927d97b8f225f0ac4134275274820728b0ded21d8e0fcb84e0e086ce'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_garrison_dialogs.py': ('',
@@ -209,7 +209,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '599d392e891b9018317484cae6a648ca0252241d78a1f61113aaa3c311d5ac87'
+LOCAL_ADAPTER_TRANSITION_AST = 'fa620228471dfc80dc48d691fb6c0131a2a881777e08a170d6a70ecb1d3476dc'
 
 
 def write_new(path, value):

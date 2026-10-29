@@ -55,6 +55,14 @@ inline bool parameter_hooks(const Tensor& value) {
     return node && (!node->pre_hooks().empty() || !node->post_hooks().empty());
 }
 
+inline bool parameter_hooks_readonly(const Tensor& value) {
+    using namespace torch::autograd;
+    if (!impl::hooks(value).empty() || impl::post_acc_grad_hooks(value)) return true;
+    // Worker validation must not create a canonical AccumulateGrad node.
+    const auto node = impl::try_get_grad_accumulator(value);
+    return node && (!node->pre_hooks().empty() || !node->post_hooks().empty());
+}
+
 struct Leaf;
 struct Capture {
     const Leaf* leaf;
@@ -299,6 +307,8 @@ struct Occurrence final : Node {
     std::shared_ptr<Scope> scope;
     Occurrence(std::shared_ptr<Leaf> item, std::shared_ptr<Scope> context)
         : Node(torch::autograd::collect_next_edges(item->arguments)), leaf(std::move(item)), scope(std::move(context)) {}
+    Occurrence(std::shared_ptr<Leaf> item, std::shared_ptr<Scope> context, const variable_list& arguments)
+        : Node(torch::autograd::collect_next_edges(arguments)), leaf(std::move(item)), scope(std::move(context)) {}
     variable_list apply(variable_list&& gradients) override;
 };
 
@@ -327,7 +337,8 @@ struct Scope : std::enable_shared_from_this<Scope> {
     std::exception_ptr reducer_error;
     int task = -1, workers;
     bool active = false, broken = false, closed = false;
-    int64_t occurrences = 0, folded = 0;
+    std::atomic<int64_t> occurrences{0};
+    int64_t folded = 0;
     int64_t producer_backward_nanoseconds = 0, fold_nanoseconds = 0, future_wait_nanoseconds = 0;
     int64_t backpressure_nanoseconds = 0, max_pending_replays = 0;
     int64_t prewarm_nanoseconds = 0, prewarmed_leaves = 0;
@@ -365,6 +376,25 @@ struct Scope : std::enable_shared_from_this<Scope> {
         for (size_t i = 0; i < parameters.size(); ++i)
             TORCH_CHECK(states[i].matches(parameters[i]) && !parameter_hooks(parameters[i]),
                         "Native text parameters or hooks changed inside a replay scope");
+    }
+    void check_readonly() const {
+        TORCH_CHECK(!closed && !broken && !active, "Native prepared text requires an inactive open scope");
+        TORCH_CHECK(at::get_num_threads() == 1, "Native text replay thread count changed");
+        for (size_t i = 0; i < parameters.size(); ++i)
+            TORCH_CHECK(states[i].matches(parameters[i]) && !parameter_hooks_readonly(parameters[i]),
+                        "Native text parameters or hooks changed inside a replay scope");
+    }
+    std::shared_ptr<Leaf> prepared_leaf(const std::string& text, int64_t features) const {
+        const auto found = leaves.find(text);
+        TORCH_CHECK(found != leaves.end(), "Native text leaf was not prepared before parallel frame construction");
+        found->second->check();
+        TORCH_CHECK(features > 0 && found->second->value.dim() == 1 && found->second->value.numel() == features,
+                    "Native prepared text feature size changed");
+        return found->second;
+    }
+    void require_prepared(const std::vector<std::string>& texts, int64_t features) const {
+        check_readonly();
+        for (const auto& text : texts) if (!text.empty()) prepared_leaf(text, features);
     }
     void prewarm(const std::vector<std::string>& texts, int64_t features, int count) {
         check();
@@ -415,8 +445,8 @@ struct Scope : std::enable_shared_from_this<Scope> {
         for (auto& thread : threads) thread.join();
         if (error) std::rethrow_exception(error);
         check();
-        // Private alias graphs are independent. Outer occurrence nodes are still
-        // constructed serially, retaining their original autograd priority order.
+        // Private alias graphs are independent. Outer occurrence priorities are
+        // retained by serial construction or checked main-thread rebasing.
         for (size_t i = 0; i < missing.size(); ++i) leaves.emplace(std::move(missing[i]), std::move(prepared[i]));
         prewarmed_leaves += missing.size();
     }
@@ -431,7 +461,35 @@ struct Scope : std::enable_shared_from_this<Scope> {
         auto result = found->second->value.clone();
         auto node = std::make_shared<Occurrence>(found->second, shared_from_this());
         torch::autograd::set_history(result, node);
-        ++occurrences;
+        occurrences.fetch_add(1, std::memory_order_relaxed);
+        return result;
+    }
+    Tensor occurrence_prepared(const std::string& text, int64_t features, const variable_list& aliases) {
+        check_readonly();
+        const auto leaf = prepared_leaf(text, features);
+        TORCH_CHECK(aliases.size() == parameters.size(), "Native prepared text alias count changed");
+        std::unordered_set<c10::TensorImpl*> identities;
+        variable_list arguments;
+        arguments.reserve(leaf->arguments.size());
+        for (size_t i = 0; i < aliases.size(); ++i) {
+            const auto& alias = aliases[i];
+            const auto& parameter = parameters[i];
+            TORCH_CHECK(alias.defined() && alias.requires_grad() && alias.is_leaf() &&
+                        std::none_of(parameters.begin(), parameters.end(),
+                                     [&](const Tensor& canonical) { return alias.is_same(canonical); }) &&
+                        identities.insert(alias.unsafeGetTensorImpl()).second &&
+                        alias.storage().unsafeGetStorageImpl() == parameter.storage().unsafeGetStorageImpl() &&
+                        alias.const_data_ptr() == parameter.const_data_ptr() && alias.scalar_type() == parameter.scalar_type() &&
+                        alias.sizes() == parameter.sizes() && alias.strides() == parameter.strides() &&
+                        alias.unsafeGetTensorImpl()->version_counter().current_version() == states[i].version &&
+                        !parameter_hooks(alias),
+                        "Native prepared text requires distinct private aliases of its canonical parameters");
+            for (size_t j = 0; j < leaf->counts[i]; ++j) arguments.push_back(alias);
+        }
+        auto result = leaf->value.clone();
+        auto node = std::make_shared<Occurrence>(leaf, shared_from_this(), arguments);
+        torch::autograd::set_history(result, node);
+        occurrences.fetch_add(1, std::memory_order_relaxed);
         return result;
     }
     bool defers() const {
@@ -634,7 +692,7 @@ struct Scope : std::enable_shared_from_this<Scope> {
             engine_replay_count += leaf->engine_replays.load(std::memory_order_relaxed);
         }
         result.insert({{"workers", workers}, {"unique_texts", static_cast<int64_t>(leaves.size())},
-                       {"occurrences", occurrences}, {"folded_contributions", folded},
+                       {"occurrences", occurrences.load(std::memory_order_relaxed)}, {"folded_contributions", folded},
                        {"tape_leaves", tape_leaf_count}, {"tape_replays", tape_replay_count},
                        {"engine_replays", engine_replay_count},
                        {"reducer_threads", workers >= 2 ? 1 : 0},

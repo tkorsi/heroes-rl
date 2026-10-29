@@ -2,6 +2,7 @@
 // Parameter tensors remain owned by the Python model and its existing Adam optimizer.
 #include <torch/extension.h>
 #include <ATen/Parallel.h>
+#include <ATen/SequenceNumber.h>
 #include <ATen/ThreadLocalState.h>
 #include <algorithm>
 #include <atomic>
@@ -201,10 +202,43 @@ public:
 };
 
 class NativeModel {
+    using AutogradNode = torch::autograd::Node;
+    using AutogradEdge = torch::autograd::Edge;
+    struct AliasLease {
+        torch::autograd::variable_list parameters;
+        std::vector<std::shared_ptr<AutogradNode>> accumulators;
+    };
+    struct Reconnection {
+        std::shared_ptr<AutogradNode> node;
+        size_t edge, parameter;
+    };
+    struct PreparedFrame {
+        Tensor vector, cells;
+        Cache cache;
+        AliasLease lease;
+        std::vector<std::shared_ptr<AutogradNode>> nodes;
+        std::vector<Reconnection> reconnections;
+    };
+    struct PreparedWindow {
+        std::vector<PreparedFrame> frames;
+        std::vector<AutogradEdge> canonical_edges;
+    };
+    struct BorrowedAliases {};
     std::map<std::string, Tensor> parameters;
     int64_t feature_size, hidden_size;
     std::shared_ptr<native_text::Scope> text_replay;
     std::map<std::string, int64_t> replay_statistics;
+    native_text::Scope* prepared_text_scope = nullptr;
+    torch::autograd::variable_list prepared_text_aliases;
+    mutable std::vector<AliasLease> forward_alias_leases;
+    mutable int64_t forward_parallel_frames = 0, forward_rebased_nodes = 0, peak_forward_workers = 0;
+    NativeModel(std::map<std::string, Tensor>&& aliases, int64_t features, int64_t hidden,
+                native_text::Scope* borrowed, BorrowedAliases)
+        : parameters(std::move(aliases)), feature_size(features), hidden_size(hidden), prepared_text_scope(borrowed) {
+        for (const auto* name : {"byte.weight", "text_gru.weight_ih_l0", "text_gru.weight_hh_l0",
+                                 "text_gru.bias_ih_l0", "text_gru.bias_hh_l0"})
+            prepared_text_aliases.push_back(p(name));
+    }
     Tensor p(const std::string& key) const {
         auto found = parameters.find(key);
         require(found != parameters.end(), "Missing native parameter: " + key);
@@ -227,6 +261,8 @@ class NativeModel {
         Tensor result;
         if (node.kind == "text") {
             if (node.text.empty()) result = at::zeros({feature_size}, p("byte.weight").options());
+            else if (prepared_text_scope && at::GradMode::is_enabled())
+                result = prepared_text_scope->occurrence_prepared(node.text, feature_size, prepared_text_aliases);
             else if (text_replay && at::GradMode::is_enabled())
                 result = text_replay->occurrence(node.text, feature_size);
             else {
@@ -310,9 +346,208 @@ class NativeModel {
         require(state.device().is_cpu() && state.scalar_type() == at::kFloat && state.sizes() == at::IntArrayRef({hidden_size}),
                 "Native recurrent state must match model dimensions, CPU and float32 dtype");
     }
+    static std::vector<std::string> window_texts(const NativeHistory& history, int64_t start, int64_t end,
+                                                const std::vector<int64_t>& decisions) {
+        std::vector<uint8_t> visited(history.nodes.size(), 0);
+        std::unordered_set<std::string> seen;
+        std::vector<std::string> texts;
+        std::function<void(int64_t)> collect = [&](int64_t root) {
+            if (visited[root]) return;
+            visited[root] = 1;
+            const auto& node = history.nodes[root];
+            if (node.kind == "text") {
+                if (!node.text.empty() && seen.insert(node.text).second) texts.push_back(node.text);
+            } else if (node.kind != "number") {
+                for (auto child : node.children) collect(child);
+                collect(node.tag);
+            }
+        };
+        size_t wanted = 0;
+        for (int64_t index = start; index <= end; ++index) {
+            const auto& frame = history.frames[index];
+            if (frame.root < 0) continue;
+            if (frame.map) collect(frame.map->own);
+            collect(frame.root);
+            if (wanted < decisions.size() && index == decisions[wanted]) {
+                for (const auto& conditional : frame.conditionals) {
+                    if (conditional.kind == "categorical") {
+                        for (auto root : conditional.roots) collect(root);
+                    } else collect(conditional.root);
+                }
+                ++wanted;
+            }
+        }
+        require(wanted == decisions.size(), "Native text preparation omitted a requested decision");
+        return texts;
+    }
+    bool parallel_frame_context() const {
+        if (!text_replay || !at::GradMode::is_enabled() || at::get_num_threads() != 1 ||
+            torch::autograd::get_current_graph_task_id() != -1 || at::hasCallbacks() ||
+            torch::autograd::AnomalyMode::is_enabled() || !at::SavedTensorDefaultHooks::get_tls_state().stack.empty() ||
+            c10::InferenceMode::is_enabled() || at::autocast::is_autocast_enabled(at::kCPU) ||
+            c10::impl::TorchDispatchModeTLS::any_modes_set() || c10::impl::PythonDispatcherTLS::get_state() ||
+            at::impl::PythonTorchFunctionTLS::stack_len() || at::functorch::functorchTLSAccessor()) return false;
+        for (const auto& [_, parameter] : parameters)
+            if (!parameter.requires_grad() || !parameter.is_leaf() || parameter.is_inference() ||
+                parameter.is_nested() || parameter._is_zerotensor() || at::isTensorSubclassLike(parameter) ||
+                parameter.layout() != at::kStrided || parameter._fw_grad(0).defined() ||
+                native_text::parameter_hooks(parameter)) return false;
+        return true;
+    }
+    static bool supported_frame_node(const AutogradNode& node) {
+        using namespace torch::autograd::generated;
+        const auto& type = typeid(node);
+        return type == typeid(native_text::Occurrence) || type == typeid(AddBackward0) ||
+            type == typeid(AddmmBackward0) || type == typeid(MmBackward0) || type == typeid(MulBackward0) ||
+            type == typeid(SubBackward0) || type == typeid(DivBackward0) || type == typeid(DivBackward1) ||
+            type == typeid(SigmoidBackward0) || type == typeid(TanhBackward0) || type == typeid(EmbeddingBackward0) ||
+            type == typeid(ViewBackward0) || type == typeid(UnsafeViewBackward0) || type == typeid(ReshapeAliasBackward0) ||
+            type == typeid(SelectBackward0) || type == typeid(TBackward0) || type == typeid(TransposeBackward0) ||
+            type == typeid(UnsqueezeBackward0) || type == typeid(UnbindBackward0) || type == typeid(UnsafeSplitBackward0) ||
+            type == typeid(StackBackward0) || type == typeid(SumBackward1) || type == typeid(CatBackward0) ||
+            type == typeid(PermuteBackward0) || type == typeid(CloneBackward0) || type == typeid(IndexAddBackward0) ||
+            type == typeid(SqueezeBackward0) || type == typeid(SqueezeBackward1) || type == typeid(SqueezeBackward2) ||
+            type == typeid(SqueezeBackward3) || type == typeid(SqueezeBackward4) || type == typeid(SqueezeBackward5) ||
+            type == typeid(ExpandBackward0) || type == typeid(AsStridedBackward0) ||
+            type == typeid(ConvolutionBackward0) || type == typeid(AdaptiveAvgPool2DBackward0);
+    }
+    PreparedFrame prepare_frame(const NativeHistory& history, int64_t index) const {
+        PreparedFrame result;
+        std::map<std::string, Tensor> aliases;
+        std::unordered_map<AutogradNode*, size_t> terminals;
+        for (const auto& [name, parameter] : parameters) {
+            auto alias = parameter.detach().set_requires_grad(true);
+            const auto edge = torch::autograd::impl::gradient_edge(alias);
+            require(edge.function && edge.input_nr == 0 &&
+                    typeid(*edge.function) == typeid(torch::autograd::AccumulateGrad),
+                    "Native frame alias has an unexpected accumulator");
+            terminals.emplace(edge.function.get(), result.lease.parameters.size());
+            result.lease.parameters.push_back(alias);
+            result.lease.accumulators.push_back(edge.function);
+            aliases.emplace(name, std::move(alias));
+        }
+        NativeModel view(std::move(aliases), feature_size, hidden_size, text_replay.get(), BorrowedAliases{});
+        std::tie(result.vector, result.cells) = view.frame_features(history, index, result.cache);
+        std::vector<std::shared_ptr<AutogradNode>> pending;
+        auto add_root = [&](const Tensor& tensor) {
+            if (tensor.defined() && tensor.grad_fn()) pending.push_back(tensor.grad_fn());
+        };
+        add_root(result.vector); add_root(result.cells);
+        for (const auto& [_, tensor] : result.cache) add_root(tensor);
+        std::unordered_set<AutogradNode*> seen;
+        const auto thread = at::RecordFunction::currentThreadId();
+        while (!pending.empty()) {
+            auto node = std::move(pending.back()); pending.pop_back();
+            if (!seen.insert(node.get()).second) continue;
+            require(!terminals.count(node.get()) && supported_frame_node(*node) && node->thread_id() == thread &&
+                    node->pre_hooks().empty() && node->post_hooks().empty() && node->tensor_pre_hooks().empty() &&
+                    node->retains_grad_hooks().empty(),
+                    "Native frame graph has unsupported nodes, hooks or ownership: " + node->name());
+            for (size_t edge_index = 0; edge_index < node->next_edges().size(); ++edge_index) {
+                const auto& edge = node->next_edge(edge_index);
+                if (!edge.is_valid()) continue;
+                const auto terminal = terminals.find(edge.function.get());
+                if (terminal != terminals.end()) {
+                    require(edge.input_nr == 0, "Native frame alias edge has an invalid input");
+                    result.reconnections.push_back({node, edge_index, terminal->second});
+                } else pending.push_back(edge.function);
+            }
+            result.nodes.push_back(std::move(node));
+        }
+        std::sort(result.nodes.begin(), result.nodes.end(), [](const auto& a, const auto& b) {
+            return a->sequence_nr() < b->sequence_nr();
+        });
+        for (size_t i = 1; i < result.nodes.size(); ++i)
+            require(result.nodes[i-1]->sequence_nr() != result.nodes[i]->sequence_nr(),
+                    "Native frame graph has ambiguous backward priorities");
+        return result;
+    }
+    PreparedWindow prepare_frames(const NativeHistory& history, int64_t start, int64_t end,
+                                   const std::vector<int64_t>& jobs, int workers) const {
+        std::vector<native_text::ParameterState> states;
+        for (const auto& [_, parameter] : parameters) states.emplace_back(parameter);
+        PreparedWindow result;
+        result.frames.resize(end - start + 1);
+        std::atomic<size_t> next{0};
+        std::atomic<int64_t> active{0}, peak{0};
+        std::atomic<bool> failed{false};
+        std::exception_ptr error;
+        std::mutex error_mutex;
+        const at::ThreadLocalState thread_state;
+        auto run = [&] {
+            try {
+                at::get_num_threads(); at::set_num_threads(1);
+                require(at::get_num_threads() == 1, "Native frame worker initialization failed");
+                at::ThreadLocalStateGuard state_guard(thread_state);
+                while (!failed.load()) {
+                    const auto job = next.fetch_add(1);
+                    if (job >= jobs.size()) break;
+                    const auto running = active.fetch_add(1) + 1;
+                    auto maximum = peak.load();
+                    while (running > maximum && !peak.compare_exchange_weak(maximum, running)) {}
+                    try { result.frames[jobs[job] - start] = prepare_frame(history, jobs[job]); }
+                    catch (...) { active.fetch_sub(1); throw; }
+                    active.fetch_sub(1);
+                }
+            } catch (...) {
+                failed.store(true);
+                std::lock_guard<std::mutex> lock(error_mutex);
+                if (!error) error = std::current_exception();
+            }
+        };
+        std::vector<std::thread> threads;
+        try {
+            const int count = std::min<int>(workers, jobs.size());
+            for (int i = 1; i < count; ++i) threads.emplace_back(run);
+            run();
+        } catch (...) {
+            failed.store(true);
+            for (auto& thread : threads) if (thread.joinable()) thread.join();
+            throw;
+        }
+        for (auto& thread : threads) thread.join();
+        if (error) std::rethrow_exception(error);
+        size_t parameter_index = 0;
+        for (const auto& [_, parameter] : parameters) {
+            require(states[parameter_index++].matches(parameter) && !native_text::parameter_hooks(parameter),
+                    "Native parameters changed during parallel frame preparation");
+            auto edge = torch::autograd::impl::gradient_edge(parameter);
+            require(edge.function && edge.input_nr == 0 &&
+                    typeid(*edge.function) == typeid(torch::autograd::AccumulateGrad) &&
+                    edge.function->topological_nr() == 0, "Native canonical parameter has an invalid accumulator");
+            result.canonical_edges.push_back(std::move(edge));
+        }
+        // Validate every substitution before changing any prepared graph. Both
+        // terminals have depth zero, so replacing an edge cannot change parent
+        // topology. Public edge assignment avoids the setter's parented-node guard.
+        for (const auto& frame : result.frames) for (const auto& link : frame.reconnections) {
+            const auto& alias = frame.lease.parameters[link.parameter];
+            const auto& old = frame.lease.accumulators[link.parameter];
+            const auto& target = result.canonical_edges[link.parameter];
+            const auto canonical = std::static_pointer_cast<torch::autograd::AccumulateGrad>(target.function)->variable;
+            require(link.node->next_edge(link.edge).function == old && link.node->next_edge(link.edge).input_nr == 0 &&
+                    old->topological_nr() == 0 && old->num_inputs() == 1 && target.function->num_inputs() == 1 &&
+                    !alias.is_same(canonical) && alias.const_data_ptr() == canonical.const_data_ptr() &&
+                    alias.storage().unsafeGetStorageImpl() == canonical.storage().unsafeGetStorageImpl() &&
+                    alias.scalar_type() == canonical.scalar_type() && alias.sizes() == canonical.sizes() &&
+                    alias.strides() == canonical.strides() && old->input_metadata(0).is_same_shape(canonical) &&
+                    target.function->input_metadata(0).is_same_shape(alias),
+                    "Native frame terminal substitution is not equivalent");
+        }
+        peak_forward_workers = std::max(peak_forward_workers, peak.load());
+        return result;
+    }
 public:
+    ~NativeModel() noexcept {
+        // Destruction joins before releasing weak-accumulator leases, without
+        // allocating the optional statistics snapshot used by explicit close().
+        if (text_replay) text_replay->close(false);
+        forward_alias_leases.clear();
+    }
     void begin_text_replay(int workers) {
         require(!text_replay, "A native text replay scope is already open");
+        require(forward_alias_leases.empty(), "Native frame aliases outlived their replay scope");
+        forward_parallel_frames = forward_rebased_nodes = peak_forward_workers = 0;
         std::vector<Tensor> values{p("byte.weight"), p("text_gru.weight_ih_l0"), p("text_gru.weight_hh_l0"),
                                   p("text_gru.bias_ih_l0"), p("text_gru.bias_hh_l0")};
         text_replay = std::make_shared<native_text::Scope>(std::move(values), workers);
@@ -327,21 +562,27 @@ public:
         try {
             scope->close();
         } catch (...) {
+            forward_alias_leases.clear();
             replay_statistics = scope->statistics();
             throw;
         }
+        forward_alias_leases.clear();
         replay_statistics = scope->statistics();
     }
     void close() {
-        if (!text_replay) return;
+        if (!text_replay) { forward_alias_leases.clear(); return; }
         auto scope = std::move(text_replay);
         // Cleanup joins every worker even after failure. The strict scope-end
         // operation reports unfinished work; cleanup preserves the primary error.
         scope->close(false);
+        forward_alias_leases.clear();
         replay_statistics = scope->statistics();
     }
     std::map<std::string, int64_t> text_replay_statistics() const {
-        return text_replay ? text_replay->statistics() : replay_statistics;
+        auto result = text_replay ? text_replay->statistics() : replay_statistics;
+        result.insert({{"forward_parallel_frames", forward_parallel_frames},
+                       {"forward_rebased_nodes", forward_rebased_nodes}, {"peak_forward_workers", peak_forward_workers}});
+        return result;
     }
     NativeModel(const std::map<std::string, Tensor>& named, int64_t features, int64_t hidden)
         : parameters(named), feature_size(features), hidden_size(hidden) {
@@ -458,44 +699,13 @@ public:
                     "Native decisions must be ordered and have recorded conditional recipes");
             previous = index;
         }
-        // Only the alias-owned inner leaf graphs are prepared in parallel. The
-        // outer occurrences, frame graphs, recurrence and heads retain their
-        // original serial creation order and backward scheduling priorities.
-        std::vector<uint8_t> visited(history.nodes.size(), 0);
-        std::unordered_set<std::string> seen;
-        std::vector<std::string> texts;
-        std::function<void(int64_t)> collect = [&](int64_t root) {
-            if (visited[root]) return;
-            visited[root] = 1;
-            const auto& node = history.nodes[root];
-            if (node.kind == "text") {
-                if (!node.text.empty() && seen.insert(node.text).second) texts.push_back(node.text);
-            } else if (node.kind != "number") {
-                for (auto child : node.children) collect(child);
-                collect(node.tag);
-            }
-        };
-        size_t wanted = 0;
-        for (int64_t index = start; index <= end; ++index) {
-            const auto& frame = history.frames[index];
-            if (frame.root < 0) continue;
-            if (frame.map) collect(frame.map->own);
-            collect(frame.root);
-            if (wanted < decisions.size() && index == decisions[wanted]) {
-                for (const auto& conditional : frame.conditionals) {
-                    if (conditional.kind == "categorical") {
-                        for (auto root : conditional.roots) collect(root);
-                    } else collect(conditional.root);
-                }
-                ++wanted;
-            }
-        }
-        require(wanted == decisions.size(), "Native text preparation omitted a requested decision");
-        text_replay->prewarm(texts, feature_size, workers);
+        // Prewarming creates only the alias-owned inner leaf graphs.
+        text_replay->prewarm(window_texts(history, start, end, decisions), feature_size, workers);
     }
     std::tuple<Tensor, Tensor, Tensor, std::vector<Tensor>> evaluate_window_details(
             const NativeHistory& history, int64_t start, int64_t end,
-            const std::vector<int64_t>& decisions, const Tensor& initial) const {
+            const std::vector<int64_t>& decisions, const Tensor& initial, int workers = 1) const {
+        require(workers >= 1 && workers <= 256, "Native loss window needs 1 to 256 workers");
         require(start >= 0 && start <= end && end < static_cast<int64_t>(history.frames.size()) && !decisions.empty(),
                 "Invalid native loss-window boundary");
         check_state(initial);
@@ -505,6 +715,17 @@ public:
                     "Native decisions must be ordered and have recorded conditional recipes");
             previous = index;
         }
+        std::optional<PreparedWindow> prepared;
+        if (workers > 1 && !initial._fw_grad(0).defined() && parallel_frame_context()) {
+            std::vector<int64_t> jobs;
+            for (int64_t index = start; index <= end; ++index)
+                if (history.frames[index].root >= 0) jobs.push_back(index);
+            if (jobs.size() > 1) {
+                text_replay->require_prepared(window_texts(history, start, end, decisions), feature_size);
+                prepared = prepare_frames(history, start, end, jobs, workers);
+                forward_alias_leases.reserve(forward_alias_leases.size() + jobs.size());
+            }
+        }
         std::vector<Tensor> log_probs, values, conditional_values;
         auto state = initial.detach();
         size_t wanted = 0;
@@ -512,7 +733,22 @@ public:
             const auto& frame = history.frames[index];
             if (frame.root < 0) continue;
             Cache cache;
-            const auto [vector, cells] = frame_features(history, index, cache);
+            Tensor vector, cells;
+            if (prepared) {
+                auto& features = prepared->frames[index - start];
+                for (const auto& link : features.reconnections)
+                    link.node->next_edges()[link.edge] = prepared->canonical_edges[link.parameter];
+                for (const auto& node : features.nodes)
+                    node->set_sequence_nr(at::sequence_number::get_and_increment());
+                forward_rebased_nodes += features.nodes.size();
+                ++forward_parallel_frames;
+                // SavedVariable keeps weak alias accumulators. Retain their
+                // owners through backward even after redirecting outer edges.
+                forward_alias_leases.push_back(std::move(features.lease));
+                vector = std::move(features.vector); cells = std::move(features.cells);
+                cache = std::move(features.cache);
+                features.nodes.clear(); features.reconnections.clear();
+            } else std::tie(vector, cells) = frame_features(history, index, cache);
             state = transition(vector, state);
             // The reference constructs the value head for every decision, but unused
             // head graphs do not contribute a gradient. Preserve even those calls.
@@ -531,8 +767,8 @@ public:
         return {at::stack(log_probs), at::stack(values), state, conditional_values};
     }
     std::tuple<Tensor, Tensor, Tensor> evaluate_window(const NativeHistory& history, int64_t start, int64_t end,
-            const std::vector<int64_t>& decisions, const Tensor& initial) const {
-        auto [log_probs, values, state, details] = evaluate_window_details(history, start, end, decisions, initial);
+            const std::vector<int64_t>& decisions, const Tensor& initial, int workers = 1) const {
+        auto [log_probs, values, state, details] = evaluate_window_details(history, start, end, decisions, initial, workers);
         return {log_probs, values, state};
     }
 };
@@ -627,7 +863,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
         .def("prefix", &NativeModel::prefix, py::arg("history"), py::arg("stops"), py::arg("workers") = 1,
              py::call_guard<py::gil_scoped_release>())
         .def("prepare_window_text", &NativeModel::prepare_window_text, py::call_guard<py::gil_scoped_release>())
-        .def("evaluate_window", &NativeModel::evaluate_window, py::call_guard<py::gil_scoped_release>())
-        .def("evaluate_window_details", &NativeModel::evaluate_window_details, py::call_guard<py::gil_scoped_release>());
+        .def("evaluate_window", &NativeModel::evaluate_window, py::arg("history"), py::arg("start"), py::arg("end"),
+             py::arg("decisions"), py::arg("initial"), py::arg("workers") = 1, py::call_guard<py::gil_scoped_release>())
+        .def("evaluate_window_details", &NativeModel::evaluate_window_details, py::arg("history"), py::arg("start"), py::arg("end"),
+             py::arg("decisions"), py::arg("initial"), py::arg("workers") = 1, py::call_guard<py::gil_scoped_release>());
     module.def("clipped_losses", &clipped_losses, py::call_guard<py::gil_scoped_release>());
 }

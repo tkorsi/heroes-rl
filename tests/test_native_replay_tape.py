@@ -145,6 +145,21 @@ class NativeReplayTapeTests(unittest.TestCase):
             self.assertTrue(ran)
             for left, right in zip(expected, actual): self.exact(left, right)
 
+    def test_forward_ad_output_and_gradient_require_pre_execution_fallback(self):
+        alias = self.leaf(3)
+        output = alias.tanh()
+        tape = self.compile(output, [alias])
+        with torch.autograd.forward_ad.dual_level():
+            dual_output = torch.autograd.forward_ad.make_dual(output, torch.ones_like(output))
+            rejected, reason = self.tape_class.compile(dual_output, [alias])
+            self.assertIsNone(rejected)
+            self.assertTrue(reason)
+            dual_gradient = torch.autograd.forward_ad.make_dual(torch.ones_like(output), torch.ones_like(output))
+            ran, gradients = tape.run(dual_gradient)
+            self.assertFalse(ran)
+            self.assertEqual(gradients, [])
+        self.assertIsNone(alias.grad)
+
     def test_float64_requires_pre_execution_fallback(self):
         alias = torch.tensor([0.25, -0.5], dtype=torch.float64, requires_grad=True)
         output = alias.tanh()

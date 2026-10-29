@@ -65,6 +65,7 @@ class BuiltinReplayTape {
     static bool ordinary_tensor(const at::Tensor& tensor) {
         return tensor.defined() && tensor.device().is_cpu() && tensor.scalar_type() == at::kFloat &&
             tensor.layout() == at::kStrided && !tensor.is_nested() && !tensor.is_inference() &&
+            !tensor._fw_grad(0).defined() &&
             !tensor._is_zerotensor() && !at::isTensorSubclassLike(tensor);
     }
     static bool ordinary_context(std::string* reason) {

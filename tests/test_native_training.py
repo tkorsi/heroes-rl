@@ -100,11 +100,159 @@ class NativeTrainingParityTests(unittest.TestCase):
             self.assertEqual(actual.timings_seconds['native_tape_replays'],
                              actual.timings_seconds['native_completed_replays'])
             self.assertEqual(actual.timings_seconds['native_engine_replays'], 0)
-            self.exact(reference.state_dict(), native.state_dict())
-            self.exact([p.grad for p in reference.parameters()], [p.grad for p in native.parameters()])
-            self.exact(optimizers[0].state_dict(), optimizers[1].state_dict())
-            self.exact(generators[0].get_state(), generators[1].get_state())
-            self.exact(before_rng, torch.get_rng_state())
+            self.assertGreater(actual.timings_seconds['native_forward_parallel_frames'], 0)
+            self.assertGreater(actual.timings_seconds['native_forward_rebased_nodes'], 0)
+            self.assertGreater(actual.timings_seconds['native_peak_forward_workers'], 1)
+            self.exact_bytes(reference.state_dict(), native.state_dict())
+            self.exact_bytes([p.grad for p in reference.parameters()], [p.grad for p in native.parameters()])
+            self.exact_bytes(optimizers[0].state_dict(), optimizers[1].state_dict())
+            self.exact_bytes(generators[0].get_state(), generators[1].get_state())
+            self.exact_bytes(before_rng, torch.get_rng_state())
+
+    def exact_bytes(self, left, right):
+        if isinstance(left, torch.Tensor):
+            self.assertEqual(left.dtype, right.dtype)
+            self.assertEqual(left.shape, right.shape)
+            self.assertTrue(torch.equal(left.detach().contiguous().reshape(-1).view(torch.uint8),
+                                        right.detach().contiguous().reshape(-1).view(torch.uint8)))
+        elif isinstance(left, dict):
+            self.assertEqual(left.keys(), right.keys())
+            for key in left: self.exact_bytes(left[key], right[key])
+        elif isinstance(left, (tuple, list)):
+            self.assertEqual(len(left), len(right))
+            for a, b in zip(left, right): self.exact_bytes(a, b)
+        else:
+            self.assertEqual(left, right)
+
+    def frame_run(self, original, history, windows, workers):
+        model = deepcopy(original)
+        machine = self.backend.NativeModel(dict(model.named_parameters()), 4, 8)
+        versions = [parameter._version for parameter in model.parameters()]
+        machine.begin_text_replay(3)
+        try:
+            for start, end, decisions, initial in windows:
+                machine.prepare_window_text(history, start, end, decisions, workers)
+            outputs = [machine.evaluate_window_details(history, start, end, decisions, initial, workers)
+                       for start, end, decisions, initial in windows]
+            loss = sum(logs.sum() + values.square().sum() + state.square().sum() * 0.01
+                       for logs, values, state, _ in outputs)
+            machine.backward_with_text_replay(loss)
+            machine.end_text_replay()
+            stats = machine.text_replay_statistics()
+            self.assertEqual([parameter._version for parameter in model.parameters()], versions)
+            self.exact_bytes(model.state_dict(), original.state_dict())
+            return ([(logs.detach(), values.detach(), state.detach(), [part.detach() for part in details])
+                     for logs, values, state, details in outputs],
+                    [None if parameter.grad is None else parameter.grad.clone() for parameter in model.parameters()],
+                    stats)
+        finally:
+            machine.close()
+
+    def test_parallel_frame_features_preserve_gradient_bytes_across_windows(self):
+        torch.manual_seed(41781)
+        model = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
+        rollout = synthetic_rollout(model, turns=5, episode='parallel-frame-features')
+        inputs = m.encode_history(rollout.history)
+        history = compile_history(model, inputs, rollout.decisions, self.backend)
+        decisions = [record.decision_seq for record in rollout.decisions]
+        start = decisions[2] + 1
+        initial = model.prefix_states(inputs, (start,))[start]
+        # The first window skips a decision whose unused value head must still
+        # be constructed. Both windows share one replay scope and parameter set.
+        windows = [(0, decisions[2], [decisions[0], decisions[2]], model.initial_state()),
+                   (start, decisions[4], decisions[3:], initial)]
+        rng = torch.get_rng_state().clone()
+        expected_outputs, expected_gradients, serial = self.frame_run(model, history, windows, 1)
+        for workers in (4, 16):
+            with self.subTest(workers=workers):
+                outputs, gradients, stats = self.frame_run(model, history, windows, workers)
+                self.exact_bytes(outputs, expected_outputs)
+                self.exact_bytes(gradients, expected_gradients)
+                self.assertGreater(stats['forward_parallel_frames'], 1)
+                self.assertGreater(stats['forward_rebased_nodes'], 0)
+                self.assertGreater(stats['peak_forward_workers'], 1)
+                self.assertLessEqual(stats['peak_forward_workers'], workers)
+                self.assertEqual(stats['occurrences'], serial['occurrences'])
+                self.assertGreater(stats['tape_replays'], 0)
+                self.exact_bytes(torch.get_rng_state(), rng)
+
+    def test_parallel_frame_features_preserve_coordinate_quantity_and_management_gradients(self):
+        from experiments.learner import contextual as c
+        from tests.test_contextual_model import map_history, town_history, recruitment
+        from tests.test_contextual_management import at_stack
+        from tests.test_contextual_management_model import all_actions
+        town = town_history(recruitment())
+        stack = at_stack()
+        simple_map = map_history()
+        visible = simple_map.decision.observation
+        multi_map = c.PlayerHistory('parallel-coordinate', 0, schema=simple_map.frames[0].schema)
+        multi_map.emit('view', observation=visible)
+        multi_map.emit('decision', observation=visible, offers=simple_map.decision.offers, revision=0)
+        fixtures = [(multi_map, c.Action('move_to', 'hero', 2, 1)),
+                    (town, c.Action('recruit', 'town', schema=c.TOWN_ACTION_SCHEMA,
+                         selection=town.decision.offers.panel.recruitment.selected_offer_ref,
+                         destination=town.decision.offers.panel.recruitment.destination.ref, count=2)),
+                    (stack, all_actions(stack.decision)[0])]
+        for source, action in fixtures:
+            with self.subTest(action=action.kind):
+                torch.manual_seed(41782)
+                model = m.ContextualActorCritic(m.ModelConfig(schema=m.model_schema_for(source.frames[0].schema),
+                                                              hidden_size=8, feature_size=4))
+                inputs = m.encode_history(source.frames)
+                state = model.initial_state()
+                with torch.no_grad():
+                    for frame in inputs:
+                        output = model.forward_step(frame, state)
+                        state = output.state
+                evaluated = output.decision.distribution.evaluate(action)
+                record = SimpleNamespace(decision_seq=len(inputs)-1, action=action,
+                    support=output.decision.distribution.support, conditionals=evaluated.conditionals)
+                history = compile_history(model, inputs, (record,), self.backend)
+                windows = [(0, len(inputs)-1, [len(inputs)-1], model.initial_state())]
+                rng = torch.get_rng_state().clone()
+                expected_outputs, expected_gradients, serial = self.frame_run(model, history, windows, 1)
+                for workers in (4, 16):
+                    outputs, gradients, stats = self.frame_run(model, history, windows, workers)
+                    self.exact_bytes(outputs, expected_outputs)
+                    self.exact_bytes(gradients, expected_gradients)
+                    self.assertGreater(stats['forward_parallel_frames'], 0)
+                    self.assertGreater(stats['forward_rebased_nodes'], 0)
+                    self.assertEqual(stats['occurrences'], serial['occurrences'])
+                    self.exact_bytes(torch.get_rng_state(), rng)
+
+    def test_parallel_frame_missing_preparation_and_worker_failure_leave_retry_safe(self):
+        torch.manual_seed(41783)
+        model = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
+        rollout = synthetic_rollout(model, turns=3, episode='parallel-frame-failure')
+        inputs = m.encode_history(rollout.history)
+        history = compile_history(model, inputs, rollout.decisions, self.backend)
+        decisions = [record.decision_seq for record in rollout.decisions]
+        machine = self.backend.NativeModel(dict(model.named_parameters()), 4, 8)
+        machine.begin_text_replay(3)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'prepar|prewarm'):
+                machine.evaluate_window(history, 0, decisions[-1], decisions, model.initial_state(), 4)
+            self.assertEqual(machine.text_replay_statistics()['occurrences'], 0)
+            machine.prepare_window_text(history, 0, decisions[-1], decisions, 4)
+            parameter = model.tree[0].weight
+            original = parameter.detach().clone()
+            with torch.no_grad(): parameter.set_(torch.zeros(2, 2))
+            try:
+                with self.assertRaises(RuntimeError):
+                    machine.evaluate_window(history, 0, decisions[-1], decisions, model.initial_state(), 16)
+            finally:
+                with torch.no_grad(): parameter.set_(original)
+            self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
+            machine.close()
+            machine.begin_text_replay(3)
+            machine.prepare_window_text(history, 0, decisions[-1], decisions, 4)
+            actual = machine.evaluate_window(history, 0, decisions[-1], decisions, model.initial_state(), 4)
+            machine.backward_with_text_replay(actual[0].sum() + actual[1].sum())
+            machine.end_text_replay()
+            self.assertGreater(machine.text_replay_statistics()['forward_parallel_frames'], 0)
+            self.assertTrue(any(parameter.grad is not None for parameter in model.parameters()))
+        finally:
+            machine.close()
 
     def test_prepared_window_text_preserves_outputs_gradients_and_rng(self):
         torch.manual_seed(41731)

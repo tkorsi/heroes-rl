@@ -454,7 +454,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                                                      state)
                 else:
                     logs, vals, _ = native_model.evaluate_window(native_inputs[window.rollout_index], window.start_seq,
-                        records[-1].decision_seq, [record.decision_seq for record in records], state.detach())
+                        records[-1].decision_seq, [record.decision_seq for record in records], state.detach(),
+                        NATIVE_EXECUTION['prefix_threads'])
                     evaluated = tuple(EvaluatedDecision(record.decision_seq, logs[i], vals[i])
                                       for i, record in enumerate(records))
                 for index, current, old in zip(window.sample_indices, evaluated, records):
@@ -494,7 +495,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 native_model.end_text_replay()
                 stats = native_model.text_replay_statistics()
                 for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays',
-                             'main_thread_replays', 'tape_leaves', 'tape_replays', 'engine_replays'):
+                             'main_thread_replays', 'tape_leaves', 'tape_replays', 'engine_replays',
+                             'forward_parallel_frames', 'forward_rebased_nodes'):
                     timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
                 for name in ('producer_backward', 'fold', 'future_wait', 'backpressure', 'prewarm'):
                     key = 'native_' + name + '_seconds'
@@ -504,6 +506,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                                                             float(stats.get('max_pending_replays', 0)))
                 timings['native_peak_parallel_replays'] = max(timings.get('native_peak_parallel_replays', 0.0),
                                                              float(stats.get('peak_parallel_replays', 0)))
+                timings['native_peak_forward_workers'] = max(timings.get('native_peak_forward_workers', 0.0),
+                                                             float(stats.get('peak_forward_workers', 0)))
             if before_step is not None:
                 before_step()
             phase = perf_counter()

@@ -224,6 +224,7 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
         "collection_workers": 4 if budget >= 4 else 1,
         "verification_workers": 4 if budget >= 4 else 1,
         "native_prefix_threads": budget,
+        "native_frame_threads": budget,
         "native_text_replay_workers": background - reducers,
         "native_text_reducer_workers": reducers,
         "torch_intraop_threads": 1,
@@ -232,7 +233,7 @@ def make_resource_plan(cpu_cap=None, *, resources=None):
         "utilization_limits": [
             "Four-game on-policy batches cap independent collection and verification jobs at four.",
             "The accepted execution contract selects four workers or a single worker when the CPU budget is below four.",
-            "Native prefix work uses at most the declared thread budget and available independent frames.",
+            "Native prefixes and differentiable frame features use at most the declared budget and available independent frames.",
             "Text backward reserves one CPU for the main graph and, when at least three CPUs are available, one for ordered reduction; replay uses the remaining budget.",
             "Recurrent transitions, minibatch order and gradient accumulation retain their original dependencies.",
             "Memory figures describe observed capacity; no unmeasured per-worker memory guarantee is inferred.",
