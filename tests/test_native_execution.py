@@ -5,6 +5,8 @@ import io
 import json
 from pathlib import Path
 import sys
+import subprocess
+import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -97,6 +99,33 @@ class NativeExecutionSchemaTests(unittest.TestCase):
 
 
 class NativeAcceptanceTests(unittest.TestCase):
+    def test_transitive_acceptance_helpers_are_bound_before_official_selection(self):
+        helpers = ('tools/benchmark_copied_training.py', 'tools/acceleration3/ppo_bench.py',
+                   'tools/validate_garrison_regressions.py')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            subprocess.run(['git', 'init', '-q', str(root)], check=True, capture_output=True)
+            for name in helpers:
+                path = root/name; path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text('original acceptance helper\n')
+            subprocess.run(['git', '-C', str(root), 'add', '--', *helpers], check=True, capture_output=True)
+            with patch.object(native_execution, '__file__', str(root/'experiments/learner/native_execution.py')), \
+                    patch.object(native_backend, 'verified_manifest', return_value={}):
+                identities = native_execution.acceptance_source_hashes()
+                self.assertEqual(set(identities), set(helpers))
+                report = dict(accepted_for_manual_training=True, native_manifest_sha256=SHA,
+                              acceptance_source_sha256=identities)
+                accepted = root/'validation/native-mac-learner-2026-10-29.json'
+                accepted.parent.mkdir(); accepted.write_text(json.dumps(report))
+                self.assertEqual(native_execution.require_native_acceptance(MANIFEST, SHA), {})
+                for name in helpers:
+                    path = root/name; original = path.read_bytes()
+                    path.write_bytes(original+b'changed executable helper\n')
+                    with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'acceptance gate'):
+                        native_execution.require_native_acceptance(MANIFEST, SHA)
+                    path.write_bytes(original)
+                self.assertEqual(native_execution.require_native_acceptance(MANIFEST, SHA), {})
+
     def test_official_worker_cannot_bypass_acceptance_or_mutate_globals_before_it(self):
         from experiments.headless import background_check
         from experiments.learner import ppo, interaction_guard

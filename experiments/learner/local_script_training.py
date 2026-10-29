@@ -161,6 +161,8 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'tools/training_environment.py', 'tools/prepare_next_training_environment.py',
                  'tools/isolated_diagnostic.py',
                  'tools/accept_cpu_next_launch.py',
+                 'tools/benchmark_copied_training.py', 'tools/acceleration3/ppo_bench.py',
+                 'tools/validate_garrison_regressions.py',
                  'train-1000.sh', 'tools/train_1000_games.py', 'continue-original-native.sh',
                  'continue-772.sh', 'tools/continue_772_games.py', 'tools/continuation_goal.py',
                  'configs/checkpoint1392-remaining772.json',
@@ -230,12 +232,16 @@ FAST_PATH_TREE = {
         '9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd'),
     'tools/acceleration3/fast_path_pins.py': ('',
         '156faaedb5001726db7986173d44f7d369d3e950d60e1d756b94c086bdb91c46'),
+    'tools/acceleration3/ppo_bench.py': ('',
+        'a36abb21c469894e8d8a1207ff242c342a424a246ded353d9e39bf7db899f681'),
     'tools/accept_cpu_next_launch.py': ('',
         '54188b304262118173aed838756fca923cb24bdc57631f5cca340e8d0b8571f5'),
     'tools/apply_cloud1335_import.py': ('',
         '40f233663871acaef141388de13980da1ff8dc110ca930a3b2b5b02f23201513'),
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
+    'tools/benchmark_copied_training.py': ('',
+        '6cdc1332918fc8913504f15c31b01d47d8ea256e7ee16a07c4f8d4b748102b9c'),
     'tools/cloud_state_import.py': ('',
         '72460e281c300ede289adad302c5fbd75c0002445e05723d1da1dea0e17580fc'),
     'tools/continuation_goal.py': ('',
@@ -247,7 +253,7 @@ FAST_PATH_TREE = {
     'tools/linux_publication.py': ('',
         '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        'd28230d489702e39963943e0d434b8a87382a1fdd0064ae8f64a8b7cfddf9905'),
+        '6f088f791a895ae8596e1241b3d514b1cf4e22caf07b629cf791df6eef0984f0'),
     'tools/prepare_next_training_environment.py': ('',
         'c034f3d8f0f45cf0eeeac2e4cce568df260844d509365bcf52153451a567b31a'),
     'tools/recover_interrupted_training.py': ('',
@@ -260,6 +266,8 @@ FAST_PATH_TREE = {
         '502f7f9df0d1f216e3832358c163a2b293a413ed01df190bea18a5b7a93ed702'),
     'tools/training_environment.py': ('',
         '71a4974c58259da0d65670adcd90dfe7b427d4476bb79f76ca54c648ec374030'),
+    'tools/validate_garrison_regressions.py': ('',
+        '0f4c005873fe342b60eb08e16eb6f3a153672eb511d263fd6e54712e52276dd6'),
     'tools/validate_interaction_guard.py': ('',
         '944738c56da82fe7bef5ed1e8e1ec7ee4de6c6ee235fd99cc3baff15ef711a34'),
     'train-1000.sh': ('',
@@ -275,7 +283,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'b779898578d2b25981714604a8d71c293a351f92e0efa63adef56b0d5b80ae8d'
+LOCAL_ADAPTER_TRANSITION_AST = 'd5b173bf9bfd0fa5a2980fad375a8df7710191657cc4f2f96edf65935b49bfb4'
 
 
 def write_new(path, value):
