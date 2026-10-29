@@ -829,3 +829,25 @@ The synchronized main-checkout load test then passed: 10.39 seconds native,
 exact checks and cleanup. The real ten-hour continuation check correctly refused
 at the unchanged ownership fence before the runner. The checkpoint/run pointers
 and locks matched their pre-task hashes, modes and identities.
+
+## 29 October 2026 — timed manual 1,000-game launcher
+
+The requested `./train-1000.sh` targets 1,000 additional admitted games (250
+complete PPO updates), preserving original campaign accounting and excluding
+evaluation games. It uses the accepted native runtime and available CPUs, keeps
+the learning settings fixed, and prints total monotonic elapsed time after
+controller cleanup. Its default ten-hour safety cap may stop the session early;
+the runner's admitted count and target flag remain authoritative.
+
+The [launcher report](research/manual-1000-game-launcher-2026-10-29.md) records
+143 passing checks and one Linux-only skip across 144 focused tests, including
+isolated signal/cleanup controls and a mocked 250-update stop. Two macOS path
+expectation errors and the intermediate stale-source-pin rejection are disclosed.
+Reviewed source pins, generated-engine agreement and loading the actual unchanged
+native library passed. The acceptance gate now includes the entire manual
+launcher chain. No new performance or policy-quality claim follows from these tests.
+
+The real worktree preflight correctly refused the existing cloud ownership fence
+and printed its elapsed time. All six official pointer/lock snapshots remained
+unchanged. No seeds, games or official updates were created; verified cloud
+closure and latest-state import are still required before local continuation.

@@ -1,0 +1,76 @@
+{
+  "accepted_source_files": 260,
+  "canonical_engine_check_passed": true,
+  "complete_ppo_updates": 250,
+  "default_safety_cap_hours": 10,
+  "diagnostic_gameplay": false,
+  "evaluations_in_target": false,
+  "failed_diagnostic_attempts": [
+    {
+      "detail": "Independent cap and timing tests initially expected /var paths; macOS canonicalized them to /private/var. Test expectations were corrected.",
+      "kind": "test_fixture_expectation"
+    },
+    {
+      "detail": "The intermediate 84-test runner group rejected the edited runner before its reviewed source hashes were refreshed: four failures, seven errors and one skip. The final 144-test group passed after reviewed pins were refreshed.",
+      "kind": "expected_source_gate_rejection"
+    }
+  ],
+  "implementation_sha256": {
+    "continue-original-native.sh": "c95870dce36a7042e95b358980fc0a08317c0656c995024664adac9d4a6aafac",
+    "experiments/learner/local_script_training.py": "abbce74435519a9c59e842c7b473e507e3ae8bb3b4e9e2ea4b21e42a30f22cbd",
+    "tests/test_local_session_game_cap.py": "eb41d6792a9ccfceb440a4ccf302617b7d1076f0591cace39dc8bbb76e0d7cd4",
+    "tests/test_native_continuation_wrapper.py": "3d7edb456459a0ac53ed6b28b1439e949c44a5697da23a43651e9122beec65c7",
+    "tests/test_train_1000_launcher.py": "2514776a97ee43753ed49cc1fb726ca82f12ca379b8d932dd955ab11657ed45a",
+    "tools/run_local_training.py": "ee941723e2f3d05442eac8dd79794116db2231b6f8fae646d1e3a41a23d1c8f1",
+    "tools/train_1000_games.py": "47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4",
+    "train-1000.sh": "79b345528e052befbd804f0141311c315c01e10effa1e344f22872cbd4267e79"
+  },
+  "learning_settings_changed": false,
+  "limitations": [
+    "The 250-update stopping test uses an isolated mocked worker; no 1000-game training campaign was launched.",
+    "Actual Mac continuation remains fenced; fresh full-state restoration and current remaining-game count cannot be asserted by this work.",
+    "Elapsed output is provided on normal exits and handled INT/TERM; SIGKILL, host shutdown and power loss cannot run final output.",
+    "Source and launcher changes only; unchanged numerical runtime was loaded and verified, not rebuilt or rebenchmarked.",
+    "Clean manual or budget stops may return zero before 1000 games; target_games_met and admitted_training_games determine completion."
+  ],
+  "main_checkout_check": null,
+  "native_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+  "native_gate_and_actual_library_load_passed": true,
+  "native_manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623",
+  "official_games": 0,
+  "official_state": {
+    "hashes_modes_and_inodes_unchanged": true,
+    "latest_cloud_state_import_verified": false,
+    "mac_launch_ready": false,
+    "ownership_lock_modes": [
+      "0444",
+      "0444"
+    ],
+    "pointer_and_lock_count": 6
+  },
+  "official_training_started": false,
+  "official_updates": 0,
+  "original_campaign_target_games": 5000,
+  "requested_additional_training_games": 1000,
+  "schema": "heroes-manual-1000-game-launcher-validation-v1",
+  "seed_reservations": 0,
+  "shell_syntax_passed": true,
+  "source_base_commit": "2bdc0610612606330455af147dfb5602763f16eb",
+  "source_pins_passed": true,
+  "tests": {
+    "new_session_cap_tests": 7,
+    "new_timer_launcher_tests": 11,
+    "passed": 143,
+    "seconds": 20.335,
+    "skip_reason": "fork overlap is validated on Linux",
+    "skipped": 1,
+    "total": 144
+  },
+  "timestamp_utc": "2026-10-29T18:39:33.612525+00:00",
+  "worktree_check": {
+    "command": "./train-1000.sh --check",
+    "exit_status": 2,
+    "result": "refused_existing_cloud_ownership_fence_before_runner",
+    "total_seconds": 0.06
+  }
+}

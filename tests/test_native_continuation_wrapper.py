@@ -58,11 +58,13 @@ class NativeContinuationWrapperTests(unittest.TestCase):
 
     def test_check_hours_cpu_cap_and_explicit_recovery_are_forwarded_once(self):
         result = self.run_wrapper(*self.required, "--check", "--hours", "10", "--cpu-cap", "8",
+                                  "--session-games", "1000",
                                   "--recovery-receipt", "/private/new recovery/receipt.json")
         self.assertEqual(result.returncode, 0, result.stderr)
         args = self.called()
         self.assertEqual(args[0], "check")
         for key, expected in (("--hours", "10"), ("--cpu-cap", "8"),
+                              ("--session-games", "1000"),
                               ("--recovery-receipt", "/private/new recovery/receipt.json")):
             self.assertEqual(args.count(key), 1)
             self.assertEqual(args[args.index(key) + 1], expected)
@@ -82,6 +84,7 @@ class NativeContinuationWrapperTests(unittest.TestCase):
                    ("--experiment", "shared_graph_encodings"), ("--overlap-verification",),
                    ("--replay-threads", "2"), ("_launch",), ("start",), ("--",),
                    ("--hours", "1", "--hours", "10"), ("--check", "--check"),
+                   ("--session-games", "1000", "--session-games", "2000"), ("--session-games",),
                    ("--native-sha256", SHA), ("--hours",), ("--cpu-cap", "--check")]
         for args in invalid:
             with self.subTest(args=args):

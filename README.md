@@ -345,6 +345,19 @@ does not restart training, replace the latest cloud checkpoint with local 1229,
 or modify the cloud's frozen source. See the report for the precise command and
 validation limitations.
 
+For a manual session targeting **1,000 additional admitted training games**, use
+`./train-1000.sh --check` for offline preflight, then `./train-1000.sh` to launch
+after verified cloud closure and latest-state import. The script uses the accepted
+native build, all available CPUs and the unchanged four-game PPO batch. It stops
+after 250 complete updates, or earlier on failure, a manual stop or its default
+ten-hour safety cap (`--hours` overrides that cap). Evaluation games do not count
+toward 1,000. It rejects a request larger than the verified remaining original
+5,000-game target. It prints total wall-clock running time on success, failure or
+a handled interruption, including startup, evaluation and cleanup. A clean early
+stop is not proof of completing 1,000 games; check `target_games_met` and admitted
+games in the runner summary. See the
+[launcher validation](docs/research/manual-1000-game-launcher-2026-10-29.md).
+
 For a short, isolated CPU and memory check, run `./test-native-load.sh`. It uses
 the accepted build and disposable copies of archived batch 846, compares native
 and Python PPO within a 120-second comparison deadline, and prints CPU capacity

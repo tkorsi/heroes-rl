@@ -84,6 +84,18 @@ def budget(hours, *, continuation=False):
                 hard_deadline_monotonic=mono + seconds)
 
 
+def continuation_game_target(remaining, session_games):
+    """Limit this manual session without resetting the verified original target."""
+    if session_games is None:
+        return remaining
+    if type(session_games) is not int or session_games <= 0 or session_games % 4:
+        raise ValueError('--session-games must be a positive multiple of four')
+    if session_games > remaining:
+        raise ValueError(f'--session-games requests {session_games} games, but only {remaining} '
+                         'remain in the verified original target')
+    return session_games
+
+
 def left(session, hard=False):
     return min(session['absolute_deadline_unix' if hard else 'compute_deadline_unix'] - time.time(),
                session['hard_deadline_monotonic' if hard else 'compute_deadline_monotonic'] - time.monotonic())
@@ -635,7 +647,8 @@ def start(args):
     with campaign_locks(config), exclusive_lock(run_root / 'preparation.lock'):
         if args.parent_final is not None: final_parent(args.parent_final)
         if args.continue_original is not None:
-            original_continuation(args.continue_original, config, args.recovery_receipt)
+            _, remaining, _ = original_continuation(args.continue_original, config, args.recovery_receipt)
+            continuation_game_target(remaining, args.session_games)
         release, commit = release_checkout(config['artifact_root'], None if args.fast_path else ACCEPTED_IMPLEMENTATION)
         # Re-enter the exact frozen source before creating any session or game.
         command = [sys.executable, str(release / 'tools/run_local_training.py'), '_launch',
@@ -652,6 +665,7 @@ def start(args):
             if args.cpu_cap is not None: command += ['--cpu-cap', str(args.cpu_cap)]
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
         if args.games is not None: command += ['--games', str(args.games)]
+        if args.session_games is not None: command += ['--session-games', str(args.session_games)]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
         if args.parent_final is not None: command += ['--parent-final', str(args.parent_final.resolve())]
         if args.continue_original is not None: command += ['--continue-original', str(args.continue_original.resolve())]
@@ -689,13 +703,15 @@ def launch_owned(args):
     require(args.fast_path, 'This release runs only as the explicit fast path; launch with start')
     execution = selected_execution(args)
     policy_support = adapter.check_policy_support(args.interaction_guard)
-    run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
+    run_root = Path(config['run_root'])
     latest = run_root / 'latest-checkpoint.json'
     parent = (final_parent(args.parent_final) if args.parent_final else read(args.parent)['parent'] if args.parent
               else read(latest)['parent'] if latest.exists() else config['parent'])
     continuation = None
+    target_games = args.games
     if args.continue_original is not None:
-        parent, args.games, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
+        parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
+        target_games = continuation_game_target(remaining, args.session_games)
     initial = adapter.restore_parent(parent)
     adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, policy_support)  # before any session or game
     parent_final_evidence = None
@@ -705,6 +721,7 @@ def launch_owned(args):
                 'Final parent counters differ from the restored checkpoint')
         parent_final_evidence = {name: binding(args.parent_final / name) for name in
                                 ('session.json', 'campaign-report.json', 'shutdown.json')}
+    run_root.mkdir(parents=True, exist_ok=True)
     run = run_root / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + uuid.uuid4().hex[:8])
     run.mkdir(exist_ok=False)
     session = dict(schema='heroes-local-script-session-v1', scope='heroes-local-script-training-v1',
@@ -717,7 +734,7 @@ def launch_owned(args):
         next_sequence=continuation['next_sequence'] if continuation else config.get('next_sequence', 266), supervisor_pid=os.getpid(),
         training_engine_seed_base=config.get('seed_namespace', {}).get('engine_base', 20_000_000),
         training_policy_seed_base=config.get('seed_namespace', {}).get('policy_base', 30_000_000),
-        max_updates=args.max_updates, target_games=args.games, profile=config['default_profile'],
+        max_updates=args.max_updates, target_games=target_games, profile=config['default_profile'],
         evaluation_interval_updates=args.eval_every,
         parent_final_run=str(args.parent_final.resolve()) if args.parent_final else None,
         parent_final_evidence=parent_final_evidence,
@@ -752,7 +769,8 @@ def launch_owned(args):
               "Action support differs from the previous unguarded run.", flush=True)
     if continuation:
         print(f"Original target: {continuation['target_games']} games; admitted before this session: "
-              f"{continuation['admitted_before_session']}; remaining: {args.games}.", flush=True)
+              f"{continuation['admitted_before_session']}; remaining: {continuation['remaining_before_session']}. "
+              f"This session targets {target_games} newly admitted training games; evaluations are excluded.", flush=True)
     print(f"Session safety cap: {args.hours:g} hours; no automatic retry or new window.", flush=True)
     print(f"Run: {run}\nParent: update {initial.progress.updates}\nCompute cutoff: {utc(session['compute_deadline_unix'])}\n"
           f"Hard stop: {utc(session['absolute_deadline_unix'])}\nNo LLM calls. Ctrl-C requests a stop after the current batch.", flush=True)
@@ -827,6 +845,8 @@ def main():
     parser.add_argument('--hours', type=float,
                         help='Fresh-session safety cap: 2h default, 48h with --games; original699 continuation defaults/maxes at336h')
     parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
+    parser.add_argument('--session-games', type=int,
+                        help='Cap newly admitted games for --continue-original, a positive multiple of four no larger than its verified remaining target; evaluations excluded')
     parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
     parser.add_argument('--batch-wall-seconds', type=int,
@@ -878,6 +898,11 @@ def main():
         parser.error('--native-sha256 and --cpu-cap require --native-learner')
     if args.recovery_receipt is not None and args.continue_original is None:
         parser.error('--recovery-receipt requires --continue-original')
+    if args.session_games is not None:
+        if args.continue_original is None:
+            parser.error('--session-games requires --continue-original')
+        if args.session_games <= 0 or args.session_games % 4:
+            parser.error('--session-games must be a positive multiple of four')
     if (args.continue_original is not None or args.batch_wall_seconds is not None or args.interaction_guard is not None) and not args.fast_path:
         parser.error('Continuation and operational budget changes require the reviewed --fast-path release')
     if args.continue_original is not None:
@@ -927,11 +952,14 @@ def main():
             from tools.recover_interrupted_training import existing_campaign_locks
             with existing_campaign_locks(config):
                 parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
+                session_target = continuation_game_target(remaining, args.session_games)
                 state = adapter.restore_parent(parent)
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
                 adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, args.interaction_guard)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
-                exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
+                exact_restore=True, remaining_training_games=remaining,
+                original_remaining_training_games=remaining, session_target_games=session_target,
+                next_sequence=continuation['next_sequence'],
                 session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],
                 policy_support=args.interaction_guard, collection_workers=args.collection_workers,
