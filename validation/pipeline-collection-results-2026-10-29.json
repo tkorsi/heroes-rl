@@ -1,60 +1,159 @@
 {
-  "schema": "heroes-pipeline-collection-public-summary-v1",
-  "status": "passed",
-  "execution_commit": "e89a50d7a7bdf0cd1a48e28b85f35f036c2b4064",
-  "checkpoint_update": 1392,
-  "policy_support": "visible-interaction-budget-v1",
-  "runtime": "local-v8-terminal-replay-repair2",
-  "fresh_unique_seed_pairs": 8,
-  "engine_seed_range": [1730000008, 1730000015],
-  "policy_seed_range": [1830000008, 1830000015],
-  "baseline_games": 8,
-  "candidate_games": 8,
-  "games_per_seat_per_arm": 4,
-  "policy_choices_per_arm": 2183,
-  "total_reconstructed_policy_choices": 4366,
-  "exact_reconstruction_mismatches": 0,
-  "matching_semantic_pairs": 8,
-  "natural_losses": 16,
-  "natural_wins": 0,
-  "cutoffs": 0,
-  "baseline_verified_batch_seconds": 33.61272629001178,
-  "candidate_verified_batch_seconds": 31.83435245801229,
-  "observed_identical_workload_ratio": 1.0558633581237458,
-  "observed_elapsed_reduction_percent": 5.29077533507879,
-  "whole_training_speedup_established": false,
-  "repetitions_per_arm": 1,
-  "counterbalanced": false,
-  "concurrent_user_run": true,
-  "full_model_adam_rng_progress_sampler_pool_restore": true,
-  "full_copied_parent_state_unchanged": true,
-  "copied_and_original_input_files_unchanged": true,
+  "acceptance_evidence_attempt": 3,
   "all_fresh_receipts_revoked": true,
+  "checkpoint_update": 1392,
+  "copied_and_original_input_files_unchanged": true,
+  "exact_reconstruction_mismatches": 0,
+  "failed_attempts": [
+    {
+      "attempt": 1,
+      "native_games_started": 0,
+      "optimizer_updates": 0,
+      "owned_cleanup_verified": true,
+      "reason": "Changed native learner header rejected by source compatibility",
+      "reserved_seed_pairs_consumed": 8,
+      "stage": "full_parent_restore_before_gameplay",
+      "training_samples_admitted": 0
+    }
+  ],
+  "full_copied_parent_state_unchanged": true,
+  "full_model_adam_rng_progress_sampler_pool_restore": true,
+  "latest_execution_commit": "34e9dd7dff2cad4b7ec92c8aa328cdf491d08476",
+  "maximum_seconds": 900,
+  "official_lock_opened": false,
+  "official_state_writes": false,
   "official_training_samples_admitted": 0,
   "optimizer_updates": 0,
-  "official_state_writes": false,
-  "official_lock_opened": false,
-  "maximum_seconds": 900,
-  "study_wall_seconds": 76.44549262500368,
-  "shutdown_returncode": 0,
   "owned_cleanup_verified": true,
-  "within_hard_deadline": true,
-  "study_log_bytes": 0,
+  "policy_support": "visible-interaction-budget-v1",
+  "repeatable_net_speedup_established": false,
+  "runtime": "local-v8-terminal-replay-repair2",
+  "schema": "heroes-pipeline-collection-public-summary-v1",
+  "shutdown_returncode": 0,
   "source_recipe_check": "passed",
-  "tests": {"collection_and_replay_passed": 35, "diagnostic_driver_passed": 6},
-  "failed_attempts": [{
-    "attempt": 1,
-    "stage": "full_parent_restore_before_gameplay",
-    "reason": "Changed native learner header rejected by source compatibility",
-    "reserved_seed_pairs_consumed": 8,
-    "native_games_started": 0,
-    "optimizer_updates": 0,
-    "training_samples_admitted": 0,
-    "owned_cleanup_verified": true
-  }],
-  "private_evidence": {
-    "launch": {"sha256": "45f556eb6cb11a24c2e7aee5e9d0bc57750f04616cf45c113472dd58a2cb53d7", "bytes": 11531},
-    "report": {"sha256": "4fada13f01f265ff1674365e23c97a9090c0ae58b60943a93ecad75fc8b0a163", "bytes": 109235},
-    "shutdown": {"sha256": "064c8c9979d5929e5d82dff11e97b269ad2ab4b113968594c37fd6c33ee6c6c7", "bytes": 202}
-  }
+  "status": "passed",
+  "successful_cohorts": [
+    {
+      "all_semantic_matches": true,
+      "attempt": 2,
+      "baseline_games": 8,
+      "baseline_verified_batch_seconds": 33.61272629001178,
+      "candidate_games": 8,
+      "candidate_verified_batch_seconds": 31.83435245801229,
+      "concurrent_user_run": true,
+      "counterbalanced": false,
+      "cutoffs": 0,
+      "engine_seed_range": [
+        1730000008,
+        1730000015
+      ],
+      "execution_commit": "e89a50d7a7bdf0cd1a48e28b85f35f036c2b4064",
+      "fresh_unique_seed_pairs": 8,
+      "games_per_seat_per_arm": 4,
+      "identical_workload_speedup": 1.0558633581237458,
+      "matching_semantic_pairs": 8,
+      "natural_losses": 16,
+      "natural_wins": 0,
+      "observed_elapsed_reduction_percent": 5.29077533507879,
+      "observed_timing_ratio": 1.0558633581237458,
+      "policy_choices_per_arm": 2183,
+      "policy_seed_range": [
+        1830000008,
+        1830000015
+      ],
+      "private_evidence": {
+        "launch": {
+          "bytes": 11531,
+          "sha256": "45f556eb6cb11a24c2e7aee5e9d0bc57750f04616cf45c113472dd58a2cb53d7"
+        },
+        "report": {
+          "bytes": 109235,
+          "sha256": "4fada13f01f265ff1674365e23c97a9090c0ae58b60943a93ecad75fc8b0a163"
+        },
+        "shutdown": {
+          "bytes": 202,
+          "sha256": "064c8c9979d5929e5d82dff11e97b269ad2ab4b113968594c37fd6c33ee6c6c7"
+        }
+      },
+      "status": "passed",
+      "study_log_bytes": 0,
+      "study_wall_seconds": 76.44549262500368,
+      "total_reconstructed_policy_choices": 4366
+    },
+    {
+      "all_semantic_matches": false,
+      "attempt": 3,
+      "baseline_games": 8,
+      "baseline_verified_batch_seconds": 33.103498416021466,
+      "candidate_games": 8,
+      "candidate_verified_batch_seconds": 34.76520454202546,
+      "concurrent_user_run": true,
+      "counterbalanced": false,
+      "cutoffs": 0,
+      "differing_pair": {
+        "day": 5,
+        "differing_view_frames": 2,
+        "each_policy_reconstructed_exactly": true,
+        "episode": 7,
+        "identical_decision_sequences": true,
+        "identical_learner_actions": 480,
+        "identical_learner_input_packets": 346,
+        "identical_supports": true,
+        "interpretation": "Native opponent trajectory variation; no pipeline contract violation identified; identical workload equivalence not established.",
+        "learner_player": 1,
+        "native_opponent_input_packets_differ": true,
+        "view_frame_sequences": [
+          2039,
+          2040
+        ]
+      },
+      "engine_seed_range": [
+        1730000016,
+        1730000023
+      ],
+      "execution_commit": "34e9dd7dff2cad4b7ec92c8aa328cdf491d08476",
+      "fresh_unique_seed_pairs": 8,
+      "games_per_seat_per_arm": 4,
+      "identical_workload_speedup": null,
+      "matching_semantic_pairs": 7,
+      "natural_losses": 16,
+      "natural_wins": 0,
+      "observed_elapsed_reduction_percent": -5.019729652500282,
+      "observed_timing_ratio": 0.9522020322361325,
+      "policy_choices_per_arm": 1654,
+      "policy_seed_range": [
+        1830000016,
+        1830000023
+      ],
+      "private_evidence": {
+        "launch": {
+          "bytes": 11531,
+          "sha256": "a897773b478ffe090e393a62726c696e25774b9c3698bc4d1e027e2636404e3e"
+        },
+        "report": {
+          "bytes": 109202,
+          "sha256": "85ec86f4784fcab5364b15ec5fc02efe810a2e135e3d8ccc12ba2c8a8f0b2094"
+        },
+        "shutdown": {
+          "bytes": 202,
+          "sha256": "ce6c2019662e44f351122d30a1658b98e2ef36db211e581bb89b1ec9e4913273"
+        }
+      },
+      "status": "passed",
+      "study_log_bytes": 0,
+      "study_wall_seconds": 78.40545937500428,
+      "total_reconstructed_policy_choices": 3308
+    }
+  ],
+  "tests": {
+    "collection_and_replay_passed": 35,
+    "diagnostic_driver_passed": 6
+  },
+  "total_matching_semantic_pairs": 15,
+  "total_natural_losses": 32,
+  "total_reconstructed_policy_choices": 7674,
+  "total_semantic_pairs": 16,
+  "total_verified_native_games": 32,
+  "whole_training_speedup_established": false,
+  "within_hard_deadline": true
 }

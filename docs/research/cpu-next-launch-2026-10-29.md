@@ -135,5 +135,61 @@ pipeline diagnostic copies all parent files and revokes its ephemeral receipts;
 its reports preserve the actual training-style capture phase and explicitly
 record zero admitted samples and zero optimizer updates. Raw files stay private.
 
-Final copied-workload measurements, fresh native results and next-launch
-acceptance are pending. No candidate is accepted by this progress record.
+### Numerical preservation and native controls
+
+The NumPy environment also reproduced the already-admitted batch-1033 numerical
+update on a private copy: model, Adam, Torch/Python/minibatch RNG, pool and every
+numerical PPO report field matched exactly. Diagnostic progress and sampler
+bookkeeping intentionally remained at parent 1,392. The original admitted
+checkpoint-1,393 counters were independently derived and audited; substituting
+only those counters in memory reproduced its complete state digest. No diagnostic
+checkpoint was published and no update was applied again to official state.
+
+The unchanged accepted engine runtime passed 16 fresh native garrison controls
+and 28 legacy controls, each with original replay checks, bounded deadlines and
+verified owned cleanup. The full suite ran 1,990 tests in 339.107 seconds:
+1,932 passed and 58 platform or optional-evidence cases skipped. The actual
+accepted native learner was supplied to the suite. Subsequent closure validation
+passed 10 focused tests, including a temporary-repository regression proving
+changes to each of three newly inventoried acceptance helpers reject selection.
+Counts overlap and must not be added as independent experiments. A final focused
+test launcher initially named `test_parallel_replay`; its prelaunch inventory
+assertion refused to start. The corrected selection uses `test_parallel_verification`,
+with that failed selection retained in private evidence.
+
+Review found that three executed helpers were missing from the official reviewed
+source inventory. They were added without exempting that inventory from the
+adapter AST gate. The first private acceptance descriptor remains preserved and
+unselected. A second fresh policy cohort validates the final dependency closure;
+the final descriptor supersedes the first without changing historical evidence.
+The source freeze is `34e9dd7dff2cad4b7ec92c8aa328cdf491d08476`.
+
+See the [pipeline study](pipeline-collection-2026-10-29.md) for both completed
+cohorts, every failed attempt and the limitations on its throughput estimate.
+The first cohort matched all eight pairs and reduced collection plus verification
+time from 33.613 to 31.834 seconds (5.29%). The second took 33.103 versus 34.765
+seconds and matched seven of eight pairs. Its one differing Blue game contained
+two different native opponent observations; all 480 learner actions and 346
+learner-side native input packets were identical, while independent native replay
+confirmed opponent input differences. Each arm exactly reconstructed its own
+recurrent state, values and probabilities. That comparison has no identical-workload
+speedup estimate. Both cohorts used baseline-first order during a live user run.
+The phase barrier is removed, but reliable net throughput improvement is not
+established. The fresh policy validation totals 32 games and 7,674 reconstructed
+choices, all natural losses; none entered PPO.
+
+### Next manual launch
+
+Final runtime selection and main-checkout preflight results are recorded in
+`validation/cpu-next-launch-2026-10-29.json`. The future machine descriptor is
+`machine-original-native-v4.json`; old descriptors, runtime and virtual environment
+are not rewritten. The normal ownership check must refuse another campaign while
+the user's current run is active. Preparation does not authorize or perform an
+automatic restart. After it ends, the user can check and manually continue the
+same goal using `./continue-772.sh --check --hours 10` and
+`./continue-772.sh --hours 10`. The launcher resolves the latest verified checkpoint
+and recomputes the remainder; it never resets to 1,392 or adds another 772 games.
+
+The remaining serial recurrent and ordered reduction dependencies are real limits
+under the fixed learning contract. This work does not establish full-system CPU
+saturation, whole-campaign speedup, policy improvement or long-run stability.

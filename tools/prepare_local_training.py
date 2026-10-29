@@ -41,7 +41,7 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 ACCEPTED_RUNTIME_RELEASES = {
     "cpu-next-launch-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/cpu-next-launch-acceptance-v2.json",
-        "sha256": None,
+        "sha256": "a64ffa3887c5388b13fbdac49639beca1e1e0186e5690f83af473cc184f427e6",
         "python_environment": NEXT_LAUNCH_ENVIRONMENT,
     },
     "terminal-replay-1392-v1": {

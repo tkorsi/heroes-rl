@@ -18,6 +18,16 @@ environment and its original native learner. Its verified checkpoint advances;
 1,392 is the continuation anchor, not a request to reset the current model.
 The launcher reads the verified latest state and recomputes the remaining goal.
 
+The next manual launch uses a separate hash-locked Python environment with
+NumPy 2.3.5 and unchanged Python/Torch libraries. It overlaps replay verification
+of completed, sealed games with collection of the remaining games when the
+CPU budget permits. The learning batch stays at four games; every game must pass
+the original integrity checks before PPO. The attempted additional C++ change
+was slower at the production thread budget and was rejected. The accepted native
+learner remains unchanged. See the [CPU preparation report](docs/research/cpu-next-launch-2026-10-29.md)
+for measurements, limitations and the next-launch gate. This preparation does
+not change the running session or automatically launch another one.
+
 At the preceding failure boundary, the user-started 1,000-game
 run had admitted **228 games in 57 complete updates**, then stopped on an unsupported
 terminal opponent request in replay verification. The failed batch admitted no
@@ -329,7 +339,7 @@ The [four-process integration](docs/research/parallel-continuation-2026-10-28.md
 adapts the isolated eight-process collector to the existing **four-game** batch.
 `--collection-workers 4` collects its four independently seeded games concurrently;
 the generic runner defaults to one collector. Current original-map launches use
-`machine-original-parallel-v1.json`; the old machine descriptor stays immutable. Workers activate the immutable
+the current accepted machine descriptor; historical descriptors stay immutable. Workers activate the immutable
 plan's visible interaction budget and execution choices. Every game must pass
 native replay and policy reconstruction after verified worker cleanup; an
 incomplete batch cannot update PPO. Batch size, optimizer cap, schedule ordering,
@@ -371,8 +381,8 @@ cloud checkpoint pairs and the complete failed-batch raw inventory. Checkpoint
 1,335 restored exactly without another optimizer update. At that historical
 boundary the original target had **2,824 admitted games and 2,176 remaining**,
 with sequence **975** next. The original failed cloud report remains unchanged.
-The subsequent Mac run and repair now preserve checkpoint **1,392**, as recorded
-in the current-state section above.
+The subsequent Mac repair preserved checkpoint **1,392**. The user resumed from
+that anchor, and the current run's verified checkpoint continues to advance.
 
 For the interrupted 1,000-game goal, use `./continue-772.sh --check --hours 10`,
 then launch `./continue-772.sh --hours 10` manually. It verifies the checkpoint
@@ -382,7 +392,8 @@ it never resets a later checkpoint or replays consumed batch-1,032 seeds.
 For a manual session targeting **1,000 additional admitted training games**, use
 `./train-1000.sh --check` for offline preflight, then `./train-1000.sh` to launch
 after verified cloud closure and latest-state import. The script uses the accepted
-native build, all available CPUs and the unchanged four-game PPO batch. It stops
+native build, a budget covering all available CPUs and the unchanged four-game
+PPO batch. Serial dependencies mean this is not continuous full CPU occupancy. It stops
 after 250 complete updates, or earlier on failure, a manual stop or its default
 ten-hour safety cap (`--hours` overrides that cap). Evaluation games do not count
 toward 1,000. It rejects a request larger than the verified remaining original

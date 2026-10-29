@@ -39,7 +39,7 @@ RECEIPT_KEY = 'cloud_import/receipt'
 RUNTIME_UPGRADES = {
     'cpu-next-launch-v1': {
         'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
-        'descriptor_sha256': None,
+        'descriptor_sha256': 'a64ffa3887c5388b13fbdac49639beca1e1e0186e5690f83af473cc184f427e6',
         'python_environment': NEXT_LAUNCH_ENVIRONMENT,
     },
     'terminal-replay-1392-v1': {

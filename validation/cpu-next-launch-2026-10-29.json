@@ -1,0 +1,188 @@
+{
+  "accepted_changes": [
+    "overlap sealed-game replay with remaining collection under explicit CPU budget",
+    "separate NumPy-equipped environment with identical existing package versions and Torch libraries",
+    "bind full acceptance helper dependency closure"
+  ],
+  "active_run_snapshot": {
+    "checkpoint": {
+      "decisions": 806276,
+      "rollouts": 5836,
+      "updates": 1459
+    },
+    "evidence": {
+      "bytes": 8207,
+      "sha256": "d72b4064cdf6b9e3b8e53b6d3994d16ce9f6c55af60b2c9473c8e6f6621ef33a"
+    },
+    "exact_full_restore": true,
+    "moving_state_can_advance": true,
+    "original_campaign": {
+      "admitted_games": 3320,
+      "remaining_games": 1680,
+      "target_games": 5000
+    },
+    "protected_inputs_unchanged": true,
+    "remaining_goal_games": 504,
+    "status": "running",
+    "timestamp_utc": "2026-10-29T22:00:23.897979+00:00"
+  },
+  "active_source_commit": "10d3d4f5038025a276b33a0a3d81096e5778130b",
+  "current_environment_unchanged": true,
+  "future_machine": {
+    "binding": {
+      "bytes": 205039,
+      "sha256": "c32891c454160056499cd0f0eaac533120901bac694f4be1a37916bfab22c54f"
+    },
+    "full_config_validation_passed": true,
+    "name": "machine-original-native-v4.json"
+  },
+  "historical_machine_descriptors_unchanged": true,
+  "limitations": [
+    "Two baseline-first pipeline cohorts under live-run contention do not establish net throughput improvement.",
+    "One pair had native opponent trajectory variation; its timing is not identical-workload evidence.",
+    "No whole-campaign speedup, full CPU saturation, policy improvement or long-run stability claim.",
+    "Current run owns official locks; preparing a future configuration does not authorize another worker."
+  ],
+  "mac_launch_ready": false,
+  "main_check": {
+    "expected_if_owner_still_active": "refuse duplicate owner",
+    "status": "pending"
+  },
+  "manual_commands": [
+    "./continue-772.sh --check --hours 10",
+    "./continue-772.sh --hours 10"
+  ],
+  "native_learner": {
+    "binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+    "code_and_binary_unchanged": true,
+    "manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623"
+  },
+  "next_manual_launch_prepared": true,
+  "numpy": {
+    "actual_copied_update_numerical_state_exact": true,
+    "copied_actual_update_audit": {
+      "bytes": 5231,
+      "sha256": "b111d9a7643d89ff6018cdffeedeb93e227f87937875fb48b0e7046046c4e62d"
+    },
+    "diagnostic_bookkeeping_retained_at_parent": true,
+    "existing_packages_unchanged": 10,
+    "original_admitted_bookkeeping_separately_verified": true,
+    "python": "3.13.5",
+    "receipt": {
+      "bytes": 1717,
+      "sha256": "ce11a8abb87b091231a09a42552313ef0c3b88db7b9dd6466dbcacf536373964"
+    },
+    "torch": "2.9.1",
+    "torch_libraries_identical": true,
+    "version": "2.3.5",
+    "warning_free_bridge_and_smoke": true
+  },
+  "official_optimizer_updates_by_diagnostics": 0,
+  "official_processes_signalled": false,
+  "official_seed_ledger_modified_by_diagnostics": false,
+  "official_training_launched": false,
+  "official_training_samples_admitted_by_diagnostics": 0,
+  "pipeline": {
+    "all_individual_replay_and_reconstruction_passed": true,
+    "choices": 7674,
+    "full_cpu_saturation_established": false,
+    "games": 32,
+    "observed_elapsed_reduction_percent": [
+      5.29077533507879,
+      -5.019729652500282
+    ],
+    "repeatable_speedup_established": false,
+    "report": "validation/pipeline-collection-results-2026-10-29.json",
+    "report_binding": {
+      "bytes": 5351,
+      "sha256": "4fffbf82625580ba422c02b43d67b794b4ec119359674ebb5f5a455d92e709f0"
+    },
+    "second_cohort_identical_workload_speedup": null,
+    "semantic_pairs": 16,
+    "semantic_pairs_matching": 15
+  },
+  "preserved_contract": [
+    "original map",
+    "four-game on-policy batch",
+    "model architecture",
+    "PPO and Adam settings",
+    "chronological recurrent transitions",
+    "gradient addition and minibatch order",
+    "opponent and visible state",
+    "terminal rewards +1/-1/0",
+    "visible-interaction-budget-v1"
+  ],
+  "raw_evidence": "private durable artifacts only; no raw captures or checkpoint tensors in public Git",
+  "rejected_native_candidate": {
+    "evidence": {
+      "bytes": 19816,
+      "sha256": "fb3b5f6a5f23ecdc865fc23ffad1f376b9e8addb446f4cbc0e0777d18be48e5d"
+    },
+    "production_budget": {
+      "baseline_mean_cpu_seconds": 67.6461145,
+      "baseline_mean_seconds": 17.597206354519585,
+      "candidate_mean_cpu_seconds": 71.3013,
+      "candidate_mean_seconds": 19.580059229483595,
+      "cpu_regression_percent": 5.4033931246708855,
+      "orders": [
+        "old then candidate",
+        "candidate then old"
+      ],
+      "threads": 16,
+      "wall_regression_percent": 11.267998084563825
+    },
+    "reason": "11.268 percent slower at production sixteen-thread budget across both orders",
+    "selected": false,
+    "state_exact": true
+  },
+  "resource_plan": {
+    "batch_size": 4,
+    "budget_cpus": 16,
+    "collection_workers": 4,
+    "native_prefix_threads": 16,
+    "pipeline_verification": true,
+    "torch_intraop_threads": 1,
+    "verification_workers": 4
+  },
+  "runtime_acceptance": {
+    "bytes": 15283,
+    "sha256": "a64ffa3887c5388b13fbdac49639beca1e1e0186e5690f83af473cc184f427e6"
+  },
+  "runtime_release": "cpu-next-launch-v1",
+  "schema": "heroes-cpu-next-launch-validation-v1",
+  "settings_changed": false,
+  "status": "validated_prepared_main_check_pending",
+  "timestamp_utc": "2026-10-29T22:00:51.466598+00:00",
+  "validation": {
+    "closure_regressions_passed": 10,
+    "counts_overlap": true,
+    "final_focused": {
+      "log": {
+        "bytes": 39671,
+        "sha256": "e16908070388bac79ceccbb17cc64bcc8a1940ff21d81dfc0b965a77bad0cb74"
+      },
+      "passed": 213,
+      "seconds": 43.044,
+      "skipped": 4,
+      "tests": 217
+    },
+    "fresh_native_controls": {
+      "all_passed": true,
+      "bounded_and_owned_cleanup": true,
+      "garrison": 16,
+      "legacy": 28
+    },
+    "full_suite": {
+      "log": {
+        "bytes": 354413,
+        "sha256": "8f7fb39c3ec7348aae8d26a2fbff7656957c984f3f6ae61be170acdd93b324fa"
+      },
+      "passed": 1932,
+      "seconds": 339.107,
+      "skipped": 58,
+      "tests": 1990
+    },
+    "prepare_vcmi_check": "passed"
+  },
+  "validation_source_commit": "34e9dd7dff2cad4b7ec92c8aa328cdf491d08476"
+}
