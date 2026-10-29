@@ -148,20 +148,33 @@ def check_config(path, expected):
     return value
 
 
+def freeze_source(artifact_root):
+    # A regular independent clone freezes the source; no additional Git worktree.
+    commit = subprocess.check_output(['git','rev-parse','HEAD'],cwd=ROOT,text=True).strip()
+    require(not subprocess.check_output(['git','status','--porcelain'],cwd=ROOT,text=True).strip(),
+            'Commit the complete source before freezing')
+    release = Path(artifact_root).resolve()/'release'/commit
+    release.parent.mkdir(parents=True, exist_ok=True)
+    if not release.exists():
+        subprocess.run(['git','clone','--no-hardlinks','--local',str(ROOT),str(release)],check=True)
+        subprocess.run(['git','-C',str(release),'checkout','--detach',commit],check=True)
+        # Upstream has tracked symlinks; dereferencing them changes its recipe.
+        shutil.copytree(ROOT/'vcmi',release/'vcmi',symlinks=True,
+                        ignore=lambda folder,names: ['build'] if Path(folder)==ROOT/'vcmi' else [])
+    require(subprocess.check_output(['git','rev-parse','HEAD'],cwd=release,text=True).strip() == commit
+            and not subprocess.check_output(['git','status','--porcelain'],cwd=release,text=True).strip(),
+            'Existing frozen release differs; no overwrite or repair')
+    subprocess.run([sys.executable,str(release/'tools/prepare_vcmi.py'),'--check'],cwd=release,check=True)
+    return release
+
+
 def launch(args):
     config = check_config(args.config, args.sha256)
     require(args.hours == 10, 'Exactly the authorized ten-hour maximum is supported')
     root = Path(config['run_root'])
     require(not root.exists(), 'Cloud run root already exists; never restart or reset a later state')
     require(shutil.disk_usage(config['artifact_root']).free >= 12*1024**3, 'At least 12 GiB private run headroom required')
-    # A regular independent clone freezes the source; no additional Git worktree.
-    release = Path(config['artifact_root'])/'release'/config['source']['git_commit']
-    require(not release.exists(), 'Existing source release requires inspection, not overwrite')
-    release.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(['git','clone','--no-hardlinks','--local',str(ROOT),str(release)],check=True)
-    subprocess.run(['git','-C',str(release),'checkout','--detach',config['source']['git_commit']],check=True)
-    shutil.copytree(ROOT/'vcmi',release/'vcmi',ignore=lambda folder,names: ['build'] if Path(folder)==ROOT/'vcmi' else [])
-    subprocess.run([sys.executable,str(release/'tools/prepare_vcmi.py'),'--check'],cwd=release,check=True)
+    release = freeze_source(config['artifact_root'])
     root.mkdir(mode=0o700)
     wall, mono = time.time(), time.monotonic()
     command = [sys.executable,str(release/'tools/linux_cloud_training.py'),'_supervisor',
@@ -248,6 +261,7 @@ def main():
     p=sub.add_parser('prepare')
     for name in ('bundle','evidence','freeze','garrison','regression','policy','artifact-root','data','output'):
         p.add_argument('--'+name,type=Path,required=True)
+    p=sub.add_parser('freeze-source');p.add_argument('--artifact-root',type=Path,required=True)
     for action in ('check','launch','_supervisor'):
         p=sub.add_parser(action);p.add_argument('--config',type=Path,required=True);p.add_argument('--sha256',required=True)
         p.add_argument('--hours',type=float,default=10)
@@ -255,6 +269,7 @@ def main():
             p.add_argument('--launched-wall',type=float,required=True);p.add_argument('--launched-mono',type=float,required=True)
     args=parser.parse_args()
     if args.action=='prepare':prepare(args)
+    elif args.action=='freeze-source':print(json.dumps({'release':str(freeze_source(args.artifact_root))}))
     elif args.action=='check':check_config(args.config,args.sha256);print(json.dumps({'checks_passed':True,'training_started':False}))
     elif args.action=='launch':launch(args)
     else:return supervisor(args)
