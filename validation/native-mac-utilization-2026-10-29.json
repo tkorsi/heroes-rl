@@ -438,11 +438,56 @@
     "No new gameplay or official checkpoint changes; cloud ownership fences remain in place."
   ],
   "mac_launch_ready": false,
-  "manual_readiness": {
-    "cloud_handoff_required": true,
-    "main_load_test": "pending",
+  "main_checkout_validation": {
+    "actual_load_command": "./test-native-load.sh",
+    "canonical_engine_check_passed": true,
+    "canonical_engine_check_sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac",
+    "evidence_sha256": "6b15879f9708211db11804e297bea63ef2705db68a3c95419cd03ce0f9c715c1",
+    "load_report": {
+      "available_cpu_capacity_percent": 22.448897454940393,
+      "available_cpus": 16,
+      "cpu_budget": 16,
+      "exact_state_checks_passed": 13,
+      "limitations": [
+        "CPU percentage is this PPO process against available CPU capacity, not total system activity.",
+        "Peak RSS includes this process lifetime through PPO, including imports, restoration and audits.",
+        "This test does not measure GPU use or full collection/replay campaign throughput.",
+        "One paired execution order is not a counterbalanced performance study."
+      ],
+      "native_engine_replays": 0.0,
+      "native_mean_cpu_cores": 3.591823592790463,
+      "native_parallel_frames": 3893.0,
+      "native_peak_concurrent_frame_workers": 16.0,
+      "native_peak_concurrent_text_replays": 12.0,
+      "native_ppo_seconds": 10.38739849999547,
+      "native_process_lifetime_peak_rss_bytes": 806436864,
+      "native_tape_replays": 88480.0,
+      "official_updates": 0,
+      "owned_cleanup_verified": true,
+      "ppo_speedup": 2.8014429936438203,
+      "python_ppo_seconds": 29.099704749998637,
+      "schema": "heroes-native-load-test-v1",
+      "seed_reservations": 0
+    },
+    "load_report_sha256": "64033b8834d04dd1b8ae7a17233161878edf1230e44798f76b9195bb4253c548",
+    "manual_check_hours": 10,
+    "manual_check_reason": "Existing cloud ownership fence; latest-state handoff required.",
+    "manual_check_returncode": 2,
+    "native_acceptance_passed": true,
     "official_state_unchanged": true,
-    "status": "blocked_by_existing_cloud_ownership_fence"
+    "official_training_started": false,
+    "owned_cleanup_verified": true,
+    "runner_reached": false,
+    "source_commit": "fc70a2a246a230c593835fc5f7d92888970d2030"
+  },
+  "manual_readiness": {
+    "actual_ten_hour_check_returncode": 2,
+    "cloud_handoff_required": true,
+    "main_load_test": "passed",
+    "official_state_unchanged": true,
+    "runner_reached": false,
+    "status": "blocked_by_existing_cloud_ownership_fence",
+    "training_started": false
   },
   "native_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
   "native_contract": "heroes-native-learner-v1",
@@ -561,7 +606,7 @@
   "raw_evidence_public": false,
   "runtime_source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
   "schema": "heroes-native-mac-utilization-validation-v1",
-  "status": "accepted_mac_fenced_main_check_pending",
+  "status": "accepted_and_main_load_verified_mac_fenced",
   "timestamp_utc": "2026-10-29T18:20:53.607731+00:00",
   "validation": {
     "canonical_engine": {

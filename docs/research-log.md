@@ -823,3 +823,9 @@ and captures remain private. No new game seeds, official samples or updates were
 admitted; the Mac/cloud ownership fence and checkpoint pointers are preserved.
 The [compact evidence](../validation/native-mac-utilization-2026-10-29.json)
 distinguishes measured PPO speed from full-campaign speed and policy quality.
+
+The synchronized main-checkout load test then passed: 10.39 seconds native,
+29.10 seconds Python, 16 peak frame workers, 22.4% average CPU capacity, all 13
+exact checks and cleanup. The real ten-hour continuation check correctly refused
+at the unchanged ownership fence before the runner. The checkpoint/run pointers
+and locks matched their pre-task hashes, modes and identities.

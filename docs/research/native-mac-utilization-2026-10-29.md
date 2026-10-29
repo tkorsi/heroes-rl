@@ -90,3 +90,12 @@ It verifies the accepted source and actual binary, compares disposable archived 
 
 
 Full offline validation on the final source and actual attempt-6 binary ran 1,800 tests: 1,753 passed and 47 platform/optional-fixture checks were skipped. Fast-path pins passed; source/runtime hashes remained unchanged and test leaders, guardians and process groups were absent afterward. The broader suite includes the compiled learner/tape/frame controls.
+
+The actual synchronized main-checkout load command passed at `fc70a2a`: native
+PPO took **10.39 seconds** versus Python's **29.10 seconds**, with **16 peak frame
+workers**, **22.4% mean CPU capacity**, 0.75 GiB process lifetime peak RSS and all
+13 exact-state checks. Owned workers were cleaned up. Main's canonical-engine
+check also passed. The real ten-hour continuation command in check mode returned
+2 at the existing ownership fence before reaching the training runner. All six
+official checkpoint/run pointers and lock identities, bytes and modes were unchanged.
+These checks did not launch training or reset the local state to an older checkpoint.
