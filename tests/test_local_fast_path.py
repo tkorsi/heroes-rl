@@ -41,17 +41,25 @@ def accepted_parent(commit=ACCEPTED_629):
 
 
 class ReviewedTransitionTests(unittest.TestCase):
-    def test_native_header_transitions_are_explicit_and_tampering_is_rejected(self):
-        parent = accepted_parent('10d3d4f5038025a276b33a0a3d81096e5778130b')
-        for name in ('native/learner/replay_tape.h', 'native/learner/text_replay.h'):
+    def test_native_headers_are_in_reviewed_pin_inventory(self):
+        headers = ('native/learner/replay_tape.h', 'native/learner/text_replay.h')
+        committed = pins.at
+        def changed_history(commit, name):
+            data = committed(commit, name)
+            return data+b'\n' if name in headers else data
+        with patch.object(pins, 'ACCEPTED', ('10d3d4f5038025a276b33a0a3d81096e5778130b',)), \
+                patch.object(pins, 'at', side_effect=changed_history):
+            generated = pins.expected_pins()
+        for name in headers:
             with self.subTest(name=name):
-                accepted = parent['source_sha256'][name]
+                accepted, current_digest = generated[name]
                 current = (ROOT/name).read_bytes()
-                proof = local.fast_path_transition(name, accepted, current)
-                self.assertEqual(proof['transition'], 'reviewed_exact_fast_path')
-                for digest, data in ((accepted, current+b'\n'), ('0'*64, current)):
+                self.assertEqual(current_digest, hashlib.sha256(current).hexdigest())
+                with patch.object(local, 'FAST_PATH_SOURCES', generated):
+                    self.assertEqual(local.fast_path_transition(name, accepted[0], current)['transition'],
+                                     'reviewed_exact_fast_path')
                     with self.assertRaisesRegex(ValueError, 'implementation changed'):
-                        local.fast_path_transition(name, digest, data)
+                        local.fast_path_transition(name, accepted[0], current+b'\n')
 
     def test_pins_equal_the_tree_and_the_accepted_commits(self):
         self.assertEqual({k: (tuple(v[0]), v[1]) for k, v in local.FAST_PATH_SOURCES.items()}, pins.expected_pins())

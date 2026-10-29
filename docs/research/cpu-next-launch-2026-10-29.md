@@ -65,13 +65,15 @@ receipts. Resource plan v2 permits overlapping four collectors, four replay
 workers and the coordinator only with a budget of at least nine CPUs. Smaller
 budgets retain sequential phases; historical resource plan v1 remains exact.
 
-The native candidate removes duplicate undefined edges from text occurrences to
+The rejected native candidate removes duplicate undefined edges from text occurrences to
 their terminal parameter accumulators during owned deferred backward. It retains
 one readiness edge per parameter and computes every original numerical text
 contribution, folded in the same outer-engine order. It does not fuse arithmetic,
 change recurrent order, alter floating-point flags or regroup gradient sums.
 Unknown graph nodes, mixed scopes and observable hooks retain the original graph
-before any edge mutation. Actual workload acceptance remains mandatory.
+before any edge mutation. This implementation is not selected for the next launch.
+The accepted C++ learner and PPO implementation are restored to their exact
+`10d3d4f` bytes.
 
 ### Diagnostic attempts and corrections
 
@@ -92,6 +94,20 @@ before any edge mutation. Actual workload acceptance remains mandatory.
   inspecting its ABI-bound saved fields. All 48 tests pass, including complete
   PPO tests that now require actual compaction engagement. Build flags retain
   `-fno-fast-math` and `-ffp-contract=off`.
+- Build 4's complete copied-1033 update engaged compaction and remained bitwise
+  exact. At the production 16-thread budget, both unprofiled execution orders
+  regressed: baseline 16.998 versus candidate 20.142 seconds, then candidate
+  19.018 versus baseline 18.196 seconds. Mean candidate time was 11.3% higher.
+  A single two-thread pair improved from 31.966 to 29.008 seconds, but that does
+  not justify promoting a build slower at the normal resource budget. Remaining
+  planned comparisons were cancelled before launch after this decision. The
+  graph eligibility scan appears to outweigh the removed routing work; this is
+  an interpretation, not a separately isolated causal measurement.
+- One private benchmark coordinator redundantly applied process niceness twice;
+  its worker failed before PPO with `EPERM`. A fresh attempt retained one inherited
+  nice-15 setting. All completed optimizer comparisons used private copied state,
+  matched model/gradients/Adam/RNG/progress/sampler/pool, losses and sampling order,
+  and verified owned cleanup. Contention from the user's run remains a limitation.
 - Pipeline native attempt 1 stopped before gameplay because the historical
   checkpoint gate lacked explicit native-header transitions. Its eight private
   seeds remain consumed; cleanup passed and no experience or update was made.
@@ -107,6 +123,9 @@ before any edge mutation. Actual workload acceptance remains mandatory.
   paths from path strings and reconstructed choices from consumed PPO targets.
   An unconsumed terminal choice must be reconstructed but must not become a
   training target.
+- A source-transition test run correctly rejected a stale acceptance-helper pin
+  after review hardening. Regenerating the exact pin resolved that mismatch;
+  no acceptance check was disabled.
 
 Native controls use an explicit isolated diagnostic mode with fresh private
 outputs, a separate serialization lease, original replay/history gates and

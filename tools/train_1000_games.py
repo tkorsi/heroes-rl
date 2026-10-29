@@ -10,8 +10,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
-NATIVE_MANIFEST_SHA256 = '3069d15a2f252454897ca34d30b3855abcb391ad64b22868aaee6553387fa764'
-NATIVE_MANIFEST_RELATIVE = 'run-investigations/2026-10-29-cpu-next-launch/native-build-attempt4/manifest.json'
+NATIVE_MANIFEST_SHA256 = '919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623'
+NATIVE_MANIFEST_RELATIVE = 'native-learner-builds/mac-utilization-v1-attempt6/manifest.json'
 
 
 def hours(value):

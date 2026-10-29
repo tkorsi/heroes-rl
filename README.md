@@ -11,12 +11,19 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
-The latest verified state is **checkpoint 1,392**. The user-started 1,000-game
-run admitted **228 games in 57 complete updates**, then stopped on an unsupported
+The user manually resumed the remaining-game goal from **checkpoint 1,392**.
+During the subsequent [CPU and NumPy preparation](docs/research/cpu-next-launch-2026-10-29.md),
+that run continues independently on frozen source `10d3d4f`, its original Python
+environment and its original native learner. Its verified checkpoint advances;
+1,392 is the continuation anchor, not a request to reset the current model.
+The launcher reads the verified latest state and recomputes the remaining goal.
+
+At the preceding failure boundary, the user-started 1,000-game
+run had admitted **228 games in 57 complete updates**, then stopped on an unsupported
 terminal opponent request in replay verification. The failed batch admitted no
 samples or update; full model/Adam/RNG/progress/sampler/pool state is preserved.
-The original target has **3,052 admitted games and 1,948 remaining**; sequence
-**1,033** is next. **772 games remain** in the interrupted 1,000-game goal.
+The original target then had **3,052 admitted games and 1,948 remaining**; sequence
+**1,033** was next and **772 games remained** in the interrupted 1,000-game goal.
 
 The [checkpoint 1392 repair report](docs/research/checkpoint1392-repair-2026-10-29.md)
 records both fixes, a clean rebuilt runtime, 44 fresh native controls and eight
@@ -24,7 +31,7 @@ frozen-policy games with 1,136 exact reconstructed choices. The prepared manual
 launcher is `./continue-772.sh --hours 10`; it recalculates the remaining goal
 across manual windows and prints total runtime. The first main-checkout check
 exposed a historical cloud-machine guard; its narrow correction and the final
-real main-checkout check now pass. The check restored checkpoint 1,392 exactly,
+real main-checkout check passed before that user launch. The check restored checkpoint 1,392 exactly,
 confirmed the 772-game goal and next sequence 1,033, and launched no gameplay.
 The checkpoint, failed-batch evidence and final diagnostic package passed private
 remote readback. No official training was launched during repair. Earlier

@@ -496,8 +496,7 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 stats = native_model.text_replay_statistics()
                 for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays',
                              'main_thread_replays', 'tape_leaves', 'tape_replays', 'engine_replays',
-                             'forward_parallel_frames', 'forward_rebased_nodes',
-                             'compacted_occurrences', 'original_occurrence_edges', 'retained_occurrence_edges'):
+                             'forward_parallel_frames', 'forward_rebased_nodes'):
                     timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
                 for name in ('producer_backward', 'fold', 'future_wait', 'backpressure', 'prewarm'):
                     key = 'native_' + name + '_seconds'
