@@ -568,6 +568,50 @@ std::vector<Tensor> clipped_losses(const Tensor& log_probs, const Tensor& values
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
     module.attr("contract") = "heroes-native-learner-v1";
+    // Diagnostic surface for exact Engine-versus-tape comparison on private graphs.
+    using Tape = native_text::BuiltinReplayTape;
+    py::class_<Tape, std::shared_ptr<Tape>>(module, "_ReplayTape")
+        .def_static("compile", [](const Tensor& output, const torch::autograd::variable_list& aliases) {
+            std::string reason;
+            auto tape = Tape::compile(output, aliases, {}, &reason);
+            return std::make_pair(std::move(tape), std::move(reason));
+        }, py::call_guard<py::gil_scoped_release>())
+        .def("run", [](const Tape& tape, const Tensor& gradient) {
+            torch::autograd::variable_list captured;
+            const bool ran = tape.run_if_supported(gradient, &captured);
+            return std::make_pair(ran, std::move(captured));
+        }, py::call_guard<py::gil_scoped_release>())
+        .def("supported_now", [](const Tape& tape) {
+            std::string reason;
+            const bool supported = tape.supported_now(&reason);
+            return std::make_pair(supported, std::move(reason));
+        }, py::call_guard<py::gil_scoped_release>())
+        .def("node_count", &Tape::node_count);
+    module.def("_text_replay_probe", [](const torch::autograd::variable_list& parameters,
+                                       const std::string& text, int64_t features,
+                                       const torch::autograd::variable_list& gradients) {
+        require(parameters.size() == 5 && !text.empty() && features > 0 && !gradients.empty(),
+                "A text replay probe requires five parameters, text, features and gradients");
+        require(at::get_num_threads() == 1, "A text replay probe requires one ATen intra-op thread");
+        for (const auto& parameter : parameters)
+            require(parameter.defined() && parameter.device().is_cpu() && parameter.scalar_type() == at::kFloat &&
+                    parameter.layout() == at::kStrided && parameter.is_leaf() && parameter.requires_grad() &&
+                    !native_text::parameter_hooks(parameter), "A text replay probe requires ordinary trainable parameters");
+        auto leaf = native_text::Leaf::make(parameters, text, features);
+        struct Cleanup {
+            std::shared_ptr<native_text::Leaf> leaf;
+            ~Cleanup() { leaf->release(); }
+        } cleanup{leaf};
+        std::vector<torch::autograd::variable_list> reference, actual;
+        for (const auto& gradient : gradients) {
+            reference.push_back(leaf->replay(gradient, false));
+            actual.push_back(leaf->replay(gradient));
+        }
+        std::map<std::string, int64_t> statistics{
+            {"tape_available", static_cast<int64_t>(static_cast<bool>(leaf->tape))},
+            {"tape_replays", leaf->tape_replays.load()}, {"engine_replays", leaf->engine_replays.load()}};
+        return std::make_tuple(std::move(reference), std::move(actual), std::move(statistics), leaf->tape_fallback_reason);
+    }, py::call_guard<py::gil_scoped_release>());
     py::class_<NativeHistory>(module, "NativeHistory")
         .def(py::init<const py::list&, const py::list&>())
         .def_property_readonly("frame_count", [](const NativeHistory& value) { return value.frames.size(); });

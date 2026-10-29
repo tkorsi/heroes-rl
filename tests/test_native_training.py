@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import replace
 import hashlib
 import os
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -16,6 +17,14 @@ from tests.test_contextual_ppo import synthetic_rollout
 
 
 class NativeModelGuardTests(unittest.TestCase):
+    def test_compiled_autograd_context_is_rejected_before_native_execution(self):
+        model = m.ContextualActorCritic(m.ModelConfig(hidden_size=8, feature_size=4))
+        for name in ('compiled_autograd_enabled', 'compiled_autograd_enabled_force_eager',
+                     'in_compiled_autograd_region'):
+            with patch.dict(sys.modules, {'torch._dynamo.compiled_autograd': SimpleNamespace(**{name: True})}):
+                with self.assertRaisesRegex(ValueError, 'ordinary eager autograd'):
+                    require_native_model(model)
+
     def test_noncanonical_execution_is_rejected(self):
         previous = torch.get_num_threads()
         torch.set_num_threads(1)
@@ -87,6 +96,10 @@ class NativeTrainingParityTests(unittest.TestCase):
             with patch.object(ppo, 'NATIVE_EXECUTION', {'manifest': str(self.manifest), 'sha256': self.sha, 'prefix_threads': 16}):
                 actual = ppo.ppo_update(native, optimizers[1], rollouts, config=config, generator=generators[1])
             self.assertEqual(expected, actual)
+            self.assertGreater(actual.timings_seconds['native_tape_replays'], 0)
+            self.assertEqual(actual.timings_seconds['native_tape_replays'],
+                             actual.timings_seconds['native_completed_replays'])
+            self.assertEqual(actual.timings_seconds['native_engine_replays'], 0)
             self.exact(reference.state_dict(), native.state_dict())
             self.exact([p.grad for p in reference.parameters()], [p.grad for p in native.parameters()])
             self.exact(optimizers[0].state_dict(), optimizers[1].state_dict())

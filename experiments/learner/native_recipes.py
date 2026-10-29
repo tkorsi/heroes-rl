@@ -7,6 +7,7 @@ support definition, including the disclosed visible interaction guard.
 from __future__ import annotations
 
 from math import copysign, log1p
+import sys
 
 import torch
 
@@ -109,6 +110,10 @@ def _map_recipe(model, observation, arena):
 
 def require_native_model(model):
     """Reject custom execution that a native tensor kernel would bypass."""
+    compiled = sys.modules.get('torch._dynamo.compiled_autograd')
+    if compiled is not None and any(getattr(compiled, name, False) for name in
+            ('compiled_autograd_enabled', 'compiled_autograd_enabled_force_eager', 'in_compiled_autograd_region')):
+        raise ValueError("Native learner requires ordinary eager autograd execution")
     if (type(model) is not ContextualActorCritic
             or any(name in model.__dict__ for name, value in vars(ContextualActorCritic).items() if callable(value))
             or any(name in model.__dict__ for name in ('modules', 'named_modules', 'parameters', 'named_parameters'))

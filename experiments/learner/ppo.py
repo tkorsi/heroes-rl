@@ -493,7 +493,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             if native_model is not None:
                 native_model.end_text_replay()
                 stats = native_model.text_replay_statistics()
-                for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays', 'main_thread_replays'):
+                for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays',
+                             'main_thread_replays', 'tape_leaves', 'tape_replays', 'engine_replays'):
                     timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
                 for name in ('producer_backward', 'fold', 'future_wait', 'backpressure', 'prewarm'):
                     key = 'native_' + name + '_seconds'

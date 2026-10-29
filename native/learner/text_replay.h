@@ -3,6 +3,7 @@
 // replays fold those contributions in outer-engine order, never in worker order.
 #pragma once
 
+#include "replay_tape.h"
 #include <torch/csrc/autograd/autograd.h>
 #include <torch/csrc/autograd/function.h>
 #include <torch/csrc/autograd/function_hook.h>
@@ -91,6 +92,9 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
     std::vector<ParameterState> states;
     std::vector<size_t> counts, offsets;
     Tensor output, value;
+    std::shared_ptr<BuiltinReplayTape> tape;
+    std::string tape_fallback_reason;
+    mutable std::atomic<int64_t> tape_replays{0}, engine_replays{0};
 
     static std::shared_ptr<Leaf> make(const variable_list& parameters, const std::string& text, int64_t features) {
         auto leaf = std::make_shared<Leaf>();
@@ -116,6 +120,7 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
         std::unordered_map<c10::TensorImpl*, size_t> slots;
         for (size_t i = 0; i < leaf->aliases.size(); ++i) slots[leaf->aliases[i].unsafeGetTensorImpl()] = i;
         std::unordered_set<Node*> seen;
+        std::unordered_set<const torch::autograd::FunctionPostHook*> allowed_post_hooks;
         std::vector<std::shared_ptr<Node>> pending{leaf->output.grad_fn()};
         while (!pending.empty()) {
             auto node = pending.back();
@@ -132,13 +137,19 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
                     ++leaf->counts[slot->second];
                 } else if (child) pending.push_back(child);
             }
-            if (!targets.empty()) node->add_post_hook(std::make_unique<ContributionHook>(leaf, std::move(targets)));
+            if (!targets.empty()) {
+                auto hook = std::make_unique<ContributionHook>(leaf, std::move(targets));
+                allowed_post_hooks.insert(hook.get());
+                node->add_post_hook(std::move(hook));
+            }
         }
         leaf->offsets.push_back(0);
         for (size_t i = 0; i < parameters.size(); ++i) {
             for (size_t j = 0; j < leaf->counts[i]; ++j) leaf->arguments.push_back(parameters[i]);
             leaf->offsets.push_back(leaf->arguments.size());
         }
+        leaf->tape = BuiltinReplayTape::compile(leaf->output, leaf->aliases, allowed_post_hooks,
+                                               &leaf->tape_fallback_reason);
         return leaf;
     }
 
@@ -148,7 +159,7 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
             TORCH_CHECK(states[i].matches(parameters[i]), "Native text parameters changed inside a replay scope");
     }
 
-    variable_list replay(const Tensor& gradient) const {
+    variable_list replay(const Tensor& gradient, bool allow_tape = true) const {
         check();
         TORCH_CHECK(at::get_num_threads() == 1, "Native text replay requires one ATen intra-op thread");
         variable_list contributions(arguments.size());
@@ -159,13 +170,18 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
             explicit CaptureGuard(Capture* capture) : previous(current_capture) { current_capture = capture; }
             ~CaptureGuard() { current_capture = previous; }
         } guard(&capture);
-        torch::autograd::grad({output}, aliases, {gradient}, true, false, true);
+        // False is a pre-execution eligibility decision. Execution failures must
+        // propagate without retrying a graph whose hooks may already have run.
+        const bool used_tape = allow_tape && tape && tape->run_if_supported(gradient);
+        if (!used_tape) torch::autograd::grad({output}, aliases, {gradient}, true, false, true);
         for (size_t i = 0; i < parameters.size(); ++i)
             TORCH_CHECK(cursors[i] == offsets[i + 1], "Native text replay contribution count changed");
+        if (used_tape) tape_replays.fetch_add(1, std::memory_order_relaxed);
+        else engine_replays.fetch_add(1, std::memory_order_relaxed);
         return contributions;
     }
 
-    void release() { output = value = Tensor(); aliases.clear(); }
+    void release() { tape.reset(); output = value = Tensor(); aliases.clear(); }
 };
 
 struct ReplayJob {
@@ -611,8 +627,16 @@ struct Scope : std::enable_shared_from_this<Scope> {
     }
     std::map<std::string, int64_t> statistics() const {
         auto result = pool ? pool->statistics() : std::map<std::string, int64_t>{};
+        int64_t tape_leaf_count = 0, tape_replay_count = 0, engine_replay_count = 0;
+        for (const auto& [_, leaf] : leaves) {
+            tape_leaf_count += leaf->tape_fallback_reason.empty();
+            tape_replay_count += leaf->tape_replays.load(std::memory_order_relaxed);
+            engine_replay_count += leaf->engine_replays.load(std::memory_order_relaxed);
+        }
         result.insert({{"workers", workers}, {"unique_texts", static_cast<int64_t>(leaves.size())},
                        {"occurrences", occurrences}, {"folded_contributions", folded},
+                       {"tape_leaves", tape_leaf_count}, {"tape_replays", tape_replay_count},
+                       {"engine_replays", engine_replay_count},
                        {"reducer_threads", workers >= 2 ? 1 : 0},
                        {"replay_threads", workers - (workers >= 2 ? 1 : 0)},
                        {"producer_backward_nanoseconds", producer_backward_nanoseconds},

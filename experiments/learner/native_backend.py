@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "heroes-native-learner-build-v1"
 CONTRACT = "heroes-native-learner-v1"
 FLAGS = ["-O3", "-std=c++17", "-fno-fast-math", "-ffp-contract=off"]
-SOURCES = ("native/learner/kernels.cpp", "native/learner/text_replay.h",
+SOURCES = ("native/learner/kernels.cpp", "native/learner/text_replay.h", "native/learner/replay_tape.h",
            "experiments/learner/native_backend.py", "tools/build_native_learner.py")
 
 
