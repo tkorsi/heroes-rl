@@ -647,6 +647,9 @@ def start(args):
                         '--overlap-verification' if args.overlap_verification else '--serial-verification',
                         *(['--replay-threads', str(args.replay_threads)] if args.text_leaf_replay else ['--no-text-replay']),
                         *(x for name in args.experiment for x in ('--experiment', name))]
+        if args.native_learner is not None:
+            command += ['--native-learner', str(args.native_learner.resolve()), '--native-sha256', args.native_sha256]
+            if args.cpu_cap is not None: command += ['--cpu-cap', str(args.cpu_cap)]
         if args.max_updates is not None: command += ['--max-updates', str(args.max_updates)]
         if args.games is not None: command += ['--games', str(args.games)]
         if args.parent is not None: command += ['--parent', str(args.parent.resolve())]
@@ -665,6 +668,16 @@ def launch(args):
         return launch_owned(args)
 
 
+def selected_execution(args):
+    from experiments.learner import local_script_training as adapter
+    if args.native_learner is not None:
+        from experiments.learner.native_execution import native_execution_choice
+        return native_execution_choice(args.native_learner, args.native_sha256, cpu_cap=args.cpu_cap)
+    return adapter.execution_choice(overlapped_verification=args.overlap_verification,
+        prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
+        replay_threads=args.replay_threads, collection_workers=args.collection_workers, experiments=args.experiment)
+
+
 def launch_owned(args):
     from experiments.learner import local_script_training as adapter
     from experiments.learner import builtin_first_run as pilot
@@ -674,10 +687,7 @@ def launch_owned(args):
     config = read(args.config); validate_config(config)
     # This release is the opt-in fast path; the default path releases ACCEPTED_IMPLEMENTATION instead.
     require(args.fast_path, 'This release runs only as the explicit fast path; launch with start')
-    execution = adapter.execution_choice(overlapped_verification=args.overlap_verification,
-                                         prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
-                                         replay_threads=args.replay_threads, collection_workers=args.collection_workers,
-                                         experiments=args.experiment)
+    execution = selected_execution(args)
     policy_support = adapter.check_policy_support(args.interaction_guard)
     run_root = Path(config['run_root']); run_root.mkdir(parents=True, exist_ok=True)
     latest = run_root / 'latest-checkpoint.json'
@@ -731,6 +741,10 @@ def launch_owned(args):
           + ('off' if not execution['text_leaf_replay'] else 'not used by the experiment' if execution['experiments']
              else f"on {execution['replay_threads']} threads" if execution['replay_threads'] else 'on, in the backward')
           + (f"; NUMERICAL EXPERIMENT {', '.join(execution['experiments'])}" if execution['experiments'] else '') + ')', flush=True)
+    if execution.get('native_learner'):
+        print(f"Native C++ learner: {execution['native_learner']['prefix_threads']} prefix threads; "
+              f"{execution['verification_workers']} isolated native replay workers; "
+              f"binary manifest {execution['native_learner']['sha256']}", flush=True)
     if policy_support is not None:
         print(f"Policy support intervention: {policy_support}; terminal-only rewards unchanged. "
               "Action support differs from the previous unguarded run.", flush=True)
@@ -841,7 +855,25 @@ def main():
                       help='Threads (no fork) that replay text leaves during the backward, 0 to 8 (default: --prefix-helpers)')
     fast.add_argument('--experiment', action='append', default=[], choices=('shared_graph_encodings',),
                       help='Separately reported NUMERICAL experiment (reordered gradient summation); never a default')
+    fast.add_argument('--native-learner', type=Path,
+                      help='Explicit accepted C++ learner build manifest; preserves the four-game PPO contract')
+    fast.add_argument('--native-sha256', help='Required exact SHA256 of --native-learner')
+    fast.add_argument('--cpu-cap', type=int, help='Native phase CPU budget; default is all available host CPUs')
     args = parser.parse_args()
+    if args.native_learner is not None:
+        if not args.fast_path or not args.native_sha256:
+            parser.error('--native-learner requires --fast-path and --native-sha256')
+        if args.prefix_helpers or args.experiment or args.overlap_verification is True or args.replay_threads not in (None, 0):
+            parser.error('Native learner cannot mix fork helpers, Python leaf replay threads or numerical experiments')
+        from experiments.learner.resources import make_resource_plan
+        try:
+            resources = make_resource_plan(args.cpu_cap)
+        except ValueError as error:
+            parser.error(str(error))
+        args.collection_workers = resources['collection_workers']
+        args.overlap_verification, args.text_leaf_replay, args.replay_threads = False, False, 0
+    elif args.native_sha256 is not None or args.cpu_cap is not None:
+        parser.error('--native-sha256 and --cpu-cap require --native-learner')
     if args.recovery_receipt is not None and args.continue_original is None:
         parser.error('--recovery-receipt requires --continue-original')
     if (args.continue_original is not None or args.batch_wall_seconds is not None or args.interaction_guard is not None) and not args.fast_path:
@@ -856,7 +888,8 @@ def main():
                                or not args.text_leaf_replay or args.replay_threads is not None or args.collection_workers != 1):
         parser.error('Fast-path options require --fast-path')
     if not 0 <= args.prefix_helpers <= 8: parser.error('--prefix-helpers must be between 0 and 8')
-    if args.replay_threads is not None and not args.text_leaf_replay: parser.error('--replay-threads needs the text-leaf replay')
+    if args.replay_threads is not None and not args.text_leaf_replay and args.native_learner is None:
+        parser.error('--replay-threads needs the text-leaf replay')
     if args.replay_threads is not None and not 0 <= args.replay_threads <= 8:
         parser.error('--replay-threads must be between 0 and 8')
     if args.replay_threads is None: args.replay_threads = args.prefix_helpers if args.text_leaf_replay else 0
@@ -886,6 +919,7 @@ def main():
     if args.command == 'check':
         from prepare_local_training import validate_config
         checked = validate_config(config)
+        execution = selected_execution(args) if args.fast_path else None
         if args.continue_original is not None:
             from experiments.learner import local_script_training as adapter
             from tools.recover_interrupted_training import existing_campaign_locks
@@ -893,19 +927,17 @@ def main():
                 parent, remaining, continuation = original_continuation(args.continue_original, config, args.recovery_receipt)
                 state = adapter.restore_parent(parent)
                 operational = adapter.operational_configuration(parent, args.batch_wall_seconds)
-                adapter.check_lineage(adapter.read_descriptor(parent)[0],
-                    adapter.execution_choice(overlapped_verification=args.overlap_verification,
-                        prefix_helpers=args.prefix_helpers, text_leaf_replay=args.text_leaf_replay,
-                        replay_threads=args.replay_threads, collection_workers=args.collection_workers, experiments=args.experiment), args.interaction_guard)
+                adapter.check_lineage(adapter.read_descriptor(parent)[0], execution, args.interaction_guard)
             print(json.dumps(dict(status='continuation_offline_checks_passed', checkpoint=vars(state.progress),
                 exact_restore=True, remaining_training_games=remaining, next_sequence=continuation['next_sequence'],
                 session_safety_cap_hours=args.hours, shared_wall_seconds=operational['shared_wall_seconds'],
                 phase_deadlines_seconds=operational['phase_deadlines_seconds'],
                 policy_support=args.interaction_guard, collection_workers=args.collection_workers,
-                gameplay_performed=False, ppo_updates=0), indent=2))
+                execution=execution, gameplay_performed=False, ppo_updates=0), indent=2))
         else:
             print(json.dumps(dict(status='offline_checks_passed', checkpoint=checked['checkpoint_restore']['progress'],
-                                  exact_restore=True, backend=checked['backend'], gameplay_performed=False, ppo_updates=0), indent=2))
+                                  exact_restore=True, backend=checked['backend'], execution=execution,
+                                  gameplay_performed=False, ppo_updates=0), indent=2))
         return 0
     return launch(args) if args.command == '_launch' else start(args)
 

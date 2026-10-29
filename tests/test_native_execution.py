@@ -1,0 +1,182 @@
+"""Native execution policy and frozen-launch plumbing; no native games or updates."""
+from contextlib import nullcontext, redirect_stderr
+import importlib.util
+import io
+import json
+from pathlib import Path
+import sys
+from types import SimpleNamespace
+import unittest
+from unittest.mock import patch
+
+from experiments.learner import local_script_training as local, native_backend, native_execution, resources
+
+ROOT = Path(__file__).resolve().parents[1]
+spec = importlib.util.spec_from_file_location("native_execution_controller", ROOT / "tools/run_local_training.py")
+controller = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(controller)
+OBSERVED = {"schema": resources.SCHEMA, "available_cpus": 16, "platform": "Darwin"}
+MANIFEST = Path("/private/synthetic-native/manifest.json")
+SHA = "a" * 64
+
+
+def choice(cap=None):
+    with patch.object(native_backend, "verified_manifest", return_value={}), \
+            patch.object(resources, "discover_resources", return_value=OBSERVED):
+        return native_execution.native_execution_choice(MANIFEST, SHA, cpu_cap=cap, require_acceptance=False)
+
+
+class NativeExecutionSchemaTests(unittest.TestCase):
+    def test_plan_preserves_four_games_and_binds_phase_budgets(self):
+        value = choice()
+        self.assertIs(native_execution.check_native_execution(value), value)
+        self.assertIs(local.check_execution(value), value)
+        self.assertEqual(value["resource_plan"]["batch_size"], 4)
+        self.assertEqual(value["native_learner"]["prefix_threads"], 16)
+        self.assertEqual((value["collection_workers"], value["verification_workers"]), (4, 4))
+        limited = choice(2)
+        self.assertEqual(limited["native_learner"]["prefix_threads"], 2)
+        self.assertEqual((limited["collection_workers"], limited["verification_workers"]), (1, 1))
+
+    def test_fork_python_replay_numerical_experiments_and_unknown_fields_are_rejected(self):
+        changes = {"overlapped_verification": True, "prefix_helpers": 1, "text_leaf_replay": True,
+                   "replay_threads": 2, "experiments": ["shared_graph_encodings"],
+                   "implementation": "implicit-native", "unbound": True}
+        for field, value in changes.items():
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                native_execution.check_native_execution({**choice(), field: value})
+        for missing in choice():
+            value = choice()
+            del value[missing]
+            with self.subTest(missing=missing), self.assertRaises(ValueError):
+                native_execution.check_native_execution(value)
+
+    def test_mutated_resource_snapshot_derivatives_or_worker_counts_are_rejected(self):
+        changes = (("budget_cpus", 8), ("batch_size", 16), ("torch_intraop_threads", 2),
+                   ("verification_workers", 1), ("native_prefix_threads", 4),
+                   ("phases_run_concurrently", True), ("requested_cpu_cap", 32))
+        for field, changed in changes:
+            value = choice()
+            value["resource_plan"][field] = changed
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                native_execution.check_native_execution(value)
+        for field in ("collection_workers", "verification_workers"):
+            for changed in (True, 0, 2, 8):
+                value = choice()
+                value[field] = changed
+                with self.subTest(field=field, value=changed), self.assertRaises(ValueError):
+                    native_execution.check_native_execution(value)
+
+    def test_manifest_binding_requires_absolute_path_digest_and_exact_worker_budget(self):
+        for field, changed in (("manifest", "relative/manifest.json"), ("sha256", "not-a-hash"),
+                               ("prefix_threads", True), ("prefix_threads", 8), ("prefix_threads", 0)):
+            value = choice()
+            value["native_learner"][field] = changed
+            with self.subTest(field=field, value=changed), self.assertRaises(ValueError):
+                native_execution.check_native_execution(value)
+
+
+class NativeAcceptanceTests(unittest.TestCase):
+    def test_manual_choice_requires_matching_accepted_actual_build(self):
+        accepted = {"accepted_for_manual_training": True, "native_manifest_sha256": SHA,
+                    "acceptance_source_sha256": native_execution.acceptance_source_hashes()}
+        with patch.object(native_backend, "verified_manifest", return_value={}) as verified, \
+                patch.object(resources, "discover_resources", return_value=OBSERVED), \
+                patch.object(Path, "read_text", return_value=json.dumps(accepted)) as report:
+            value = native_execution.native_execution_choice(MANIFEST, SHA)
+        verified.assert_called_once_with(MANIFEST, SHA)
+        report.assert_called_once()
+        self.assertEqual(value["native_learner"]["sha256"], SHA)
+
+    def test_unaccepted_missing_or_other_build_report_fails_closed(self):
+        reports = ({"accepted_for_manual_training": False, "native_manifest_sha256": SHA},
+                   {"accepted_for_manual_training": True, "native_manifest_sha256": "b"*64},
+                   {"accepted_for_manual_training": True, "native_manifest_sha256": SHA,
+                    "acceptance_source_sha256": {"stale": "0"*64}}, {})
+        for result in reports:
+            with self.subTest(result=result), patch.object(native_backend, "verified_manifest", return_value={}), \
+                    patch.object(resources, "discover_resources", return_value=OBSERVED), \
+                    patch.object(Path, "read_text", return_value=json.dumps(result)), self.assertRaises(ValueError):
+                native_execution.native_execution_choice(MANIFEST, SHA)
+        with patch.object(native_backend, "verified_manifest", return_value={}), \
+                patch.object(resources, "discover_resources", return_value=OBSERVED), \
+                patch.object(Path, "read_text", side_effect=FileNotFoundError("acceptance absent")), \
+                self.assertRaises(FileNotFoundError):
+            native_execution.native_execution_choice(MANIFEST, SHA)
+
+    def test_diagnostics_skip_acceptance_only_and_still_verify_binary_identity(self):
+        with patch.object(native_backend, "verified_manifest", side_effect=ValueError("actual binary differs")), \
+                patch.object(Path, "read_text") as report, self.assertRaisesRegex(ValueError, "actual binary differs"):
+            native_execution.native_execution_choice(MANIFEST, SHA, require_acceptance=False)
+        report.assert_not_called()
+
+
+class NativeCommandTests(unittest.TestCase):
+    def arguments(self, *extra):
+        return ["run_local_training.py", "--config", "/private/synthetic-machine.json", "--profile", "original", *extra]
+
+    def parse(self, *extra):
+        with patch.object(controller.sys, "argv", self.arguments(*extra)), \
+                patch.object(controller, "start", return_value=0) as start, \
+                patch.object(controller.Path, "exists", return_value=True), \
+                patch.object(controller, "read", return_value={"artifact_root": "/private/synthetic", "default_profile": "original"}), \
+                patch.object(resources, "discover_resources", return_value=OBSERVED), patch.dict(controller.os.environ):
+            controller.main()
+        return start.call_args.args[0]
+
+    def native_arguments(self):
+        return ("--fast-path", "--native-learner", str(MANIFEST), "--native-sha256", SHA)
+
+    def test_native_cli_selects_serial_aten_and_parallel_independent_phases(self):
+        args = self.parse(*self.native_arguments(), "--cpu-cap", "8")
+        self.assertEqual(args.cpu_cap, 8)
+        self.assertEqual(args.collection_workers, 4)
+        self.assertEqual((args.overlap_verification, args.text_leaf_replay, args.replay_threads), (False, False, 0))
+        limited = self.parse(*self.native_arguments(), "--cpu-cap", "2")
+        self.assertEqual(limited.collection_workers, 1)
+
+    def test_native_flags_and_conflicting_modes_are_rejected_before_launch(self):
+        cases = [("--native-learner", str(MANIFEST)), ("--fast-path", "--native-learner", str(MANIFEST)),
+                 ("--native-sha256", SHA), ("--cpu-cap", "4")]
+        cases += [(*self.native_arguments(), *extra) for extra in
+                  (("--prefix-helpers", "1"), ("--overlap-verification",), ("--replay-threads", "2"),
+                   ("--experiment", "shared_graph_encodings"), ("--cpu-cap", "0"), ("--cpu-cap", "17"))]
+        for extra in cases:
+            with self.subTest(extra=extra), patch.object(controller.sys, "argv", self.arguments(*extra)), \
+                    patch.object(resources, "discover_resources", return_value=OBSERVED), \
+                    patch.object(controller, "start") as start, redirect_stderr(io.StringIO()), \
+                    self.assertRaises(SystemExit) as error:
+                controller.main()
+            self.assertEqual(error.exception.code, 2)
+            start.assert_not_called()
+
+    def test_selected_execution_keeps_acceptance_gate_and_exact_manifest(self):
+        args = self.parse(*self.native_arguments(), "--cpu-cap", "8")
+        with patch.object(native_execution, "native_execution_choice", return_value={"bound": True}) as selected:
+            self.assertEqual(controller.selected_execution(args), {"bound": True})
+        selected.assert_called_once_with(MANIFEST, SHA, cpu_cap=8)
+
+    def test_frozen_source_reentry_preserves_native_build_and_cpu_cap(self):
+        args = self.parse(*self.native_arguments(), "--cpu-cap", "8", "--hours", "1")
+        config = {"artifact_root": "/private/synthetic", "run_root": "/private/synthetic/run"}
+        release = Path("/private/synthetic/frozen-release")
+        class Reentered(BaseException): pass
+        with patch.object(controller, "read", return_value=config), \
+                patch.dict(sys.modules, {"prepare_local_training": SimpleNamespace(validate_config=lambda value: value)}), \
+                patch.object(controller, "campaign_locks", return_value=nullcontext()), \
+                patch.object(controller, "exclusive_lock", return_value=nullcontext()), \
+                patch.object(controller, "release_checkout", return_value=(release, "f"*40)), \
+                patch.object(controller.os, "chdir"), patch.dict(controller.os.environ), \
+                patch.object(controller.os, "execv", side_effect=Reentered) as launch, self.assertRaises(Reentered):
+            controller.start(args)
+        executable, command = launch.call_args.args
+        self.assertEqual(executable, sys.executable)
+        self.assertEqual(command[1:3], [str(release / "tools/run_local_training.py"), "_launch"])
+        for flag, value in (("--native-learner", str(MANIFEST)), ("--native-sha256", SHA), ("--cpu-cap", "8")):
+            self.assertEqual(command[command.index(flag)+1], value)
+        self.assertIn("--no-text-replay", command)
+        self.assertNotIn("--overlap-verification", command)
+
+
+if __name__ == "__main__":
+    unittest.main()

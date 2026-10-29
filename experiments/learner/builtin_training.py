@@ -283,6 +283,7 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
                 report['attempts'][index] = value; save()
             collected = collect_batch(args.plan, args.sha256, model, state.checkpoint,
                 workers=collection['workers'],
+                verification_workers=plan.get('execution', {}).get('verification_workers', 1),
                 deadline_monotonic=limits.deadline, deadline_wall=limits.wall_deadline,
                 save=save_parallel)
             pilot.require(len(collected.attempts) == len(plan['schedule']) == batch_size

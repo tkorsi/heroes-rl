@@ -34,6 +34,7 @@ ROLLOUT_SCHEMA = "heroes-builtin-training-rollout-v1"
 _BINDINGS, _CAPTURES, _RECEIPTS = {}, {}, {}
 _USED_RECEIPTS = set()
 _PARALLEL_CAPTURES = {}
+_PREPARED_VERIFICATIONS = {}
 
 
 def require(condition, message):
@@ -449,9 +450,9 @@ def _write_new(path, value):
         stream.write(canonical(value) + "\n")
 
 
-def _capture_file_bindings(folder, manifest):
+def _capture_file_bindings(folder, manifest, *, capture_name="builtin-training-rollout.json"):
     declaration = manifest["players"][evidence.COLORS[manifest["learner_player"]]]
-    names = {"manifest.json", "builtin-finalization.json", "builtin-training-rollout.json", "logs/process.log",
+    names = {"manifest.json", "builtin-finalization.json", capture_name, "logs/process.log",
         "engine/experiment-metadata.json", f"agents/{evidence.COLORS[manifest['learner_player']]}/bridge.jsonl",
         declaration[evidence.manifest_profile(manifest).history_key]["path"], declaration["live_evidence"]["path"], *manifest["replay"]["files"]}
     return {name: native.file_identity(native.inside(folder, name)) for name in sorted(names)}
@@ -486,12 +487,8 @@ def _check_rollout(folder, collected, binding, model, manifest, verify_history, 
     return history_report, policy_report, rebuilt, final
 
 
-def verify_training_capture(folder, collected, binding, model, *, replay_binary, data, remaining):
-    """Mint an in-memory receipt only after independent reconstruction and replay."""
-    from experiments.headless.background_check import BackgroundCheck
-    from experiments.headless.builtin_replay_history import verify_history
-    from experiments.headless import builtin_replay
-    from validation.probes.validate_hero_policy import reconstruct_behavior
+def _prepare_training_verification(folder, collected, binding, model, remaining):
+    """Check the coordinator's live capture and bind all inputs before replay starts."""
     _time_left(remaining)
     require(_BINDINGS.get(id(binding)) is binding and _CAPTURES.get(id(collected)) is collected,
             "Only this worker's fresh training collector can request admission")
@@ -512,10 +509,58 @@ def verify_training_capture(folder, collected, binding, model, *, replay_binary,
     except Exception:
         _check_persisted(folder, collected, model, manifest)
         original_files = _capture_file_bindings(folder, manifest)
-    replaying = BackgroundCheck(builtin_replay.verify_episode, folder, binary=replay_binary, data=data,
-                                output=folder / "training-verification", timeout=_time_left(remaining))
+    return folder, manifest, original_files
+
+
+class _PreparedVerification:
+    """Coordinator-only capability for a replay started before serial policy checks."""
+    def __init__(self, collected, binding, model, folder, manifest, original_files, job):
+        self.collected, self.binding, self.model = collected, binding, model
+        self.folder, self.manifest, self.original_files = folder, manifest, original_files
+        self.job = job
+
+
+def start_training_verification(folder, collected, binding, model, *, replay_binary, data, remaining,
+                                deadline_monotonic, deadline_wall):
+    """Start only native replay in an exec child; no child may mint a receipt."""
+    from experiments.headless.spawned_replay import SpawnedReplay
+    folder, manifest, original_files = _prepare_training_verification(folder, collected, binding, model, remaining)
+    job = SpawnedReplay(folder, binary=replay_binary, data=data, original_files=original_files,
+                        deadline_monotonic=deadline_monotonic, deadline_wall=deadline_wall)
+    prepared = _PreparedVerification(collected, binding, model, folder, manifest, original_files, job)
+    job.start()
+    _PREPARED_VERIFICATIONS[id(prepared)] = prepared
+    return prepared
+
+
+def discard_training_verification(prepared):
+    """Revoke only this coordinator's unused verification capability."""
+    if _PREPARED_VERIFICATIONS.get(id(prepared)) is prepared:
+        _PREPARED_VERIFICATIONS.pop(id(prepared))
+
+
+def verify_training_capture(folder, collected, binding, model, *, replay_binary, data, remaining, prepared=None):
+    """Mint an in-memory receipt only after independent reconstruction and replay."""
+    from experiments.headless.background_check import BackgroundCheck
+    from experiments.headless.builtin_replay_history import verify_history
+    from experiments.headless import builtin_replay
+    from validation.probes.validate_hero_policy import reconstruct_behavior
+    folder, manifest, original_files = _prepare_training_verification(folder, collected, binding, model, remaining)
+    if prepared is None:
+        replaying = BackgroundCheck(builtin_replay.verify_episode, folder, binary=replay_binary, data=data,
+                                    output=folder / "training-verification", timeout=_time_left(remaining))
+    else:
+        require(type(prepared) is _PreparedVerification and _PREPARED_VERIFICATIONS.get(id(prepared)) is prepared
+                and prepared.collected is collected and prepared.binding is binding and prepared.model is model
+                and prepared.folder == folder and canonical(prepared.manifest) == canonical(manifest)
+                and prepared.original_files == original_files
+                and prepared.job.binary == Path(replay_binary).resolve() and prepared.job.data == Path(data).resolve(),
+                "Prepared verification is not this coordinator's unchanged fresh capture")
+        _PREPARED_VERIFICATIONS.pop(id(prepared))
+        replaying = prepared.job
     try:
-        replaying.start()
+        if prepared is None:
+            replaying.start()
         history_report, policy_report, rebuilt, final = _check_rollout(folder, collected, binding, model, manifest,
                                                                        verify_history, reconstruct_behavior)
         replay = replaying.result(timeout=_time_left(remaining))

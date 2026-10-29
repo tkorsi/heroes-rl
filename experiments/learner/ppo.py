@@ -259,6 +259,9 @@ REPLAY_TEXT_LEAVES = True
 # Threads that replay text-leaf occurrences while the backward continues, None: as many as
 # PREFIX_HELPERS (the extra CPUs the caller declared). Zero replays them in the backward itself.
 TEXT_REPLAY_WORKERS = None
+# Explicit source/binary-bound native execution, set only by a checked session
+# or an isolated benchmark. Absence retains the historical Python kernel.
+NATIVE_EXECUTION = None
 
 
 @dataclass(frozen=True)
@@ -329,6 +332,23 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     phase = perf_counter()
     _verify_behavior(model, rollouts, inputs)
     timings["behavior_verification"] = perf_counter() - phase
+    native_model = native_backend = native_inputs = None
+    if NATIVE_EXECUTION is not None:
+        from .native_backend import load_backend
+        from .native_recipes import compile_history, require_native_model
+        require_native_model(model)
+        if (type(NATIVE_EXECUTION) is not dict or set(NATIVE_EXECUTION) != {"manifest", "sha256", "prefix_threads"}
+                or type(NATIVE_EXECUTION["prefix_threads"]) is not int or not 1 <= NATIVE_EXECUTION["prefix_threads"] <= 256
+                or PREFIX_HELPERS or EXPERIMENTS):
+            raise ValueError("Invalid or conflicting native learner execution")
+        phase = perf_counter()
+        native_backend = load_backend(NATIVE_EXECUTION["manifest"], NATIVE_EXECUTION["sha256"])
+        native_model = native_backend.NativeModel(dict(model.named_parameters()), model.config.feature_size,
+                                                 model.config.hidden_size)
+        native_inputs = tuple(compile_history(model, encoded, item.decisions, native_backend)
+                              for encoded, item in zip(inputs, rollouts))
+        timings["native_recipe_compilation"] = perf_counter() - phase
+        timings["native_prefix_threads"] = float(NATIVE_EXECUTION["prefix_threads"])
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)
@@ -376,7 +396,7 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             # All selected windows see identical parameters. Reconstruct each
             # episode once up to its furthest boundary, then retain the original
             # selected-window order and separate detached autograd graphs.
-            replaying = REPLAY_TEXT_LEAVES and not shared
+            replaying = REPLAY_TEXT_LEAVES and not shared and native_model is None
             workers = PREFIX_HELPERS if TEXT_REPLAY_WORKERS is None else TEXT_REPLAY_WORKERS
             sharing = (model.shared_graph_encodings() if shared
                        else model.replayed_text_leaves(workers) if replaying else nullcontext())
@@ -388,6 +408,9 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                     boundaries.setdefault(window.rollout_index, []).append(window.start_seq)
             prefixes = {}
             for index, stops in boundaries.items():
+                if native_model is not None:
+                    prefixes[index] = native_model.prefix(native_inputs[index], stops, NATIVE_EXECUTION["prefix_threads"])
+                    continue
                 if prefix_keys is None:
                     prefixes[index] = model.prefix_states(inputs[index], stops)
                     continue
@@ -411,8 +434,14 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                     phase = perf_counter()
                 else:
                     state = prefixes[window.rollout_index][window.start_seq]
-                evaluated = _evaluate_from_state(model, inputs[window.rollout_index], records, window.start_seq,
-                                                 state)
+                if native_model is None:
+                    evaluated = _evaluate_from_state(model, inputs[window.rollout_index], records, window.start_seq,
+                                                     state)
+                else:
+                    logs, vals, _ = native_model.evaluate_window(native_inputs[window.rollout_index], window.start_seq,
+                        records[-1].decision_seq, [record.decision_seq for record in records], state.detach())
+                    evaluated = tuple(EvaluatedDecision(record.decision_seq, logs[i], vals[i])
+                                      for i, record in enumerate(records))
                 for index, current, old in zip(window.sample_indices, evaluated, records):
                     new_log_probs.append(current.log_prob)
                     new_values.append(current.value)
@@ -423,8 +452,13 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             log_probs = torch.stack(new_log_probs)
             values = torch.stack(new_values)
             make = log_probs.new_tensor
-            loss, policy, value, kl, clipped = clipped_losses(log_probs, values, make(old_log_probs), make(old_values),
-                                                           make(batch_advantages), make(returns), config)
+            if native_backend is None:
+                loss, policy, value, kl, clipped = clipped_losses(log_probs, values, make(old_log_probs), make(old_values),
+                                                               make(batch_advantages), make(returns), config)
+            else:
+                loss, policy, value, kl, clipped = native_backend.clipped_losses(log_probs, values, make(old_log_probs),
+                    make(old_values), make(batch_advantages), make(returns), config.clip_ratio, config.value_clip,
+                    config.value_coefficient)
             # Discard the minibatch's state lookup before parameters change.
             del prefixes, state
             timings["loss_forward"] += perf_counter() - phase

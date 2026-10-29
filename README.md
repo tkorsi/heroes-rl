@@ -324,6 +324,15 @@ manual continuation.
 
 ## Experiment agreement
 
+The requested Mac native-learner rewrite is being validated on the separate
+`codex/mac-native-training` branch. It adds a source/ABI/binary-bound C++ tensor
+backend and bounded native prefix/replay concurrency. It preserves the four-game
+PPO batch, selected-action support, terminal rewards and complete checkpoint
+state. The existing Python admission, checkpoint and process-supervision layer
+remains authoritative. Native execution is opt-in and refuses official use until
+its compiled build and integration pass the recorded acceptance gate. This work
+does not change or restart the already running, separately frozen cloud session.
+
 - Use existing VCMI rules, never a substitute simulator. macOS and Linux host
   the same rules; paths, transports and process supervision belong outside the
   policy/game-rule contract.

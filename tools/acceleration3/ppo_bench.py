@@ -34,6 +34,8 @@ import os
 from pathlib import Path
 import pstats
 import random
+import re
+import resource
 import subprocess
 import sys
 import time
@@ -239,12 +241,16 @@ def run_once(args, items, profile=None):
     order_state = generator.get_state().clone()
     before = full_state(model, optimizer, generator, parent)
     model.train().requires_grad_(True)
+    cpu_started = resource.getrusage(resource.RUSAGE_SELF)
     started = time.perf_counter()
     if profile is not None: profile.enable()
     report = _update(model, optimizer, items, config=config, generator=generator,
                      max_optimizer_steps=plan['configuration']['max_optimizer_steps'])
     if profile is not None: profile.disable()
     seconds = time.perf_counter() - started
+    cpu_finished = resource.getrusage(resource.RUSAGE_SELF)
+    cpu_seconds = ((cpu_finished.ru_utime + cpu_finished.ru_stime)
+                   - (cpu_started.ru_utime + cpu_started.ru_stime))
     order_generator = torch.Generator(); order_generator.set_state(order_state)
     windows = sum((len(item.samples) + config.decisions_per_window - 1) // config.decisions_per_window for item in items)
     order = torch.randperm(windows, generator=order_generator).tolist()
@@ -252,7 +258,8 @@ def run_once(args, items, profile=None):
     after = full_state(model, optimizer, generator, parent)
     for name in ('progress', 'sampler', 'pool'):
         _exact(before[name], after[name])  # this diagnostic advances no official bookkeeping
-    return dict(seconds=seconds, report={k: v for k, v in vars(report).items() if k != 'timings_seconds'},
+    return dict(seconds=seconds, cpu_seconds=cpu_seconds, average_cpu_cores=cpu_seconds / seconds,
+                report={k: v for k, v in vars(report).items() if k != 'timings_seconds'},
                 timings=report.timings_seconds, sampler_order=order,
                 model_sha256=tensor_digest(dict(model.state_dict())), weights_sha256=cp.model_weight_digest(model),
                 gradient_sha256=tensor_digest([p.grad for p in model.parameters()]),
@@ -357,6 +364,9 @@ def _main():
     p.add_argument('--no-text-replay', dest='text_leaf_replay', action='store_false',
                    help='compute every text leaf occurrence separately (the --no-text-replay fallback)')
     p.add_argument('--text-replay-workers', type=int, help='replay threads (default: as many as prefix helpers)')
+    p.add_argument('--native-manifest', type=Path, help='explicit verified native learner manifest; no default promotion')
+    p.add_argument('--native-manifest-sha256', help='expected SHA256 of the native learner manifest')
+    p.add_argument('--native-prefix-threads', type=int, default=1, help='native independent-prefix thread budget')
     p.add_argument('--capture-plan', type=Path, help='historical plan bound to --batch; default: its parent/plan.json')
     p.add_argument('--capture-report', type=Path, help='historical report; default: --batch/report.json')
     p.add_argument('--require-rolled-back', action='store_true', help='require zero admission and no after checkpoint in the original attempt')
@@ -366,6 +376,14 @@ def _main():
     p.add_argument('--deadline-monotonic', type=float, help='original same-host monotonic hard deadline; paired with --deadline-unix')
     p.add_argument('--worker', action='store_true', help=argparse.SUPPRESS)
     a = p.parse_args()
+    require((a.native_manifest is None) == (a.native_manifest_sha256 is None),
+            'Native manifest and its explicit SHA256 must be supplied together')
+    require(a.native_prefix_threads >= 1, 'Native prefix thread count must be positive')
+    require(a.native_manifest is not None or a.native_prefix_threads == 1,
+            'Native prefix threads require an explicit native manifest')
+    if a.native_manifest is not None:
+        require(re.fullmatch(r'[0-9a-f]{64}', a.native_manifest_sha256) is not None,
+                'Native manifest SHA256 must be a lowercase hexadecimal digest')
     require(a.repeat == 1, 'One bounded update only')
     effective_deadlines(a.wall_seconds, deadline_unix=a.deadline_unix, deadline_monotonic=a.deadline_monotonic)
     require(a.output is not None, 'A fresh diagnostic output path is required')
@@ -407,6 +425,13 @@ def _main():
         require(hasattr(ppo, 'REPLAY_TEXT_LEAVES') and hasattr(ppo, 'TEXT_REPLAY_WORKERS'), 'This checkout has no text-leaf replay')
         ppo.REPLAY_TEXT_LEAVES = a.text_leaf_replay
         ppo.TEXT_REPLAY_WORKERS = a.text_replay_workers
+    native_binding = None
+    if a.native_manifest is not None:
+        require(hasattr(ppo, 'NATIVE_EXECUTION'), 'Selected checkout has no native PPO integration')
+        native_binding = file_binding(a.native_manifest)
+        require(native_binding['sha256'] == a.native_manifest_sha256, 'Native manifest differs from expected SHA256')
+        ppo.NATIVE_EXECUTION = dict(manifest=str(a.native_manifest.resolve()), sha256=a.native_manifest_sha256,
+                                    prefix_threads=a.native_prefix_threads)
     items = rollouts(a.batch)
     require([len(item.samples) for item in items] == [row['samples'] for row in audit['games']], 'Rebuilt sample count differs')
     results = []
@@ -437,6 +462,8 @@ def _main():
                          | {'reference_equal': result.get('reference_equal'), 'difference': result.get('difference'), 'timings': result['timings']}))
     for name, identity in input_bindings.items(): same_file_bytes(getattr(a, name), identity)
     same_file_bytes(__file__, driver)
+    if native_binding is not None:
+        same_file_bytes(a.native_manifest, native_binding)
     require(audit_capture(a) == audit, 'Capture evidence changed during diagnostic update')
     require(subprocess.check_output(['git', '-C', str(a.checkout), 'rev-parse', 'HEAD'], text=True).strip() == checkout_head
             and not subprocess.check_output(['git', '-C', str(a.checkout), 'status', '--porcelain'], text=True).strip(),
@@ -445,6 +472,7 @@ def _main():
                   diagnostic_only=True, official_samples_admitted=0, official_updates=0,
                   experiments=sorted(getattr(ppo, 'EXPERIMENTS', ())), prefix_helpers=getattr(ppo, 'PREFIX_HELPERS', 0),
                   text_leaf_replay=getattr(ppo, 'REPLAY_TEXT_LEAVES', None), text_replay_workers=getattr(ppo, 'TEXT_REPLAY_WORKERS', None),
+                  native_execution=getattr(ppo, 'NATIVE_EXECUTION', None), native_manifest=native_binding,
                   samples=sum(len(i.samples) for i in items), frames=[len(i.history) for i in items],
                   decisions=[len(i.decisions) for i in items], torch=str(torch.__version__), repetitions=results,
                   identical_across_repetitions=len({r['model_sha256'] + r['adam_sha256'] + r['gradient_sha256'] for r in results}) == 1)

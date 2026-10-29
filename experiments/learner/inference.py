@@ -40,6 +40,7 @@ def digest(path):
 
 def source_identity(interface=contract.TOWN_ENVIRONMENT):
     paths = sorted((ROOT / "experiments/learner").glob("*.py"))
+    paths += sorted(path for path in (ROOT / "native/learner").rglob("*") if path.is_file())
     paths += [ROOT / "dependencies/learner.lock"]
     return {
         "git_commit": subprocess.check_output(

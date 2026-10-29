@@ -1088,6 +1088,27 @@ class StepOutput:
     decision: PolicyValue | None
 
 
+def observation_semantics(observation):
+    """The visible semantic tree shared by Python and native tensor execution."""
+    own = _node("observation", _node("size", _semantic(observation.size)),
+                _node("resources", _semantic(observation.resources)),
+                _set("heroes", [_semantic(hero) for hero in observation.heroes]),
+                _set("towns", [_semantic(town) for town in observation.towns]),
+                _window_semantic(observation),
+                _node("current_window_subject", _subject(observation, observation.context.subject)))
+    if observation.window is not None and observation.window.armies is not None:
+        window = observation.window
+        bindings = [_node("displayed_army", _semantic(army), _subject(observation, army.subject)) for army in window.armies]
+        if window.stack_panel is not None:
+            parent = window.stack_panel.parent_context
+            bindings.append(_node("stack_parent", _subject(observation, parent.subject),
+                                  _subject(observation, parent.selection) if parent.kind == "exchange" else _node("absent")))
+        if window.context.kind == "exchange":
+            bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
+        own = _node("management_observation", own, _set("army_bindings", bindings))
+    return own
+
+
 class ContextualActorCritic(nn.Module):
     """Current-view spatial encoder and typed semantics share one learned GRU.
 
@@ -1425,23 +1446,7 @@ class ContextualActorCritic(nn.Module):
         grid = torch.cat((self.terrain(self._long(terrain)), self.road(self._long(road)), object_grid, self._float(flags)), -1)
         cells = self.map_cnn(grid.reshape(height, width, 33).permute(2, 0, 1).unsqueeze(0))
         global_map = self.map_global(cells)[0]
-        own = _node("observation", _node("size", _semantic(observation.size)),
-                    _node("resources", _semantic(observation.resources)),
-                    _set("heroes", [_semantic(hero) for hero in observation.heroes]),
-                    _set("towns", [_semantic(town) for town in observation.towns]),
-                    _window_semantic(observation),
-                    _node("current_window_subject", _subject(observation, observation.context.subject)))
-        if observation.window is not None and observation.window.armies is not None:
-            window = observation.window
-            bindings = [_node("displayed_army", _semantic(army), _subject(observation, army.subject)) for army in window.armies]
-            if window.stack_panel is not None:
-                parent = window.stack_panel.parent_context
-                bindings.append(_node("stack_parent", _subject(observation, parent.subject),
-                                      _subject(observation, parent.selection) if parent.kind == "exchange" else _node("absent")))
-            if window.context.kind == "exchange":
-                bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
-            own = _node("management_observation", own, _set("army_bindings", bindings))
-        return global_map, self._encode_root(own, cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
+        return global_map, self._encode_root(observation_semantics(observation), cache), cells[0].permute(1, 2, 0).reshape(-1, 16)
 
     def _check_step(self, frame, state):
         if type(frame) is not ContextualInput:
@@ -1637,6 +1642,29 @@ class ContextualDistribution:
         candidates = torch.stack([self._features(item) for item in semantics])
         return candidates.mv(torch.tanh(self.model.policy_query(self.state))) / sqrt(self.model.config.feature_size)
 
+    def _quantity_logits(self, features, low, high, maximum, depth):
+        numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
+        logits = self.model.quantity(torch.cat((self.state, features, numeric)))
+        middle = (low + high) // 2
+        return logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+
+    def _coordinate_logits(self, semantic, width, height):
+        positions = self.model._float([(px / max(width - 1, 1), py / max(height - 1, 1))
+                                      for py in range(height) for px in range(width)])
+        target = self._features(semantic).expand(width * height, -1)
+        state = self.state.expand(width * height, -1)
+        return self.model.coordinate(torch.cat((state, target, self.cells, positions), -1)).squeeze(-1)
+
+    def _coordinate_subset(self, logits, coordinates):
+        return logits[torch.tensor(coordinates, dtype=torch.long, device=logits.device)]
+
+    def _choose(self, name, logits, selected, generator, trace):
+        log_probs = torch.log_softmax(logits, 0)
+        if selected is None:
+            selected = int(torch.multinomial(log_probs.detach().exp(), 1, generator=generator).item())
+        trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
+        return selected
+
     def _kinds(self):
         kinds = self._native_kinds()
         if self.guard is None:
@@ -1796,11 +1824,7 @@ class ContextualDistribution:
         trace = []
 
         def choose(name, logits, selected=None):
-            log_probs = torch.log_softmax(logits, 0)
-            if selected is None:
-                selected = int(torch.multinomial(log_probs.detach().exp(), 1, generator=generator).item())
-            trace.append(ConditionalProbability(name, selected, logits.numel(), log_probs[selected]))
-            return selected
+            return self._choose(name, logits, selected, generator, trace)
 
         kinds = self._kinds()
         kind = kinds[choose("kind", self._logits([_node("action_kind", _text(kind)) for kind in kinds]),
@@ -1825,9 +1849,7 @@ class ContextualDistribution:
                 features = self._features(_capability_choice(choice, self.observation))
                 while low < high:
                     middle = (low + high) // 2
-                    numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
-                    logits = self.model.quantity(torch.cat((self.state, features, numeric)))
-                    logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                    logits = self._quantity_logits(features, low, high, maximum, depth)
                     branch = choose(f"count:{low}:{high}", logits, int(action.count > middle) if action else None)
                     if branch: low = middle + 1
                     else: high = middle
@@ -1846,16 +1868,12 @@ class ContextualDistribution:
             subject = refs[index]
             if kind == "move_to":
                 width, height, _ = self.offers.size
-                positions = self.model._float([(px / max(width - 1, 1), py / max(height - 1, 1))
-                                               for py in range(height) for px in range(width)])
-                target = self._features(semantics[index]).expand(width * height, -1)
-                state = self.state.expand(width * height, -1)
-                logits = self.model.coordinate(torch.cat((state, target, self.cells, positions), -1)).squeeze(-1)
+                logits = self._coordinate_logits(semantics[index], width, height)
                 if self.guard is None:
                     index = choose("coordinate", logits, action.y * width + action.x if action else None)
                 else:
                     coordinates = tuple(self._coordinates(subject))
-                    logits = logits[torch.tensor(coordinates, dtype=torch.long, device=logits.device)]
+                    logits = self._coordinate_subset(logits, coordinates)
                     index = coordinates[choose("coordinate", logits,
                                         coordinates.index(action.y * width + action.x) if action else None)]
                 x, y = index % width, index // width
@@ -1915,9 +1933,7 @@ class ContextualDistribution:
             depth = 0
             while low < high:
                 middle = (low + high) // 2
-                numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
-                logits = self.model.quantity(torch.cat((self.state, features, numeric)))
-                logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                logits = self._quantity_logits(features, low, high, maximum, depth)
                 selected = int(action.count > middle) if action else None
                 branch = choose(f"count:{low}:{high}", logits, selected)
                 if branch: low = middle + 1
@@ -1941,11 +1957,9 @@ class ContextualDistribution:
                 depth = 0
                 while low < high:
                     middle = (low + high) // 2
-                    numeric = self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31))
-                    logits = self.model.quantity(torch.cat((self.state, features, numeric)))
                     # A zero learned logit yields uniform integer mass even when
                     # the two subtree sizes differ. This is support geometry.
-                    logits = logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
+                    logits = self._quantity_logits(features, low, high, maximum, depth)
                     selected = int(action.count > middle) if action else None
                     branch = choose(f"count:{low}:{high}", logits, selected)
                     if branch: low = middle + 1
