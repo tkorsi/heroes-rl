@@ -91,14 +91,22 @@ class RecoveryTests(unittest.TestCase):
                          process_group=1002)]
         path = self.root/'run/deadline.jsonl'
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(''.join(json.dumps({'schema': 'heroes-process-deadline-v1', **row})+'\n' for row in rows))
-        self.write('run/session.json', {'supervisor_pid': 1000})
+        path.write_text(''.join(json.dumps({'schema': 'heroes-process-deadline-v1', 'wall_time': 1000.75,
+                                            **row})+'\n' for row in rows))
+        self.write('run/session.json', {'supervisor_pid': 1000, 'started_unix': 1000.25})
         return [recovery.binding(path)]
 
-    def ps_output(self, rows):
-        return rows + f'{os.getpid()} {os.getpgrp()} S recovery-observer\n'
+    def ps_output(self, rows, starts=None):
+        starts = starts or {}
+        rows += f'{os.getpid()} {os.getpgrp()} S recovery-observer\n'
+        expanded = []
+        for line in rows.splitlines():
+            pid, group, status, command = line.split(None, 3)
+            started = starts.get(int(pid), 'Thu Jan 1 00:16:40 1970')
+            expanded.append(f'{pid} {group} {status} {started} {command}\n')
+        return ''.join(expanded)
 
-    def test_process_scan_is_read_only_and_rejects_reused_old_pid_or_group(self):
+    def test_process_scan_is_read_only_and_rejects_unproven_old_pid_or_group(self):
         deadlines = self.deadlines()
         for stdout in ('1002 999 S unrelated-new-app\n', '999 1002 S unrelated-new-app\n',
                        '1000 999 S unrelated-new-app\n', '1003 999 S unrelated-new-app\n'):
@@ -108,6 +116,76 @@ class RecoveryTests(unittest.TestCase):
                         recovery.process_closure(deadlines, self.root/'run')
                     kill.assert_not_called(); killpg.assert_not_called()
                     self.assertEqual(ps.call_args.kwargs['timeout'], 10)
+                    self.assertEqual(ps.call_args.kwargs['env']['TZ'], 'UTC')
+                    self.assertEqual(ps.call_args.kwargs['env']['LC_ALL'], 'C')
+
+    def test_later_birth_proves_pid_reuse_without_executable_whitelists(self):
+        deadlines = self.deadlines()
+        for pid in (1000, 1001, 1002, 1003):
+            with self.subTest(pid=pid):
+                stdout = self.ps_output(f'{pid} 999 S unrelated-new-app\n', {pid:'Thu Jan 1 00:16:42 1970'})
+                with patch.object(recovery.subprocess, 'run', return_value=SimpleNamespace(stdout=stdout)), \
+                        patch.object(os, 'kill') as kill, patch.object(os, 'killpg') as killpg:
+                    result = recovery.process_closure(deadlines, self.root/'run')
+                self.assertEqual(result['matched_processes'], [])
+                reused = result['reused_numeric_identities']
+                self.assertEqual(len(reused), 1)
+                self.assertEqual(reused[0]['pid'], pid)
+                self.assertTrue(reused[0]['pid_reuse_proven'])
+                self.assertFalse(reused[0]['group_reuse_proven'])
+                kill.assert_not_called(); killpg.assert_not_called()
+
+    def test_group_reuse_requires_new_live_leader_and_new_members(self):
+        deadlines = self.deadlines()
+        new = 'Thu Jan 1 00:16:42 1970'
+        cases = [('999 1002 S new-child\n', {999:new}, False),
+                 ('1002 1002 Z dead-leader\n999 1002 S new-child\n', {1002:new,999:new}, False),
+                 ('1002 1002 S old-leader\n999 1002 S new-child\n', {999:new}, False),
+                 ('1002 1002 S new-leader\n999 1002 S old-child\n', {1002:new}, False),
+                 ('1002 1002 S new-leader\n999 1002 S new-child\n', {1002:new,999:new}, True)]
+        for rows, starts, passed in cases:
+            with self.subTest(rows=rows, starts=starts), \
+                    patch.object(recovery.subprocess, 'run', return_value=SimpleNamespace(stdout=self.ps_output(rows,starts))):
+                if passed:
+                    result = recovery.process_closure(deadlines, self.root/'run')
+                    self.assertTrue(all(row['group_reuse_proven'] for row in result['reused_numeric_identities']))
+                else:
+                    with self.assertRaisesRegex(ValueError, 'Live or ambiguous'):
+                        recovery.process_closure(deadlines, self.root/'run')
+
+    def test_later_pid_birth_never_overrides_run_path_match(self):
+        deadlines = self.deadlines()
+        stdout = self.ps_output(f'1002 999 S worker --run {self.root}/run\n',
+                                {1002:'Thu Jan 1 00:16:42 1970'})
+        with patch.object(recovery.subprocess, 'run', return_value=SimpleNamespace(stdout=stdout)):
+            with self.assertRaisesRegex(ValueError, 'Live or ambiguous'):
+                recovery.process_closure(deadlines, self.root/'run')
+
+    def test_reuse_proof_rejects_same_second_and_uses_latest_reference(self):
+        deadlines = self.deadlines([dict(event='wrapper_started', writer_pid=1002, leader_pid=1002,
+            process_group=1002, wall_time=999.1), dict(event='wrapper_returned', writer_pid=1002,
+            leader_pid=1002, process_group=1002, wall_time=1000.75)])
+        for started in ('Thu Jan 1 00:16:39 1970', 'Thu Jan 1 00:16:40 1970'):
+            stdout = self.ps_output('1002 999 S ambiguous-generation\n', {1002:started})
+            with self.subTest(started=started), \
+                    patch.object(recovery.subprocess, 'run', return_value=SimpleNamespace(stdout=stdout)):
+                with self.assertRaisesRegex(ValueError, 'Live or ambiguous'):
+                    recovery.process_closure(deadlines, self.root/'run')
+
+    def test_invalid_or_future_birth_and_historical_time_fail_closed(self):
+        deadlines = self.deadlines()
+        for started in ('not a valid process date', 'Fri Jan 1 00:16:42 1970', 'Wed Jan 1 00:16:42 2999'):
+            with self.subTest(started=started), patch.object(recovery.subprocess, 'run',
+                    return_value=SimpleNamespace(stdout=self.ps_output('1002 999 S bad-time\n', {1002:started}))):
+                with self.assertRaisesRegex(ValueError, 'inventory birth time'):
+                    recovery.process_closure(deadlines, self.root/'run')
+        for when in (None, True, float('nan'), float('inf'), -1):
+            deadlines = self.deadlines([dict(event='wrapper_started', writer_pid=1002, leader_pid=1002,
+                                             process_group=1002, wall_time=when)])
+            with self.subTest(when=when), patch.object(recovery.subprocess, 'run') as ps:
+                with self.assertRaisesRegex(ValueError, 'finite observation time'):
+                    recovery.process_closure(deadlines, self.root/'run')
+                ps.assert_not_called()
 
     def test_process_scan_rejects_run_specific_unrecorded_process(self):
         deadlines = self.deadlines()

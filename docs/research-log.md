@@ -857,3 +857,45 @@ canonical engine agreement. Its exact `./train-1000.sh --check` command refused
 the unchanged fence with status 2 and printed total running time of 0.29 seconds.
 The final compact receipt binds implementation commit `4f14064` and preserves
 the separate historical performance acceptance evidence.
+
+## 29 October 2026 — cloud checkpoint 1335 publication recovery
+
+The [publication recovery investigation](research/cloud1335-recovery-2026-10-29.md)
+identified a 120-second `git show` timeout while the old blobless-clone verifier
+read back batch 974's private raw archive. The push and complete PPO update had
+already succeeded. The campaign correctly retained checkpoint 1334 as admitted
+and checkpoint 1335 as pending; this was a publication failure, with no evidence
+of an engine, policy-action, adapter or replay failure. The 5.66 MB part does not
+explain the underlying network stall, which remains unknown.
+
+Explicit bounded blob fetches now precede strictly local, streamed verification.
+Exact commit/manifest/source bindings, all raw hashes, full policy/resume restore
+and expected-head publication remain mandatory. The failed transaction passed
+fresh remote readback in 9.58 seconds without another commit or optimizer update.
+Private return-to-Mac certificates subsequently passed publication/readback in
+8.75 seconds. All 106 checkpoint pairs and the pending archive's 134 regular
+files passed their separate evidence audit.
+
+The recovered checkpoint is update 1335, with 5,340 cumulative rollouts, 680,677
+decisions and 23,014 Adam steps. Original-campaign accounting is 2,824 admitted
+games and 2,176 remaining; sequence 974 remains consumed and 975 is next. The
+model, Adam, all RNG, sampler, progress and pool are preserved. The original map,
+learning settings, terminal-only rewards and visible interaction-budget contract
+remain unchanged, as do the engine and accepted native learner runtime.
+
+The cloud app reported a deleted, nonresumable environment. A separately bound
+terminal-training certificate uses the immutable closure, consumed claim and
+frozen source control flow; it does not claim a fresh outer-supervisor process
+observation or remote lock-mode change. The Mac import requires the exact pinned
+receipt, complete ancestry/seed audit and real continuation verification before
+unfencing. Partial application remains fenced with a durable journal.
+
+The initial focused run passed 83 tests; two added application controls make the
+expected final aggregate 85, pending rerun. Failed attempts remain disclosed:
+an unavailable `pytest` invocation, a stale apply-helper source pin rejected by
+the first import preview, and historical PID-number collisions rejected by the
+second preview. Neither preview changed official state or signalled processes.
+Linux behavior was not replayed as new Mac gameplay. Full-suite/native results,
+resolution of the second preview, official application and the actual
+main-checkout 1,000-game preflight remain pending at this entry's draft stage.
+No official training or automatic restart occurred.

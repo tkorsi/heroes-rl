@@ -338,12 +338,14 @@ cover PPO, not complete campaign throughput or policy quality. Python admission,
 independent behavior checks, serialization, Adam and supervision remain authoritative.
 
 `continue-original-native.sh` is an opt-in manual launcher with exact build and
-source acceptance gates. **The Mac is still fenced for cloud ownership.** Its
-real ten-hour check correctly refuses; a separately verified cloud closure and
-latest-state import are required before local continuation. This optimization
-does not restart training, replace the latest cloud checkpoint with local 1229,
-or modify the cloud's frozen source. See the report for the precise command and
-validation limitations.
+source acceptance gates. The subsequent cloud run stopped on a private Git
+publication read-back timeout after computing checkpoint **1,335**. Its
+[recovery audit](docs/research/cloud1335-recovery-2026-10-29.md) verifies all 106
+cloud checkpoint pairs and the complete failed-batch raw inventory. Checkpoint
+1,335 restores exactly without another optimizer update. This gives **2,824
+admitted games and 2,176 remaining** in the original target; sequence **975** is
+next. The original failed cloud report remains unchanged. Mac import and final
+manual readiness are recorded in that recovery report.
 
 For a manual session targeting **1,000 additional admitted training games**, use
 `./train-1000.sh --check` for offline preflight, then `./train-1000.sh` to launch

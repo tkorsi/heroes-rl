@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import fcntl
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -152,8 +153,17 @@ def existing_campaign_locks(config):
 
 
 def process_closure(deadlines, run):
-    """One bounded read-only snapshot; old numeric identities never grant signals."""
-    pids, groups = set(), set()
+    """One read-only snapshot; disambiguate reused numbers by process birth time."""
+    pids, groups = {}, {}
+
+    def observed_at(value):
+        require(type(value) in (int, float) and math.isfinite(value) and value > 0,
+                'Historical process identity lacks a finite observation time')
+        return value
+
+    def remember(table, identity, wall_time):
+        table[identity] = max(table.get(identity, 0), wall_time)
+
     for item in deadlines:
         bound(item)
         rows = [json.loads(line) for line in Path(item['path']).read_text().splitlines()]
@@ -168,44 +178,76 @@ def process_closure(deadlines, run):
             group = row.get('process_group')
             require(type(group) is int and group > 1 and group == row.get('leader_pid') == row.get('writer_pid'),
                     'Deadline wrapper does not identify its private process group')
-            groups.add(group)
+            remember(groups, group, observed_at(row.get('wall_time')))
         for row in rows:
+            wall_time = observed_at(row.get('wall_time'))
+            if row.get('process_group') in groups:
+                remember(groups, row['process_group'], wall_time)
             for key in ('writer_pid', 'leader_pid', 'guardian_pid'):
                 value = row.get(key)
                 if value is not None:
                     require(type(value) is int and value > 1, 'Invalid historical process identity')
-                    pids.add(value)
+                    remember(pids, value, wall_time)
     session = read(Path(run)/'session.json')
     require(type(session) is dict and type(session.get('supervisor_pid')) is int
             and session['supervisor_pid'] > 1, 'Malformed historical supervisor identity')
-    pids.add(session['supervisor_pid'])
-    result = subprocess.run(['/bin/ps', '-axo', 'pid=,pgid=,stat=,command='],
+    remember(pids, session['supervisor_pid'], observed_at(session.get('started_unix')))
+    # lstart reports whole seconds. Treat that second as a lower bound and only
+    # accept a birth strictly after the last bound historical observation.
+    # UTC and the C locale make parsing independent of the Mac's display settings.
+    snapshot_started = time.time()
+    result = subprocess.run(['/bin/ps', '-axo', 'pid=,pgid=,stat=,lstart=,command='],
+                            env={**os.environ, 'LC_ALL': 'C', 'TZ': 'UTC'},
                             text=True, capture_output=True, check=True, timeout=min(10, remaining_time()))
+    snapshot_finished = time.time()
+    require(snapshot_finished >= snapshot_started, 'Current process inventory clock moved backward')
     remaining_time()
     require(type(result.stdout) is str and result.stdout.strip(),
             'Current process inventory is empty or malformed')
-    matches, examined, observed, observer_present = [], 0, set(), False
+    matches, reused, observed, observer_present = [], [], {}, False
     for line in result.stdout.splitlines():
-        fields = line.strip().split(None, 3)
-        require(len(fields) == 4, 'Cannot parse current process identity')
-        pid, group, status, command = int(fields[0]), int(fields[1]), fields[2], fields[3]
+        fields = line.strip().split(None, 8)
+        require(len(fields) == 9, 'Cannot parse current process inventory identity')
+        pid, group, status, command = int(fields[0]), int(fields[1]), fields[2], fields[8]
         require(pid > 0 and group >= 0 and pid not in observed,
                 'Current process inventory has invalid or duplicate identities')
-        observed.add(pid)
-        examined += 1
-        if 'Z' in status:
-            continue
-        observer_present = observer_present or pid == os.getpid()
-        # Matching historical numbers conservatively fail, even if reused. No
-        # attempt is made to infer ownership of an unrelated live process.
-        if pid in pids or group in groups or (str(run) in command and pid != os.getpid()):
-            matches.append(dict(pid=pid, process_group=group, status=status, command=command))
+        try:
+            birth = datetime.strptime(' '.join(fields[3:8]), '%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone.utc)
+        except ValueError as error:
+            raise ValueError('Cannot parse current process inventory birth time') from error
+        require(birth.strftime('%a') == fields[3] and 0 < birth.timestamp() <= snapshot_finished,
+                'Current process inventory birth time is invalid or in the future')
+        observed[pid] = dict(pid=pid, process_group=group, status=status, command=command,
+                             started_unix_lower_bound=birth.timestamp())
+        observer_present = observer_present or (pid == os.getpid() and 'Z' not in status)
     require(observer_present, 'Current process inventory omitted its live observer')
+    for pid, process in observed.items():
+        group = process['process_group']
+        if 'Z' in process['status']:
+            continue
+        path_match = str(run) in process['command'] and pid != os.getpid()
+        pid_match, group_match = pid in pids, group in groups
+        if not (path_match or pid_match or group_match):
+            continue
+        born = process['started_unix_lower_bound']
+        pid_reused = pid_match and born > pids[pid]
+        leader = observed.get(group)
+        group_reused = (group_match and born > groups[group] and leader is not None
+                        and leader['pid'] == leader['process_group'] and 'Z' not in leader['status']
+                        and leader['started_unix_lower_bound'] > groups[group])
+        if path_match or (pid_match and not pid_reused) or (group_match and not group_reused):
+            matches.append(process)
+        else:
+            reused.append(dict(**process, historical_pid_observed_through=pids.get(pid),
+                historical_group_observed_through=groups.get(group), pid_reuse_proven=bool(pid_reused),
+                group_reuse_proven=bool(group_reused),
+                group_leader_started_unix_lower_bound=(leader['started_unix_lower_bound'] if group_reused else None)))
     require(not matches, 'Live or ambiguous historical process identities prevent recovery: ' + repr(matches))
     return dict(observed_utc=datetime.now(timezone.utc).isoformat(), matched_processes=[],
-                processes_examined=examined, observer_pid=os.getpid(), observer_present=True,
+                reused_numeric_identities=reused, processes_examined=len(observed),
+                observer_pid=os.getpid(), observer_present=True,
                 recorded_pids=len(pids), recorded_groups=len(groups),
-                historical_id_reuse_policy='fail_closed_without_signals', signals_sent=0)
+                historical_id_reuse_policy='strict_later_birth_with_live_group_leader_without_signals', signals_sent=0)
 
 
 def verify_batches(run, session, campaign, audit, ledger):

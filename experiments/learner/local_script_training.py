@@ -219,7 +219,7 @@ FAST_PATH_TREE = {
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
         '66e350e3603b30d0e7c8040e4e2acb5af8e802d1f5e01f081a13a780664e8969'),
     'tools/recover_interrupted_training.py': ('',
-        '7f3951e69ef993a2b51bce56bb615896d20e3f94d60fa71cf1b21582082f364e'),
+        'cc6695b19024c6e7f271f073e35fa1436e15417cf316f251e1e4d0a7fa10b576'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         'b01a0de81724a32baec41f2f8139f7b1d14a8bf5ab71410f73f7fc51ae409a8e'),
     'tools/train_1000_games.py': ('',
@@ -235,7 +235,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '6466e3a816db532e35912f03109e7d5cba942ab64fbe003e3ae73426d61f0a90'
+LOCAL_ADAPTER_TRANSITION_AST = 'b348fb48242748a66b485ba0047fd22a00837aa4eea20e6e49a6f0e5c62b48ed'
 
 
 def write_new(path, value):
