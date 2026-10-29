@@ -1,0 +1,598 @@
+{
+  "accepted_for_manual_training": true,
+  "actual_candidate_engine_fallbacks": 0.0,
+  "actual_candidate_parallel_frames": 10520.0,
+  "actual_candidate_tape_replays": 238898.0,
+  "actual_peak_frame_workers": 16,
+  "cloud_source_changed": false,
+  "failed_attempts": [
+    {
+      "attempt": "candidate1",
+      "outcome": "Exact state passed; higher CPU utilization without established elapsed-time improvement over prior native."
+    },
+    {
+      "attempt": "build2",
+      "outcome": "Compile error from const Node metadata helper; corrected."
+    },
+    {
+      "attempt": "build3",
+      "outcome": "Actual library import rejected hidden InputBuffer::variables symbol; replaced by its exact buffer move implementation."
+    },
+    {
+      "attempt": "tests4",
+      "outcome": "54 of55 passed; one fixture incorrectly required more than5 contributions for a one-byte text. Corrected cardinality; all23 targeted rechecks passed. No numerical mismatch."
+    }
+  ],
+  "final_comparisons": [
+    {
+      "evidence": "candidate3-821-NP",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 2150.0,
+        "native_engine_replays": 0.0,
+        "native_folded_contributions": 40014.0,
+        "native_forward_parallel_frames": 142.0,
+        "native_forward_rebased_nodes": 42883.0,
+        "native_main_thread_replays": 0.0,
+        "native_max_pending_replays": 24.0,
+        "native_occurrences": 2150.0,
+        "native_peak_forward_workers": 16.0,
+        "native_peak_parallel_replays": 10.0,
+        "native_prefix_threads": 16.0,
+        "native_prewarmed_leaves": 130.0,
+        "native_tape_leaves": 130.0,
+        "native_tape_replays": 2150.0,
+        "native_text_reducer_workers": 1.0,
+        "native_text_replay_workers": 14.0,
+        "native_unique_texts": 130.0
+      },
+      "native_cpu_seconds": 0.929431,
+      "native_mean_cpu_cores": 2.1558938695328833,
+      "native_seconds": 0.4311116670141928,
+      "order": [
+        "native",
+        "python"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 385990656,
+      "phase_seconds": {
+        "backward_and_clip": 0.17354433302534744,
+        "behavior_verification": 0.08424433303298429,
+        "history_encoding": 0.003294374968390912,
+        "loss_forward": 0.02547266596229747,
+        "native_recipe_compilation": 0.12067887501325458,
+        "optimizer_step": 0.0011250419775024056,
+        "prefix_reconstruction": 0.00013400003081187606
+      },
+      "python_seconds": 0.7732416249928065,
+      "source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+      "summary_sha256": "d7d30a2fa42faeb5620b7f1d26e4110ab55a10f6f20fdd448eb8d4136ae4c65d",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 6.450156000035349
+    },
+    {
+      "evidence": "candidate3-846-NP",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 88480.0,
+        "native_engine_replays": 0.0,
+        "native_folded_contributions": 1668858.0,
+        "native_forward_parallel_frames": 3893.0,
+        "native_forward_rebased_nodes": 1547765.0,
+        "native_main_thread_replays": 0.0,
+        "native_max_pending_replays": 36.0,
+        "native_occurrences": 88480.0,
+        "native_peak_forward_workers": 16.0,
+        "native_peak_parallel_replays": 11.0,
+        "native_prefix_threads": 16.0,
+        "native_prewarmed_leaves": 2484.0,
+        "native_tape_leaves": 2484.0,
+        "native_tape_replays": 88480.0,
+        "native_text_reducer_workers": 1.0,
+        "native_text_replay_workers": 14.0,
+        "native_unique_texts": 2484.0
+      },
+      "native_cpu_seconds": 37.234528000000005,
+      "native_mean_cpu_cores": 3.56317296603325,
+      "native_seconds": 10.44982333300868,
+      "order": [
+        "native",
+        "python"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 774782976,
+      "phase_seconds": {
+        "backward_and_clip": 5.897336288006045,
+        "behavior_verification": 1.1666076249675825,
+        "history_encoding": 0.07968558400170878,
+        "loss_forward": 1.1791192048694938,
+        "native_recipe_compilation": 0.8868517079972662,
+        "optimizer_step": 0.011247332906350493,
+        "prefix_reconstruction": 0.88109246105887
+      },
+      "python_seconds": 31.53942825004924,
+      "source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+      "summary_sha256": "299f1d207449dc9a184b2b642cf3d17dc9bb42a334c144b470c97aafd36a9abe",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 49.28485658299178
+    },
+    {
+      "evidence": "compare3-846-old-PN",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 88480.0,
+        "native_folded_contributions": 1668858.0,
+        "native_main_thread_replays": 0.0,
+        "native_occurrences": 88480.0,
+        "native_peak_parallel_replays": 15.0,
+        "native_prefix_threads": 16.0,
+        "native_text_replay_workers": 15.0,
+        "native_unique_texts": 2484.0
+      },
+      "native_cpu_seconds": 74.01606100000001,
+      "native_mean_cpu_cores": 4.421358076102874,
+      "native_seconds": 16.740571499976795,
+      "order": [
+        "python",
+        "native"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 809697280,
+      "phase_seconds": {
+        "backward_and_clip": 10.196696042083204,
+        "behavior_verification": 1.1401743339956738,
+        "history_encoding": 0.0829188339994289,
+        "loss_forward": 3.189198209089227,
+        "native_recipe_compilation": 0.9125309999799356,
+        "optimizer_step": 0.012220455042552203,
+        "prefix_reconstruction": 0.9981862509739585
+      },
+      "python_seconds": 30.331481541972607,
+      "source_commit": "9e15a03bec7cbd6bb92525e5fb4cc4af5b8c9b2f",
+      "summary_sha256": "fd4116c5114f753e238df66c248531aa06f8afe03e4e517bfd22372c62166480",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 54.48681866598781
+    },
+    {
+      "evidence": "candidate3-846-PN",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 88480.0,
+        "native_engine_replays": 0.0,
+        "native_folded_contributions": 1668858.0,
+        "native_forward_parallel_frames": 3893.0,
+        "native_forward_rebased_nodes": 1547765.0,
+        "native_main_thread_replays": 0.0,
+        "native_max_pending_replays": 43.0,
+        "native_occurrences": 88480.0,
+        "native_peak_forward_workers": 16.0,
+        "native_peak_parallel_replays": 11.0,
+        "native_prefix_threads": 16.0,
+        "native_prewarmed_leaves": 2484.0,
+        "native_tape_leaves": 2484.0,
+        "native_tape_replays": 88480.0,
+        "native_text_reducer_workers": 1.0,
+        "native_text_replay_workers": 14.0,
+        "native_unique_texts": 2484.0
+      },
+      "native_cpu_seconds": 38.385766999999994,
+      "native_mean_cpu_cores": 3.614126182182359,
+      "native_seconds": 10.621036749973428,
+      "order": [
+        "python",
+        "native"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 786137088,
+      "phase_seconds": {
+        "backward_and_clip": 5.9449562090449035,
+        "behavior_verification": 1.131777709000744,
+        "history_encoding": 0.08299362502293661,
+        "loss_forward": 1.2256749998778105,
+        "native_recipe_compilation": 0.9080239579780027,
+        "optimizer_step": 0.011452253966126591,
+        "prefix_reconstruction": 0.9613125009345822
+      },
+      "python_seconds": 29.434941874991637,
+      "source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+      "summary_sha256": "b4a51bda0fd8c88f7b033d3291144df9d1e3aefdbb25ed8a30c755ba75664b86",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 47.27764116699109
+    },
+    {
+      "evidence": "compare3-846-old-NP",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 88480.0,
+        "native_folded_contributions": 1668858.0,
+        "native_main_thread_replays": 0.0,
+        "native_occurrences": 88480.0,
+        "native_peak_parallel_replays": 15.0,
+        "native_prefix_threads": 16.0,
+        "native_text_replay_workers": 15.0,
+        "native_unique_texts": 2484.0
+      },
+      "native_cpu_seconds": 71.99468,
+      "native_mean_cpu_cores": 4.397476367522613,
+      "native_seconds": 16.371817375009414,
+      "order": [
+        "native",
+        "python"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 824803328,
+      "phase_seconds": {
+        "backward_and_clip": 9.984721206012182,
+        "behavior_verification": 1.130805041990243,
+        "history_encoding": 0.08221112500177696,
+        "loss_forward": 3.1427544578909874,
+        "native_recipe_compilation": 0.9222039169981144,
+        "optimizer_step": 0.012067251955159009,
+        "prefix_reconstruction": 0.8918181239860132
+      },
+      "python_seconds": 29.422406457946636,
+      "source_commit": "9e15a03bec7cbd6bb92525e5fb4cc4af5b8c9b2f",
+      "summary_sha256": "132d17403c595e56b58a7071b3c5fc364f8fb8c522dcc05a9901070653337974",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 53.273325540998485
+    },
+    {
+      "evidence": "candidate3-763-PN",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 29894.0,
+        "native_engine_replays": 0.0,
+        "native_folded_contributions": 566448.0,
+        "native_forward_parallel_frames": 1296.0,
+        "native_forward_rebased_nodes": 530090.0,
+        "native_main_thread_replays": 0.0,
+        "native_max_pending_replays": 39.0,
+        "native_occurrences": 29894.0,
+        "native_peak_forward_workers": 16.0,
+        "native_peak_parallel_replays": 14.0,
+        "native_prefix_threads": 16.0,
+        "native_prewarmed_leaves": 1013.0,
+        "native_tape_leaves": 1013.0,
+        "native_tape_replays": 29894.0,
+        "native_text_reducer_workers": 1.0,
+        "native_text_replay_workers": 14.0,
+        "native_unique_texts": 1013.0
+      },
+      "native_cpu_seconds": 11.657079,
+      "native_mean_cpu_cores": 3.2706608536776787,
+      "native_seconds": 3.5641356660053134,
+      "order": [
+        "python",
+        "native"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 614825984,
+      "phase_seconds": {
+        "backward_and_clip": 2.010138001816813,
+        "behavior_verification": 0.41150462499354035,
+        "history_encoding": 0.02442308299941942,
+        "loss_forward": 0.40416683501098305,
+        "native_recipe_compilation": 0.38669941696571186,
+        "optimizer_step": 0.0046862519811838865,
+        "prefix_reconstruction": 0.18401391489896923
+      },
+      "python_seconds": 9.30247508303728,
+      "source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+      "summary_sha256": "e531b9c44293174fad1b7d23f3720a1892de8a8cecc0bd698d4443b5504f557c",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 18.707508541003335
+    },
+    {
+      "evidence": "candidate3-763-NP",
+      "exact_checks": {
+        "adam_sha256": true,
+        "audit": true,
+        "before_full_state_sha256": true,
+        "checkout_head": true,
+        "driver": true,
+        "full_state_sha256": true,
+        "generator_sha256": true,
+        "gradient_sha256": true,
+        "model_sha256": true,
+        "parent": true,
+        "report": true,
+        "sampler_order": true,
+        "state_parts_sha256": true
+      },
+      "native_counters": {
+        "native_completed_replays": 29894.0,
+        "native_engine_replays": 0.0,
+        "native_folded_contributions": 566448.0,
+        "native_forward_parallel_frames": 1296.0,
+        "native_forward_rebased_nodes": 530090.0,
+        "native_main_thread_replays": 0.0,
+        "native_max_pending_replays": 39.0,
+        "native_occurrences": 29894.0,
+        "native_peak_forward_workers": 16.0,
+        "native_peak_parallel_replays": 14.0,
+        "native_prefix_threads": 16.0,
+        "native_prewarmed_leaves": 1013.0,
+        "native_tape_leaves": 1013.0,
+        "native_tape_replays": 29894.0,
+        "native_text_reducer_workers": 1.0,
+        "native_text_replay_workers": 14.0,
+        "native_unique_texts": 1013.0
+      },
+      "native_cpu_seconds": 11.723521,
+      "native_mean_cpu_cores": 3.2872376277555735,
+      "native_seconds": 3.5663746669888496,
+      "order": [
+        "native",
+        "python"
+      ],
+      "owned_cleanup_verified": true,
+      "peak_rss_bytes": 614580224,
+      "phase_seconds": {
+        "backward_and_clip": 2.0167213361128233,
+        "behavior_verification": 0.417484792007599,
+        "history_encoding": 0.02491662499960512,
+        "loss_forward": 0.3968567519332282,
+        "native_recipe_compilation": 0.38274154101964086,
+        "optimizer_step": 0.004541416012216359,
+        "prefix_reconstruction": 0.1899568748776801
+      },
+      "python_seconds": 9.268804790975992,
+      "source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+      "summary_sha256": "5f78d66ddf2d216b09fd0023212d7fb004dee04ddfeb545c8bb692f0701b09b1",
+      "whole_comparison_deadline_seconds": 120,
+      "whole_comparison_seconds": 18.52133562497329
+    }
+  ],
+  "initial_main_load_cpu_capacity_percent": 28.717686403550672,
+  "integration_source_commit": "1ade01eeaa54dc576ccdfa3bedce3c90569b801d",
+  "limitations": [
+    "Measured offline PPO updates, not full-campaign throughput or policy quality.",
+    "All16 frame workers were observed; average whole-update CPU use remains below full capacity and is lower than the old build because overhead was removed.",
+    "Two orders on two archived workloads do not establish a universal speedup.",
+    "Four-game on-policy batch, chronological recurrence, ordered gradient reduction and independent Python behavior verification remain unchanged.",
+    "Pinned PyTorch2.9.1 CPU float32 eager internals only; unsupported contexts retain serial/Engine behavior before execution, unsupported constructed frame graphs fail closed.",
+    "No new gameplay or official checkpoint changes; cloud ownership fences remain in place."
+  ],
+  "mac_launch_ready": false,
+  "manual_readiness": {
+    "cloud_handoff_required": true,
+    "main_load_test": "pending",
+    "official_state_unchanged": true,
+    "status": "blocked_by_existing_cloud_ownership_fence"
+  },
+  "native_binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+  "native_contract": "heroes-native-learner-v1",
+  "native_manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623",
+  "new_game_seeds_reserved": 0,
+  "official_samples_admitted": 0,
+  "official_training_started": false,
+  "official_updates": 0,
+  "performance": {
+    "763": {
+      "accepted": {
+        "evidence": [
+          "compare2-763-old-PN",
+          "compare2-763-old-NP"
+        ],
+        "mean_cpu_cores": 4.191484737403176,
+        "mean_cpu_seconds": 22.940105999999997,
+        "mean_loss_forward_seconds": 1.0760390845534857,
+        "mean_seconds": 5.473148457997013,
+        "range_seconds": [
+          5.446457541023847,
+          5.499839374970179
+        ]
+      },
+      "candidate": {
+        "evidence": [
+          "candidate3-763-PN",
+          "candidate3-763-NP"
+        ],
+        "mean_cpu_cores": 3.278949240716626,
+        "mean_cpu_seconds": 11.6903,
+        "mean_loss_forward_seconds": 0.40051179347210564,
+        "mean_seconds": 3.5652551664970815,
+        "range_seconds": [
+          3.5641356660053134,
+          3.5663746669888496
+        ]
+      },
+      "cross_build_fields": [
+        "before_full_state_sha256",
+        "model_sha256",
+        "gradient_sha256",
+        "adam_sha256",
+        "generator_sha256",
+        "full_state_sha256",
+        "sampler_order",
+        "report",
+        "state_parts_sha256"
+      ],
+      "cross_build_learning_state_equal": true,
+      "speedup": 1.5351351312603148,
+      "time_reduction_percent": 34.85915476515606,
+      "timing_scope": "Both orders per build. Batch763 accepted baseline is from the earlier same-session bracket; batch846 has a fresh accepted bracket."
+    },
+    "846": {
+      "accepted": {
+        "evidence": [
+          "compare3-846-old-PN",
+          "compare3-846-old-NP"
+        ],
+        "mean_cpu_cores": 4.409417221812744,
+        "mean_cpu_seconds": 73.0053705,
+        "mean_loss_forward_seconds": 3.165976333490107,
+        "mean_seconds": 16.556194437493104,
+        "range_seconds": [
+          16.371817375009414,
+          16.740571499976795
+        ]
+      },
+      "candidate": {
+        "evidence": [
+          "candidate3-846-PN",
+          "candidate3-846-NP"
+        ],
+        "mean_cpu_cores": 3.5886495741078046,
+        "mean_cpu_seconds": 37.8101475,
+        "mean_loss_forward_seconds": 1.2023971023736522,
+        "mean_seconds": 10.535430041491054,
+        "range_seconds": [
+          10.44982333300868,
+          10.621036749973428
+        ]
+      },
+      "cross_build_fields": [
+        "before_full_state_sha256",
+        "model_sha256",
+        "gradient_sha256",
+        "adam_sha256",
+        "generator_sha256",
+        "full_state_sha256",
+        "sampler_order",
+        "report",
+        "state_parts_sha256"
+      ],
+      "cross_build_learning_state_equal": true,
+      "speedup": 1.5714778013133621,
+      "time_reduction_percent": 36.36562990808713,
+      "timing_scope": "Both orders per build. Batch763 accepted baseline is from the earlier same-session bracket; batch846 has a fresh accepted bracket."
+    }
+  },
+  "preserved_contract": [
+    "original map and four-game on-policy batch",
+    "model architecture and parameter inventory",
+    "PPO settings and ordered updates",
+    "Nullkiller Easy opponent and BattleAI",
+    "terminal-only rewards +1/-1/0",
+    "visible-interaction-budget-v1",
+    "action support and player-visible information",
+    "model/Adam/all RNG/progress/sampler/pool serialization and consumed-seed accounting"
+  ],
+  "previous_acceptance": {
+    "report": "validation/native-mac-learner-initial-2026-10-29.json",
+    "sha256": "2a80ec6b1271080c757c26b43160cd9439b47fbaa2ed03688f2af514d822913e"
+  },
+  "previous_accepted_manifest_sha256": "5a575c084479ac163ad152890ef58ef9e4cb4f842eca23d9f330f8733ddc477a",
+  "raw_evidence_public": false,
+  "runtime_source_commit": "772755c3b3ed83e0c74f95055dfa919d86dbbb61",
+  "schema": "heroes-native-mac-utilization-validation-v1",
+  "status": "accepted_mac_fenced_main_check_pending",
+  "timestamp_utc": "2026-10-29T18:20:53.607731+00:00",
+  "validation": {
+    "canonical_engine": {
+      "engine_changed": false,
+      "log_sha256": "25afc49f682bbb978c9ca86bba6f0d93f2d5b8a58571ca45dd406a80dff6f1de",
+      "passed": true
+    },
+    "compiled_focused_attempt5": {
+      "log_sha256": "1909e3d5464918c76a0a389e585aae165d623cdc5d6b9c72f93be649aa968a57",
+      "passed": 59,
+      "seconds": 20.092,
+      "tests": 59
+    },
+    "fast_path_pins": {
+      "log_sha256": "f706bb782642fc8edb031165d50807a3b1fe02d5ecf9bb3b877388d9cf494299",
+      "passed": true
+    },
+    "full_offline": {
+      "cleanup_sha256": "5f6f1fe5fd411531eb848ba52e59aa5bbc1de3d73e3eb2ec3ea2c8ef6bfd4ad1",
+      "log_sha256": "4fd98baf141ed081e928ee65936b278f7ee251001fda7d35d349a5c61e562206",
+      "owned_cleanup_verified": true,
+      "passed": 1753,
+      "receipt_sha256": "3ecda4215b4433c89bc8f5ac5928097d6210849d72afcd26e03c24bacf5a00d2",
+      "runtime_unchanged": true,
+      "seconds": 242.853,
+      "skipped": 47,
+      "skips": "Platform and unavailable real-engine fixtures; native learner, tape and parallel-frame tests executed.",
+      "source_commit": "1ade01eeaa54dc576ccdfa3bedce3c90569b801d",
+      "source_unchanged": true,
+      "tests": 1800
+    },
+    "independent_review": "Two independent read-only reviews found no outstanding canonical defect; numerical and runtime acceptance remain bounded to the recorded evidence."
+  }
+}

@@ -188,7 +188,7 @@ exact existing Adam object, serialization and supervision; numerical hot loops
 and parallel text backward run in C++. Only the canonical CPU float32 model is
 accepted, without custom hooks, module changes or higher-order gradients.
 
-The [compact acceptance record](../../validation/native-mac-learner-2026-10-29.json)
+The [compact acceptance record](../../validation/native-mac-learner-initial-2026-10-29.json)
 binds the actual build and complete reviewed integration source. Raw captures,
 disposable checkpoint states, failed attempts, build logs and cleanup evidence
 remain private in the durable artifacts directory.
@@ -239,3 +239,5 @@ cd /Users/orsi/Projects/Heroes
 When the verified handoff and this check both pass, removing only `--check`
 requests the manual ten-hour continuation. This work did not run that command
 in start mode, restart training, alter cloud source or remove either fence.
+
+The subsequent [utilization repair](native-mac-utilization-2026-10-29.md) supersedes this initial backend acceptance. The initial measurements and failures above remain historical evidence.

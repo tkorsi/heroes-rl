@@ -324,16 +324,18 @@ manual continuation.
 
 ## Experiment agreement
 
-The [Mac native learner](docs/research/native-mac-training-2026-10-29.md) now has
-an accepted source/ABI/binary-bound C++ numerical backend, parallel text backward,
-bounded prefix workers and four independent replay processes. Counterbalanced
-recorded PPO updates were 1.70x and 1.81x faster than the optimized Python path,
-with exact model, gradient, Adam, RNG and complete continuation-state equality.
-The 16-core Mac reached 15 concurrent text replays; mean whole-update CPU use was
-about 4.3 cores. These are PPO measurements, not full-training throughput or a
-claim of constant core saturation. The four-game batch, policy support, model,
-terminal rewards and original experiment remain fixed. Python admission,
-serialization, Adam ownership and supervision remain authoritative.
+The [Mac native learner](docs/research/native-mac-utilization-2026-10-29.md) now
+uses private parallel frame graphs, exact retained text-backward schedules and
+ordered gradient reduction. On two archived PPO workloads, the final verified
+build reduces update time by **35–36%** versus the prior accepted native build;
+final model, gradients, Adam, all RNG and complete continuation state match exactly.
+The forward phase reached **16 concurrent workers**. Mean whole-update CPU use
+is about **3.3–3.6 cores**, below the prior build because synchronization overhead
+was removed; this is not continuous full-system saturation. The four-game batch,
+model, PPO settings, policy support, terminal rewards and opponent stay fixed.
+The full offline suite passed 1,753 tests with 47 documented skips. Measurements
+cover PPO, not complete campaign throughput or policy quality. Python admission,
+independent behavior checks, serialization, Adam and supervision remain authoritative.
 
 `continue-original-native.sh` is an opt-in manual launcher with exact build and
 source acceptance gates. **The Mac is still fenced for cloud ownership.** Its
@@ -346,8 +348,9 @@ validation limitations.
 For a short, isolated CPU and memory check, run `./test-native-load.sh`. It uses
 the accepted build and disposable copies of archived batch 846, compares native
 and Python PPO within a 120-second comparison deadline, and prints CPU capacity
-use, process lifetime peak RSS and exact-state checks. It starts no gameplay or
-official training and leaves the cloud ownership fence intact. It measures the
+use, peak parallel frame/replay workers, process lifetime peak RSS and exact-state
+checks. It starts no gameplay or official training and leaves the cloud ownership
+fence intact. It measures the
 PPO workload, not full-campaign or GPU utilization.
 
 - Use existing VCMI rules, never a substitute simulator. macOS and Linux host

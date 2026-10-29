@@ -803,3 +803,23 @@ order and measures neither GPU use nor full campaign utilization. It confirms
 parallel work, not continuous use of every core. All official pointer/lock
 snapshots stayed unchanged; the cloud fence remains. No official training,
 gameplay, seed reservation or official update occurred.
+
+## 29 October 2026: Mac utilization bottlenecks, exact numerical repair
+
+The [utilization investigation](research/native-mac-utilization-2026-10-29.md)
+profiles the actual 28.7% load result. Replay workers often waited for the producer;
+allocation/disposal and PyTorch callback-state scheduling added substantial overhead.
+An initial reducer-only candidate preserved state but did not establish a native
+speedup. Strict text-backward execution schedules and private parallel frame graphs
+then reduced two archived update workloads by 35–36% versus the accepted native build.
+Peak frame concurrency reached 16, while average whole-update CPU use remained
+3.3–3.6 cores; increased occupancy is not claimed as the result. All paired state,
+model, gradient, Adam, RNG and sampler checks were exact. Build/import failures and
+a corrected test-cardinality assertion remain disclosed in the report.
+
+The final runtime passed the 1,800-test offline suite (1,753 pass, 47 documented
+skips), reviewed source pins and canonical generated-engine agreement. Raw state
+and captures remain private. No new game seeds, official samples or updates were
+admitted; the Mac/cloud ownership fence and checkpoint pointers are preserved.
+The [compact evidence](../validation/native-mac-utilization-2026-10-29.json)
+distinguishes measured PPO speed from full-campaign speed and policy quality.
