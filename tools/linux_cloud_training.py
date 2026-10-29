@@ -218,7 +218,41 @@ def launch(args):
                       'receipt':str(root/'launch-request.json'),'live_training_not_yet_confirmed':True}))
 
 
+def arm_supervisor_deadline(wall, monotonic, evidence):
+    """Arm the existing independent guardian around this detached leader."""
+    from experiments.headless.process_deadline import _deadline, _remaining, _event, _guardian
+    wall = _deadline(wall, 'wall'); monotonic = _deadline(monotonic, 'monotonic')
+    require(os.getpid() == os.getpgrp() == os.getsid(0) and _remaining(monotonic, wall) > 0,
+            'Independent supervisor deadline needs a live private session')
+    evidence = Path(evidence)
+    fd = os.open(evidence, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600); os.close(fd)
+    _event(evidence, 'standalone_supervisor_requested', leader_pid=os.getpid(),
+           deadline_wall=wall, deadline_monotonic=monotonic)
+    owner_read, owner_write = os.pipe()
+    ready_read, ready_write = os.pipe()
+    leader = os.getpid()
+    child = os.fork()
+    if child == 0:
+        os.close(owner_write); os.close(ready_read)
+        try:
+            code = _guardian(leader, monotonic, wall, evidence, ready_write, owner_read)
+        except BaseException:
+            if os.getppid() == leader: os.killpg(leader, 9)
+            code = 125
+        os._exit(code)
+    os.close(owner_read); os.close(ready_write)
+    try:
+        require(os.read(ready_read, 1) == b'1', 'Supervisor guardian failed to arm')
+    finally:
+        os.close(ready_read)
+    # The leader owns this noninheritable descriptor until it exits. The child
+    # independently enforces both clocks even during blocking final publication.
+    return owner_write
+
+
 def supervisor(args):
+    guardian_owner = arm_supervisor_deadline(args.launched_wall+36000,
+        args.launched_mono+36000, args.config.parent/'official-cloud'/'supervisor-deadline.jsonl')
     config = check_config(args.config,args.sha256)
     from tools import run_local_training as controller
     from tools.linux_artifacts import Evidence, HANDOFF

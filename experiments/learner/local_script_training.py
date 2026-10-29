@@ -183,7 +183,7 @@ FAST_PATH_TREE = {
     'tools/linux_artifacts.py': ('',
         'aa779880a8be943bc319405af09e9483cfb986af99e3c80481b8e453006f8ffe'),
     'tools/linux_cloud_training.py': ('',
-        'b9e9dbd0c21fe5545891334d80af536f24a8b0d3d190280e0f1a8908b5c0e431'),
+        'a14aa51bf2b5553233aea2f99aa0a3010fdc37b50d17d6810f36d0003f48a413'),
     'tools/linux_publication.py': ('',
         '9a54293496be5921b59a43cc1200461b888b70fb963d2aaa5ad627e3f4bec1ea'),
     'tools/linux_runtime.py': ('',
@@ -203,7 +203,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '2902b9d24c954e53399686e277d5a7a47f8016a6393203cec1d6ac82bc305d35'
+LOCAL_ADAPTER_TRANSITION_AST = 'b6254b125e2497afce6e2bec66377964f440d0c39cbc4648b6b78ab92149366d'
 
 
 def write_new(path, value):
