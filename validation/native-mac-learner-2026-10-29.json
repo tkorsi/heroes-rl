@@ -1123,6 +1123,18 @@
     "No new official training or frozen-policy gameplay was launched for this numerical rewrite; actual archived native replays were separately checked."
   ],
   "mac_launch_ready": false,
+  "main_checkout_validation": {
+    "actual_loaded_contract": "heroes-native-learner-v1",
+    "evidence_sha256": "5c0ab34740605cf0c434c7692b470c45e9f4430622b482beab9f76884afe50aa",
+    "launch_ready": false,
+    "native_acceptance_passed": true,
+    "official_files_unchanged": true,
+    "real_manual_check_hours": 10,
+    "returncode": 2,
+    "runner_reached": false,
+    "source_commit": "e45f0cec6c112f86ebeec801d2fa35bae47e8a0b",
+    "training_started": false
+  },
   "manual_readiness": {
     "actual_ten_hour_check_returncode": 2,
     "evidence_sha256": "58a8a3e8d3f11e9c4791d5b6f2a70ab01e2056065aaecd3528f85db11bbb63d6",
