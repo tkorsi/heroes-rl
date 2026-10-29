@@ -1,0 +1,230 @@
+{
+  "actions": {
+    "engine_or_runtime_code_changed": false,
+    "gameplay_started": false,
+    "official_files_modified": false,
+    "ppo_updates": 0,
+    "recovery_gate_changed": false,
+    "signals_sent": 0
+  },
+  "admission_audit": {
+    "admitted_original_games": 2400,
+    "all_attempts_verified": true,
+    "all_four_file_preservation_copies_hash_exact": true,
+    "all_reports_completed": true,
+    "all_reserved_exactly_once": true,
+    "batch_count": 134,
+    "contiguous": true,
+    "next_sequence": 869,
+    "remaining_original_games": 2600,
+    "sequence_first": 735,
+    "sequence_last": 868,
+    "totals": {
+      "games": 536,
+      "optimizer_steps": 1104,
+      "outcome_loss": 536,
+      "samples": 30061,
+      "updates": 134
+    }
+  },
+  "authorizes_continuation": false,
+  "classification": "host_sleep_wall_deadline_interruption",
+  "current_process_audit": {
+    "deadline_evidence_files": 1401,
+    "deadline_evidence_inventory_sha256": "aefe20f1e7c45b0b06f0416487a872996a9588be11a035482492259612600b2f",
+    "interpretation": "This current snapshot found no matching recorded PIDs/process groups or native/learner executable names. It does not retroactively certify shutdown before the original deadline. Historical PIDs were used only for comparison, never as authority to signal.",
+    "no_matching_processes_observed": true,
+    "recorded_pid_count": 2803,
+    "recorded_pid_set_sha256": "1eb1900d59bfa763f89974d2f9ba662549a2fd9d361f4bcaf63e0068e85c6b4b",
+    "recorded_process_group_count": 1401,
+    "recorded_process_group_set_sha256": "f0d5bbca83159d00b3d492595a63931d4ab0ede7a3c0fb9cd8b5f99a7576564b",
+    "snapshot_finished_utc": "2026-10-29T00:31:04.156693+00:00",
+    "snapshot_started_utc": "2026-10-29T00:31:04.127533+00:00",
+    "system_processes_examined": 978
+  },
+  "deadline_evidence": {
+    "elapsed_monotonic_seconds_since_guardian_armed": 2948.8292222080054,
+    "elapsed_wall_seconds_since_guardian_armed": 3909.677896976471,
+    "guardian_monotonic_seconds_remaining_at_expiry": 646.1452891670051,
+    "guardian_wall_deadline_overrun_seconds": 314.7033860683441,
+    "session_hard_deadline_overrun_at_guardian_expiry_seconds": 309.7033860683441,
+    "wall_minus_monotonic_elapsed_seconds": 960.8486747684656
+  },
+  "evaluation": {
+    "accepted_games": 20,
+    "accepted_losses": 20,
+    "all_four_native_games_naturally_completed": true,
+    "choices": [
+      70,
+      68,
+      40,
+      47
+    ],
+    "final_evaluation_completed": false,
+    "interrupted_batch": "periodic-001229-seat1",
+    "interrupted_games": 4,
+    "last_game_status": "pending_verification",
+    "pending_cohort_admitted": false,
+    "pending_cohort_optimizer_updates": 0,
+    "pending_cohort_training_samples": 0,
+    "verified_games_in_pending_cohort": 3
+  },
+  "finding": "Mac clamshell sleep crossed the fixed wall deadline; guardians killed owned workers on wake. Historical shutdown remained unverified.",
+  "historical_shutdown": {
+    "full_final_restore": null,
+    "owned_cleanup_verified": false,
+    "rewritten": false,
+    "status": "stopped_failure",
+    "within_hard_deadline": false,
+    "worker_returncode": -9
+  },
+  "latest_checkpoint": {
+    "batch": "train-000868-seat0",
+    "canonical_and_backup_exact": true,
+    "components": {
+      "generator": "0ba1fd5627dba6081d9bf34485d1b7ebbfd4c74aa70342a375e36bf44f0e4b34",
+      "model": "117bf3cf2c612baa0fcafa996ca8862fdec0787fdf3c6c93b58344bda3f8ab85",
+      "optimizer": "9f48987d994623e99ff19429f6bd5fc3adb057ae5c2aa48555370814d70a36b2",
+      "pool": "bc71081af8e13679d27d32f5e0d3af9ed59de133fbe99dc6feca2419dc1cfa3c",
+      "progress": "7ae0b1b31a9ed92d43f2de95292f1a28f40cc6ef55c033e35edd10c369ade2b7",
+      "python_rng": "cf2fcb0ec1a2e6393f9e9ca1dcca7cda545b50a21fdb2d9895331786b36cf01f",
+      "sampler": "0ae146334de94138074335687c6958794db873049086e099a4f7c7f2dbca7e38",
+      "torch_rng": "bc98b05d04067037a2057a835fed34425084bf9b3ce6c932b19fd9abf72de655"
+    },
+    "files": {
+      "initial_checkpoint": {
+        "bytes": 638579,
+        "sha256": "332755808f129a7cf5d8374ef3493e6746f39f981b1382c152a5396882f1cb0c"
+      },
+      "plan": {
+        "bytes": 66271,
+        "sha256": "d3705e84f486934293b7d7c1c995e8ac43b88e41763ab3bccf814aa77ba13caf"
+      },
+      "policy": {
+        "bytes": 638579,
+        "sha256": "f0dd1765e9252cc5322418e600113f0afd4bf067135f2aa93e7aa6ae0e0a17e0"
+      },
+      "report": {
+        "bytes": 13692,
+        "sha256": "5b4d8f410e383b60a9263ffa52e9392bb6ee8ecd4251b6fecf9bfb3a1bff0e2a"
+      },
+      "resume": {
+        "bytes": 1266613,
+        "sha256": "5e40004780614d4640cee9943e3a0d16c278ab2852d7171b8b0d918c60de0667"
+      }
+    },
+    "full_state_sha256": "c5882092150d55b4c07df368534f63b0c742bdd74982f1228210007f67c5ad7e",
+    "initial_parent_unchanged": true,
+    "optimizer_steps": 21238,
+    "progress": {
+      "decisions": 627977,
+      "rollouts": 4916,
+      "updates": 1229
+    },
+    "weights_sha256": "f280b785a412d25784a71bef90e46d4523e4a629f94de303b265ba7d9df2cb25"
+  },
+  "limitations": [
+    "Original final restoration and deadline closure were not completed. Later read-only audits do not retroactively certify them.",
+    "No interrupted-session recovery path is implemented by this report.",
+    "Local checkpoint preservation and exact restore are verified; private remote publication was not checked.",
+    "No new native gameplay, PPO, regression or performance benchmark was run.",
+    "An initial check-output redirection failed before invoking the script because the private audit directory was not yet created; the actual command was then run and refused continuation as expected."
+  ],
+  "manual_check": {
+    "checked_source_commit": "f5a7f255a5ba52345c0034484549c67e6e70cf5d",
+    "checkout": "main",
+    "command": "./continue-original-4720.sh check --hours 1 --collection-workers 4",
+    "error": "Continuation requires verified closed processes and an exact final checkpoint",
+    "expected_refusal": true,
+    "returncode": 2,
+    "stderr": {
+      "bytes": 444,
+      "private_relative_path": "run-investigations/2026-10-29-1229-sleep/continuation-check.stderr",
+      "sha256": "d2af547a4229b6fecd15ac02d735893806dfa2a9ea8cab9f113f474f335c5467"
+    },
+    "stdout": {
+      "bytes": 0,
+      "private_relative_path": "run-investigations/2026-10-29-1229-sleep/continuation-check.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "offline_validation": {
+    "native_games_run": 0,
+    "official_file_hashes_unchanged": "passed",
+    "prepare_vcmi_check": "passed",
+    "private_receipt_hashes": "passed",
+    "report_json_and_index_parse": "passed",
+    "report_links": "passed"
+  },
+  "private_evidence": [
+    {
+      "bytes": 6816,
+      "private_relative_path": "run-investigations/2026-10-29-1229-sleep/state-audit.json",
+      "sha256": "66f3dcc810799383b4cf610b9fc8799ec9e52a48c8b6ac517f77da87dace4520"
+    },
+    {
+      "bytes": 54290,
+      "private_relative_path": "run-investigations/2026-10-29-1229-sleep/checkpoint1229-readonly-audit-20261029T003158Z-8d25189c.json",
+      "sha256": "a692d97d80bdf728f5dfe4657b68c8524a6d74b7c7c8a679a9202cc8e9017c6a"
+    },
+    {
+      "bytes": 13352,
+      "private_relative_path": "run-investigations/2026-10-29-1229-sleep/process-power-audit-20261029T003103Z.json",
+      "sha256": "0645605aa2606ce5ceaa520446ff367a0953afafe598948afd11e8af286b708d"
+    }
+  ],
+  "run_id": "run-20261028T192106Z-44be2ecc",
+  "schema": "heroes-local-sleep-investigation-v1",
+  "source_commit": "f5a7f255a5ba52345c0034484549c67e6e70cf5d",
+  "source_runtime": {
+    "acceptance": {
+      "bytes": 14134,
+      "sha256": "f1b730d6d2d05771b694db738e337e0e6abe0080da0534d62dd09a704c6c30c7"
+    },
+    "client": {
+      "bytes": 11582880,
+      "sha256": "91d7e3e41dc6044b18d6d17f4b44bc7181639eac5a4e555b9ed8fe4c68b44171"
+    },
+    "execution": {
+      "collection_workers": 4,
+      "experiments": [],
+      "implementation": "exact-fast-path-v1",
+      "overlapped_verification": false,
+      "prefix_helpers": 0,
+      "replay_threads": 2,
+      "text_leaf_replay": true
+    },
+    "frozen_controller_exact": true,
+    "frozen_source_exact": true,
+    "machine": {
+      "bytes": 199782,
+      "sha256": "51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c"
+    },
+    "map": {
+      "bytes": 2354,
+      "sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3"
+    },
+    "maps_exact": true,
+    "runtime_exact": true,
+    "runtime_release_id": "terminal-replay-parallel-v1",
+    "runtime_sha256": {
+      "AI/libBattleAI.dylib": "4694688e2a3eab17841364bbd49d75509c54924d48dc78ed7869cf34a9e7f361",
+      "AI/libEmptyAI.dylib": "c16ee678f23f8143094d9e74995e84595a7e24d71d6a670a06ec27ec82950aa3",
+      "AI/libExplorerRL.dylib": "c13ff7deac33474a8124651cb41f4b2b6b53dc3e95816f57ee6e313336c0f95b",
+      "AI/libNullkiller.dylib": "7ef791418188ccc4b0ac6809aaa9b3232d81a0f058f0a3e489f16f3107f959e6",
+      "AI/libStupidAI.dylib": "98f4253c369ad94ec9d9ed559aa6313d56612d277da5fde83e195a368e040b17",
+      "libvcmi.dylib": "63e83c633d6fa2d5030876c355029d2ceb7bfa52e63cf6898685724bcb3af0e8",
+      "vcmireplay": "b2091ba1f5f67f89986a400ae1cf545a97e26bfd7f618fe65b46531c55a9f599"
+    }
+  },
+  "timeline_utc": {
+    "clamshell_sleep": "2026-10-28T20:10:29+00:00",
+    "compute_deadline": "2026-10-28T20:16:06.151700+00:00",
+    "dark_wake": "2026-10-28T20:26:15+00:00",
+    "guardian_expiry": "2026-10-28T20:26:15.855086+00:00",
+    "hard_deadline": "2026-10-28T20:21:06.151700+00:00",
+    "latest_preserved": "2026-10-28T20:10:11.070063+00:00",
+    "started": "2026-10-28T19:21:06.151700+00:00"
+  },
+  "timestamp_utc": "2026-10-29T00:32:44.566911+00:00"
+}

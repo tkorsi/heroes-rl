@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**28 October 2026**. Earlier stages are preserved in
+**29 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -39,11 +39,24 @@ The manual continuation keeps the original map, architecture, PPO, opponent,
 terminal-only rewards and existing visible interaction budget. No official
 continuation was launched during repair.
 Subsequent user-launched one-hour sessions stopped normally at their compute
-reserve: **916 to 992**, then **992 to 1,095**. The latest completed session
+reserve: **916 to 992**, then **992 to 1,095**. The latter completed session
 admitted 412 games in 103 updates, all losses, with exact final restoration and
-owned cleanup. The original target now has **1,864 admitted games and 3,136
-remaining**; sequence **735** is next. These are observations from the closed
-session, not authorization to launch another. Improvement in winning on the original map has not been demonstrated.
+owned cleanup.
+
+The next user-launched one-hour session advanced **1,095 to 1,229** with four
+collectors: **536 admitted losses in 134 complete PPO updates**. It stopped
+uncleanly after Mac lid-close sleep crossed the fixed wall deadline; the guardian
+killed the worker on wake. This was a deadline interruption during periodic Blue
+evaluation, with no evidence of a new gameplay or adapter rejection. The
+[investigation](docs/research/local-sleep-interruption-2026-10-29.md) independently
+restored checkpoint **1,229** and its durable backup, including Adam, all RNG,
+progress, sampler and pool state, and found no remaining matching processes.
+The original target now has **2,400 admitted games and 2,600 remaining**;
+sequence **869** is next. The interrupted four-game evaluation cohort is excluded.
+The manual launcher currently refuses the unclean shutdown: the later audit
+does not retroactively certify the original deadline or authorize continuation.
+No training was restarted. Improvement in winning on the original map has not
+been demonstrated.
 
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate

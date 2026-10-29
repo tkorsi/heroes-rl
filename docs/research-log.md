@@ -668,3 +668,32 @@ Main checkout check mode also passed for one- and ten-hour continuations with
 four collectors: exact 1095 restore, 3,136 remaining games, next sequence 735. Main
 engine preparation matched the unchanged recipe. Historical machine bytes and
 official checkpoints remain preserved; no official training was launched.
+
+## 29 October 2026 — manual session interrupted by lid-close sleep
+
+The next user-launched one-hour session on frozen `f5a7f25` admitted 536 natural
+losses in 134 complete PPO updates, advancing 1,095 to 1,229. The Mac entered
+clamshell sleep at 20:10:29 UTC on 28 October and woke at 20:26:15 UTC, after the
+20:21:06 hard wall deadline. The guardian sent SIGKILL on wake; historical
+shutdown/deadline certification failed. This was a deadline interruption during
+periodic Blue evaluation, with no evidence of a new engine or adapter rejection.
+
+The [investigation](research/local-sleep-interruption-2026-10-29.md) corrects the
+stale outer report: all four evaluation games reached terminal states, three
+passed replay/reconstruction, and the fourth verification was interrupted.
+The entire pending cohort remains excluded and supplied no PPO data. The
+session's accepted evaluation total was 20 losses; final evaluation is absent.
+
+All 134 admitted batch reports and preservation copies passed audit. Checkpoint
+1,229 and its backup restored identical model, Adam, all RNG, progress, sampler
+and pool state; a later process audit found no survivors. The original target
+has 2,400 admitted games, 2,600 remaining, and unused sequence 869 next. These
+later observations do not rewrite historical cleanup failure. The real manual
+check correctly refuses continuation pending a separate recovery path.
+
+No engine/runtime code, experiment settings, official artifacts or seed ledger
+were changed. No gameplay or PPO was launched by the investigation. Private
+receipts retain sleep/process evidence and complete state hashes; remote
+publication of this latest run was not verified. An initial check-output
+redirection failed before script execution; the subsequent actual check returned
+the expected refusal. No new regression or speedup claim is made.
