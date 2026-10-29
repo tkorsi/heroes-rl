@@ -218,13 +218,13 @@ FAST_PATH_TREE = {
     'tools/linux_publication.py': ('',
         '824348baf281b3234569a86aade9b095242de7bdd5091af955babaf518d25536'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '66e350e3603b30d0e7c8040e4e2acb5af8e802d1f5e01f081a13a780664e8969'),
+        '2dbec9f0dc7589498e023b10344ad13234286dc3cc1997ad83b17593d7fdd8d0'),
     'tools/recover_interrupted_training.py': ('',
         'cc6695b19024c6e7f271f073e35fa1436e15417cf316f251e1e4d0a7fa10b576'),
     'tools/refresh_parallel_runtime_acceptance.py': ('',
         '83bd5397140f28240749e378c8e2e4ecf8048e9582b9f93b58f0fe762dadbf84'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        'b01a0de81724a32baec41f2f8139f7b1d14a8bf5ab71410f73f7fc51ae409a8e'),
+        '4afb07fb3e34117759a27a22b38f33b40bc6ab1b69619e3670cd020675500fe5'),
     'tools/train_1000_games.py': ('',
         '47558b66c76c9123f40c6b40d305bc90ba0503a9b61f54af37b1b318e58cf2c4'),
     'tools/validate_interaction_guard.py': ('',
@@ -240,7 +240,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '5ea34bbf47f462e6791b395e4fc06ef124dfce900bd292d310ea585dfec12673'
+LOCAL_ADAPTER_TRANSITION_AST = '673052d2a92d02ed5d84d3b37f9f41f81b53f706c025c1e64d1c4e24750d12c2'
 
 
 def write_new(path, value):

@@ -37,6 +37,10 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 # has been reviewed and its immutable hash is pinned here. A supplied pathname
 # or a newly built binary is never sufficient authorization to select a runtime.
 ACCEPTED_RUNTIME_RELEASES = {
+    "terminal-replay-cloud1335-v1": {
+        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair1/cloud1335-acceptance-v1.json",
+        "sha256": "fe195632dedb22392e60049c1c12e0a488001fe617c12c59b20509f84f9d85b0",
+    },
     "terminal-replay-parallel-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair1/parallel-collection-acceptance-v1.json",
         "sha256": "f1b730d6d2d05771b694db738e337e0e6abe0080da0534d62dd09a704c6c30c7",
