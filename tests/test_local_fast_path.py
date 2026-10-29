@@ -1,12 +1,14 @@
 """The opt-in exact fast path of the manual local runner: reviewed source transition, execution
 choices bound in the session and plans, the serial verification fallback, and the runner's
 default (the accepted implementation). No native game or PPO update is launched."""
+import ast
 import hashlib
 import importlib.util
 from contextlib import redirect_stderr
 import io
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -37,6 +39,41 @@ def accepted_parent(commit=ACCEPTED_629):
     names = [n for n in names if (n.endswith('.py') and n.count('/') == 2) or n == 'dependencies/learner.lock']
     digests = {n: hashlib.sha256(subprocess.check_output(['git', 'show', f'{commit}:{n}'], cwd=ROOT)).hexdigest() for n in names}
     return {'interface': local.INTERFACE, 'torch': str(torch.__version__), 'git_commit': commit, 'source_sha256': digests}
+
+
+class SourceASTPortabilityTests(unittest.TestCase):
+    def test_empty_fields_are_explicit_and_semantic_changes_change_identity(self):
+        tree = ast.parse('def f():\n    pass\n')
+        text = local._source_ast_dump(tree)
+        for field in ('posonlyargs=[]', 'kwonlyargs=[]', 'defaults=[]',
+                      'decorator_list=[]', 'type_ignores=[]'):
+            self.assertIn(field, text)
+        source = (ROOT/'experiments/learner/local_script_training.py').read_bytes()
+        changed = source.replace(b'max_total_choices\'] == 5120', b'max_total_choices\'] == 5121')
+        self.assertNotEqual(source, changed)
+        self.assertNotEqual(local._adapter_ast_digest(source), local._adapter_ast_digest(changed))
+
+    def test_python312_and_python313_produce_the_same_source_identity(self):
+        alternate = shutil.which('python3.13') or '/usr/bin/python3.13'
+        if not Path(alternate).is_file():
+            self.skipTest('Python 3.13 interpreter needed for cross-runtime AST check')
+        source = (ROOT/'experiments/learner/local_script_training.py').read_bytes()
+        # Execute only the actual production stdlib identity functions. The
+        # second interpreter does not need a separate Torch installation.
+        program = '''import ast, hashlib, sys
+source = sys.stdin.buffer.read()
+tree = ast.parse(source)
+functions = [n for n in tree.body if isinstance(n, ast.FunctionDef)
+             and n.name in ('_source_ast_dump', '_adapter_ast_digest')]
+exec(compile(ast.Module(body=functions, type_ignores=[]), '<production-source-identity>', 'exec'))
+print(_adapter_ast_digest(source))
+'''
+        for executable in (sys.executable, alternate):
+            with self.subTest(executable=executable):
+                actual = subprocess.check_output([executable, '-c', program], input=source,
+                                                 cwd=ROOT, timeout=15).decode().strip()
+                self.assertEqual(actual, local._adapter_ast_digest(source))
+                self.assertEqual(actual, local.LOCAL_ADAPTER_TRANSITION_AST)
 
 
 class ReviewedTransitionTests(unittest.TestCase):

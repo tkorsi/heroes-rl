@@ -193,7 +193,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '7c32ec69a54784e38c4dbf7c8f141b0b508072fdbfeef26a40b0c32a670eac1d'
+LOCAL_ADAPTER_TRANSITION_AST = 'fb72cc79decb72600df430e58b67672d1e588196cf9e991d59a55927da9b6cb3'
 
 
 def write_new(path, value):
@@ -239,6 +239,17 @@ def read_descriptor(descriptor):
     return plan, report
 
 
+def _source_ast_dump(tree):
+    """Keep every list field in source identity on Python 3.12 and 3.13.
+
+    Python 3.13 changed ast.dump's default to omit empty list fields. Source
+    identity uses the earlier explicit representation on both runtimes; it
+    never removes fields, rewrites source, or accepts an alternate digest.
+    """
+    options = {'show_empty': True} if sys.version_info >= (3, 13) else {}
+    return ast.dump(tree, include_attributes=False, **options)
+
+
 def _without_scope_routes(contents):
     """Permit only the small adapter dispatches, not changes to the collector."""
     tree = ast.parse(contents)
@@ -251,7 +262,7 @@ def _without_scope_routes(contents):
                         and isinstance(test.ops[0], ast.Eq) and len(test.comparators) == 1
                         and isinstance(test.comparators[0], ast.Constant)
                         and test.comparators[0].value in ROUTING_SCOPES
-                        and ast.dump(test.left) == ast.dump(ast.parse('plan.get("scope")', mode='eval').body)
+                        and _source_ast_dump(test.left) == _source_ast_dump(ast.parse('plan.get("scope")', mode='eval').body)
                         and not branch.orelse and len(branch.body) == 2
                         and isinstance(branch.body[0], ast.ImportFrom)
                         and isinstance(branch.body[1], ast.Return)):
@@ -265,7 +276,7 @@ def _without_scope_routes(contents):
                         and returned.args[0].id == 'plan' and not returned.keywords):
                     break
                 node.body.pop(0)
-    return ast.dump(tree, include_attributes=False)
+    return _source_ast_dump(tree)
 
 
 def _adapter_ast_digest(contents):
@@ -273,7 +284,7 @@ def _adapter_ast_digest(contents):
     tree.body = [node for node in tree.body if not (isinstance(node, ast.Assign)
         and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
         and node.targets[0].id == 'LOCAL_ADAPTER_TRANSITION_AST')]
-    return hashlib.sha256(ast.dump(tree, include_attributes=False).encode()).hexdigest()
+    return hashlib.sha256(_source_ast_dump(tree).encode()).hexdigest()
 
 
 def local_adapter_transition(commit, expected, historical, current):
