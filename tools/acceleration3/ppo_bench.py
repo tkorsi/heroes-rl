@@ -259,6 +259,7 @@ def run_once(args, items, profile=None):
     for name in ('progress', 'sampler', 'pool'):
         _exact(before[name], after[name])  # this diagnostic advances no official bookkeeping
     return dict(seconds=seconds, cpu_seconds=cpu_seconds, average_cpu_cores=cpu_seconds / seconds,
+                process_lifetime_peak_rss_bytes=int(cpu_finished.ru_maxrss * (1 if sys.platform == 'darwin' else 1024)),
                 report={k: v for k, v in vars(report).items() if k != 'timings_seconds'},
                 timings=report.timings_seconds, sampler_order=order,
                 model_sha256=tensor_digest(dict(model.state_dict())), weights_sha256=cp.model_weight_digest(model),

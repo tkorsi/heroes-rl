@@ -343,6 +343,13 @@ does not restart training, replace the latest cloud checkpoint with local 1229,
 or modify the cloud's frozen source. See the report for the precise command and
 validation limitations.
 
+For a short, isolated CPU and memory check, run `./test-native-load.sh`. It uses
+the accepted build and disposable copies of archived batch 846, compares native
+and Python PPO within a 120-second comparison deadline, and prints CPU capacity
+use, process lifetime peak RSS and exact-state checks. It starts no gameplay or
+official training and leaves the cloud ownership fence intact. It measures the
+PPO workload, not full-campaign or GPU utilization.
+
 - Use existing VCMI rules, never a substitute simulator. macOS and Linux host
   the same rules; paths, transports and process supervision belong outside the
   policy/game-rule contract.

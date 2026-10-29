@@ -195,6 +195,24 @@ remain private in the durable artifacts directory.
 
 ## Manual continuation and cloud ownership
 
+To repeat a short load check without starting an official campaign:
+
+```sh
+cd /Users/orsi/Projects/Heroes
+./test-native-load.sh
+```
+
+This uses the accepted build and the preserved batch-846 fixture, native first
+then optimized Python, within one 120-second comparison deadline. Both operate
+on disposable complete-state copies. The printed mean CPU capacity percentage
+uses the host's available CPU count, even if `--cpu-cap 8` reduces the worker
+budget. Peak RSS is the native process high-water mark through PPO, including
+imports, restoration and audit work; it is not free RAM or whole-machine memory
+use. `--order PN` reverses the comparison. Each invocation keeps fresh private
+evidence under `Heroes-artifacts/native-load-tests/` and never selects a current
+campaign or reserves a game seed. The test reports actual PPO use rather than
+adding unrelated work merely to saturate processors.
+
 The new `continue-original-native.sh` is an opt-in launcher. It defaults to one
 hour and all available CPU cores, accepts a smaller `--cpu-cap`, and requires the
 exact accepted manifest and SHA256. It uses the existing verified original-map
