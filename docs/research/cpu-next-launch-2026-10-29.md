@@ -180,6 +180,31 @@ choices, all natural losses; none entered PPO.
 
 ### Next manual launch
 
+Final independent review found that changing the generic shell launcher's default
+interpreter broke its historical easier8x8 machine identity. Interpreter selection
+now follows the explicit map profile: original-map launches use the prepared
+environment, while the legacy default keeps its original interpreter. Explicit
+`HEROES_PYTHON` overrides and argument forwarding remain supported; no historical
+machine descriptor is rewritten. Ten isolated wrapper regressions verify both
+paths, argument forwarding, overrides and child exit status. Their first fixture
+run compared macOS `/var` and `/private/var` spellings of the same temporary cwd;
+normalizing the expected cwd corrected that test-only failure.
+
+Final combined selection after the wrapper correction passed 223 of 227 tests
+with four documented skips in 51.686 seconds. These overlap the preceding suites.
+The actual main-checkout `./continue-772.sh --check --hours 10` at `7cd022f`
+passed machine/environment/native acceptance and then correctly refused the
+existing official owner lock (exit 2, 7.79 seconds, no NumPy warning). It started
+no gameplay. A full official continuation check cannot pass while that owner is
+active; repeat it after the current run ends. No lock was replaced or released.
+
+The final read-only audit at 22:06 UTC restored checkpoint 1,468 exactly, with
+468 games remaining in the continuation goal and 1,644 in the original target.
+The active supervisor and worker still used frozen `10d3d4f` and the old Python
+environment. Protected immutable session, machine and native build identities
+remained unchanged. No owned diagnostic process remained in the final process
+sweep. These are time-bounded snapshots of a run that continues to advance.
+
 Final runtime selection and main-checkout preflight results are recorded in
 `validation/cpu-next-launch-2026-10-29.json`. The future machine descriptor is
 `machine-original-native-v4.json`; old descriptors, runtime and virtual environment

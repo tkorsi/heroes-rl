@@ -970,3 +970,63 @@ reservations remain unchanged. The new launcher recalculates the same 772-game
 goal across manual windows, never resets the latest
 checkpoint, and prints total running time. This repair launched no official
 training or restart.
+
+## 2026-10-29 — CPU pipeline and isolated NumPy environment for the next manual launch
+
+The user requested preparation without interrupting the active continuation.
+That run stayed on frozen `10d3d4f`, its original environment and accepted native
+binary. A read-only audit at 22:00 UTC restored checkpoint 1,459 exactly, with
+504 games then remaining in the 772-game goal. Moving official state continued
+advancing independently; no diagnostic modified its seed ledger, admitted
+experience, checkpoint or ownership locks.
+
+The prepared environment adds NumPy 2.3.5 while preserving all ten existing
+package versions, Python/Torch ABI and native library hashes. Tensor/NumPy bridge
+and numerical smoke checks emitted no warnings. A copied complete batch-1033
+update reproduced model, Adam, RNG, pool and numerical PPO results exactly.
+Diagnostic progress and sampler bookkeeping intentionally stayed at the parent;
+the original admitted counters were independently audited, not admitted again.
+
+Replay verification can overlap remaining collection only after a completed
+collector exits, its capture is sealed and cleanup verifies. Resource plan v2
+budgets four collectors, four verifiers and a coordinator at nine or more CPUs;
+smaller budgets retain sequential phases. All four games still must pass before
+PPO, results retain schedule order, and failure revokes earlier receipts.
+
+Two successful fresh cohorts passed 32 games and 7,674 reconstructed choices,
+all natural losses, with full parent state unchanged and all receipts revoked.
+The first matched eight pairs and took 33.613 versus 31.834 seconds. The second
+matched seven pairs and took 33.103 versus 34.765 seconds; one pair differed in
+native opponent observations despite identical learner actions. That second
+comparison has no identical-workload speedup estimate. Both were baseline-first
+under live-run contention. Reliable net throughput gain and full CPU saturation
+are not established.
+
+The additional C++ graph-compaction candidate remained bitwise exact but was
+11.27% slower and used 5.40% more CPU time at the production 16-thread budget
+across both execution orders. It was rejected and the accepted C++/PPO bytes
+restored. Hook-contract gaps, missing-type fallback, the redundant-niceness
+launch failure, cancelled unrun comparisons and the reporting-only error remain
+in private evidence. The fresh-pipeline setup refusal consumed its private seed
+reservation and was not relabeled as a successful run.
+
+The unchanged runtime passed 16 garrison and 28 legacy native controls. The full
+suite ran 1,990 tests (1,932 passed, 58 skips); final combined selection ran 217
+(213 passed, four skips), with bounded cleanup. Subsequent source-closure tests
+reject mutation of every newly inventoried acceptance helper. A generic-launcher
+interpreter compatibility issue found in final review was corrected without
+rewriting old machine descriptors. The compact [validation result](../validation/cpu-next-launch-2026-10-29.json)
+and [full report](research/cpu-next-launch-2026-10-29.md) record the final main check,
+source bindings, additional wrapper tests and retained limitations. Native source
+preparation checks pass. Raw captures, copied tensors and build evidence stay
+private. No official training or automatic restart was launched by this preparation.
+
+The final wrapper-corrected selection passed 223/227 tests with four skips.
+The real main-checkout continuation check at `7cd022f` passed the environment,
+machine and native gates, then refused the active official owner lock in 7.79
+seconds with exit 2 and no NumPy warning. This is the required duplicate-worker
+refusal, not a completed continuation preflight; the user repeats it after the
+current run ends. The final 22:06 UTC audit restored checkpoint 1,468 exactly
+(468 goal games and 1,644 original-target games remaining then), confirmed the
+active frozen source and unchanged protected inputs, and found no owned
+diagnostic processes. No official process was signalled.

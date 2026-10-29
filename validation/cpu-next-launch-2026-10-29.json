@@ -28,6 +28,30 @@
   },
   "active_source_commit": "10d3d4f5038025a276b33a0a3d81096e5778130b",
   "current_environment_unchanged": true,
+  "final_active_run_snapshot": {
+    "checkpoint": {
+      "decisions": 816339,
+      "rollouts": 5872,
+      "updates": 1468
+    },
+    "evidence": {
+      "bytes": 5000,
+      "sha256": "2690536caaa167b28279ba317f7162f1425ee81d99dd9ea10626a77d4d940952"
+    },
+    "exact_full_restore": true,
+    "moving_state_can_advance": true,
+    "protected_immutable_inputs_unchanged": true,
+    "remaining_goal_games": 468,
+    "remaining_original_games": 1644,
+    "source_still_frozen_active_release": true,
+    "timestamp_utc": "2026-10-29T22:06:10.031990+00:00"
+  },
+  "final_implementation_commit": "7cd022f546bf676f4f3b7ba96bac7eae9bb842cd",
+  "final_independent_review": {
+    "cpu_lineage_and_order": "passed after generic launcher interpreter correction",
+    "legacy_machine_unchanged": true,
+    "numpy_and_machine_transition": "passed; only interpreter and acceptance metadata changed"
+  },
   "future_machine": {
     "binding": {
       "bytes": 205039,
@@ -45,8 +69,21 @@
   ],
   "mac_launch_ready": false,
   "main_check": {
-    "expected_if_owner_still_active": "refuse duplicate owner",
-    "status": "pending"
+    "command": "./continue-772.sh --check --hours 10",
+    "config_and_native_acceptance_passed_before_lock": true,
+    "error": "A campaign currently holds the official owner.lock",
+    "full_official_continuation_check_passed": false,
+    "log": {
+      "bytes": 329,
+      "sha256": "824f17ccfa47bb59a43c899205d1b90bc1e908708786601265ac95746ccf6447"
+    },
+    "repeat_after_current_run_ends": true,
+    "returncode": 2,
+    "seconds": 7.791687417018693,
+    "source_commit": "7cd022f546bf676f4f3b7ba96bac7eae9bb842cd",
+    "status": "expected_active_owner_refusal",
+    "training_launched": false,
+    "warning_present": false
   },
   "manual_commands": [
     "./continue-772.sh --check --hours 10",
@@ -151,20 +188,29 @@
   "runtime_release": "cpu-next-launch-v1",
   "schema": "heroes-cpu-next-launch-validation-v1",
   "settings_changed": false,
-  "status": "validated_prepared_main_check_pending",
-  "timestamp_utc": "2026-10-29T22:00:51.466598+00:00",
+  "status": "validated_prepared_main_check_refused_active_owner",
+  "timestamp_utc": "2026-10-29T22:06:45.790254+00:00",
   "validation": {
     "closure_regressions_passed": 10,
     "counts_overlap": true,
-    "final_focused": {
-      "log": {
-        "bytes": 39671,
-        "sha256": "e16908070388bac79ceccbb17cc64bcc8a1940ff21d81dfc0b965a77bad0cb74"
+    "diagnostic_process_sweep": {
+      "binding": {
+        "bytes": 143,
+        "sha256": "8b0e198ebb4a9f7b6b6238c17bbb4210ec93dc7a2557a14c68860bf70893bfd0"
       },
-      "passed": 213,
-      "seconds": 43.044,
+      "matching_owned_processes": 0,
+      "signals_sent": false
+    },
+    "final_focused": {
+      "cleanup_verified": true,
+      "log": {
+        "bytes": 41277,
+        "sha256": "292159b9971465a4813e770eda65a0d09f786bac41cd65d9f41df592d08bf76e"
+      },
+      "passed": 223,
+      "seconds": 51.686,
       "skipped": 4,
-      "tests": 217
+      "tests": 227
     },
     "fresh_native_controls": {
       "all_passed": true,
@@ -182,7 +228,19 @@
       "skipped": 58,
       "tests": 1990
     },
-    "prepare_vcmi_check": "passed"
+    "generic_launcher_regression_tests": 10,
+    "prepare_vcmi_check": "passed",
+    "prepare_vcmi_main_check": "passed",
+    "previous_focused": {
+      "log": {
+        "bytes": 39671,
+        "sha256": "e16908070388bac79ceccbb17cc64bcc8a1940ff21d81dfc0b965a77bad0cb74"
+      },
+      "passed": 213,
+      "seconds": 43.044,
+      "skipped": 4,
+      "tests": 217
+    }
   },
   "validation_source_commit": "34e9dd7dff2cad4b7ec92c8aa328cdf491d08476"
 }
