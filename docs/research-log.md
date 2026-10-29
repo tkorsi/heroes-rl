@@ -771,3 +771,33 @@ supervisor, ten-hour window, official reservation or optimizer update started.
 The [development handoff](../validation/cloud-development-handoff-2026-10-29.json)
 records the pending training gates; the existing launch authorization is not
 consumed by these checks.
+
+## 29 October 2026 — Linux checkpoint 1229 continuation launched
+
+The complete immutable private lineage was independently restored and audited;
+checkpoint 1229 matches the recorded full-state fingerprint and 21,238 Adam
+steps. The original campaign has 2,400 admitted games, 2,600 remaining and next
+unused sequence 869. The Python 3.12/3.13 AST serialization defect is fixed with
+one canonical representation; source checks remain strict. The clean Linux
+runtime passed 44 native controls and eight fresh-seed frozen-policy games with
+zero optimizer updates and unchanged complete state. The 1,718-test offline run
+passed with one optional capture skip; 74 targeted tests passed on the final
+launcher revision, including independent deadline termination.
+
+A four-minute detached probe completed on time with no observed gaps, including
+221 seconds after the prior agent turn completed. This is finite execution
+evidence, not a ten-hour service guarantee. The verified Mac read-only ownership
+fence remains in force. One atomic private Git claim excludes another cloud
+supervisor; the final immutable training source is
+`c6ebc8327e8dfe65dfa384a3fe77da709343a4dd`.
+
+The authorized supervisor started at 11:59:02 UTC (13:59:02 Europe/Kiev), with
+PID/process-group/session ID 95785. Its fixed hard deadline is 21:59:02 UTC
+(23:59:02 Europe/Kiev), with five minutes reserved for finalization. Startup
+receipts passed independent private Git readback and the owned worker began
+the initial evaluation cohort. Every complete PPO checkpoint must pass private
+publication and readback before official admission; failed or partial experience
+remains excluded. The supervisor calls no LLM/model API and never restarts or
+extends its deadline. The Mac remains fenced until cloud closure and full state
+and seed-ledger import. No new admission or improvement is claimed by this
+[start confirmation](../validation/linux1229-launch-2026-10-29.json).

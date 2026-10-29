@@ -67,16 +67,19 @@ setup gate before downloads or training; see the
 No training was restarted. Improvement in winning on the original map has not
 been demonstrated.
 
-The current Debian 13 CPU cloud environment is prepared for **development only**.
-The native build and eight asset-free runtime checks pass. Its Python 3.12 full
-suite has a diagnosed Python 3.12/3.13 AST-hash portability defect; no integrity
-guard was relaxed. A private offline check restored checkpoint 1,229 to the
-recorded complete-state fingerprint, and 14 asset-backed native tests passed.
-The supplied handoff still lacks 133 of the last session's 134 admitted batch
-plan/report pairs. Linux continuation acceptance, enforceable cross-host
-ownership and persistent job execution remain outstanding. Private downloads
-were removed before the development snapshot; no training, PPO update or seed
-reservation occurred. See the [development handoff](validation/cloud-development-handoff-2026-10-29.json).
+The initial Debian 13 CPU cloud snapshot was published for development with
+known failures; see the historical [development handoff](validation/cloud-development-handoff-2026-10-29.json).
+Subsequent training preparation fixed the Python 3.12/3.13 AST serialization
+defect while retaining strict integrity checks, verified the complete private
+lineage and restored checkpoint 1,229 exactly. All 44 Linux native controls,
+eight isolated frozen-policy games and the required offline checks passed.
+One authorized cloud continuation started at **11:59:02 UTC on 29 October**,
+with a hard deadline of **21:59:02 UTC** and no automatic restart. The supervisor
+owns an independent deadline guardian, a private atomic handoff claim and
+checkpoint publication. A short continuous post-turn probe passed; it provides
+no ten-hour availability guarantee. See the compact
+[launch confirmation](validation/linux1229-launch-2026-10-29.json).
+This start receipt makes no claim about subsequent training admissions or improvement.
 
 The reviewed environment, learner, replay, cloud tooling and performance work
 are consolidated on **`main`**. Start new work from `main`; intermediate

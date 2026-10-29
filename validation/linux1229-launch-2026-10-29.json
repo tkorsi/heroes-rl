@@ -1,0 +1,46 @@
+{
+  "schema": "heroes-linux1229-launch-confirmation-v1",
+  "status": "launched",
+  "source_commit": "c6ebc8327e8dfe65dfa384a3fe77da709343a4dd",
+  "runtime_freeze_sha256": "a4686bd5c866eda34c58bc294a7602f8a7043678efed8b5ef4e2cc1b44b8c39c",
+  "runtime": {
+    "AI/libBattleAI.so": "9bd248a5c95fd8194203493114cef9b3979a35c34ef3f632d7efc6f10baaf219",
+    "AI/libEmptyAI.so": "d07183cf13f4a71c3cc7d76a063c3426f81e5edd0c1dc02ca3a711778eddbc77",
+    "AI/libExplorerRL.so": "a4c47c2cf833563fb4a5f9f84862ccab16983e1df76804050f66a1475a0173ae",
+    "AI/libNullkiller.so": "4b2eac86cf8bf16b24d8cf7084c6851ea028ae5dd6e24cc55be89f61a74a52fc",
+    "AI/libStupidAI.so": "45f8f3c48733538b24b9d013f8ef52050411663d4ebd7ce6c1a8a9dcbd5c3c05",
+    "libvcmi.so": "6d7326bec3a06a14101979e3d1efe7b0329aeab5cca709e5278d6d80bf57c13b",
+    "vcmireplay": "a519d70f75a280d5ced13ec83e04c0be44f30bc710be0079b2c7bb9165543299"
+  },
+  "pid": 95785,
+  "process_group": 95785,
+  "session_id": 95785,
+  "starting_checkpoint": 1229,
+  "full_state_sha256": "c5882092150d55b4c07df368534f63b0c742bdd74982f1228210007f67c5ad7e",
+  "next_sequence": 869,
+  "remaining_games": 2600,
+  "finalization_reserve_seconds": 300,
+  "maximum_wall_seconds": 36000,
+  "automatic_restart": false,
+  "llm_or_model_api_calls": false,
+  "private_start_readback_verified": true,
+  "validation": {
+    "full_suite_tests": 1718,
+    "full_suite_skips": 1,
+    "final_targeted_tests": 74,
+    "native_controls": 44,
+    "frozen_policy_games": 8,
+    "frozen_policy_training_samples": 0,
+    "frozen_policy_optimizer_updates": 0
+  },
+  "lifetime_observation": {
+    "post_turn_seconds": 221.9128818511963,
+    "gaps": 0,
+    "ten_hour_service_guarantee": false
+  },
+  "observed_stage": "Initial frozen evaluation cohort; no new training admission claimed",
+  "start_utc": "2026-10-29T11:59:02.168459+00:00",
+  "start_Europe_Kiev": "2026-10-29T13:59:02.168459+02:00",
+  "hard_deadline_utc": "2026-10-29T21:59:02.168459+00:00",
+  "hard_deadline_Europe_Kiev": "2026-10-29T23:59:02.168459+02:00"
+}
