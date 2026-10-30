@@ -11,11 +11,30 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import textwrap
 import time
 
 
 SCHEMA = "heroes-game-progress-v1"
 PHASES = {"starting", "collecting", "finalizing", "storing", "awaiting verification", "verifying", "verified", "failed"}
+PHASE_LABELS = {
+    "starting": "Starting", "collecting": "Playing", "finalizing": "Finishing game",
+    "storing": "Saving game", "awaiting verification": "Waiting for replay checks",
+    "verifying": "Verifying game", "verified": "Verified", "failed": "Failed",
+}
+
+
+def terminal_color_enabled(stream):
+    """Use color only for a capable terminal, including explicit opt-out support."""
+    try:
+        return ("NO_COLOR" not in os.environ and os.environ.get("TERM", "").lower() != "dumb"
+                and bool(getattr(stream, "isatty", lambda: False)()))
+    except (OSError, ValueError):
+        return False
+
+
+def color_text(text, code, enabled):
+    return f"\x1b[{code}m{text}\x1b[0m" if enabled else text
 
 
 def progress_path(output, episode):
@@ -157,9 +176,37 @@ def format_progress(value):
     return f"Game slot {value['episode']} | Day {day} | " + " | ".join(parts) + f" | {value['phase']}"
 
 
-def terminal_lines(value):
-    text = format_progress(value).split(" | ")
-    return [text[0] + " | " + text[1] + " | " + text[-1], "  " + text[2], "  " + text[3]]
+def terminal_lines(value, *, width=80, color=False):
+    """Render a readable terminal card; colors never carry the only meaning."""
+    width = max(1, width)
+    observed = [day for day in value.get("days", ()) if day is not None]
+    day = str(max(observed)) if observed else "?"
+    if value.get("max_days") is not None:
+        day += f"/{value['max_days']}"
+    phase = PHASE_LABELS[value["phase"]]
+    phase_code = ("1;32" if value["phase"] == "verified" else "1;31" if value["phase"] == "failed"
+                  else "1;36" if value["phase"] in ("starting", "collecting") else "1;33")
+    rows = [(f"Game {value['episode']}   Day {day}   |   {phase}", phase_code)]
+    ordinary = value["ordinary"]
+    digits = len(f"{ordinary:,}")
+    bar_width = min(24, max(8, width - 32 - 2 * digits))
+    for name, count, code in zip(("Red", "Blue"), value["choices"], ("1;91", "1;94")):
+        used, reserve = min(count, ordinary), max(0, count - ordinary)
+        filled = bar_width * used // ordinary
+        bar = "#" * filled + "-" * (bar_width - filled)
+        counts = f"{used:>{digits},} / {ordinary:,}"
+        if width < 38:
+            rows.extend(((f"  {name:<5} [{bar}]", code), (f"  {counts} choices", code)))
+        else:
+            suffix = " choices" if width >= 55 else ""
+            rows.append((f"  {name:<5} [{bar}]  {counts}{suffix}", code))
+        indent = "        " if width >= 55 else "  "
+        rows.append((f"{indent}Dialog reserve: {reserve:,} / {value['reserved']:,}", "33" if reserve else "2"))
+    # Wrap before applying ANSI so terminal cell widths never include escapes.
+    # Leave the last terminal column unused to avoid implicit line wrapping.
+    return [color_text(line, code, color) for text, code in rows
+            for line in textwrap.wrap(text, width=width, replace_whitespace=False,
+                                      drop_whitespace=True, break_on_hyphens=False) or [""]]
 
 
 class ProgressDisplay:
@@ -172,10 +219,12 @@ class ProgressDisplay:
         self.previous, self.lines = {}, 0
         self.disabled = False
         try:
-            self.tty = (bool(getattr(self.stream, "isatty", lambda: False)())
-                        and shutil.get_terminal_size(fallback=(80, 24)).columns >= 80)
+            self.terminal = bool(getattr(self.stream, "isatty", lambda: False)())
+            self.columns = max(1, shutil.get_terminal_size(fallback=(80, 24)).columns)
+            self.tty = self.terminal and self.columns >= 80 and os.environ.get("TERM", "").lower() != "dumb"
+            self.color = self.tty and terminal_color_enabled(self.stream)
         except (OSError, ValueError):
-            self.tty, self.disabled = False, True
+            self.terminal, self.tty, self.color, self.columns, self.disabled = False, False, False, 80, True
 
     def poll(self, *, final=False):
         if self.disabled:
@@ -202,15 +251,20 @@ class ProgressDisplay:
                 if self.lines:
                     self.stream.write(f"\x1b[{self.lines}F\x1b[J")
                 else:
-                    self.stream.write("Choice budget used (not completion time); slots restart each batch.\n"
-                                      "Replay verification follows gameplay.\n")
-                lines = [line for value in shown for line in terminal_lines(value)]
+                    self.stream.write(color_text("ACTION BUDGET", "1", self.color) + "\n"
+                                      "Bars show choices used, not time remaining.\n"
+                                      "Game results follow replay checks.\n\n")
+                lines = [line for value in shown for line in terminal_lines(
+                    value, width=self.columns - 1, color=self.color)]
                 for line in lines:
                     self.stream.write(line + "\n")
                 self.lines = len(lines)
             else:
                 for value in changed.values():
-                    self.stream.write(format_progress(value) + "\n")
+                    if self.terminal:
+                        self.stream.write("\n".join(terminal_lines(value, width=max(1, self.columns - 1))) + "\n")
+                    else:
+                        self.stream.write(format_progress(value) + "\n")
             self.stream.flush()
             self.previous, self.last_output = values, now
         except (OSError, ValueError):
@@ -221,7 +275,8 @@ class ProgressDisplay:
         self.poll(final=True)
         if (failed or unfinished) and not self.disabled:
             try:
-                self.stream.write("Run failed or interrupted; see shutdown.json for cleanup status.\n")
+                self.stream.write(color_text("Run failed or interrupted; see shutdown.json for cleanup status.",
+                                             "1;31", self.color) + "\n")
                 self.stream.flush()
             except (OSError, ValueError):
                 self.disabled = True

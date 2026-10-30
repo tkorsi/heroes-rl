@@ -1368,3 +1368,28 @@ stderr. The new launcher selects the large 1753 model, unchanged weights, retain
 recruit-only/passive-army contract and unused engine seed 1,960,000,001. All 136
 protected files are unchanged; exact full-state restoration passed. No seed or
 game was started. See [compact readiness](../validation/large-one-game-day-progress-2026-10-30.json).
+
+## 2026-10-30: readable colored terminal settings and progress
+
+The user requested better readability and colors for the selected rules/options.
+Terminal output now groups Setup, Game rules and Limits; allowed actions,
+temporary restrictions, learning-off status and Red/Blue progress have distinct
+colors plus explicit text labels. Current day, choices and dialog reserves remain
+visible. Saving, verification, a natural outcome and an unscored cutoff are shown
+separately. Non-terminal output remains compatible; explicit `--json` emits clean
+JSON stdout with timing on stderr. `NO_COLOR`, `TERM=dumb` and narrow terminals
+have plain readable fallbacks. No dependency or profiling subsystem was added.
+
+An active user game was discovered before editing. Implementation and validation
+used an isolated sibling checkout while main stayed clean at its original commit.
+The focused suite ran 132 tests (131 passed, one skipped), followed by 13 successful
+launcher checks after final spacing and movement-label edits. Visual review used
+a synthetic preview of the actual ANSI renderers, not a game. Independent review
+found no blocker. Collection logic, progress schema/throttle, policy inputs,
+learning settings, models, seed handling and verification gates remain unchanged.
+Source pins account only for the reviewed display change and matching pin metadata.
+
+Main synchronization must wait for the active run's verified shutdown and hold
+the existing campaign lease. No game, training, replay, automatic retry or seed
+reservation is launched by this task. See the
+[UI report](research/terminal-ux-2026-10-30.md) for scope and validation boundaries.

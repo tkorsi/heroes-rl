@@ -22,7 +22,11 @@ the selected next experiment. Use the trained **checkpoint 1,753** model
 `./play-one-selfplay.sh --check`, then explicit `./play-one-selfplay.sh --run`.
 This retains the temporary troop-slot restriction and passive own-army information,
 with one frozen self-play game and zero PPO updates. Progress includes the observed
-in-game day beside both action counters. See the
+in-game day beside both action counters. The terminal groups model/settings,
+allowed actions and temporary restrictions, with Red/Blue progress colors and
+separate saving/verification states. Colors respect `NO_COLOR` and `TERM=dumb`;
+redirected output remains plain. Use `./play-one-selfplay.sh --check --json` for
+machine-readable checks. See the
 [manual preparation report](docs/research/large-one-game-day-progress-2026-10-30.md).
 
 The retained user-requested temporary restriction is:

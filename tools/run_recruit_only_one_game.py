@@ -14,7 +14,9 @@ import math
 import os
 from pathlib import Path
 import secrets
+import shutil
 import sys
+import textwrap
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +25,7 @@ if str(ROOT) not in sys.path:
 
 from experiments.learner.contextual import OWN_ARMY_INFORMATION
 from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSION
+from experiments.learner.game_progress import color_text, terminal_color_enabled
 from tools import run_selfplay_one_game as evaluation
 from tools import run_selfplay_training as campaign
 from tools import run_tiny_selfplay_one_game as runtime_validation
@@ -34,6 +37,118 @@ PARAMETERS = 74344
 MODEL_CONFIG = dict(schema='heroes-context-model-v6', hidden_size=64, feature_size=32, max_map_side=256)
 BUDGET = evaluation.BUDGET
 GUARD = RECRUIT_ONLY_VERSION
+
+
+def _human_terminal(stream):
+    try:
+        return bool(stream.isatty())
+    except (AttributeError, OSError, ValueError):
+        return False
+
+
+def _duration(seconds):
+    minutes, seconds = divmod(round(max(0, seconds), 1), 60)
+    hours, minutes = divmod(int(minutes), 60)
+    parts = ([f'{hours}h'] if hours else []) + ([f'{minutes}m'] if minutes else [])
+    return ' '.join(parts if parts and seconds == 0 else [*parts, f'{seconds:.1f}s'])
+
+
+def _panel(title, status, sections, *, color=False, columns=80, status_color='1;36'):
+    """Render presentation only; plain and colored layouts have identical text."""
+    width = max(20, min(columns, 88))
+    lines = ['']
+    lines.extend(color_text(line, '1;36', color) for line in textwrap.wrap(title, width=width))
+    lines.append(color_text('-' * min(width, 60), '2', color))
+    lines.extend(color_text(line, status_color, color) for line in textwrap.wrap(status, width=width))
+    for heading, rows in sections:
+        lines.extend(('', color_text(heading, '1', color)))
+        for label, value, code in rows:
+            if not label:
+                lines.extend(color_text(line, code, color) for line in textwrap.wrap(str(value), width=width,
+                    initial_indent='  ', subsequent_indent='  '))
+            elif width < 50:
+                lines.append('  ' + color_text(label, code, color))
+                lines.extend(textwrap.wrap(str(value), width=width,
+                    initial_indent='    ', subsequent_indent='    '))
+            else:
+                prefix = f'  {label:<15}'
+                wrapped = textwrap.wrap(str(value), width=width - len(prefix)) or ['']
+                lines.append('  ' + color_text(f'{label:<15}', code, color) + wrapped[0])
+                lines.extend(' ' * len(prefix) + line for line in wrapped[1:])
+    return '\n'.join(lines) + '\n'
+
+
+def render_setup(*, ready, seconds=3600, color=False, columns=80):
+    """Human summary of the already-validated selected experiment."""
+    sections = [
+        ('Setup', [
+            ('Model', f'Trained large network / checkpoint {CHECKPOINT:,} / {PARAMETERS:,} parameters', '36'),
+            ('Game', 'One self-play game: Red and Blue use the same trained policy.', '36'),
+            ('Learning OFF', 'Frozen weights; no training update.', '1;33'),
+        ]),
+        ('Game rules', [
+            ('Allowed', 'Buy creatures; move a whole hero into or out of a town garrison.', '1;32'),
+            ('Disabled', 'Rearrange, split, merge or transfer individual troop stacks.', '1;33'),
+            ('Disabled', 'Open stack windows or upgrade existing stacks. Temporary restriction.', '1;33'),
+            ('Combat', 'Automatic battles.', '36'),
+            ('Movement', 'Revealed tiles only.', '36'),
+            ('Information', 'Your armies and combat stats are visible without clicks.', '36'),
+        ]),
+        ('Limits', [
+            ('Game days', f"{BUDGET['max_days']:,}; the current day appears in live progress.", '36'),
+            ('Each player', f"{BUDGET['ordinary_choices_per_player']:,} ordinary choices + "
+                            f"{BUDGET['reserved_dialog_choices_per_player']:,} reserved for mandatory dialogs.", '36'),
+            ('Time', f"{_duration(BUDGET['capture_seconds'])} for gameplay; {_duration(seconds)} for the entire run.", '36'),
+        ]),
+    ]
+    if ready:
+        sections.append(('Launch when ready', [('', './play-one-selfplay.sh --run', '1;32')]))
+    return _panel('HEROES RL / SELF-PLAY',
+        'READY - checks passed; no game started.' if ready else 'STARTING - one frozen self-play game.',
+        sections, color=color, columns=columns, status_color='1;32' if ready else '1;36')
+
+
+def render_result(result, *, color=False, columns=80):
+    """Keep successful verification distinct from a naturally won game."""
+    verified = result.get('status') == 'passed' and all(result.get(key) is True for key in (
+        'native_replay_verified', 'both_policies_reconstructed', 'owned_cleanup_verified'))
+    rows = []
+    if result.get('episode_status') == 'truncated':
+        reasons = {'game_day_limit': 'Day limit reached', 'collection_window': 'Choice limit reached',
+                   'agent_action_limit': 'Choice limit reached'}
+        reason = reasons.get(result.get('termination_reason'), 'Collection stopped at its limit')
+        rows.append(('Outcome', f'{reason}; result is unscored.', '1;33'))
+    elif result.get('episode_status') == 'completed':
+        outcomes = result.get('outcomes', {})
+        winner = next((color.title() for color in ('red', 'blue') if outcomes.get(color) == 'win'), None)
+        rows.append(('Outcome', f'{winner} wins.' if winner else 'Game completed; see the report for its outcome.', '1;32'))
+    else:
+        rows.append(('Outcome', 'No verified game result is available.', '1;33'))
+    choices = result.get('choices_by_player')
+    if isinstance(choices, (list, tuple)) and len(choices) == 2:
+        rows.append(('Choices', f'Red {choices[0]:,} / Blue {choices[1]:,}', '36'))
+    rows.append(('Learning OFF', ('Weights unchanged; no training update.'
+                                 if result.get('protected_inputs_unchanged') is True else
+                                 'No training update requested; inspect the report for state checks.'), '1;33'))
+    if verified:
+        rows.append(('Checks', 'Replay and both policies verified; owned processes cleaned up.', '1;32'))
+    plan_path = (result.get('plan') or {}).get('path')
+    if plan_path:
+        path = str(Path(plan_path).parent / 'report.json')
+        home = str(Path.home())
+        if path.startswith(home + '/'):
+            path = '~' + path[len(home):]
+        rows.append(('Report', path, '2'))
+    return _panel('HEROES RL / RESULT', 'VERIFIED - recording checks passed.' if verified else 'RUN STOPPED',
+                  [('Result', rows)], color=color, columns=columns, status_color='1;32' if verified else '1;31')
+
+
+def render_failure(error, *, output=None, color=False, columns=80):
+    rows = [('Reason', str(error), '33')]
+    if output is not None:
+        rows.append(('Run files', str(output), '2'))
+    return _panel('HEROES RL / RESULT', 'RUN STOPPED - no automatic retry.',
+                  [('Details', rows)], color=color, columns=columns, status_color='1;31')
 
 
 def experiment():
@@ -117,6 +232,7 @@ def main(argv=None):
     modes.add_argument('--check', action='store_true'); modes.add_argument('--run', action='store_true')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--seconds', type=float, default=3600)
+    parser.add_argument('--json', action='store_true', help='Print the machine-readable result, including in a terminal')
     parser.add_argument('command', nargs='?', choices=('_worker',))
     parser.add_argument('--plan', type=Path); parser.add_argument('--sha256')
     args = parser.parse_args(argv)
@@ -127,7 +243,11 @@ def main(argv=None):
             model_loader=frozen_models, result_schema=SCHEMA, checkpoint=CHECKPOINT)['status'] != 'passed')
     require(math.isfinite(args.seconds) and 180 <= args.seconds <= 7200,
             'Use a finite total budget from 180 to 7200 seconds')
+    human = _human_terminal(sys.stdout) and not args.json
+    color = human and terminal_color_enabled(sys.stdout)
+    columns = shutil.get_terminal_size(fallback=(80, 24)).columns
     started = time.monotonic()
+    plan = None
     try:
         if not args.run:
             checked = inspect_candidate()
@@ -140,17 +260,29 @@ def main(argv=None):
         else:
             with campaign.activity_lease():
                 plan = prepare(args)
-                print('Trained self-play: checkpoint 1753, hidden 64, features 32, 74,344 parameters.\n'
-                      'Temporary recruit-only armies: purchases and whole-hero garrison changes remain; '
-                      'troop-slot operations and stack upgrades are disabled.\n'
-                      'Own-army composition and combat statistics are visible without clicks.\n'
-                      'One frozen game; no optimizer update. Red/Blue each have '
-                      '9,920 ordinary + 320 reserved choices.', flush=True)
+                if human:
+                    print(render_setup(ready=False, seconds=args.seconds, color=color, columns=columns), flush=True)
                 result = evaluation.supervise(plan, worker_script=Path(__file__).resolve(),
                                               result_schema=SCHEMA, checkpoint=CHECKPOINT)
-        print(json.dumps(result, indent=2)); return 0
+        if human:
+            print(render_result(result, color=color, columns=columns) if args.run else
+                  render_setup(ready=True, seconds=args.seconds, color=color, columns=columns), flush=True)
+        else:
+            print(json.dumps(result, indent=2))
+        return 0
+    except Exception as error:
+        if not human:
+            raise
+        print(render_failure(error, output=plan.get('output') if plan else None,
+                             color=color, columns=columns), flush=True)
+        return 2
     finally:
-        print(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
+        elapsed = time.monotonic() - started
+        if human:
+            print(color_text('Total running time  ', '1', color) + _duration(elapsed), flush=True)
+        else:
+            print(f'Total running time: {elapsed:.2f} seconds.',
+                  file=sys.stderr if args.json else sys.stdout, flush=True)
 
 
 if __name__ == '__main__':

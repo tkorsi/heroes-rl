@@ -3,13 +3,20 @@ from contextlib import nullcontext
 from copy import deepcopy
 import io
 import json
+import os
 from pathlib import Path
+import re
 import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
 from tools import run_recruit_only_one_game as trained
+
+
+class TerminalOutput(io.StringIO):
+    def isatty(self):
+        return True
 
 
 class RecruitOnlyOneGameTests(unittest.TestCase):
@@ -58,6 +65,84 @@ class RecruitOnlyOneGameTests(unittest.TestCase):
         self.assertFalse(result['seeds_reserved'])
         self.assertEqual(result['optimizer_updates'], 0)
         self.assertIn('Total running time:', output.getvalue())
+
+    def test_terminal_check_is_readable_and_still_cannot_start_a_game(self):
+        for disable_color in (False, True):
+            environment = {'TERM': 'xterm-256color'}
+            if disable_color:
+                environment['NO_COLOR'] = '1'
+            with self.subTest(no_color=disable_color), \
+                 patch.dict(os.environ, environment, clear=True), \
+                 patch.object(trained, 'inspect_candidate', return_value=self.checked()), \
+                 patch.object(trained.evaluation, 'reserve') as reserve, \
+                 patch.object(trained.evaluation, 'supervise') as supervise, \
+                 patch.object(trained.campaign, 'activity_lease') as lease, \
+                 patch('sys.stdout', new=TerminalOutput()) as output:
+                self.assertEqual(trained.main(['--check']), 0)
+            for method in (reserve, supervise, lease):
+                method.assert_not_called()
+            text = output.getvalue()
+            self.assertIn('READY - checks passed; no game started.', text)
+            self.assertIn('Learning OFF', text)
+            self.assertIn('1,753', text)
+            self.assertIn('74,344', text)
+            self.assertIn('./play-one-selfplay.sh --run', text)
+            self.assertNotIn('source_sha256', text)
+            self.assertNotIn('visible-interaction-budget', text)
+            self.assertEqual('\x1b[' in text, not disable_color)
+            self.assertFalse(trained.evaluation.BASE.exists())
+
+    def test_explicit_json_is_parseable_even_in_a_terminal(self):
+        with patch.object(trained, 'inspect_candidate', return_value=self.checked()), \
+             patch('sys.stdout', new=TerminalOutput()) as output, \
+             patch('sys.stderr', new=io.StringIO()) as diagnostics:
+            self.assertEqual(trained.main(['--check', '--json']), 0)
+        result = json.loads(output.getvalue())
+        self.assertEqual(result['checkpoint'], 1753)
+        self.assertFalse(result['gameplay_performed'])
+        self.assertNotIn('\x1b[', output.getvalue())
+        self.assertIn('Total running time:', diagnostics.getvalue())
+
+    def test_terminal_failure_is_clear_nonzero_and_never_retries(self):
+        with patch.object(trained, 'inspect_candidate', side_effect=ValueError('Checkpoint differs')) as inspect, \
+             patch.object(trained.evaluation, 'reserve') as reserve, \
+             patch.object(trained.evaluation, 'supervise') as supervise, \
+             patch('sys.stdout', new=TerminalOutput()) as output:
+            self.assertEqual(trained.main(['--check']), 2)
+        inspect.assert_called_once_with()
+        reserve.assert_not_called(); supervise.assert_not_called()
+        self.assertIn('RUN STOPPED - no automatic retry.', output.getvalue())
+        self.assertIn('Checkpoint differs', output.getvalue())
+        with patch.object(trained, 'inspect_candidate', side_effect=ValueError('Checkpoint differs')), \
+             patch('sys.stdout', new=io.StringIO()), self.assertRaisesRegex(ValueError, 'Checkpoint differs'):
+            trained.main(['--check'])
+
+    def test_rendered_colors_preserve_text_and_small_terminal_width(self):
+        strip = lambda text: re.sub(r'\x1b\[[0-9;]*m', '', text)
+        for width in (20, 48, 80):
+            with self.subTest(columns=width):
+                plain = trained.render_setup(ready=True, columns=width)
+                colored = trained.render_setup(ready=True, columns=width, color=True)
+                self.assertEqual(strip(colored), plain)
+                self.assertTrue(all(len(line) <= width for line in plain.splitlines()))
+
+    def test_result_separates_verification_from_win_and_unscored_cutoff(self):
+        result = dict(status='passed', native_replay_verified=True,
+            both_policies_reconstructed=True, owned_cleanup_verified=True,
+            protected_inputs_unchanged=True, choices_by_player=[9920, 600],
+            episode_status='truncated', termination_reason='collection_window',
+            outcomes={'red': None, 'blue': None})
+        for reason in ('collection_window', 'game_day_limit'):
+            text = trained.render_result({**result, 'termination_reason': reason})
+            self.assertIn('VERIFIED - recording checks passed.', text)
+            self.assertIn('result is unscored', text)
+            self.assertNotIn('wins.', text)
+        won = trained.render_result({**result, 'episode_status': 'completed',
+                                     'outcomes': {'red': 'loss', 'blue': 'win'}})
+        self.assertIn('Blue wins.', won)
+        incomplete = trained.render_result({**result, 'native_replay_verified': False})
+        self.assertNotIn('VERIFIED - recording checks passed.', incomplete)
+        self.assertIn('RUN STOPPED', incomplete)
 
     def test_explicit_run_and_worker_dispatch_the_large_policy_hooks(self):
         plan = {'synthetic': True}

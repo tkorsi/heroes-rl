@@ -261,7 +261,7 @@ FAST_PATH_TREE = {
     'experiments/learner/contextual_storage.py': ('',
         '8d7c4b7bd1035291a9e95f136806ce33869a026d382a09b0064cd3569239496e'),
     'experiments/learner/game_progress.py': ('',
-        '5d79ad8b24314b2096a092cd51b825cf58a47797ec3315e34abc6617857ad447'),
+        '968ba409785f7a11f7d08506bb9286a8a6842307384100683667c754581ea015'),
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_recipes.py': ('',
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'c2970ade49e503a50fdf4085d47beaff7a20e2534cb04e7ec424aeed10dc825d'
+LOCAL_ADAPTER_TRANSITION_AST = 'c0f1c9c6df3e4c6cb5305c33122fddefeee82d4e4fd5cac116fc5446c509b3d2'
 
 
 def write_new(path, value):

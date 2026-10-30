@@ -9,7 +9,7 @@ if [ ! -x "$TRAINER_PYTHON" ]; then
 fi
 case "${1:---check}" in
     --check|--run) ;;
-    *) echo "Usage: $0 [--check | --run] [--seconds SECONDS] [--output PATH]" >&2; exit 2 ;;
+    *) echo "Usage: $0 [--check | --run] [--seconds SECONDS] [--output PATH] [--json]" >&2; exit 2 ;;
 esac
 if [ "${1:-}" = --run ] && command -v caffeinate >/dev/null 2>&1; then
     exec caffeinate -i "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/run_recruit_only_one_game.py" "$@"

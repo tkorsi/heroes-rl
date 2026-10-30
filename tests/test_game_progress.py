@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -11,7 +12,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from experiments.learner.game_progress import GameProgress, ProgressDisplay, format_progress, progress_path, set_phase
+from experiments.learner.game_progress import (GameProgress, ProgressDisplay, color_text, format_progress,
+    progress_path, set_phase, terminal_color_enabled, terminal_lines)
 
 
 class ProgressTests(unittest.TestCase):
@@ -166,17 +168,20 @@ class ProgressTests(unittest.TestCase):
         class Terminal(io.StringIO):
             def isatty(self): return True
         output = Terminal()
-        display = ProgressDisplay(self.path.parent, stream=output)
+        with patch.dict(os.environ, {'TERM': 'xterm-256color'}, clear=True):
+            display = ProgressDisplay(self.path.parent, stream=output)
         self.progress((4, 3))
         other = GameProgress(progress_path(self.root, 2), episode=2, ordinary=10, reserved=2)
         other((1, 2))
         display.poll()
+        rendered_lines = display.lines
         self.progress.phase('verifying'); display.poll()
-        self.assertIn('Choice budget used (not completion time)', output.getvalue())
-        self.assertIn('Game slot 1', output.getvalue())
-        self.assertIn('Game slot 2', output.getvalue())
-        self.assertIn('\x1b[6F', output.getvalue())
-        self.assertTrue(all(len(line) <= 80 for line in output.getvalue().splitlines()))
+        self.assertIn('Bars show choices used, not time remaining.', output.getvalue())
+        self.assertIn('Game 1', output.getvalue())
+        self.assertIn('Game 2', output.getvalue())
+        self.assertIn(f'\x1b[{rendered_lines}F', output.getvalue())
+        plain = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', output.getvalue())
+        self.assertTrue(all(len(line) < 80 for line in plain.splitlines()))
 
     def test_narrow_terminal_does_not_rewind_wrapped_lines(self):
         class Terminal(io.StringIO):
@@ -187,7 +192,46 @@ class ProgressTests(unittest.TestCase):
         self.progress((1, 1)); display.poll()
         self.progress.phase('verifying'); display.poll()
         self.assertNotIn('\x1b', output.getvalue())
-        self.assertIn('verifying', output.getvalue())
+        self.assertIn('Verifying game', output.getvalue())
+        self.assertTrue(all(len(line) < 60 for line in output.getvalue().splitlines()))
+
+    def test_color_is_terminal_only_and_respects_explicit_opt_out(self):
+        class Terminal(io.StringIO):
+            def isatty(self): return True
+        output = Terminal()
+        for environment, enabled in (({'TERM': 'xterm-256color'}, True),
+                                      ({'TERM': 'dumb'}, False),
+                                      ({'TERM': 'xterm', 'NO_COLOR': ''}, False)):
+            with self.subTest(environment=environment), patch.dict(os.environ, environment, clear=True):
+                self.assertEqual(terminal_color_enabled(output), enabled)
+                self.assertFalse(terminal_color_enabled(io.StringIO()))
+        self.assertEqual(color_text('Red', '1;91', False), 'Red')
+        self.assertEqual(color_text('Red', '1;91', True), '\x1b[1;91mRed\x1b[0m')
+        closed = io.StringIO(); closed.close()
+        self.assertFalse(terminal_color_enabled(closed))
+
+    def test_color_keeps_identical_information_and_each_rendered_line_fits(self):
+        value = {**self.progress.value, 'choices': [11, 7], 'days': [42, 41], 'max_days': 365}
+        for width in (20, 39, 59, 79, 119):
+            with self.subTest(width=width):
+                plain = terminal_lines(value, width=width)
+                colored = terminal_lines(value, width=width, color=True)
+                self.assertEqual([re.sub(r'\x1b\[[0-9;]*m', '', line) for line in colored], plain)
+                self.assertTrue(all(len(line) <= width for line in plain))
+                self.assertIn('42/365', ' '.join(plain))
+                self.assertIn('Dialog reserve:', ' '.join(plain))
+                self.assertNotIn('%', ' '.join(plain))
+
+    def test_dumb_terminal_is_plain_and_does_not_rewind(self):
+        class Terminal(io.StringIO):
+            def isatty(self): return True
+        output = Terminal()
+        with patch.dict(os.environ, {'TERM': 'dumb'}, clear=True):
+            display = ProgressDisplay(self.path.parent, stream=output)
+            self.progress((1, 1)); display.poll()
+            self.progress.phase('verifying'); display.poll()
+        self.assertNotIn('\x1b', output.getvalue())
+        self.assertIn('Verifying game', output.getvalue())
 
     def test_cleanup_marks_all_unfinished_slots_and_preserves_verified_state(self):
         phases = ('collecting', 'finalizing', 'awaiting verification', 'verified')

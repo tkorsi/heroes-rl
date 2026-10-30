@@ -63,9 +63,9 @@ DAY_PROGRESS_SOURCES = {
     'experiments/learner/contextual_rollout.py': {'before': '6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71',
         'after': '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab'},
     'experiments/learner/game_progress.py': {'before': 'e5c1290de42be830392684a861e7508f4b34dc7469e4ac078d95566632ea057b',
-        'after': '5d79ad8b24314b2096a092cd51b825cf58a47797ec3315e34abc6617857ad447'},
+        'after': '968ba409785f7a11f7d08506bb9286a8a6842307384100683667c754581ea015'},
     'experiments/learner/local_script_training.py': {'before': 'ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd',
-        'after': '0925bf57440f910e8d1241d7d883c5326e0336d6ff9cf0c928724f36b457a9f8'},
+        'after': 'e3f0da4db3583b1a80ea3a36c857ff5e1ab4a0066a9d37fa00905e8d58975c64'},
 }
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
