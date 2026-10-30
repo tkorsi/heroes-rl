@@ -72,7 +72,8 @@ class OneFrozenGameTests(unittest.TestCase):
                     stream.addfile(entry, io.BytesIO(data))
             return archive.getvalue()
         with patch.object(evaluation.subprocess, 'check_output', side_effect=git_read), \
-             patch.object(evaluation, 'RECRUIT_ONLY_SOURCE_SHA256', recruit_only):
+             patch.object(evaluation, 'RECRUIT_ONLY_SOURCE_SHA256', recruit_only), \
+             patch.object(evaluation, 'DAY_PROGRESS_SOURCES', {}):
             evaluation.verify_runtime_sources(expected)
             for name in expected:
                 changed = dict(expected, **{name: '0' * 64})
@@ -81,6 +82,21 @@ class OneFrozenGameTests(unittest.TestCase):
             for name in evaluation.STORAGE_PROGRESS_PATHS | recruit_only.keys():
                 with self.subTest(missing=name), self.assertRaisesRegex(ValueError, 'omitted a reviewed'):
                     evaluation.verify_runtime_sources({key: value for key, value in expected.items() if key != name})
+
+    def test_native_acceptance_allows_only_exact_reviewed_display_source_delta(self):
+        old = {'engine': 'unchanged', 'display': 'old'}
+        new = {'engine': 'unchanged', 'display': 'new'}
+        pins = {'display': {'before': 'old', 'after': 'new'}}
+        with patch.object(evaluation, 'DAY_PROGRESS_SOURCES', pins):
+            self.assertEqual(evaluation.verify_native_validation_sources(old, old)['changed'], [])
+            proof = evaluation.verify_native_validation_sources(old, new)
+            self.assertFalse(proof['native_capture_repeated'])
+            self.assertEqual(proof['changed'], pins)
+            for accepted, current in ((None, new), ({}, new), (old, {'display': 'new'}),
+                    (old, {**new, 'engine': 'changed'}), (old, {**new, 'extra': 'module'}),
+                    (old, {**new, 'display': 'unreviewed'}), ({**old, 'display': 'unknown'}, new)):
+                with self.subTest(accepted=accepted, current=current), self.assertRaises(ValueError):
+                    evaluation.verify_native_validation_sources(accepted, current)
 
     def test_one_physical_game_reservation_uses_two_policy_seeds_and_never_reuses_unstarted(self):
         self.assertEqual(evaluation.seed_ledger()['reservations'], [])

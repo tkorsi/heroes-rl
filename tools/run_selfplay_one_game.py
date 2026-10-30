@@ -57,6 +57,16 @@ RECRUIT_ONLY_SOURCE_SHA256 = {
     'experiments/learner/contextual_model.py': '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe',
     'experiments/learner/interaction_guard.py': 'd5b295bcdca6c37da6aa050007526b7b11e4da574ccae0693d61038a093418c4',
 }
+# Exact display-only delta after the native army-information acceptance. These
+# files do not alter policy inputs, sampling, learning or replay verification.
+DAY_PROGRESS_SOURCES = {
+    'experiments/learner/contextual_rollout.py': {'before': '6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71',
+        'after': '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab'},
+    'experiments/learner/game_progress.py': {'before': 'e5c1290de42be830392684a861e7508f4b34dc7469e4ac078d95566632ea057b',
+        'after': '5d79ad8b24314b2096a092cd51b825cf58a47797ec3315e34abc6617857ad447'},
+    'experiments/learner/local_script_training.py': {'before': 'ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd',
+        'after': '0925bf57440f910e8d1241d7d883c5326e0336d6ff9cf0c928724f36b457a9f8'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -81,7 +91,24 @@ def verify_runtime_sources(implementation):
     original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW)
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
+    original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
+
+
+def verify_native_validation_sources(accepted, current):
+    """Retain the original native receipt, allowing only a reviewed UI delta."""
+    require(type(accepted) is dict and type(current) is dict,
+            'Passive-army runtime lacks complete two-seat native validation sources')
+    if accepted == current:
+        return dict(kind='exact_native_validation_sources', changed=[])
+    expected = dict(accepted)
+    for name, pins in DAY_PROGRESS_SOURCES.items():
+        require(accepted.get(name) == pins['before'] and current.get(name) == pins['after'],
+                'Passive-army runtime lacks complete two-seat native validation source transition')
+        expected[name] = pins['after']
+    require(expected == current, 'Passive-army runtime lacks complete two-seat native validation source agreement')
+    return dict(kind='reviewed_display_only_day_progress', changed=DAY_PROGRESS_SOURCES,
+                native_capture_repeated=False)
 
 
 def source_identity():
@@ -99,6 +126,7 @@ def source_identity():
         reporting_controller_base=CONTROLLER_COMMIT,
         storage_progress_base=STORAGE_PROGRESS_COMMIT,
         recruit_only_sources=RECRUIT_ONLY_SOURCE_SHA256,
+        day_progress_sources=DAY_PROGRESS_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

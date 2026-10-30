@@ -136,7 +136,7 @@ FAST_PATH_SOURCES = {
         '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
-        '6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71'),
+        '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab'),
     'experiments/learner/evaluate_builtin_opponent.py': (
         ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
@@ -261,7 +261,7 @@ FAST_PATH_TREE = {
     'experiments/learner/contextual_storage.py': ('',
         '8d7c4b7bd1035291a9e95f136806ce33869a026d382a09b0064cd3569239496e'),
     'experiments/learner/game_progress.py': ('',
-        'e5c1290de42be830392684a861e7508f4b34dc7469e4ac078d95566632ea057b'),
+        '5d79ad8b24314b2096a092cd51b825cf58a47797ec3315e34abc6617857ad447'),
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_recipes.py': ('',
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '8eac909e826ea6db3b5681fb4d0e23968f71019745d85b51fa1b2dbc8bbc2a6f'
+LOCAL_ADAPTER_TRANSITION_AST = 'c2970ade49e503a50fdf4085d47beaff7a20e2534cb04e7ec424aeed10dc825d'
 
 
 def write_new(path, value):

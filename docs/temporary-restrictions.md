@@ -6,7 +6,7 @@ rules of Heroes III and must not be forgotten when interpreting results.
 | Restriction | Current scope | Removal work |
 | --- | --- | --- |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
-| No manual troop-slot management | The next tiny-policy experiment uses `visible-interaction-budget-recruit-only-v1`. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
+| No manual troop-slot management | The next trained-1753 one-game experiment uses `visible-interaction-budget-recruit-only-v1`. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
 
 The second restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,
@@ -41,6 +41,8 @@ extension can remain after slot management is restored; it is not a reward bonus
 - [ ] Compare wins, natural completions, useful travel and repeated operations.
 - [ ] Update this register and the research log when the restriction is lifted.
 
-Historical captures retain their original support. The trained 1753 evaluation
-and the completed training campaigns are not relabeled as restricted experiments.
+The user stopped the tiny-network experiment and retained this restriction for
+the next trained-1753 manual game. Historical captures retain their original
+support. The prior trained-1753 evaluation and completed training campaigns are
+not relabeled as restricted experiments.
 This change does not authorize launching a training campaign.

@@ -749,8 +749,9 @@ class ContextualCollector:
         ordinary allowance. Only mandatory, policy-sampled answers may follow;
         neither player may exceed its ordinary plus reserved allowance. The
         environment's existing dialog-chain bound remains independently active.
-        An optional display callback receives only submitted-choice counts and
-        a phase, after each successful step. It cannot select policy actions.
+        An optional display callback receives submitted-choice counts and a
+        phase after each successful step. Its optional observation hook reads
+        only the delivered request's calendar for display, never policy inputs.
         """
         if getattr(env, "interface", None) != self.profile.environment:
             raise ValueError("Collector/environment interface mismatch")
@@ -766,8 +767,25 @@ class ContextualCollector:
         request = env.reset(episode=episode, seed=seed)
         choices = 0
         seat_choices = [0, 0]
-        if progress is not None:
-            progress(tuple(seat_choices), "collecting")
+        observe_day = getattr(progress, "observe_day", None)
+        max_days = getattr(getattr(env, "limits", None), "max_days", None)
+        def notify_progress(phase):
+            if progress is not None:
+                if observe_day is not None:
+                    # Disposable display metadata cannot veto an engine step or
+                    # affect the recorded action, RNG or cutoff. A final cutoff
+                    # bootstrap is an actual delivered observation, even when
+                    # its calendar has just crossed the configured day limit.
+                    records = (enumerate((getattr(request, "bootstrap", None) or {}).get(color) for color in COLORS)
+                               if request.done else ((request.player, request.record),))
+                    for player, record in records:
+                        day = record.get("day") if type(record) is dict else None
+                        try:
+                            observe_day(player, day, max_days=max_days)
+                        except Exception:
+                            pass
+                progress(tuple(seat_choices), phase)
+        notify_progress("collecting")
         while not request.done:
             horizon = ((max_requests is not None and choices >= max_requests)
                        or (max_requests_per_player is not None
@@ -786,9 +804,7 @@ class ContextualCollector:
             request = env.step(self.act(request))
             choices += 1
             seat_choices[player] += 1
-            if progress is not None:
-                progress(tuple(seat_choices), "collecting")
-        if progress is not None:
-            progress(tuple(seat_choices), "finalizing")
+            notify_progress("collecting")
+        notify_progress("finalizing")
         return self.finish(request, histories=(env.history("red"), env.history("blue")),
                            manifest_path=env.episode_dir / "manifest.json" if self.origin == "native" else None)

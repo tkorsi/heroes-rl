@@ -7,6 +7,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -30,11 +31,13 @@ class ProgressTests(unittest.TestCase):
         first = self.path.read_bytes()
         for count in range(1, 10):
             self.now += .05
+            self.progress.observe_day(0, count, max_days=365)
             self.progress((count, 2))
         self.assertEqual(self.path.read_bytes(), first)
         self.now = 1
         self.progress((10, 2))
         self.assertEqual(self.read()['choices'], [10, 2])
+        self.assertEqual(self.read()['days'], [9, None])
         self.progress((11, 2), 'finalizing')
         value = self.read()
         self.assertEqual(value['choices'], [11, 2])
@@ -62,6 +65,43 @@ class ProgressTests(unittest.TestCase):
         output = io.StringIO()
         ProgressDisplay(self.path.parent, stream=output).poll()
         self.assertEqual(output.getvalue(), '')
+
+    def test_calendar_comes_from_delivered_days_and_stays_unknown_until_observed(self):
+        self.progress((0, 0))
+        self.assertIn('Day ?', format_progress(self.read()))
+        self.progress.observe_day(0, 7, max_days=365)
+        self.progress((3, 0), 'finalizing')
+        self.assertEqual(self.read()['days'], [7, None])
+        self.assertIn('Day 7/365', format_progress(self.read()))
+        self.progress.observe_day(1, 8, max_days=365)
+        self.progress.observe_day(0, 6)  # A stale display update cannot move the shared calendar back.
+        self.progress.phase('verifying')
+        self.assertEqual(self.read()['choices'], [3, 0])
+        self.assertEqual(self.read()['days'], [7, 8])
+        self.assertIn('Day 8/365', format_progress(self.read()))
+        self.progress.observe_day(1, 366, max_days=365)
+        self.progress.phase('verified')
+        self.assertIn('Day 366/365', format_progress(self.read()))
+        set_phase(self.path, 'verifying')
+        self.assertEqual(self.read()['days'], [7, 366])
+
+    def test_malformed_day_metadata_is_ignored_and_legacy_snapshots_still_display(self):
+        self.progress.observe_day(0, 12, max_days=365)
+        for value in (None, False, 0, -1, '13', 13.5, [], {}):
+            self.progress.observe_day(1, value, max_days=value)
+        for value in (None, False, -1, 2, '0', 13.5, [], {}):
+            self.progress.observe_day(value, 99)
+        self.progress((2, 1))
+        value = self.read()
+        self.assertEqual(value['days'], [12, None])
+        self.assertEqual(value['max_days'], 365)
+        for name in ('days', 'max_days'):
+            value.pop(name)
+        self.path.write_text(json.dumps(value))
+        output = io.StringIO()
+        ProgressDisplay(self.path.parent, stream=output).poll()
+        self.assertIn('Day ?', output.getvalue())
+        self.assertIn('2/10', output.getvalue())
 
     def test_deeply_nested_small_sidecar_never_interrupts_handoff_or_cleanup(self):
         from experiments.learner.game_progress import finish_unfinished
@@ -208,6 +248,54 @@ print(json.dumps({'complete': True}))
 
 
 class CollectionProgressTests(unittest.TestCase):
+    def test_day_observer_preserves_full_rollout_rng_and_the_actual_day_limit_boundary(self):
+        import torch
+        from experiments.learner import contextual as c
+        from tests.test_contextual_rollout import initial, request
+        from tests.test_selfplay_collection import AlternatingTurns, SelfPlayCollectionTests
+        class DayLimit(AlternatingTurns):
+            limits = SimpleNamespace(max_days=365)
+            def reset(self, *, episode, seed):
+                self.pair = tuple(c.PlayerHistory(str(episode), player, schema=c.EXPANDED_SCHEMA) for player in (0, 1))
+                for history in self.pair:
+                    original = initial(history.player, str(episode), schema=c.EXPANDED_SCHEMA).decision
+                    history.emit('decision', day=365, observation=original.observation,
+                                 revision=0, offers=original.offers)
+                self.counts, self.player = [0, 0], 0
+                return request(self.pair[0])
+            def step(self, selected):
+                current = super().step(selected)
+                return self.truncate('game_day_limit') if min(self.counts) else current
+        threads = torch.get_num_threads()
+        torch.set_num_threads(1)
+        try:
+            fixture = SelfPlayCollectionTests()
+            model = fixture.model()
+            baseline_collector = fixture.collector(model)
+            baseline = baseline_collector.run_episode(DayLimit(), episode=1, seed=17,
+                max_requests_per_player=2, max_dialog_requests_per_player=1)
+            with tempfile.TemporaryDirectory() as directory:
+                path = progress_path(directory, 1)
+                display = GameProgress(path, episode=1, ordinary=2, reserved=1)
+                observed = fixture.collector(model)
+                checked = observed.run_episode(DayLimit(), episode=1, seed=17,
+                    max_requests_per_player=2, max_dialog_requests_per_player=1, progress=display)
+                self.assertEqual(checked.to_dict(), baseline.to_dict())
+                self.assertEqual(json.loads(path.read_text())['days'], [366, 366])
+                self.assertIn('Day 366/365', format_progress(json.loads(path.read_text())))
+                self.assertEqual(json.loads(path.read_text())['choices'], [1, 1])
+                for left, right in zip(baseline_collector.sessions, observed.sessions):
+                    self.assertTrue(torch.equal(left.generator.get_state(), right.generator.get_state()))
+                broken = fixture.collector(model)
+                with patch.object(display, 'observe_day', side_effect=RuntimeError('display metadata failure')):
+                    recovered = broken.run_episode(DayLimit(), episode=1, seed=17,
+                        max_requests_per_player=2, max_dialog_requests_per_player=1, progress=display)
+                self.assertEqual(recovered.to_dict(), baseline.to_dict())
+                for left, right in zip(baseline_collector.sessions, broken.sessions):
+                    self.assertTrue(torch.equal(left.generator.get_state(), right.generator.get_state()))
+        finally:
+            torch.set_num_threads(threads)
+
     def test_callback_counts_only_completed_steps_without_changing_rng_or_rollout(self):
         import torch
         from tests.test_selfplay_collection import AlternatingTurns, SelfPlayCollectionTests

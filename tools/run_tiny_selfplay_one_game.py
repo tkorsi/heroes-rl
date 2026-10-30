@@ -140,15 +140,17 @@ def inspect_runtime(baseline):
     require(acceptance.get('schema') == 'heroes-passive-armies-native-v1' and acceptance.get('status') == 'passed'
             and acceptance.get('army_information') == OWN_ARMY_INFORMATION and acceptance.get('policy_support') == GUARD
             and acceptance.get('runtime') == runtime
-            and acceptance.get('source_implementation') == evaluation.source_identity()['implementation']
             and acceptance.get('players') == [0, 1] and type(acceptance.get('controls')) is int and acceptance['controls'] > 0
             and acceptance.get('native_replay_verified') is True and acceptance.get('both_policies_reconstructed') is True
             and acceptance.get('owned_cleanup_verified') is True and acceptance.get('optimizer_updates') == 0
             and acceptance.get('training_samples_admitted') == 0,
             'Passive-army runtime lacks complete two-seat native validation')
+    source_validation = evaluation.verify_native_validation_sources(
+        acceptance.get('source_implementation'), evaluation.source_identity()['implementation'])
     return dict(binary=str(binary_dir / 'vcmiclient'), replay_binary=binding(binary_dir / 'vcmireplay'),
                 game_map=game_map['path'], runtime=runtime, native=native, army_information=OWN_ARMY_INFORMATION,
-                runtime_origin=dict(freeze=freeze_binding, preflight=preflight_binding, native_validation=acceptance_binding),
+                runtime_origin=dict(freeze=freeze_binding, preflight=preflight_binding,
+                                    native_validation=acceptance_binding, source_validation=source_validation),
                 runtime_protected=protected)
 
 

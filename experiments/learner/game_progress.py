@@ -24,14 +24,19 @@ def progress_path(output, episode):
 
 def _valid(value):
     return (type(value) is dict
-            and set(value) == {"schema", "episode", "choices", "ordinary", "reserved", "phase"}
+            and {"schema", "episode", "choices", "ordinary", "reserved", "phase"} <= value.keys()
+            and value.keys() <= {"schema", "episode", "choices", "ordinary", "reserved", "phase", "days", "max_days"}
             and value["schema"] == SCHEMA
             and type(value["episode"]) is int and value["episode"] >= 0
             and type(value["ordinary"]) is int and value["ordinary"] > 0
             and type(value["reserved"]) is int and value["reserved"] >= 0
             and type(value["choices"]) is list and len(value["choices"]) == 2
             and all(type(n) is int and 0 <= n <= value["ordinary"] + value["reserved"] for n in value["choices"])
-            and type(value["phase"]) is str and value["phase"] in PHASES)
+            and type(value["phase"]) is str and value["phase"] in PHASES
+            and ("days" not in value or type(value["days"]) is list and len(value["days"]) == 2
+                 and all(day is None or type(day) is int and day >= 1 for day in value["days"]))
+            and (value.get("max_days") is None
+                 or type(value["max_days"]) is int and value["max_days"] >= 1))
 
 
 def _read(path):
@@ -67,11 +72,23 @@ class GameProgress:
     def __init__(self, path, *, episode, ordinary, reserved, clock=time.monotonic):
         self.path, self.clock = Path(path), clock
         self.value = dict(schema=SCHEMA, episode=episode, choices=[0, 0],
-                          ordinary=ordinary, reserved=reserved, phase="starting")
+                          ordinary=ordinary, reserved=reserved, phase="starting", days=[None, None], max_days=None)
         if not _valid(self.value):
             raise ValueError("Invalid progress configuration")
         self.last_write = float("-inf")
         self.warned = False
+
+    def observe_day(self, player, day, *, max_days=None):
+        """Remember the delivered calendar without reading or changing policy state.
+
+        Both seats share one game calendar; their last delivered days may differ
+        while the other seat is acting. No extra write or history scan is needed.
+        """
+        if type(max_days) is int and max_days >= 1:
+            self.value["max_days"] = max_days
+        if type(player) is int and player in (0, 1) and type(day) is int and day >= 1:
+            previous = self.value["days"][player]
+            self.value["days"][player] = max(day, previous or day)
 
     def __call__(self, counts, phase="collecting"):
         now = self.clock()
@@ -133,12 +150,16 @@ def format_progress(value):
         bar = "#" * filled + "-" * (16 - filled)
         reserve = max(0, count - value["ordinary"])
         parts.append(f"{color} [{bar}] {used:,}/{value['ordinary']:,} +{reserve}/{value['reserved']} reserved")
-    return f"Game slot {value['episode']} | " + " | ".join(parts) + f" | {value['phase']}"
+    observed = [day for day in value.get("days", ()) if day is not None]
+    day = str(max(observed)) if observed else "?"
+    if value.get("max_days") is not None:
+        day += f"/{value['max_days']}"
+    return f"Game slot {value['episode']} | Day {day} | " + " | ".join(parts) + f" | {value['phase']}"
 
 
 def terminal_lines(value):
     text = format_progress(value).split(" | ")
-    return [text[0] + " | " + text[-1], "  " + text[1], "  " + text[2]]
+    return [text[0] + " | " + text[1] + " | " + text[-1], "  " + text[2], "  " + text[3]]
 
 
 class ProgressDisplay:

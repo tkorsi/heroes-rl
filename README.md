@@ -15,7 +15,17 @@ historical validation evidence intact.
 
 ## Current state
 
-The next tiny-policy experiment adds a user-requested temporary restriction:
+The user stopped the small-network experiment. Its initialization, completed
+capture and seed history remain preserved for reproducibility; it is no longer
+the selected next experiment. Use the trained **checkpoint 1,753** model
+(64 hidden / 32 features, 74,344 parameters) for the next manual one-game test:
+`./play-one-selfplay.sh --check`, then explicit `./play-one-selfplay.sh --run`.
+This retains the temporary troop-slot restriction and passive own-army information,
+with one frozen self-play game and zero PPO updates. Progress includes the observed
+in-game day beside both action counters. See the
+[manual preparation report](docs/research/large-one-game-day-progress-2026-10-30.md).
+
+The retained user-requested temporary restriction is:
 troop-slot rearrangement, splitting, merging, individual transfers and stack
 upgrades are disabled. Recruitment and whole-hero entry/exit from the town
 garrison remain available. The opt-in `own-army-details-v1` observation provides
@@ -43,7 +53,7 @@ parameters instead of 74,344. It has fresh random weights, zero games/updates,
 and an independently saved initial policy/RNG/opponent pool. This is a width
 reduction of the existing encoder/CNN/GRU architecture. Offline native parity
 and synthetic PPO/checkpoint controls passed. A separate
-[manual one-game diagnostic](docs/research/tiny-one-game-2026-10-30.md) is available:
+[historical manual one-game diagnostic](docs/research/tiny-one-game-2026-10-30.md) used:
 `./play-one-tiny-selfplay.sh --check`, then explicit `--run`. It uses the untrained
 tiny weights, the same doubled choice limits, progress display and full replay
 checks, with no PPO update. The first user-launched tiny game subsequently passed

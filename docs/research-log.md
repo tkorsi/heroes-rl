@@ -1328,3 +1328,37 @@ special-ability catalog. Short controls establish integrity, not stronger play o
 faster full games. See the [implementation report](research/recruit-only-passive-armies-2026-10-30.md),
 [native acceptance](../validation/passive-armies-native-2026-10-30.json), and
 [manual readiness](../validation/recruit-only-readiness-2026-10-30.json).
+
+## 2026-10-30: stop tiny experiments, prepare trained game with day progress
+
+The user stopped the tiny-model experiment and requested one more manual game,
+then asked for the current day in the progress bar. The next launcher is
+`play-one-selfplay.sh`: trained checkpoint1753, hidden64/features32, 74,344
+parameters. It retains the requested troop-slot restriction, passive own-army
+information, original map, automatic combat, doubled choice budgets and day365
+horizon. It runs one frozen self-play diagnostic without PPO updates. Tiny
+artifacts and the shared large-model seed ledger remain preserved.
+
+Day progress reads only calendar metadata already delivered to the collector.
+It adds no engine query or history scan and keeps the existing one-write-per-second
+throttle. Exact synthetic collector results and RNG match with the observer
+absent, present or failing. Existing snapshots remain readable; unknown days are
+shown honestly and a delivered day366 cutoff is not clamped to365.
+
+The actual1753 policy consumed both seats' hash-verified recorded passive-army
+observations. Python and the accepted C++ backend matched bit for bit for action
+log probability, value, recurrent state, conditional probabilities and native
+prefixes with1/4 workers. Weights/RNG were unchanged and no gradient/update was
+created. Two offline harness failures (stdin syntax; frozen parameter flags) and
+a disposable launcher fixture path failure were corrected without relaxing any
+production guard. Final focused validation ran124 tests, with123 passes and one
+skip; shell syntax and canonical engine agreement passed.
+
+The prior native acceptance receipt remains immutable. An exact three-file
+reviewed display transition binds the UI, its callback and source-pin metadata;
+all other native-accepted implementation bytes remain exact. This is explicitly
+inherited native evidence, not a claim that a new game was run. The full suite and
+native gameplay were not repeated. Real manual readiness and preservation are
+recorded in the [preparation report](research/large-one-game-day-progress-2026-10-30.md)
+and its compact validation receipt. No game, training, restart or official seed
+reservation is launched by this preparation.
