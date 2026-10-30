@@ -1073,3 +1073,29 @@ already on main at c289408; the old prefix branch has an equivalent patch in
 main. The rejected slower C++ compaction remains excluded. No repeatable
 full-training speedup, full CPU saturation or policy-quality gain is claimed.
 No official training or automatic restart was launched by this preparation.
+
+### 30 October 2026 — revealed movement accepted for manual continuation
+
+The final source 14cb529 passed 2024 of 2057 offline tests (33 skipped), 44 fresh
+native controls and 16 policy games from copied checkpoint 1585. Every one of 128
+movement targets was revealed, with 1838 choices reconstructed exactly. Both
+verification arms covered both seats; all 16 games lost naturally. No quality
+or speedup claim follows. All diagnostic receipts were revoked; zero official
+samples/updates were admitted.
+
+Two artifact-fixture failures exposed extra native inventory and legitimate
+disassembly-to-backpack behavior; explicit diagnostic transfers and equipment
+restoration now retain exact ownership/slots and all original regression gates.
+The first policy cohort was excluded after an old-only capture whitelist
+rejected the new version; the registered-version gate and real private-pipe
+capture tests now pass. All failures, consumed schedules and immutable captures
+are retained in the private evidence and disclosed in the
+[final report](research/revealed-movement-2026-10-30.md).
+
+The real main-checkout check passed at 1585 with 1176 remaining and sequence 1226
+next, a 16-CPU resource budget, four collectors/four verifiers, pipelining and
+the warning-free NumPy environment. Full model/Adam/RNG/progress/sampler/pool
+state and all 15 protected inputs remain unchanged. The accepted runtime pin
+is 877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6.
+The user alone launches `./continue-1585.sh --hours 10`; it recalculates the same
+remaining goal and prints elapsed time. No official training was started.

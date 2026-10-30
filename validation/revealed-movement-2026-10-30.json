@@ -18,14 +18,44 @@
     "First policy diagnostic completed four games but immutable capture gate rejected unregistered revealed support; whole batch excluded.",
     "Synthetic test setup errors (epoch count and disclosed target) retained with corrections in focused receipts."
   ],
+  "final_selection_tests": {
+    "executed": 126,
+    "failed": 0,
+    "log": {
+      "bytes": 112,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/final-selection-tests.log",
+      "sha256": "ccd424d2884d5aa58ad6a8d7609e5db12f744be98d06ad4c3771b948045a2b43"
+    },
+    "passed": 125,
+    "skipped": 1
+  },
   "limitations": [
     "Both policy arms use revealed support; this is not a quality comparison against old support.",
     "All sixteen diagnostic policy games lost; improved winning is not demonstrated.",
     "Offline tests ran concurrently; no speedup or full-CPU-saturation claim is made.",
     "No new remote readback of checkpoint1585 is claimed; canonical and durable local backup restore exactly."
   ],
+  "mac_launch_ready": true,
+  "machine_configuration": {
+    "bytes": 206543,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/machine-original-native-v5.json",
+    "sha256": "ddb139580efbb1bdcc488be568e1af5cf60a8ed0454647dea43ee94bb59f4217"
+  },
   "manual_preflight": {
-    "status": "pending"
+    "checked_commit": "9649bb3571ee06ecb426e862d120aa652e9564c9",
+    "checkpoint": 1585,
+    "command": "./continue-1585.sh --check --hours 10",
+    "cpu_budget": 16,
+    "evidence": {
+      "bytes": 7509,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/main-readiness.json",
+      "sha256": "32587ed379e0dc4f4c067e3d814dca4725039d3bc0451883e9a78e982e4dd3b9"
+    },
+    "next_sequence": 1226,
+    "numpy_warning_absent": true,
+    "pipeline_verification": true,
+    "remaining_games": 1176,
+    "status": "passed"
   },
   "native_controls": {
     "current_source_games": 44,
@@ -47,6 +77,7 @@
     },
     "unchanged": true
   },
+  "no_matching_training_or_diagnostic_processes": true,
   "official_optimizer_updates": 0,
   "official_training_started": false,
   "offline_suite": {
@@ -133,6 +164,7 @@
       "sha256": "bd9d7547225f9c1e34922943701dfae385a70664973d9a3f0bb99c7cf8fc23fd"
     }
   },
+  "protected_inputs_unchanged": 15,
   "python_environment": {
     "numpy_bridge_warnings": 0,
     "numpy_version": "2.3.5",
@@ -226,6 +258,6 @@
     ],
     "visible_interaction_budgets_unchanged": true
   },
-  "status": "validated_pending_main_preflight",
+  "status": "passed",
   "training_samples_admitted": 0
 }

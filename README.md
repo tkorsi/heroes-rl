@@ -31,10 +31,14 @@ four-game batch, opponent and terminal-only +1/-1/0 rewards stay unchanged.
 The prepared launcher is `./continue-1585.sh --hours 10`, with a default ten-hour
 limit and total runtime output. It follows the latest verified descendants of
 checkpoint 1,585 and recalculates the remaining original target on every manual
-invocation. The old 772-game goal remains complete. **Fresh native validation,
-runtime acceptance and the final main-checkout check are pending**; the new
-launcher is not yet certified ready. The intended offline check is
-`./continue-1585.sh --check --hours 10`. Preparation starts no official training.
+invocation. The old 772-game goal remains complete. Validation passed 2,024 tests
+(33 skipped), 44 fresh native controls and 16 frozen-policy games with 1,838 exact
+reconstructed choices. All 128 movement targets were revealed. The actual
+main-checkout `./continue-1585.sh --check --hours 10` passed at checkpoint 1,585,
+with 1,176 remaining, sequence 1,226 next, the warning-free NumPy environment,
+a 16-CPU budget and pipelined verification. The script prints total elapsed time.
+No official training was started. See the [validation results](validation/revealed-movement-2026-10-30.json)
+and research report for the excluded diagnostic failures and limitations.
 
 The accepted [CPU and NumPy changes](docs/research/cpu-next-launch-2026-10-29.md)
 are already merged on `main` at `c289408`. The separate environment adds NumPy

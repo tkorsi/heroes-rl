@@ -2,11 +2,13 @@
 
 ## Status and completed-run evidence
 
-This report preregisters an explicit policy-support intervention and its native
-validation. Fresh native games, full-suite validation, runtime acceptance and the
-final main-checkout continuation check are **pending**. No official training is
-started by this preparation. Final results must be added without replacing the
-prospective protocol or failed-attempt evidence.
+The explicit policy-support intervention, runtime acceptance and real main-checkout
+manual preflight **passed**. The final execution source is `14cb529`; later commits
+pin its accepted evidence, clarify launcher help and publish results. Checkpoint
+1585 is preserved exactly, with 1176 original-target games remaining and sequence
+1226 next. No official training was started. The prospective protocol and every
+failed diagnostic attempt remain preserved below; [compact results](../../validation/revealed-movement-2026-10-30.json)
+bind the evidence.
 
 The user-launched run `run-20261029T211050Z-3a3d748f` finished normally at
 checkpoint **1585** after 193 complete updates and 772 admitted games. Its 771
@@ -175,8 +177,8 @@ the unfinished new source/runtime closure. The successful pure-goal probe used
 the independently audited accepted-main continuation; no official state was
 changed by these probes.
 
-After native acceptance and the final main-checkout check pass, the intended
-manual commands are:
+Native acceptance and the real main-checkout check have passed. The manual
+commands are:
 
 ```sh
 cd ~/Projects/Heroes
@@ -273,3 +275,50 @@ historical fixture defaults unchanged. An independent source audit found no
 other stale production whitelist. The final native-policy study must use fresh
 seeds and the current source; the full native controls must also be refreshed
 because their complete dependency identity changed.
+
+## Final accepted results and manual readiness
+
+The corrected source `14cb5294930bba6a9034e9da33f3092c8e64186a` passed the
+full offline suite: 2057 tests executed, 2024 passed and 33 skipped in 334.779
+seconds. The accepted compiled learner was supplied to both native test routes.
+The final acceptance/launcher selection passed 125 of 126 tests; one optional
+case skipped. Counts overlap and are not independent experiments.
+
+Fresh source-bound controls passed all 16 garrison and 28 legacy cases. Both
+artifact seats retained the singleton invalid-append check, both three-item
+reorder directions, exact equipment restoration and complete original inventory
+return. Earlier successful cohorts and both failed fixture attempts remain in
+the [native report](../../validation/revealed-movement-native-controls-2026-10-30.json).
+
+Policy attempt 2 completed 16 games over eight newly reserved paired starts,
+four per seat in each arm. Sequential and pipelined verification each
+reconstructed 919 choices exactly; total 1838. Every one of 128 movement targets
+was present in its decision's current revealed tiles; zero unrevealed targets
+were selected. All 16 games ended in natural learner losses. All paired semantic
+digests matched in this cohort, but concurrent offline tests and the fixed arm
+order prevent a performance claim. These games demonstrate contract and
+execution validity, not stronger strategy. All receipts were revoked, no PPO
+data or optimizer update was admitted, and full parent/model/Adam/RNG/progress/
+sampler/pool preservation, deadlines and owned cleanup passed.
+
+Release `revealed-movement-1585-v1` is pinned to descriptor SHA-256
+`877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6`.
+Its historical `checkpoint_update=1392` binds the retained terminal-request
+engine proof; `policy_checkpoint_update=1585` binds the new policy proof. It
+does not select 1392 for training. No C++ engine or native learner code changed;
+the actual accepted binaries passed the fresh controls and policy captures.
+Canonical engine preparation checks passed in every frozen release.
+
+The new immutable `machine-original-native-v5.json` selects that release and
+the separate NumPy 2.3.5 environment. The real main checkout passed
+`./continue-1585.sh --check --hours 10`: exact checkpoint 1585, 1176 remaining, sequence 1226,
+16 available CPUs, four collectors/four verifiers, pipelining enabled and native
+prefix budget 16. The NumPy/Torch bridge emitted no warning. Main preflight took
+21.97 seconds and launched no gameplay/PPO. All 15 protected checkpoint/session/
+ledger/environment inputs remain unchanged; no matching project workers remain.
+
+The launcher stops when the verified 1176-game goal finishes or its ten-hour
+window closes, prints total runtime and never automatically restarts. Full
+CPU saturation, improved winning and new private-remote readback of 1585 are
+not claimed. The original map, architecture, PPO/Adam settings, opponent,
+four-game batch and terminal-only rewards remain unchanged.
