@@ -1103,3 +1103,23 @@ remaining goal and prints elapsed time. No official training was started.
 ## 2026-10-30: performance telemetry removal protocol
 
 The user requested removal of CPU counters and phase profiling, retaining parallel execution and all learning/integrity settings. Self-play is explanation only. Full checkpoint1728 and its completed-run evidence are protected. The [prospective protocol](research/telemetry-removal-2026-10-30.md) requires a fresh native build, exact numerical parity, excluded native/policy diagnostics and a real manual preflight. No training launch is authorized.
+
+## 2026-10-30: telemetry removal accepted for manual continuation
+
+The telemetry-free C++ learner and Python training path passed 2,028 offline tests
+(33 platform/optional skips), 43 focused native tests, a bitwise-equal copied PPO
+update, 44 native controls and 16 frozen-1728 policy games. All 2,030 choices
+reconstructed exactly and all 142 movement targets were revealed. The first
+policy attempt stopped at the clean-checkout gate after eight excluded games;
+its consumed starts were retained and the accepted attempt used fresh starts.
+Three stale launcher assertions were corrected; failed logs remain private.
+No instrumentation-overhead percentage or speedup is established.
+
+The actual main-checkout ten-hour check passed: checkpoint 1728 restores exactly,
+604 original-target games remain and sequence 1369 is next. Both native binary
+and source inventory were verified. All 15 protected canonical inputs remain
+unchanged, and no matching owned training or diagnostic processes remain.
+No training or self-play was launched. The [report](research/telemetry-removal-2026-10-30.md)
+and [compact evidence](../validation/telemetry-removal-2026-10-30.json) distinguish
+production telemetry removal, retained integrity evidence, observed map travel,
+and the explanation-only self-play discussion.

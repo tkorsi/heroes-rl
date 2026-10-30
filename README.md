@@ -26,7 +26,8 @@ controls and a complete copied PPO update, followed by 44 native controls and
 16 frozen-checkpoint policy games with 2,030 exactly reconstructed choices.
 All 142 movement targets in those diagnostics were revealed. The overhead of
 the removed instrumentation was not isolated; no speedup is claimed. Final
-main-checkout readiness is recorded in the linked report. No official training
+main-checkout preflight passed with exact checkpoint restoration and 604 games
+remaining; the offline suite passed 2,028 tests (33 skipped). No official training
 was started during this change.
 
 The launcher remains `./continue-1585.sh --hours 10`. Its historical filename

@@ -30,6 +30,11 @@
   },
   "engine_sources_match_generated": true,
   "evidence": {
+    "closure": {
+      "bytes": 242,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/closure.json",
+      "sha256": "2e1a64cb69b6ba40fcbf17b4a25a78146749187a4590d8834a3087c257586c21"
+    },
     "copied_ppo": {
       "bytes": 4633,
       "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/copied1728-comparison.json",
@@ -88,14 +93,34 @@
     "No improved playing strength is demonstrated.",
     "Explicit bounded evaluation tools retain diagnostic timing; production CPU counters and training phase profiling were removed."
   ],
+  "mac_launch_ready": true,
   "machine_configuration": {
     "bytes": 206582,
     "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/machine-original-native-v6.json",
     "sha256": "c86bff9aa8ddf802f8ffd674a35819f044de67769af777cddadfa26b23b5b520"
   },
   "manual_preflight": {
-    "command": "cd /Users/orsi/Projects/Heroes && ./continue-1585.sh --check --hours 10",
-    "status": "pending"
+    "checkpoint": {
+      "decisions": 978803,
+      "rollouts": 6912,
+      "updates": 1728
+    },
+    "command": "./continue-1585.sh --check --hours 10",
+    "evidence": {
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/main-check-attempt1.json",
+      "sha256": "7abfdd108d49075f2eb1fc689640571c8aa1bd8a938c32897cd3a833e4658b2d"
+    },
+    "exact_restore": true,
+    "gameplay_performed": false,
+    "next_sequence": 1369,
+    "numpy_warning_absent": true,
+    "policy_support": "visible-interaction-budget-revealed-v1",
+    "ppo_updates": 0,
+    "protected_inputs_unchanged": 15,
+    "remaining_training_games": 604,
+    "returncode": 0,
+    "source_commit": "146f43ae5f2a6da336bf47dd22b7ae5bcb338727",
+    "working_directory": "/Users/orsi/Projects/Heroes"
   },
   "native_binary_sha256": "3d7099e10b8ad3ba73e0a8f30ef0642d714689e3cd45e88b029c79bf5f6db19b",
   "native_controls": {
@@ -120,6 +145,7 @@
   "official_training_started": false,
   "official_updates": 0,
   "original_admitted_games": 4396,
+  "owned_cleanup_verified": true,
   "performance_telemetry": "removed",
   "policy": {
     "choices": 2030,
@@ -166,22 +192,38 @@
     "implemented": false,
     "opponent_unchanged": "Nullkiller Easy"
   },
-  "status": "runtime_accepted_final_preflight_pending",
+  "status": "accepted_manual_ready",
   "tests": {
     "corrected_launcher_tests": {
       "passed": 23,
       "run": 23
     },
-    "final_suite": "pending",
+    "final_suite": {
+      "elapsed_seconds": 323.704,
+      "failures": 0,
+      "log": {
+        "bytes": 4582,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/full-suite-attempt2.log",
+        "sha256": "ef480c927708c6dd8bdb8795e63db22b0f4f7f7f5a516b83b85ea11e762d7cc7"
+      },
+      "passed": 2028,
+      "run": 2061,
+      "skipped": 33
+    },
     "first_suite": {
       "cause": "Old native manifest expectations in three launcher tests.",
       "failures": 3,
+      "log": {
+        "bytes": 7397,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/full-suite-attempt1.log",
+        "sha256": "a4978345733ebb9b6bd0e8f5ddc51cb86b5580c76d99c9e79ea91baae1246270"
+      },
       "passed": 2025,
       "run": 2061,
       "skipped": 33
     }
   },
-  "timestamp_utc": "2026-10-30T09:51:04.856503+00:00",
+  "timestamp_utc": "2026-10-30T09:55:26.317313+00:00",
   "travel": {
     "captured_towns_later_lost": 3,
     "enemy_initial_town_captures": 2,

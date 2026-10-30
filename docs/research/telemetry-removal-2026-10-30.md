@@ -60,8 +60,11 @@ learner implementation is frozen at `221d319`; the policy diagnostic source
 
 The first full offline suite ran 2,061 tests: three launcher assertions still
 expected the old manifest, with 33 platform/optional skips. The shared expected
-manifest path/hash were updated, and all 23 launcher tests passed. Final offline
-suite and real main-checkout preflight results follow below when complete.
+manifest path/hash were updated, and all 23 launcher tests passed. The final offline
+suite passed all 2,028 executed tests (2,061 discovered, 33 platform/optional
+skips) in 323.704 seconds. The real main-checkout preflight also passed, as
+recorded below. Independent review verified all 285 accepted source bindings,
+the installed native ABI and the actual library bytes.
 
 ## Failed attempts and limits
 
@@ -115,6 +118,21 @@ explanation only, so no such change was implemented.
 
 ## Manual readiness
 
-Final preflight pending. The launcher remains `./continue-1585.sh --hours 10`;
-it follows the latest verified checkpoint and computes the remaining target.
-No official training was launched.
+The real main-checkout `./continue-1585.sh --check --hours 10` passed on
+`146f43a`, exiting zero in 25.08 seconds. It restored full checkpoint 1728 exactly,
+confirmed 604 remaining games and next sequence 1369, and selected the new native
+manifest, 16-CPU budget and pipelined verification. No NumPy warning occurred.
+All 15 protected canonical files still match their prior hashes and sizes.
+The machine-v6 descriptor retains the historical imported checkpoint-412
+provenance; the actual continuation independently selects latest checkpoint1728.
+No gameplay, PPO update or official seed reservation occurred.
+
+The existing Nullkiller continuation remains manual:
+
+```sh
+cd /Users/orsi/Projects/Heroes
+./continue-1585.sh --hours 10
+```
+
+The filename is historical; the runner follows verified descendants and
+recalculates the remaining target. This command does not enable self-play.
