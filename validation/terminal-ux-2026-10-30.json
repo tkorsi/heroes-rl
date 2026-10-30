@@ -1,0 +1,143 @@
+{
+  "actual_tty_checks": [
+    {
+      "ansi_colors": true,
+      "case": "tty-color",
+      "columns": 80,
+      "exit_code": 0,
+      "line_widths_fit": true,
+      "no_game_started": true
+    },
+    {
+      "ansi_colors": false,
+      "case": "tty-plain-narrow",
+      "columns": 44,
+      "exit_code": 0,
+      "line_widths_fit": true,
+      "no_game_started": true
+    }
+  ],
+  "army_information": "own-army-details-v1",
+  "budget": {
+    "capture_seconds": 1200,
+    "hard_choices_per_player": 10240,
+    "max_days": 365,
+    "ordinary_choices_per_player": 9920,
+    "reserved_dialog_choices_per_player": 320
+  },
+  "canonical_dependency_check": {
+    "exit_code": 0,
+    "log": {
+      "bytes": 104,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/canonical-check.stdout",
+      "sha256": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac"
+    }
+  },
+  "checked_source_commit": "6e27fe6fbaacab2a6d0ebeac8f0943fc3e8ef954",
+  "checkpoint": 1753,
+  "display_source_transition": {
+    "experiments/learner/contextual_rollout.py": {
+      "after": "66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab",
+      "before": "6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71"
+    },
+    "experiments/learner/game_progress.py": {
+      "after": "968ba409785f7a11f7d08506bb9286a8a6842307384100683667c754581ea015",
+      "before": "e5c1290de42be830392684a861e7508f4b34dc7469e4ac078d95566632ea057b"
+    },
+    "experiments/learner/local_script_training.py": {
+      "after": "e3f0da4db3583b1a80ea3a36c857ff5e1ab4a0066a9d37fa00905e8d58975c64",
+      "before": "ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd"
+    }
+  },
+  "exact_model_adam_rng_progress_sampler_pool": true,
+  "failed_diagnostic_attempts": [],
+  "final_launcher_tests": {
+    "failures": 0,
+    "log": {
+      "bytes": 98,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/final-launcher-tests.log",
+      "sha256": "b19934d04dd5bf6d2f5334f09368ac6255827dd29a24460bbda9a2bcf3331a95"
+    },
+    "passed": 13,
+    "run": 13
+  },
+  "focused_tests": {
+    "failures": 0,
+    "log": {
+      "bytes": 418,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/focused-tests.log",
+      "sha256": "fbaed357b199c61304b3e39f246a69002db0f47e740ea7033b5912b3c4ca756e"
+    },
+    "passed": 131,
+    "run": 132,
+    "skipped": 1
+  },
+  "full_suite_repeated": false,
+  "gameplay_started": false,
+  "independent_review": "No actionable findings",
+  "learning_settings_changed": false,
+  "main_check": {
+    "exit_code": 0,
+    "stderr": {
+      "bytes": 34,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/main-check.stderr",
+      "sha256": "df31fe6e808b3694bd3de509c7f53a94124c5d4a3094ae4d6897d60d14463dac"
+    },
+    "stdout": {
+      "bytes": 37397,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/main-check.stdout",
+      "sha256": "e4f4bb59d0b39178a9b2e3356b949aa5c3e331791e6287227c27f0d0ea0ac71e"
+    }
+  },
+  "manual_command": "cd /Users/orsi/Projects/Heroes && ./play-one-selfplay.sh --run",
+  "native_acceptance_receipt_changed": false,
+  "native_capture_repeated": false,
+  "next_unused_seed": {
+    "engine_seed": 1960000002,
+    "episode": 1,
+    "policy_seeds": [
+      1962000004,
+      1962000005
+    ]
+  },
+  "optimizer_updates": 0,
+  "parameters": 74344,
+  "policy_support": "visible-interaction-budget-recruit-only-v1",
+  "presentation_only": true,
+  "preview_command": "cd /Users/orsi/Projects/Heroes && ./play-one-selfplay.sh --check",
+  "prior_main_commit": "c83f9027b94a4bca83fcaf5a31618a0440a7d0a6",
+  "protected_files_unchanged": 137,
+  "protected_manifest": {
+    "bytes": 25648,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-terminal-ux/protected-before.json",
+    "sha256": "c2c59aa2cbac9c23b42a13ccc669cedb6110c8ea5b3a0bfff6d62a47434ee8d3"
+  },
+  "safe_sync": {
+    "campaign_lease_held": true,
+    "interrupted": false,
+    "old_owned_processes_absent": true,
+    "old_run_status": "passed",
+    "original_main_clean": true,
+    "original_plan": {
+      "bytes": 344827,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/selfplay-one-game-2x/run-20261030T214036Z-d1d3a205/plan.json",
+      "sha256": "46f3cbcb11ac9b552356fcabaf7ec6ae18c59faaf4a4d727458fd5641b666bc6"
+    },
+    "original_report": {
+      "bytes": 1562,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/selfplay-one-game-2x/run-20261030T214036Z-d1d3a205/report.json",
+      "sha256": "a64b1e853114d30dcd4762c9dc285b6c239b51b39d73be7c303df15e3188dccd"
+    },
+    "original_shutdown": {
+      "bytes": 186,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/selfplay-one-game-2x/run-20261030T214036Z-d1d3a205/shutdown.json",
+      "sha256": "0ffccdcd08209a5cdc99f09d88dbff1f59a6009faa19470dc1a3328b5c1e6120"
+    }
+  },
+  "schema": "heroes-terminal-ux-validation-v1",
+  "seeds_reserved": 0,
+  "status": "passed",
+  "timestamp_utc": "2026-10-30T21:53:30.236441+00:00",
+  "training_samples_admitted": 0,
+  "visual_review": "Synthetic preview of actual render functions; not gameplay footage"
+}

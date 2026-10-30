@@ -1393,3 +1393,10 @@ Main synchronization must wait for the active run's verified shutdown and hold
 the existing campaign lease. No game, training, replay, automatic retry or seed
 reservation is launched by this task. See the
 [UI report](research/terminal-ux-2026-10-30.md) for scope and validation boundaries.
+
+The existing user run shut down before synchronization; its processes were
+absent and cleanup/protected-state/plan checks passed. Main was fast-forwarded
+under the existing campaign lease. Actual main `--check --json`, canonical engine
+agreement and two real PTY checks passed; all 137 protected files remain exact.
+No seed was reserved and no gameplay was started. See
+[compact validation](../validation/terminal-ux-2026-10-30.json).
