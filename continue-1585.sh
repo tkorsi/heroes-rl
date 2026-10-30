@@ -1,0 +1,10 @@
+#!/bin/sh
+# Finish the verified checkpoint1585 cohort; later invocations count its descendants.
+set -eu
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes-artifacts/python/next-launch-numpy235-v1/venv/bin/python"}
+if [ ! -x "$TRAINER_PYTHON" ]; then
+    echo "Set HEROES_PYTHON to the project's Python interpreter with the locked PyTorch dependencies." >&2
+    exit 2
+fi
+exec "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/continue_1585_games.py" "$@"

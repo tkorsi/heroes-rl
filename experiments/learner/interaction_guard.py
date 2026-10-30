@@ -13,6 +13,8 @@ from . import contextual as c
 
 
 VERSION = "visible-interaction-budget-v1"
+REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
+SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION)
 ACTIVE_VERSION = None
 NAVIGATION_LIMIT = 2
 MANAGEMENT_LIMIT = 32
@@ -114,7 +116,7 @@ class GuardSupport:
     blocked_coordinates: tuple[tuple[str, int, int], ...] = ()
 
     def __post_init__(self):
-        if self.version != VERSION:
+        if self.version not in SUPPORTED_VERSIONS:
             raise ValueError("Unsupported interaction guard version")
         _strings(self.blocked_management_subjects, "management subjects")
         _strings(self.movable_heroes, "movable heroes")
@@ -141,11 +143,36 @@ class GuardSupport:
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability", "end_turn"):
             return True
         if action.kind == "move_to":
-            return (action.subject in self.movable_heroes
-                    and (action.subject, action.x, action.y) not in self.blocked_coordinates)
+            return self._permits_movement(action.subject, action.x, action.y,
+                                          self._revealed_coordinates(action.subject, observation))
         if action.kind in MANAGEMENT_KINDS:
             return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
         return nav_key(action, observation, offers) not in self.blocked_navigation
+
+    def _revealed_coordinates(self, subject, observation):
+        if self.version == VERSION:
+            return None
+        # Membership in the current delivered observation is the entire added
+        # rule. Blocked/visitable flags and route feasibility are not consulted.
+        level = next((hero.position[2] for hero in observation.heroes if hero.handle == subject), None)
+        return frozenset((tile.position[0], tile.position[1]) for tile in observation.tiles
+                         if tile.position[2] == level)
+
+    def _permits_movement(self, subject, x, y, revealed):
+        return (subject in self.movable_heroes
+                and (subject, x, y) not in self.blocked_coordinates
+                and (revealed is None or (x, y) in revealed))
+
+    def movement_coordinates(self, subject, observation, offers):
+        """Current permitted coordinates, in the historical row-major order."""
+        width, height, _ = offers.size
+        revealed = self._revealed_coordinates(subject, observation)
+        indices = (range(width * height) if revealed is None else
+                   sorted(y * width + x for x, y in revealed))
+        return (index for index in indices
+                if offers.permits(c.Action("move_to", subject, index % width, index // width,
+                                           schema=offers.schema))
+                and self._permits_movement(subject, index % width, index // width, revealed))
 
     def to_dict(self):
         return {
@@ -184,7 +211,7 @@ class Tracker:
 
     def __init__(self, version=_DEFAULT):
         self.version = ACTIVE_VERSION if version is _DEFAULT else version
-        if self.version not in (None, VERSION):
+        if self.version is not None and self.version not in SUPPORTED_VERSIONS:
             raise ValueError("Unsupported interaction guard version")
         self.day = None
         self.identity = None

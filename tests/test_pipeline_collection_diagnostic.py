@@ -74,5 +74,73 @@ class PipelineDiagnosticTests(unittest.TestCase):
             worker.assert_not_called()
 
 
+class RevealedPipelineDiagnosticTests(unittest.TestCase):
+    def test_new_study_is_explicit_and_the_historical_contract_is_unchanged(self):
+        from experiments.learner import interaction_guard
+        old = diagnostic.study_contract(diagnostic.LEGACY_RELEASE)
+        new = diagnostic.study_contract(diagnostic.REVEALED_RELEASE)
+        self.assertEqual((old['schema'], old['policy_support'], old['policy_checkpoint_update']),
+                         (diagnostic.SCHEMA, interaction_guard.VERSION, 1392))
+        self.assertEqual((new['schema'], new['policy_support'], new['policy_checkpoint_update']),
+                         (diagnostic.REVEALED_SCHEMA, interaction_guard.REVEALED_VERSION, 1585))
+        launch = dict(new, schema=new['schema']+'-launch', study_release=diagnostic.REVEALED_RELEASE)
+        self.assertEqual(diagnostic.launch_contract(launch), new)
+        for changed in (dict(checkpoint_selection='completed_before'), dict(policy_checkpoint_update=1584),
+                        dict(policy_support=interaction_guard.VERSION), dict(study_release='unreviewed')):
+            with self.subTest(changed=changed), self.assertRaises(ValueError):
+                diagnostic.launch_contract(dict(launch, **changed))
+
+    def test_new_study_selects_the_verified_after_state_with_its_initial_dependency(self):
+        from experiments.learner import local_script_training as local
+        with tempfile.TemporaryDirectory() as tmp:
+            plan_path = Path(tmp).resolve()/'plan.json'; plan_path.write_text('{}')
+            before = {'checkpoint': 'before1584'}
+            initial = {'path': 'before1584.pt', 'sha256': 'initial', 'bytes': 1}
+            original = {'parent_descriptor': before, 'checkpoint': initial}
+            report = {'cumulative_progress': {'updates': 1585},
+                      'after_checkpoint': {'policy': {'after': 'policy'}, 'resume': {'after': 'resume'}}}
+            after = dict(plan=diagnostic.binding(plan_path), report={'after': 'report'},
+                         initial_checkpoint=initial, **report['after_checkpoint'])
+            with patch.object(local, 'descriptor_from_batch', return_value=after) as select, \
+                    patch.object(local, 'read_descriptor', return_value=(original, report)):
+                self.assertEqual(diagnostic.selected_parent(plan_path, original, report,
+                    diagnostic.REVEALED_RELEASE), after)
+                select.assert_called_once_with(plan_path)
+                for wrong in ({**report, 'cumulative_progress': {'updates': 1584}},
+                              {**report, 'cumulative_progress': {'updates': 1586}}):
+                    with patch.object(local, 'read_descriptor', return_value=(original, wrong)):
+                        with self.assertRaisesRegex(ValueError, 'wrong complete checkpoint'):
+                            diagnostic.selected_parent(plan_path, original, wrong, diagnostic.REVEALED_RELEASE)
+                with patch.object(local, 'descriptor_from_batch', return_value=dict(after, initial_checkpoint={'wrong': True})):
+                    with self.assertRaisesRegex(ValueError, 'initial dependency'):
+                        diagnostic.selected_parent(plan_path, original, report, diagnostic.REVEALED_RELEASE)
+
+    def test_historical_study_keeps_the_before_parent(self):
+        from experiments.learner import local_script_training as local
+        descriptor = {'historical': 'parent1392'}
+        with patch.object(local, 'descriptor_from_batch') as after, \
+                patch.object(local, 'read_descriptor', return_value=({}, {'cumulative_progress': {'updates': 1392}})):
+            self.assertEqual(diagnostic.selected_parent(Path('plan.json'), {'parent_descriptor': descriptor}, {},
+                diagnostic.LEGACY_RELEASE), descriptor)
+            after.assert_not_called()
+
+    @staticmethod
+    def episode(target=(2, 3), *, tiles=((2, 3, 1),), hero=True):
+        action = SimpleNamespace(kind='move_to', subject='own', x=target[0], y=target[1])
+        observation = SimpleNamespace(heroes=[SimpleNamespace(handle='own', position=(0, 0, 1))] if hero else [],
+                                      tiles=[SimpleNamespace(position=tile) for tile in tiles])
+        return SimpleNamespace(history=[SimpleNamespace(seq=7, kind='decision', observation=observation)],
+                               decisions=[SimpleNamespace(decision_seq=7, action=action)])
+
+    def test_movement_audit_uses_the_actual_decision_observation_and_hero_level(self):
+        self.assertEqual(diagnostic.revealed_movement_audit(self.episode()),
+                         dict(movement_choices=1, revealed_targets=1, unrevealed_targets=0))
+        for episode in (self.episode(target=(9, 9)), self.episode(tiles=((2, 3, 0),))):
+            with self.assertRaisesRegex(ValueError, 'unrevealed movement target'):
+                diagnostic.revealed_movement_audit(episode)
+        with self.assertRaisesRegex(ValueError, 'own hero'):
+            diagnostic.revealed_movement_audit(self.episode(hero=False))
+
+
 if __name__ == '__main__':
     unittest.main()

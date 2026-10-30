@@ -39,6 +39,11 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 # has been reviewed and its immutable hash is pinned here. A supplied pathname
 # or a newly built binary is never sufficient authorization to select a runtime.
 ACCEPTED_RUNTIME_RELEASES = {
+    "revealed-movement-1585-v1": {
+        "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/revealed-movement1585-acceptance-v1.json",
+        "sha256": None,
+        "python_environment": NEXT_LAUNCH_ENVIRONMENT,
+    },
     "cpu-next-launch-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/cpu-next-launch-acceptance-v2.json",
         "sha256": "a64ffa3887c5388b13fbdac49639beca1e1e0186e5690f83af473cc184f427e6",
@@ -342,7 +347,7 @@ def candidate_runtime_origin(runtime_bin, runtime, descriptor):
 
 def accepted_runtime_origin(runtime_bin, runtime, descriptor):
     origin = candidate_runtime_origin(runtime_bin, runtime, descriptor)
-    if descriptor.get("release_id") == "cpu-next-launch-v1":
+    if descriptor.get("release_id") in ("cpu-next-launch-v1", "revealed-movement-1585-v1"):
         from tools.accept_cpu_next_launch import pipeline_policy_acceptance
         policy = pipeline_policy_acceptance(descriptor, runtime)
         return {**origin, "pipeline_policy": policy,
@@ -407,7 +412,7 @@ def terminal_replay_acceptance(descriptor, runtime):
             "Terminal replay repair lacks exact excluded native replay with unchanged original evidence")
     accounting = proof.get("wire", {}).get("request_accounting", {})
     tail = accounting.get("terminal_unapplied", [])
-    town_swap = descriptor.get("release_id") in ("terminal-replay-1392-v1", "cpu-next-launch-v1")
+    town_swap = descriptor.get("release_id") in ("terminal-replay-1392-v1", "cpu-next-launch-v1", "revealed-movement-1585-v1")
     require(not town_swap or descriptor.get("checkpoint_update") == 1392,
             "Town-swap replay acceptance must bind checkpoint1392")
     expected_type = 189 if town_swap else 190

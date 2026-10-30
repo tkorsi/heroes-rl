@@ -201,5 +201,131 @@ class ExecutionClosureTests(unittest.TestCase):
                 accept.committed_blobs('a'*40, {'../file.py': digest})
 
 
+class RevealedAcceptanceTests(unittest.TestCase):
+    write = PipelineAcceptanceTests.write
+    run_gate = PipelineAcceptanceTests.run_gate
+    change_document = PipelineAcceptanceTests.change_document
+
+    def setUp(self):
+        from experiments.learner import interaction_guard
+        PipelineAcceptanceTests.setUp(self)
+        self.parent_gate = patch.object(accept, 'verify_revealed_parent').start()
+        self.capture.return_value = {'receipt': {}, 'choices': 3,
+                                    'revealed_movement': dict(movement_choices=2, revealed_targets=2, unrevealed_targets=0)}
+        details = dict(study_release=accept.REVEALED_RELEASE, checkpoint_selection='completed_after',
+                       policy_checkpoint_update=1585, policy_support=interaction_guard.REVEALED_VERSION)
+        self.launch.update(details, schema=accept.REVEALED_SCHEMA+'-launch')
+        launch_binding = self.write(self.output/'launch.json', self.launch)
+        template = deepcopy(self.report['arms'][1])
+        self.report.update(details, schema=accept.REVEALED_SCHEMA, launch=launch_binding,
+            plan_sha256=launch_binding['sha256'], parent_progress={'updates': 1585},
+            revealed_movement=dict(movement_choices=32, revealed_targets=32, unrevealed_targets=0), arms=[])
+        for name, pipelined in (('sequential-verification', False), ('pipelined-verification', True)):
+            arm = deepcopy(template); arm.update(name=name, pipeline_verification=pipelined, batches=[])
+            for seat, original_batch in enumerate(template['batches']):
+                plan = json.loads(Path(original_batch['plan']['path']).read_text())
+                result = json.loads(Path(original_batch['report']['path']).read_text())
+                folder = self.output/name/f'seat-{seat}'
+                plan.update(diagnostic_scope=accept.REVEALED_SCHEMA,
+                    diagnostic_launch_sha256=launch_binding['sha256'], policy_support=details['policy_support'],
+                    execution_output=str(folder/'execution'),
+                    execution=dict(collection_workers=4, verification_workers=4, pipeline_verification=pipelined))
+                result['pipeline_verification'] = pipelined
+                arm['batches'].append(dict(seat=seat, status='passed', plan=self.write(folder/'plan.json', plan),
+                    report=self.write(folder/'execution/parallel-collection/result.json', result)))
+            self.report['arms'].append(arm)
+        self.descriptor.update(release_id=accept.REVEALED_RELEASE, policy_checkpoint_update=1585,
+                               policy_support=details['policy_support'])
+        self.descriptor['pipeline_policy'].update(launch=launch_binding,
+            report=self.write(self.output/'report.json', self.report))
+
+    def test_new_gate_checks_both_arms_and_keeps_native_and_policy_checkpoints_distinct(self):
+        value = self.run_gate()
+        self.assertEqual(self.descriptor['checkpoint_update'], 1392)
+        self.assertEqual((value['policy_checkpoint_update'], value['candidate_games'], value['diagnostic_games']),
+                         (1585, 8, 16))
+        self.assertEqual((value['choices'], self.capture.call_count), (24, 16))
+        self.assertEqual(value['revealed_movement']['unrevealed_targets'], 0)
+        self.parent_gate.assert_called_once()
+
+    def test_before_checkpoint_or_old_guard_cannot_satisfy_new_release(self):
+        for field, wrong in (('policy_checkpoint_update', 1584), ('checkpoint_update', 1585),
+                             ('policy_support', 'visible-interaction-budget-v1')):
+            original = self.descriptor[field]; self.descriptor[field] = wrong
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'engine proof 1392 and policy proof 1585'):
+                self.run_gate()
+            self.descriptor[field] = original
+        self.change_document('report', lambda row: row.update(parent_progress={'updates': 1584}))
+        with self.assertRaisesRegex(ValueError, 'identity'):
+            self.run_gate()
+
+    def test_all_actual_targets_must_be_revealed_and_counts_must_match(self):
+        for wrong in (dict(movement_choices=32, revealed_targets=31, unrevealed_targets=1),
+                      dict(movement_choices=31, revealed_targets=31, unrevealed_targets=0)):
+            self.change_document('report', lambda row, wrong=wrong: row.update(revealed_movement=wrong))
+            with self.subTest(wrong=wrong), self.assertRaisesRegex(ValueError, 'zero-unrevealed-target'):
+                self.run_gate()
+        empty = dict(movement_choices=0, revealed_targets=0, unrevealed_targets=0)
+        self.capture.return_value['revealed_movement'] = empty
+        self.change_document('report', lambda row: row.update(revealed_movement=empty))
+        with self.assertRaisesRegex(ValueError, 'lacks actual movement'):
+            self.run_gate()
+
+    def test_sequential_arm_cannot_be_accepted_only_from_its_summary(self):
+        batch = self.report['arms'][0]['batches'][0]
+        result = json.loads(Path(batch['report']['path']).read_text()); result['status'] = 'failed'
+        batch['report'] = self.write(Path(batch['report']['path']), result)
+        self.descriptor['pipeline_policy']['report'] = self.write(self.output/'report.json', self.report)
+        with self.assertRaisesRegex(ValueError, 'collection result'):
+            self.run_gate()
+
+
+class RevealedEvidenceTests(unittest.TestCase):
+    def test_actual_sampled_target_check_does_not_trust_summary(self):
+        from tools import benchmark_pipeline_collection as diagnostic
+        observation = SimpleNamespace(heroes=[SimpleNamespace(handle='own', position=(0, 0, 0))],
+                                      tiles=[SimpleNamespace(position=(1, 2, 0))])
+        record = SimpleNamespace(decision_seq=1, action=SimpleNamespace(kind='move_to', subject='own', x=1, y=2))
+        episode = SimpleNamespace(history=[SimpleNamespace(seq=1, kind='decision', observation=observation)],
+                                  decisions=[record])
+        actual = diagnostic.revealed_movement_audit(episode)
+        self.assertEqual(accept.verify_revealed_choices(episode, {'revealed_movement': actual}), actual)
+        with self.assertRaisesRegex(ValueError, 'summary differs'):
+            accept.verify_revealed_choices(episode, {'revealed_movement': dict(actual, movement_choices=2)})
+        record.action.x = 9
+        with self.assertRaisesRegex(ValueError, 'unrevealed movement target'):
+            accept.verify_revealed_choices(episode, {'revealed_movement': actual})
+
+    def test_parent_selection_binds_after_progress_and_all_five_original_files(self):
+        from tools import benchmark_pipeline_collection as diagnostic
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            def document(name, value):
+                path = root/name; path.write_text(json.dumps(value)); return accept.binding(path)
+            selected = {name: document(name+'.json', {'name': name}) for name in
+                        ('plan', 'report', 'policy', 'resume', 'initial_checkpoint')}
+            completed = {'configuration': 'unchanged'}
+            plan = document('completed-plan.json', completed)
+            report = document('completed-report.json', {'cumulative_progress': {'updates': 1585}})
+            launch = dict(study_release=accept.REVEALED_RELEASE, checkpoint_selection='completed_after',
+                policy_checkpoint_update=1585, inputs={'completed-report': report},
+                original_inputs={**selected, 'completed-plan': plan})
+            result = dict(study_release=accept.REVEALED_RELEASE, checkpoint_selection='completed_after',
+                          policy_checkpoint_update=1585, parent_progress={'updates': 1585})
+            with patch.object(diagnostic, 'selected_parent', return_value=selected) as select:
+                accept.verify_revealed_parent(launch, result, completed)
+                select.assert_called_once()
+                launch['original_inputs']['initial_checkpoint'] = selected['policy']
+                with self.assertRaisesRegex(ValueError, 'another parent or initial dependency'):
+                    accept.verify_revealed_parent(launch, result, completed)
+                launch['original_inputs']['initial_checkpoint'] = selected['initial_checkpoint']
+                result['parent_progress'] = {'updates': 1584}
+                with self.assertRaisesRegex(ValueError, 'another parent or initial dependency'):
+                    accept.verify_revealed_parent(launch, result, completed)
+                launch['checkpoint_selection'] = 'completed_before'
+                with self.assertRaisesRegex(ValueError, 'completed after-state'):
+                    accept.verify_revealed_parent(launch, result, completed)
+
+
 if __name__ == '__main__':
     unittest.main()

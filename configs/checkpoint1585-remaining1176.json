@@ -1,0 +1,60 @@
+{
+  "schema": "heroes-completed-run-continuation-goal-v1",
+  "id": "checkpoint1585-remaining1176-v1",
+  "run_root_relative": "local-script-training/original",
+  "origin_run": "run-20261026T181133Z-062cd75a",
+  "anchor_parent": {
+    "plan": {
+      "path": "run-20261029T211050Z-3a3d748f/batches/train-001225-seat1/plan.json",
+      "sha256": "54f19c0c3b343769305d40b78d0ba46d02a71608dc947c483a7a71a6dbe82945",
+      "bytes": 73640
+    },
+    "report": {
+      "path": "run-20261029T211050Z-3a3d748f/batches/train-001225-seat1/execution/report.json",
+      "sha256": "1da19d28299fc2bd3f1d82b6a86ccd44933ce3b332c15479808312bb8c3fabaa",
+      "bytes": 15810
+    },
+    "policy": {
+      "path": "run-20261029T211050Z-3a3d748f/batches/train-001225-seat1/execution/after-policy.pt",
+      "sha256": "8b4ffa90b4e20c2d23f47cb30bf0719671cb378e8019f50186485f7d0e5cd80a",
+      "bytes": 639347
+    },
+    "resume": {
+      "path": "run-20261029T211050Z-3a3d748f/batches/train-001225-seat1/execution/after-resume.pt",
+      "sha256": "f983a04dd4b1c18e998ae172ca8f00a34c54a1eb423c51aa1e156acd2fe98411",
+      "bytes": 1267445
+    },
+    "initial_checkpoint": {
+      "path": "run-20261029T211050Z-3a3d748f/batches/train-001224-seat0/execution/after-policy.pt",
+      "sha256": "07edc5e95a94613b41aa588d649f45dee714d73fc78309f3de5f2a69511c09d9",
+      "bytes": 639347
+    }
+  },
+  "anchor_progress": {
+    "updates": 1585,
+    "rollouts": 6340,
+    "decisions": 922041
+  },
+  "admitted_original_at_anchor": 3824,
+  "additional_games": 1176,
+  "minimum_next_sequence": 1226,
+  "anchor_sequence": 1225,
+  "required_policy_support": "visible-interaction-budget-revealed-v1",
+  "completed_run": {
+    "session.json": {
+      "path": "run-20261029T211050Z-3a3d748f/session.json",
+      "sha256": "f9542bff82f4c47128faeb6c91d5356593456c6a4e5a7b5decb4aa98d26b5478",
+      "bytes": 163661
+    },
+    "campaign-report.json": {
+      "path": "run-20261029T211050Z-3a3d748f/campaign-report.json",
+      "sha256": "93d97b52f1157905ed4c24bb8e42b850616cd6bbb9f76052b472e978ca6edf02",
+      "bytes": 2185146
+    },
+    "shutdown.json": {
+      "path": "run-20261029T211050Z-3a3d748f/shutdown.json",
+      "sha256": "8d46bda0d85c8397688bf7926acc437c0e73d2076857755d33b18a7620582883",
+      "bytes": 530636
+    }
+  }
+}

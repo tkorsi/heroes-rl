@@ -88,7 +88,7 @@ def model_schema_for(profile_or_schema):
 
 def distribution_schema_for(profile_or_schema, guard_version=None):
     if guard_version is not None:
-        if guard_version != interaction_guard.VERSION:
+        if guard_version not in interaction_guard.SUPPORTED_VERSIONS:
             raise ValueError("Unsupported contextual interaction guard")
         return distribution_schema_for(profile_or_schema) + "+" + guard_version
     profile = c.profile_for(profile_or_schema)
@@ -1730,6 +1730,8 @@ class ContextualDistribution:
         return tuple(choice for choice in choices if self._permitted(action_for(choice)))
 
     def _coordinates(self, subject):
+        if self.guard is not None and self.guard.version == interaction_guard.REVEALED_VERSION:
+            return self.guard.movement_coordinates(subject, self.observation, self.offers)
         width, height, _ = self.offers.size
         return (index for index in range(width * height)
                 if self._permitted(self._action("move_to", subject=subject, x=index % width, y=index // width)))

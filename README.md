@@ -5,30 +5,47 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**29 October 2026**. Earlier stages are preserved in
+**30 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
-The user manually resumed the remaining-game goal from **checkpoint 1,392**.
-During the subsequent [CPU and NumPy preparation](docs/research/cpu-next-launch-2026-10-29.md),
-that run continues independently on frozen source `10d3d4f`, its original Python
-environment and its original native learner. Its verified checkpoint advances;
-1,392 is the continuation anchor, not a request to reset the current model.
-The launcher reads the verified latest state and recomputes the remaining goal.
+The user-launched continuation from **checkpoint 1,392 to 1,585 completed** its
+772-game goal in **193 complete PPO updates**. It admitted 771 natural losses and
+one verified collection-window cutoff. All 32 evaluation games were excluded
+from PPO. The final model, Adam, RNG, progress, sampler and pool restore exactly;
+the final shutdown passed and no owned training processes remain. The original
+5,000-game target has **3,824 admitted games and 1,176 remaining**. Sequence
+**1,226** is next. The completed run used frozen `10d3d4f` and its original
+environment; the preparation below did not modify it.
 
-The next manual launch uses a separate hash-locked Python environment with
-NumPy 2.3.5 and unchanged Python/Torch libraries. It overlaps replay verification
-of completed, sealed games with collection of the remaining games when the
-CPU budget permits. The learning batch stays at four games; every game must pass
-the original integrity checks before PPO. The attempted additional C++ change
-was slower at the production thread budget and was rejected. The accepted native
-learner remains unchanged. See the [CPU preparation report](docs/research/cpu-next-launch-2026-10-29.md)
-for measurements, limitations and the next-launch gate. This preparation does
-not change the running session or automatically launch another one.
+The new [revealed-movement intervention](docs/research/revealed-movement-2026-10-30.md)
+explicitly limits `move_to` targets to tiles present in the hero's current
+delivered observation on the same map level. It preserves the existing visible
+interaction budgets and introduces no path-feasibility or strategic mask.
+Its separate version is `visible-interaction-budget-revealed-v1`; this changes
+policy support and is not an exact acceleration. The map, architecture, PPO,
+four-game batch, opponent and terminal-only +1/-1/0 rewards stay unchanged.
 
-At the preceding failure boundary, the user-started 1,000-game
+The prepared launcher is `./continue-1585.sh --hours 10`, with a default ten-hour
+limit and total runtime output. It follows the latest verified descendants of
+checkpoint 1,585 and recalculates the remaining original target on every manual
+invocation. The old 772-game goal remains complete. **Fresh native validation,
+runtime acceptance and the final main-checkout check are pending**; the new
+launcher is not yet certified ready. The intended offline check is
+`./continue-1585.sh --check --hours 10`. Preparation starts no official training.
+
+The accepted [CPU and NumPy changes](docs/research/cpu-next-launch-2026-10-29.md)
+are already merged on `main` at `c289408`. The separate environment adds NumPy
+2.3.5 with unchanged Python/Torch libraries. Sealed-game replay verification can
+overlap remaining collection when the CPU budget permits; all four games must
+still pass before PPO. The additional C++ graph-compaction candidate was slower
+at the production thread budget and was rejected. Its code is excluded; the
+accepted native learner remains unchanged. Repeatable full-training throughput
+improvement, full CPU saturation and better playing strength are not established.
+
+Historically, at the preceding failure boundary, the user-started 1,000-game
 run had admitted **228 games in 57 complete updates**, then stopped on an unsupported
 terminal opponent request in replay verification. The failed batch admitted no
 samples or update; full model/Adam/RNG/progress/sampler/pool state is preserved.

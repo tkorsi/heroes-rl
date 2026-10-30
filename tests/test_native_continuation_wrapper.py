@@ -94,6 +94,9 @@ class NativeContinuationWrapperTests(unittest.TestCase):
                    ("--hours", "1", "--hours", "10"), ("--check", "--check"),
                    ("--session-games", "1000", "--session-games", "2000"), ("--session-games",),
                    ("--session-goal", "unknown"),
+                   ("--session-goal", "checkpoint1585-remaining1176-v1"),
+                   ("--interaction-guard", "unknown"),
+                   ("--interaction-guard", "visible-interaction-budget-v1", "--interaction-guard", "visible-interaction-budget-revealed-v1"),
                    ("--session-goal", "checkpoint1392-remaining772-v1", "--session-games", "772"),
                    ("--native-sha256", SHA), ("--hours",), ("--cpu-cap", "--check")]
         for args in invalid:
@@ -101,6 +104,17 @@ class NativeContinuationWrapperTests(unittest.TestCase):
                 result = self.run_wrapper(*self.required, *args)
                 self.assertEqual(result.returncode, 2)
                 self.assertFalse(self.args_file.exists())
+
+    def test_completed_goal_requires_and_forwards_explicit_revealed_guard(self):
+        result = self.run_wrapper(*self.required, '--session-goal', 'checkpoint1585-remaining1176-v1',
+            '--interaction-guard', 'visible-interaction-budget-revealed-v1', '--check')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.called()
+        self.assertEqual(args[0], 'check')
+        self.assertEqual(args[args.index('--session-goal')+1], 'checkpoint1585-remaining1176-v1')
+        self.assertEqual(args.count('--interaction-guard'), 1)
+        self.assertEqual(args[args.index('--interaction-guard')+1], 'visible-interaction-budget-revealed-v1')
+        self.assertNotIn('--session-games', args)
 
     def test_missing_or_malformed_native_binding_rejects(self):
         for args in ((), ("--native-learner", "relative.json", "--native-sha256", SHA),

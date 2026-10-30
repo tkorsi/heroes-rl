@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = Path.home() / 'Projects/Heroes-artifacts/local-script-training/machine.json'
 # Keep historical machine descriptors immutable: completed sessions bind their bytes.
-ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original-native-v4.json')
+ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original-native-v5.json')
 # The default path releases this accepted implementation unchanged. Only an explicit --fast-path
 # releases the current commit, whose execution choices and any separately opted-in
 # policy-support intervention the session records.
@@ -446,7 +446,7 @@ def _local_original_continuation(anchor, config, recovery_receipt=None, *, movin
             scheduled.add(key)
         cursor = plan['parent_descriptor']
     remaining = 4720 - 4*continued
-    require(remaining > 0, 'The original 5000-game target is already complete')
+    require(remaining >= 0, 'The original 5000-game target was exceeded')
     return parent, remaining, dict(schema='heroes-original5000-continuation-v1', origin_run=str(anchor),
         origin_checkpoint=699, origin_admitted_games=280, target_games=5000,
         admitted_before_session=280+4*continued, remaining_before_session=remaining,
@@ -725,8 +725,19 @@ def selected_execution(args):
 def session_game_target(args, config, parent, remaining, continuation):
     if getattr(args, 'session_goal', None) is not None:
         from tools.continuation_goal import remaining_games
-        return remaining_games(args.session_goal, config, parent, remaining, continuation)
+        target, goal = remaining_games(args.session_goal, config, parent, remaining, continuation)
+        required = goal.get('required_policy_support')
+        if required is not None and getattr(args, 'interaction_guard', None) != required:
+            raise ValueError('Continuation goal requires its explicit reviewed policy support')
+        return target, goal
     return continuation_game_target(remaining, args.session_games), None
+
+
+def session_goal_files(name):
+    from tools.continuation_goal import GOALS
+    suffix = '1585' if name == 'checkpoint1585-remaining1176-v1' else '772'
+    return ['tools/continuation_goal.py', GOALS[name][0], f'continue-{suffix}.sh',
+            f'tools/continue_{suffix}_games.py', 'tools/train_1000_games.py', 'continue-original-native.sh']
 
 
 def launch_owned(args):
@@ -781,9 +792,7 @@ def launch_owned(args):
         parent_final_evidence=parent_final_evidence,
         frozen_files={p: binding(ROOT / p) for p in ('tools/run_local_training.py', 'tools/prepare_local_training.py',
             'tools/recover_interrupted_training.py', 'configs/interrupted1229-recovery.json', 'train-local.sh',
-            *(['tools/continuation_goal.py', 'configs/checkpoint1392-remaining772.json', 'continue-772.sh',
-               'tools/continue_772_games.py', 'tools/train_1000_games.py', 'continue-original-native.sh']
-              if session_goal else []))},
+            *(session_goal_files(args.session_goal) if session_goal else []))},
         authorization='Manual user invocation; no agent/model calls, no automatic retry or post-deadline restart',
         **budget(args.hours, continuation=args.continue_original is not None))
     require(not session['source']['tracked_worktree_dirty'], 'Frozen source is dirty')
@@ -796,6 +805,8 @@ def launch_owned(args):
         hypothesis += (' The declared visible-history interaction guard changes action support to bound repeated '
                        'navigation, failed movement and reversible management; terminal rewards and PPO formulas '
                        'remain unchanged. This is a new behavior-support experiment, not identical-policy acceleration.')
+    if policy_support == adapter.interaction_guard.REVEALED_VERSION:
+        hypothesis += ' Movement targets are additionally restricted to tiles present in each current player-visible observation; revealed blocked targets remain available under the existing budgets.'
     event(run, 'preregistered', session=session, hypothesis=hypothesis)
     print(f"Execution optimizations: opt-in exact fast path ({'overlapped' if execution['overlapped_verification'] else 'serial'} "
           f"verification, {execution['collection_workers']} collectors, {execution['prefix_helpers']} prefix helpers, text-leaf replay "
@@ -892,7 +903,7 @@ def main():
     parser.add_argument('--games', type=int, help='Target newly admitted training games, a positive multiple of four; evaluations excluded')
     parser.add_argument('--session-games', type=int,
                         help='Cap newly admitted games for --continue-original, a positive multiple of four no larger than its verified remaining target; evaluations excluded')
-    parser.add_argument('--session-goal', choices=('checkpoint1392-remaining772-v1',),
+    parser.add_argument('--session-goal', choices=('checkpoint1392-remaining772-v1', 'checkpoint1585-remaining1176-v1'),
                         help='Finish a pinned admitted-game goal across manual invocations; never reset its count')
     parser.add_argument('--eval-every', type=int, help='Paired evaluation interval in updates: default 5, or 100 with --games')
     parser.add_argument('--max-updates', type=int)
@@ -906,7 +917,7 @@ def main():
     parser.add_argument('--recovery-receipt', type=Path,
                         help='Explicit reviewed interruption receipt; original failed session stays immutable')
     parser.add_argument('--session', type=Path)
-    parser.add_argument('--interaction-guard', choices=('visible-interaction-budget-v1',),
+    parser.add_argument('--interaction-guard', choices=('visible-interaction-budget-v1', 'visible-interaction-budget-revealed-v1'),
                         help='Explicit visible-history policy-support intervention; disabled when omitted')
     fast = parser.add_argument_group('opt-in exact fast path (default: the accepted implementation)')
     fast.add_argument('--fast-path', action='store_true', help='Run the reviewed exact fast path of this commit')

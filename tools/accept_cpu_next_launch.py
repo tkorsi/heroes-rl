@@ -27,6 +27,8 @@ from tools.training_environment import NEXT_LAUNCH_ENVIRONMENT, verify_environme
 
 SCHEMA = 'heroes-pipeline-collection-diagnostic-v1'
 RELEASE = 'cpu-next-launch-v1'
+REVEALED_RELEASE = 'revealed-movement-1585-v1'
+REVEALED_SCHEMA = 'heroes-revealed-pipeline-collection-diagnostic-v1'
 OLD_RELEASE = 'terminal-replay-1392-v1'
 ORIGINAL_MAP_SHA256 = 'ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3'
 HELPERS = ('tools/benchmark_pipeline_collection.py', 'tools/benchmark_copied_training.py',
@@ -154,6 +156,44 @@ def verify_choice_counts(episode, attempt, policy, receipt):
             'Candidate reconstructed choices or consumed targets differ')
 
 
+def policy_contract(descriptor):
+    from experiments.learner import interaction_guard
+    release = descriptor.get('release_id')
+    require(release in (RELEASE, REVEALED_RELEASE)
+            and descriptor.get('python_environment') == NEXT_LAUNCH_ENVIRONMENT,
+            'Pipeline policy evidence is exclusive to the reviewed next-launch release')
+    if release == REVEALED_RELEASE:
+        require(descriptor.get('checkpoint_update') == 1392
+                and descriptor.get('policy_checkpoint_update') == 1585
+                and descriptor.get('policy_support') == interaction_guard.REVEALED_VERSION,
+                'Revealed acceptance must retain engine proof 1392 and policy proof 1585')
+        return REVEALED_SCHEMA, interaction_guard.REVEALED_VERSION, 1585
+    require(descriptor.get('checkpoint_update') == 1392, 'Historical pipeline requires checkpoint 1392')
+    return SCHEMA, interaction_guard.VERSION, 1392
+
+
+def verify_revealed_parent(launch, report, completed):
+    from tools.benchmark_pipeline_collection import selected_parent, REVEALED_RELEASE
+    require(all(document.get('study_release') == REVEALED_RELEASE
+                and document.get('checkpoint_selection') == 'completed_after'
+                and document.get('policy_checkpoint_update') == 1585 for document in (launch, report)),
+            'Revealed policy proof must explicitly select the completed after-state')
+    completed_report = read(launch['inputs']['completed-report'])
+    selected = selected_parent(checked(launch['original_inputs']['completed-plan']),
+                               completed, completed_report, REVEALED_RELEASE)
+    require(all(selected[name] == launch['original_inputs'][name] for name in selected)
+            and completed_report['cumulative_progress'] == report['parent_progress'],
+            'Revealed policy proof selected another parent or initial dependency')
+
+
+def verify_revealed_choices(episode, attempt):
+    from tools.benchmark_pipeline_collection import revealed_movement_audit
+    actual = revealed_movement_audit(episode)
+    require(attempt.get('revealed_movement') == actual,
+            'Revealed movement summary differs from actual sampled decisions')
+    return actual
+
+
 def audit_attempt(attempt, row, index, batch_plan, plan_binding, launch, weights):
     from experiments.headless import builtin_evidence, builtin_replay
     from experiments.learner import builtin_gameplay as gameplay, interaction_guard
@@ -201,7 +241,7 @@ def audit_attempt(attempt, row, index, batch_plan, plan_binding, launch, weights
             'Candidate capture was relabeled or changed')
     episode = load_builtin_episode(raw['experience'])
     require(episode.manifest == manifest and episode.weights_sha256 == weights
-            and behavior_guard_version(episode.decisions) == interaction_guard.VERSION
+            and behavior_guard_version(episode.decisions) == launch['policy_support']
             and episode.player == row['learner_player'], 'Candidate visible-policy support changed')
     require(history == receipt['history_reconstruction'] and history.get('verified') is True
             and history.get('opponent_history') is None and policy == receipt['policy_reconstruction']
@@ -217,13 +257,15 @@ def audit_attempt(attempt, row, index, batch_plan, plan_binding, launch, weights
     final = builtin_evidence.read_finalization(folder, manifest)
     builtin_replay.validate_native_report(replay['native'], replay['wire'], final, cutoff=manifest['status'] == 'truncated')
     require(binding(folder/'training-receipt.json') == receipt_binding, 'Receipt changed during acceptance')
-    return {'receipt': receipt_binding, 'choices': len(episode.decisions)}
+    result = {'receipt': receipt_binding, 'choices': len(episode.decisions)}
+    if launch['schema'] == REVEALED_SCHEMA+'-launch':
+        result['revealed_movement'] = verify_revealed_choices(episode, attempt)
+    return result
 
 
 def pipeline_policy_acceptance(descriptor, runtime):
-    from experiments.learner import interaction_guard, parallel_collection
-    require(descriptor.get('release_id') == RELEASE and descriptor.get('python_environment') == NEXT_LAUNCH_ENVIRONMENT,
-            'Pipeline policy evidence is exclusive to the reviewed next-launch release')
+    from experiments.learner import parallel_collection
+    schema, policy_support, policy_update = policy_contract(descriptor)
     evidence = descriptor.get('pipeline_policy')
     require(type(evidence) is dict and set(evidence) == {'launch', 'report', 'shutdown'},
             'Pipeline acceptance requires actual launch, report and shutdown bindings')
@@ -231,14 +273,14 @@ def pipeline_policy_acceptance(descriptor, runtime):
     output = copies.private_path(launch['output'])
     require(all(Path(evidence[name]['path']) == output/(name+'.json') for name in evidence),
             'Pipeline evidence must be the original diagnostic documents')
-    require(launch.get('schema') == SCHEMA+'-launch' and report.get('schema') == SCHEMA
+    require(launch.get('schema') == schema+'-launch' and report.get('schema') == schema
             and launch.get('diagnostic_only') is True and launch.get('optimization_eligible') is False
             and report.get('status') == 'passed' and report.get('launch') == evidence['launch']
             and report.get('plan_sha256') == evidence['launch']['sha256']
             and report.get('parent_descriptor') == launch.get('parent_descriptor')
-            and report.get('parent_progress', {}).get('updates') == descriptor.get('checkpoint_update') == 1392
+            and report.get('parent_progress', {}).get('updates') == policy_update
             and report.get('runtime') == launch.get('runtime') == runtime
-            and report.get('policy_support') == launch.get('policy_support') == interaction_guard.VERSION,
+            and report.get('policy_support') == launch.get('policy_support') == policy_support,
             'Pipeline diagnostic identity is incomplete')
     require(all(report.get(key) is True for key in ('full_parent_restore', 'full_parent_unchanged',
                 'sampler_state_exact', 'original_inputs_unchanged', 'cleanup_verified', 'within_hard_deadline'))
@@ -269,6 +311,8 @@ def pipeline_policy_acceptance(descriptor, runtime):
     require(launch['configuration'] == completed['configuration']
             and launch['inputs']['map']['sha256'] == ORIGINAL_MAP_SHA256,
             'Pipeline changed learning settings or the original map')
+    if schema == REVEALED_SCHEMA:
+        verify_revealed_parent(launch, report, completed)
     verify_execution_source(report, launch)
     restored = restore_fingerprints(launch['parent_descriptor'], report['parent_progress'])
     rows = launch['reservation']['schedule']
@@ -284,51 +328,67 @@ def pipeline_policy_acceptance(descriptor, runtime):
     require(len(arms) == 2 and [arm['name'] for arm in arms] == ['sequential-verification', 'pipelined-verification']
             and all(arm.get('status') == 'passed' and arm.get('frozen_model_unchanged') is True
                     and arm.get('parent_rng_unchanged') is True for arm in arms), 'Pipeline paired study did not finish')
-    arm = arms[1]
-    require(arm.get('pipeline_verification') is True and len(arm['attempts']) == 8
-            and len(arm['batches']) == 2, 'Candidate arm is incomplete')
-    captures = []
-    for seat, batch in enumerate(arm['batches']):
-        plan, result = read(batch['plan']), read(batch['report'])
-        require(batch.get('seat') == seat and batch.get('status') == 'passed'
-                and plan.get('schema') == 'heroes-builtin-training-v1-plan' and plan.get('mode') == 'training'
-                and plan.get('diagnostic_scope') == SCHEMA and plan.get('optimization_eligible') is False
-                and plan.get('diagnostic_output') == str(output)
-                and plan.get('diagnostic_launch_sha256') == evidence['launch']['sha256']
-                and plan.get('schedule') == rows[4*seat:4*seat+4]
-                and plan.get('execution') == dict(collection_workers=4, verification_workers=4, pipeline_verification=True)
-                and plan.get('source') == report['source'] and plan.get('implementation') == report['implementation']
-                and plan.get('configuration') == launch['configuration'] and plan.get('runtime') == runtime
-                and plan.get('checkpoint') == launch['parent_descriptor']['policy']
-                and plan.get('policy_support') == interaction_guard.VERSION
-                and plan.get('native') == report['native']
-                and all(plan.get(key) == launch[key] for key in ('binary', 'replay_binary', 'data'))
-                and plan.get('game_map') == launch['inputs']['map']['path']
-                and Path(plan['execution_output']) == output/'pipelined-verification'/f'seat-{seat}'/'execution'
-                and Path(batch['plan']['path']) == Path(plan['execution_output']).parent/'plan.json'
-                and Path(batch['report']['path']) == Path(plan['execution_output'])/'parallel-collection/result.json',
-                'Candidate batch plan changed its actual diagnostic contract')
-        require(result.get('schema') == parallel_collection.SCHEMA and result.get('status') == 'passed'
-                and result.get('workers') == result.get('verification_workers') == result.get('batch_size') == 4
-                and result.get('pipeline_verification') is True
-                and result.get('optimizer_updates') == result.get('training_samples_admitted') == 0
-                and len(result['attempts']) == 4, 'Candidate collection result is incomplete')
-        for index, actual in enumerate(result['attempts']):
-            attempt = arm['attempts'][4*seat+index]
-            require(all(attempt.get(key) == value for key, value in actual.items()),
-                    'Candidate summary changed an original collection attempt')
-            captures.append(audit_attempt(attempt, rows[4*seat+index], index, plan,
-                                          batch['plan'], launch, restored['weights_sha256']))
+    captures, all_captures = [], []
+    checked_arms = arms if schema == REVEALED_SCHEMA else arms[1:]
+    for arm in checked_arms:
+        pipelined = arm['name'] == 'pipelined-verification'
+        require(arm.get('pipeline_verification') is pipelined and len(arm['attempts']) == 8
+                and len(arm['batches']) == 2, 'Candidate arm is incomplete')
+        for seat, batch in enumerate(arm['batches']):
+            plan, result = read(batch['plan']), read(batch['report'])
+            require(batch.get('seat') == seat and batch.get('status') == 'passed'
+                    and plan.get('schema') == 'heroes-builtin-training-v1-plan' and plan.get('mode') == 'training'
+                    and plan.get('diagnostic_scope') == schema and plan.get('optimization_eligible') is False
+                    and plan.get('diagnostic_output') == str(output)
+                    and plan.get('diagnostic_launch_sha256') == evidence['launch']['sha256']
+                    and plan.get('schedule') == rows[4*seat:4*seat+4]
+                    and plan.get('execution') == dict(collection_workers=4, verification_workers=4, pipeline_verification=pipelined)
+                    and plan.get('source') == report['source'] and plan.get('implementation') == report['implementation']
+                    and plan.get('configuration') == launch['configuration'] and plan.get('runtime') == runtime
+                    and plan.get('checkpoint') == launch['parent_descriptor']['policy']
+                    and plan.get('policy_support') == policy_support
+                    and plan.get('native') == report['native']
+                    and all(plan.get(key) == launch[key] for key in ('binary', 'replay_binary', 'data'))
+                    and plan.get('game_map') == launch['inputs']['map']['path']
+                    and Path(plan['execution_output']) == output/arm['name']/f'seat-{seat}'/'execution'
+                    and Path(batch['plan']['path']) == Path(plan['execution_output']).parent/'plan.json'
+                    and Path(batch['report']['path']) == Path(plan['execution_output'])/'parallel-collection/result.json',
+                    'Candidate batch plan changed its actual diagnostic contract')
+            require(result.get('schema') == parallel_collection.SCHEMA and result.get('status') == 'passed'
+                    and result.get('workers') == result.get('verification_workers') == result.get('batch_size') == 4
+                    and result.get('pipeline_verification') is pipelined
+                    and result.get('optimizer_updates') == result.get('training_samples_admitted') == 0
+                    and len(result['attempts']) == 4, 'Candidate collection result is incomplete')
+            for index, actual in enumerate(result['attempts']):
+                attempt = arm['attempts'][4*seat+index]
+                require(all(attempt.get(key) == value for key, value in actual.items()),
+                        'Candidate summary changed an original collection attempt')
+                audited = audit_attempt(attempt, rows[4*seat+index], index, plan,
+                                        batch['plan'], launch, restored['weights_sha256'])
+                all_captures.append(audited)
+                if pipelined:
+                    captures.append(audited)
+    if schema == REVEALED_SCHEMA:
+        movement = {key: sum(capture['revealed_movement'][key] for capture in all_captures)
+                    for key in ('movement_choices', 'revealed_targets', 'unrevealed_targets')}
+        require(len(all_captures) == 16 and movement['movement_choices'] > 0
+                and movement['movement_choices'] == movement['revealed_targets']
+                and movement['unrevealed_targets'] == 0 and report.get('revealed_movement') == movement,
+                'Revealed study lacks actual movement or exact zero-unrevealed-target evidence')
     choices = sum(item['choices'] for item in captures)
     require(choices > 0 and descriptor.get('policy_acceptance_games', 8) == 8
             and descriptor.get('policy_acceptance_choices', choices) == choices,
             'Pipeline reconstructed choice summary differs')
-    return dict(evidence=evidence, candidate_games=8, choices=choices, captures=captures,
+    result = dict(evidence=evidence, candidate_games=8, choices=choices, captures=captures,
                 restored_state=restored, phase='training', receipts_revoked=True,
                 execution_commit=report['source']['git_commit'], training_samples_admitted=0, optimizer_updates=0)
+    if schema == REVEALED_SCHEMA:
+        result.update(policy_checkpoint_update=1585, policy_support=policy_support,
+                      diagnostic_games=16, revealed_movement=movement)
+    return result
 
 
-def build(native_output, regression_output, pipeline_output, output):
+def build(native_output, regression_output, pipeline_output, output, *, release_id=RELEASE):
     from tools import prepare_local_training as prep
     output = copies.private_path(output, fresh=True)
     old, old_binding = prep.accepted_runtime_descriptor(OLD_RELEASE)
@@ -336,13 +396,18 @@ def build(native_output, regression_output, pipeline_output, output):
     value.pop('policy_reconstruction', None)
     value.pop('policy_acceptance_games', None)
     value.pop('policy_acceptance_choices', None)
+    require(release_id in (RELEASE, REVEALED_RELEASE), 'Unsupported next-launch acceptance release')
     proof = lambda folder: {name: binding(Path(folder)/path) for name, path in (
         ('plan', 'execution/plan.json'), ('report', 'execution/report.json'), ('shutdown', 'shutdown.json'))}
-    value.update(release_id=RELEASE, native=proof(native_output), regression=proof(regression_output),
+    value.update(release_id=release_id, native=proof(native_output), regression=proof(regression_output),
         prior_acceptance=old_binding['descriptor'], python_environment=NEXT_LAUNCH_ENVIRONMENT,
         pipeline_policy={name: binding(Path(pipeline_output)/(name+'.json')) for name in ('launch', 'report', 'shutdown')},
         acceptance_refresh_scope='Current CPU execution and isolated NumPy environment; eight fresh training-style diagnostic captures with revoked receipts, exact replay/reconstruction and no PPO admission.',
         timestamp_utc=datetime.now(timezone.utc).isoformat())
+    if release_id == REVEALED_RELEASE:
+        from experiments.learner.interaction_guard import REVEALED_VERSION
+        value.update(policy_checkpoint_update=1585, policy_support=REVEALED_VERSION,
+            acceptance_refresh_scope='Authorized revealed-target policy support at frozen checkpoint 1585 with the accepted NumPy environment and collection pipeline; sixteen excluded diagnostic captures, eight in the pipeline candidate, exact replay/reconstruction and no PPO admission.')
     verify_environment(NEXT_LAUNCH_ENVIRONMENT)
     runtime = {name: digest for name, digest in value['runtime_files'].items() if name != 'vcmiclient'}
     # Full native, terminal and pipeline gates run before any output is written.
@@ -364,9 +429,11 @@ def main():
     parser.add_argument('--regression-output', type=Path, required=True)
     parser.add_argument('--pipeline-output', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--release-id', choices=(RELEASE, REVEALED_RELEASE), default=RELEASE)
     args = parser.parse_args()
     copies.checkout_identity(ROOT)
-    print(json.dumps(build(args.native_output, args.regression_output, args.pipeline_output, args.output), indent=2))
+    print(json.dumps(build(args.native_output, args.regression_output, args.pipeline_output, args.output,
+                           release_id=args.release_id), indent=2))
 
 
 if __name__ == '__main__':

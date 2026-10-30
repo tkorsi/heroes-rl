@@ -51,6 +51,8 @@ ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
 # bytes may cross that orchestration transition; learner/PPO source stays exact.
 ACCEPTED_ADAPTER_COMMIT = 'a8ac411d32658387598376c792136bc586edc5f9'
 LOCAL_ADAPTER_ORIGINS = {
+    # Accepted CPU/NumPy preparation before the explicit revealed-target intervention.
+    'c289408c3bcfd57dcc5ba4f5f21b63f798737d65': '40ade7dde1d434b611d020caf3aed88799ad20de6596702f0dae51ba4004f028',
     # Manual continuation from1392; next-launch execution and NumPy-only environment transition.
     '10d3d4f5038025a276b33a0a3d81096e5778130b': 'e8851b65bbb3b78d213158a05e0c7b0af9b5833e3feb3e86f2797f07435e6bd2',
     # Verified manual run1335->1392; town-swap replay and rejected-batch reporting repair.
@@ -83,6 +85,7 @@ POLICY_SUPPORT_SOURCES = frozenset({
     'experiments/learner/builtin_rollout.py',
     'experiments/learner/contextual.py',
     'experiments/learner/contextual_model.py',
+    'experiments/learner/interaction_guard.py',
     'experiments/learner/contextual_rollout.py',
     'experiments/learner/evaluate_continuation.py',
     'experiments/learner/gameplay.py',
@@ -94,7 +97,7 @@ POLICY_SUPPORT_SOURCES = frozenset({
 # A pin certifies reviewed bytes, not equivalent action support or trajectories.
 FAST_PATH_SOURCES = {
     'dependencies/learner.lock': (
-        ('37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932',),
+        ('37b9c499fa2816c619d368c7fd5826d4e9461dd1f4374b2c4b3eb0d2f5c9b932', '4e310bb5a75f905093bb9169cc4ee4f4425a363661db62810f1b47e362cd43bd',),
         '4e310bb5a75f905093bb9169cc4ee4f4425a363661db62810f1b47e362cd43bd'),
     'experiments/learner/builtin_first_run.py': (
         ('80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2', 'a3ad9b28b05617259b0ec4422d166a728aeab523f9f14c2ce5313cad78160208',),
@@ -106,7 +109,7 @@ FAST_PATH_SOURCES = {
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
-        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
+        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '165a3b03a58c29c9bd63587c835a32c86c7cc59cada89d8ab3d67ee49ca7725a', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
         '165a3b03a58c29c9bd63587c835a32c86c7cc59cada89d8ab3d67ee49ca7725a'),
     'experiments/learner/builtin_training_metrics.py': (
         ('785777db63972ba2868533ecb581fa699f5ac2866e955b837fad87f5b310ead6', 'aab1a57558019be7ce09bf4bba0866dff7bdd90f4cdfec059e5e73967e10d98f',),
@@ -119,7 +122,7 @@ FAST_PATH_SOURCES = {
         '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72',),
-        'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f'),
+        'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
         '2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346'),
@@ -138,17 +141,20 @@ FAST_PATH_SOURCES = {
     'experiments/learner/inference.py': (
         ('b9537f61b0fa375741922c1308ee29acd5d4b218321d3775ad273d44a8b09c54', 'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8', 'e90236841dbbfbc9c4e81d18708d7dad9496c65f6f91066f193762fc6635fc14',),
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
+    'experiments/learner/interaction_guard.py': (
+        ('4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f',),
+        '0793539c2e93a75a92cc57445caef4f6906f377d5810605f894d6c0f3f9ccc4e'),
     'experiments/learner/native_execution.py': (
-        ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56',),
+        ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56', 'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189',),
         'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189'),
     'experiments/learner/parallel_collection.py': (
-        ('4d06e48ac4fb5d7afaedbc61407ccddae645c9237c42c966896c77145589b351', '7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10', '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c',),
+        ('4d06e48ac4fb5d7afaedbc61407ccddae645c9237c42c966896c77145589b351', '7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10', '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c', '93d88f0fe616ee01a2b07ce305e8431d682f1edbe5874021a481ed9ec026567b',),
         '93d88f0fe616ee01a2b07ce305e8431d682f1edbe5874021a481ed9ec026567b'),
     'experiments/learner/ppo.py': (
         ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd', 'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74',),
         'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74'),
     'experiments/learner/resources.py': (
-        ('ad885d6b377cc735670b3e753440e13f4119ed83815296fdcfea5b3ad98d49ee',),
+        ('ad885d6b377cc735670b3e753440e13f4119ed83815296fdcfea5b3ad98d49ee', 'cb465fbc53516c11f091e71c54b8d1f0de99d07f11569e86bf19e7e90d67198d',),
         'cb465fbc53516c11f091e71c54b8d1f0de99d07f11569e86bf19e7e90d67198d'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
@@ -160,12 +166,14 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'tools/prepare_local_training.py', 'tools/prepare_vcmi.py', 'train-local.sh',
                  'tools/training_environment.py', 'tools/prepare_next_training_environment.py',
                  'tools/isolated_diagnostic.py',
-                 'tools/accept_cpu_next_launch.py',
+                 'tools/accept_cpu_next_launch.py', 'tools/benchmark_pipeline_collection.py',
+                 'tools/benchmark_parallel_collection.py', 'tools/acceleration3/campaign_summary.py',
                  'tools/benchmark_copied_training.py', 'tools/acceleration3/ppo_bench.py',
                  'tools/validate_garrison_regressions.py',
                  'train-1000.sh', 'tools/train_1000_games.py', 'continue-original-native.sh',
                  'continue-772.sh', 'tools/continue_772_games.py', 'tools/continuation_goal.py',
                  'configs/checkpoint1392-remaining772.json',
+                 'continue-1585.sh', 'tools/continue_1585_games.py', 'configs/checkpoint1585-remaining1176.json',
                  'tools/linux_publication.py', 'tools/cloud_state_import.py',
                  'tools/audit_cloud1335_publication.py', 'tools/apply_cloud1335_import.py',
                  'tools/refresh_parallel_runtime_acceptance.py', 'tools/validate_interaction_guard.py',
@@ -176,14 +184,18 @@ REVIEWED_SCAN = ('experiments', 'validation/probes', 'native/learner')
 FAST_PATH_TREE = {
     'configs/checkpoint1392-remaining772.json': ('',
         '3ceddf0c4a71d128e6c678b7d1fa6354fe3266bcc7c7b709c9e84087792440c2'),
+    'configs/checkpoint1585-remaining1176.json': ('',
+        '097e70bdacac96b456406577c1b6ba4cb30f6d1c4b1468f208b05264e8a7d917'),
     'configs/cloud1335-import.json': ('',
         'fa81a9b700186bfc42a83f3773d060255cba9b861cac6d3c980eec27af807ef3'),
     'configs/interrupted1229-recovery.json': ('',
         'd6ba5bb257957b45be333ff723c6761a34ded7965429e63d96ff468edd9c41f8'),
+    'continue-1585.sh': ('',
+        '73576890a5e8e9f29834af4f12b652d5f579fbf8d2ec2054d75cab2454e91cbe'),
     'continue-772.sh': ('',
         'c66418fad5dac599e528b6de385e2cdce88fd1a70089737a9e9f7d4fef6e4851'),
     'continue-original-native.sh': ('',
-        'fac7bb2f7820a2f9e06cf5e87347770f8316b0788f9318fb0597fbdec6b7cec3'),
+        '016bb23621a0af974e201ac14ddcbd170431c12630a7030583deb30ef474cfc1'),
     'experiments/episodes/scoring.py': ('2fee3829c13828963d0fec3a2aa215039656d4ff',
         '8bdd7158233685a3a90e08977c23702d60e1d2c596b07f9f303d29119964ec78'),
     'experiments/explorer/create_curriculum_scenario.py': ('',
@@ -216,8 +228,6 @@ FAST_PATH_TREE = {
         '1f5fb796cb67cd68bc9a755197f73128c16ee22bf19118428babf5ef281c519b'),
     'experiments/headless/spawned_replay.py': ('',
         '8eb64b260c8e80dc894b08ab9df37d7812cb25a8aea40cc0f7836e89c9b802a9'),
-    'experiments/learner/interaction_guard.py': ('',
-        '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f'),
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_recipes.py': ('',
@@ -230,22 +240,30 @@ FAST_PATH_TREE = {
         '7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1'),
     'native/learner/text_replay.h': ('',
         '9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd'),
+    'tools/acceleration3/campaign_summary.py': ('',
+        'f6b335454df29e6ff92a194f3e3fea2e7bc6217838fde69b31afa80e2503b546'),
     'tools/acceleration3/fast_path_pins.py': ('',
-        '156faaedb5001726db7986173d44f7d369d3e950d60e1d756b94c086bdb91c46'),
+        '0ee8bae47895d24650619b57ff3340c400ec43575a992e5b72e1d7683cacbc38'),
     'tools/acceleration3/ppo_bench.py': ('',
         'a36abb21c469894e8d8a1207ff242c342a424a246ded353d9e39bf7db899f681'),
     'tools/accept_cpu_next_launch.py': ('',
-        '54188b304262118173aed838756fca923cb24bdc57631f5cca340e8d0b8571f5'),
+        '79da92727af2daf9b50c6a06947260383d74c79329d0c9b77e56bc8e32f3a380'),
     'tools/apply_cloud1335_import.py': ('',
         '40f233663871acaef141388de13980da1ff8dc110ca930a3b2b5b02f23201513'),
     'tools/audit_cloud1335_publication.py': ('',
         '98f8b676d20baae6a00ad4df79c05b95745794077ac2bd2a12cfb88a90e09d7e'),
     'tools/benchmark_copied_training.py': ('',
         '6cdc1332918fc8913504f15c31b01d47d8ea256e7ee16a07c4f8d4b748102b9c'),
+    'tools/benchmark_parallel_collection.py': ('',
+        '17fe141a8bcad0033d493a3500228f39c15b424045062c4a34775be9ab4852a0'),
+    'tools/benchmark_pipeline_collection.py': ('',
+        '7aeb9622e8bb5bd6db3fdda7be5c84c14198c77a5c46042a5307e8a92a4ff087'),
     'tools/cloud_state_import.py': ('',
-        'a89d24dc78df62ae61bb80d72e472b81863e8f44b5e33fd80ffbee9b39d6990c'),
+        '34d5100b2f024412ea3c0a0ca76b8399973498fef86d62eb1acd39be43ec9075'),
     'tools/continuation_goal.py': ('',
-        'ed19b6330f18005f15c33cc1f4ecd4f6a18455c2bd0be8bd2c6d9fb775e1b4f8'),
+        'e48860d67bc81cdebb04b26355abb0ca8458e2cce77ac8db4c5e3bcd798a38d2'),
+    'tools/continue_1585_games.py': ('',
+        '0d684ba14d3cbb00e5d56237071d1b5ea0d397902037132a35ed584eb7d2feea'),
     'tools/continue_772_games.py': ('',
         '88b779d122134de530cd2b390ee315f5af03f540a84a18fdbddac5dc1fbe810f'),
     'tools/isolated_diagnostic.py': ('',
@@ -253,7 +271,7 @@ FAST_PATH_TREE = {
     'tools/linux_publication.py': ('',
         '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '233ad3aa9ff39b0e22ffdbe6ff3bdc81929ab7eb2f520ce1fe308910ddc2d08a'),
+        '4834b3e302b96e636c58e880e65e7ae5443ab925d7fb34e0585eb32d1e4e8256'),
     'tools/prepare_next_training_environment.py': ('',
         'c034f3d8f0f45cf0eeeac2e4cce568df260844d509365bcf52153451a567b31a'),
     'tools/recover_interrupted_training.py': ('',
@@ -261,7 +279,7 @@ FAST_PATH_TREE = {
     'tools/refresh_parallel_runtime_acceptance.py': ('',
         '737df7211ab18abd299a851fc9a0340c2e959a0fc3b4248bf2272f0bf5edd836'),
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
-        'a2436ac8b946ef0b67efa399543ba856cafb565039c1059fa2689061c9efb3a1'),
+        'da7d87500aad4c8fa0313f33a0dc3610fdf88d980b705b21176a57c6d3a3dd24'),
     'tools/train_1000_games.py': ('',
         '502f7f9df0d1f216e3832358c163a2b293a413ed01df190bea18a5b7a93ed702'),
     'tools/training_environment.py': ('',
@@ -283,7 +301,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'e75cd330b31fdf5b1b783d6e71dc7df00b676d52f7f52139755b13249c982d0d'
+LOCAL_ADAPTER_TRANSITION_AST = '273d92ee32163f60346742f3fd002ddeee94e39fe9fa63520479597447574ebf'
 
 
 def write_new(path, value):
@@ -373,7 +391,7 @@ def local_adapter_transition(commit, expected, historical, current):
     require(_adapter_ast_digest(current) == LOCAL_ADAPTER_TRANSITION_AST,
             'Local adapter differs from the reviewed profile transition')
     return {'transition': 'reviewed_policy_support_adapter',
-            'policy_support_contract': interaction_guard.VERSION,
+            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS),
             'native_interface_extension': 'map-garrison-v1',
             'policy_support_activation': 'explicit_session_and_plan_only',
             'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
@@ -388,7 +406,7 @@ def fast_path_transition(name, expected, current):
     support_change = name in POLICY_SUPPORT_SOURCES
     return {'transition': 'reviewed_policy_support_transition' if support_change else 'reviewed_exact_fast_path',
             'historical_sha256': expected, 'current_sha256': fast,
-            'policy_support_contract': interaction_guard.VERSION if support_change else None,
+            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS) if support_change else None,
             'native_interface_extension': 'map-garrison-v1' if support_change else None,
             'policy_ppo_mathematics_unchanged': not support_change, 'historical_code_executed': False}
 
@@ -490,7 +508,7 @@ def source_compatibility(parent):
     return {'historical_commit': parent['git_commit'], 'changes': changes,
             'policy_ppo_unchanged': not (fast or support), 'reviewed_exact_fast_path': fast,
             'reviewed_policy_support_transition': support,
-            'policy_support_contract': interaction_guard.VERSION if support else None,
+            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS) if support else None,
             'native_interface_extension': 'map-garrison-v1' if support else None,
             'terminal_reward_and_ppo_formula_unchanged': True,
             'reviewed_fast_path_tree': reviewed_tree(), 'historical_metadata_rewritten': False}
@@ -681,8 +699,8 @@ def apply_execution(plan):
 
 
 def check_policy_support(value):
-    """An absent historical binding is disabled; only the registered version is accepted."""
-    require(value is None or type(value) is str and value == interaction_guard.VERSION,
+    """An absent historical binding is disabled; only explicitly registered versions are accepted."""
+    require(value is None or type(value) is str and value in interaction_guard.SUPPORTED_VERSIONS,
             'Unknown policy support intervention')
     return value
 
@@ -767,7 +785,8 @@ def check_lineage(parent_plan, execution, policy_support=None):
     inherited = check_policy_support((parent_plan.get('checkpoint_metadata') or {}).get('policy_support'))
     require(check_policy_support(parent_plan.get('policy_support')) == inherited,
             'Parent plan/metadata policy support differs')
-    require(inherited is None or inherited == selected,
+    require(inherited is None or inherited == selected
+            or (inherited == interaction_guard.VERSION and selected == interaction_guard.REVEALED_VERSION),
             'Guarded parent cannot silently change or drop its policy support')
 
 

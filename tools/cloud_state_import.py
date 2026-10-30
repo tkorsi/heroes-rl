@@ -37,6 +37,11 @@ RECEIPT_KEY = 'cloud_import/receipt'
 # cloud handoff. Each reviewed transition names its exact permitted fields;
 # the complete current runtime acceptance gate still runs before selection.
 RUNTIME_UPGRADES = {
+    'revealed-movement-1585-v1': {
+        'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
+        'descriptor_sha256': None,
+        'python_environment': NEXT_LAUNCH_ENVIRONMENT,
+    },
     'cpu-next-launch-v1': {
         'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
         'descriptor_sha256': 'a64ffa3887c5388b13fbdac49639beca1e1e0186e5690f83af473cc184f427e6',
@@ -541,7 +546,7 @@ def continuation(anchor, config, receipt_path, recovery_receipt=None, *, local_a
             'Post-import progress differs from complete ancestry')
     admitted = 2400 + 4 * (audit['selected_update'] - 1229 + count)
     remaining = 5000 - admitted
-    require(remaining > 0, 'The original5000-game target is already complete')
+    require(remaining >= 0, 'The original5000-game target was exceeded')
     return latest['parent'], remaining, dict(schema='heroes-original5000-continuation-v1',
         origin_run=str(Path(anchor).resolve()), origin_checkpoint=699, origin_admitted_games=280,
         target_games=5000, admitted_before_session=admitted, remaining_before_session=remaining,

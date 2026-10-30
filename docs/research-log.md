@@ -1030,3 +1030,46 @@ current run ends. The final 22:06 UTC audit restored checkpoint 1,468 exactly
 (468 goal games and 1,644 original-target games remaining then), confirmed the
 active frozen source and unchanged protected inputs, and found no owned
 diagnostic processes. No official process was signalled.
+
+## 2026-10-30 — Completed checkpoint 1585 and prospective revealed-movement validation
+
+The user-launched checkpoint-1392 continuation finished its 772-game goal in
+193 complete PPO updates at checkpoint 1585. It admitted 771 natural losses and
+one verified collection-window cutoff; 32 evaluation games were excluded. All
+193 admission rows and sequences 1033–1225 were audited. Canonical and backup
+model/Adam/RNG/progress/sampler/pool restoration passed, as did final shutdown;
+no owned training process remains. The original target has 3824 admitted games
+and 1176 remaining, with sequence 1226 next. This local integrity audit does not
+by itself certify private remote publication of checkpoint 1585.
+
+Read-only movement analysis found 41416 of 47712 attempts targeted coordinates
+absent from the current delivered known tiles; all returned no_route_known
+without changing the endpoint. The explicit visible-interaction-budget-revealed-v1
+intervention limits movement to tiles in the hero's current observation on the
+same level. It retains the existing budgets and uses no route-feasibility or
+strategic mask. This changes policy support; it is not an exact acceleration.
+The map, model, PPO, opponent, four-game batch and terminal-only rewards stay fixed.
+
+The private prospective protocol binds checkpoint 1585 and 15 protected inputs,
+with SHA-256 bd9d7547225f9c1e34922943701dfae385a70664973d9a3f0bb99c7cf8fc23fd.
+It calls for 16 fresh native diagnostic games, eight per verification arm and
+four per seat in each arm, under a 900-second deadline. Both arms use the new
+intervention. Acceptance requires exact replay/reconstruction, zero sampled
+unrevealed targets, full parent preservation, revoked receipts and owned cleanup.
+No diagnostics enter PPO or official seed accounting. Native validation, full
+suite, runtime acceptance and final main-checkout preflight are pending.
+
+The separate continue-1585.sh launcher defaults to ten hours, uses the accepted
+native manifest and isolated NumPy environment, prints elapsed time and
+recalculates the remaining original goal from verified descendants. Its focused
+mock-only continuation/launcher selection passed 34 tests. A pure goal audit
+against actual accepted-main ancestry confirmed 1176 remaining and sequence1226;
+this is not final runtime readiness. Earlier report-writer and preflight probe
+failures are retained and disclosed in the
+[prospective report](research/revealed-movement-2026-10-30.md).
+
+Remote inspection confirms accepted NumPy/pipeline and Claude performance work
+already on main at c289408; the old prefix branch has an equivalent patch in
+main. The rejected slower C++ compaction remains excluded. No repeatable
+full-training speedup, full CPU saturation or policy-quality gain is claimed.
+No official training or automatic restart was launched by this preparation.

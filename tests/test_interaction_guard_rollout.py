@@ -23,7 +23,8 @@ class InteractionGuardRolloutTests(unittest.TestCase):
             return synthetic_rollout(self.model)
 
     def test_saved_version_controls_decode_even_if_default_changes(self):
-        for version, other in ((None, guard.VERSION), (guard.VERSION, None)):
+        for version, other in ((None, guard.REVEALED_VERSION), (guard.VERSION, guard.REVEALED_VERSION),
+                               (guard.REVEALED_VERSION, None), (guard.REVEALED_VERSION, guard.VERSION)):
             with self.subTest(version=version):
                 rollout = self.collect(version)
                 with patch.object(guard, 'ACTIVE_VERSION', other):
@@ -47,7 +48,8 @@ class InteractionGuardRolloutTests(unittest.TestCase):
         with self.assertRaises(ValueError): ContextualRollout.from_dict(unknown)
 
     def test_ppo_reconstructs_artifact_bound_support_not_active_default(self):
-        for version, other in ((None, guard.VERSION), (guard.VERSION, None)):
+        for version, other in ((None, guard.REVEALED_VERSION), (guard.VERSION, guard.REVEALED_VERSION),
+                               (guard.REVEALED_VERSION, None), (guard.REVEALED_VERSION, guard.VERSION)):
             with self.subTest(version=version):
                 rollout = self.collect(version)
                 a, b = deepcopy(self.model), deepcopy(self.model)
@@ -59,6 +61,19 @@ class InteractionGuardRolloutTests(unittest.TestCase):
                     ppo_update(b, ob, (rollout,), config=config, generator=torch.Generator().manual_seed(391))
                 for name, value in a.state_dict().items():
                     self.assertTrue(torch.equal(value, b.state_dict()[name]), name)
+
+    def test_revealed_support_cannot_mix_versions_or_trust_forged_snapshot(self):
+        raw = self.collect(guard.REVEALED_VERSION).to_dict()
+        forged = deepcopy(raw)
+        forged['decisions'][0]['support']['interaction_guard']['movable_heroes'] = []
+        with self.assertRaisesRegex(ValueError, 'support disagrees'):
+            ContextualRollout.from_dict(forged)
+        mixed = deepcopy(raw)
+        support = mixed['decisions'][0]['support']
+        support['interaction_guard']['version'] = guard.VERSION
+        support['distribution_schema'] = support['distribution_schema'].replace(guard.REVEALED_VERSION, guard.VERSION)
+        with self.assertRaisesRegex(ValueError, 'Mixed serialized'):
+            ContextualRollout.from_dict(mixed)
 
 
 if __name__ == '__main__':

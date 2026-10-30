@@ -1,6 +1,7 @@
 """The opt-in exact fast path of the manual local runner: reviewed source transition, execution
 choices bound in the session and plans, the serial verification fallback, and the runner's
 default (the accepted implementation). No native game or PPO update is launched."""
+from copy import deepcopy
 import hashlib
 import importlib.util
 from contextlib import redirect_stderr
@@ -370,6 +371,76 @@ def _value(x):
 
 def _fail(x):
     raise LookupError(x)
+
+
+class RevealedMovementLineageTests(unittest.TestCase):
+    def setUp(self):
+        self.execution = local.execution_choice(overlapped_verification=False)
+
+    def parent(self, version):
+        return {'policy_support': version,
+                'checkpoint_metadata': {'policy_support': version, 'numerical_experiments': []}}
+
+    def test_reviewed_old_to_revealed_transition_leaves_parent_metadata_intact(self):
+        parent = self.parent(interaction_guard.VERSION)
+        before = deepcopy(parent)
+        local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
+        self.assertEqual(parent, before)
+        self.assertEqual(local.check_policy_support(interaction_guard.REVEALED_VERSION), interaction_guard.REVEALED_VERSION)
+
+    def test_revealed_parent_cannot_downgrade_or_drop_support(self):
+        parent = self.parent(interaction_guard.REVEALED_VERSION)
+        local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
+        for target in (None, interaction_guard.VERSION):
+            with self.subTest(target=target), self.assertRaises(ValueError):
+                local.check_lineage(parent, self.execution, target)
+
+    def test_historical_unset_and_v1_lineages_still_work(self):
+        local.check_lineage({}, self.execution, None)
+        local.check_lineage({}, self.execution, interaction_guard.VERSION)
+        local.check_lineage(self.parent(interaction_guard.VERSION), self.execution, interaction_guard.VERSION)
+        with self.assertRaises(ValueError):
+            local.check_lineage(self.parent(interaction_guard.VERSION), self.execution, None)
+
+    def test_unknown_inherited_or_selected_versions_are_rejected(self):
+        for unknown in ('visible-interaction-budget-v0', 'visible-interaction-budget-v2',
+                        'unreviewed', '', False):
+            with self.subTest(version=unknown):
+                with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+                    local.check_policy_support(unknown)
+                with self.assertRaises(ValueError):
+                    local.check_lineage(self.parent(unknown), self.execution, interaction_guard.REVEALED_VERSION)
+                with self.assertRaises(ValueError):
+                    local.check_lineage(self.parent(interaction_guard.VERSION), self.execution, unknown)
+
+    def test_transition_cannot_hide_disagreeing_parent_bindings(self):
+        for declared, inherited in ((interaction_guard.VERSION, interaction_guard.REVEALED_VERSION),
+                                    (interaction_guard.REVEALED_VERSION, interaction_guard.VERSION),
+                                    (None, interaction_guard.VERSION)):
+            with self.subTest(declared=declared, inherited=inherited):
+                parent = self.parent(inherited)
+                parent['policy_support'] = declared
+                with self.assertRaisesRegex(ValueError, 'plan/metadata'):
+                    local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
+
+    def test_new_session_plan_and_checkpoint_must_bind_same_version(self):
+        for version in interaction_guard.SUPPORTED_VERSIONS:
+            plan = self.parent(version)
+            session = {'policy_support': version}
+            self.assertEqual(local.check_policy_support_binding(plan, session), version)
+            other = next(item for item in interaction_guard.SUPPORTED_VERSIONS if item != version)
+            with self.assertRaises(ValueError):
+                local.check_policy_support_binding(plan, {'policy_support': other})
+            altered = deepcopy(plan)
+            altered['checkpoint_metadata']['policy_support'] = other
+            with self.assertRaises(ValueError):
+                local.check_policy_support_binding(altered, session)
+
+    def test_revealed_upgrade_does_not_erase_numerical_experiment_lineage(self):
+        parent = self.parent(interaction_guard.VERSION)
+        parent['checkpoint_metadata']['numerical_experiments'] = ['shared_graph_encodings']
+        with self.assertRaisesRegex(ValueError, 'numerical experiment'):
+            local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
 
 
 class SerialFallbackTests(unittest.TestCase):

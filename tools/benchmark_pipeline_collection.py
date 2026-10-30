@@ -25,9 +25,68 @@ from tools import benchmark_copied_training as copies
 from tools.benchmark_parallel_collection import write_new, replace_json, parent_rng_fingerprints
 
 SCHEMA = 'heroes-pipeline-collection-diagnostic-v1'
+REVEALED_SCHEMA = 'heroes-revealed-pipeline-collection-diagnostic-v1'
+LEGACY_RELEASE = 'cpu-next-launch-v1'
+REVEALED_RELEASE = 'revealed-movement-1585-v1'
 BASE = copies.ARTIFACTS/'run-investigations/pipeline-collection'
 ARMS = (('sequential-verification', False), ('pipelined-verification', True))
 require, binding = copies.require, copies.binding
+
+
+def study_contract(release):
+    from experiments.learner import interaction_guard
+    require(release in (LEGACY_RELEASE, REVEALED_RELEASE), 'Unsupported isolated study release')
+    if release == REVEALED_RELEASE:
+        return dict(schema=REVEALED_SCHEMA, policy_support=interaction_guard.REVEALED_VERSION,
+                    checkpoint_selection='completed_after', policy_checkpoint_update=1585)
+    return dict(schema=SCHEMA, policy_support=interaction_guard.VERSION,
+                checkpoint_selection='completed_before', policy_checkpoint_update=1392)
+
+
+def launch_contract(launch):
+    contract = study_contract(launch.get('study_release', LEGACY_RELEASE))
+    require(launch.get('schema') == contract['schema']+'-launch'
+            and launch.get('policy_support') == contract['policy_support'],
+            'Diagnostic schema and policy support disagree')
+    if contract['schema'] == REVEALED_SCHEMA:
+        require(all(launch.get(key) == contract[key] for key in ('checkpoint_selection', 'policy_checkpoint_update')),
+                'Revealed study must use the completed checkpoint 1585')
+    return contract
+
+
+def selected_parent(plan_path, original_plan, report, release):
+    """Choose the actual completed after-state only for the explicit new study."""
+    from experiments.learner import local_script_training as local
+    contract = study_contract(release)
+    descriptor = (local.descriptor_from_batch(plan_path) if release == REVEALED_RELEASE
+                  else original_plan['parent_descriptor'])
+    _, parent_report = local.read_descriptor(descriptor)
+    require(parent_report.get('cumulative_progress', {}).get('updates') == contract['policy_checkpoint_update'],
+            'Diagnostic selected the wrong complete checkpoint')
+    if release == REVEALED_RELEASE:
+        require(parent_report == report and descriptor['plan'] == binding(plan_path)
+                and descriptor['initial_checkpoint'] == original_plan['checkpoint']
+                and all(descriptor[key] == report['after_checkpoint'][key] for key in ('policy', 'resume')),
+                'Revealed study must preserve the verified after-state and its initial dependency')
+    return descriptor
+
+
+def revealed_movement_audit(episode):
+    """Count actual sampled targets against each decision's own revealed tiles."""
+    decisions = {frame.seq: frame for frame in episode.history if frame.kind == 'decision'}
+    attempts = revealed = 0
+    for record in episode.decisions:
+        if record.action.kind != 'move_to':
+            continue
+        frame = decisions[record.decision_seq]
+        observation = frame.observation
+        hero = next((hero for hero in observation.heroes if hero.handle == record.action.subject), None)
+        require(hero is not None, 'Movement audit lacks its observed own hero')
+        target = (record.action.x, record.action.y, hero.position[2])
+        attempts += 1
+        revealed += target in {tile.position for tile in observation.tiles}
+    require(attempts == revealed, 'Revealed diagnostic sampled an unrevealed movement target')
+    return dict(movement_choices=attempts, revealed_targets=revealed, unrevealed_targets=attempts-revealed)
 
 
 def utc():
@@ -97,7 +156,8 @@ def load_launch(output, expected_sha256):
     output = diagnostic_output(output)
     require(binding(output/'launch.json')['sha256'] == expected_sha256, 'Diagnostic launch changed')
     launch = json.loads((output/'launch.json').read_text())
-    require(launch.get('schema') == SCHEMA+'-launch' and launch.get('diagnostic_only') is True
+    launch_contract(launch)
+    require(launch.get('diagnostic_only') is True
             and launch['output'] == str(output) and launch['optimization_eligible'] is False,
             'Only an excluded private diagnostic launch is supported')
     verify_inputs(launch)
@@ -113,16 +173,19 @@ def collect_child(args):
     from experiments.learner import parallel_collection as parallel, interaction_guard
     from experiments.headless import background_check
     plan = parallel._read_plan(args.plan, args.sha256)
-    require(plan.get('diagnostic_scope') == SCHEMA and plan.get('optimization_eligible') is False
-            and plan.get('policy_support') == interaction_guard.VERSION, 'Wrong isolated collector scope')
+    require(plan.get('diagnostic_scope') in (SCHEMA, REVEALED_SCHEMA)
+            and plan.get('optimization_eligible') is False, 'Wrong isolated collector scope')
     output = diagnostic_output(plan['diagnostic_output'])
     launch = load_launch(output, plan['diagnostic_launch_sha256'])
+    contract = launch_contract(launch)
+    require(plan.get('diagnostic_scope') == contract['schema']
+            and plan.get('policy_support') == contract['policy_support'], 'Wrong isolated collector policy support')
     require(Path(plan['execution_output']).is_relative_to(output)
             and plan['checkpoint'] == launch['parent_descriptor']['policy'], 'Collector escaped copied inputs/output')
     require(args.deadline_monotonic <= launch['hard_deadline_monotonic']
             and args.deadline_wall <= launch['hard_deadline_unix'], 'Collector cannot extend the study deadline')
     with local_lease(output):
-        interaction_guard.ACTIVE_VERSION = interaction_guard.VERSION
+        interaction_guard.ACTIVE_VERSION = contract['policy_support']
         background_check.FORK = False
         # The unchanged production worker owns collection, native cleanup,
         # final identity checks and its private sealed completion protocol.
@@ -142,7 +205,9 @@ def prepare(args, lease):
     require(report.get('plan_sha256') == binding(plan_path)['sha256'] and report.get('status') == 'finished'
             and report.get('update_status') == 'checkpoint_verified' and report.get('optimizer_updates') == 1
             and report.get('supervisor_cleanup_verified') is True, 'Select a completed verified batch')
-    local.read_descriptor(original_plan['parent_descriptor'])
+    release = getattr(args, 'study_release', LEGACY_RELEASE)
+    contract = study_contract(release)
+    selected = selected_parent(plan_path, original_plan, report, release)
     require(original_plan.get('policy_support') == local.interaction_guard.VERSION,
             'The diagnostic preserves the declared visible interaction budget')
     require(120 <= args.seconds <= 1800, 'Use a bounded 120 to 1800 second study')
@@ -150,7 +215,7 @@ def prepare(args, lease):
     (output/'diagnostic.lock').touch(exist_ok=False)
     inventory, descriptor = {}, {}
     sources = {'completed-plan': binding(plan_path), 'completed-report': binding(report_path),
-               'map': binding(original_plan['game_map']), **original_plan['parent_descriptor']}
+               'map': binding(original_plan['game_map']), **selected}
     for name, source in sources.items():
         target = output/'input'/(name+Path(source['path']).suffix)
         copies.copy_verified(Path(source['path']), target, source)
@@ -160,38 +225,45 @@ def prepare(args, lease):
     local.read_descriptor(descriptor)
     reservation = reserve_schedule(output)
     now_wall, now_mono = time.time(), time.monotonic()
-    launch = dict(schema=SCHEMA+'-launch', diagnostic_only=True, optimization_eligible=False,
+    launch = dict(schema=contract['schema']+'-launch', diagnostic_only=True, optimization_eligible=False,
         output=str(output), checkout=checkout, harness=binding(__file__), created_utc=utc(),
         diagnostic_lease=lease, prepared_engine_source_check=dict(returncode=engine_check.returncode,
             stdout=engine_check.stdout, stderr=engine_check.stderr),
         inputs=inventory, original_inputs=sources, parent_descriptor=descriptor, reservation=reservation,
-        configuration=original_plan['configuration'], policy_support=original_plan['policy_support'],
+        configuration=original_plan['configuration'], policy_support=contract['policy_support'],
         binary=original_plan['binary'], replay_binary=original_plan['replay_binary'], data=original_plan['data'],
         runtime=original_plan['runtime'], hard_deadline_monotonic=now_mono+args.seconds,
         hard_deadline_unix=now_wall+args.seconds, maximum_seconds=args.seconds,
         optimizer_updates=0, training_samples_admitted=0)
+    if release == REVEALED_RELEASE:
+        launch.update(study_release=release, checkpoint_selection=contract['checkpoint_selection'],
+                      policy_checkpoint_update=contract['policy_checkpoint_update'])
     write_new(output/'launch.json', launch)
     return output, launch
 
 
-def enrich_attempt(attempt):
+def enrich_attempt(attempt, policy_support=None):
     from experiments.learner.builtin_rollout import load_builtin_episode
     from experiments.learner.contextual_rollout import behavior_guard_version
-    from experiments.learner.interaction_guard import VERSION
+    from experiments.learner import interaction_guard
+    policy_support = interaction_guard.VERSION if policy_support is None else policy_support
     folder = Path(attempt['episode_directory'])
     raw = json.loads((folder/'builtin-training-rollout.json').read_text())
     # Loading independently rederives every visible support/action invariant.
     episode = load_builtin_episode(raw['experience'])
-    require(behavior_guard_version(episode.decisions) == VERSION, 'Guard missing from captured decisions')
+    require(behavior_guard_version(episode.decisions) == policy_support, 'Guard missing from captured decisions')
     reconstructed = json.loads((folder/'training-policy-reconstruction.json').read_text())
     require(reconstructed['maximum_absolute_difference'] == 0
             and reconstructed['actions_resampled'] == attempt['sampled_choices'] == len(episode.decisions)
             and reconstructed['values_recomputed'] == len(episode.estimates)
             and reconstructed['private_memory_reset'] is True and reconstructed['weights_unchanged'] is True,
             'Incomplete exact policy reconstruction')
-    return dict(attempt, reconstruction=dict(reconstructed, passed=True), guard_invariants_verified=True,
+    enriched = dict(attempt, reconstruction=dict(reconstructed, passed=True), guard_invariants_verified=True,
                 guarded_decisions=len(episode.decisions), optimization_eligible=False,
                 training_samples=0, training_samples_admitted=0, fresh_receipt_discarded=True)
+    if policy_support == getattr(interaction_guard, 'REVEALED_VERSION', None):
+        enriched['revealed_movement'] = revealed_movement_audit(episode)
+    return enriched
 
 
 def study_child(args):
@@ -209,11 +281,13 @@ def study_child(args):
     torch.set_num_interop_threads(1)
     output = diagnostic_output(args.output)
     launch = load_launch(output, args.sha256)
+    contract = launch_contract(launch)
     with local_lease(output):
         write_new(output/'study-claimed.json', dict(pid=os.getpid(), created_utc=utc()))
-        interaction_guard.ACTIVE_VERSION = interaction_guard.VERSION
+        interaction_guard.ACTIVE_VERSION = contract['policy_support']
         background_check.FORK = False
         state = local.restore_parent(launch['parent_descriptor'])
+        require(state.progress.updates == contract['policy_checkpoint_update'], 'Restored another policy checkpoint')
         before = state_snapshot(state)
         original_command = parallel._worker_command
         source = source_identity(local.INTERFACE)
@@ -225,17 +299,21 @@ def study_child(args):
         native = VcmiLauncher(Path(launch['binary']), Path(launch['data']), Path(launch['inputs']['map']['path']))
         native.preflight()
         require(runtime_identity(Path(launch['binary']).parent) == launch['runtime'], 'Frozen runtime changed')
-        report = dict(schema=SCHEMA, status='running', started_utc=utc(), source=source, implementation=implementation,
+        report = dict(schema=contract['schema'], status='running', started_utc=utc(), source=source, implementation=implementation,
             native=native.identity(), runtime=launch['runtime'], plan_sha256=args.sha256,
             launch=binding(output/'launch.json'),
             parent_descriptor=launch['parent_descriptor'], parent_progress=vars(state.progress),
             full_parent_restore=True, full_parent_unchanged=False, sampler_state_exact=False,
             training_performed=False, optimizer_updates=0, optimizer_steps=0, training_samples_admitted=0,
-            optimization_eligible=False, policy_support=interaction_guard.VERSION, arms=[],
+            optimization_eligible=False, policy_support=contract['policy_support'], arms=[],
             hard_deadline_unix=launch['hard_deadline_unix'], cleanup_verified=False,
             limitations=['One baseline then one candidate arm; no counterbalancing or whole-training speed claim.',
                          'An active user run may compete for resources; it is never controlled by this diagnostic.',
                          'Equal seeds may produce different Nullkiller histories; semantic digests are compared.'])
+        if contract['schema'] == REVEALED_SCHEMA:
+            report.update(study_release=REVEALED_RELEASE, checkpoint_selection=contract['checkpoint_selection'],
+                          policy_checkpoint_update=contract['policy_checkpoint_update'])
+            report['limitations'].append('Both arms use the newly authorized revealed-target support; this is not a policy-quality comparison.')
         started = time.monotonic()
         replace_json(output/'report.json', report)
         try:
@@ -249,11 +327,11 @@ def study_child(args):
                     folder = output/name/f'seat-{seat}'
                     folder.mkdir(parents=True)
                     rows = launch['reservation']['schedule'][4*seat:4*(seat+1)]
-                    plan = dict(schema='heroes-builtin-training-v1-plan', mode='training', diagnostic_scope=SCHEMA,
+                    plan = dict(schema='heroes-builtin-training-v1-plan', mode='training', diagnostic_scope=contract['schema'],
                         diagnostic_output=str(output), diagnostic_launch_sha256=args.sha256, optimization_eligible=False,
                         configuration=launch['configuration'], execution=dict(collection_workers=4, verification_workers=4,
                             pipeline_verification=pipelined), schedule=rows, source=source, implementation=implementation,
-                        policy_support=interaction_guard.VERSION, execution_output=str(folder/'execution'),
+                        policy_support=contract['policy_support'], execution_output=str(folder/'execution'),
                         checkpoint=launch['parent_descriptor']['policy'], checkpoint_source=state.metadata,
                         native=report['native'], runtime=launch['runtime'], binary=launch['binary'],
                         replay_binary=launch['replay_binary'], game_map=launch['inputs']['map']['path'], data=launch['data'])
@@ -271,7 +349,7 @@ def study_child(args):
                         receipts = batch.receipts
                         batch.discard()
                         require(all(id(item) not in gameplay._RECEIPTS for item in receipts), 'Receipt revocation failed')
-                        attempts = [enrich_attempt(row) for row in batch.attempts]
+                        attempts = [enrich_attempt(row, contract['policy_support']) for row in batch.attempts]
                         arm['attempts'].extend(attempts)
                         entry.update(status='passed', report=binding(folder/'execution/parallel-collection/result.json'),
                             collection_seconds=batch.collection_seconds, verification_seconds=batch.verification_seconds,
@@ -312,6 +390,10 @@ def study_child(args):
                 original_inputs_unchanged=True, diagnostic_lease=launch['diagnostic_lease'],
                 comparison=dict(all_semantic_matches=semantic_match, observed_timing_ratio=ratio,
                                 identical_workload_speedup=ratio if semantic_match else None))
+            if contract['schema'] == REVEALED_SCHEMA:
+                report['revealed_movement'] = {key: sum(attempt['revealed_movement'][key]
+                    for arm in report['arms'] for attempt in arm['attempts'])
+                    for key in ('movement_choices', 'revealed_targets', 'unrevealed_targets')}
         except BaseException as error:
             report.update(status='failed', error=type(error).__name__+': '+str(error))
         finally:
@@ -374,6 +456,8 @@ def main():
     run.add_argument('--completed-plan', type=Path, required=True)
     run.add_argument('--output', type=Path, required=True)
     run.add_argument('--seconds', type=int, default=900)
+    run.add_argument('--study-release', choices=(LEGACY_RELEASE, REVEALED_RELEASE), default=LEGACY_RELEASE,
+                     help='The revealed study explicitly validates the completed after-state at update 1585')
     study = sub.add_parser('study', help=argparse.SUPPRESS)
     study.add_argument('--output', type=Path, required=True)
     study.add_argument('--sha256', required=True)

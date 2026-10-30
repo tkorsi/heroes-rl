@@ -27,8 +27,14 @@ class GuardedBuiltinRecordTests(unittest.TestCase):
             return builtin_fixture.BuiltinCollectorIntegrationTests().run_case(root, 0, "cutoff")
 
     def test_guarded_builtin_roundtrip_reconstructs_without_active_global(self):
+        self.check_guarded_builtin_roundtrip(g.VERSION)
+
+    def test_revealed_builtin_roundtrip_reconstructs_without_active_global(self):
+        self.check_guarded_builtin_roundtrip(g.REVEALED_VERSION)
+
+    def check_guarded_builtin_roundtrip(self, version):
         with tempfile.TemporaryDirectory() as tmp:
-            got, folder, model, opponent, _, _ = self.fixture(Path(tmp), g.VERSION)
+            got, folder, model, opponent, _, _ = self.fixture(Path(tmp), version)
             self.assertTrue(all(item.support.guard is not None for item in got.decisions))
             with patch.object(g, "ACTIVE_VERSION", None):
                 self.assertEqual(load_builtin_episode(got.to_dict()), got)
