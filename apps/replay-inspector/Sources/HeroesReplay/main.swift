@@ -193,7 +193,9 @@ struct ContentView: View {
                         } else { Text("Количество не записано.").font(.caption) }
                     } else if obj[4] == 34 {
                         Text("Герой с армией: перемещается по карте, посещает объекты и вступает в бой.").font(.callout)
-                        if obj[6] == 1 && obj[5] == 2 {
+                        if e.army.freshness == "unavailable" {
+                            Text("Army and hero-window details are not included in this export.").font(.caption).foregroundStyle(.secondary)
+                        } else if obj[6] == 1 && obj[5] == 2 {
                             Text("Армия: " + e.army.slots.map { "\($0.count) × \($0.creature == 0 ? "копейщики" : "тип \($0.creature)") (слот \($0.slot+1))" }.joined(separator:"; ")).font(.callout)
                             Text(e.army.freshness == "pre_battle" ? "Показана армия до автобоя; текущие потери не записаны." : "Последний снимок армии · пакет \(e.army.source_packet)").font(.caption).foregroundStyle(.secondary)
                             if let observation = dictionary(e.observation), let heroes = observation["heroes"] as? [[String:Any]], let hero = heroes.first(where: { $0["handle"] as? String == "object-0" }) {
@@ -280,12 +282,16 @@ struct ContentView: View {
     }
     func army(_ a: Army) -> some View {
         VStack(alignment:.leading,spacing:8) {
+            if a.freshness == "unavailable" {
+                Text("Army details are not included in this native-state export.").font(.caption).foregroundStyle(.secondary)
+            } else {
             Text("\(a.name) · \(a.position.map { "(\($0[0]), \($0[1]))" } ?? "герой отсутствует") · \(a.slots.reduce(0){$0+$1.count}) существ").font(.headline)
             HStack { ForEach(0..<7) { i in
                 let s = a.slots.first(where:{$0.slot == i})
                 VStack { Text("Слот \(i+1)").font(.caption2).foregroundStyle(.secondary); Text(s.map { "\($0.count)" } ?? "—").font(.title3.bold()); Text(s.map { $0.creature == 0 ? "Копейщики" : "Тип \($0.creature)" } ?? "пусто").font(.system(size:10)).lineLimit(1).minimumScaleFactor(0.6) }.frame(maxWidth:.infinity).padding(8).background(navy).cornerRadius(6)
             } }
             Text(a.freshness == "pre_battle" ? "Армия перед автобоем; текущие потери в этом снимке не записаны." : "Последний снимок армии · пакет \(a.source_packet) · \(a.freshness)").font(.caption).foregroundStyle(.secondary)
+            }
         }.padding(12).background(card).cornerRadius(12)
     }
     func inspector(_ e: Event,_ r: Replay) -> some View {

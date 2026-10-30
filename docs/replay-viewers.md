@@ -50,6 +50,32 @@ update policy weights. Its optional Pillow dependency is pinned separately in
 
 ### Native Swift replay inspector
 
+The completed checkpoint-1753 doubled-choice self-play evaluation can also be
+opened as a native-state timeline. This is a separate exporter from the older
+scenario-specific exporter below:
+
+```sh
+python3 tools/export_selfplay_inspector.py "$COMPLETED_ONE_GAME_RUN" --output "$FRESH_PRIVATE_OUTPUT"
+python3 tools/build_replay_inspector.py --match "$FRESH_PRIVATE_OUTPUT/match.json" --output "$PRIVATE_APP_PATH"
+```
+
+The export verifies the passed evaluation and source capture hashes, reconstructs
+the native map trace with a 120-second guarded deadline, and includes every
+native input/state. It preserves the full spectator map and recorded Blue fog.
+Policy-only UI choices, policy probabilities, hero inventories and army panels
+are explicitly outside this export; absent army data is shown as unavailable.
+All raw bundles, traces and app builds stay in durable private artifacts.
+
+The 30 October export passed native reconstruction and timeline coverage checks
+for 11,076 inputs and 11,077 states. The Swift release build passed and the app
+was opened to “Self-play · checkpoint 1753” with 11,077 timeline events. The
+first attempt replayed successfully but rejected differing clock measurements;
+the corrected comparison excludes only `timing_seconds`, retaining all replay
+counters, boundaries and verification facts. A focused regression checks that
+changes to checked counts, boundary or unchecked data remain different. This
+is offline replay; no new gameplay, policy inference or optimizer update runs.
+See [compact validation](../validation/selfplay-swift-replay-2026-10-30.json).
+
 `apps/replay-inspector` is an offline SwiftUI macOS application (macOS 14+).
 It retains the schematic video's two map views and adds previous/next arrows,
 a scrubber, searchable event selection, and three timeline filters: engine

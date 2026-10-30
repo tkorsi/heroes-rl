@@ -1,0 +1,23 @@
+{
+  "schema": "heroes-selfplay-inspector-export-v1",
+  "status": "passed",
+  "states": 11077,
+  "events": 11077,
+  "all_native_inputs_included": 11076,
+  "elapsed_seconds": 29.741126334061846,
+  "limitations": [
+    "Complete native input/state timeline; policy-only UI choices are not included.",
+    "Hero armies, inventories and policy probabilities are not exported.",
+    "Full map is spectator data; right map shows recorded Blue visibility.",
+    "Game stopped at its collection choice limit with no winner."
+  ],
+  "gameplay_started": false,
+  "optimizer_updates": 0,
+  "bundle_sha256": "467ed8d0d28226385c395429a9ed48f8b71bfcccf00c02e4d162c0d7bc95b053",
+  "native_replay_verified": true,
+  "swift_release_build": "passed",
+  "ui_verified": true,
+  "ui_title": "Self-play \u00b7 checkpoint 1753",
+  "ui_event_count": 11077,
+  "initial_export_attempt": "Native replay passed; export rejected nondeterministic timing equality. Fixed comparison retains all non-timing replay facts."
+}
