@@ -1213,7 +1213,7 @@ The user requested a smaller network for a separate experiment, keeping the
 available actions. A width-only8-hidden/4-feature candidate has15460 parameters
 versus74344 in the existing64/32 model. CNN/GRU/tree architecture remains. Fresh
 random initial policy/RNG/pool was saved privately and restored exactly; no
-checkpoint1753 weights or Adam state were transferred. All126 protected original
+checkpoint 1753 weights or Adam state were transferred. All126 protected original
 files remain unchanged. Sixteen unique offline controls and an actual saved-tiny
 C++/Python prefix parity check passed. A limited128-frame warm-prefix comparison
 was1.18x faster; full gameplay/training speed and learning are unmeasured. The
@@ -1333,9 +1333,9 @@ faster full games. See the [implementation report](research/recruit-only-passive
 
 The user stopped the tiny-model experiment and requested one more manual game,
 then asked for the current day in the progress bar. The next launcher is
-`play-one-selfplay.sh`: trained checkpoint1753, hidden64/features32, 74,344
+`play-one-selfplay.sh`: trained checkpoint 1753, hidden 64 / features 32, 74,344
 parameters. It retains the requested troop-slot restriction, passive own-army
-information, original map, automatic combat, doubled choice budgets and day365
+information, original map, automatic combat, doubled choice budgets and day 365
 horizon. It runs one frozen self-play diagnostic without PPO updates. Tiny
 artifacts and the shared large-model seed ledger remain preserved.
 
@@ -1343,15 +1343,15 @@ Day progress reads only calendar metadata already delivered to the collector.
 It adds no engine query or history scan and keeps the existing one-write-per-second
 throttle. Exact synthetic collector results and RNG match with the observer
 absent, present or failing. Existing snapshots remain readable; unknown days are
-shown honestly and a delivered day366 cutoff is not clamped to365.
+shown honestly and a delivered day 366 cutoff is not clamped to365.
 
-The actual1753 policy consumed both seats' hash-verified recorded passive-army
+The actual 1753 policy consumed both seats' hash-verified recorded passive-army
 observations. Python and the accepted C++ backend matched bit for bit for action
 log probability, value, recurrent state, conditional probabilities and native
-prefixes with1/4 workers. Weights/RNG were unchanged and no gradient/update was
+prefixes with 1/4 workers. Weights/RNG were unchanged and no gradient/update was
 created. Two offline harness failures (stdin syntax; frozen parameter flags) and
 a disposable launcher fixture path failure were corrected without relaxing any
-production guard. Final focused validation ran124 tests, with123 passes and one
+production guard. Final focused validation ran 124 tests, with 123 passes and one
 skip; shell syntax and canonical engine agreement passed.
 
 The prior native acceptance receipt remains immutable. An exact three-file
@@ -1362,3 +1362,9 @@ native gameplay were not repeated. Real manual readiness and preservation are
 recorded in the [preparation report](research/large-one-game-day-progress-2026-10-30.md)
 and its compact validation receipt. No game, training, restart or official seed
 reservation is launched by this preparation.
+
+The actual main-checkout new and historical shell checks both passed with empty
+stderr. The new launcher selects the large 1753 model, unchanged weights, retained
+recruit-only/passive-army contract and unused engine seed 1,960,000,001. All 136
+protected files are unchanged; exact full-state restoration passed. No seed or
+game was started. See [compact readiness](../validation/large-one-game-day-progress-2026-10-30.json).

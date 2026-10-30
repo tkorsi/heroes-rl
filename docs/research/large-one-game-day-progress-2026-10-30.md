@@ -77,3 +77,11 @@ as part of preparation.
 The final focused suite ran 124 tests: 123 passed and one was skipped. Shell
 syntax and canonical VCMI agreement passed. Full-suite and native gameplay
 were not repeated for this launcher/display change.
+
+Both real shell checks passed from the clean main checkout with empty stderr.
+The new command selected checkpoint 1753, the large model and requested restriction;
+the old evaluator retained its original mode. The next large-model engine seed is
+1,960,000,001, with no reservation made by checking. All 136 protected checkpoint,
+initialization, report and seed-history files remain byte-identical, and exact
+model/Adam/RNG/progress/sampler/pool restoration passed. See the
+[compact readiness receipt](../../validation/large-one-game-day-progress-2026-10-30.json).

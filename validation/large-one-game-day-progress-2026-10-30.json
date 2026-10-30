@@ -1,0 +1,134 @@
+{
+  "army_information": "own-army-details-v1",
+  "budget": {
+    "capture_seconds": 1200,
+    "hard_choices_per_player": 10240,
+    "max_days": 365,
+    "ordinary_choices_per_player": 9920,
+    "reserved_dialog_choices_per_player": 320
+  },
+  "canonical_dependency_check": true,
+  "checked_source_commit": "eccf4419aefe4e8bad7bc8d4b423e398fd7f4cb2",
+  "checkpoint": 1753,
+  "date": "2026-10-30",
+  "display_source_transition": {
+    "experiments/learner/contextual_rollout.py": {
+      "after": "66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab",
+      "before": "6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71"
+    },
+    "experiments/learner/game_progress.py": {
+      "after": "5d79ad8b24314b2096a092cd51b825cf58a47797ec3315e34abc6617857ad447",
+      "before": "e5c1290de42be830392684a861e7508f4b34dc7469e4ac078d95566632ea057b"
+    },
+    "experiments/learner/local_script_training.py": {
+      "after": "0925bf57440f910e8d1241d7d883c5326e0336d6ff9cf0c928724f36b457a9f8",
+      "before": "ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd"
+    }
+  },
+  "exact_model_adam_rng_progress_sampler_pool": true,
+  "failed_offline_attempts": [
+    "stdin syntax typo",
+    "native compiler rejected frozen parameter flags; disposable copies validated under no_grad then refrozen",
+    "launcher test temporary path outside artifact root; fixture corrected and production guard retained"
+  ],
+  "focused_tests": {
+    "failures": 0,
+    "log": {
+      "bytes": 418,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-large-day-progress/focused-tests.log",
+      "sha256": "46568ce509ad533e9dcafb368905d7d0663fe0b36ba68df065cd11ae2ac5786f"
+    },
+    "passed": 123,
+    "run": 124,
+    "skipped": 1
+  },
+  "full_suite_repeated": false,
+  "gameplay_started": false,
+  "large_model_offline": {
+    "decision_sequence": 2,
+    "frames_per_player": 3,
+    "gradients_created": false,
+    "native_prefix_workers": [
+      1,
+      4
+    ],
+    "optimizer_created": false,
+    "owned_armies_per_player": 2,
+    "parameters": 74344,
+    "players": [
+      0,
+      1
+    ],
+    "python_cpp_logprob_value_state_conditionals": "bit_exact",
+    "recorded_input": "/Users/orsi/Projects/Heroes-artifacts/passive-army-diagnostics/attempt-20261030T212257Z-64c12b/tiny-prefix/episode-000001",
+    "successful_body_seconds": 0.168,
+    "weights_and_torch_rng_unchanged": true
+  },
+  "legacy_check": {
+    "exit_code": 0,
+    "stderr": {
+      "bytes": 0,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-large-day-progress/legacy-check.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 38028,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-large-day-progress/legacy-check.stdout",
+      "sha256": "842327f23b4b97ecf5f7c932b21ba5604e48ff7d84285a848d990fe85c4b66b8"
+    }
+  },
+  "main_check": {
+    "exit_code": 0,
+    "stderr": {
+      "bytes": 0,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-large-day-progress/main-check.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stdout": {
+      "bytes": 37430,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-large-day-progress/main-check.stdout",
+      "sha256": "61e46d12574ba68a6b6753ccc177dd7f1c72fb7ea655301a2bd40c275a548ae6"
+    }
+  },
+  "manual_command": "cd /Users/orsi/Projects/Heroes && ./play-one-selfplay.sh --run",
+  "model_config": {
+    "feature_size": 32,
+    "hidden_size": 64,
+    "max_map_side": 256,
+    "schema": "heroes-context-model-v6"
+  },
+  "native_acceptance": {
+    "bytes": 31103,
+    "path": "/Users/orsi/Projects/Heroes/validation/passive-armies-native-2026-10-30.json",
+    "sha256": "2064a74167033142ece9b32d055bcddfeaa2755dfc9073f09bdf779d6aa57b9e"
+  },
+  "native_gameplay_repeated": false,
+  "next_seed": {
+    "engine_seed": 1960000001,
+    "episode": 1,
+    "policy_seeds": [
+      1962000002,
+      1962000003
+    ]
+  },
+  "optimizer_updates": 0,
+  "parameters": 74344,
+  "policy_support": "visible-interaction-budget-recruit-only-v1",
+  "progress": {
+    "collector_and_rng_equality_passed": true,
+    "example": "Game slot 1 | Day 42/365 | Red [##--------------] 1,260/9,920 +0/320 reserved | Blue [#---------------] 1,180/9,920 +0/320 reserved | collecting",
+    "legacy_snapshots_supported": true,
+    "maximum_write_frequency_hz": 1,
+    "observation_only": true,
+    "unknown_day": "?"
+  },
+  "protected_files_unchanged": 136,
+  "schema": "heroes-trained-one-game-day-progress-v1",
+  "seeds_reserved": 0,
+  "shell_syntax_check": true,
+  "status": "ready_for_manual_diagnostic",
+  "tiny_experiment": "stopped_by_user_artifacts_preserved",
+  "training_samples_admitted": 0,
+  "training_started": false,
+  "weights_sha256": "cb40725fc0d5cf0dbf74c76d37e1f36960ec32a1eceb7a345afb513a5744ed2d"
+}
