@@ -405,6 +405,25 @@ class ContextualRollout:
         if any(type(data[name]) is not list for name in ("history", "decisions", "samples", "estimates")):
             raise ValueError("Rollout sequences must be JSON arrays")
         history = tuple(c.decode_frame(frame) for frame in data["history"])
+        return cls.from_decoded_history({key: value for key, value in data.items() if key != "history"},
+                                        history, trajectory_schema=trajectory_schema)
+
+    @classmethod
+    def from_decoded_history(cls, raw, history, *, trajectory_schema=c.TRAJECTORY_SCHEMA):
+        """Join strictly decoded records to history, retaining every rollout invariant.
+
+        This entry point avoids expanding an already decoded external JSONL
+        history into another JSON tree. It does not grant native admission.
+        """
+        if trajectory_schema not in _TRAJECTORIES.values(): raise ValueError("Unsupported trajectory schema")
+        names = {item.name for item in cls.__dataclass_fields__.values() if item.init} - {"history"}
+        if trajectory_schema == c.TRAJECTORY_SCHEMA: names.remove("trajectory_schema")
+        data = _record(raw, names)
+        if data.get("trajectory_schema", c.TRAJECTORY_SCHEMA) != trajectory_schema:
+            raise ValueError("Rollout trajectory disagrees with its artifact schema")
+        _tuple(history, c.Frame)
+        if any(type(data[name]) is not list for name in ("decisions", "samples", "estimates")):
+            raise ValueError("Rollout sequences must be JSON arrays")
         guards = _history_guards(history, serialized_guard_version(data["decisions"]))
         decisions = tuple(BehaviorDecision.from_dict(record, history[record["decision_seq"]],
                          guards.get(record["decision_seq"])) for record in data["decisions"])
@@ -722,7 +741,7 @@ class ContextualCollector:
         return result
 
     def run_episode(self, env, *, episode, seed, max_requests=None,
-                    max_requests_per_player=None, max_dialog_requests_per_player=None):
+                    max_requests_per_player=None, max_dialog_requests_per_player=None, progress=None):
         """Collect a fixed pair, with an optional separately declared seat budget.
 
         The historical ``max_requests`` counts both players together. The seat
@@ -730,6 +749,8 @@ class ContextualCollector:
         ordinary allowance. Only mandatory, policy-sampled answers may follow;
         neither player may exceed its ordinary plus reserved allowance. The
         environment's existing dialog-chain bound remains independently active.
+        An optional display callback receives only submitted-choice counts and
+        a phase, after each successful step. It cannot select policy actions.
         """
         if getattr(env, "interface", None) != self.profile.environment:
             raise ValueError("Collector/environment interface mismatch")
@@ -745,6 +766,8 @@ class ContextualCollector:
         request = env.reset(episode=episode, seed=seed)
         choices = 0
         seat_choices = [0, 0]
+        if progress is not None:
+            progress(tuple(seat_choices), "collecting")
         while not request.done:
             horizon = ((max_requests is not None and choices >= max_requests)
                        or (max_requests_per_player is not None
@@ -763,5 +786,9 @@ class ContextualCollector:
             request = env.step(self.act(request))
             choices += 1
             seat_choices[player] += 1
+            if progress is not None:
+                progress(tuple(seat_choices), "collecting")
+        if progress is not None:
+            progress(tuple(seat_choices), "finalizing")
         return self.finish(request, histories=(env.history("red"), env.history("blue")),
                            manifest_path=env.episode_dir / "manifest.json" if self.origin == "native" else None)

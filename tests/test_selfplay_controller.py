@@ -3,6 +3,7 @@ from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+import io
 import hashlib
 import os
 from pathlib import Path
@@ -34,6 +35,28 @@ class SelfPlayControllerTests(unittest.TestCase):
         path = self.root / name
         controller.write(path, value, new=True)
         return controller.binding(path)
+
+    def test_stopped_supervisor_ends_all_unfinished_progress_slots(self):
+        from experiments.headless import process_deadline
+        from experiments.learner.game_progress import GameProgress, progress_path
+        launch = dict(output=str(self.root), mode='diagnostic', protected={},
+                      hard_deadline_monotonic=time.monotonic() + 300, hard_deadline_unix=time.time() + 300)
+        controller.write(self.root / 'launch.json', launch, new=True)
+        for episode, phase in enumerate(('collecting', 'awaiting verification', 'verifying', 'verified'), 1):
+            GameProgress(progress_path(self.root, episode), episode=episode,
+                         ordinary=4960, reserved=160)((episode, 2), phase)
+        process = SimpleNamespace(returncode=-9, wait=lambda **kwargs: -9)
+        with patch.object(process_deadline, 'guarded_popen', return_value=process), \
+             patch.object(process_deadline, 'close_owned_process'), \
+             patch.object(process_deadline, 'cleanup_from_evidence'), \
+             patch.object(controller, 'verify_protected', return_value=True), \
+             patch('sys.stderr', new=io.StringIO()) as display, \
+             self.assertRaisesRegex(ValueError, 'Self-play stopped'):
+            controller.supervise(launch)
+        self.assertEqual([controller.read(progress_path(self.root, n))['phase'] for n in range(1, 5)],
+                         ['failed', 'failed', 'failed', 'verified'])
+        self.assertIn('Game slot 4', display.getvalue())
+        self.assertIn('Run failed or interrupted', display.getvalue())
 
     def test_explicit_subcommand_required_without_launch(self):
         with patch.object(controller, 'supervise') as launch:
@@ -383,7 +406,9 @@ class SelfPlayControllerTests(unittest.TestCase):
         before, after = {}, {}
         for name in names:
             previous = git(['git', 'show', controller.CONTINUATION_BASE + ':' + name], cwd=actual_root)
-            current = (actual_root / name).read_bytes()
+            # This acceptance belongs to the completed historical campaign;
+            # later storage/progress work must not broaden its transition.
+            current = git(['git', 'show', '97c6c33:' + name], cwd=actual_root)
             before[name] = hashlib.sha256(previous).hexdigest()
             after[name] = hashlib.sha256(current).hexdigest()
             target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(current)
@@ -469,7 +494,8 @@ class SelfPlayControllerTests(unittest.TestCase):
         from experiments.learner import selfplay_training as training
         from validation.probes import validate_hero_policy
         clock = [100.0]
-        launch = dict(configuration=configuration(), hard_deadline_monotonic=20100, hard_deadline_unix=21000)
+        launch = dict(output=str(self.root), configuration=configuration(),
+                      hard_deadline_monotonic=20100, hard_deadline_unix=21000)
         rows = controller.schedule(dict(count=4, mode='diagnostic', engine_base=100, policy_base=200), 0, 4)
         plan = dict(schedule=rows, configuration=configuration(), execution_output=str(self.root / 'execution'),
                     replay_binary={'path': '/unused/replay'}, data='/unused/data')

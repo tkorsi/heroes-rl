@@ -133,7 +133,7 @@ FAST_PATH_SOURCES = {
         'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
-        '6bb591e907338d849609e1877c0c404fe2ae3236d8dbfd7f0604d4cf27972f07'),
+        '6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71'),
     'experiments/learner/evaluate_builtin_opponent.py': (
         ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
@@ -253,6 +253,10 @@ FAST_PATH_TREE = {
         '1f5fb796cb67cd68bc9a755197f73128c16ee22bf19118428babf5ef281c519b'),
     'experiments/headless/spawned_replay.py': ('',
         '8eb64b260c8e80dc894b08ab9df37d7812cb25a8aea40cc0f7836e89c9b802a9'),
+    'experiments/learner/contextual_storage.py': ('',
+        '8d7c4b7bd1035291a9e95f136806ce33869a026d382a09b0064cd3569239496e'),
+    'experiments/learner/game_progress.py': ('',
+        '5c5653826c681db53ffa3c090cefd4453c088e682dde49e82e6ec677cd4e9a86'),
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_recipes.py': ('',
@@ -262,7 +266,7 @@ FAST_PATH_TREE = {
     'experiments/learner/selfplay_behavior.py': ('',
         '0254112dd1995300e9dd74ad7306676b7e6c1a243feb49f6f5db4eae2a123dc9'),
     'experiments/learner/selfplay_training.py': ('',
-        '94a3fe602ac060bd132be7099899bc5f55b65bfa6624a10c50df8cec7591bb08'),
+        '01eda52e6ed91753262bbb2ac72a33f47698184bdba6c1f4e3c7cf5e27dd3e85'),
     'native/learner/replay_tape.h': ('',
         '7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1'),
     'tools/acceleration3/campaign_summary.py': ('',
@@ -306,7 +310,7 @@ FAST_PATH_TREE = {
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         '3691a3f1913572101cd1b1e7f137209b607747f0c51ea73a5a0d221786cb5d39'),
     'tools/run_selfplay_training.py': ('',
-        'c3ea361cf236148c645866c6d0e54ba79cecfe0024e52533fc204d77e2585e6c'),
+        '3acb278be3534db303b3fcf3d0edfa146edbbd468f24e11e40df2bd152b1818e'),
     'tools/train_1000_games.py': ('',
         '6049476285153033694e5307a19b46e4a3e223c3f67f8bcb637669401799b817'),
     'tools/training_environment.py': ('',
@@ -332,7 +336,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'dad48b57f947aa360d42952734dd0cc4ac1c516f23d82d3fe4b721ea294c9acd'
+LOCAL_ADAPTER_TRANSITION_AST = 'e2ec393cdd6bf2759efeed2682bdb721e0f034cdab92a77e384ec7d7c884108a'
 
 
 def write_new(path, value):

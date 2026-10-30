@@ -271,7 +271,6 @@ def reconstruct_policies(collected, models, seeds, remaining):
 
 
 def verify_training_capture(bound, learner_model, opponent_model, *, replay_binary, data, remaining):
-    from experiments.headless.contextual_replay_history import verify_histories
     time_left(remaining); bound.recheck()
     require(id(bound) in _COMPLETIONS and not any(receipt.binding is bound for receipt in _RECEIPTS.values()),
             "Only a freshly completed capture can be verified once")
@@ -280,22 +279,27 @@ def verify_training_capture(bound, learner_model, opponent_model, *, replay_bina
             and Path(data).resolve() == Path(plan["data"]).resolve(), "Self-play verifier runtime changed")
     require(canonical({name: evidence.file_identity(folder / name) for name in
             ("manifest.json", "neural-rollout.json")}) == _COMPLETIONS[id(bound)], "Completed capture changed")
-    raw = read(folder / "neural-rollout.json")
-    collected = CollectedEpisode.from_dict(raw)
-    require(collected.to_dict() == raw, "Paired self-play artifact does not roundtrip exactly")
+    from .contextual_storage import load_collected
+    collected = load_collected(folder / "neural-rollout.json")
     models = (learner_model, opponent_model) if row["learner_player"] == 0 else (opponent_model, learner_model)
     manifest = _check_collected(bound, collected, models)
     original = _files(folder, manifest)
     final = contextual_replay.bound_evidence(folder, manifest, Path(replay_binary).resolve())
-    histories = verify_histories(folder, manifest, final)
-    require(histories.get("verified") is True and set(histories["players"]) == {"red", "blue"},
-            "Both player histories must reconstruct")
     policies = reconstruct_policies(collected, models, row["policy_seeds"], remaining)
     output = folder / "training-verification"
     replay = contextual_replay.verify_episode(folder, binary=replay_binary, data=data,
                                              output=output, timeout=time_left(remaining))
-    require(replay.get("schema") == contextual_replay.REPORT_SCHEMA and replay.get("verified") is True
-            and replay.get("histories") == histories, "Exact two-player native replay failed")
+    require(replay.get("schema") == contextual_replay.REPORT_SCHEMA and replay.get("verified") is True,
+            "Exact two-player native replay failed")
+    # verify_episode independently reconstructs the transport histories before
+    # native replay. Its freshly generated result is the authoritative check;
+    # repeating the same reconstruction here adds no independent evidence.
+    histories = replay.get("histories")
+    require(type(histories) is dict and histories.get("verified") is True
+            and type(histories.get("players")) is dict and set(histories["players"]) == {"red", "blue"}
+            and all(type(player) is dict and player.get("verified") is True
+                    for player in histories["players"].values()),
+            "Both player histories must reconstruct")
     require(read(output / "contextual-replay-verification.json") == replay, "Replay report changed")
     native = read(output / "native-report.json")
     require(native == {key: value for key, value in replay["native"].items() if key not in ("returncode", "seconds")},

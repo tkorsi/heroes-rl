@@ -774,6 +774,8 @@ def batch_plan(launch, state, index, start, count, previous_policy):
 def capture_worker(args):
     from experiments.learner import selfplay_training as training
     from experiments.learner.contextual_rollout import ContextualCollector
+    from experiments.learner.contextual_storage import save_collected
+    from experiments.learner.game_progress import GameProgress, progress_path
     from experiments.headless.env import HeadlessSelfPlayEnv, Limits
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
     require(binding(args.plan)['sha256'] == args.sha256, 'Batch plan hash changed')
@@ -782,6 +784,8 @@ def capture_worker(args):
             'Worker cannot extend the campaign deadline')
     configure_native(plan['execution'])
     row = plan['schedule'][args.index]
+    progress = GameProgress(progress_path(launch['output'], row['episode']), episode=row['episode'],
+                            ordinary=4960, reserved=160)
     learner = training.load_policy(bound(plan['checkpoint']), plan['checkpoint_source'])
     opponent = training.load_policy(bound(plan['opponent_checkpoint']), plan['opponent_checkpoint_source'])
     seat = row['learner_player']
@@ -806,11 +810,15 @@ def capture_worker(args):
     cleanup = False
     try:
         collected = collector.run_episode(env, episode=row['episode'], seed=row['engine_seed'],
-                                         max_requests_per_player=4960, max_dialog_requests_per_player=160)
+                                         max_requests_per_player=4960, max_dialog_requests_per_player=160,
+                                         progress=progress)
         folder = env.episode_dir
-        write(folder / 'neural-rollout.json', collected.to_dict(), new=True)
+        progress.phase('storing')
+        save_collected(folder / 'neural-rollout.json', collected)
         require(read(folder / 'manifest.json')['status'] in ('completed', 'truncated'), 'Technical capture failure')
+        progress.phase('awaiting verification')
     except Exception as error:
+        progress.phase('failed')
         from validation.probes.validate_hero_policy import retain_failed_evidence
         failure = dict(status='failed', error=f'{type(error).__name__}: {error}',
                        outcomes={'red': None, 'blue': None}, rewards={'red': None, 'blue': None})
@@ -835,6 +843,7 @@ def capture_worker(args):
 
 def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, phase_deadline):
     from experiments.learner import selfplay_training as training
+    from experiments.learner.game_progress import progress_path, set_phase
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
     from validation.probes.validate_hero_policy import wall_limit
     output = Path(plan['execution_output']); output.mkdir()
@@ -880,10 +889,12 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                 training.accept_capture_completion(job['binding'], json.loads(stdout))
                 def verification_remaining():
                     return phase_remaining(phase_deadline)
+                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
                 with wall_limit(verification_remaining()):
                     receipt = training.verify_training_capture(job['binding'], learner, opponent,
                         replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
                         remaining=verification_remaining)
+                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verified')
                 manifest = read(job['folder'] / 'manifest.json')
                 row = plan['schedule'][job['index']]
                 attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
@@ -901,6 +912,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
         return tuple(receipts), attempts
     except Exception as error:
         if current_index is not None:
+            set_phase(progress_path(launch['output'], plan['schedule'][current_index]['episode']), 'failed')
             save_attempt(current_index, dict(**plan['schedule'][current_index], status='failed',
                 error=f'{type(error).__name__}: {error}', outcomes={'red': None, 'blue': None},
                 rewards={'red': None, 'blue': None}, training_samples_admitted=0,
@@ -1165,7 +1177,9 @@ def report_completed(args):
 
 def supervise(launch):
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
+    from experiments.learner.game_progress import ProgressDisplay
     output = Path(launch['output']); path = output / 'launch.json'; process = None; errors = []
+    display = ProgressDisplay(output / 'progress')
     try:
         with (output / 'coordinator.log').open('xb') as log:
             process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_coordinator',
@@ -1173,7 +1187,7 @@ def supervise(launch):
                 deadline_monotonic=launch['hard_deadline_monotonic'], deadline_wall=launch['hard_deadline_unix'],
                 evidence_path=output / 'coordinator-deadline.jsonl', cwd=ROOT,
                 stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
-            process.wait(timeout=remaining(launch) + 1)
+            display.wait(process, timeout=remaining(launch) + 1)
     finally:
         try:
             if process is not None:
@@ -1182,6 +1196,7 @@ def supervise(launch):
                 cleanup_from_evidence(evidence, timeout=5)
         except Exception as error:
             errors.append(str(error))
+        display.finish(failed=bool(errors) or process is None or process.returncode != 0)
         protected = verify_protected(launch['protected'])
         write(output / 'shutdown.json', dict(owned_cleanup_verified=not errors, errors=errors,
               returncode=process.returncode if process else None, protected_inputs_unchanged=protected), new=True)

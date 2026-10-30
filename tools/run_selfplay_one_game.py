@@ -188,14 +188,14 @@ def frozen_models(plan):
 
 
 def verify_capture(folder, plan, models, remaining):
-    from experiments.learner.contextual_rollout import CollectedEpisode, behavior_guard_version
+    from experiments.learner.contextual_rollout import behavior_guard_version
+    from experiments.learner.contextual_storage import load_collected
     from experiments.learner.contextual_model import weights_sha256
     from experiments.learner import selfplay_training as training
     from experiments.headless import contextual_replay
-    raw = read(folder / 'neural-rollout.json')
-    collected = CollectedEpisode.from_dict(raw)
+    collected = load_collected(folder / 'neural-rollout.json')
     manifest = read(folder / 'manifest.json')
-    require(collected.to_dict() == raw and json.loads(collected.manifest_json) == manifest,
+    require(json.loads(collected.manifest_json) == manifest,
             'Persisted paired evaluation capture changed')
     require(manifest['episode'] == '1' and manifest['seed'] == plan['schedule']['engine_seed']
             and manifest['environment'] == campaign.INTERFACE and manifest['status'] in ('completed', 'truncated')
@@ -231,10 +231,14 @@ def verify_capture(folder, plan, models, remaining):
 
 def collect(plan, models):
     from experiments.learner.contextual_rollout import ContextualCollector
+    from experiments.learner.contextual_storage import save_collected
+    from experiments.learner.game_progress import GameProgress, progress_path
     from experiments.headless.env import HeadlessSelfPlayEnv, Limits
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
     from validation.probes.validate_hero_policy import wall_limit, retain_failed_evidence
     output = Path(plan['output'])
+    progress = GameProgress(progress_path(output, 1), episode=1,
+        ordinary=BUDGET['ordinary_choices_per_player'], reserved=BUDGET['reserved_dialog_choices_per_player'])
     deadline = min(time.monotonic() + BUDGET['capture_seconds'], plan['hard_deadline_monotonic'] - 30)
     wall = min(time.time() + BUDGET['capture_seconds'], plan['hard_deadline_unix'] - 30)
     launcher = DeadlineVcmiLauncher(Path(plan['binary']), Path(plan['data']), Path(plan['game_map']),
@@ -254,10 +258,12 @@ def collect(plan, models):
     try:
         with wall_limit(campaign.remaining(dict(hard_deadline_monotonic=deadline, hard_deadline_unix=wall))):
             collected = collector.run_episode(env, episode=1, seed=plan['schedule']['engine_seed'],
-                max_requests_per_player=9920, max_dialog_requests_per_player=320)
-            write(env.episode_dir / 'neural-rollout.json', collected.to_dict(), new=True)
+                max_requests_per_player=9920, max_dialog_requests_per_player=320, progress=progress)
+            progress.phase('storing')
+            save_collected(env.episode_dir / 'neural-rollout.json', collected)
             return env.episode_dir
     except Exception as error:
+        progress.phase('failed')
         attempt = dict(status='failed', error=f'{type(error).__name__}: {error}', training_input=False)
         left = min(plan['hard_deadline_monotonic'] - time.monotonic(), plan['hard_deadline_unix'] - time.time())
         if left > 1:
@@ -273,6 +279,7 @@ def collect(plan, models):
 
 def worker(path, sha):
     from validation.probes.validate_hero_policy import wall_limit
+    from experiments.learner.game_progress import progress_path, set_phase
     require(binding(path)['sha256'] == sha, 'Evaluation plan changed')
     plan = read(path); output = Path(plan['output'])
     require(os.getppid() == plan['supervisor_pid'], 'Only the lease-owning supervisor may start evaluation')
@@ -288,6 +295,7 @@ def worker(path, sha):
         # The capture and verification timers are sequential: wall_limit rejects
         # nesting, while the process guardian bounds the entire worker.
         folder = collect(plan, models)
+        set_phase(progress_path(output, 1), 'verifying')
         with wall_limit(campaign.remaining(plan, 30)):
             proof, manifest = verify_capture(folder, plan, frozen_models(plan), lambda: campaign.remaining(plan, 30))
             require(binding(path)['sha256'] == sha, 'Evaluation plan changed during execution')
@@ -296,7 +304,9 @@ def worker(path, sha):
                 rewards=manifest['rewards_by_player'], choices_by_player=proof['choices_by_player'],
                 native_replay_verified=True, both_policies_reconstructed=True,
                 proof=binding(folder / 'evaluation-policy-reconstruction.json'), owned_cleanup_verified=True)
+            set_phase(progress_path(output, 1), 'verified')
     except Exception as error:
+        set_phase(progress_path(output, 1), 'failed')
         report.update(status='failed', error=f'{type(error).__name__}: {error}')
     finally:
         try:
@@ -309,7 +319,9 @@ def worker(path, sha):
 
 def supervise(plan):
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
+    from experiments.learner.game_progress import ProgressDisplay
     output, process, errors = Path(plan['output']), None, []
+    display = ProgressDisplay(output / 'progress')
     plan_binding = binding(output / 'plan.json')
     try:
         with (output / 'worker.log').open('xb') as log:
@@ -318,7 +330,7 @@ def supervise(plan):
                 deadline_monotonic=plan['hard_deadline_monotonic'], deadline_wall=plan['hard_deadline_unix'],
                 evidence_path=output / 'worker-process-deadline.jsonl', cwd=ROOT,
                 stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
-            process.wait(timeout=campaign.remaining(plan) + 1)
+            display.wait(process, timeout=campaign.remaining(plan) + 1)
     finally:
         if process is not None:
             try:
@@ -330,6 +342,7 @@ def supervise(plan):
                 cleanup_from_evidence(evidence, timeout=10)
             except Exception as error:
                 errors.append(str(error))
+        display.finish(failed=bool(errors) or process is None or process.returncode != 0)
         protected, protection_error = False, None
         try:
             protected = campaign.verify_protected(plan['protected'])

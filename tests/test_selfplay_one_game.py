@@ -175,10 +175,11 @@ class OneFrozenGameTests(unittest.TestCase):
                         self.root = original
 
     def test_capture_receives_doubled_per_player_limits_and_preserves_day_guard_cleanup(self):
-        from experiments.learner import contextual_rollout
+        from experiments.learner import contextual_rollout, contextual_storage
         from experiments.headless import env, process_deadline
         output = self.root / 'capture'; output.mkdir()
         events, observed = [], {}
+        collected = SimpleNamespace(to_dict=lambda: {'diagnostic': True})
         class FakeCollector:
             def __init__(self, models, checkpoints, **kwargs):
                 observed['collector'] = kwargs
@@ -189,7 +190,7 @@ class OneFrozenGameTests(unittest.TestCase):
                 self.act(SimpleNamespace(record={'day': 365}))
                 with self_test.assertRaisesRegex(ValueError, 'day365'):
                     self.act(SimpleNamespace(record={'day': 366}))
-                return SimpleNamespace(to_dict=lambda: {'diagnostic': True})
+                return collected
         class FakeEnv:
             def __init__(self, launcher, folder, limits, **kwargs):
                 observed['limits'], observed['environment'] = limits, kwargs
@@ -205,9 +206,10 @@ class OneFrozenGameTests(unittest.TestCase):
             hard_deadline_monotonic=time.monotonic() + 3600, hard_deadline_unix=time.time() + 3600)
         with patch.object(contextual_rollout, 'ContextualCollector', FakeCollector), \
              patch.object(env, 'HeadlessSelfPlayEnv', FakeEnv), \
-             patch.object(process_deadline, 'DeadlineVcmiLauncher', FakeLauncher):
+             patch.object(process_deadline, 'DeadlineVcmiLauncher', FakeLauncher), \
+             patch.object(contextual_storage, 'save_collected') as save:
             folder = evaluation.collect(plan, (object(), object()))
-        self.assertTrue((folder / 'neural-rollout.json').is_file())
+        save.assert_called_once_with(folder / 'neural-rollout.json', collected)
         self.assertEqual(observed['collector']['purpose'], 'diagnostic')
         self.assertEqual(observed['collector']['guard_version'], evaluation.campaign.GUARD)
         self.assertEqual(observed['run']['max_requests_per_player'], 9920)
@@ -295,6 +297,28 @@ class OneFrozenGameTests(unittest.TestCase):
         self.assertTrue(shutdown['owned_cleanup_verified'])
         self.assertFalse(shutdown['protected_inputs_unchanged'])
         self.assertIn('published pointer changed', shutdown['protection_error'])
+
+    def test_supervisor_cleanup_failure_ends_stale_game_progress(self):
+        from experiments.headless import process_deadline
+        from experiments.learner.game_progress import GameProgress, progress_path
+        output = self.root / 'progress-failure'; output.mkdir()
+        plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+                    hard_deadline_unix=time.time() + 300)
+        evaluation.write(output / 'plan.json', plan, new=True)
+        progress = GameProgress(progress_path(output, 1), episode=1, ordinary=9920, reserved=320)
+        progress((234, 123), 'collecting')
+        process = SimpleNamespace(returncode=-9, wait=lambda **kwargs: -9)
+        with patch.object(process_deadline, 'guarded_popen', return_value=process), \
+             patch.object(process_deadline, 'close_owned_process', side_effect=RuntimeError('cleanup failed')), \
+             patch.object(evaluation.campaign, 'verify_protected', return_value=True), \
+             patch('sys.stderr', new=io.StringIO()) as display, \
+             self.assertRaisesRegex(ValueError, 'Evaluation stopped'):
+            evaluation.supervise(plan)
+        saved = evaluation.read(progress_path(output, 1))
+        self.assertEqual(saved['phase'], 'failed')
+        self.assertEqual(saved['choices'], [234, 123])
+        self.assertIn('Run failed or interrupted', display.getvalue())
+        self.assertFalse(evaluation.read(output / 'shutdown.json')['owned_cleanup_verified'])
 
     def test_missing_plan_still_persists_failed_shutdown_and_cleanup(self):
         from experiments.headless import process_deadline

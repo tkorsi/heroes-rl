@@ -185,3 +185,80 @@ class SelfplayTrainingTests(unittest.TestCase):
         self.assertEqual(native.call_args.kwargs['binary'], replay)
         self.assertFalse(any(r.binding is bound for r in sp._RECEIPTS.values()))
         self.assertFalse((folder/'training-policy-reconstruction.json').exists())
+
+    def verification_fixture(self):
+        receipt = self.receipts[0]; bound = receipt.binding; folder = Path(bound.folder)
+        replay = self.root / 'synthetic-verifier'; replay.write_bytes(b'not an executable; native result is mocked')
+        self.plan.update(replay_binary=sp.binding(replay), data=str(self.root))
+        object.__setattr__(bound, 'plan_json', sp.canonical(self.plan))
+        manifest = json.loads(receipt.collected.manifest_json)
+        sp.write_new(folder / 'manifest.json', manifest)
+        sp._COMPLETIONS[id(bound)] = sp.canonical({name:sp.evidence.file_identity(folder/name)
+            for name in ('manifest.json','neural-rollout.json')})
+        sp._RECEIPTS.pop(id(receipt))
+        (folder / 'training-receipt.json').unlink()
+        return receipt, replay, manifest
+
+    def verify_with_histories(self, histories):
+        receipt, replay, manifest = self.verification_fixture()
+        bound = receipt.binding; folder = Path(bound.folder)
+        final = {'synthetic_finalization': True}
+        report = dict(schema=sp.contextual_replay.REPORT_SCHEMA, verified=True,
+                      histories=histories, native={'returncode': 0, 'seconds': 0}, wire={})
+
+        def verify_episode(*args, output, **kwargs):
+            # Model the existing verifier's own independent reconstruction. The
+            # coordinator must not invoke it a second time or supply cached proof.
+            from experiments.headless.contextual_replay_history import verify_histories
+            report['histories'] = verify_histories(folder, manifest, final)
+            output.mkdir()
+            sp.write_new(output / 'contextual-replay-verification.json', report)
+            sp.write_new(output / 'native-report.json', {})
+            return report
+
+        with patch.object(sp, '_check_collected', return_value=manifest), \
+             patch.object(sp, '_files', return_value=json.loads(receipt.files_json)), \
+             patch.object(sp.contextual_replay, 'bound_evidence', return_value=final), \
+             patch('experiments.headless.contextual_replay_history.verify_histories', return_value=histories) as history_check, \
+             patch.object(sp.contextual_replay, 'verify_episode', side_effect=verify_episode), \
+             patch.object(sp.contextual_replay, 'validate_native_report') as native_check, \
+             patch.object(sp, 'reconstruct_policies', return_value=[]):
+            try:
+                result = sp.verify_training_capture(bound, self.model, self.opponent, replay_binary=replay,
+                                                    data=self.root, remaining=lambda: 10)
+            finally:
+                self.assertEqual(history_check.call_count, 1)
+            native_check.assert_called_once_with(report['native'], report['wire'], final, cutoff=False)
+        return result, report
+
+    def test_native_verifier_history_result_is_used_once_and_retained_in_receipt(self):
+        histories = {'verified': True, 'players': {'red': {'verified': True}, 'blue': {'verified': True}}}
+        result, report = self.verify_with_histories(histories)
+        self.assertEqual(json.loads(result.verification_json)['histories'], report['histories'])
+        self.assertIs(sp._RECEIPTS[id(result)], result)
+
+    def test_native_verifier_missing_failed_or_one_seat_history_cannot_mint_receipt(self):
+        invalid = (None, {}, {'verified': False, 'players': {'red': {}, 'blue': {}}},
+                   {'verified': True, 'players': {'red': {'verified': True}}},
+                   {'verified': True, 'players': {'red': {'verified': True}, 'blue': {'verified': False}}})
+        for histories in invalid:
+            with self.subTest(histories=histories):
+                # Each attempt uses separate synthetic evidence and capability.
+                with tempfile.TemporaryDirectory(dir=self.root) as directory:
+                    old_receipts, old_root = self.receipts, self.root
+                    self.root = Path(directory)
+                    receipt = old_receipts[0]; folder = self.root / 'episode'; folder.mkdir()
+                    bound = replace(receipt.binding, folder=str(folder))
+                    sp._BINDINGS[id(bound)] = bound
+                    copied = replace(receipt, binding=bound)
+                    sp.write_new(folder / 'neural-rollout.json', copied.collected.to_dict())
+                    sp.write_new(folder / 'training-receipt.json', copied.to_dict())
+                    sp._RECEIPTS[id(copied)] = copied
+                    self.receipts = (copied,)
+                    try:
+                        with self.assertRaisesRegex(ValueError, 'Both player histories'):
+                            self.verify_with_histories(histories)
+                        self.assertFalse(any(r.binding is bound for r in sp._RECEIPTS.values()))
+                        self.assertFalse((folder / 'training-policy-reconstruction.json').exists())
+                    finally:
+                        self.receipts, self.root = old_receipts, old_root
