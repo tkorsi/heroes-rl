@@ -35,6 +35,11 @@ class VisibleArtifactRun:
                 end = 19 + sum(row[0] == destination and row[1] >= 19 for row in visible)
                 choices.append(SimpleNamespace(kind="move_artifact", subject=owner, slot=slot,
                                                artifact=artifact, destination=destination, destination_slot=end))
+        if self.offers:
+            for owner, slot, artifact, locked in visible:
+                if owner == "actor" and artifact == 36 and slot >= 19 and not locked:
+                    choices.append(SimpleNamespace(kind="move_artifact", subject=owner, slot=slot,
+                                                   artifact=artifact, destination=owner, destination_slot=0))
         return SimpleNamespace(items=items, choices=choices)
 
     def choose(self, choice):
@@ -159,8 +164,22 @@ class CapabilityProbeTests(unittest.TestCase):
         parked = probe.park_backpack_extras(run, "actor")
         run.layout.remove(("actor", 0, 36, False))
         run.layout.append(("actor", 1, 36, False))
-        with self.assertRaisesRegex(probe.base.ProbeFailure, "complete original inventory"):
+        with self.assertRaisesRegex(probe.base.ProbeFailure, "lacks its offered original equipment slot"):
             probe.restore_backpack_extras(run, parked)
+
+    def test_native_disassembly_backpacks_component_then_explicit_equipment_restoration_precedes_return(self):
+        run = VisibleArtifactRun((105,))
+        initial = tuple(sorted(run.layout))
+        parked = probe.park_backpack_extras(run, "actor")
+        # The native attempt placed components first and the retained axe last.
+        run.layout.remove(("actor", 0, 36, False))
+        run.layout.remove(("actor", 19, 7, False))
+        run.layout += [("actor", 19, 36, False), ("actor", 20, 7, False)]
+        probe.restore_backpack_extras(run, parked)
+        self.assertEqual(tuple(sorted(run.layout)), initial)
+        self.assertEqual([(move.artifact, move.destination, move.destination_slot) for move in run.moves],
+                         [(105, "partner", 20), (36, "actor", 0), (105, "actor", 20)])
+        self.assertIn("native_tested_equipment_restored_exact_layout", [check[0] for check in run.checks])
 
     def test_fixed_schedule_never_replaces_failed_or_randomly_missing_branches(self):
         rows = probe.schedule(tuple(probe.CASES), probe.fixtures.COLORS, 158001, 16)

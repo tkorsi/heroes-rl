@@ -1,4 +1,4 @@
-"""Supervise all 28 existing capability controls after a garrison repair.
+"""Supervise capability controls, defaulting to the full 28-case acceptance.
 
 Only process supervision and source binding are added. Original scripted
 controls, independent history audit and native replay remain unchanged; no
@@ -25,6 +25,14 @@ from validation.probes import validate_garrison_dialogs as garrison
 from tools.isolated_diagnostic import diagnostic_lease
 
 
+def selected_cases(case="all"):
+    if case == "all":
+        return tuple(capability.CASES)
+    if case not in capability.CASES:
+        raise ValueError("Unknown capability diagnostic case")
+    return (case,)
+
+
 def implementation_identity():
     identity = garrison.implementation_identity()
     identity["tools/validate_garrison_regressions.py"] = digest(__file__)
@@ -33,6 +41,10 @@ def implementation_identity():
 
 
 def check_bindings(plan):
+    expected = capability.schedule(selected_cases(plan.get("case", "all")),
+                                   capability.fixtures.COLORS, plan["seed"], 1)
+    if plan.get("schedule") != expected:
+        raise ValueError("Regression selected case/schedule binding changed")
     if plan["implementation"] != implementation_identity():
         raise ValueError("Regression source binding changed")
     binary, replay = Path(plan["binary"]), Path(plan["replay_binary"])
@@ -54,7 +66,7 @@ def run_worker(path, expected_hash):
     output = path.parent
     maps = output / "maps"
     maps.mkdir(exist_ok=False)
-    for fixture in dict.fromkeys(capability.CASES.values()):
+    for fixture in dict.fromkeys(capability.CASES[case] for case in selected_cases(plan.get("case", "all"))):
         for player in capability.fixtures.COLORS:
             target = maps / (capability.fixtures.scenario_id(fixture, player) + ".vmap")
             manifest = capability.fixtures.create_scenario(target, fixture=fixture, player=player)
@@ -74,7 +86,7 @@ def run_worker(path, expected_hash):
     try:
         return capability.main([
             "--binary", plan["binary"], "--replay-binary", plan["replay_binary"], "--data", plan["data"],
-            "--maps", str(maps), "--output", str(output / "execution"), "--case", "all", "--player", "both",
+            "--maps", str(maps), "--output", str(output / "execution"), "--case", plan.get("case", "all"), "--player", "both",
             "--seed", str(plan["seed"]), "--seed-count", "1", "--case-seconds", str(plan["case_seconds"]),
             "--watchdog", "30", "--startup-seconds", "30"])
     finally:
@@ -88,13 +100,15 @@ def supervise(args):
                           official_lock=args.official_lock) as lease:
         args.output.mkdir(parents=True, exist_ok=False)
         wall, mono = time.time(), time.monotonic()
+        case = getattr(args, "case", "all")
         plan = {"schema": "heroes-garrison-regression-supervision-v1", "implementation": implementation_identity(),
                 "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "runtime": runtime_identity(args.binary.parent), "binary": str(args.binary),
                 "binary_sha256": digest(args.binary), "replay_binary": str(args.replay_binary),
                 "replay_binary_sha256": digest(args.replay_binary), "data": str(args.data),
                 "seed": args.seed, "case_seconds": args.case_seconds,
-                "schedule": capability.schedule(tuple(capability.CASES), capability.fixtures.COLORS, args.seed, 1),
+                "case": case,
+                "schedule": capability.schedule(selected_cases(case), capability.fixtures.COLORS, args.seed, 1),
                 "started_unix": wall, "started_monotonic": mono,
                 "absolute_deadline_unix": wall + args.wall_seconds,
                 "hard_deadline_monotonic": mono + args.wall_seconds, "official_lock": str(args.official_lock),
@@ -144,6 +158,8 @@ def main(argv=None):
     for name in ("binary", "replay-binary", "data", "output"):
         parser.add_argument("--" + name, type=Path)
     parser.add_argument("--seed", type=int)
+    parser.add_argument("--case", choices=("all", *capability.CASES), default="all",
+                        help="Bounded diagnostic subset; official acceptance still requires all 28 controls")
     parser.add_argument("--wall-seconds", type=int, default=1800)
     parser.add_argument("--case-seconds", type=int, default=180)
     parser.add_argument("--isolated-diagnostic", action="store_true",

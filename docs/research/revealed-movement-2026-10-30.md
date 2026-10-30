@@ -231,3 +231,22 @@ on both seats. Random native bonuses remain possible and are separately accounte
 for. Historical frozen maps/captures remain immutable. The official
 hero-management-v2 map remains SHA-256
 `ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3`.
+
+Native attempt 2 on frozen `71e14d4` used another fresh reserved schedule. Its
+16 garrison cases passed. The legacy group again passed four cases before the
+artifact control stopped, with 23 cases unstarted. This time parking, the
+singleton check, both inverse reorders and assembly/disassembly ownership checks
+all passed. Native disassembly legitimately placed all six components in backpack
+slots 19–24 and the Centaur Axe at slot 25, while the Pendant remained on the
+partner at slot 19. The new diagnostic restoration helper had incorrectly assumed
+the actor was already back to the singleton layout. Its append assertion stopped
+before issuing the return; no artifact was lost or invented. Owned cleanup and
+protected-input hashes passed. This is a diagnostic setup/restoration defect,
+not an engine failure or new policy-support failure.
+
+The follow-up explicitly re-equips the observed components to their recorded
+original slots using current native offers, verifies the exact layout and counts
+after each move, and requires the recorded singleton layout before returning the
+extra item. It preserves all prior gates. An artifacts-only, both-seat bounded
+preflight will precede the next complete 44-control schedule. Failed reservations
+and evidence remain consumed and immutable.

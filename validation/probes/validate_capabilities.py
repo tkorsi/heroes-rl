@@ -150,13 +150,47 @@ def park_backpack_extras(run, actor):
     run.open_hero_capability("artifacts")
     base.ensure(run.inspect_request().observation.context.subject == actor,
                 "Temporary artifact parking reopened a different actor")
-    return {"actor": actor, "partner": partner, "initial": initial, "parked": parked}
+    return {"actor": actor, "partner": partner, "initial": initial, "parked": parked,
+            "tested_actor": inventory_layout(run.capability().items)}
+
+
+def restore_tested_actor_inventory(run, actor, expected):
+    """Re-equip components that native disassembly legitimately backpacks."""
+    for owner, slot, artifact, locked in expected:
+        if owner != actor or slot >= 19 or locked:
+            continue
+        before = inventory_layout(run.capability().items)
+        if (owner, slot, artifact, locked) in before:
+            continue
+        base.ensure(not any(row[0] == actor and row[1] == slot for row in before),
+                    "Original equipment slot is occupied during diagnostic inventory restoration")
+        choice = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                       and choice.subject == actor == choice.destination and choice.artifact == artifact
+                       and choice.slot >= 19 and choice.destination_slot == slot), None)
+        base.ensure(choice is not None, "Disassembled component lacks its offered original equipment slot")
+        counts = inventory_counts(run.capability().items)
+        source = (actor, choice.slot, artifact, False)
+        base.ensure(source in before, "Disassembled component is absent from the displayed backpack")
+        after_expected = [(subject, index - int(subject == actor and index > choice.slot and index >= 19), item, reserved)
+                          for subject, index, item, reserved in before
+                          if (subject, index, item, reserved) != source]
+        after_expected.append((actor, slot, artifact, False))
+        run.choose(choice)
+        after = inventory_layout(run.capability().items)
+        base.ensure(after == tuple(sorted(after_expected)) and inventory_counts(run.capability().items) == counts,
+                    "Restoring disassembled equipment changed unrelated slots or ownership")
+        run.check("native_tested_equipment_restored_exact_layout", "passed", artifact=artifact,
+                  source_slot=choice.slot, destination_slot=slot, before=before, after=after)
+    base.ensure(inventory_layout(run.capability().items) == expected,
+                "Native equipment restoration failed to recover the pre-regression actor inventory")
+    run.check("native_tested_actor_inventory_restored", "passed", restored=expected)
 
 
 def restore_backpack_extras(run, reservation):
     if reservation is None:
         return
     actor, partner = reservation["actor"], reservation["partner"]
+    restore_tested_actor_inventory(run, actor, reservation["tested_actor"])
     actor_before = inventory_layout(run.capability().items)
     panel = open_owned_artifact_exchange(run, actor, partner)
     base.ensure(tuple(row for row in inventory_layout(panel.items) if row[0] == actor) == actor_before,

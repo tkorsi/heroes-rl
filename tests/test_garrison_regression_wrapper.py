@@ -12,6 +12,35 @@ from tools import validate_garrison_regressions as wrapper
 
 
 class GarrisonRegressionWrapperTests(unittest.TestCase):
+    def test_case_selection_defaults_to_all_and_binds_exact_subset(self):
+        self.assertEqual(wrapper.selected_cases(), tuple(wrapper.capability.CASES))
+        self.assertEqual(wrapper.selected_cases("artifacts"), ("artifacts",))
+        with self.assertRaisesRegex(ValueError, "Unknown capability"):
+            wrapper.selected_cases("arbitrary")
+        schedule = wrapper.capability.schedule(("artifacts",), wrapper.capability.fixtures.COLORS, 83070000, 1)
+        with self.assertRaisesRegex(ValueError, "selected case/schedule"):
+            wrapper.check_bindings({"seed": 83070000, "case": "all", "schedule": schedule})
+
+    def test_worker_runs_only_both_selected_artifact_seats_under_existing_guardian(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "supervision.json"
+            plan = {"schema": "heroes-garrison-regression-supervision-v1", "case": "artifacts",
+                    "absolute_deadline_unix": time.time() + 60,
+                    "hard_deadline_monotonic": time.monotonic() + 60,
+                    "binary": "/unused/client", "replay_binary": "/unused/replay", "data": "/unused/data",
+                    "seed": 83070000, "case_seconds": 120}
+            path.write_text(json.dumps(plan))
+            with patch.object(wrapper, "check_bindings"), \
+                    patch.object(wrapper.capability, "main", return_value=0) as main, \
+                    patch.object(wrapper.garrison.environment.VcmiLauncher, "launch") as launch:
+                self.assertEqual(wrapper.run_worker(path, wrapper.digest(path)), 0)
+                argv = main.call_args.args[0]
+                self.assertEqual(argv[argv.index("--case") + 1], "artifacts")
+                self.assertEqual(argv[argv.index("--player") + 1], "both")
+                self.assertEqual(len(list((root / "maps").glob("*.vmap"))), 2)
+                launch.assert_not_called()
+
     def test_busy_official_lock_and_existing_evidence_prevent_worker_launch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

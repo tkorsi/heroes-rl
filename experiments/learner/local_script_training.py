@@ -295,7 +295,7 @@ FAST_PATH_TREE = {
     'tools/training_environment.py': ('',
         '71a4974c58259da0d65670adcd90dfe7b427d4476bb79f76ca54c648ec374030'),
     'tools/validate_garrison_regressions.py': ('',
-        '0f4c005873fe342b60eb08e16eb6f3a153672eb511d263fd6e54712e52276dd6'),
+        'd31ad6cbad292f797e2e0badd1598459035e4af5e3e4372f46498322cad2da37'),
     'tools/validate_interaction_guard.py': ('',
         '944738c56da82fe7bef5ed1e8e1ec7ee4de6c6ee235fd99cc3baff15ef711a34'),
     'train-1000.sh': ('',
@@ -305,7 +305,7 @@ FAST_PATH_TREE = {
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_capabilities.py': ('bb494ac4cc7c95ea34f2a866dfdec1694e26a3f7',
-        '61124df9164b2e607e4d2a90338c14ec2dec0e16b9df49599c7e0036080e9df8'),
+        'a9cb3fb854d2e0bf04d4eb15aea95df48a7d24879a37b38b7a8fe5f89db728fb'),
     'validation/probes/validate_garrison_dialogs.py': ('',
         'b5e2cccac2381d6b4ac360e74ab16f8305bec6703ef769dd41f30bd16b44a03d'),
     'validation/probes/validate_hero_policy.py': ('55badab454804f7fc2e1d544840ad830c1aab5ec',
@@ -313,7 +313,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '8d08641d211b5308599c6aa91f09d17257943ec51b01a25bd6c6557c19c3c56f'
+LOCAL_ADAPTER_TRANSITION_AST = '776df7d9c306e06a8883bc7d111c97a8b3ffbd5b024f299da12af45ef98595e3'
 
 
 def write_new(path, value):
