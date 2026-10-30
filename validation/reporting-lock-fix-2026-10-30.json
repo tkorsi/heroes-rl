@@ -1,0 +1,69 @@
+{
+  "actual_bounded_report": {
+    "campaign_lease_available": true,
+    "elapsed_seconds": 3.1295118330745026,
+    "expected_report_timeout": true,
+    "gameplay_performed": false,
+    "optimizer_updates": 0,
+    "owned_cleanup_verified": true,
+    "protected_files_unchanged": 128,
+    "report_deadline_seconds": 3,
+    "report_returncode": 1,
+    "report_started_while_campaign_lease_held": true,
+    "seeds_reserved": false,
+    "status": "passed",
+    "worker_returncode": -9
+  },
+  "admitted_selfplay_games": 100,
+  "campaign_lease_available_after_unblock": true,
+  "canonical_engine_check": "passed",
+  "checkpoint": 1753,
+  "controller_commit": "04cfe4d38a88d87c71a133a18dcbd895260624f6",
+  "date": "2026-10-30",
+  "diagnostic_limitations": [
+    "Original optional full report was interrupted; saved training remains completed.",
+    "Three-second actual report deadline was intentional and its output is incomplete.",
+    "Initial synthetic path-alias control failed, was corrected, and passed on rerun.",
+    "No doubled-choice native game was launched; native capture/replay remain manual-launch checks.",
+    "Reporting still processes histories serially; no performance improvement is claimed."
+  ],
+  "evaluation_seeds_reserved": 0,
+  "exact_checkpoint_restore_before_unblock": true,
+  "gameplay_started": false,
+  "lock_files_replaced": false,
+  "new_reporting_controls": 10,
+  "new_source_integrity_controls": 1,
+  "offline_tests_passed": 105,
+  "optimizer_updates": 0,
+  "private_receipt_sha256": {
+    "actual-report-validation.json": "fa93b1dc39e81bb7eca340140433d7bdf82a106ce693980ae30e7a159429a541",
+    "before-unblock.json": "fa10a76b4d9633c584e0c382da7dc1be90f04fe22ba0d4abff632636033f2f32",
+    "controller-ast-review.json": "49a43a1ef40e24e8ac881cc6feee82ceb388deb5c09c0d6ac4741d46e3bd78f9",
+    "engine-check.log": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac",
+    "offline-tests.log": "f893e9dc04bca3ebac9ec5c2c90d78f03f29ff5f005843c3cf5c471ce0606b4d",
+    "unblock-result.json": "79decc4703eecd73a08e3ac1223a91da56efa3ae893a48c4547f1eabe9ae5fd0"
+  },
+  "protected_files_unchanged": 128,
+  "report": "docs/research/reporting-lock-fix-2026-10-30.md",
+  "report_supervisor_stopped": true,
+  "reporting_automatic": false,
+  "reporting_default_deadline_seconds": 600,
+  "reporting_holds_training_lease": false,
+  "schema": "heroes-reporting-lock-repair-v1",
+  "source_review": {
+    "added_functions": [
+      "report_completed",
+      "report_inputs",
+      "report_worker"
+    ],
+    "changed_existing_functions": [
+      "analyze_completed",
+      "main"
+    ],
+    "removed_functions": [],
+    "status": "passed",
+    "unchanged_functions": 39
+  },
+  "status": "offline_passed_pending_manual_check",
+  "unchanged_runtime_base": "b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617"
+}

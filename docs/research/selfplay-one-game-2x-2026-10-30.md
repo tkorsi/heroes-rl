@@ -29,6 +29,11 @@ these descriptive changes to learning.
 | Physical games per manual invocation | Four-game training batch | One evaluation game |
 | Optimizer updates | One per complete training batch | Zero |
 
+The cutoff starts when either player reaches the normal allowance. The reserve
+only permits mandatory policy-selected dialog answers before a safe cutoff; it
+does not permit more ordinary movement. The independent final dialog-chain
+limit remains eight answers, so the 320-choice reserve is an outer ceiling.
+
 The existing map, network, engine, native learner library, revealed-target support,
 visible interaction budgets and terminal scoring stay unchanged. The existing
 mandatory-dialog drain and technical continuation limits also remain unchanged;
@@ -54,7 +59,9 @@ rollout must roundtrip exactly; both player histories and both frozen policies
 must reconstruct; the actual engine replay must pass. Diagnostic trajectories
 cannot become training admission capabilities. No training receipt or optimizer
 update is created. All core learner, collector, replay, engine and dependency
-sources are required to match the accepted base release byte for byte.
+sources are required to match the accepted base release byte for byte. The
+campaign controller's reporting-only repair is pinned separately to its reviewed
+commit; the original checkpoint ancestry and all runtime checks remain exact.
 
 ## Manual command
 
@@ -87,6 +94,7 @@ records the source and private receipt hashes.
 Review found and corrected nested deadline timers, final plan-hash rechecking and
 shutdown evidence on protected-input failure before any native launch. The
 original supervisor was still computing its post-run report during preparation.
-If it still owns the resource lease when `--run` is invoked, the evaluator exits
-with a clear busy message before reserving seeds. Wait for that original command
-to finish before invoking the new game.
+The subsequent [reporting repair](reporting-lock-fix-2026-10-30.md) safely stopped
+that report-only process after checking the completed checkpoint and worker
+shutdown. Reporting is now separate from training ownership. An actual active
+campaign still blocks evaluation before any new seeds are reserved.

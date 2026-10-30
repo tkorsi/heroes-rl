@@ -29,6 +29,8 @@ from tools import benchmark_copied_training as copies
 from tools import run_selfplay_training as campaign
 
 BASE_COMMIT = 'b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617'
+CONTROLLER_COMMIT = '04cfe4d38a88d87c71a133a18dcbd895260624f6'
+CONTROLLER_PATH = 'tools/run_selfplay_training.py'
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -37,22 +39,32 @@ ENGINE_SEED, POLICY_SEED = 1_960_000_000, 1_962_000_000
 require, read, write, binding, bound = campaign.require, campaign.read, campaign.write, campaign.binding, campaign.bound
 
 
+def verify_runtime_sources(implementation):
+    """Pin the reporting-only controller repair separately from the original runtime."""
+    archive = subprocess.check_output(['git', 'archive', BASE_COMMIT, *sorted(implementation)], cwd=ROOT)
+    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
+        original = {member.name: hashlib.sha256(source.extractfile(member).read()).hexdigest()
+                    for member in source.getmembers() if member.isfile()}
+    controller = subprocess.check_output(['git', 'show', CONTROLLER_COMMIT + ':' + CONTROLLER_PATH], cwd=ROOT)
+    require(CONTROLLER_PATH in original and CONTROLLER_PATH in implementation,
+            'Evaluation source identity omitted the campaign controller')
+    original[CONTROLLER_PATH] = hashlib.sha256(controller).hexdigest()
+    require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
+
+
 def source_identity():
-    """The evaluator may add its wrapper; every reused runtime file stays exact."""
+    """All reused sources match their exact accepted runtime or reporting repair."""
     from validation.probes.validate_capabilities import capability_implementation_identity
     from experiments.learner.inference import source_identity as learner_identity
     implementation = capability_implementation_identity()
     learner = learner_identity(campaign.INTERFACE)
     implementation.update(learner['source_sha256'])
-    for name in ('tools/run_selfplay_training.py', 'tools/benchmark_copied_training.py'):
+    for name in (CONTROLLER_PATH, 'tools/benchmark_copied_training.py'):
         implementation[name] = binding(ROOT / name)['sha256']
-    archive = subprocess.check_output(['git', 'archive', BASE_COMMIT, *sorted(implementation)], cwd=ROOT)
-    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
-        original = {member.name: hashlib.sha256(source.extractfile(member).read()).hexdigest()
-                    for member in source.getmembers() if member.isfile()}
-    require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
+    verify_runtime_sources(implementation)
     return dict(checkout=copies.checkout_identity(ROOT), source=learner,
         unchanged_runtime_base=BASE_COMMIT, implementation=implementation,
+        reporting_controller_base=CONTROLLER_COMMIT,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

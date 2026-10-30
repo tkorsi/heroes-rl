@@ -31,6 +31,12 @@ Both players receive 9,920 normal choices and 320 reserved dialog choices, with 
 10,240-choice hard ceiling. This evaluation performs no PPO update and changes no
 training checkpoint, sampler, seed reservation or completed campaign target.
 
+Training completion releases the campaign lock before any optional behavior
+report. Detailed reporting is a separate, manually invoked command with a
+deadline and per-game progress; it cannot admit games or update weights. The
+[reporting repair](docs/research/reporting-lock-fix-2026-10-30.md) records the
+safe shutdown of the old report process and the preserved checkpoint.
+
 The old `continue-selfplay.sh` retains its completed 100-game target and must not
 be used to start this evaluation. The separate original Nullkiller campaign and
 its launcher remain unchanged at checkpoint 1,728, with 604 games remaining.

@@ -1,9 +1,12 @@
 """Isolated evaluator checks use disposable files and mocks; never native games."""
 from copy import deepcopy
+import hashlib
+import io
 import json
 import os
 from pathlib import Path
 import tempfile
+import tarfile
 import time
 from types import SimpleNamespace
 import unittest
@@ -46,6 +49,32 @@ class OneFrozenGameTests(unittest.TestCase):
             evaluation.main(['--run', '--check'])
         with self.assertRaisesRegex(ValueError, 'finite total budget'):
             evaluation.main(['--seconds', 'nan'])
+
+    def test_reporting_controller_pin_does_not_relax_runtime_or_controller_integrity(self):
+        original = {evaluation.CONTROLLER_PATH: b'original controller',
+                    'engine/runtime.cpp': b'accepted engine'}
+        repaired_controller = b'reviewed reporting-only controller'
+        archive = io.BytesIO()
+        with tarfile.open(fileobj=archive, mode='w') as stream:
+            for name, data in original.items():
+                entry = tarfile.TarInfo(name); entry.size = len(data)
+                stream.addfile(entry, io.BytesIO(data))
+        expected = {name: hashlib.sha256(data).hexdigest() for name, data in original.items()}
+        expected[evaluation.CONTROLLER_PATH] = hashlib.sha256(repaired_controller).hexdigest()
+        def git_read(command, *, cwd):
+            if command[:2] == ['git', 'archive']:
+                self.assertEqual(command[2], evaluation.BASE_COMMIT)
+                return archive.getvalue()
+            self.assertEqual(command, ['git', 'show', evaluation.CONTROLLER_COMMIT + ':' + evaluation.CONTROLLER_PATH])
+            return repaired_controller
+        with patch.object(evaluation.subprocess, 'check_output', side_effect=git_read):
+            evaluation.verify_runtime_sources(expected)
+            for name in expected:
+                changed = dict(expected, **{name: '0' * 64})
+                with self.subTest(tampered=name), self.assertRaisesRegex(ValueError, 'changed an existing'):
+                    evaluation.verify_runtime_sources(changed)
+            with self.assertRaisesRegex(ValueError, 'omitted the campaign controller'):
+                evaluation.verify_runtime_sources({'engine/runtime.cpp': expected['engine/runtime.cpp']})
 
     def test_one_physical_game_reservation_uses_two_policy_seeds_and_never_reuses_unstarted(self):
         self.assertEqual(evaluation.seed_ledger()['reservations'], [])
