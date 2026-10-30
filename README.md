@@ -15,6 +15,15 @@ historical validation evidence intact.
 
 ## Current state
 
+A separate [tiny-policy candidate](docs/research/tiny-policy-2026-10-30.md) reduces
+the recurrent hidden size from 64 to 8 and feature width from 32 to 4: 15,460
+parameters instead of 74,344. It has fresh random weights, zero games/updates,
+and an independently saved initial policy/RNG/opponent pool. This is a width
+reduction of the existing encoder/CNN/GRU architecture. Offline native parity
+and synthetic PPO/checkpoint controls passed; a full gameplay/training launcher
+has not been accepted for this candidate. Existing launchers continue to select
+their original verified checkpoints, including self-play 1753.
+
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
 completed at **checkpoint 1,753**, with 100 admitted games and 25 complete PPO
 updates from 1,728. Outcomes were three learner wins, eight losses and 89

@@ -1,0 +1,110 @@
+{
+  "baseline_parameters": 74344,
+  "candidate_optimizer_updates": 0,
+  "candidate_policy_sha256": "0eaea769ae11ecf4e6c5c02c056acd1c11e94c3939f17b4dbf0943d2271e4ffb",
+  "candidate_weights_sha256": "55d3bdd61162ae82fa96be7f84baedec77cd1d5df45a38d44ad0bc791c360cca",
+  "date": "2026-10-30",
+  "diagnostics": [
+    "First test selection used an incorrect unittest class name; corrected.",
+    "Expanded native test initially skipped because its manifest environment name differs; rerun with correct explicit manifest passed.",
+    "First baseline microbenchmark load was rejected for missing expected plan/opponent metadata; rerun supplied exact published metadata."
+  ],
+  "exact_model_rng_pool_restore": true,
+  "experiment": "selfplay-tiny-v1",
+  "feature_size": 4,
+  "gameplay_started": false,
+  "hidden_size": 8,
+  "initial_optimizer_state": "not created; candidate is random-initialization policy only",
+  "initial_progress": {
+    "decisions": 0,
+    "rollouts": 0,
+    "updates": 0
+  },
+  "limits": [
+    "Width reduction only; encoders, CNN and GRU remain.",
+    "Native engine gameplay and full training-launch acceptance have not been run for this candidate.",
+    "No end-to-end speed or playing-strength improvement is established."
+  ],
+  "native_prefix_check": {
+    "benchmark_scope": "Tiny prefix only; excludes feature compilation, action sampling, serialization, replay and PPO",
+    "gameplay_started": false,
+    "median_native_prefix_seconds": 0.014297000016085804,
+    "model_config": {
+      "feature_size": 4,
+      "hidden_size": 8,
+      "max_map_side": 256,
+      "schema": "heroes-context-model-v6"
+    },
+    "native_manifest_sha256": "53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573",
+    "native_prefix_matches_python_bit_exact": true,
+    "native_prefix_threads": 16,
+    "observed_frames": 128,
+    "optimizer_updates": 0,
+    "parameters": 15460,
+    "status": "passed",
+    "training_samples_created": 0,
+    "weights_unchanged": true
+  },
+  "official_checkpoint_preserved": 1753,
+  "parameters": 15460,
+  "prefix_comparison": {
+    "demonstrations": false,
+    "end_to_end_speedup_established": false,
+    "observations_only": true,
+    "optimizer_updates": 0,
+    "ratio": 1.183631892590548,
+    "rows": [
+      {
+        "median_seconds": 0.012609917088411748,
+        "model": "tiny-untrained",
+        "parameters": 15460,
+        "samples": [
+          0.013297665980644524,
+          0.012470458052121103,
+          0.012302833027206361,
+          0.013351707952097058,
+          0.012609917088411748,
+          0.012818415998481214,
+          0.012114500044845045
+        ]
+      },
+      {
+        "median_seconds": 0.014925500028766692,
+        "model": "baseline1753",
+        "parameters": 74344,
+        "samples": [
+          0.015003583976067603,
+          0.014581499970518053,
+          0.014559749979525805,
+          0.014460291946306825,
+          0.014925500028766692,
+          0.015004499931819737,
+          0.015856750076636672
+        ]
+      }
+    ],
+    "scope": "Warm native prefix on same 128 recorded observation frames; excludes compilation/action sampling/PPO/IO/replay"
+  },
+  "private_evidence_hashes": {
+    "actual-tiny-native-check.json": "104103c1d6775c27719321d7d94bb678aad94da7a9c71fbf708f8552496952b7",
+    "expanded-native-test.log": "a46d77c4381cadc942c45a8e3e634a7493f4ce9659fc99220507faece3785cad",
+    "offline-native-tests-final.log": "bba3030421873d7f251fb43973e5f628da467ad9387ed3fd9d6b172a612f761a",
+    "offline-native-tests.log": "7ee617421c40897cb704a6b60676058a08b129913cced603bcc18354d2ebd573",
+    "prefix-comparison.json": "3f516e7ba12d7eb9a1685d78b0d054bf85145f764f755b9f272c32682bdd281e",
+    "preparation.stdout.log": "d2dcede9d32b90ad9d024ccbd8292598da618ca8f2319a491d939747c0defb6c"
+  },
+  "protected_files_unchanged": 126,
+  "retained_architecture": [
+    "typed tree encoder",
+    "text GRU",
+    "spatial CNN",
+    "recurrent policy GRU",
+    "typed action heads",
+    "value head"
+  ],
+  "schema": "heroes-tiny-policy-offline-validation-v1",
+  "status": "offline_candidate_prepared",
+  "training_launcher_accepted": false,
+  "training_seeds_reserved": false,
+  "unique_offline_controls_passed": 16
+}

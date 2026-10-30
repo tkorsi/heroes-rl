@@ -1,0 +1,17 @@
+{
+  "schema": "heroes-tiny-policy-experiment-v1",
+  "experiment": "selfplay-tiny-v1",
+  "model": {"hidden_size": 8, "feature_size": 4, "max_map_side": 256},
+  "expected_parameters": 15460,
+  "initialization": "fresh_random_weights",
+  "torch_seed": 1970000001,
+  "python_seed": 1970000002,
+  "minibatch_seed": 1970000003,
+  "parent_checkpoint": null,
+  "interface": "adventure-capabilities-v1",
+  "policy_support": "visible-interaction-budget-revealed-v1",
+  "opponent": "independent_frozen_copy_at_batch_start",
+  "rewards": {"win": 1, "loss": -1, "ordinary_transition": 0},
+  "training_games_per_update": 4,
+  "training_launcher_accepted": false
+}

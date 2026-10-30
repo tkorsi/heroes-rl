@@ -1206,3 +1206,18 @@ native frames. Player-local handles were resolved by object type/owner/position,
 rather than equated with native IDs. These facts show failure to finish the
 opponent in this game; they do not establish what the policy intended.
 See [compact evidence](../validation/replay-player-knowledge-2026-10-30.json).
+
+## 2026-10-30: independently initialized tiny-policy candidate
+
+The user requested a smaller network for a separate experiment, keeping the
+available actions. A width-only8-hidden/4-feature candidate has15460 parameters
+versus74344 in the existing64/32 model. CNN/GRU/tree architecture remains. Fresh
+random initial policy/RNG/pool was saved privately and restored exactly; no
+checkpoint1753 weights or Adam state were transferred. All126 protected original
+files remain unchanged. Sixteen unique offline controls and an actual saved-tiny
+C++/Python prefix parity check passed. A limited128-frame warm-prefix comparison
+was1.18x faster; full gameplay/training speed and learning are unmeasured. The
+[report](research/tiny-policy-2026-10-30.md) discloses test-selector/manifest and
+metadata-gate diagnostic corrections, and [validation](../validation/tiny-policy-2026-10-30.json)
+keeps raw initialization/checkpoints private. No gameplay or training started.
+The tiny candidate is not accepted or selected by an existing training launcher.
