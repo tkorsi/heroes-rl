@@ -1,4 +1,5 @@
 """Controller contracts use disposable files and mocks, never native gameplay."""
+from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 import json
@@ -17,7 +18,8 @@ def configuration():
     return dict(interface=controller.INTERFACE, adam={'lr': 0.0003}, ppo=dict(controller.PPO),
                 max_days=365, ordinary_choice_limit=4960, reserved_dialog_choices=160,
                 max_total_choices=5120, max_optimizer_steps=640, attempt_wall_seconds=600,
-                allow_verified_training_prefix=False, training_games=4)
+                allow_verified_training_prefix=False, training_games=4, cleanup_reserve_seconds=30,
+                phase_deadlines_seconds={'training': 2400, 'update': 10740, 'evaluation': 3540})
 
 
 class SelfPlayControllerTests(unittest.TestCase):
@@ -85,6 +87,97 @@ class SelfPlayControllerTests(unittest.TestCase):
                            ('allow_verified_training_prefix', True), ('ppo', {**controller.PPO, 'gamma': 0.99})):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 controller.validate_configuration({**expected, key: value})
+
+    def test_batch_phase_deadlines_preserve_parent_offsets_and_cleanup_reserve(self):
+        launch = dict(configuration=configuration(), hard_deadline_monotonic=20100, hard_deadline_unix=21000)
+        with patch.object(controller.time, 'monotonic', return_value=100), \
+             patch.object(controller.time, 'time', return_value=1000):
+            phases = controller.batch_phase_deadlines(launch)
+            self.assertEqual(phases['training']['configured_seconds'], 2400)
+            self.assertEqual(phases['update']['configured_seconds'], 10740)
+            self.assertEqual(phases['training']['hard_deadline_monotonic'], 2500)
+            self.assertEqual(phases['update']['hard_deadline_monotonic'], 10840)
+            self.assertEqual(controller.phase_remaining(phases['training']), 2370)
+            self.assertEqual(controller.phase_remaining(phases['update']), 10710)
+            self.assertEqual(controller.phase_remaining(phases['update'], 0), 10740)
+            launch.update(hard_deadline_monotonic=500, hard_deadline_unix=1400)
+            capped = controller.batch_phase_deadlines(launch)
+            self.assertEqual(controller.phase_remaining(capped['training']), 370)
+            self.assertEqual(controller.phase_remaining(capped['update']), 370)
+
+    def completed_collection(self, *, exhaust_phase=False):
+        from experiments.headless import process_deadline
+        from experiments.learner import selfplay_training as training
+        from validation.probes import validate_hero_policy
+        clock = [100.0]
+        launch = dict(configuration=configuration(), hard_deadline_monotonic=20100, hard_deadline_unix=21000)
+        rows = controller.schedule(dict(count=4, mode='diagnostic', engine_base=100, policy_base=200), 0, 4)
+        plan = dict(schedule=rows, configuration=configuration(), execution_output=str(self.root / 'execution'),
+                    replay_binary={'path': '/unused/replay'}, data='/unused/data')
+        plan_path = self.root / 'plan.json'; controller.write(plan_path, plan, new=True)
+        observed, saved, spawned = [], {}, []
+        def create_binding(path, sha, index, folder):
+            folder.mkdir()
+            for name in ('manifest.json', 'neural-rollout.json', 'training-policy-reconstruction.json',
+                         'training-verification/contextual-replay-verification.json',
+                         'training-verification/native-report.json', 'training-receipt.json'):
+                value = dict(status='truncated', termination_reason='max_days',
+                             outcomes_by_player={'red': None, 'blue': None}, rewards_by_player={'red': 0, 'blue': 0})
+                controller.write(folder / name, value, new=True)
+            return index
+        def spawn(command, **kwargs):
+            # All captures have already completed successfully before their
+            # deadline; their coordinator reads completion later in the queue.
+            def communicate(**kwargs):
+                clock[0] = 701
+                return b'{}', None
+            process = SimpleNamespace(returncode=0, communicate=communicate)
+            spawned.append(kwargs['deadline_monotonic'])
+            return process
+        def verify(capability, learner, opponent, **kwargs):
+            observed.append(kwargs['remaining']())
+            if exhaust_phase:
+                clock[0] = 2471  # The last 30 seconds are reserved for cleanup.
+                kwargs['remaining']()
+            return SimpleNamespace(collected=SimpleNamespace(rollouts=[SimpleNamespace(decisions=[]) for _ in (0, 1)]),
+                                   to_dict=lambda: {'passed': True})
+        with patch.object(controller.time, 'monotonic', side_effect=lambda: clock[0]), \
+             patch.object(controller.time, 'time', side_effect=lambda: clock[0] + 900), \
+             patch.object(training, 'create_capture_binding', side_effect=create_binding), \
+             patch.object(training, 'register_capture_launch'), patch.object(training, 'accept_capture_completion'), \
+             patch.object(training, 'verify_training_capture', side_effect=verify), \
+             patch.object(process_deadline, 'guarded_popen', side_effect=spawn), \
+             patch.object(process_deadline, 'close_owned_process'), \
+             patch.object(process_deadline, 'cleanup_from_evidence'), \
+             patch.object(validate_hero_policy, 'wall_limit', side_effect=lambda seconds: nullcontext()):
+            phases = controller.batch_phase_deadlines(launch)
+            result = None
+            try:
+                result = controller.collect_batch(plan_path, plan, object(), object(), launch,
+                    lambda index, row: saved.__setitem__(index, row), phase_deadline=phases['training'])
+            except TimeoutError:
+                if not exhaust_phase:
+                    raise
+            else:
+                self.assertFalse(exhaust_phase, 'An expired shared phase must not produce receipts')
+        return result, observed, saved, spawned
+
+    def test_completed_capture_can_verify_after_its_capture_deadline(self):
+        result, observed, saved, spawned = self.completed_collection()
+        self.assertEqual(spawned, [700] * 4)
+        self.assertEqual(observed, [1769] * 4)
+        self.assertEqual(len(result[0]), 4)
+        self.assertTrue(all(row['status'] == 'passed' for row in saved.values()))
+        self.assertEqual(saved[0]['deadlines']['capture_seconds'], 600)
+        self.assertEqual(saved[0]['deadlines']['collection_and_verification']['configured_seconds'], 2400)
+
+    def test_expired_shared_verification_phase_rejects_completed_capture(self):
+        result, observed, saved, _ = self.completed_collection(exhaust_phase=True)
+        self.assertIsNone(result)
+        self.assertEqual(len(observed), 1)
+        self.assertEqual(saved[0]['status'], 'failed')
+        self.assertIn('training phase deadline exhausted', saved[0]['error'])
+        self.assertTrue(controller.read(self.root / 'execution/shutdown.json')['owned_cleanup_verified'])
 
     def test_protection_detects_original_artifact_drift(self):
         item = self.artifact('original.json', {'checkpoint': 1728})
@@ -193,7 +286,7 @@ class SelfPlayControllerTests(unittest.TestCase):
             value = dict(schedule=controller.schedule(launch['reservation'], start, count), execution_output=str(folder / 'execution'))
             controller.write(folder / 'plan.json', value, new=True)
             return folder / 'plan.json', value, object()
-        def collect(path, plan, learner, opponent, launch, save):
+        def collect(path, plan, learner, opponent, launch, save, *, phase_deadline):
             rows = [dict(**row, status='passed') for row in plan['schedule']]
             controller.write(Path(plan['execution_output']) / 'shutdown.json', {'owned_cleanup_verified': True}, new=True)
             for index, row in enumerate(rows):
@@ -233,7 +326,7 @@ class SelfPlayControllerTests(unittest.TestCase):
         plan = dict(schedule=controller.schedule(launch['reservation'], 0, 4), opponent_checkpoint={},
                     execution_output=str(folder / 'execution'))
         controller.write(folder / 'plan.json', plan, new=True)
-        def collect(path, plan, learner, opponent, launch, save):
+        def collect(path, plan, learner, opponent, launch, save, *, phase_deadline):
             rows = [dict(**row, status='passed') for row in plan['schedule']]
             controller.write(Path(plan['execution_output']) / 'shutdown.json', {'owned_cleanup_verified': True}, new=True)
             for index, row in enumerate(rows):

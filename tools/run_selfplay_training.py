@@ -369,6 +369,24 @@ def remaining(launch, reserve=0):
     return left
 
 
+def batch_phase_deadlines(launch):
+    """Preserve the parent's phase offsets separately from each capture timeout."""
+    now, wall = time.monotonic(), time.time()
+    cfg = launch['configuration']
+    return {phase: dict(phase=phase, configured_seconds=seconds,
+                       cleanup_reserve_seconds=cfg['cleanup_reserve_seconds'],
+                       hard_deadline_monotonic=min(now + seconds, launch['hard_deadline_monotonic']),
+                       hard_deadline_unix=min(wall + seconds, launch['hard_deadline_unix']))
+            for phase, seconds in cfg['phase_deadlines_seconds'].items() if phase in ('training', 'update')}
+
+
+def phase_remaining(budget, reserve=None):
+    try:
+        return remaining(budget, budget['cleanup_reserve_seconds'] if reserve is None else reserve)
+    except TimeoutError as error:
+        raise TimeoutError(f"Self-play {budget['phase']} phase deadline exhausted") from error
+
+
 def configure_native(execution):
     import torch
     from experiments.learner import ppo
@@ -478,7 +496,7 @@ def capture_worker(args):
     print(json.dumps(message), flush=True)
 
 
-def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt):
+def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, phase_deadline):
     from experiments.learner import selfplay_training as training
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
     from validation.probes.validate_hero_policy import wall_limit
@@ -490,13 +508,14 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt):
             wave = []
             for index in range(first, min(first + 4, len(plan['schedule']))):
                 current_index = index
-                remaining(launch, 35)
+                phase_remaining(phase_deadline)
                 row = plan['schedule'][index]
                 folder = output / f"episode-{row['episode']:06d}"
                 capability = training.create_capture_binding(plan_path, binding(plan_path)['sha256'], index, folder)
                 token = secrets.token_hex(32)
-                deadline = min(time.monotonic() + 600, launch['hard_deadline_monotonic'] - 30)
-                wall = min(time.time() + 600, launch['hard_deadline_unix'] - 30)
+                allowance = plan['configuration']['attempt_wall_seconds']
+                deadline = min(time.monotonic() + allowance, phase_deadline['hard_deadline_monotonic'] - 2)
+                wall = min(time.time() + allowance, phase_deadline['hard_deadline_unix'] - 2)
                 log = (output / f'worker-{index:02d}.log').open('xb')
                 command = [sys.executable, str(Path(__file__).resolve()), '_capture', '--plan', str(plan_path),
                            '--sha256', binding(plan_path)['sha256'], '--index', str(index), '--token', token,
@@ -505,31 +524,29 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt):
                     evidence_path=output / f'worker-{index:02d}-deadline.jsonl', cwd=ROOT,
                     stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log)
                 job = dict(process=process, log=log, binding=capability, index=index, folder=folder,
-                           deadline=deadline, wall_deadline=wall)
+                           deadline=deadline, wall_deadline=wall,
+                           deadlines=dict(capture_seconds=allowance, capture_deadline_monotonic=deadline,
+                                          capture_deadline_unix=wall, collection_and_verification=phase_deadline))
                 jobs.append(job); wave.append(job)
                 training.register_capture_launch(capability, process, token)
                 save_attempt(index, dict(**row, status='running', outcomes={'red': None, 'blue': None},
-                                        rewards={'red': None, 'blue': None}))
+                                        rewards={'red': None, 'blue': None}, deadlines=job['deadlines']))
             for job in wave:
                 current_index = job['index']
                 process = job['process']
-                stdout, _ = process.communicate(timeout=min(605, remaining(launch, 25)))
+                stdout, _ = process.communicate(timeout=min(605, phase_remaining(phase_deadline)))
                 require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
-                close_owned_process(process, timeout=min(5, remaining(launch, 20)))
+                close_owned_process(process, timeout=min(5, phase_remaining(phase_deadline)))
                 cleanup_from_evidence(output / f"native-{plan['schedule'][job['index']]['episode']:06d}-deadline.jsonl",
-                                      timeout=min(5, remaining(launch, 15)))
+                                      timeout=min(5, phase_remaining(phase_deadline)))
                 require(len(stdout) <= 65536, 'Oversized capture completion')
                 training.accept_capture_completion(job['binding'], json.loads(stdout))
-                def attempt_remaining():
-                    left = min(remaining(launch, 15), job['deadline'] - time.monotonic(),
-                               job['wall_deadline'] - time.time())
-                    if left <= 0:
-                        raise TimeoutError('The 600-second complete episode allowance expired')
-                    return left
-                with wall_limit(attempt_remaining()):
+                def verification_remaining():
+                    return phase_remaining(phase_deadline)
+                with wall_limit(verification_remaining()):
                     receipt = training.verify_training_capture(job['binding'], learner, opponent,
                         replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                        remaining=attempt_remaining)
+                        remaining=verification_remaining)
                 manifest = read(job['folder'] / 'manifest.json')
                 row = plan['schedule'][job['index']]
                 attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
@@ -540,7 +557,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt):
                     evidence={name: binding(job['folder'] / name) for name in ('manifest.json', 'neural-rollout.json',
                         'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
                         'training-verification/native-report.json', 'training-receipt.json')},
-                    verification=receipt.to_dict())
+                    verification=receipt.to_dict(), deadlines=job['deadlines'])
                 attempts.append(attempt); receipts.append(receipt)
                 save_attempt(job['index'], attempt)
         require(len(receipts) == len(plan['schedule']), 'Incomplete self-play batch')
@@ -549,7 +566,9 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt):
         if current_index is not None:
             save_attempt(current_index, dict(**plan['schedule'][current_index], status='failed',
                 error=f'{type(error).__name__}: {error}', outcomes={'red': None, 'blue': None},
-                rewards={'red': None, 'blue': None}, training_samples_admitted=0))
+                rewards={'red': None, 'blue': None}, training_samples_admitted=0,
+                deadlines=next((job['deadlines'] for job in jobs if job['index'] == current_index),
+                               {'collection_and_verification': phase_deadline})))
         raise
     finally:
         errors = close_collection_jobs(jobs, output, launch)
@@ -603,23 +622,25 @@ def coordinator(args):
         size = 4
         for index, start in enumerate(range(0, total, size)):
             remaining(launch, 60)
+            deadlines = batch_phase_deadlines(launch)
             plan_path, plan, opponent = batch_plan(launch, state, index, start, size, previous_policy)
-            batch = dict(index=index, plan=binding(plan_path), status='collecting',
+            batch = dict(index=index, plan=binding(plan_path), status='collecting', deadlines=deadlines,
                          attempts=[dict(**row, status='not_started') for row in plan['schedule']])
             report['batches'].append(batch); write(output / 'report.json', report)
             def save_attempt(position, attempt):
                 batch['attempts'][position] = attempt
                 write(plan_path.parent / 'attempts.json', batch['attempts'])
                 write(output / 'report.json', report)
-            receipts, attempts = collect_batch(plan_path, plan, state.model, opponent, launch, save_attempt)
+            receipts, attempts = collect_batch(plan_path, plan, state.model, opponent, launch, save_attempt,
+                                               phase_deadline=deadlines['training'])
             batch.update(status='verified', attempts=attempts); write(output / 'report.json', report)
             if launch['mode'] == 'training':
                 state.model.train().requires_grad_(True)
                 batch['status'] = 'updating'; write(output / 'report.json', report)
-                with wall_limit(remaining(launch, 30)):
+                with wall_limit(phase_remaining(deadlines['update'])):
                     result, rollouts = training.native_update(state.model, state.optimizer, receipts,
                         plan_sha256=binding(plan_path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
-                        remaining=lambda: remaining(launch, 30), max_optimizer_steps=640)
+                        remaining=lambda: phase_remaining(deadlines['update']), max_optimizer_steps=640)
                 # Adam serialization validates every trainable named parameter.
                 # Freeze again only after the exact policy/resume roundtrip.
                 state.model.eval()
@@ -632,26 +653,27 @@ def coordinator(args):
                 metadata = training.metadata(binding(plan_path)['sha256'], launch['original_parent']['policy'],
                     plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training')
                 checkpoint = f"selfplay-{launch['campaign_id']}-update-{progress.updates}"
-                pair = training.save_checkpoint_pair(plan_path.parent / 'checkpoint', state.model, state.optimizer,
-                    checkpoint=checkpoint, ppo_config=PPO, progress=progress, metadata=metadata,
-                    opponent_pool=state.pool, sampler_state=sampler, generator=state.generator)
-                require(pair['exact_model_adam_rng_progress_pool'] is True, 'Checkpoint roundtrip incomplete')
-                state.model.requires_grad_(False)
-                # A source/runtime change during PPO leaves the candidate pair as
-                # evidence, without publishing it as an admitted continuation.
-                load_launch(args.plan, args.sha256)
-                state = replace(state, progress=progress, sampler_state=sampler, checkpoint=checkpoint,
-                                optimizer_steps=state.optimizer_steps + result.optimizer_steps,
-                                metadata=metadata, weights_sha256=pair['weights_sha256'])
-                previous_policy = pair['policy']
-                batch.update(status='checkpoint_verified', ppo=asdict(result), after_checkpoint=pair)
-                report['optimizer_updates'] += 1; report['admitted_games'] += 4
-                report['training_samples_admitted'] += result.samples
-                report['cumulative_progress'] = vars(progress)
-                write(output / 'report.json', report)
-                write(output / 'latest-checkpoint.json', dict(schema='heroes-selfplay-latest-v1', purpose='training',
-                    campaign_id=launch['campaign_id'], batch=index, plan=binding(plan_path), checkpoint=pair,
-                    cumulative_progress=vars(progress), admitted_games=report['admitted_games']))
+                with wall_limit(phase_remaining(deadlines['update'], 0)):
+                    pair = training.save_checkpoint_pair(plan_path.parent / 'checkpoint', state.model, state.optimizer,
+                        checkpoint=checkpoint, ppo_config=PPO, progress=progress, metadata=metadata,
+                        opponent_pool=state.pool, sampler_state=sampler, generator=state.generator)
+                    require(pair['exact_model_adam_rng_progress_pool'] is True, 'Checkpoint roundtrip incomplete')
+                    state.model.requires_grad_(False)
+                    # A source/runtime change during PPO leaves the candidate pair as
+                    # evidence, without publishing it as an admitted continuation.
+                    load_launch(args.plan, args.sha256)
+                    state = replace(state, progress=progress, sampler_state=sampler, checkpoint=checkpoint,
+                                    optimizer_steps=state.optimizer_steps + result.optimizer_steps,
+                                    metadata=metadata, weights_sha256=pair['weights_sha256'])
+                    previous_policy = pair['policy']
+                    batch.update(status='checkpoint_verified', ppo=asdict(result), after_checkpoint=pair)
+                    report['optimizer_updates'] += 1; report['admitted_games'] += 4
+                    report['training_samples_admitted'] += result.samples
+                    report['cumulative_progress'] = vars(progress)
+                    write(output / 'report.json', report)
+                    write(output / 'latest-checkpoint.json', dict(schema='heroes-selfplay-latest-v1', purpose='training',
+                        campaign_id=launch['campaign_id'], batch=index, plan=binding(plan_path), checkpoint=pair,
+                        cumulative_progress=vars(progress), admitted_games=report['admitted_games']))
                 del rollouts
             else:
                 training.release_receipts(receipts)
