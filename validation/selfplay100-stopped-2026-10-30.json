@@ -886,6 +886,18 @@
     }
   },
   "complete_updates": 2,
+  "continuation_validation": {
+    "campaign_updates_after_stop": 0,
+    "canonical_engine_agreement": true,
+    "independent_review": "passed",
+    "native_gameplay_after_stop": 0,
+    "offline_test_source_commit": "71ceec0",
+    "offline_tests_passed": 2090,
+    "offline_tests_skipped": 33,
+    "offline_tests_total": 2123,
+    "real_launcher_check": "required by private source-bound acceptance",
+    "source_transition": "resume-only; existing learner, capture, replay and policy support unchanged"
+  },
   "date": "2026-10-30",
   "elapsed_seconds": 2501.82,
   "manual_command": "./continue-selfplay.sh --hours 10",
