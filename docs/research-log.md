@@ -1162,3 +1162,24 @@ game with twice the choice budget. The [protocol](research/selfplay-one-game-2x-
 uses frozen 1753 policies, 9920 normal plus 320 reserved choices per player, and a
 10240 hard ceiling. It preserves the day horizon, map, support and rewards, and
 performs no PPO update. Preparation must not launch the game.
+
+## 2026-10-30: optional reporting separated from training ownership
+
+The completed self-play supervisor retained both campaign locks while serially
+analyzing 184 histories (33.6 GB) without a reporting deadline or progress. The
+user authorized safe unblocking and a fix. After exact process identity,
+checkpoint 1753 restoration and verified shutdown checks, only the report PID
+received SIGINT. All 370 old worker/guardian PIDs were absent; the supervisor and
+its caffeinate child exited, the locks became available, and all 128 protected
+files stayed unchanged. The original optional full report remains incomplete.
+
+Training now finishes before optional reporting. Explicit reports use separate
+private outputs, progress and an independent deadline without a training lease.
+The focused suite passed 105 tests, canonical engine agreement passed, and a
+real three-second reporting timeout verified cleanup while the campaign lock
+was held by a diagnostic checker. The initial synthetic path-alias failure and
+interrupt-receipt review correction are disclosed in the [report](research/reporting-lock-fix-2026-10-30.md).
+The actual main-folder one-game check passed exact full-state restore at 1753,
+with no gameplay, seed reservation or update. The [compact evidence](../validation/reporting-lock-fix-2026-10-30.json)
+records the narrow reporting-controller pin; all engine/learner/replay sources
+and learning settings remain unchanged. No new training or evaluation was run.

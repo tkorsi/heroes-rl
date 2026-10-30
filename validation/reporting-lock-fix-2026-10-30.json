@@ -31,6 +31,26 @@
   "exact_checkpoint_restore_before_unblock": true,
   "gameplay_started": false,
   "lock_files_replaced": false,
+  "manual_preflight": {
+    "budget": {
+      "capture_seconds": 1200,
+      "hard_choices_per_player": 10240,
+      "max_days": 365,
+      "ordinary_choices_per_player": 9920,
+      "reserved_dialog_choices_per_player": 320
+    },
+    "campaign_lease_available": true,
+    "checkpoint": 1753,
+    "exact_model_adam_rng_progress_sampler_pool": true,
+    "gameplay_performed": false,
+    "optimizer_updates": 0,
+    "protected_files_unchanged": 128,
+    "reporting_controller_base": "04cfe4d38a88d87c71a133a18dcbd895260624f6",
+    "seeds_reserved": false,
+    "source_checkout": "/Users/orsi/Projects/Heroes",
+    "source_commit": "4d35da7a67bdb263254f98c379081da1afed9ad1",
+    "status": "passed"
+  },
   "new_reporting_controls": 10,
   "new_source_integrity_controls": 1,
   "offline_tests_passed": 105,
@@ -40,6 +60,9 @@
     "before-unblock.json": "fa10a76b4d9633c584e0c382da7dc1be90f04fe22ba0d4abff632636033f2f32",
     "controller-ast-review.json": "49a43a1ef40e24e8ac881cc6feee82ceb388deb5c09c0d6ac4741d46e3bd78f9",
     "engine-check.log": "d3d63eb3a2f62869172dd90b1c63d26dff920b0968f0852025e54e871e5c7bac",
+    "manual-check-summary.json": "57d3c8b9e38a94ad446998e4ed01f6cf854bd018cf68844eff007d9ab4af59e3",
+    "manual-check.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "manual-check.stdout.log": "c0af31a269d0d8cf4c56cc5d0fc58111e464ffdca661721f8ad5250c06c5f31c",
     "offline-tests.log": "f893e9dc04bca3ebac9ec5c2c90d78f03f29ff5f005843c3cf5c471ce0606b4d",
     "unblock-result.json": "79decc4703eecd73a08e3ac1223a91da56efa3ae893a48c4547f1eabe9ae5fd0"
   },
@@ -64,6 +87,6 @@
     "status": "passed",
     "unchanged_functions": 39
   },
-  "status": "offline_passed_pending_manual_check",
+  "status": "ready_for_manual_evaluation",
   "unchanged_runtime_base": "b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617"
 }

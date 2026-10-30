@@ -82,5 +82,9 @@ cd /Users/orsi/Projects/Heroes
 ```
 
 The [compact validation](../../validation/reporting-lock-fix-2026-10-30.json)
-records final checks. No native game is run during preparation; actual capture
+records final checks. The actual launcher check in `/Users/orsi/Projects/Heroes`
+passed with exact checkpoint 1753 model/Adam/RNG/progress/sampler/pool restoration,
+the accepted runtime identities, all 128 protected files unchanged, and both
+campaign locks available. It reserved no seeds and performed no gameplay or
+optimizer update. No native game is run during preparation; actual capture
 and replay of the doubled-choice evaluation are checked on the manual launch.
