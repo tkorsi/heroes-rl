@@ -230,8 +230,9 @@ class OneFrozenGameTests(unittest.TestCase):
             with wall_limit(10):
                 self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 0)
             return output
-        def verify(*args):
+        def verify(*args, identity_check):
             self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 0)
+            self.assertIs(identity_check, evaluation.check_identity)
             evaluation.write(output / 'evaluation-policy-reconstruction.json', {}, new=True)
             if change_plan:
                 evaluation.write(path, {**plan, 'changed': True})

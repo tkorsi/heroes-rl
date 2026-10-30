@@ -199,7 +199,7 @@ def frozen_models(plan):
     return models
 
 
-def verify_capture(folder, plan, models, remaining):
+def verify_capture(folder, plan, models, remaining, *, identity_check=None):
     from experiments.learner.contextual_rollout import behavior_guard_version
     from experiments.learner.contextual_storage import load_collected
     from experiments.learner.contextual_model import weights_sha256
@@ -234,7 +234,7 @@ def verify_capture(folder, plan, models, remaining):
             and set(replay['histories']['players']) == {'red', 'blue'}, 'Exact two-player native replay failed')
     require(read(folder / 'evaluation-verification/contextual-replay-verification.json') == replay
             and training._files(folder, manifest) == originals, 'Evidence changed during evaluation verification')
-    remaining(); check_identity(plan)
+    remaining(); (check_identity if identity_check is None else identity_check)(plan)
     proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0,
                  choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts])
     write(folder / 'evaluation-policy-reconstruction.json', proof, new=True)
@@ -289,27 +289,30 @@ def collect(plan, models):
             launcher.close_owned_groups(timeout=10); launcher.assert_closed()
 
 
-def worker(path, sha):
+def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=SCHEMA, checkpoint=1753):
     from validation.probes.validate_hero_policy import wall_limit
     from experiments.learner.game_progress import progress_path, set_phase
+    identity_check = check_identity if identity_check is None else identity_check
+    model_loader = frozen_models if model_loader is None else model_loader
     require(binding(path)['sha256'] == sha, 'Evaluation plan changed')
     plan = read(path); output = Path(plan['output'])
     require(os.getppid() == plan['supervisor_pid'], 'Only the lease-owning supervisor may start evaluation')
     write(output / 'worker-claim.json', dict(pid=os.getpid(), plan_sha256=sha), new=True)
-    report = dict(schema=SCHEMA + '-result', status='running', plan=binding(path), checkpoint=1753,
+    report = dict(schema=result_schema + '-result', status='running', plan=binding(path), checkpoint=checkpoint,
         physical_games=1, purpose='diagnostic', training_input=False, training_samples_admitted=0, optimizer_updates=0,
         budget=BUDGET, policy_support=campaign.GUARD, owned_cleanup_verified=False)
     write(output / 'report.json', report, new=True)
     try:
         with wall_limit(campaign.remaining(plan, 30)):
-            check_identity(plan); campaign.configure_native(plan['execution'])
-            models = frozen_models(plan)
+            identity_check(plan); campaign.configure_native(plan['execution'])
+            models = model_loader(plan)
         # The capture and verification timers are sequential: wall_limit rejects
         # nesting, while the process guardian bounds the entire worker.
         folder = collect(plan, models)
         set_phase(progress_path(output, 1), 'verifying')
         with wall_limit(campaign.remaining(plan, 30)):
-            proof, manifest = verify_capture(folder, plan, frozen_models(plan), lambda: campaign.remaining(plan, 30))
+            proof, manifest = verify_capture(folder, plan, model_loader(plan), lambda: campaign.remaining(plan, 30),
+                                             identity_check=identity_check)
             require(binding(path)['sha256'] == sha, 'Evaluation plan changed during execution')
             report.update(status='passed', episode_directory=str(folder), episode_status=manifest['status'],
                 termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
@@ -329,7 +332,7 @@ def worker(path, sha):
     return report
 
 
-def supervise(plan):
+def supervise(plan, *, worker_script=None, result_schema=SCHEMA, checkpoint=1753):
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
     from experiments.learner.game_progress import ProgressDisplay
     output, process, errors = Path(plan['output']), None, []
@@ -337,7 +340,8 @@ def supervise(plan):
     plan_binding = binding(output / 'plan.json')
     try:
         with (output / 'worker.log').open('xb') as log:
-            process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_worker', '--plan', str(output / 'plan.json'),
+            script = Path(__file__).resolve() if worker_script is None else Path(worker_script).resolve()
+            process = guarded_popen([sys.executable, str(script), '_worker', '--plan', str(output / 'plan.json'),
                 '--sha256', plan_binding['sha256']],
                 deadline_monotonic=plan['hard_deadline_monotonic'], deadline_wall=plan['hard_deadline_unix'],
                 evidence_path=output / 'worker-process-deadline.jsonl', cwd=ROOT,
@@ -371,7 +375,8 @@ def supervise(plan):
             returncode=process.returncode if process else None), new=True)
     report = read(output / 'report.json') if (output / 'report.json').exists() else {}
     require(process is not None and process.returncode == 0 and not errors and protected and plan_unchanged
-            and report.get('plan') == plan_binding and report.get('status') == 'passed',
+            and report.get('plan') == plan_binding and report.get('status') == 'passed'
+            and report.get('schema') == result_schema + '-result' and report.get('checkpoint') == checkpoint,
             'Evaluation stopped; preserve this evidence and use fresh seeds for another manual attempt')
     return report
 

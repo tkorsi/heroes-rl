@@ -30,9 +30,12 @@ the recurrent hidden size from 64 to 8 and feature width from 32 to 4: 15,460
 parameters instead of 74,344. It has fresh random weights, zero games/updates,
 and an independently saved initial policy/RNG/opponent pool. This is a width
 reduction of the existing encoder/CNN/GRU architecture. Offline native parity
-and synthetic PPO/checkpoint controls passed; a full gameplay/training launcher
-has not been accepted for this candidate. Existing launchers continue to select
-their original verified checkpoints, including self-play 1753.
+and synthetic PPO/checkpoint controls passed. A separate
+[manual one-game diagnostic](docs/research/tiny-one-game-2026-10-30.md) is available:
+`./play-one-tiny-selfplay.sh --check`, then explicit `--run`. It uses the untrained
+tiny weights, the same doubled choice limits, progress display and full replay
+checks, with no PPO update. Actual tiny-model gameplay and a training campaign
+remain unverified; the existing 1753 launcher keeps its original checkpoint.
 
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
 completed at **checkpoint 1,753**, with 100 admitted games and 25 complete PPO
