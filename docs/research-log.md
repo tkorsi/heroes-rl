@@ -1232,18 +1232,18 @@ Training now consumes the native verifier's freshly reconstructed history proof
 instead of invoking that same reconstruction twice. Display snapshots are separate
 from evidence, throttled, and cannot grant admission or affect policy RNG.
 
-On a fresh copy of the completed1753 doubled-choice game, exact decoded equality
-and independent seeded reconstruction passed for89446 frames,11763 actions,11765
-values and30487 conditionals. The actual accepted native verifier checked102220
-transactions with none unchecked. All158 protected originals remained unchanged
-and owned cleanup passed. The artifact shrank from2.48GB to30.3MB; replacing only
-that duplicate reduces the retained episode by37.53%. Write plus strict reload
-fell from73.73s to44.97s (1.64x) in one measurement on one archived game, with
+On a fresh copy of the completed 1753 doubled-choice game, exact decoded equality
+and independent seeded reconstruction passed for 89,446 frames, 11,763 actions, 11,765
+values and 30,487 conditionals. The actual accepted native verifier checked 102,220
+transactions with none unchecked. All 158 protected originals remained unchanged
+and owned cleanup passed. The artifact shrank from 2.48 GB to 30.3 MB; replacing only
+that duplicate reduces the retained episode by 37.53%. Write plus strict reload
+fell from 73.73 s to 44.97 s (1.64x) in one measurement on one archived game, with
 unflushed caches. This is not evidence of full-game/training throughput.
 
-The full suite ran2177 tests (2103 passed,74 skipped); final focused integration
-ran153 (152 passed,one skipped). Canonical engine agreement and the real main
-checkout's manual `--check` passed with exact full-state restore at1753. No game,
+The full suite ran 2,177 tests (2,103 passed, 74 skipped); final focused integration
+ran 153 (152 passed, one skipped). Canonical engine agreement and the real main
+checkout's manual `--check` passed with exact full-state restore at 1753. No game,
 training update, sample admission or seed reservation occurred. The tiny policy
 is still untrained and unselected. The [report](research/rollout-storage-2026-10-30.md)
 and [validation](../validation/rollout-storage-2026-10-30.json) disclose stale unit

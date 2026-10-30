@@ -13,7 +13,7 @@
     "Initial unit fixtures lacked launch.output and the new serializer mock.",
     "Historical resume test initially applied old acceptance rules to current sources; fixed to its accepted historical fixture.",
     "Expanded storage fixture initially omitted dialog_cutoff_drain=None; fixture corrected.",
-    "Initial recursion fixture assumed this Python decoder would reject1500 nested arrays; actual nested input and injected decoder RecursionError now test both paths."
+    "Initial recursion fixture assumed this Python decoder would reject 1500 nested arrays; actual nested input and injected decoder RecursionError now test both paths."
   ],
   "final_integration_tests": {
     "passed": 152,
@@ -30,7 +30,7 @@
     "The projected episode size replaces only the duplicated rollout; raw replay/history evidence is retained.",
     "Historical optional offline_profile.py remains legacy-envelope-only.",
     "The full suite began after storage/policy timings; native validation time is not a comparative benchmark.",
-    "The diagnostic tool minimum-deadline parser was corrected after this default900-second benchmark; runtime sources are unchanged."
+    "The diagnostic tool minimum-deadline parser was corrected after this default 900-second benchmark; runtime sources are unchanged."
   ],
   "manual_check": {
     "checkout": {

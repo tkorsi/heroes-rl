@@ -133,17 +133,17 @@ for optional/platform-specific controls. The final progress robustness changes
 received focused regression checks after that suite; malformed deeply nested
 sidecars and closed output streams cannot interrupt shutdown or integrity checks.
 The benchmark tool minimum-deadline parser also received a focused correction
-(parent60 seconds includes a ten-second cleanup reserve); its measured default
+(parent 60 seconds includes a ten-second cleanup reserve); its measured default
 900-second path and all measured storage/runtime sources are unchanged.
 
 After the final source-pin, display robustness and benchmark CLI corrections,
-the focused integration suite ran153 tests:152 passed and one optional control
+the focused integration suite ran 153 tests: 152 passed and one optional control
 was skipped. The original complete suite and the focused rerun are reported
 separately rather than added as unique test coverage. See
 [compact validation](../../validation/rollout-storage-2026-10-30.json).
 
 The real `/Users/orsi/Projects/Heroes` checkout on `main` passed
-`./play-one-selfplay-2x.sh --check` at `a31b47c`, restoring checkpoint1753's exact
+`./play-one-selfplay-2x.sh --check` at `a31b47c`, restoring checkpoint 1753's exact
 model, Adam, RNG, progress, sampler and pool. It reserved no seeds, ran no game
 and applied no update; stderr was empty. The next manual evaluation continues
-to use frozen1753 and the original doubled per-player choice limits.
+to use frozen 1753 and the original doubled per-player choice limits.
