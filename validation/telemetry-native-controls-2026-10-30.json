@@ -1,0 +1,246 @@
+{
+  "commands": {
+    "bytes": 2425,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-controls-commands.json",
+    "sha256": "9d8143f73f6fe16debe5461bcbbfaa5b0792e09d08af2b8c704f3980a21ddc88"
+  },
+  "final_counts": {
+    "acceptance_controls": 44,
+    "failed": 0,
+    "garrison_acceptance_passed": 16,
+    "independent_history_audits_passed": 44,
+    "legacy_acceptance_passed": 28,
+    "native_replay_verified": 44,
+    "not_started": 0
+  },
+  "groups": [
+    {
+      "all_mechanics_checks_passed": true,
+      "artifact_seat_mechanics": [],
+      "both_seats": true,
+      "case_limit_seconds": 120,
+      "cleanup_errors": [],
+      "evidence": {
+        "launch_result": {
+          "bytes": 1647,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-garrison16-attempt1-launch-result.json",
+          "sha256": "78658a6d44442eb380b864dfc62603ff0d8afc5061e70b25e1540a82977618ac"
+        },
+        "plan": {
+          "bytes": 33504,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-garrison16-attempt1/execution/plan.json",
+          "sha256": "62de22f3eda082de2ac87570bf39a4d4f9673e2ac3ca6226ba704df28729fa19"
+        },
+        "report": {
+          "bytes": 266615,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-garrison16-attempt1/execution/report.json",
+          "sha256": "f432987d957aa9f88bf9529a6315799673fef902548192066d93ffea97c90777"
+        },
+        "shutdown": {
+          "bytes": 198,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-garrison16-attempt1/shutdown.json",
+          "sha256": "4dc74f60ac30330df2b6f2a7aa2e1eebda6282b6e7f829ad22461f7a14830683"
+        },
+        "supervision": {
+          "bytes": 893,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-garrison16-attempt1/supervision.json",
+          "sha256": "bed1d700159b0fa576375ee7945d99d3cce0cf6cccf003ed5f36c80f39fb6d3d"
+        }
+      },
+      "failed": 0,
+      "independent_history_audits_passed": 16,
+      "name": "garrison16",
+      "native_replay_verified": 16,
+      "not_started": 0,
+      "optimizer_steps": 0,
+      "owned_cleanup_verified": true,
+      "passed": 16,
+      "protected_inputs_unchanged": true,
+      "seed_base": 1930900000,
+      "source_commit": "221d3198b1698b932b2e55755a3fa9fc2990ce35",
+      "source_inventory": {
+        "canonical_json_sha256": "c3a690897967280e2713cdc794581c4657c04ade8715e840f966e86713bdaab4",
+        "files": 205,
+        "full_inventory_in_bound_plan": true,
+        "verified_unchanged_after": true
+      },
+      "timing_note": "Operational diagnostic deadline evidence only; no performance comparison.",
+      "training_performed": false,
+      "wall_limit_seconds": 900,
+      "wall_seconds": 23.095851125021,
+      "within_hard_deadline": true
+    },
+    {
+      "all_mechanics_checks_passed": true,
+      "artifact_seat_mechanics": [
+        {
+          "equipment_restorations": 6,
+          "exact_full_original_inventory_restored": true,
+          "history_audit_passed": true,
+          "parked": [
+            {
+              "artifact": 105,
+              "original_slot": 20,
+              "partner_slot": 19
+            }
+          ],
+          "player": "red",
+          "reorder_directions": [
+            [
+              19,
+              21
+            ],
+            [
+              21,
+              19
+            ]
+          ],
+          "replay_verified": true,
+          "seed": 1931000256
+        },
+        {
+          "equipment_restorations": 6,
+          "exact_full_original_inventory_restored": true,
+          "history_audit_passed": true,
+          "parked": [
+            {
+              "artifact": 105,
+              "original_slot": 20,
+              "partner_slot": 19
+            }
+          ],
+          "player": "blue",
+          "reorder_directions": [
+            [
+              19,
+              21
+            ],
+            [
+              21,
+              19
+            ]
+          ],
+          "replay_verified": true,
+          "seed": 1931000257
+        }
+      ],
+      "both_seats": true,
+      "case_limit_seconds": 120,
+      "cleanup_errors": [],
+      "evidence": {
+        "launch_result": {
+          "bytes": 1549,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-legacy28-attempt1-launch-result.json",
+          "sha256": "014f6abf4b4254890f84234002c2ee4a8c3b89cb58638b3dc4a26d26d774c080"
+        },
+        "plan": {
+          "bytes": 40529,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-legacy28-attempt1/execution/plan.json",
+          "sha256": "66a317c8f8da9f32744db03b455af09e4a766ef713b0ffca05e9058f3cafb88c"
+        },
+        "report": {
+          "bytes": 236465,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-legacy28-attempt1/execution/report.json",
+          "sha256": "858c2c364332a78c6c75d58929db45c6bf413bcffbd35f878a36ce2cb7324833"
+        },
+        "shutdown": {
+          "bytes": 247,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-legacy28-attempt1/shutdown.json",
+          "sha256": "f70a94a2c2d284e327244440d5ee836585e10b749a918e7f8a123d336584ca8c"
+        },
+        "supervision": {
+          "bytes": 30146,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/native-legacy28-attempt1/supervision.json",
+          "sha256": "ea89b7a665505a7a834bf66e98671031120972e69765aab00576f90bf2a55a55"
+        }
+      },
+      "failed": 0,
+      "independent_history_audits_passed": 28,
+      "name": "legacy28",
+      "native_replay_verified": 28,
+      "not_started": 0,
+      "optimizer_steps": 0,
+      "owned_cleanup_verified": true,
+      "passed": 28,
+      "protected_inputs_unchanged": true,
+      "seed_base": 1931000000,
+      "source_commit": "221d3198b1698b932b2e55755a3fa9fc2990ce35",
+      "source_inventory": {
+        "canonical_json_sha256": "a7cd8a7f9f7d3fec2042977e5ef3bd0af75fb13a26b01269385aa614cdcfe435",
+        "files": 206,
+        "full_inventory_in_bound_plan": true,
+        "verified_unchanged_after": true
+      },
+      "timing_note": "Operational diagnostic deadline evidence only; no performance comparison.",
+      "training_performed": false,
+      "wall_limit_seconds": 900,
+      "wall_seconds": 68.47933095798362,
+      "within_hard_deadline": true
+    }
+  ],
+  "limitations": [
+    "Scripted native controls establish mechanics and replay integrity, not learned-policy quality or training throughput.",
+    "The controls overlapped the offline test suite. Elapsed times are operational bounds and do not support a performance comparison.",
+    "Frozen-policy validation and native learner numerical equivalence are reported separately."
+  ],
+  "native_rebuild": false,
+  "native_runtime_change": "None; the existing accepted frozen engine runtime was exercised directly. The separate rebuilt native learner is validated in its own report.",
+  "official_training_state": {
+    "checkpoint": 1728,
+    "model_loaded": false,
+    "next_sequence": 1369,
+    "optimizer_steps": 0,
+    "protected_files": 15,
+    "remaining_games": 604,
+    "training_performed": false,
+    "training_samples_admitted": 0,
+    "verified_unchanged_before_and_after_every_group": true
+  },
+  "prepare_vcmi_check": {
+    "evidence": {
+      "bytes": 457,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/prepare-vcmi-check.json",
+      "sha256": "bc6ed55c7be858fda15993d2645839955b0c5db67f0537c0f41141df42a0a858"
+    },
+    "log": {
+      "bytes": 136,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/prepare-vcmi-check.log",
+      "sha256": "25afc49f682bbb978c9ca86bba6f0d93f2d5b8a58571ca45dd406a80dff6f1de"
+    },
+    "passed": true
+  },
+  "protocol": {
+    "bytes": 4044,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/protocol.json",
+    "sha256": "21ae84930593a9d8670b4d788711bb8ea6b20711e1ffb6b2acfeedb52f05e025"
+  },
+  "raw_captures_and_checkpoints": "Retained only in private durable artifacts; this file contains compact summaries and evidence bindings.",
+  "retained_failed_attempts": [],
+  "runtime_binaries": {
+    "vcmiclient": {
+      "bytes": 11582880,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair2/bin/vcmiclient",
+      "sha256": "ebcd848a0874de3e05a85d38e8ff041006f119f1fd9e5c4852ae986431fc49e9"
+    },
+    "vcmireplay": {
+      "bytes": 12635904,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair2/bin/vcmireplay",
+      "sha256": "e3f522d27d20d66133616041ca8e218d4d03e8d3a6c2f1ce59b619b213c43a5e"
+    }
+  },
+  "runtime_directory": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair2",
+  "runtime_library_identity": {
+    "AI/libBattleAI.dylib": "cfb9539b80fd0996c920cc1b224752d82a35e2659f6f227e3b48151fc068e08e",
+    "AI/libEmptyAI.dylib": "e378a267571138f48927cc7914a294921ab74177f7bd224f761050b722de250e",
+    "AI/libExplorerRL.dylib": "b3be91fefc1427d48d6a2a9814cedca63648a40d014e4358cfd2ed1f7b8296e1",
+    "AI/libNullkiller.dylib": "0b4ae6cc8303781f42b598ebbe046f8b07211820ed2fef5b763101960f79e22c",
+    "AI/libStupidAI.dylib": "7ce951000d1e009a677ab5c14e3fc0d146c302ba385638e8dd671a84676655fc",
+    "libvcmi.dylib": "aef467216a094dbd22b0e07c28ed869ab4b4057a0753f90c2afad427c4283be7",
+    "vcmireplay": "e3f522d27d20d66133616041ca8e218d4d03e8d3a6c2f1ce59b619b213c43a5e"
+  },
+  "schema": "heroes-telemetry-removal-native-controls-v1",
+  "seed_policy": "Fresh reserved schedules: garrison base1930900000 and legacy base1931000000. No adaptive replacement. The legacy clear/blocked Dimension Door cases retain their required intentional paired seed.",
+  "source_commit": "221d3198b1698b932b2e55755a3fa9fc2990ce35",
+  "status": "native_controls_passed",
+  "timestamp_utc": "2026-10-30T09:43:05.033239+00:00"
+}
