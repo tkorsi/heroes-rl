@@ -48,3 +48,17 @@ are unchanged; `training_launcher_accepted` remains false.
 Offline preparation cannot establish successful native tiny-model gameplay or
 playing strength. The user's first manual game will provide that evidence; failures
 must remain recorded and must not trigger an automatic retry.
+
+Validation on implementation commit `30ea3b88e0184ff42e618c0c1cf3fa8e58ff57d7`
+passed 58 focused offline tests, including 16 new tiny-launcher controls. Both
+real shell commands passed `--check` from the clean main checkout with empty
+stderr. The tiny policy/pool and the comparison baseline 1753 full state restored
+exactly. The original evaluation seed ledger and tiny initialization files were
+unchanged; no tiny output namespace was created. Canonical engine agreement
+passed, and no native game or one-game worker remained.
+
+During test development, two legacy mocks did not accept the new explicit
+identity-check keyword; one concurrent new supervisor fixture still used its
+former signature. These failed diagnostic attempts were corrected in the mocks,
+with exact report-schema/checkpoint rejection tests added. Production integrity
+checks were retained. See [compact validation](../../validation/tiny-one-game-2026-10-30.json).

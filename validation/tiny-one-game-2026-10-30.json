@@ -1,0 +1,54 @@
+{
+  "schema": "heroes-tiny-manual-launch-readiness-v1",
+  "date": "2026-10-30",
+  "status": "ready_for_user_manual_diagnostic",
+  "implementation_commit": "30ea3b88e0184ff42e618c0c1cf3fa8e58ff57d7",
+  "checkpoint": "tiny-v1-untrained-initial",
+  "initialization": "fresh_random_weights",
+  "model": {
+    "hidden_size": 8,
+    "feature_size": 4,
+    "parameters": 15460
+  },
+  "training_launcher_accepted": false,
+  "physical_games_started": 0,
+  "optimizer_updates": 0,
+  "samples_admitted": 0,
+  "seeds_reserved": false,
+  "tiny_namespace_created": false,
+  "offline_tests": {
+    "run": 58,
+    "passed": 58,
+    "skipped": 0,
+    "new_tiny_controls": 16
+  },
+  "actual_main_checkout_checks": [
+    {
+      "launcher": "play-one-tiny-selfplay.sh",
+      "returncode": 0,
+      "seconds": 1.8914149170741439,
+      "stderr_bytes": 0
+    },
+    {
+      "launcher": "play-one-selfplay-2x.sh",
+      "returncode": 0,
+      "seconds": 1.2673244579927996,
+      "stderr_bytes": 0
+    }
+  ],
+  "tiny_exact_policy_and_pool_restore": true,
+  "comparison_baseline_1753_exact_full_state_restore": true,
+  "watched_original_seed_ledger_and_tiny_artifacts_unchanged": true,
+  "canonical_engine_check": "passed",
+  "native_game_or_one_game_worker_processes_found": 0,
+  "manual_command": "./play-one-tiny-selfplay.sh --run",
+  "diagnostic_corrections": [
+    "Two legacy test fixtures initially rejected the explicit identity-check keyword; updated mocks preserved all production checks.",
+    "One concurrent new supervisor test initially used the former signature while schema/checkpoint validation was added; updated the fixture and added mixed-result rejection controls."
+  ],
+  "limitations": [
+    "No native tiny-model gameplay was launched; the first manual game is still pending.",
+    "No new native throughput or playing-strength measurement was made.",
+    "The tiny candidate has no Adam history; exact full Adam restoration refers only to the protected comparison baseline."
+  ]
+}

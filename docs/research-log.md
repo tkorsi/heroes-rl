@@ -1249,3 +1249,22 @@ is still untrained and unselected. The [report](research/rollout-storage-2026-10
 and [validation](../validation/rollout-storage-2026-10-30.json) disclose stale unit
 fixtures, progress-error controls and the benchmark minimum-deadline correction;
 the full copied-game benchmark passed on its first attempt.
+
+## 2026-10-30: manual single-game launcher for the untrained tiny model
+
+The user corrected the request to require their own launch with the small network.
+A separate `play-one-tiny-selfplay.sh` defaults to offline check mode; explicit
+`--run` selects independent frozen copies of the preserved random 8/4 initialization
+(15,460 parameters), with no PPO/Adam update or admission. Existing doubled budgets,
+revealed movement support, progress display, compact storage and full native replay
+checks remain. A separate consumed-seed ledger prevents retries from reusing seeds.
+The protected 1753 state is a comparison baseline, never the tiny model's parent.
+
+Fifty-eight focused offline tests passed, including 16 new controls. The actual
+main-checkout tiny and legacy shell checks both passed with empty stderr and exact
+state restoration. Canonical engine agreement passed. No game, native worker,
+training update, seed reservation or tiny output namespace was started. Initial
+legacy/custom-worker mock signature failures were corrected without weakening
+production checks. Native tiny gameplay and speed remain unmeasured. See the
+[report](research/tiny-one-game-2026-10-30.md) and
+[validation](../validation/tiny-one-game-2026-10-30.json).
