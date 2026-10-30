@@ -128,3 +128,13 @@ observation/support; acceptance of the new tiny runtime is not a claim that the
 historical evaluator has been rebuilt.
 
 Native release evidence: [compact acceptance](../../validation/passive-armies-native-2026-10-30.json).
+
+Final focused validation ran 125 tests: 124 passed and one was skipped. The full
+suite was not repeated after the final test-only expectation correction and
+acceptance-receipt pin. Both actual main-checkout shell checks passed with empty
+stderr. The tiny check selected the new runtime/support/information contract and
+next unused engine seed 1,974,000,001; it reserved no seed and started no game.
+The legacy 1753 check passed with its old contract. All 136 protected files
+remained byte-identical, exact tiny/pool and 1753 full-state restoration passed,
+canonical generated-source agreement passed, and no native worker remained.
+See [manual readiness and full attempt accounting](../../validation/recruit-only-readiness-2026-10-30.json).

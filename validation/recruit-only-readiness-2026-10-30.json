@@ -1,0 +1,107 @@
+{
+  "army_information": "own-army-details-v1",
+  "canonical_dependency_check": true,
+  "checked_source_commit": "16b28f53c5df69337d98dccd642bfcfc7fe468b5",
+  "checkpoint": "tiny-v1-untrained-initial",
+  "comparison_baseline_1753_full_state_restored": true,
+  "date": "2026-10-30",
+  "exact_tiny_policy_and_pool": true,
+  "manual_checks": {
+    "main-legacy-check": {
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": {
+        "bytes": 0,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/main-legacy-check.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "bytes": 37298,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/main-legacy-check.stdout",
+        "sha256": "96e2d7f79ea61122fc467eeeb98519a24db7e94a2c73f128b035e539267473bc"
+      }
+    },
+    "main-tiny-check": {
+      "exit_code": 0,
+      "status": "passed",
+      "stderr": {
+        "bytes": 0,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/main-tiny-check.stderr",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "bytes": 37196,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/main-tiny-check.stdout",
+        "sha256": "67e581c8e54cf05f5ab966cde4c35a10e1aae60e88cf644ea2774c219b23d635"
+      }
+    }
+  },
+  "manual_command": "cd /Users/orsi/Projects/Heroes && ./play-one-tiny-selfplay.sh --run",
+  "manual_seed_reservations": 0,
+  "model_config": {
+    "feature_size": 4,
+    "hidden_size": 8,
+    "max_map_side": 256,
+    "schema": "heroes-context-model-v6"
+  },
+  "native_acceptance": {
+    "bytes": 31103,
+    "path": "/Users/orsi/Projects/Heroes/validation/passive-armies-native-2026-10-30.json",
+    "sha256": "2064a74167033142ece9b32d055bcddfeaa2755dfc9073f09bdf779d6aa57b9e"
+  },
+  "next_manual_seed": {
+    "engine_seed": 1974000001,
+    "episode": 1,
+    "policy_seeds": [
+      1976000002,
+      1976000003
+    ]
+  },
+  "offline_validation": {
+    "final_focused": {
+      "errors": 0,
+      "failures": 0,
+      "log": {
+        "bytes": 418,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/final-focused.log",
+        "sha256": "631b8410c881459f39c6e7398c689e644f42fc67e2fef806807c36c6723f692a"
+      },
+      "passed": 124,
+      "run": 125,
+      "skipped": 1
+    },
+    "first_full": {
+      "errors": 13,
+      "failures": 10,
+      "log": {
+        "bytes": 32279,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/offline-full-attempt1.log",
+        "sha256": "bdb706f3da020d36bfcfd9cb57dad81ae0337245ef587a52e878a833a7c22dc6"
+      },
+      "run": 2239,
+      "skipped": 33
+    },
+    "resolution": "The sole remaining full-suite failure expected the historical trainer to accept every shared experimental support version. That test now explicitly expects its two historical versions; the affected module and launcher/native regressions pass. The full suite was not repeated after this test-only correction and acceptance receipt pin.",
+    "second_full": {
+      "errors": 0,
+      "failures": 1,
+      "log": {
+        "bytes": 4176,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-recruit-only-passive/offline-full-attempt2.log",
+        "sha256": "7ad63c1112014c891c25849c4fc2a9ded72bc58d97b7f0c935dbe204dafb1e22"
+      },
+      "run": 2252,
+      "skipped": 33
+    }
+  },
+  "optimizer_updates": 0,
+  "ordinary_game_launched": false,
+  "owned_processes_remaining": [],
+  "parameters": 15460,
+  "policy_support": "visible-interaction-budget-recruit-only-v1",
+  "protected_files_unchanged": 136,
+  "schema": "heroes-tiny-recruit-only-readiness-v1",
+  "status": "ready_for_manual_diagnostic",
+  "training_launched": false,
+  "training_samples_admitted": 0
+}

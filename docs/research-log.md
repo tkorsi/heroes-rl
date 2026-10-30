@@ -1290,3 +1290,41 @@ terminal-only and model tensors/PPO are unchanged. Native acceptance is pending:
 clean build, both-seat bounded mechanics prefixes, exact replay, a fabricated-stat
 rejection control and a frozen tiny technical prefix are required before release.
 All diagnostic experience remains excluded from training.
+
+## 2026-10-30: recruit-only/passive-army native acceptance and manual readiness
+
+The clean native build compiled 782 objects and produced a new frozen runtime,
+with actual dynamic-library loading checked. Two fresh-seed diagnostic attempts
+passed six technical prefixes and 24 controls each. The final attempt reconstructed
+all 62 Red and 64 Blue choices exactly. Recruitment, actual town garrisons,
+whole-hero garrison entry/exit and artifact-modified current stats passed for both
+seats. Legacy optional-field absence passed. Both native fabricated-attack
+controls were rejected at regenerated-record comparison. No full scored policy
+game or training campaign was launched; no sample entered PPO and no weight changed.
+
+The first full offline run (2,239 tests) had 10 failures and 13 errors, primarily
+stale historical source pins and a reference encoder's absent-field handling.
+A focused attempt loaded pins before their writer completed and also found a
+tuple/set test typo; its stable replacement passed. The second full run (2,252
+tests) had one failure: another legacy expectation still admitted all globally
+registered support versions. That expectation now names the two historical
+versions explicitly. Final affected-module/launcher/native validation ran 125
+tests with 124 passes and one skip; the full suite was not repeated after this
+last test-only correction and receipt pin. All attempts remain recorded privately.
+
+The compatibility review fixed a real isolation gap: the historical trainer no
+longer inherits new support versions from a shared registry and rejects passive
+army declarations in its plan/session/metadata/lineage. The new tiny experiment
+is explicit; historical checkpoints, semantics and reports are not relabeled.
+Both actual main-checkout shell checks passed with empty stderr. All 136 protected
+files are unchanged; exact tiny initialization/pool and baseline 1753 full state
+restore, and no native process remains. The next manual tiny seed is unused;
+check mode reserved none. The first user-run tiny game remains historical evidence
+under the old mode (day-limit cutoff, 3,613 Red / 6,907 Blue choices, no update).
+
+The [restriction register](temporary-restrictions.md) retains the required removal
+checklist. Numeric adventure stats and three traits do not constitute a complete
+special-ability catalog. Short controls establish integrity, not stronger play or
+faster full games. See the [implementation report](research/recruit-only-passive-armies-2026-10-30.md),
+[native acceptance](../validation/passive-armies-native-2026-10-30.json), and
+[manual readiness](../validation/recruit-only-readiness-2026-10-30.json).
