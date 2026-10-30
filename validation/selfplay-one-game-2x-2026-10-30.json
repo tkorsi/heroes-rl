@@ -1,0 +1,48 @@
+{
+  "automatic_retry": false,
+  "budget": {
+    "capture_seconds": 1200,
+    "hard_choices_per_player": 10240,
+    "max_days": 365,
+    "ordinary_choices_per_player": 9920,
+    "reserved_dialog_choices_per_player": 320
+  },
+  "canonical_engine_check": "passed in accepted runtime checkout; all corresponding root sources unchanged",
+  "checkpoint": 1753,
+  "date": "2026-10-30",
+  "default_check": true,
+  "default_total_seconds": 3600,
+  "evaluation_seeds_reserved": 0,
+  "exact_model_adam_rng_progress_sampler_pool": true,
+  "explicit_launch_flag": "--run",
+  "independent_model_storage": true,
+  "limitations": [
+    "The doubled-budget native game has not been executed; actual capture and replay are checked on the user manual launch.",
+    "One frozen self-play game does not measure learning or balance starting seats."
+  ],
+  "native_games_started_during_preparation": 0,
+  "new_evaluator_tests_passed": 13,
+  "offline_regressions_passed": 90,
+  "optimizer_updates": 0,
+  "physical_games_when_launched": 1,
+  "private_receipt_hashes": {
+    "check-attempt1/report.json": "15b13402945815a181f15d0882fad9fcb2e403658b1ad9d64637fa05c0916671",
+    "engine-check.log": "25afc49f682bbb978c9ca86bba6f0d93f2d5b8a58571ca45dd406a80dff6f1de",
+    "offline-regressions-status.json": "3264190cf0c975a08901b60022d1b1a5dbbac52faf4cd9d1ae0ddb80caaae778"
+  },
+  "protected_files_unchanged": 126,
+  "purpose": "frozen evaluation",
+  "report": "docs/research/selfplay-one-game-2x-2026-10-30.md",
+  "requires_existing_campaign_lease": true,
+  "review_corrections": [
+    "Sequential capture and verification timers avoid nested wall_limit.",
+    "Final immutable plan hash is checked by worker and supervisor.",
+    "Shutdown cleanup evidence persists even if protected inputs or plan drift."
+  ],
+  "schema": "heroes-one-game-2x-readiness-v1",
+  "status": "offline_preflight_passed",
+  "tested_source_commit": "f7a91b8a7479d63a0d11869993482094c15c48b8",
+  "two_frozen_models_exact": true,
+  "unchanged_runtime_base": "b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617",
+  "weights_sha256": "cb40725fc0d5cf0dbf74c76d37e1f36960ec32a1eceb7a345afb513a5744ed2d"
+}

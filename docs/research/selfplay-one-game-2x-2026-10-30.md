@@ -74,3 +74,19 @@ Preparation uses offline controls and a real full-state checkpoint/runtime
 preflight. No new native game or policy rollout is run during preparation.
 The accepted native runtime remains unchanged; actual long-game execution and
 its replay are verified when the user invokes the script.
+
+The focused offline suite passed 90 tests, including 13 new evaluator controls.
+The real shell launcher check from the main-checkout working directory passed:
+checkpoint 1753 restored exactly, two separately allocated frozen model copies
+matched the published weights, and 126 protected inputs remained unchanged. Zero
+seeds were reserved and no gameplay or optimizer update ran. The canonical engine
+check passed in the existing accepted runtime checkout; corresponding sources in
+this new checkout are identical. The [compact validation](../../validation/selfplay-one-game-2x-2026-10-30.json)
+records the source and private receipt hashes.
+
+Review found and corrected nested deadline timers, final plan-hash rechecking and
+shutdown evidence on protected-input failure before any native launch. The
+original supervisor was still computing its post-run report during preparation.
+If it still owns the resource lease when `--run` is invoked, the evaluator exits
+with a clear busy message before reserving seeds. Wait for that original command
+to finish before invoking the new game.
