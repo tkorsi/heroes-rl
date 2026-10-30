@@ -424,11 +424,11 @@ class RevealedMovementLineageTests(unittest.TestCase):
                     local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
 
     def test_new_session_plan_and_checkpoint_must_bind_same_version(self):
-        for version in interaction_guard.SUPPORTED_VERSIONS:
+        for version in local.LOCAL_POLICY_SUPPORT_VERSIONS:
             plan = self.parent(version)
             session = {'policy_support': version}
             self.assertEqual(local.check_policy_support_binding(plan, session), version)
-            other = next(item for item in interaction_guard.SUPPORTED_VERSIONS if item != version)
+            other = next(item for item in local.LOCAL_POLICY_SUPPORT_VERSIONS if item != version)
             with self.assertRaises(ValueError):
                 local.check_policy_support_binding(plan, {'policy_support': other})
             altered = deepcopy(plan)
@@ -441,6 +441,51 @@ class RevealedMovementLineageTests(unittest.TestCase):
         parent['checkpoint_metadata']['numerical_experiments'] = ['shared_graph_encodings']
         with self.assertRaisesRegex(ValueError, 'numerical experiment'):
             local.check_lineage(parent, self.execution, interaction_guard.REVEALED_VERSION)
+
+    def test_independent_recruit_only_experiment_does_not_extend_historical_training(self):
+        self.assertIn(interaction_guard.RECRUIT_ONLY_VERSION, interaction_guard.SUPPORTED_VERSIONS)
+        self.assertEqual(local.LOCAL_POLICY_SUPPORT_VERSIONS,
+                         {interaction_guard.VERSION, interaction_guard.REVEALED_VERSION})
+        for version in (interaction_guard.RECRUIT_ONLY_VERSION, 'future-experiment-v1'):
+            with self.subTest(version=version), patch.object(interaction_guard, 'SUPPORTED_VERSIONS',
+                    (*interaction_guard.SUPPORTED_VERSIONS, version)):
+                with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+                    local.check_policy_support(version)
+                with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+                    local.check_policy_support_binding(self.parent(version), {'policy_support': version})
+                with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+                    local.check_lineage(self.parent(version), self.execution, version)
+                with self.assertRaisesRegex(ValueError, 'Unknown policy support'):
+                    local.apply_execution({'execution': self.execution, 'policy_support': version})
+
+    def test_passive_army_information_cannot_be_smuggled_into_historical_documents(self):
+        from experiments.learner.contextual import OWN_ARMY_INFORMATION
+        version = interaction_guard.REVEALED_VERSION
+        for key, value in (('army_information', OWN_ARMY_INFORMATION), ('army_information', None),
+                           ('own_armies', [])):
+            for location in (None, 'checkpoint_metadata', 'configuration'):
+                with self.subTest(key=key, location=location, value=value):
+                    changed = self.parent(version)
+                    destination = changed if location is None else changed.setdefault(location, {})
+                    destination[key] = value
+                    before = deepcopy(changed)
+                    with self.assertRaisesRegex(ValueError, 'does not accept an army information extension'):
+                        local.check_policy_support_binding(changed, {'policy_support': version})
+                    with self.assertRaisesRegex(ValueError, 'does not accept an army information extension'):
+                        local.check_policy_support_binding(self.parent(version), changed)
+                    with self.assertRaisesRegex(ValueError, 'does not accept an army information extension'):
+                        local.check_lineage(changed, self.execution, version)
+                    with self.assertRaisesRegex(ValueError, 'does not accept an army information extension'):
+                        local.apply_execution(dict(changed, execution=self.execution))
+                    self.assertEqual(changed, before)
+
+    def test_compatibility_proof_does_not_authorize_independent_experimental_support(self):
+        proof = local.source_compatibility(accepted_parent())
+        expected = sorted(local.LOCAL_POLICY_SUPPORT_VERSIONS)
+        self.assertEqual(proof['policy_support_contracts'], expected)
+        for change in proof['changes'].values():
+            if type(change) is dict and change.get('policy_support_contracts') is not None:
+                self.assertEqual(change['policy_support_contracts'], expected)
 
 
 class SerialFallbackTests(unittest.TestCase):

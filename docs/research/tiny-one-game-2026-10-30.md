@@ -1,5 +1,10 @@
 # Manual one-game tiny-policy evaluation
 
+This report records the original launcher acceptance. The current tiny launcher
+uses the separately validated [temporary troop-slot restriction and passive
+own-army information](recruit-only-passive-armies-2026-10-30.md). Historical
+results below retain their original observation and support versions.
+
 The user requested a script they will launch themselves, using the small model.
 The earlier request to run a game was interrupted before any game or seed
 reservation started. This preparation launches no gameplay or training.

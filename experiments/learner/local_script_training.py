@@ -47,6 +47,9 @@ ROUTING_SCOPES = frozenset(('heroes-update146-curriculum-v3',
 ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
                    'heroes-overnight-curriculum-20261026': 'overnight_training',
                    SCOPE: 'local_script_training'}
+# This historical trainer does not inherit experimental registrations from the
+# shared collector. New support or observation contracts need their own release.
+LOCAL_POLICY_SUPPORT_VERSIONS = frozenset((interaction_guard.VERSION, interaction_guard.REVEALED_VERSION))
 # The initial manual runner predates explicit map profiles. Only these released
 # bytes may cross that orchestration transition; learner/PPO source stays exact.
 ACCEPTED_ADAPTER_COMMIT = 'a8ac411d32658387598376c792136bc586edc5f9'
@@ -127,10 +130,10 @@ FAST_PATH_SOURCES = {
         'a33dabaea5d34cdf2330cf07c8464b3f103463cc8309c5bc394387a692a0d68e'),
     'experiments/learner/contextual.py': (
         ('01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358', '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
-        '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
+        '69893b70595307a50cc936927eae7fd624ebe0355a040464864f798cfe676883'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72', 'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a',),
-        'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a'),
+        '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
         '6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71'),
@@ -151,7 +154,7 @@ FAST_PATH_SOURCES = {
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/interaction_guard.py': (
         ('0793539c2e93a75a92cc57445caef4f6906f377d5810605f894d6c0f3f9ccc4e', '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f',),
-        '0793539c2e93a75a92cc57445caef4f6906f377d5810605f894d6c0f3f9ccc4e'),
+        'd5b295bcdca6c37da6aa050007526b7b11e4da574ccae0693d61038a093418c4'),
     'experiments/learner/native_execution.py': (
         ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56', 'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189',),
         'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189'),
@@ -236,13 +239,15 @@ FAST_PATH_TREE = {
     'experiments/headless/builtin_replay.py': ('d7bde5cffd1124000838c1ba0f20b765b07efd39',
         '90e0e73702ac18ddbea89dff9d2a1e013808c23ef2cd797cd5fe5870f45cc2af'),
     'experiments/headless/contextual_env.py': ('e2a75d2327589a8ea27518823dc24318a95109ab',
-        'c44340201a2ff896406255094d90fae7a838b95d9828a95c9dd776dec04da444'),
+        'a1ca9947b7c21262fa2b71520868da537c690fbaf3da8c55bacdea8419e640cd'),
     'experiments/headless/contextual_evidence.py': ('44b664e57028145c573d6397bd00f7c1227c5dc1',
         '494221e9a137fc7f8e1e237800b2cb79c572118125d4b0e4ef07810df65ff111'),
     'experiments/headless/contextual_protocol.py': ('e3e8b85713c15e54f7522e4f337a7ef8a184662d',
-        '481120ae6411e353a1c02fb4ce00352cee0adf220f823263c4b6af5421742c96'),
+        '62dc02cb177181b7b51e5972d06c6cf73426ca09188324e89b255344eb78eebc'),
+    'experiments/headless/contextual_replay.py': ('43433837a289ca8854a5bd334c577812a90273a7',
+        '4a5173bd3d87ee1729f763daa067b5a2fad60e2cf319fbde852b3e43378355ab'),
     'experiments/headless/contextual_replay_history.py': ('e424d6d5bd0b23112f21d8ac641fbb4c4a9436da',
-        'e23c7e5e3a0efc01dca2e1afed2d5933d49f84cead003db872a9a3c9cf463989'),
+        '5cf37e415f90c435c5fa910de10f9c35ede6feaad4012873c46d021cc5fca529'),
     'experiments/headless/digest_scope.py': ('',
         '482450e81c49a798595cd8a1f264590d051085e7aada90c4ad30163ad5e24a5b'),
     'experiments/headless/embedded_env.py': ('',
@@ -336,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '4bf939e8e75f6f6a7abb359ccc7c4cf9753ce49dd8336d9603548717f069d396'
+LOCAL_ADAPTER_TRANSITION_AST = '8eac909e826ea6db3b5681fb4d0e23968f71019745d85b51fa1b2dbc8bbc2a6f'
 
 
 def write_new(path, value):
@@ -426,7 +431,7 @@ def local_adapter_transition(commit, expected, historical, current):
     require(_adapter_ast_digest(current) == LOCAL_ADAPTER_TRANSITION_AST,
             'Local adapter differs from the reviewed profile transition')
     return {'transition': 'reviewed_policy_support_adapter',
-            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS),
+            'policy_support_contracts': sorted(LOCAL_POLICY_SUPPORT_VERSIONS),
             'native_interface_extension': 'map-garrison-v1',
             'policy_support_activation': 'explicit_session_and_plan_only',
             'historical_sha256': expected, 'current_sha256': hashlib.sha256(current).hexdigest(),
@@ -441,7 +446,7 @@ def fast_path_transition(name, expected, current):
     support_change = name in POLICY_SUPPORT_SOURCES
     return {'transition': 'reviewed_policy_support_transition' if support_change else 'reviewed_exact_fast_path',
             'historical_sha256': expected, 'current_sha256': fast,
-            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS) if support_change else None,
+            'policy_support_contracts': sorted(LOCAL_POLICY_SUPPORT_VERSIONS) if support_change else None,
             'native_interface_extension': 'map-garrison-v1' if support_change else None,
             'policy_ppo_mathematics_unchanged': not support_change, 'historical_code_executed': False}
 
@@ -543,7 +548,7 @@ def source_compatibility(parent):
     return {'historical_commit': parent['git_commit'], 'changes': changes,
             'policy_ppo_unchanged': not (fast or support), 'reviewed_exact_fast_path': fast,
             'reviewed_policy_support_transition': support,
-            'policy_support_contracts': sorted(interaction_guard.SUPPORTED_VERSIONS) if support else None,
+            'policy_support_contracts': sorted(LOCAL_POLICY_SUPPORT_VERSIONS) if support else None,
             'native_interface_extension': 'map-garrison-v1' if support else None,
             'terminal_reward_and_ppo_formula_unchanged': True,
             'reviewed_fast_path_tree': reviewed_tree(), 'historical_metadata_rewritten': False}
@@ -717,6 +722,7 @@ def apply_execution(plan):
     """Set this process's execution choices from a plan whose identity check passed."""
     from experiments.headless import background_check
     from . import ppo
+    check_observation_contract(plan)
     value = check_execution(plan['execution'])
     policy_support = check_policy_support(plan.get('policy_support'))
     if 'native_learner' in value:
@@ -734,13 +740,22 @@ def apply_execution(plan):
 
 
 def check_policy_support(value):
-    """An absent historical binding is disabled; only explicitly registered versions are accepted."""
-    require(value is None or type(value) is str and value in interaction_guard.SUPPORTED_VERSIONS,
+    """An absent binding is disabled; independent experiments do not extend this trainer."""
+    require(value is None or type(value) is str and value in LOCAL_POLICY_SUPPORT_VERSIONS,
             'Unknown policy support intervention')
     return value
 
 
+def check_observation_contract(*documents):
+    """Keep the historical observation format; optional information is not a default upgrade."""
+    for document in documents:
+        for value in (document, document.get('checkpoint_metadata') or {}, document.get('configuration') or {}):
+            require(not {'army_information', 'own_armies'} & value.keys(),
+                    'Historical local training does not accept an army information extension')
+
+
 def check_policy_support_binding(plan, session):
+    check_observation_contract(plan, session)
     selected = check_policy_support(plan.get('policy_support'))
     require(selected == check_policy_support(session.get('policy_support')),
             'Batch/session policy support differs')
@@ -766,6 +781,7 @@ def read_session(path, *, active=True):
     path = durable_path(path)
     session = json.loads(path.read_text())
     require(session['schema'] == SESSION_SCHEMA and session['scope'] == SCOPE, 'Unknown local session')
+    check_observation_contract(session)
     check_policy_support(session.get('policy_support'))
     require(path == Path(session['run_dir'])/'session.json', 'Session path changed')
     check_clock(session, active=active)
@@ -813,6 +829,7 @@ def check_lineage(parent_plan, execution, policy_support=None):
     A session running an experiment may start from an exact parent or continue its own experiment;
     the experiment that produced a checkpoint is named in its plan's checkpoint metadata.
     """
+    check_observation_contract(parent_plan)
     produced = set((parent_plan.get('checkpoint_metadata') or {}).get('numerical_experiments', []))
     require(produced <= set(check_execution(execution)['experiments']),
             'Parent was produced by a numerical experiment this session does not run: ' + ', '.join(sorted(produced)))

@@ -13,6 +13,8 @@ from tests.test_contextual_armies import history_at_armies
 from tests.test_contextual_capabilities import market_history
 from tests.test_contextual_dialogs import history_at
 from tests.test_contextual_necromancy import history_with_necromancy
+from tests.test_contextual_model import map_history
+from tests.test_passive_army_information import informed_observation
 
 
 def reference_wire(frame):
@@ -34,14 +36,24 @@ def histories():
     yield market_history()
     yield mandatory_history()
     yield spell_target_history()
+    yield map_history(informed_observation(), schema=c.EXPANDED_SCHEMA,
+                      episode="synthetic-passive-encoder-exactness")
 
 
 def reference_detached(value):
-    """The detached encoder before its leaf fast path, verbatim apart from names."""
+    """The pre-fast-path encoder with explicit optional-extension selection.
+
+    Unnegotiated observation extensions are absent from historical wire records;
+    a present extension retains its complete typed payload. This reference does
+    not delegate serialization or field filtering to the optimized encoder.
+    """
     if isinstance(value, tuple):
         return [reference_detached(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
-        data = {name: reference_detached(getattr(value, name)) for name in c._field_names(type(value))}
+        names = c._field_names(type(value))
+        if type(value) is c.Observation and value.army_information is None:
+            names = tuple(name for name in names if name not in ("army_information", "own_armies"))
+        data = {name: reference_detached(getattr(value, name)) for name in names}
         if type(value) is c.Context and value.panel is None and value.kind not in ("exchange", "dialog"):
             del data["panel"], data["selection"]
         elif type(value) is c.Action and value.schema == c.ACTION_SCHEMA:
@@ -116,6 +128,25 @@ class Node:
 
 
 class DetachedEncoderTests(unittest.TestCase):
+    def test_opted_in_owned_army_subtrees_remain_complete_and_detached(self):
+        observed = informed_observation()
+        detached = c._wire(observed)
+        self.assertEqual(shape(detached), shape(reference_detached(observed)))
+        self.assertEqual(detached["army_information"], "own-army-details-v1")
+        self.assertEqual(len(detached["own_armies"]), len(observed.own_armies))
+        for row, typed in zip(detached["own_armies"], observed.own_armies):
+            self.assertEqual(set(row), {field.name for field in fields(c.OwnArmy)})
+            self.assertEqual(len(row["slots"]), len(typed.slots))
+            for slot, typed_slot in zip(row["slots"], typed.slots):
+                self.assertEqual(set(slot), {field.name for field in fields(c.OwnArmyStack)})
+                self.assertEqual(slot, {field.name: getattr(typed_slot, field.name)
+                                        for field in fields(c.OwnArmyStack)})
+        detached["own_armies"][0]["slots"][0]["count"] = 999
+        self.assertEqual(observed.own_armies[0].slots[0].count, 14)
+        old = replace(observed, army_information=None, own_armies=None)
+        self.assertNotIn("army_information", reference_detached(old))
+        self.assertNotIn("own_armies", reference_detached(old))
+
     def test_every_recorded_subtree_encodes_exactly_as_the_reference(self):
         detached, count = c._wire, 0
         for history in histories():

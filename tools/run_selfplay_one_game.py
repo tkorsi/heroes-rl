@@ -42,6 +42,7 @@ STORAGE_PROGRESS_NEW = frozenset({'experiments/learner/contextual_storage.py',
 # Exact reviewed additions to policy support; legacy support retains its rules.
 # These digests bind the reviewed opt-in observation and support release.
 RECRUIT_ONLY_SOURCE_SHA256 = {
+    'experiments/learner/local_script_training.py': 'ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd',
     'engine/ExperimentReplay/ContextualReplay.cpp': 'bebe4b98fc48abe048e32240767baacd8f443d71631dc3ca666178c2aada43e4',
     'engine/ExplorerRL/Contextual.cpp': '09ddb160a8c70e060f3e2b2093a2879e24aabab078a0b5f4770bbc0ec7a2db63',
     'engine/ExplorerRL/ContextualEvidence.cpp': '4e31338745b9cfbe867d99949112fb63340a3a389fe82458dff839ac51574154',
