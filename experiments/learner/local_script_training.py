@@ -270,11 +270,11 @@ FAST_PATH_TREE = {
     'tools/benchmark_pipeline_collection.py': ('',
         '7aeb9622e8bb5bd6db3fdda7be5c84c14198c77a5c46042a5307e8a92a4ff087'),
     'tools/cloud_state_import.py': ('',
-        '34d5100b2f024412ea3c0a0ca76b8399973498fef86d62eb1acd39be43ec9075'),
+        '97fdb4f645f5b4ba9a973d9700c5b65c9cdcfbeb012c95e66254af4e358a00f5'),
     'tools/continuation_goal.py': ('',
         'e48860d67bc81cdebb04b26355abb0ca8458e2cce77ac8db4c5e3bcd798a38d2'),
     'tools/continue_1585_games.py': ('',
-        '0d684ba14d3cbb00e5d56237071d1b5ea0d397902037132a35ed584eb7d2feea'),
+        'c6cd2222b2a520de0fe4aa5532a9386d515a7fd3587a339d5e45474c60b0f31d'),
     'tools/continue_772_games.py': ('',
         '88b779d122134de530cd2b390ee315f5af03f540a84a18fdbddac5dc1fbe810f'),
     'tools/isolated_diagnostic.py': ('',
@@ -282,7 +282,7 @@ FAST_PATH_TREE = {
     'tools/linux_publication.py': ('',
         '7a7f0f95e84cdd6dc79aa1dcc9add00b681773c983b587719c092725a1d84003'),
     'tools/prepare_local_training.py': ('38812cd8ca73561212b45bbc30aae47c92fdc0a0',
-        '4834b3e302b96e636c58e880e65e7ae5443ab925d7fb34e0585eb32d1e4e8256'),
+        '3b3a1afc3c71631a637347b4a45ebb93a63c348f0a6fc9e97ed166bfb8a17ab0'),
     'tools/prepare_next_training_environment.py': ('',
         'c034f3d8f0f45cf0eeeac2e4cce568df260844d509365bcf52153451a567b31a'),
     'tools/recover_interrupted_training.py': ('',
@@ -314,7 +314,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '2b605c17b8eeeccbd62026d3aef1bc938510f215c6426e0b908a1a37929dd2c8'
+LOCAL_ADAPTER_TRANSITION_AST = 'a4e8f90a749373c04d5637595b2c04db874e1ff25cc6100b2feeb7ed5014e6f8'
 
 
 def write_new(path, value):

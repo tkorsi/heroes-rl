@@ -1,20 +1,20 @@
 {
   "all_attempts_counts": {
-    "executed": 88,
+    "executed": 132,
     "failed": 2,
-    "passed": 86,
+    "passed": 130,
     "unstarted_reserved_cases": 46
   },
   "diagnostic_artifact_fixtures": [
     {
       "manifest_sha256": "3765395f38e68ebb517d18065c16cbe698cec2aae4c106de1705ca5e759f9608",
-      "path": "/Users/orsi/Projects/Heroes-artifacts/releases/local-script-18aa3de108cc2a9e8a961936d094c62f2e6c4ce3/experiments/explorer/maps/capability-artifacts-red-v1.vmap",
+      "path": "/Users/orsi/Projects/Heroes-artifacts/releases/local-script-14cb5294930bba6a9034e9da33f3092c8e64186a/experiments/explorer/maps/capability-artifacts-red-v1.vmap",
       "player": "red",
       "sha256": "2f305cef71e76e762c964482a3903a4e76244f6bfe8c119c8e26bfbe8afd029b"
     },
     {
       "manifest_sha256": "38c5f4f88f5e773bfcaf48570e3a9175869f605dfea141d6f00c01878fa9c448",
-      "path": "/Users/orsi/Projects/Heroes-artifacts/releases/local-script-18aa3de108cc2a9e8a961936d094c62f2e6c4ce3/experiments/explorer/maps/capability-artifacts-blue-v1.vmap",
+      "path": "/Users/orsi/Projects/Heroes-artifacts/releases/local-script-14cb5294930bba6a9034e9da33f3092c8e64186a/experiments/explorer/maps/capability-artifacts-blue-v1.vmap",
       "player": "blue",
       "sha256": "b3bf3ef5ae733c1e792f12e2c0f4ccf2eddd06630cb5acf605739498041a5638"
     }
@@ -28,17 +28,214 @@
   ],
   "final_counts": {
     "acceptance_controls": 44,
-    "additional_preflight_controls": 2,
-    "artifact_preflight_passed": 2,
+    "additional_preflight_controls_on_current_source": 0,
     "failed": 0,
     "garrison_acceptance_passed": 16,
     "legacy_acceptance_passed": 28,
-    "not_started": 0
+    "not_started": 0,
+    "prior_matching_helper_preflight_controls": 2
   },
   "groups": [
     {
       "all_mechanics_checks_passed": true,
+      "artifact_seat_mechanics": [],
+      "both_seats": true,
+      "cleanup_errors": [],
+      "evidence": {
+        "launch_result": {
+          "bytes": 891,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt4-launch-result.json",
+          "sha256": "fad62299cdaff3e30dea48c9f6a5e84ace21715a15b55d251d4d887ea5556e5d"
+        },
+        "plan": {
+          "bytes": 33236,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt4/execution/plan.json",
+          "sha256": "0d96094283d5fcb7a11a5706576da49446fdfb0c23b109c035c8f93c2052878d"
+        },
+        "report": {
+          "bytes": 266807,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt4/execution/report.json",
+          "sha256": "4f3e88edca505bc541e7f7ad6f2512a186893c284ff5dac0a216629ef9882841"
+        },
+        "shutdown": {
+          "bytes": 198,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt4/shutdown.json",
+          "sha256": "77192a575231ad295d56abb4a1b43f37f3b1e8ec8d63362a8f89c6002241ccce"
+        },
+        "supervision": {
+          "bytes": 899,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt4/supervision.json",
+          "sha256": "dbb6d18259fb66abfd489c3f5b33f4a08bce3b24945b6535b3df968f91085e4c"
+        }
+      },
+      "failed": 0,
+      "independent_history_audits_passed": 16,
+      "name": "garrison16",
+      "native_replay_verified": 16,
+      "not_started": 0,
+      "optimizer_steps": 0,
+      "owned_cleanup_verified": true,
+      "passed": 16,
+      "protected_inputs_unchanged": true,
+      "source_commit": "14cb5294930bba6a9034e9da33f3092c8e64186a",
+      "source_inventory": {
+        "canonical_json_sha256": "9c87511a9b25fa9311ebbb1e9a33c5090251ce2f75aab34147e829f29cebe622",
+        "files": 205,
+        "full_inventory_in_bound_plan": true
+      },
+      "timing_note": "Concurrent offline suite; timings are operational bounds, not performance comparisons.",
+      "training_performed": false,
+      "wall_seconds": 24.376279874995816,
+      "within_hard_deadline": true
+    },
+    {
+      "all_mechanics_checks_passed": true,
       "artifact_seat_mechanics": [
+        {
+          "equipment_restorations": 6,
+          "exact_full_original_inventory_restored": true,
+          "history_audit_passed": true,
+          "parked": [
+            {
+              "artifact": 105,
+              "original_slot": 20,
+              "partner_slot": 19
+            }
+          ],
+          "player": "red",
+          "reorder_directions": [
+            [
+              19,
+              21
+            ],
+            [
+              21,
+              19
+            ]
+          ],
+          "replay_verified": true,
+          "seed": 1930800256,
+          "singleton": [
+            7
+          ]
+        },
+        {
+          "equipment_restorations": 6,
+          "exact_full_original_inventory_restored": true,
+          "history_audit_passed": true,
+          "parked": [
+            {
+              "artifact": 105,
+              "original_slot": 20,
+              "partner_slot": 19
+            }
+          ],
+          "player": "blue",
+          "reorder_directions": [
+            [
+              19,
+              21
+            ],
+            [
+              21,
+              19
+            ]
+          ],
+          "replay_verified": true,
+          "seed": 1930800257,
+          "singleton": [
+            7
+          ]
+        }
+      ],
+      "both_seats": true,
+      "cleanup_errors": [],
+      "evidence": {
+        "launch_result": {
+          "bytes": 1995,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt4-launch-result.json",
+          "sha256": "9dfde3cfda38e171aca113606dff71d2ca8c969cef1f3a6acc0bb8a6602935dc"
+        },
+        "plan": {
+          "bytes": 40625,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt4/execution/plan.json",
+          "sha256": "bbda2dec1651e3bf5c82b7ee3a35285de99591f42acced539a75211e8cd14c16"
+        },
+        "report": {
+          "bytes": 232593,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt4/execution/report.json",
+          "sha256": "9ff383fa12f5ca031a9f9231250c87be4ae77d5a6a481ef8f00954f8cd0da52e"
+        },
+        "shutdown": {
+          "bytes": 248,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt4/shutdown.json",
+          "sha256": "a31b8bf2df4bab39964e76a65b8794776ae8d7a594716fb75bcf213e095a2bb6"
+        },
+        "supervision": {
+          "bytes": 30139,
+          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt4/supervision.json",
+          "sha256": "22fdce7742232505f6037b5e21126783f0459ba15bba8eb9ea3742b8edac5d1e"
+        }
+      },
+      "failed": 0,
+      "independent_history_audits_passed": 28,
+      "name": "legacy28",
+      "native_replay_verified": 28,
+      "not_started": 0,
+      "optimizer_steps": 0,
+      "owned_cleanup_verified": true,
+      "passed": 28,
+      "protected_inputs_unchanged": true,
+      "source_commit": "14cb5294930bba6a9034e9da33f3092c8e64186a",
+      "source_inventory": {
+        "canonical_json_sha256": "5a036113dffe028b205232984e69de97288d0a05960c7652d2d4011b6d67bf29",
+        "files": 206,
+        "full_inventory_in_bound_plan": true
+      },
+      "timing_note": "Concurrent offline suite; timings are operational bounds, not performance comparisons.",
+      "training_performed": false,
+      "wall_seconds": 70.13886904198444,
+      "within_hard_deadline": true
+    }
+  ],
+  "limitations": [
+    "These scripted native controls establish mechanics and integrity, not learned-policy quality or training throughput.",
+    "The current 44-control source is 14cb5294930bba6a9034e9da33f3092c8e64186a; the separate two-seat artifact preflight belongs to the retained 18aa cohort, and its artifact helpers have identical bytes.",
+    "The final 44 controls overlapped the offline suite; their wall times are operational bounds and do not support a performance comparison.",
+    "New revealed-guard policy validation and final runtime acceptance are reported separately.",
+    "Attempt1 extra item105 was directly observed; native starting-bonus provenance remains a supported explanation, not independently confirmed attribution."
+  ],
+  "native_rebuild": false,
+  "native_runtime_change": "None; the existing accepted frozen engine runtime was exercised directly.",
+  "official_training_state": {
+    "checkpoint": 1585,
+    "model_loaded": false,
+    "official_locks_touched": false,
+    "official_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+    "optimizer_steps": 0,
+    "protected_files": 15,
+    "training_performed": false,
+    "training_samples_admitted": 0,
+    "verified_unchanged_before_and_after_every_group": true
+  },
+  "offline_focused_tests": {
+    "evidence": {
+      "bytes": 1430,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/fixture-repair2-offline.json",
+      "sha256": "122d6998f097d98d8b2d56468140103fa3e018fd94067621e3672a9020d07a54"
+    },
+    "failed": 0,
+    "passed": 31
+  },
+  "previous_successful_cohorts": [
+    {
+      "artifact_helpers_unchanged_sha256": {
+        "experiments/explorer/create_capability_scenarios.py": "060f0472f2cc5751c43b8a0e352c8016a9496dc1a20de4ccc7152d98a1f0463f",
+        "tools/validate_garrison_regressions.py": "d31ad6cbad292f797e2e0badd1598459035e4af5e3e4372f46498322cad2da37",
+        "validation/probes/validate_capabilities.py": "a9cb3fb854d2e0bf04d4eb15aea95df48a7d24879a37b38b7a8fe5f89db728fb"
+      },
+      "artifact_preflight_passed": 2,
+      "artifact_preflight_seat_mechanics": [
         {
           "equipment_restorations": 6,
           "exact_full_original_inventory_restored": true,
@@ -96,245 +293,50 @@
           ]
         }
       ],
-      "both_seats": true,
-      "cleanup_errors": [],
-      "evidence": {
-        "launch_result": {
+      "complete_prior_public_report": {
+        "bytes": 22210,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-controls-source18aa-public-report.json",
+        "sha256": "6c992c1b15fc6614a77326095339a086f922dd0ac578dd966931d3a270709ba4"
+      },
+      "garrison_passed": 16,
+      "group_receipts": {
+        "artifacts2": {
           "bytes": 1891,
           "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-artifacts2-attempt3-launch-result.json",
           "sha256": "aaf343c066d458c3bcdf8d6fb776555d184b6939dce8b98a4989b7c0b733bd38"
         },
-        "plan": {
-          "bytes": 26866,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-artifacts2-attempt3/execution/plan.json",
-          "sha256": "3d698f7ea9d98837736006308c5204deaac5da42a2047d94f129c94761a7c81d"
-        },
-        "report": {
-          "bytes": 94999,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-artifacts2-attempt3/execution/report.json",
-          "sha256": "1f26724cf4d7bf2dd18c80f86dbd3edd4a65ada806aec60ed4e64da28041b5b8"
-        },
-        "shutdown": {
-          "bytes": 248,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-artifacts2-attempt3/shutdown.json",
-          "sha256": "29282604feb7cf0b262007186ba813cddc91af361130f6b62b8ce096970ce8d6"
-        },
-        "supervision": {
-          "bytes": 26354,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-artifacts2-attempt3/supervision.json",
-          "sha256": "c44811c7f7ef909333fb3017a48c9ad030a6cdfcb8de23cc0c43e0c7032f290a"
-        }
-      },
-      "failed": 0,
-      "independent_history_audits_passed": 2,
-      "name": "artifacts2",
-      "native_replay_verified": 2,
-      "not_started": 0,
-      "optimizer_steps": 0,
-      "owned_cleanup_verified": true,
-      "passed": 2,
-      "protected_inputs_unchanged": true,
-      "source_commit": "18aa3de108cc2a9e8a961936d094c62f2e6c4ce3",
-      "source_inventory": {
-        "canonical_json_sha256": "6e8660fcd9fc085cca4dc69f81a86a5800be8524182af230c7ba11a6c2c9c682",
-        "files": 206,
-        "full_inventory_in_bound_plan": true
-      },
-      "training_performed": false,
-      "wall_seconds": 13.781323749979492,
-      "within_hard_deadline": true
-    },
-    {
-      "all_mechanics_checks_passed": true,
-      "artifact_seat_mechanics": [],
-      "both_seats": true,
-      "cleanup_errors": [],
-      "evidence": {
-        "launch_result": {
+        "garrison16": {
           "bytes": 783,
           "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt3-launch-result.json",
           "sha256": "336d31ba1367f333be7a48d04bf9b83d60477e3b2651dec87a3108030d4b9539"
         },
-        "plan": {
-          "bytes": 33236,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt3/execution/plan.json",
-          "sha256": "0d3c76e9fd75eeaa5b0e931b614a1b8f0a862a4919f8ca7c1d02516ae28a103d"
-        },
-        "report": {
-          "bytes": 266806,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt3/execution/report.json",
-          "sha256": "fd55b6158b295c7ecd9aa07393919dc55e26d03e29caf1b7f64e1e93ad3b453a"
-        },
-        "shutdown": {
-          "bytes": 197,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt3/shutdown.json",
-          "sha256": "1089cb8ec4b8042c61147a64ac9b1f43e8b01b34764887a668691cfa6c81b644"
-        },
-        "supervision": {
-          "bytes": 891,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-garrison16-attempt3/supervision.json",
-          "sha256": "e50e04ebf8f349d161e2a8bbba3ef303dc2662a29960ac14bf3914164f03da16"
-        }
-      },
-      "failed": 0,
-      "independent_history_audits_passed": 16,
-      "name": "garrison16",
-      "native_replay_verified": 16,
-      "not_started": 0,
-      "optimizer_steps": 0,
-      "owned_cleanup_verified": true,
-      "passed": 16,
-      "protected_inputs_unchanged": true,
-      "source_commit": "18aa3de108cc2a9e8a961936d094c62f2e6c4ce3",
-      "source_inventory": {
-        "canonical_json_sha256": "a035a576334d5c4445a7829b17808f5542c2527ef57458033411a677640e894a",
-        "files": 205,
-        "full_inventory_in_bound_plan": true
-      },
-      "training_performed": false,
-      "wall_seconds": 21.612039749976248,
-      "within_hard_deadline": true
-    },
-    {
-      "all_mechanics_checks_passed": true,
-      "artifact_seat_mechanics": [
-        {
-          "equipment_restorations": 6,
-          "exact_full_original_inventory_restored": true,
-          "history_audit_passed": true,
-          "parked": [
-            {
-              "artifact": 105,
-              "original_slot": 20,
-              "partner_slot": 19
-            }
-          ],
-          "player": "red",
-          "reorder_directions": [
-            [
-              19,
-              21
-            ],
-            [
-              21,
-              19
-            ]
-          ],
-          "replay_verified": true,
-          "seed": 1930600256,
-          "singleton": [
-            7
-          ]
-        },
-        {
-          "equipment_restorations": 6,
-          "exact_full_original_inventory_restored": true,
-          "history_audit_passed": true,
-          "parked": [
-            {
-              "artifact": 105,
-              "original_slot": 20,
-              "partner_slot": 19
-            }
-          ],
-          "player": "blue",
-          "reorder_directions": [
-            [
-              19,
-              21
-            ],
-            [
-              21,
-              19
-            ]
-          ],
-          "replay_verified": true,
-          "seed": 1930600257,
-          "singleton": [
-            7
-          ]
-        }
-      ],
-      "both_seats": true,
-      "cleanup_errors": [],
-      "evidence": {
-        "launch_result": {
+        "legacy28": {
           "bytes": 1888,
           "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt3-launch-result.json",
           "sha256": "26d3503c9097fce6c233a5d87139947d31c85a64ce91ab0af68eed37006baee4"
-        },
-        "plan": {
-          "bytes": 40625,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt3/execution/plan.json",
-          "sha256": "670ffd68f62338dfec730b338263ce2802f935dea1027ab3de135867090ae3f6"
-        },
-        "report": {
-          "bytes": 236099,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt3/execution/report.json",
-          "sha256": "a4f5712625333ef8738cb0e1782cb2f3b1e8aba38d3010decf6fa1d2fc0d0118"
-        },
-        "shutdown": {
-          "bytes": 248,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt3/shutdown.json",
-          "sha256": "4cf05617aa85cb66b40c4f7901d50b4403234c6301cafd6d15963a26d95ecc1d"
-        },
-        "supervision": {
-          "bytes": 30143,
-          "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-legacy28-attempt3/supervision.json",
-          "sha256": "12ba11677417cfd2788b45c831cafef63e4ad1ecb0e0484b812607a6b8d650b3"
         }
       },
-      "failed": 0,
-      "independent_history_audits_passed": 28,
-      "name": "legacy28",
-      "native_replay_verified": 28,
-      "not_started": 0,
+      "independent_history_audits_passed": 46,
+      "legacy_passed": 28,
+      "native_replay_verified": 46,
       "optimizer_steps": 0,
       "owned_cleanup_verified": true,
-      "passed": 28,
       "protected_inputs_unchanged": true,
-      "source_commit": "18aa3de108cc2a9e8a961936d094c62f2e6c4ce3",
-      "source_inventory": {
-        "canonical_json_sha256": "6e8660fcd9fc085cca4dc69f81a86a5800be8524182af230c7ba11a6c2c9c682",
-        "files": 206,
-        "full_inventory_in_bound_plan": true
+      "protocol": {
+        "bytes": 99394,
+        "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-controls-attempt3-protocol.json",
+        "sha256": "1b4b3270123a8e26f7864f7f2db9404713c92a330c0a27df6c2feb17649d8457"
       },
+      "source_commit": "18aa3de108cc2a9e8a961936d094c62f2e6c4ce3",
       "training_performed": false,
-      "wall_seconds": 65.12887270899955,
-      "within_hard_deadline": true
+      "why_renewed": "The later production capture gate correction changed the full learner source identity. All 44 controls were repeated on 14cb rather than relaxing the current-source acceptance gate.",
+      "within_hard_deadlines": true
     }
   ],
-  "limitations": [
-    "These scripted native controls establish mechanics and integrity, not learned-policy quality or training throughput.",
-    "New revealed-guard policy validation and final runtime acceptance are reported separately.",
-    "Attempt1 extra item105 was directly observed; native starting-bonus provenance remains a supported explanation, not independently confirmed attribution."
-  ],
-  "native_rebuild": false,
-  "native_runtime_change": "None; the existing accepted frozen engine runtime was exercised directly.",
-  "official_training_state": {
-    "checkpoint": 1585,
-    "model_loaded": false,
-    "official_locks_touched": false,
-    "official_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
-    "optimizer_steps": 0,
-    "protected_files": 15,
-    "training_performed": false,
-    "training_samples_admitted": 0,
-    "verified_unchanged_before_and_after_every_group": true
-  },
-  "offline_focused_tests": {
-    "evidence": {
-      "bytes": 1430,
-      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/fixture-repair2-offline.json",
-      "sha256": "122d6998f097d98d8b2d56468140103fa3e018fd94067621e3672a9020d07a54"
-    },
-    "failed": 0,
-    "passed": 31
-  },
   "protocol": {
-    "bytes": 99394,
-    "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-controls-attempt3-protocol.json",
-    "sha256": "1b4b3270123a8e26f7864f7f2db9404713c92a330c0a27df6c2feb17649d8457"
+    "bytes": 73024,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-controls-attempt4-protocol.json",
+    "sha256": "8b3f2875f3ab087cb9a88d3035b46650b39d4cf38ea04ed2f6c37e61d69e9e4e"
   },
   "raw_captures_and_checkpoints": "Retained only in private durable artifacts; this file contains compact summaries and evidence bindings.",
   "retained_failed_attempts": [
@@ -495,7 +497,7 @@
   },
   "schema": "heroes-revealed-movement-native-controls-v1",
   "seed_policy": "These diagnostic schedules are consumed by this reservation; a failure will require fresh seeds and a fresh output directory. The legacy clear/blocked Dimension Door cases retain their required intentional paired seed.",
-  "source_commit": "18aa3de108cc2a9e8a961936d094c62f2e6c4ce3",
+  "source_commit": "14cb5294930bba6a9034e9da33f3092c8e64186a",
   "status": "native_controls_passed",
-  "timestamp_utc": "2026-10-30T07:52:57.386367+00:00"
+  "timestamp_utc": "2026-10-30T08:03:07.236259+00:00"
 }

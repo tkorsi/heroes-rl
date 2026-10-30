@@ -41,7 +41,7 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 ACCEPTED_RUNTIME_RELEASES = {
     "revealed-movement-1585-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/revealed-movement1585-acceptance-v1.json",
-        "sha256": None,
+        "sha256": "877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6",
         "python_environment": NEXT_LAUNCH_ENVIRONMENT,
     },
     "cpu-next-launch-v1": {

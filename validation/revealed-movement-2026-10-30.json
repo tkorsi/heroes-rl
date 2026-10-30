@@ -1,0 +1,231 @@
+{
+  "change_classification": "explicit-policy-support-intervention",
+  "checkpoint": {
+    "canonical_and_backup_exact": true,
+    "full_model_adam_rng_progress_sampler_pool_restore": true,
+    "policy_sha256": "8b4ffa90b4e20c2d23f47cb30bf0719671cb378e8019f50186485f7d0e5cd80a",
+    "progress": {
+      "decisions": 922041,
+      "rollouts": 6340,
+      "updates": 1585
+    },
+    "resume_sha256": "f983a04dd4b1c18e998ae172ca8f00a34c54a1eb423c51aa1e156acd2fe98411"
+  },
+  "created_utc": "2026-10-30T08:06:15.062224+00:00",
+  "execution_source_commit": "14cb5294930bba6a9034e9da33f3092c8e64186a",
+  "failures_retained": [
+    "Two native artifact-fixture control failures; unchanged historical source/captures retained. See native control report.",
+    "First policy diagnostic completed four games but immutable capture gate rejected unregistered revealed support; whole batch excluded.",
+    "Synthetic test setup errors (epoch count and disclosed target) retained with corrections in focused receipts."
+  ],
+  "limitations": [
+    "Both policy arms use revealed support; this is not a quality comparison against old support.",
+    "All sixteen diagnostic policy games lost; improved winning is not demonstrated.",
+    "Offline tests ran concurrently; no speedup or full-CPU-saturation claim is made.",
+    "No new remote readback of checkpoint1585 is claimed; canonical and durable local backup restore exactly."
+  ],
+  "manual_preflight": {
+    "status": "pending"
+  },
+  "native_controls": {
+    "current_source_games": 44,
+    "passed": 44,
+    "report": {
+      "bytes": 23161,
+      "path": "validation/revealed-movement-native-controls-2026-10-30.json",
+      "sha256": "fc247a5baa54d45384201d06d57c6a9695b45e21d7cbebe65ea2ba000fb47371"
+    }
+  },
+  "native_learner": {
+    "binary_sha256": "a71c899128748593aaba2e5d7a0c080e4020672f07f9ddd9c5c91c4af3e25dbc",
+    "manifest_sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623",
+    "synthetic_revealed_ppo_update_exact": true,
+    "synthetic_validation": {
+      "bytes": 3287,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/native-revealed-ppo-test.json",
+      "sha256": "06bab0394e1b982e3af7a3fbea61feec03fae6d1b190c4716b6917a1e677ae10"
+    },
+    "unchanged": true
+  },
+  "official_optimizer_updates": 0,
+  "official_training_started": false,
+  "offline_suite": {
+    "executed": 2057,
+    "failed": 0,
+    "log": {
+      "bytes": 2520,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/full-suite-attempt2.log",
+      "sha256": "81b047c736bc293cb229d527e7b628f4c58deec50988a229cc932e5acbf9a095"
+    },
+    "passed": 2024,
+    "receipt": {
+      "bytes": 395,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/full-suite-attempt2.json",
+      "sha256": "f9e7d05c28ac082a174164e3d9527937200ed4780094f39ed1f18c8a4b83bc4c"
+    },
+    "seconds": 334.779,
+    "skipped": 33
+  },
+  "original_target": {
+    "admitted": 3824,
+    "next_sequence": 1226,
+    "remaining": 1176,
+    "total": 5000
+  },
+  "policy_diagnostic": {
+    "choices": 1838,
+    "choices_per_arm": 919,
+    "cleanup_verified": true,
+    "cutoffs": 0,
+    "exact_native_replay_and_policy_reconstruction": true,
+    "full_parent_unchanged": true,
+    "games": 16,
+    "games_per_arm": 8,
+    "games_per_arm_and_seat": 4,
+    "launch": {
+      "bytes": 11633,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/revealed1585-attempt2/launch.json",
+      "sha256": "159fd6595bfe143d21074d41f6236970007739d66256a86df4c3aa1d8d5d2d99"
+    },
+    "movement": {
+      "movement_choices": 128,
+      "revealed_targets": 128,
+      "unrevealed_targets": 0
+    },
+    "natural_losses": 16,
+    "paired_semantics_match": true,
+    "paired_starts": 8,
+    "receipts_revoked": true,
+    "report": {
+      "bytes": 112315,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/revealed1585-attempt2/report.json",
+      "sha256": "9d364cc8aaee9b8006c62ec845ee3b844daf10b913c3849fbb3ccc53b786ade4"
+    },
+    "sampler_state_exact": true,
+    "shutdown": {
+      "bytes": 202,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/revealed1585-attempt2/shutdown.json",
+      "sha256": "484ad005d7c4cc75ac9b540222135279ac144fada36080e6d59adaa80f794e9b"
+    },
+    "wins": 0,
+    "within_hard_deadline": true
+  },
+  "policy_support": "visible-interaction-budget-revealed-v1",
+  "private_evidence": {
+    "capture_gate_tests": {
+      "bytes": 11286,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/capture-gate-tests.json",
+      "sha256": "3417fb8c9b4d413bcbd0532d3d237b5979bdea6d4dfe8a8789b12a6e44bb6511"
+    },
+    "checkpoint_restore": {
+      "bytes": 4210,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/checkpoint1585-restore.json",
+      "sha256": "debd8ff591d06a8a539b47dcfbb65ad571ec2003836737d581e35ec32bf877b6"
+    },
+    "failed_policy_preservation": {
+      "bytes": 1807,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/policy-attempt1-preservation.json",
+      "sha256": "04dbea7bae79c306834475636eaea2f9cfed2d0286cd4b5f88622af7f1d667a3"
+    },
+    "protocol": {
+      "bytes": 6531,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-revealed-movement1585/protocol.json",
+      "sha256": "bd9d7547225f9c1e34922943701dfae385a70664973d9a3f0bb99c7cf8fc23fd"
+    }
+  },
+  "python_environment": {
+    "numpy_bridge_warnings": 0,
+    "numpy_version": "2.3.5",
+    "receipt": {
+      "bytes": 1717,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/python/next-launch-numpy235-v1/receipt.json",
+      "sha256": "ce11a8abb87b091231a09a42552313ef0c3b88db7b9dd6466dbcacf536373964"
+    }
+  },
+  "raw_captures_and_checkpoints_public": false,
+  "resource_plan": {
+    "collection_workers": 4,
+    "experiments": [],
+    "implementation": "native-cpu-v2",
+    "native_learner": {
+      "manifest": "/Users/orsi/Projects/Heroes-artifacts/native-learner-builds/mac-utilization-v1-attempt6/manifest.json",
+      "prefix_threads": 16,
+      "sha256": "919951d970eefa356ed19c901ddc3441e108035da186957b5cbe107b00ace623"
+    },
+    "overlapped_verification": false,
+    "pipeline_verification": true,
+    "prefix_helpers": 0,
+    "replay_threads": 0,
+    "resource_plan": {
+      "batch_size": 4,
+      "budget_cpus": 16,
+      "collection_verification_cpu_budget": 9,
+      "collection_workers": 4,
+      "memory_budget_enforced": false,
+      "native_frame_threads": 16,
+      "native_prefix_threads": 16,
+      "native_text_reducer_workers": 1,
+      "native_text_replay_workers": 14,
+      "phases_run_concurrently": true,
+      "pipeline_verification": true,
+      "requested_cpu_cap": null,
+      "resources": {
+        "affinity_cpus": null,
+        "available_cpus": 16,
+        "available_memory_bytes": null,
+        "cgroup_cpu_quota_cores": null,
+        "cgroup_cpus": null,
+        "effective_memory_limit_bytes": 137438953472,
+        "efficiency_cpus": 4,
+        "logical_cpus": 16,
+        "machine": "arm64",
+        "memory_availability_kind": "not_measured",
+        "performance_cpus": 12,
+        "physical_cpus": 16,
+        "physical_memory_bytes": 137438953472,
+        "platform": "Darwin",
+        "schema": "heroes-training-resources-v1"
+      },
+      "schema": "heroes-training-resource-plan-v2",
+      "torch_intraop_threads": 1,
+      "utilization_limits": [
+        "Four-game on-policy batches cap independent collection and verification jobs at four.",
+        "The accepted execution contract selects four workers or a single worker when the CPU budget is below four.",
+        "Native prefixes and differentiable frame features use at most the declared budget and available independent frames.",
+        "Text backward reserves one CPU for the main graph and, when at least three CPUs are available, one for ordered reduction; replay uses the remaining budget.",
+        "Recurrent transitions, minibatch order and gradient accumulation retain their original dependencies.",
+        "Memory figures describe observed capacity; no unmeasured per-worker memory guarantee is inferred.",
+        "Collection and verification overlap only with room for four collectors, four replay workers and their coordinator; PPO starts after all verification and cleanup."
+      ],
+      "verification_workers": 4
+    },
+    "text_leaf_replay": false,
+    "verification_workers": 4
+  },
+  "runtime_release": {
+    "descriptor": {
+      "bytes": 15490,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair2/revealed-movement1585-acceptance-v1.json",
+      "sha256": "877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6"
+    },
+    "id": "revealed-movement-1585-v1"
+  },
+  "schema": "heroes-revealed-movement-validation-v1",
+  "settings": {
+    "architecture_unchanged": true,
+    "batch_size": 4,
+    "extra_path_feasibility_mask": false,
+    "hidden_information_used": false,
+    "opponent_unchanged": true,
+    "original_map_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+    "ppo_and_adam_unchanged": true,
+    "terminal_rewards": [
+      1,
+      -1,
+      0
+    ],
+    "visible_interaction_budgets_unchanged": true
+  },
+  "status": "validated_pending_main_preflight",
+  "training_samples_admitted": 0
+}

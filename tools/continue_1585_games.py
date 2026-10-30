@@ -18,7 +18,7 @@ def command(argv):
                'only fully admitted descendant games. Repeated manual invocations finish the '
                'same 1176-game goal. Evaluation and failed batches never count. The latest '
                'checkpoint is never reset. The explicitly disclosed revealed-movement interaction '
-               'guard is selected. No cloud or model calls are made.')
+               'guard is selected. No cloud work or LLM API calls are made.')
     parser.add_argument('--check', action='store_true', help='offline preflight only; no training')
     parser.add_argument('--hours', type=hours, default=10,
                         help='wall-clock limit including cleanup reserve (default: 10)')
