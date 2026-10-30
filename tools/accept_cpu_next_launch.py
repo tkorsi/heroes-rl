@@ -28,6 +28,7 @@ from tools.training_environment import NEXT_LAUNCH_ENVIRONMENT, verify_environme
 SCHEMA = 'heroes-pipeline-collection-diagnostic-v1'
 RELEASE = 'cpu-next-launch-v1'
 REVEALED_RELEASE = 'revealed-movement-1585-v1'
+TELEMETRY_FREE_RELEASE = 'telemetry-free-1728-v1'
 REVEALED_SCHEMA = 'heroes-revealed-pipeline-collection-diagnostic-v1'
 OLD_RELEASE = 'terminal-replay-1392-v1'
 ORIGINAL_MAP_SHA256 = 'ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3'
@@ -159,28 +160,30 @@ def verify_choice_counts(episode, attempt, policy, receipt):
 def policy_contract(descriptor):
     from experiments.learner import interaction_guard
     release = descriptor.get('release_id')
-    require(release in (RELEASE, REVEALED_RELEASE)
+    require(release in (RELEASE, REVEALED_RELEASE, TELEMETRY_FREE_RELEASE)
             and descriptor.get('python_environment') == NEXT_LAUNCH_ENVIRONMENT,
             'Pipeline policy evidence is exclusive to the reviewed next-launch release')
-    if release == REVEALED_RELEASE:
+    if release in (REVEALED_RELEASE, TELEMETRY_FREE_RELEASE):
+        update = 1728 if release == TELEMETRY_FREE_RELEASE else 1585
         require(descriptor.get('checkpoint_update') == 1392
-                and descriptor.get('policy_checkpoint_update') == 1585
+                and descriptor.get('policy_checkpoint_update') == update
                 and descriptor.get('policy_support') == interaction_guard.REVEALED_VERSION,
-                'Revealed acceptance must retain engine proof 1392 and policy proof 1585')
-        return REVEALED_SCHEMA, interaction_guard.REVEALED_VERSION, 1585
+                f'Revealed acceptance must retain engine proof 1392 and policy proof {update}')
+        return REVEALED_SCHEMA, interaction_guard.REVEALED_VERSION, update
     require(descriptor.get('checkpoint_update') == 1392, 'Historical pipeline requires checkpoint 1392')
     return SCHEMA, interaction_guard.VERSION, 1392
 
 
-def verify_revealed_parent(launch, report, completed):
-    from tools.benchmark_pipeline_collection import selected_parent, REVEALED_RELEASE
-    require(all(document.get('study_release') == REVEALED_RELEASE
+def verify_revealed_parent(launch, report, completed, release=REVEALED_RELEASE):
+    from tools.benchmark_pipeline_collection import selected_parent, study_contract
+    update = study_contract(release)['policy_checkpoint_update']
+    require(all(document.get('study_release') == release
                 and document.get('checkpoint_selection') == 'completed_after'
-                and document.get('policy_checkpoint_update') == 1585 for document in (launch, report)),
+                and document.get('policy_checkpoint_update') == update for document in (launch, report)),
             'Revealed policy proof must explicitly select the completed after-state')
     completed_report = read(launch['inputs']['completed-report'])
     selected = selected_parent(checked(launch['original_inputs']['completed-plan']),
-                               completed, completed_report, REVEALED_RELEASE)
+                               completed, completed_report, release)
     require(all(selected[name] == launch['original_inputs'][name] for name in selected)
             and completed_report['cumulative_progress'] == report['parent_progress'],
             'Revealed policy proof selected another parent or initial dependency')
@@ -312,7 +315,7 @@ def pipeline_policy_acceptance(descriptor, runtime):
             and launch['inputs']['map']['sha256'] == ORIGINAL_MAP_SHA256,
             'Pipeline changed learning settings or the original map')
     if schema == REVEALED_SCHEMA:
-        verify_revealed_parent(launch, report, completed)
+        verify_revealed_parent(launch, report, completed, descriptor['release_id'])
     verify_execution_source(report, launch)
     restored = restore_fingerprints(launch['parent_descriptor'], report['parent_progress'])
     rows = launch['reservation']['schedule']
@@ -383,7 +386,7 @@ def pipeline_policy_acceptance(descriptor, runtime):
                 restored_state=restored, phase='training', receipts_revoked=True,
                 execution_commit=report['source']['git_commit'], training_samples_admitted=0, optimizer_updates=0)
     if schema == REVEALED_SCHEMA:
-        result.update(policy_checkpoint_update=1585, policy_support=policy_support,
+        result.update(policy_checkpoint_update=policy_update, policy_support=policy_support,
                       diagnostic_games=16, revealed_movement=movement)
     return result
 
@@ -396,7 +399,7 @@ def build(native_output, regression_output, pipeline_output, output, *, release_
     value.pop('policy_reconstruction', None)
     value.pop('policy_acceptance_games', None)
     value.pop('policy_acceptance_choices', None)
-    require(release_id in (RELEASE, REVEALED_RELEASE), 'Unsupported next-launch acceptance release')
+    require(release_id in (RELEASE, REVEALED_RELEASE, TELEMETRY_FREE_RELEASE), 'Unsupported next-launch acceptance release')
     proof = lambda folder: {name: binding(Path(folder)/path) for name, path in (
         ('plan', 'execution/plan.json'), ('report', 'execution/report.json'), ('shutdown', 'shutdown.json'))}
     value.update(release_id=release_id, native=proof(native_output), regression=proof(regression_output),
@@ -404,10 +407,13 @@ def build(native_output, regression_output, pipeline_output, output, *, release_
         pipeline_policy={name: binding(Path(pipeline_output)/(name+'.json')) for name in ('launch', 'report', 'shutdown')},
         acceptance_refresh_scope='Current CPU execution and isolated NumPy environment; eight fresh training-style diagnostic captures with revoked receipts, exact replay/reconstruction and no PPO admission.',
         timestamp_utc=datetime.now(timezone.utc).isoformat())
-    if release_id == REVEALED_RELEASE:
+    if release_id in (REVEALED_RELEASE, TELEMETRY_FREE_RELEASE):
         from experiments.learner.interaction_guard import REVEALED_VERSION
-        value.update(policy_checkpoint_update=1585, policy_support=REVEALED_VERSION,
-            acceptance_refresh_scope='Authorized revealed-target policy support at frozen checkpoint 1585 with the accepted NumPy environment and collection pipeline; sixteen excluded diagnostic captures, eight in the pipeline candidate, exact replay/reconstruction and no PPO admission.')
+        update = 1728 if release_id == TELEMETRY_FREE_RELEASE else 1585
+        value.update(policy_checkpoint_update=update, policy_support=REVEALED_VERSION,
+            acceptance_refresh_scope=f'Revealed-target policy support at frozen checkpoint {update} with the accepted NumPy environment and collection pipeline; sixteen excluded diagnostic captures, eight in the pipeline candidate, exact replay/reconstruction and no PPO admission.')
+        if release_id == TELEMETRY_FREE_RELEASE:
+            value['performance_telemetry'] = 'removed'
     verify_environment(NEXT_LAUNCH_ENVIRONMENT)
     runtime = {name: digest for name, digest in value['runtime_files'].items() if name != 'vcmiclient'}
     # Full native, terminal and pipeline gates run before any output is written.
@@ -429,7 +435,7 @@ def main():
     parser.add_argument('--regression-output', type=Path, required=True)
     parser.add_argument('--pipeline-output', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release-id', choices=(RELEASE, REVEALED_RELEASE), default=RELEASE)
+    parser.add_argument('--release-id', choices=(RELEASE, REVEALED_RELEASE, TELEMETRY_FREE_RELEASE), default=RELEASE)
     args = parser.parse_args()
     copies.checkout_identity(ROOT)
     print(json.dumps(build(args.native_output, args.regression_output, args.pipeline_output, args.output,

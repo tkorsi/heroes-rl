@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Measure the accepted native PPO workload using private disposable state.
+"""Check the accepted native PPO workload using private disposable state.
 
 Runs one native/Python comparison, bounded to 120 seconds, on archived batch846.
-No gameplay, seed reservation or official update occurs. Reports PPO CPU use and
-process lifetime peak RSS; it is not a full-campaign or artificial stress test.
+No gameplay, seed reservation or official update occurs. Reports exact numerical
+comparison and outer elapsed time without requiring learner performance telemetry.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def load_result(request, summary, native):
+def load_result(request, summary):
     attempts = summary.get('attempts', [])
     if (summary.get('status') != 'passed' or len(summary.get('exact', {})) != 13
             or not all(value is True for value in summary['exact'].values())
@@ -28,25 +28,15 @@ def load_result(request, summary, native):
                        and row.get('owned_cleanup_verified') is True for row in attempts)):
         raise ValueError('The load comparison did not pass exact state and cleanup checks')
     plan = request['resources']
-    repetition = native['repetitions'][0]
-    cores = repetition['average_cpu_cores']
     capacity = plan['resources']['available_cpus']
-    rss = repetition['process_lifetime_peak_rss_bytes']
-    return dict(schema='heroes-native-load-test-v1',
+    return dict(schema='heroes-native-load-test-v2',
                 available_cpus=capacity, cpu_budget=plan['budget_cpus'],
-                native_mean_cpu_cores=cores, available_cpu_capacity_percent=100 * cores / capacity,
-                native_process_lifetime_peak_rss_bytes=rss,
-                native_peak_concurrent_text_replays=repetition['timings']['native_peak_parallel_replays'],
-                native_peak_concurrent_frame_workers=repetition['timings']['native_peak_forward_workers'],
-                native_parallel_frames=repetition['timings']['native_forward_parallel_frames'],
-                native_tape_replays=repetition['timings']['native_tape_replays'],
-                native_engine_replays=repetition['timings']['native_engine_replays'],
+                performance_telemetry=False,
                 native_ppo_seconds=summary['native_seconds'], python_ppo_seconds=summary['python_seconds'],
                 ppo_speedup=summary['kernel_speedup'], exact_state_checks_passed=13,
                 owned_cleanup_verified=True, official_updates=0, seed_reservations=0,
-                limitations=['CPU percentage is this PPO process against available CPU capacity, not total system activity.',
-                             'Peak RSS includes this process lifetime through PPO, including imports, restoration and audits.',
-                             'This test does not measure GPU use or full collection/replay campaign throughput.',
+                limitations=['Worker counts are configured budgets; no runtime worker statistics are collected.',
+                             'Outer diagnostic duration does not measure full collection/replay campaign throughput.',
                              'One paired execution order is not a counterbalanced performance study.'])
 
 
@@ -88,17 +78,12 @@ def main(argv=None):
         print(f"Load test failed (exit {code}). Preserved evidence: {output}; log: {console}", file=sys.stderr)
         return code
     read = lambda name: json.loads((output / name).read_text())
-    result = load_result(read('request.json'), read('summary.json'), read('native.json'))
+    result = load_result(read('request.json'), read('summary.json'))
     benchmark.write_new(output / 'load-report.json', result)
     print(f"Native PPO: {result['native_ppo_seconds']:.2f}s; Python: {result['python_ppo_seconds']:.2f}s; "
           f"speedup: {result['ppo_speedup']:.2f}x.")
-    print(f"Native mean CPU: {result['native_mean_cpu_cores']:.2f} of {result['available_cpus']} cores "
-          f"({result['available_cpu_capacity_percent']:.1f}% of available CPU capacity).")
-    print(f"Peak concurrent text replays: {result['native_peak_concurrent_text_replays']:.0f}.")
-    print(f"Peak concurrent frame workers: {result['native_peak_concurrent_frame_workers']:.0f}.")
-    print(f"Native process lifetime peak RSS: {result['native_process_lifetime_peak_rss_bytes'] / 2**30:.2f} GiB.")
     print('Exact state: 13/13 checks passed. Owned workers cleaned up. Official updates and new seeds: 0.')
-    print('These are PPO measurements, not full-system, GPU or full-campaign utilization.')
+    print('Learner performance telemetry is disabled; configured CPU budgets do not measure utilization.')
     print(f"Report: {output / 'load-report.json'}")
     return 0
 

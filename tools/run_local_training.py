@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = Path.home() / 'Projects/Heroes-artifacts/local-script-training/machine.json'
 # Keep historical machine descriptors immutable: completed sessions bind their bytes.
-ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original-native-v5.json')
+ORIGINAL_CONFIG = DEFAULT_CONFIG.with_name('machine-original-native-v6.json')
 # The default path releases this accepted implementation unchanged. Only an explicit --fast-path
 # releases the current commit, whose execution choices and any separately opted-in
 # policy-support intervention the session records.

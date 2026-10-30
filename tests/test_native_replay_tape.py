@@ -101,11 +101,9 @@ class NativeReplayTapeTests(unittest.TestCase):
             with self.subTest(text=text):
                 gradients = [self.gradient((4,)), self.gradient((8,))[::2],
                              torch.tensor([-0.0]).expand(4)]
-                expected, actual, stats, reason = self.backend._text_replay_probe(
+                expected, actual, tape_available, reason = self.backend._text_replay_probe(
                     parameters, text, 4, gradients)
-                self.assertEqual(stats['tape_available'], 1, reason)
-                self.assertEqual(stats['tape_replays'], len(gradients))
-                self.assertEqual(stats['engine_replays'], len(gradients))
+                self.assertTrue(tape_available, reason)
                 self.assertEqual(len(expected), len(actual))
                 for reference_terms, tape_terms in zip(expected, actual):
                     self.assertGreaterEqual(len(reference_terms), len(parameters))

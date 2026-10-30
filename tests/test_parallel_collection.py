@@ -220,8 +220,7 @@ class ParallelRunnerDispatchTests(unittest.TestCase):
             state = SimpleNamespace(model=object(), checkpoint='synthetic')
             attempts = tuple({**row, 'status': 'passed', 'identity_verified': True,
                               'cleanup_verified': True} for row in rows)
-            collected = parallel_collection.BatchCollection(attempts, (), (), (), 1., 1.,
-                                                            collection_elapsed_seconds=1., verified_batch_seconds=2.)
+            collected = parallel_collection.BatchCollection(attempts, (), (), ())
             with patch.object(runner.pilot, 'check_identity'), \
                     patch.object(parallel_collection, 'collect_batch', return_value=collected) as parallel, \
                     patch.object(runner.pilot, 'run_attempt') as serial, \
@@ -230,8 +229,8 @@ class ParallelRunnerDispatchTests(unittest.TestCase):
             self.assertEqual(parallel.call_args.kwargs['workers'], 4)
             self.assertEqual(result['status'], 'finished')
             self.assertEqual(result['parallel_collection']['games'], 4)
-            self.assertEqual(result['parallel_collection']['verified_batch_seconds'], 2.)
-            self.assertEqual(result['parallel_collection']['timing_scope'], 'coordinator-exclusive-wall-v1')
+            self.assertEqual(result['parallel_collection'],
+                             {'workers': 4, 'games': 4, 'pipeline_verification': False})
             self.assertEqual(plan['configuration'], runner.configuration())
             self.assertNotIn('parallel_collection', cfg)
             self.assertEqual(cfg['max_optimizer_steps'], 640)
@@ -270,8 +269,7 @@ class ParallelRunnerDispatchTests(unittest.TestCase):
                     attempts[3]['cleanup_verified'] = False
                 else:
                     receipts.pop()
-                collected = SimpleNamespace(attempts=tuple(attempts), receipts=tuple(receipts),
-                    collection_seconds=1., verification_seconds=1.)
+                collected = SimpleNamespace(attempts=tuple(attempts), receipts=tuple(receipts))
                 with patch.object(runner.pilot, 'check_identity'), \
                         patch.object(runner, 'require_heldout'), \
                         patch.object(parallel_collection, 'collect_batch', return_value=collected), \
@@ -668,10 +666,8 @@ print(json.dumps(dict(token=payload['token'], schedule_index=index, plan_sha256=
         self.assertEqual([row['episode'] for row in result.attempts], [1, 2, 3, 4])
         self.assertTrue(all(row['status'] == 'passed' for row in result.attempts))
         self.assertTrue(report['pipeline_verification'])
-        self.assertEqual(report['timing_scope'], 'coordinator-exclusive-wall-v1')
-        self.assertGreater(result.overlapped_verification_seconds, 0)
-        self.assertAlmostEqual(result.verified_batch_seconds,
-                               result.collection_seconds+result.verification_seconds)
+        self.assertFalse(any(key.endswith('_seconds') or key == 'timing_scope' for key in report))
+        self.assertFalse(any('verification_seconds' in row for row in result.attempts))
         self.assertEqual((report['optimizer_updates'], report['training_samples_admitted']), (0, 0))
 
     def test_straggler_failure_revokes_receipts_already_verified_during_collection(self):

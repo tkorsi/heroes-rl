@@ -225,7 +225,7 @@ def comparison(serial, parallel):
     speedups = {}
     if complete:
         for metric in ('collection_seconds', 'verification_seconds', 'verified_batch_seconds'):
-            if parallel[metric] > 0:
+            if metric in serial and metric in parallel and parallel[metric] > 0:
                 speedups[metric] = serial[metric] / parallel[metric]
     return {'pairs': pairs, 'all_semantic_matches': matched, 'both_arms_verified': complete,
             'observed_speedup': speedups,
@@ -332,8 +332,8 @@ def run_study(output, seat, hard_mono, hard_wall):
                 batch = collect_batch(plan_path, arm['plan']['sha256'], loaded.model, loaded.checkpoint,
                     workers=workers, deadline_monotonic=hard_mono-FINAL_RESERVE,
                     deadline_wall=hard_wall-FINAL_RESERVE, save=save)
-                arm.update(attempts=list(batch.attempts), collection_seconds=batch.collection_seconds,
-                           verification_seconds=batch.verification_seconds,
+                arm.update(attempts=list(batch.attempts),
+                           timing_scope='diagnostic-outer-verified-batch-wall-v1',
                            verified_batch_seconds=time.monotonic()-arm_started)
                 require(len(batch.attempts) == 8 and all(row['status'] == 'passed' for row in batch.attempts),
                         'An arm did not verify all eight declared games')

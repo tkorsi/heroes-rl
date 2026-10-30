@@ -84,6 +84,15 @@ class ParallelCollectionBenchmarkTests(unittest.TestCase):
         self.assertEqual(result['observed_speedup'], {})
         self.assertIsNone(result['identical_workload_speedup'])
 
+    def test_new_diagnostic_reports_only_its_outer_measurement(self):
+        attempts = [{'status': 'passed', 'episode_directory': f'/unused/{i}'} for i in range(8)]
+        serial = dict(status='passed', attempts=attempts, verified_batch_seconds=120)
+        parallel = dict(status='passed', attempts=attempts, verified_batch_seconds=60)
+        with mock.patch('tools.acceleration3.campaign_summary.game_digest', side_effect=lambda path: path):
+            result = bench.comparison(serial, parallel)
+        self.assertEqual(result['observed_speedup'], {'verified_batch_seconds': 2})
+        self.assertEqual(result['identical_workload_speedup'], {'verified_batch_seconds': 2})
+
     def test_copy_preserves_bytes_and_refuses_existing_destination(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

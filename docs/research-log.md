@@ -1099,3 +1099,7 @@ state and all 15 protected inputs remain unchanged. The accepted runtime pin
 is 877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6.
 The user alone launches `./continue-1585.sh --hours 10`; it recalculates the same
 remaining goal and prints elapsed time. No official training was started.
+
+## 2026-10-30: performance telemetry removal protocol
+
+The user requested removal of CPU counters and phase profiling, retaining parallel execution and all learning/integrity settings. Self-play is explanation only. Full checkpoint1728 and its completed-run evidence are protected. The [prospective protocol](research/telemetry-removal-2026-10-30.md) requires a fresh native build, exact numerical parity, excluded native/policy diagnostics and a real manual preflight. No training launch is authorized.

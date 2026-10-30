@@ -302,8 +302,6 @@ def run_child(args):
                     collected = collect_batch(plan_path, sha, state.model, state.checkpoint, workers=4,
                         deadline_monotonic=budget.deadline, deadline_wall=budget.wall_deadline, save=save)
                     receipts = list(collected.receipts)
-                    row.update(collection_seconds=collected.collection_seconds,
-                               verification_seconds=collected.verification_seconds)
                 row['verified_batch_seconds'] = time.monotonic()-started
                 require(len(receipts) == 4 and all(all(attempt.get(key) is True for key in
                     ('identity_verified', 'cleanup_verified', 'replay_verified', 'completion_receipt'))

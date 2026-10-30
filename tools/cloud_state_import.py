@@ -37,6 +37,11 @@ RECEIPT_KEY = 'cloud_import/receipt'
 # cloud handoff. Each reviewed transition names its exact permitted fields;
 # the complete current runtime acceptance gate still runs before selection.
 RUNTIME_UPGRADES = {
+    'telemetry-free-1728-v1': {
+        'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
+        'descriptor_sha256': 'PENDING_VALIDATION',
+        'python_environment': NEXT_LAUNCH_ENVIRONMENT,
+    },
     'revealed-movement-1585-v1': {
         'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
         'descriptor_sha256': '877c1919964b5f9037b7f348015dcfa58e55c28f06ca58cceefb49c3000a35a6',

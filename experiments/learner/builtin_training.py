@@ -299,12 +299,6 @@ def worker(args, *, plan_reader=None, state_reader=None, heldout_checker=None):
             report['parallel_collection'] = {
                 'workers': collection['workers'],
                 'games': len(collected.attempts),
-                'collection_seconds': collected.collection_seconds,
-                'verification_seconds': collected.verification_seconds,
-                'collection_elapsed_seconds': collected.collection_elapsed_seconds,
-                'overlapped_verification_seconds': collected.overlapped_verification_seconds,
-                'verified_batch_seconds': collected.verified_batch_seconds,
-                'timing_scope': collected.timing_scope,
                 'pipeline_verification': collected.pipeline_verification,
             }
             receipts = list(collected.receipts)

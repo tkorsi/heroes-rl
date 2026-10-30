@@ -37,16 +37,7 @@ class BatchCollection:
     captures: tuple
     bindings: tuple
     receipts: tuple
-    # Exclusive coordinator wall time remains additive. In pipeline mode the
-    # elapsed collection span also contains coordinator verification work;
-    # overlap is that work's wall time, not a measurement of simultaneous CPU use.
-    collection_seconds: float
-    verification_seconds: float
-    collection_elapsed_seconds: float | None = None
-    overlapped_verification_seconds: float = 0.0
-    verified_batch_seconds: float | None = None
     pipeline_verification: bool = False
-    timing_scope: str = 'coordinator-exclusive-wall-v1'
 
     def discard(self):
         """Revoke this batch's in-memory admission capabilities after a probe.
@@ -319,7 +310,6 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
     replay_jobs, prepared, ready_to_verify = {}, {}, []
     completed_verifications = set()
     verification_error = None
-    pipelined_verification_seconds = 0.0
     collectors_closed = False
     training = plan['schema'] == 'heroes-builtin-training-v1-plan'
 
@@ -348,7 +338,6 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
         job.process.stdin.close()
 
     def finish(job):
-        nonlocal pipelined_verification_seconds
         index, row = job.index, plan['schedule'][job.index]
         folder = output / f"episode-{row['episode']:06d}"
         if training:
@@ -375,9 +364,7 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
             cleanup_from_evidence(control / f'worker-{index:02d}-native-deadline.jsonl',
                 timeout=min(10, budget.remaining()), deadline_monotonic=budget.deadline,
                 deadline_wall=budget.wall_deadline)
-            checking = time.monotonic()
             start_verification(index)
-            pipelined_verification_seconds += time.monotonic()-checking
             ready_to_verify.append(index)
         return message
 
@@ -408,7 +395,6 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
         row = plan['schedule'][index]
         folder = output / f"episode-{row['episode']:06d}"
         progress(index, stage='verification')
-        checked_at = time.monotonic()
         with wall_limit(budget.remaining(cfg['cleanup_reserve_seconds'])):
             if training:
                 receipts[index] = gameplay.verify_training_capture(folder, captures[index], bindings[index], model,
@@ -431,18 +417,12 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
         require(weights_sha256(model) == before, 'Frozen learner changed during parallel collection')
         progress(index, status='passed', stage='finished', reason=None, replay_verified=True,
                  completion_receipt=True, weights_unchanged=True,
-                 behavior=pilot.binding(folder / 'behavior.json'),
-                 verification_seconds=time.monotonic()-checked_at)
+                 behavior=pilot.binding(folder / 'behavior.json'))
         completed_verifications.add(index)
 
     def drain_verification():
-        nonlocal pipelined_verification_seconds
-        checking = time.monotonic()
-        try:
-            while ready_to_verify:
-                verify(ready_to_verify.pop(0))
-        finally:
-            pipelined_verification_seconds += time.monotonic()-checking
+        while ready_to_verify:
+            verify(ready_to_verify.pop(0))
 
     started = time.monotonic()
     try:
@@ -467,9 +447,6 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
             for path in sorted(control.glob('*native-deadline.jsonl')):
                 cleanup_from_evidence(path, timeout=min(10, budget.remaining()),
                                       deadline_monotonic=budget.deadline, deadline_wall=budget.wall_deadline)
-            collection_elapsed_seconds = time.monotonic()-started
-            collection_seconds = collection_elapsed_seconds-pipelined_verification_seconds
-            verified_started = time.monotonic()
             if pipeline_verification:
                 require(not ready_to_verify and len(replay_jobs) == batch_size
                         and all(attempt['status'] == 'passed' for attempt in attempts),
@@ -487,18 +464,11 @@ def collect_batch(plan_path, plan_sha256, model, checkpoint, *, workers=8, verif
         finally:
             _stop_verifications(replay_jobs, prepared, budget, verification_error)
         _check_identity(_read_plan(plan_path, plan_sha256))
-        verification_seconds = pipelined_verification_seconds+time.monotonic()-verified_started
         result = BatchCollection(tuple(attempts), tuple(captures), tuple(bindings), tuple(receipts) if training else (),
-                                 collection_seconds, verification_seconds, collection_elapsed_seconds,
-                                 pipelined_verification_seconds, collection_seconds+verification_seconds,
-                                 pipeline_verification)
+                                 pipeline_verification=pipeline_verification)
         pilot.write(control / 'result.json', {'schema': SCHEMA, 'status': 'passed', 'workers': workers,
             'verification_workers': verification_workers,
-            'batch_size': batch_size, 'collection_seconds': collection_seconds, 'verification_seconds': verification_seconds,
-            'pipeline_verification': pipeline_verification, 'timing_scope': 'coordinator-exclusive-wall-v1',
-            'collection_elapsed_seconds': collection_elapsed_seconds,
-            'overlapped_verification_seconds': pipelined_verification_seconds,
-            'verified_batch_seconds': collection_seconds+verification_seconds,
+            'batch_size': batch_size, 'pipeline_verification': pipeline_verification,
             'attempts': attempts, 'optimizer_updates': 0, 'training_samples_admitted': 0})
         return result
     except BaseException as error:
@@ -624,10 +594,8 @@ def _collect_worker(args):
                 ledger=True, replay=True, interface=interface, agents={pilot.COLORS[seat]: {
                     'checkpoint': loaded.checkpoint, 'kind': 'recurrent-policy',
                     'evaluation_only': row['phase'] != 'training'}})
-            collection_started = time.monotonic()
             collected = collector.run_episode(env, episode=row['episode'], seed=row['engine_seed'],
                                               max_requests=cfg['ordinary_choice_limit'])
-            collection_seconds = time.monotonic()-collection_started
             experience = collected.experience if row['phase'] == 'training' else collected
             manifest = experience.manifest
             require(manifest['status'] in ('completed', 'truncated'), 'Technical episode failure is unscored')
@@ -642,7 +610,7 @@ def _collect_worker(args):
                     'checkpoint': loaded.checkpoint, 'weights_sha256': loaded.weights_sha256,
                     'opponent_identity': opponent, 'environment_limits': asdict(limits),
                     'outcomes': manifest['outcomes_by_player'], 'rewards': manifest['rewards_by_player'],
-                    'collection_seconds': collection_seconds, 'external_player_histories': 1}}
+                    'external_player_histories': 1}}
     except BaseException as error:
         primary = error
         failure = _retain_worker_failure(args, env, collector, error, budget)

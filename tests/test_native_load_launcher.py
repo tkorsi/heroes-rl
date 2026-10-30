@@ -24,27 +24,18 @@ def evidence():
                "attempts": [{"path": name, "status": "completed", "returncode": 0,
                              "owned_cleanup_verified": True} for name in ("native", "python")],
                "native_seconds": 2.0, "python_seconds": 4.0, "kernel_speedup": 2.0}
-    native = {"repetitions": [{"average_cpu_cores": 4.0,
-                              "process_lifetime_peak_rss_bytes": 2**30,
-                              "timings": {"native_peak_parallel_replays": 7,
-                                          "native_peak_forward_workers": 8,
-                                          "native_forward_parallel_frames": 100,
-                                          "native_tape_replays": 200, "native_engine_replays": 0}}]}
-    return request, summary, native
+    return request, summary
 
 
 class NativeLoadResultTests(unittest.TestCase):
-    def test_capacity_percentage_uses_available_machine_not_smaller_budget(self):
+    def test_numerical_result_needs_no_runtime_telemetry(self):
         result = launcher.load_result(*evidence())
         self.assertEqual(result["available_cpus"], 16)
         self.assertEqual(result["cpu_budget"], 8)
-        self.assertEqual(result["available_cpu_capacity_percent"], 25.0)
-        self.assertEqual(result["native_process_lifetime_peak_rss_bytes"], 2**30)
-        self.assertEqual(result["native_peak_concurrent_text_replays"], 7)
-        self.assertEqual(result["native_peak_concurrent_frame_workers"], 8)
-        self.assertEqual(result["native_parallel_frames"], 100)
-        self.assertEqual(result["native_tape_replays"], 200)
-        self.assertEqual(result["native_engine_replays"], 0)
+        self.assertFalse(result["performance_telemetry"])
+        self.assertNotIn("native_mean_cpu_cores", result)
+        self.assertNotIn("native_peak_concurrent_frame_workers", result)
+        self.assertEqual(result["native_ppo_seconds"], 2.0)
         self.assertEqual(result["exact_state_checks_passed"], 13)
         self.assertEqual(result["official_updates"], 0)
         self.assertEqual(result["seed_reservations"], 0)
@@ -59,10 +50,10 @@ class NativeLoadResultTests(unittest.TestCase):
                      lambda s: s["attempts"][1].update(status="failed"),
                      lambda s: s["attempts"][1].update(returncode=7))
         for mutate in mutations:
-            request, summary, native = evidence()
+            request, summary = evidence()
             mutate(summary)
             with self.subTest(summary=summary), self.assertRaises(ValueError):
-                launcher.load_result(request, summary, native)
+                launcher.load_result(request, summary)
 
 
 class NativeLoadLauncherTests(unittest.TestCase):
@@ -105,7 +96,7 @@ class NativeLoadLauncherTests(unittest.TestCase):
     def mock_completed_pair(self, command):
         output = Path(command[command.index("--output") + 1])
         output.mkdir()
-        for name, value in zip(("request.json", "summary.json", "native.json"), evidence()):
+        for name, value in zip(("request.json", "summary.json"), evidence()):
             (output / name).write_text(json.dumps(value))
         print("Preserved mocked pair evidence")
         return 0
@@ -152,11 +143,12 @@ class NativeLoadLauncherTests(unittest.TestCase):
                             ("--wall-seconds", "120"), ("--cpu-cap", "8"), ("--order", "PN")):
             self.assertEqual(command[command.index(name) + 1], value)
         self.accept.assert_called_once_with(
-            self.artifacts / "native-learner-builds/mac-utilization-v1-attempt6/manifest.json", SHA, cpu_cap=8)
+            self.artifacts / "native-learner-builds/remove-telemetry-v1-attempt1/manifest.json", SHA, cpu_cap=8)
         output = self.written_output()
         result = json.loads((output / "load-report.json").read_text())
-        self.assertEqual(result["available_cpu_capacity_percent"], 25.0)
-        self.assertIn("25.0% of available CPU capacity", self.stdout.getvalue())
+        self.assertFalse(result["performance_telemetry"])
+        self.assertIn("Learner performance telemetry is disabled", self.stdout.getvalue())
+        self.assertNotIn("Native mean CPU", self.stdout.getvalue())
         self.assertIn("Official updates and new seeds: 0", self.stdout.getvalue())
         self.assertIn("Preserved mocked pair evidence", output.with_suffix(".log").read_text())
         self.assertEqual(output.with_suffix(".log").stat().st_mode & 0o777, 0o600)

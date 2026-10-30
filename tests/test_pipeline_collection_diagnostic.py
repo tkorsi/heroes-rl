@@ -75,6 +75,36 @@ class PipelineDiagnosticTests(unittest.TestCase):
 
 
 class RevealedPipelineDiagnosticTests(unittest.TestCase):
+    def test_telemetry_free_study_requires_completed_1728_and_preserves_older_contract(self):
+        from experiments.learner import interaction_guard, local_script_training as local
+        contract = diagnostic.study_contract(diagnostic.TELEMETRY_FREE_RELEASE)
+        self.assertEqual(contract, dict(schema=diagnostic.REVEALED_SCHEMA,
+            policy_support=interaction_guard.REVEALED_VERSION,
+            checkpoint_selection='completed_after', policy_checkpoint_update=1728))
+        self.assertEqual(diagnostic.study_contract(diagnostic.REVEALED_RELEASE)['policy_checkpoint_update'], 1585)
+        launch = dict(contract, schema=contract['schema']+'-launch',
+                      study_release=diagnostic.TELEMETRY_FREE_RELEASE)
+        self.assertEqual(diagnostic.launch_contract(launch), contract)
+        with self.assertRaisesRegex(ValueError, 'declared completed checkpoint'):
+            diagnostic.launch_contract(dict(launch, policy_checkpoint_update=1585))
+        with tempfile.TemporaryDirectory() as tmp:
+            plan_path = Path(tmp).resolve()/'plan.json'; plan_path.write_text('{}')
+            initial = {'path': 'before1728.pt', 'sha256': 'initial', 'bytes': 1}
+            original = {'checkpoint': initial}
+            report = {'cumulative_progress': {'updates': 1728},
+                      'after_checkpoint': {'policy': {'after': 'policy'}, 'resume': {'after': 'resume'}}}
+            after = dict(plan=diagnostic.binding(plan_path), report={'after': 'report'},
+                         initial_checkpoint=initial, **report['after_checkpoint'])
+            with patch.object(local, 'descriptor_from_batch', return_value=after), \
+                    patch.object(local, 'read_descriptor', return_value=(original, report)):
+                self.assertEqual(diagnostic.selected_parent(plan_path, original, report,
+                    diagnostic.TELEMETRY_FREE_RELEASE), after)
+                for update in (1585, 1727, 1729):
+                    with self.subTest(update=update), patch.object(local, 'read_descriptor',
+                            return_value=(original, dict(report, cumulative_progress={'updates': update}))):
+                        with self.assertRaisesRegex(ValueError, 'wrong complete checkpoint'):
+                            diagnostic.selected_parent(plan_path, original, report, diagnostic.TELEMETRY_FREE_RELEASE)
+
     def test_new_study_is_explicit_and_the_historical_contract_is_unchanged(self):
         from experiments.learner import interaction_guard
         old = diagnostic.study_contract(diagnostic.LEGACY_RELEASE)

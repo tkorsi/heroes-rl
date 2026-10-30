@@ -28,6 +28,8 @@ SCHEMA = 'heroes-pipeline-collection-diagnostic-v1'
 REVEALED_SCHEMA = 'heroes-revealed-pipeline-collection-diagnostic-v1'
 LEGACY_RELEASE = 'cpu-next-launch-v1'
 REVEALED_RELEASE = 'revealed-movement-1585-v1'
+TELEMETRY_FREE_RELEASE = 'telemetry-free-1728-v1'
+STUDY_RELEASES = (LEGACY_RELEASE, REVEALED_RELEASE, TELEMETRY_FREE_RELEASE)
 BASE = copies.ARTIFACTS/'run-investigations/pipeline-collection'
 ARMS = (('sequential-verification', False), ('pipelined-verification', True))
 require, binding = copies.require, copies.binding
@@ -35,10 +37,11 @@ require, binding = copies.require, copies.binding
 
 def study_contract(release):
     from experiments.learner import interaction_guard
-    require(release in (LEGACY_RELEASE, REVEALED_RELEASE), 'Unsupported isolated study release')
-    if release == REVEALED_RELEASE:
+    require(release in STUDY_RELEASES, 'Unsupported isolated study release')
+    if release in (REVEALED_RELEASE, TELEMETRY_FREE_RELEASE):
         return dict(schema=REVEALED_SCHEMA, policy_support=interaction_guard.REVEALED_VERSION,
-                    checkpoint_selection='completed_after', policy_checkpoint_update=1585)
+                    checkpoint_selection='completed_after',
+                    policy_checkpoint_update=1585 if release == REVEALED_RELEASE else 1728)
     return dict(schema=SCHEMA, policy_support=interaction_guard.VERSION,
                 checkpoint_selection='completed_before', policy_checkpoint_update=1392)
 
@@ -50,7 +53,7 @@ def launch_contract(launch):
             'Diagnostic schema and policy support disagree')
     if contract['schema'] == REVEALED_SCHEMA:
         require(all(launch.get(key) == contract[key] for key in ('checkpoint_selection', 'policy_checkpoint_update')),
-                'Revealed study must use the completed checkpoint 1585')
+                'Revealed study must use its declared completed checkpoint')
     return contract
 
 
@@ -58,12 +61,12 @@ def selected_parent(plan_path, original_plan, report, release):
     """Choose the actual completed after-state only for the explicit new study."""
     from experiments.learner import local_script_training as local
     contract = study_contract(release)
-    descriptor = (local.descriptor_from_batch(plan_path) if release == REVEALED_RELEASE
+    descriptor = (local.descriptor_from_batch(plan_path) if contract['checkpoint_selection'] == 'completed_after'
                   else original_plan['parent_descriptor'])
     _, parent_report = local.read_descriptor(descriptor)
     require(parent_report.get('cumulative_progress', {}).get('updates') == contract['policy_checkpoint_update'],
             'Diagnostic selected the wrong complete checkpoint')
-    if release == REVEALED_RELEASE:
+    if contract['checkpoint_selection'] == 'completed_after':
         require(parent_report == report and descriptor['plan'] == binding(plan_path)
                 and descriptor['initial_checkpoint'] == original_plan['checkpoint']
                 and all(descriptor[key] == report['after_checkpoint'][key] for key in ('policy', 'resume')),
@@ -208,7 +211,9 @@ def prepare(args, lease):
     release = getattr(args, 'study_release', LEGACY_RELEASE)
     contract = study_contract(release)
     selected = selected_parent(plan_path, original_plan, report, release)
-    require(original_plan.get('policy_support') == local.interaction_guard.VERSION,
+    parent_support = (local.interaction_guard.REVEALED_VERSION if release == TELEMETRY_FREE_RELEASE
+                      else local.interaction_guard.VERSION)
+    require(original_plan.get('policy_support') == parent_support,
             'The diagnostic preserves the declared visible interaction budget')
     require(120 <= args.seconds <= 1800, 'Use a bounded 120 to 1800 second study')
     output.mkdir(parents=True, mode=0o700)
@@ -235,7 +240,7 @@ def prepare(args, lease):
         runtime=original_plan['runtime'], hard_deadline_monotonic=now_mono+args.seconds,
         hard_deadline_unix=now_wall+args.seconds, maximum_seconds=args.seconds,
         optimizer_updates=0, training_samples_admitted=0)
-    if release == REVEALED_RELEASE:
+    if contract['schema'] == REVEALED_SCHEMA:
         launch.update(study_release=release, checkpoint_selection=contract['checkpoint_selection'],
                       policy_checkpoint_update=contract['policy_checkpoint_update'])
     write_new(output/'launch.json', launch)
@@ -311,7 +316,7 @@ def study_child(args):
                          'An active user run may compete for resources; it is never controlled by this diagnostic.',
                          'Equal seeds may produce different Nullkiller histories; semantic digests are compared.'])
         if contract['schema'] == REVEALED_SCHEMA:
-            report.update(study_release=REVEALED_RELEASE, checkpoint_selection=contract['checkpoint_selection'],
+            report.update(study_release=launch['study_release'], checkpoint_selection=contract['checkpoint_selection'],
                           policy_checkpoint_update=contract['policy_checkpoint_update'])
             report['limitations'].append('Both arms use the newly authorized revealed-target support; this is not a policy-quality comparison.')
         started = time.monotonic()
@@ -339,6 +344,7 @@ def study_child(args):
                     entry = dict(seat=seat, plan=binding(folder/'plan.json'), status='running')
                     arm['batches'].append(entry)
                     batch = None
+                    batch_started = time.monotonic()
                     try:
                         batch = parallel.collect_batch(folder/'plan.json', entry['plan']['sha256'], state.model,
                             state.checkpoint, workers=4, verification_workers=4, pipeline_verification=pipelined,
@@ -352,10 +358,8 @@ def study_child(args):
                         attempts = [enrich_attempt(row, contract['policy_support']) for row in batch.attempts]
                         arm['attempts'].extend(attempts)
                         entry.update(status='passed', report=binding(folder/'execution/parallel-collection/result.json'),
-                            collection_seconds=batch.collection_seconds, verification_seconds=batch.verification_seconds,
-                            collection_elapsed_seconds=batch.collection_elapsed_seconds,
-                            overlapped_verification_seconds=batch.overlapped_verification_seconds,
-                            verified_batch_seconds=batch.verified_batch_seconds,
+                            timing_scope='diagnostic-outer-verified-batch-wall-v1',
+                            verified_batch_seconds=time.monotonic()-batch_started,
                             semantic_digests=[game_digest(row['episode_directory']) for row in attempts])
                     except BaseException as error:
                         entry.update(status='failed', error=type(error).__name__+': '+str(error))
@@ -456,8 +460,8 @@ def main():
     run.add_argument('--completed-plan', type=Path, required=True)
     run.add_argument('--output', type=Path, required=True)
     run.add_argument('--seconds', type=int, default=900)
-    run.add_argument('--study-release', choices=(LEGACY_RELEASE, REVEALED_RELEASE), default=LEGACY_RELEASE,
-                     help='The revealed study explicitly validates the completed after-state at update 1585')
+    run.add_argument('--study-release', choices=STUDY_RELEASES, default=LEGACY_RELEASE,
+                     help='Select the explicit checkpoint and policy-support contract for this excluded study')
     study = sub.add_parser('study', help=argparse.SUPPRESS)
     study.add_argument('--output', type=Path, required=True)
     study.add_argument('--sha256', required=True)

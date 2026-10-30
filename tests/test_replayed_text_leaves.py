@@ -722,13 +722,13 @@ class ReplayedTextLeafTests(unittest.TestCase):
                         before_step=fail)
         self.assertNotIn("_leaf_replay_state", self.model.__dict__)
 
-    def test_the_numerical_experiment_takes_precedence_and_is_reported(self):
+    def test_the_numerical_experiment_takes_precedence_without_telemetry(self):
         ppo.EXPERIMENTS = frozenset({"shared_graph_encodings"})
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0003)
         with patch.object(cm._TextOccurrence, "apply", side_effect=AssertionError("replayed under the experiment")):
             report = ppo_update(self.model, optimizer, self.rollouts, config=PPOConfig(),
                                 generator=torch.Generator().manual_seed(3))
-        self.assertEqual(report.timings_seconds["experiment_shared_graph_encodings"], 1.0)
+        self.assertIsNone(report.timings_seconds)
 
     def leaf_gradients(self, texts, replay):
         """Parameter gradients of weighted text leaf encodings, each computed in its own frame cache."""

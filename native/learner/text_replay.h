@@ -19,16 +19,6 @@
 namespace native_text {
 using torch::autograd::Node;
 using torch::autograd::variable_list;
-using ReplayClock = std::chrono::steady_clock;
-
-struct WallTimer {
-    int64_t& target;
-    ReplayClock::time_point started = ReplayClock::now();
-    explicit WallTimer(int64_t& value) : target(value) {}
-    ~WallTimer() {
-        target += std::chrono::duration_cast<std::chrono::nanoseconds>(ReplayClock::now() - started).count();
-    }
-};
 
 struct ParameterState {
     const void* data;
@@ -102,7 +92,6 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
     Tensor output, value;
     std::shared_ptr<BuiltinReplayTape> tape;
     std::string tape_fallback_reason;
-    mutable std::atomic<int64_t> tape_replays{0}, engine_replays{0};
 
     static std::shared_ptr<Leaf> make(const variable_list& parameters, const std::string& text, int64_t features) {
         auto leaf = std::make_shared<Leaf>();
@@ -184,8 +173,6 @@ struct Leaf : std::enable_shared_from_this<Leaf> {
         if (!used_tape) torch::autograd::grad({output}, aliases, {gradient}, true, false, true);
         for (size_t i = 0; i < parameters.size(); ++i)
             TORCH_CHECK(cursors[i] == offsets[i + 1], "Native text replay contribution count changed");
-        if (used_tape) tape_replays.fetch_add(1, std::memory_order_relaxed);
-        else engine_replays.fetch_add(1, std::memory_order_relaxed);
         return contributions;
     }
 
@@ -211,7 +198,6 @@ class ReplayPool {
     int initialized = 0;
     std::exception_ptr startup_error;
     at::ThreadLocalState thread_state;
-    std::atomic<int64_t> active{0}, peak{0}, completed{0}, helped{0};
 
     void worker() {
         std::optional<at::ThreadLocalStateGuard> state_guard;
@@ -242,7 +228,7 @@ class ReplayPool {
                 job = queue.front();
                 queue.pop_front();
             }
-            run(job, false);
+            run(job);
         }
     }
 
@@ -267,21 +253,15 @@ public:
         }
         available.notify_one();
     }
-    bool run(const std::shared_ptr<ReplayJob>& job, bool on_main) {
+    bool run(const std::shared_ptr<ReplayJob>& job) {
         int expected = 0;
         if (!job->state.compare_exchange_strong(expected, 1)) return false;
-        const auto running = active.fetch_add(1) + 1;
-        auto maximum = peak.load();
-        while (running > maximum && !peak.compare_exchange_weak(maximum, running)) {}
         try {
             job->promise.set_value(job->leaf->replay(job->gradient));
         } catch (...) {
             job->promise.set_exception(std::current_exception());
         }
         job->gradient = Tensor();
-        active.fetch_sub(1);
-        completed.fetch_add(1);
-        if (on_main) helped.fetch_add(1);
         job->state.store(2);
         return true;
     }
@@ -294,10 +274,6 @@ public:
         available.notify_all();
         for (auto& thread : threads) if (thread.joinable()) thread.join();
         threads.clear();
-    }
-    std::map<std::string, int64_t> statistics() const {
-        return {{"peak_parallel_replays", peak.load()}, {"completed_replays", completed.load()},
-                {"main_thread_replays", helped.load()}};
     }
 };
 
@@ -337,11 +313,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
     std::exception_ptr reducer_error;
     int task = -1, workers;
     bool active = false, broken = false, closed = false;
-    std::atomic<int64_t> occurrences{0};
-    int64_t folded = 0;
-    int64_t producer_backward_nanoseconds = 0, fold_nanoseconds = 0, future_wait_nanoseconds = 0;
-    int64_t backpressure_nanoseconds = 0, max_pending_replays = 0;
-    int64_t prewarm_nanoseconds = 0, prewarmed_leaves = 0;
 
     Scope(variable_list values, int count) : parameters(std::move(values)), workers(count) {
         TORCH_CHECK(workers >= 0 && workers <= 255, "Native text replay supports 0 to 255 workers");
@@ -400,7 +371,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
         check();
         TORCH_CHECK(!active && count >= 1 && count <= 256,
                     "Native text prewarm requires an inactive scope and 1 to 256 workers");
-        WallTimer timer(prewarm_nanoseconds);
         std::unordered_set<std::string> seen;
         std::vector<std::string> missing;
         for (const auto& text : texts)
@@ -448,7 +418,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
         // Private alias graphs are independent. Outer occurrence priorities are
         // retained by serial construction or checked main-thread rebasing.
         for (size_t i = 0; i < missing.size(); ++i) leaves.emplace(std::move(missing[i]), std::move(prepared[i]));
-        prewarmed_leaves += missing.size();
     }
     Tensor occurrence(const std::string& text, int64_t features) {
         check();
@@ -461,7 +430,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
         auto result = found->second->value.clone();
         auto node = std::make_shared<Occurrence>(found->second, shared_from_this());
         torch::autograd::set_history(result, node);
-        occurrences.fetch_add(1, std::memory_order_relaxed);
         return result;
     }
     Tensor occurrence_prepared(const std::string& text, int64_t features, const variable_list& aliases) {
@@ -489,14 +457,12 @@ struct Scope : std::enable_shared_from_this<Scope> {
         auto result = leaf->value.clone();
         auto node = std::make_shared<Occurrence>(leaf, shared_from_this(), arguments);
         torch::autograd::set_history(result, node);
-        occurrences.fetch_add(1, std::memory_order_relaxed);
         return result;
     }
     bool defers() const {
         return active && task >= 0 && torch::autograd::get_current_graph_task_id() == task && at::get_num_threads() == 1;
     }
     void fold_job(const std::shared_ptr<ReplayJob>& job, variable_list values) {
-        WallTimer timer(fold_nanoseconds);
         size_t cursor = 0;
         at::NoGradGuard no_grad;
         for (size_t i = 0; i < parameters.size(); ++i) {
@@ -506,7 +472,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
                 if (!value.defined()) continue;
                 if (!sums[i].defined()) sums[i] = at::empty_like(parameters[i]).copy_(value);
                 else sums[i].add_(value);
-                ++folded;
             }
         }
         TORCH_CHECK(cursor == values.size(), "Native text replay produced extra contributions");
@@ -516,11 +481,7 @@ struct Scope : std::enable_shared_from_this<Scope> {
     }
     void fold_head() {
         auto job = pending[head];
-        variable_list values;
-        {
-            WallTimer timer(future_wait_nanoseconds);
-            values = job->future.get();
-        }
+        auto values = job->future.get();
         fold_job(job, std::move(values));
         pending[head++].reset();
     }
@@ -548,7 +509,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
                 }
                 variable_list values;
                 {
-                    WallTimer timer(future_wait_nanoseconds);
                     // A cleanup stop must not wait forever for a job that the
                     // replay pool has not claimed. Polling sleeps on the future.
                     while (job->future.wait_for(std::chrono::milliseconds(1)) != std::future_status::ready) {
@@ -588,7 +548,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
             {
                 std::unique_lock<std::mutex> lock(reducer_mutex);
                 if (ordered_pending.size() >= 1024) {
-                    WallTimer timer(backpressure_nanoseconds);
                     reducer_space.wait(lock, [&] {
                         return reducer_stopping || reducer_error || ordered_pending.size() < 1024;
                     });
@@ -596,7 +555,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
                 if (reducer_error) std::rethrow_exception(reducer_error);
                 TORCH_CHECK(!reducer_stopping && !producer_finished, "Native ordered reducer is closed");
                 ordered_pending.push_back(job);
-                max_pending_replays = std::max<int64_t>(max_pending_replays, ordered_pending.size());
             }
             pool->submit(job);
             reducer_available.notify_one();
@@ -606,7 +564,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
         if (pending.size() - head >= 1024) fold_head();
         auto job = std::make_shared<ReplayJob>(leaf, gradient);
         pending.push_back(job);
-        max_pending_replays = std::max<int64_t>(max_pending_replays, pending.size() - head);
         pool->submit(job);
         while (head < pending.size() && pending[head]->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             fold_head();
@@ -617,7 +574,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
                     "Native text replay backward is already active or completed");
         TORCH_CHECK(loss.defined() && loss.numel() == 1 && loss.grad_fn(), "Native text replay requires a scalar differentiable loss");
         if (!pool) {
-            WallTimer timer(producer_backward_nanoseconds);
             torch::autograd::backward({loss});
             return;
         }
@@ -633,10 +589,7 @@ struct Scope : std::enable_shared_from_this<Scope> {
             root.grad_fn()->add_pre_hook(std::make_unique<EnterHook>(shared_from_this()));
         }
         try {
-            {
-                WallTimer timer(producer_backward_nanoseconds);
-                torch::autograd::backward({root});
-            }
+            torch::autograd::backward({root});
             if (workers >= 2) {
                 {
                     std::lock_guard<std::mutex> lock(reducer_mutex);
@@ -651,7 +604,7 @@ struct Scope : std::enable_shared_from_this<Scope> {
             while (head < pending.size()) {
                 if (pending[head]->future.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
                     cursor = std::max(cursor, head);
-                    while (cursor < pending.size() && !pool->run(pending[cursor], true)) ++cursor;
+                    while (cursor < pending.size() && !pool->run(pending[cursor])) ++cursor;
                     if (cursor < pending.size()) { ++cursor; continue; }
                 }
                 fold_head();
@@ -682,26 +635,6 @@ struct Scope : std::enable_shared_from_this<Scope> {
         pending.clear(); ordered_pending.clear(); sums.clear();
         active = false; closed = true;
         TORCH_CHECK(!reject_unfinished || !unfinished, "Native text replay scope closed with unfinished backward work");
-    }
-    std::map<std::string, int64_t> statistics() const {
-        auto result = pool ? pool->statistics() : std::map<std::string, int64_t>{};
-        int64_t tape_leaf_count = 0, tape_replay_count = 0, engine_replay_count = 0;
-        for (const auto& [_, leaf] : leaves) {
-            tape_leaf_count += leaf->tape_fallback_reason.empty();
-            tape_replay_count += leaf->tape_replays.load(std::memory_order_relaxed);
-            engine_replay_count += leaf->engine_replays.load(std::memory_order_relaxed);
-        }
-        result.insert({{"workers", workers}, {"unique_texts", static_cast<int64_t>(leaves.size())},
-                       {"occurrences", occurrences.load(std::memory_order_relaxed)}, {"folded_contributions", folded},
-                       {"tape_leaves", tape_leaf_count}, {"tape_replays", tape_replay_count},
-                       {"engine_replays", engine_replay_count},
-                       {"reducer_threads", workers >= 2 ? 1 : 0},
-                       {"replay_threads", workers - (workers >= 2 ? 1 : 0)},
-                       {"producer_backward_nanoseconds", producer_backward_nanoseconds},
-                       {"fold_nanoseconds", fold_nanoseconds}, {"future_wait_nanoseconds", future_wait_nanoseconds},
-                       {"backpressure_nanoseconds", backpressure_nanoseconds}, {"max_pending_replays", max_pending_replays},
-                       {"prewarm_nanoseconds", prewarm_nanoseconds}, {"prewarmed_leaves", prewarmed_leaves}});
-        return result;
     }
 };
 

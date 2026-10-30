@@ -100,7 +100,7 @@ class PrefixPoolTests(unittest.TestCase):
             generator = torch.Generator().manual_seed(45)
             report = ppo_update(model, optimizer, tuple(replace(item) for item in self.rollouts),
                                 config=PPOConfig(decisions_per_window=2, windows_per_minibatch=2), generator=generator)
-            self.assertEqual("prefix_helpers" in report.timings_seconds, helpers > 0)
+            self.assertIsNone(report.timings_seconds)
             results.append((replace(report, timings_seconds=None), model.state_dict(), [p.grad for p in model.parameters()],
                             optimizer.state_dict(), generator.get_state()))
         self.assertEqual(results[0][0], results[1][0])

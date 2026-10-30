@@ -113,6 +113,9 @@ class NativeLearnerKernelTests(unittest.TestCase):
         (torch.stack([item.log_prob for item in expected]) + torch.stack([item.value for item in expected])).sum().backward()
         equal_tree(self, actual, [p.grad for p in self.model.parameters()])
 
+    def test_native_model_has_no_runtime_statistics_api(self):
+        self.assertFalse(hasattr(self.native, "text_replay_statistics"))
+
     def test_native_text_graph_reuse_and_parallel_backward_preserve_every_gradient(self):
         records = self.rollout.decisions
         expected = ppo.evaluate_window(self.model, self.inputs, records, start_seq=0)
@@ -133,21 +136,6 @@ class NativeLearnerKernelTests(unittest.TestCase):
                 equal_tree(self, [parameter.grad for parameter in self.model.parameters()], gradients)
             finally:
                 self.native.end_text_replay()
-            statistics = self.native.text_replay_statistics()
-            self.assertEqual(statistics["workers"], workers)
-            self.assertEqual(statistics["reducer_threads"], int(workers >= 2))
-            self.assertEqual(statistics["replay_threads"], workers - int(workers >= 2))
-            self.assertGreater(statistics["occurrences"], statistics["unique_texts"])
-            if workers:
-                self.assertGreater(statistics["completed_replays"], 0)
-                self.assertGreater(statistics["folded_contributions"], statistics["completed_replays"])
-                self.assertGreaterEqual(statistics["peak_parallel_replays"], 1)
-                self.assertLessEqual(statistics["peak_parallel_replays"], workers - 1 if workers >= 2 else 2)
-                self.assertLessEqual(statistics["max_pending_replays"], 1024)
-                self.assertGreater(statistics["fold_nanoseconds"], 0)
-                if workers >= 2:
-                    self.assertEqual(statistics["main_thread_replays"], 0)
-            self.assertGreater(statistics["producer_backward_nanoseconds"], 0)
             equal_tree(self, torch.get_rng_state(), rng)
             self.native.close()  # Cleanup is idempotent.
 
@@ -169,14 +157,6 @@ class NativeLearnerKernelTests(unittest.TestCase):
         for left, right in zip(actual, expected):
             if left is not None:
                 self.assertTrue(torch.equal(left.view(torch.int32), right.view(torch.int32)))
-        statistics = self.native.text_replay_statistics()
-        self.assertEqual(statistics['completed_replays'], 2050)
-        self.assertEqual(statistics['occurrences'], 2050)
-        self.assertEqual(statistics['main_thread_replays'], 0)
-        self.assertEqual(statistics['reducer_threads'], 1)
-        self.assertEqual(statistics['replay_threads'], 1)
-        self.assertGreater(statistics['max_pending_replays'], 0)
-        self.assertLessEqual(statistics['max_pending_replays'], 1024)
 
     def test_outer_backward_failure_closes_reducer_after_work_was_queued(self):
         history = self.backend.NativeHistory([("text", b"queued cleanup", [])], [])
@@ -192,7 +172,6 @@ class NativeLearnerKernelTests(unittest.TestCase):
         finally:
             handle.remove()
             self.native.close()
-        self.assertGreater(self.native.text_replay_statistics()['max_pending_replays'], 0)
         self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
                             if name == 'byte.weight' or name.startswith('text_gru.')))
         self.native.begin_text_replay(3)
@@ -266,7 +245,6 @@ class NativeLearnerKernelTests(unittest.TestCase):
         finally:
             handle.remove()
             self.native.close()
-        self.assertGreater(self.native.text_replay_statistics()["completed_replays"], 0)
         self.assertTrue(all(parameter.grad is None for name, parameter in self.model.named_parameters()
                             if name == "byte.weight" or name.startswith("text_gru.")))
         self.model.zero_grad(set_to_none=True)
@@ -291,7 +269,8 @@ class NativeLearnerKernelTests(unittest.TestCase):
                 with patch.object(ppo, "NATIVE_EXECUTION", selected), patch.object(ppo, "PREFIX_HELPERS", 0), \
                         patch.object(ppo, "EXPERIMENTS", frozenset()):
                     reports.append(ppo.ppo_update(model, optimizer, rollouts, config=config, generator=generator))
-            self.assertEqual(replace(reports[0], timings_seconds=None), replace(reports[1], timings_seconds=None))
+            self.assertEqual(reports[0], reports[1])
+            self.assertIsNone(reports[1].timings_seconds)
             equal_tree(self, candidate.state_dict(), reference.state_dict())
             equal_tree(self, [p.grad for p in candidate.parameters()], [p.grad for p in reference.parameters()])
             equal_tree(self, optimizers[1].state_dict(), optimizers[0].state_dict())
@@ -341,10 +320,8 @@ class NativeLearnerKernelTests(unittest.TestCase):
             equal_tree(self, torch.get_rng_state(), torch_rng)
             self.assertEqual(random.getstate(), python_rng)
         self.assertEqual(progresses, [TrainingProgress(1, 4, 24)] * 2)
-        self.assertEqual(replace(reports[0], timings_seconds=None), replace(reports[1], timings_seconds=None))
-        self.assertGreater(reports[1].timings_seconds['native_tape_replays'], 0)
-        self.assertGreater(reports[1].timings_seconds['native_forward_parallel_frames'], 0)
-        self.assertNotIn('native_tape_replays', reports[0].timings_seconds)
+        self.assertEqual(reports[0], reports[1])
+        self.assertIsNone(reports[1].timings_seconds)
         self.assertFalse(torch.equal(reference.coordinate[0].weight, before_coordinate))
         self.assertTrue(optimizers[0].state_dict()['state'])
         equal_tree(self, candidate.state_dict(), reference.state_dict())

@@ -11,7 +11,6 @@ from __future__ import annotations
 from contextlib import nullcontext
 from dataclasses import asdict, dataclass, field
 import math
-from time import perf_counter
 
 import torch
 
@@ -274,7 +273,7 @@ class PPOReport:
     clip_fraction: float
     entropy: None = None
     purpose: str = "synthetic_optimizer_test"
-    # Wall-clock diagnostics do not affect deterministic report equivalence.
+    # Retain the historical report field without collecting performance telemetry.
     timings_seconds: dict[str, float] | None = field(default=None, compare=False)
 
 
@@ -314,9 +313,6 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     gameplay runner verifies native artifacts and replay before using this kernel.
     """
     from .contextual_model import encode_history, frame_keys_until
-    started = perf_counter()
-    timings = dict(history_encoding=0.0, behavior_verification=0.0, prefix_reconstruction=0.0,
-                   loss_forward=0.0, backward_and_clip=0.0, optimizer_step=0.0)
     if type(config) is not PPOConfig or type(generator) is not torch.Generator or generator.device.type != "cpu":
         raise ValueError("Expected explicit PPO config and CPU minibatch RNG")
     if max_optimizer_steps is not None and (type(max_optimizer_steps) is not int or max_optimizer_steps < 1):
@@ -325,13 +321,9 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     optimized = [id(p) for group in optimizer.param_groups for p in group["params"]]
     if set(optimized) != owned or len(optimized) != len(owned):
         raise ValueError("Optimizer must own exactly the current trainable model parameters")
-    phase = perf_counter()
     from .contextual_rollout import behavior_guard_version
     inputs = tuple(encode_history(item.history, guard_version=behavior_guard_version(item.decisions)) for item in rollouts)
-    timings["history_encoding"] = perf_counter() - phase
-    phase = perf_counter()
     _verify_behavior(model, rollouts, inputs)
-    timings["behavior_verification"] = perf_counter() - phase
     native_model = native_backend = native_inputs = None
     if NATIVE_EXECUTION is not None:
         from .native_backend import load_backend
@@ -341,7 +333,6 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 or type(NATIVE_EXECUTION["prefix_threads"]) is not int or not 1 <= NATIVE_EXECUTION["prefix_threads"] <= 256
                 or PREFIX_HELPERS or EXPERIMENTS):
             raise ValueError("Invalid or conflicting native learner execution")
-        phase = perf_counter()
         native_backend = load_backend(NATIVE_EXECUTION["manifest"], NATIVE_EXECUTION["sha256"])
         native_model = native_backend.NativeModel(dict(model.named_parameters()), model.config.feature_size,
                                                  model.config.hidden_size)
@@ -349,11 +340,6 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             pools.append(native_model)
         native_inputs = tuple(compile_history(model, encoded, item.decisions, native_backend)
                               for encoded, item in zip(inputs, rollouts))
-        timings["native_recipe_compilation"] = perf_counter() - phase
-        timings["native_prefix_threads"] = float(NATIVE_EXECUTION["prefix_threads"])
-        background_workers = max(0, NATIVE_EXECUTION["prefix_threads"] - 1)
-        timings["native_text_reducer_workers"] = float(background_workers >= 2)
-        timings["native_text_replay_workers"] = float(background_workers - (background_workers >= 2))
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)
@@ -381,19 +367,14 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     # Separate numerical experiment, never a default: exact encodings shared within each
     # minibatch graph change parameter gradients in floating-point summation order only.
     shared = "shared_graph_encodings" in EXPERIMENTS
-    if shared:
-        timings["experiment_shared_graph_encodings"] = 1.0
     # Memo keys of the unchanged histories, computed once per update instead of once per minibatch.
     # A caller's own replacement of prefix_states keeps the original call.
     prefix_keys = None if "prefix_states" in model.__dict__ else [[] for _ in inputs]
     pool = None
     if PREFIX_HELPERS and pools is not None and prefix_keys is not None and model._can_cache_prefix():
         from .prefix_pool import PrefixPool
-        phase = perf_counter()
         pool = PrefixPool(model, inputs, PREFIX_HELPERS)
         pools.append(pool)
-        timings["prefix_helpers"] = float(PREFIX_HELPERS)
-        timings["prefix_helper_start"] = perf_counter() - phase
     for _ in range(config.epochs):
         order = torch.randperm(len(windows), generator=generator).tolist()
         for batch_start in range(0, len(order), config.windows_per_minibatch):
@@ -408,7 +389,6 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             sharing.__enter__()
             if native_model is not None:
                 native_model.begin_text_replay(max(0, NATIVE_EXECUTION["prefix_threads"] - 1))
-            phase = perf_counter()
             boundaries = {}
             if model._can_cache_prefix():
                 for window in selected:
@@ -424,16 +404,12 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 keys = frame_keys_until(prefix_keys[index], inputs[index], max(stops))
                 vectors = None if pool is None else pool.vectors(index, max(stops), keys)
                 prefixes[index] = model.prefix_states(inputs[index], stops, vectors=vectors, keys=keys)
-            timings["prefix_reconstruction"] += perf_counter() - phase
             if native_model is not None:
-                phase = perf_counter()
                 for window in selected:
                     records = tuple(rollouts[window.rollout_index].samples[index].decision for index in window.sample_indices)
                     native_model.prepare_window_text(native_inputs[window.rollout_index], window.start_seq,
                         records[-1].decision_seq, [record.decision_seq for record in records],
                         NATIVE_EXECUTION["prefix_threads"])
-                timings["native_text_preparation"] = timings.get("native_text_preparation", 0.0) + perf_counter() - phase
-            phase = perf_counter()
             new_log_probs, new_values, old_log_probs, old_values, batch_advantages, returns = [], [], [], [], [], []
             for window in selected:
                 item = rollouts[window.rollout_index]
@@ -442,11 +418,7 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 if not prefixes:
                     # Hooks/custom or stochastic modules retain the original
                     # prefix/window execution order, without shared replay.
-                    timings["loss_forward"] += perf_counter() - phase
-                    phase = perf_counter()
                     state = model.prefix_states(inputs[window.rollout_index], (window.start_seq,))[window.start_seq]
-                    timings["prefix_reconstruction"] += perf_counter() - phase
-                    phase = perf_counter()
                 else:
                     state = prefixes[window.rollout_index][window.start_seq]
                 if native_model is None:
@@ -477,10 +449,8 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                     config.value_coefficient)
             # Discard the minibatch's state lookup before parameters change.
             del prefixes, state
-            timings["loss_forward"] += perf_counter() - phase
             if before_step is not None:
                 before_step()
-            phase = perf_counter()
             optimizer.zero_grad(set_to_none=True)
             if native_model is not None:
                 native_model.backward_with_text_replay(loss)
@@ -489,30 +459,12 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
             else:
                 loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), config.max_grad_norm, error_if_nonfinite=True)
-            timings["backward_and_clip"] += perf_counter() - phase
             sharing.__exit__(None, None, None)
             if native_model is not None:
                 native_model.end_text_replay()
-                stats = native_model.text_replay_statistics()
-                for name in ('unique_texts', 'occurrences', 'folded_contributions', 'completed_replays',
-                             'main_thread_replays', 'tape_leaves', 'tape_replays', 'engine_replays',
-                             'forward_parallel_frames', 'forward_rebased_nodes'):
-                    timings['native_' + name] = timings.get('native_' + name, 0.0) + float(stats.get(name, 0))
-                for name in ('producer_backward', 'fold', 'future_wait', 'backpressure', 'prewarm'):
-                    key = 'native_' + name + '_seconds'
-                    timings[key] = timings.get(key, 0.0) + float(stats.get(name + '_nanoseconds', 0)) / 1e9
-                timings['native_prewarmed_leaves'] = timings.get('native_prewarmed_leaves', 0.0) + float(stats.get('prewarmed_leaves', 0))
-                timings['native_max_pending_replays'] = max(timings.get('native_max_pending_replays', 0.0),
-                                                            float(stats.get('max_pending_replays', 0)))
-                timings['native_peak_parallel_replays'] = max(timings.get('native_peak_parallel_replays', 0.0),
-                                                             float(stats.get('peak_parallel_replays', 0)))
-                timings['native_peak_forward_workers'] = max(timings.get('native_peak_forward_workers', 0.0),
-                                                             float(stats.get('peak_forward_workers', 0)))
             if before_step is not None:
                 before_step()
-            phase = perf_counter()
             optimizer.step()
-            timings["optimizer_step"] += perf_counter() - phase
             if after_step is not None:
                 after_step()
             count = len(new_log_probs)
@@ -520,6 +472,4 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                 totals[index] += metric.detach().item() * count
             weighted_count += count
             steps += 1
-    timings["total"] = perf_counter() - started
-    return PPOReport(sum(len(item.samples) for item in rollouts), steps, *(value / weighted_count for value in totals),
-                     timings_seconds=timings)
+    return PPOReport(sum(len(item.samples) for item in rollouts), steps, *(value / weighted_count for value in totals))

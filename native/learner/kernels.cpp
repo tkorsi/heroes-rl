@@ -227,11 +227,9 @@ class NativeModel {
     std::map<std::string, Tensor> parameters;
     int64_t feature_size, hidden_size;
     std::shared_ptr<native_text::Scope> text_replay;
-    std::map<std::string, int64_t> replay_statistics;
     native_text::Scope* prepared_text_scope = nullptr;
     torch::autograd::variable_list prepared_text_aliases;
     mutable std::vector<AliasLease> forward_alias_leases;
-    mutable int64_t forward_parallel_frames = 0, forward_rebased_nodes = 0, peak_forward_workers = 0;
     NativeModel(std::map<std::string, Tensor>&& aliases, int64_t features, int64_t hidden,
                 native_text::Scope* borrowed, BorrowedAliases)
         : parameters(std::move(aliases)), feature_size(features), hidden_size(hidden), prepared_text_scope(borrowed) {
@@ -469,7 +467,6 @@ class NativeModel {
         PreparedWindow result;
         result.frames.resize(end - start + 1);
         std::atomic<size_t> next{0};
-        std::atomic<int64_t> active{0}, peak{0};
         std::atomic<bool> failed{false};
         std::exception_ptr error;
         std::mutex error_mutex;
@@ -482,12 +479,7 @@ class NativeModel {
                 while (!failed.load()) {
                     const auto job = next.fetch_add(1);
                     if (job >= jobs.size()) break;
-                    const auto running = active.fetch_add(1) + 1;
-                    auto maximum = peak.load();
-                    while (running > maximum && !peak.compare_exchange_weak(maximum, running)) {}
-                    try { result.frames[jobs[job] - start] = prepare_frame(history, jobs[job]); }
-                    catch (...) { active.fetch_sub(1); throw; }
-                    active.fetch_sub(1);
+                    result.frames[jobs[job] - start] = prepare_frame(history, jobs[job]);
                 }
             } catch (...) {
                 failed.store(true);
@@ -534,20 +526,17 @@ class NativeModel {
                     target.function->input_metadata(0).is_same_shape(alias),
                     "Native frame terminal substitution is not equivalent");
         }
-        peak_forward_workers = std::max(peak_forward_workers, peak.load());
         return result;
     }
 public:
     ~NativeModel() noexcept {
-        // Destruction joins before releasing weak-accumulator leases, without
-        // allocating the optional statistics snapshot used by explicit close().
+        // Destruction joins before releasing weak-accumulator leases.
         if (text_replay) text_replay->close(false);
         forward_alias_leases.clear();
     }
     void begin_text_replay(int workers) {
         require(!text_replay, "A native text replay scope is already open");
         require(forward_alias_leases.empty(), "Native frame aliases outlived their replay scope");
-        forward_parallel_frames = forward_rebased_nodes = peak_forward_workers = 0;
         std::vector<Tensor> values{p("byte.weight"), p("text_gru.weight_ih_l0"), p("text_gru.weight_hh_l0"),
                                   p("text_gru.bias_ih_l0"), p("text_gru.bias_hh_l0")};
         text_replay = std::make_shared<native_text::Scope>(std::move(values), workers);
@@ -563,11 +552,9 @@ public:
             scope->close();
         } catch (...) {
             forward_alias_leases.clear();
-            replay_statistics = scope->statistics();
             throw;
         }
         forward_alias_leases.clear();
-        replay_statistics = scope->statistics();
     }
     void close() {
         if (!text_replay) { forward_alias_leases.clear(); return; }
@@ -576,13 +563,6 @@ public:
         // operation reports unfinished work; cleanup preserves the primary error.
         scope->close(false);
         forward_alias_leases.clear();
-        replay_statistics = scope->statistics();
-    }
-    std::map<std::string, int64_t> text_replay_statistics() const {
-        auto result = text_replay ? text_replay->statistics() : replay_statistics;
-        result.insert({{"forward_parallel_frames", forward_parallel_frames},
-                       {"forward_rebased_nodes", forward_rebased_nodes}, {"peak_forward_workers", peak_forward_workers}});
-        return result;
     }
     NativeModel(const std::map<std::string, Tensor>& named, int64_t features, int64_t hidden)
         : parameters(named), feature_size(features), hidden_size(hidden) {
@@ -740,8 +720,6 @@ public:
                     link.node->next_edges()[link.edge] = prepared->canonical_edges[link.parameter];
                 for (const auto& node : features.nodes)
                     node->set_sequence_nr(at::sequence_number::get_and_increment());
-                forward_rebased_nodes += features.nodes.size();
-                ++forward_parallel_frames;
                 // SavedVariable keeps weak alias accumulators. Retain their
                 // owners through backward even after redirecting outer edges.
                 forward_alias_leases.push_back(std::move(features.lease));
@@ -843,10 +821,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
             reference.push_back(leaf->replay(gradient, false));
             actual.push_back(leaf->replay(gradient));
         }
-        std::map<std::string, int64_t> statistics{
-            {"tape_available", static_cast<int64_t>(static_cast<bool>(leaf->tape))},
-            {"tape_replays", leaf->tape_replays.load()}, {"engine_replays", leaf->engine_replays.load()}};
-        return std::make_tuple(std::move(reference), std::move(actual), std::move(statistics), leaf->tape_fallback_reason);
+        return std::make_tuple(std::move(reference), std::move(actual),
+                               static_cast<bool>(leaf->tape), leaf->tape_fallback_reason);
     }, py::call_guard<py::gil_scoped_release>());
     py::class_<NativeHistory>(module, "NativeHistory")
         .def(py::init<const py::list&, const py::list&>())
@@ -857,7 +833,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, module) {
         .def("backward_with_text_replay", &NativeModel::backward_with_text_replay, py::call_guard<py::gil_scoped_release>())
         .def("end_text_replay", &NativeModel::end_text_replay, py::call_guard<py::gil_scoped_release>())
         .def("close", &NativeModel::close, py::call_guard<py::gil_scoped_release>())
-        .def("text_replay_statistics", &NativeModel::text_replay_statistics, py::call_guard<py::gil_scoped_release>())
         .def("tree", &NativeModel::tree, py::call_guard<py::gil_scoped_release>())
         .def("encode_frame", &NativeModel::encode_frame, py::call_guard<py::gil_scoped_release>())
         .def("prefix", &NativeModel::prefix, py::arg("history"), py::arg("stops"), py::arg("workers") = 1,

@@ -96,13 +96,7 @@ class NativeTrainingParityTests(unittest.TestCase):
             with patch.object(ppo, 'NATIVE_EXECUTION', {'manifest': str(self.manifest), 'sha256': self.sha, 'prefix_threads': 16}):
                 actual = ppo.ppo_update(native, optimizers[1], rollouts, config=config, generator=generators[1])
             self.assertEqual(expected, actual)
-            self.assertGreater(actual.timings_seconds['native_tape_replays'], 0)
-            self.assertEqual(actual.timings_seconds['native_tape_replays'],
-                             actual.timings_seconds['native_completed_replays'])
-            self.assertEqual(actual.timings_seconds['native_engine_replays'], 0)
-            self.assertGreater(actual.timings_seconds['native_forward_parallel_frames'], 0)
-            self.assertGreater(actual.timings_seconds['native_forward_rebased_nodes'], 0)
-            self.assertGreater(actual.timings_seconds['native_peak_forward_workers'], 1)
+            self.assertIsNone(actual.timings_seconds)
             self.exact_bytes(reference.state_dict(), native.state_dict())
             self.exact_bytes([p.grad for p in reference.parameters()], [p.grad for p in native.parameters()])
             self.exact_bytes(optimizers[0].state_dict(), optimizers[1].state_dict())
@@ -138,13 +132,11 @@ class NativeTrainingParityTests(unittest.TestCase):
                        for logs, values, state, _ in outputs)
             machine.backward_with_text_replay(loss)
             machine.end_text_replay()
-            stats = machine.text_replay_statistics()
             self.assertEqual([parameter._version for parameter in model.parameters()], versions)
             self.exact_bytes(model.state_dict(), original.state_dict())
             return ([(logs.detach(), values.detach(), state.detach(), [part.detach() for part in details])
                      for logs, values, state, details in outputs],
-                    [None if parameter.grad is None else parameter.grad.clone() for parameter in model.parameters()],
-                    stats)
+                    [None if parameter.grad is None else parameter.grad.clone() for parameter in model.parameters()])
         finally:
             machine.close()
 
@@ -162,18 +154,12 @@ class NativeTrainingParityTests(unittest.TestCase):
         windows = [(0, decisions[2], [decisions[0], decisions[2]], model.initial_state()),
                    (start, decisions[4], decisions[3:], initial)]
         rng = torch.get_rng_state().clone()
-        expected_outputs, expected_gradients, serial = self.frame_run(model, history, windows, 1)
+        expected_outputs, expected_gradients = self.frame_run(model, history, windows, 1)
         for workers in (4, 16):
             with self.subTest(workers=workers):
-                outputs, gradients, stats = self.frame_run(model, history, windows, workers)
+                outputs, gradients = self.frame_run(model, history, windows, workers)
                 self.exact_bytes(outputs, expected_outputs)
                 self.exact_bytes(gradients, expected_gradients)
-                self.assertGreater(stats['forward_parallel_frames'], 1)
-                self.assertGreater(stats['forward_rebased_nodes'], 0)
-                self.assertGreater(stats['peak_forward_workers'], 1)
-                self.assertLessEqual(stats['peak_forward_workers'], workers)
-                self.assertEqual(stats['occurrences'], serial['occurrences'])
-                self.assertGreater(stats['tape_replays'], 0)
                 self.exact_bytes(torch.get_rng_state(), rng)
 
     def test_parallel_frame_features_preserve_coordinate_quantity_and_management_gradients(self):
@@ -210,14 +196,11 @@ class NativeTrainingParityTests(unittest.TestCase):
                 history = compile_history(model, inputs, (record,), self.backend)
                 windows = [(0, len(inputs)-1, [len(inputs)-1], model.initial_state())]
                 rng = torch.get_rng_state().clone()
-                expected_outputs, expected_gradients, serial = self.frame_run(model, history, windows, 1)
+                expected_outputs, expected_gradients = self.frame_run(model, history, windows, 1)
                 for workers in (4, 16):
-                    outputs, gradients, stats = self.frame_run(model, history, windows, workers)
+                    outputs, gradients = self.frame_run(model, history, windows, workers)
                     self.exact_bytes(outputs, expected_outputs)
                     self.exact_bytes(gradients, expected_gradients)
-                    self.assertGreater(stats['forward_parallel_frames'], 0)
-                    self.assertGreater(stats['forward_rebased_nodes'], 0)
-                    self.assertEqual(stats['occurrences'], serial['occurrences'])
                     self.exact_bytes(torch.get_rng_state(), rng)
 
     def test_parallel_frame_missing_preparation_and_worker_failure_leave_retry_safe(self):
@@ -232,7 +215,7 @@ class NativeTrainingParityTests(unittest.TestCase):
         try:
             with self.assertRaisesRegex(RuntimeError, 'prepar|prewarm'):
                 machine.evaluate_window(history, 0, decisions[-1], decisions, model.initial_state(), 4)
-            self.assertEqual(machine.text_replay_statistics()['occurrences'], 0)
+            self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
             machine.prepare_window_text(history, 0, decisions[-1], decisions, 4)
             parameter = model.tree[0].weight
             original = parameter.detach().clone()
@@ -249,7 +232,6 @@ class NativeTrainingParityTests(unittest.TestCase):
             actual = machine.evaluate_window(history, 0, decisions[-1], decisions, model.initial_state(), 4)
             machine.backward_with_text_replay(actual[0].sum() + actual[1].sum())
             machine.end_text_replay()
-            self.assertGreater(machine.text_replay_statistics()['forward_parallel_frames'], 0)
             self.assertTrue(any(parameter.grad is not None for parameter in model.parameters()))
         finally:
             machine.close()
@@ -270,15 +252,9 @@ class NativeTrainingParityTests(unittest.TestCase):
             try:
                 if workers is not None:
                     machine.prepare_window_text(history, 0, decisions[-1], decisions, workers)
-                    prepared = machine.text_replay_statistics()
-                    self.assertEqual(prepared['occurrences'], 0)
-                    self.assertGreater(prepared['unique_texts'], 0)
                     machine.prepare_window_text(history, 0, decisions[-1], decisions, workers)
-                    self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared['unique_texts'])
                 logs, values, state, details = machine.evaluate_window_details(
                     history, 0, decisions[-1], decisions, model.initial_state())
-                if workers is not None:
-                    self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared['unique_texts'])
                 loss = logs.sum() + values.square().sum() + state.square().sum() * 0.01
                 machine.backward_with_text_replay(loss)
                 machine.end_text_replay()
@@ -312,8 +288,7 @@ class NativeTrainingParityTests(unittest.TestCase):
             for request in requests:
                 with self.subTest(request=request), self.assertRaises(RuntimeError):
                     machine.prepare_window_text(history, *request)
-                self.assertEqual(machine.text_replay_statistics()['unique_texts'], 0)
-                self.assertEqual(machine.text_replay_statistics()['occurrences'], 0)
+            self.assertTrue(all(parameter.grad is None for parameter in model.parameters()))
         finally:
             machine.close()
 
@@ -344,10 +319,8 @@ class NativeTrainingParityTests(unittest.TestCase):
             machine.begin_text_replay(0)
             try:
                 machine.prepare_window_text(compiled, 0, len(inputs)-1, [len(inputs)-1], 4)
-                prepared = machine.text_replay_statistics()['unique_texts']
                 prepared_values = machine.evaluate_window_details(
                     compiled, 0, len(inputs)-1, [len(inputs)-1], model.initial_state())
-                self.assertEqual(machine.text_replay_statistics()['unique_texts'], prepared)
                 self.exact(prepared_values, (logs, vals, actual_state, conditionals))
             finally:
                 machine.close()

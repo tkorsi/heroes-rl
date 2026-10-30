@@ -173,7 +173,7 @@ class PhaseTwoAccelerationTests(unittest.TestCase):
                 report = ppo_update(model, optimizer, rollouts, config=config, generator=generator)
             results.append((replace(report, timings_seconds=None), model.state_dict(),
                             [p.grad for p in model.parameters()], optimizer.state_dict(), generator.get_state()))
-            self.assertNotIn("experiment_shared_graph_encodings", report.timings_seconds)
+            self.assertIsNone(report.timings_seconds)
         self.assertEqual(results[0][0], results[1][0])
         for left, right in zip(results[0][1:], results[1][1:]):
             self.assertTrue(tensors_equal(left, right))
@@ -206,12 +206,12 @@ class PhaseTwoAccelerationTests(unittest.TestCase):
             if left is not None:
                 torch.testing.assert_close(left, right, rtol=1e-4, atol=1e-6)
 
-    def test_experiment_selection_is_explicit_recorded_and_cleared_on_failure(self):
+    def test_experiment_selection_is_explicit_and_cleared_on_failure(self):
         ppo.EXPERIMENTS = frozenset({"shared_graph_encodings"})
         optimizer = torch.optim.Adam(self.model.parameters(), lr=0.0003)
         generator = torch.Generator().manual_seed(3)
         report = ppo_update(self.model, optimizer, self.rollouts, config=PPOConfig(), generator=generator)
-        self.assertEqual(report.timings_seconds["experiment_shared_graph_encodings"], 1.0)
+        self.assertIsNone(report.timings_seconds)
         self.assertNotIn("_graph_memo_state", self.model.__dict__)
         # A failure inside a minibatch never leaves shared encodings behind.
         def fail():

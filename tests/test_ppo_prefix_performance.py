@@ -114,9 +114,7 @@ class PrefixPerformanceTests(unittest.TestCase):
             self.assert_tensors_equal(optimizers[0].state_dict(), optimizers[1].state_dict())
             self.assert_tensors_equal(generators[0].get_state(), generators[1].get_state())
             for report in reports:
-                self.assertGreater(report.timings_seconds["prefix_reconstruction"], 0)
-                self.assertGreaterEqual(report.timings_seconds["total"],
-                                        sum(v for k, v in report.timings_seconds.items() if k != "total"))
+                self.assertIsNone(report.timings_seconds)
 
 
 if __name__ == "__main__":
