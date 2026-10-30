@@ -1183,3 +1183,26 @@ The actual main-folder one-game check passed exact full-state restore at 1753,
 with no gameplay, seed reservation or update. The [compact evidence](../validation/reporting-lock-fix-2026-10-30.json)
 records the narrow reporting-controller pin; all engine/learner/replay sources
 and learning settings remain unchanged. No new training or evaluation was run.
+
+## 2026-10-30: self-play replay knowledge views and game audit
+
+The user requested Red/Blue knowledge maps, removal of collected/defeated objects,
+and mine-owner marks. The Swift viewer now uses each player's recorded visibility
+for drawing and object selection, opaque unknown tiles, and owner-color mine
+bars. A shared projection intersects visible IDs with current native objects;
+a Swift-executed regression covers stale resource/hero IDs and all mine owners.
+The release build and actual app opening passed. Initial build errors from a
+stale selection variable and SwiftUI multi-file entry-point mode were corrected.
+No engine, policy, learning configuration or training artifacts changed.
+
+The doubled-choice frozen1753 game ended on day104 without a winner. Blue defeated
+a neutral on day1 and lost its hero to Red on day5. Red hired three additional
+heroes on days62/80/85 (four total). Blue's town appeared in Red's delivered
+observation on day87; it was not captured. Red revealed356/400 tiles, made9920
+policy choices, and spent6443 of them swapping stacks. It never selected a
+move_to target at the Blue town's15,7 coordinate. Both gold piles and both neutral
+mines remained untouched. The defeated neutral and Blue hero disappear from the
+native frames. Player-local handles were resolved by object type/owner/position,
+rather than equated with native IDs. These facts show failure to finish the
+opponent in this game; they do not establish what the policy intended.
+See [compact evidence](../validation/replay-player-knowledge-2026-10-30.json).

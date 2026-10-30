@@ -50,6 +50,16 @@ update policy weights. Its optional Pillow dependency is pinned separately in
 
 ### Native Swift replay inspector
 
+Both map panels now display recorded player knowledge: Red on the left and Blue
+on the right. Unknown tiles are fully black. Drawing and hit-testing intersect
+the selected player's visible IDs with objects still present in the current
+native frame, so stale IDs cannot resurrect collected resources or defeated
+heroes/armies. Object cards retain the selected player's perspective. Captured
+mines display an upper-right owner-color bar; neutral mines have no bar.
+The actual Swift projection passes disappearance and neutral/Red/Blue ownership
+controls. The accepted Swift app was rebuilt and opened with both player views.
+See [validation and game analysis](../validation/replay-player-knowledge-2026-10-30.json).
+
 The completed checkpoint-1753 doubled-choice self-play evaluation can also be
 opened as a native-state timeline. This is a separate exporter from the older
 scenario-specific exporter below:
@@ -61,7 +71,8 @@ python3 tools/build_replay_inspector.py --match "$FRESH_PRIVATE_OUTPUT/match.jso
 
 The export verifies the passed evaluation and source capture hashes, reconstructs
 the native map trace with a 120-second guarded deadline, and includes every
-native input/state. It preserves the full spectator map and recorded Blue fog.
+native input/state. Its private trace retains spectator facts; the viewer filters
+both map panels to the corresponding player's recorded knowledge.
 Policy-only UI choices, policy probabilities, hero inventories and army panels
 are explicitly outside this export; absent army data is shown as unavailable.
 All raw bundles, traces and app builds stay in durable private artifacts.

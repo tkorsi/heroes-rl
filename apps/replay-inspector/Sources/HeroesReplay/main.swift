@@ -17,7 +17,7 @@ struct Replay: Decodable {
               header.width > 0, header.height > 0, header.width <= 256, header.height <= 256,
               header.terrain.count == header.width * header.height, !events.isEmpty,
               events.enumerated().allSatisfy({ $0.offset == $0.element.id && frames.indices.contains($0.element.frame) }),
-              frames.allSatisfy({ $0.objects.allSatisfy { $0.count >= 7 } && $0.battles.allSatisfy { $0.count >= 5 } && $0.players["1"]?.visible.count == header.width * header.height })
+              frames.allSatisfy({ frame in frame.objects.allSatisfy { $0.count >= 7 } && frame.battles.allSatisfy { $0.count >= 5 } && ["0", "1"].allSatisfy { frame.players[$0]?.visible.count == header.width * header.height } })
         else { throw NSError(domain: "Replay", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid or unsupported replay bundle"]) }
     }
 }
@@ -78,24 +78,27 @@ struct MapView: View {
     let header: Header
     let frame: Frame
     let fog: Bool
-    let selectObject: (Int?, Bool) -> Void
+    let player: Int
+    let selectObject: (Int?, Int?) -> Void
     @State private var tile = "Нажмите клетку: координаты и объекты"
+    var shownObjects: [[Int]] {
+        fog ? ReplayMapProjection.visibleObjects(frame.objects, ids:frame.players[String(player)]?.objects ?? []) : frame.objects
+    }
     let colors = [0x6f5b43,0xc3af76,0x4b7743,0xd8e0ea,0x415844,0x786852,0x554d46,0x6e3127,0x2a5288,0x373b43]
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(fog ? "ЗНАНИЕ СИНЕГО ИГРОКА" : "ПОЛНАЯ КАРТА · ЗРИТЕЛЬ").font(.caption.bold()).foregroundStyle(fog ? blue : .white)
+            Text(player == 0 ? "ЗНАНИЕ КРАСНОГО ИГРОКА" : "ЗНАНИЕ СИНЕГО ИГРОКА").font(.caption.bold()).foregroundStyle(player == 0 ? red : blue)
             Canvas { context, size in
                 let w = size.width / Double(header.width), h = size.height / Double(header.height)
-                let visible = Array(frame.players["1"]?.visible ?? "")
+                let visible = Array(frame.players[String(player)]?.visible ?? "")
                 for i in header.terrain.indices {
                     let n = colors[safe: header.terrain[i]] ?? 0x505050
                     let color = Color(red: Double((n >> 16) & 255)/255, green: Double((n >> 8) & 255)/255, blue: Double(n & 255)/255)
                     let rect = CGRect(x: Double(i % header.width)*w, y: Double(i/header.width)*h, width: w-0.7, height: h-0.7)
-                    context.fill(Path(rect), with: .color(fog && visible[safe:i] != "1" ? .black.opacity(0.85) : color))
+                    context.fill(Path(rect), with: .color(fog && visible[safe:i] != "1" ? .black : color))
                 }
-                for obj in frame.objects.sorted(by: { ($0[4] == 34 ? 1 : 0) < ($1[4] == 34 ? 1 : 0) }) {
-                    if fog && !(frame.players["1"]?.objects.contains(obj[0]) ?? false) { continue }
-                    let shared = frame.objects.contains { $0[0] != obj[0] && $0[1] == obj[1] && $0[2] == obj[2] && (!fog || frame.players["1"]!.objects.contains($0[0])) }
+                for obj in shownObjects.sorted(by: { ($0[4] == 34 ? 1 : 0) < ($1[4] == 34 ? 1 : 0) }) {
+                    let shared = frame.objects.contains { $0[0] != obj[0] && $0[1] == obj[1] && $0[2] == obj[2] && (!fog || frame.players[String(player)]!.objects.contains($0[0])) }
                     let offset = shared ? (obj[4] == 34 ? 0.7 : -0.7) : 0.0
                     let x = (Double(obj[1])+0.5+offset)*w, y = (Double(obj[2])+0.5)*h
                     let side = min(w,h)*1.35
@@ -106,8 +109,13 @@ struct MapView: View {
                     context.stroke(path, with:.color(color),lineWidth:1.5)
                     let symbol = objectAppearance(obj).icon
                     context.draw(Text(symbol).font(.system(size:side*0.78,weight:.bold)).foregroundStyle(color), at:CGPoint(x:x,y:y))
+                    if let owner = ReplayMapProjection.mineOwner(obj) {
+                        let flag = CGRect(x:rect.maxX-side*0.48,y:rect.minY+1,width:side*0.44,height:max(3,side*0.18))
+                        context.fill(Path(flag), with:.color(owner == 0 ? red : blue))
+                        context.stroke(Path(flag), with:.color(navy),lineWidth:0.8)
+                    }
                 }
-                for battle in frame.battles where !fog || frame.players["1"]?.visible.dropFirst(battle[1]*header.width+battle[0]).first == "1" {
+                for battle in frame.battles where !fog || frame.players[String(player)]?.visible.dropFirst(battle[1]*header.width+battle[0]).first == "1" {
                     context.draw(Text("⚔").font(.system(size: w*1.3)).foregroundStyle(.yellow), at: CGPoint(x:(Double(battle[0])+0.5)*w,y:(Double(battle[1])+0.5)*h))
                 }
             }
@@ -115,7 +123,7 @@ struct MapView: View {
             .overlay { GeometryReader { geo in Color.clear.contentShape(Rectangle()).onTapGesture { p in
                 var x = min(header.width-1, Int(p.x/geo.size.width*Double(header.width)))
                 var y = min(header.height-1, Int(p.y/geo.size.height*Double(header.height)))
-                let shown = frame.objects.filter { !fog || frame.players["1"]!.objects.contains($0[0]) }
+                let shown = shownObjects
                 let w = geo.size.width / Double(header.width), h = geo.size.height / Double(header.height)
                 // Hit-test the displayed symbols, including co-located icon offsets.
                 var picked: Int? = nil
@@ -125,7 +133,7 @@ struct MapView: View {
                     return abs(p.x - (Double(obj[1])+0.5+offset)*w) <= min(w,h)*0.675 && abs(p.y - (Double(obj[2])+0.5)*h) <= min(w,h)*0.675
                 }) { x = hit[1]; y = hit[2]; picked = hit[0] }
                 let objects = shown.filter { $0[1] == x && $0[2] == y }
-                selectObject(picked ?? objects.first?[0], fog)
+                selectObject(picked ?? objects.first?[0], fog ? player : nil)
                 tile = "(\(x), \(y)) · " + (objects.isEmpty ? "нет видимых объектов" : objects.map { "\(objectAppearance($0).icon) \(objectAppearance($0).name) · id \($0[0])" }.joined(separator: "; "))
             } } }
             Text(tile).font(.caption2.monospaced()).foregroundStyle(.secondary).lineLimit(2).frame(height:28,alignment:.topLeading)
@@ -141,7 +149,7 @@ struct RawText: View {
 struct ContentView: View {
     @EnvironmentObject var store: Store
     @State private var selectedObject: Int?
-    @State private var selectionUsesFog = false
+    @State private var selectionPlayer: Int?
     var body: some View {
         VStack(spacing: 0) {
             if let r = store.replay, let e = store.event {
@@ -150,7 +158,7 @@ struct ContentView: View {
                     timeline.frame(minWidth:240,idealWidth:275,maxWidth:360)
                     ScrollView {
                         VStack(alignment:.leading,spacing:12) {
-                            HStack(alignment:.top) { MapView(header:r.header,frame:r.frames[e.frame],fog:false,selectObject:selectObject); MapView(header:r.header,frame:r.frames[e.frame],fog:true,selectObject:selectObject) }
+                            HStack(alignment:.top) { MapView(header:r.header,frame:r.frames[e.frame],fog:true,player:0,selectObject:selectObject); MapView(header:r.header,frame:r.frames[e.frame],fog:true,player:1,selectObject:selectObject) }
                             objectCard(r,e)
                             Text("♞ герой   🏰 город   ⛏️ шахта   🛡️ нейтралы   💰 золото   ⚔ автобой").font(.caption).foregroundStyle(.secondary)
                             army(e.army)
@@ -168,7 +176,7 @@ struct ContentView: View {
         }.background(navy).preferredColorScheme(.dark)
         .alert("Не удалось открыть replay", isPresented: Binding(get: { !store.error.isEmpty }, set: { if !$0 { store.error = "" } })) { Button("OK") { store.error = "" } } message: { Text(store.error) }
     }
-    func selectObject(_ id: Int?, _ fog: Bool) { selectedObject = id; selectionUsesFog = fog }
+    func selectObject(_ id: Int?, _ player: Int?) { selectedObject = id; selectionPlayer = player }
     func dictionary(_ text: String?) -> [String:Any]? {
         guard let data = text?.data(using:.utf8) else { return nil }
         return (try? JSONSerialization.jsonObject(with:data)) as? [String:Any]
@@ -176,7 +184,7 @@ struct ContentView: View {
     @ViewBuilder func objectCard(_ r: Replay, _ e: Event) -> some View {
         if let id = selectedObject {
             let frame = r.frames[e.frame]
-            if let obj = frame.objects.first(where:{$0[0] == id}), !selectionUsesFog || frame.players["1"]!.objects.contains(id) {
+            if let obj = frame.objects.first(where:{$0[0] == id}), selectionPlayer == nil || frame.players[String(selectionPlayer!)]?.objects.contains(id) == true {
                 let appearance = objectAppearance(obj)
                 let meta = r.object_details?[String(id)]
                 VStack(alignment:.leading,spacing:8) {
@@ -226,7 +234,7 @@ struct ContentView: View {
                     Text("Карточка зрителя. Стартовые сведения из карты не являются входом нейросети.").font(.caption2).foregroundStyle(.secondary)
                 }.padding(14).frame(maxWidth:.infinity,alignment:.leading).background(card).overlay(RoundedRectangle(cornerRadius:12).stroke(blue.opacity(0.5))).cornerRadius(12)
             } else {
-                Text(selectionUsesFog ? "Выбранный объект сейчас не виден этому игроку или исчез с карты." : "Выбранный объект больше не присутствует на карте.").font(.callout).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(card).cornerRadius(12)
+                Text(selectionPlayer != nil ? "Выбранный объект сейчас не виден этому игроку или исчез с карты." : "Выбранный объект больше не присутствует на карте.").font(.callout).padding(14).frame(maxWidth:.infinity,alignment:.leading).background(card).cornerRadius(12)
             }
         } else {
             Text("Нажмите на иконку: здесь появятся название и описание объекта.").font(.callout).foregroundStyle(.secondary).padding(12)

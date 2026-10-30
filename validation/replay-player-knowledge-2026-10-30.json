@@ -1,0 +1,64 @@
+{
+  "schema": "heroes-replay-player-knowledge-v1",
+  "status": "passed",
+  "date": "2026-10-30",
+  "checkpoint": 1753,
+  "left_player": "red",
+  "right_player": "blue",
+  "unknown_tiles": "opaque_black",
+  "object_display": "current_native_objects_intersected_with_selected_player_visibility",
+  "mine_marker": "upper_right_owner_color_bar; neutral mines have no marker",
+  "swift_projection_regression": "passed: per-player visibility, removed resource/hero with stale IDs, neutral/red/blue mine ownership",
+  "swift_release_build": "passed",
+  "ui_headers_and_fog_verified": true,
+  "protected_training_inputs_unchanged": true,
+  "gameplay_started": false,
+  "optimizer_updates": 0,
+  "game_analysis": {
+    "blue_neutral_victory_day": 1,
+    "blue_hero_defeated_by_red_day": 5,
+    "red_new_heroes_hired": 3,
+    "red_hire_days": [
+      62,
+      80,
+      85
+    ],
+    "red_heroes_final": 4,
+    "blue_town_first_delivered_to_red_day": 87,
+    "blue_town_player_local_handle": "object-11",
+    "blue_town_position": [
+      15,
+      7,
+      0
+    ],
+    "red_revealed_tiles_final": 356,
+    "total_map_tiles": 400,
+    "red_choices": 9920,
+    "red_stack_swaps": 6443,
+    "blue_choices": 1843,
+    "blue_stack_swaps": 1402,
+    "red_move_targets_at_blue_town": 0,
+    "final_day": 104,
+    "towns_captured": 0,
+    "mines_captured": 0,
+    "gold_piles_collected": 0,
+    "native_objects_removed": [
+      {
+        "id": 7,
+        "kind": "neutral_army",
+        "day": 1
+      },
+      {
+        "id": 3,
+        "kind": "blue_hero",
+        "day": 5
+      }
+    ],
+    "outcome": "choice_cutoff_without_winner"
+  },
+  "limitations": [
+    "No mine changed owner and no gold pile was collected in this game; these UI cases use synthetic Swift projection controls.",
+    "Native IDs and policy-local handles differ; town knowledge was checked by type, owner and coordinates.",
+    "First release build failed on an old selection variable; the multi-file build then needed explicit parse-as-library for the SwiftUI main entry point. Both corrected before opening the accepted app."
+  ]
+}
