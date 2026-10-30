@@ -42,7 +42,7 @@ class RevealedMovementGuardTests(unittest.TestCase):
     def test_version_is_explicit_and_snapshot_shape_stays_historical(self):
         self.assertEqual(g.VERSION, "visible-interaction-budget-v1")
         self.assertIsNone(g.ACTIVE_VERSION)
-        self.assertEqual(g.SUPPORTED_VERSIONS, (g.VERSION, g.REVEALED_VERSION))
+        self.assertEqual(g.SUPPORTED_VERSIONS, (g.VERSION, g.REVEALED_VERSION, g.RECRUIT_ONLY_VERSION))
         frame = map_history().decision
         old = g.Tracker(g.VERSION).observe(frame)
         new = g.Tracker(g.REVEALED_VERSION).observe(frame)

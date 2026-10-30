@@ -79,7 +79,7 @@ class ContextualMixin:
     _decode_message = staticmethod(loads)
 
     def __init__(self, launcher, output, limits=Limits(), *, ledger=True, profile=False, agents=None,
-                 snapshot_every=1, replay=True, interface=contract.ENVIRONMENT):
+                 snapshot_every=1, replay=True, interface=contract.ENVIRONMENT, army_information=None):
         self.context_profile = contract.profile_for(interface)
         if interface != self.context_profile.environment:
             raise ValueError("Unknown contextual interface")
@@ -90,6 +90,7 @@ class ContextualMixin:
         super().__init__(launcher, output, limits, ledger=ledger, profile=profile, agents=agents,
                          snapshot_every=snapshot_every, replay=replay)
         self.interface = interface
+        self.army_information = contextual_protocol.validate_army_information(interface, army_information)
         self.cutoff_reason = None
         self.dialog_cutoff_drain = None
         self._context_identity = None
@@ -116,6 +117,8 @@ class ContextualMixin:
                          self.context_profile.history_schema, self.context_profile.action_schema))
         if any(marker not in contents for marker in required):
             raise ValueError(f"Rebuild ExplorerRL with the contextual protocol-{self.context_profile.protocol} interface; no legacy fallback")
+        if self.army_information is not None and self.army_information.encode() not in contents:
+            raise ValueError("Rebuild ExplorerRL with the requested own-army information extension")
         if b"heroes-contextual-terminal-barrier-v1" not in Path(self.launcher.binary).read_bytes():
             raise ValueError("Rebuild the native client with the contextual terminal barrier")
 
@@ -148,11 +151,14 @@ class ContextualMixin:
                        "EXPLORER_RL_INTERFACE": self.interface,
                        "VCMI_EXPERIMENT_REPLAY": "1",
                        "VCMI_EXPERIMENT_CONTEXTUAL_EVIDENCE": "1"}
+        if self.army_information is not None:
+            environment["EXPLORER_RL_ARMY_INFORMATION"] = self.army_information
         for player, color in enumerate(COLORS):
             listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             listener.bind(("127.0.0.1", 0))
             listener.listen(1)
-            producer = ContextualProducer(str(episode), player, interface=self.interface)
+            producer = ContextualProducer(str(episode), player, interface=self.interface,
+                                          army_information=self.army_information)
             side = _Side(player, color, producer, producer.history, listener)
             folder = self.episode_dir / "agents" / color
             folder.mkdir(parents=True)
@@ -493,6 +499,8 @@ class ContextualMixin:
                 "map_sha256": identity.get("map", {}).get("sha256"),
                 "contextual_python_sha256": dict(self._imported_sources),
                 "captured_before_launch": True}
+            if self.army_information is not None:
+                self._context_identity["army_information"] = self.army_information
             binary = getattr(self.launcher, "binary", None)
             if binary is not None:
                 native = Path(binary).parent
@@ -613,6 +621,8 @@ class ContextualMixin:
         }
         if self.context_profile.dialogs:
             evidence_document["dialog_cutoff_drain"] = self.dialog_cutoff_drain
+        if self.army_information is not None:
+            evidence_document["army_information"] = self.army_information
         scoring.write_json(evidence_path, evidence_document)
         evidence_ref = evidence_path.name + "#sha256=" + scoring.digest(evidence_path)
         try:
@@ -665,6 +675,8 @@ class ContextualMixin:
                     "natural_terminal_after_horizon": natural_after_cutoff}
         if self.context_profile.dialogs:
             manifest["dialog_cutoff_drain"] = self.dialog_cutoff_drain
+        if self.army_information is not None:
+            manifest["army_information"] = self.army_information
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
         final = {side.color: encoded(side.validator.history, min(side.unread_frames_from, len(side.validator.history.frames) - 1))
                  for side in self.sides.values()}

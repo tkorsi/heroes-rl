@@ -15,6 +15,16 @@ historical validation evidence intact.
 
 ## Current state
 
+The next tiny-policy experiment adds a user-requested temporary restriction:
+troop-slot rearrangement, splitting, merging, individual transfers and stack
+upgrades are disabled. Recruitment and whole-hero entry/exit from the town
+garrison remain available. The opt-in `own-army-details-v1` observation provides
+owned hero/town composition and current numeric combat statistics without clicks.
+See the [implementation and validation report](docs/research/recruit-only-passive-armies-2026-10-30.md).
+The [temporary restriction register](docs/temporary-restrictions.md) explicitly
+requires restoring army management in a later version; automatic combat is also
+recorded there. Native release validation is in progress; no training is started.
+
 The [self-play storage and progress update](docs/research/rollout-storage-2026-10-30.md)
 stores policy results separately from the existing hash-bound player histories,
 and removes a duplicate transport-history reconstruction. All policy and native
@@ -34,8 +44,11 @@ and synthetic PPO/checkpoint controls passed. A separate
 [manual one-game diagnostic](docs/research/tiny-one-game-2026-10-30.md) is available:
 `./play-one-tiny-selfplay.sh --check`, then explicit `--run`. It uses the untrained
 tiny weights, the same doubled choice limits, progress display and full replay
-checks, with no PPO update. Actual tiny-model gameplay and a training campaign
-remain unverified; the existing 1753 launcher keeps its original checkpoint.
+checks, with no PPO update. The first user-launched tiny game subsequently passed
+replay/reconstruction and reached the day limit with no winner or weight update.
+The new restricted/passive-information experiment still needs its separate
+runtime acceptance; a tiny training campaign remains unaccepted. The existing
+1753 launcher keeps its original checkpoint.
 
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
 completed at **checkpoint 1,753**, with 100 admitted games and 25 complete PPO

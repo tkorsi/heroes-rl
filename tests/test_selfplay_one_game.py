@@ -54,8 +54,12 @@ class OneFrozenGameTests(unittest.TestCase):
         original = {name: ('original ' + name).encode() for name in evaluation.STORAGE_PROGRESS_PATHS
                     if name not in evaluation.STORAGE_PROGRESS_NEW}
         original['engine/runtime.cpp'] = b'accepted engine'
+        original.update({name: ('before ' + name).encode() for name in evaluation.RECRUIT_ONLY_SOURCE_SHA256})
         reviewed = {name: ('reviewed ' + name).encode() for name in evaluation.STORAGE_PROGRESS_PATHS}
         expected = {name: hashlib.sha256(data).hexdigest() for name, data in {**original, **reviewed}.items()}
+        recruit_only = {name: hashlib.sha256(('new ' + name).encode()).hexdigest()
+                        for name in evaluation.RECRUIT_ONLY_SOURCE_SHA256}
+        expected.update(recruit_only)
         def git_read(command, *, cwd):
             self.assertEqual(command[:2], ['git', 'archive'])
             available = original if command[2] == evaluation.BASE_COMMIT else reviewed
@@ -67,13 +71,14 @@ class OneFrozenGameTests(unittest.TestCase):
                     entry = tarfile.TarInfo(name); entry.size = len(data)
                     stream.addfile(entry, io.BytesIO(data))
             return archive.getvalue()
-        with patch.object(evaluation.subprocess, 'check_output', side_effect=git_read):
+        with patch.object(evaluation.subprocess, 'check_output', side_effect=git_read), \
+             patch.object(evaluation, 'RECRUIT_ONLY_SOURCE_SHA256', recruit_only):
             evaluation.verify_runtime_sources(expected)
             for name in expected:
                 changed = dict(expected, **{name: '0' * 64})
                 with self.subTest(tampered=name), self.assertRaisesRegex(ValueError, 'changed an existing'):
                     evaluation.verify_runtime_sources(changed)
-            for name in evaluation.STORAGE_PROGRESS_PATHS:
+            for name in evaluation.STORAGE_PROGRESS_PATHS | recruit_only.keys():
                 with self.subTest(missing=name), self.assertRaisesRegex(ValueError, 'omitted a reviewed'):
                     evaluation.verify_runtime_sources({key: value for key, value in expected.items() if key != name})
 
@@ -110,7 +115,7 @@ class OneFrozenGameTests(unittest.TestCase):
 
     def capture_fixture(self):
         folder = self.root / 'episode-000001'; folder.mkdir()
-        plan = dict(schedule=evaluation.seed_row(0), model_checkpoint='published-1753', weights_sha256='a' * 64,
+        plan = dict(policy_support=evaluation.campaign.GUARD, schedule=evaluation.seed_row(0), model_checkpoint='published-1753', weights_sha256='a' * 64,
             runtime={'runtime': 'bound'}, native={'map_sha256': 'map'}, data='/unused/data', replay_binary={})
         manifest = dict(episode='1', seed=1960000000, environment=evaluation.campaign.INTERFACE, status='truncated',
             identity={'native_runtime_sha256': plan['runtime'], **plan['native']})
@@ -175,7 +180,7 @@ class OneFrozenGameTests(unittest.TestCase):
                     finally:
                         self.root = original
 
-    def test_capture_receives_doubled_per_player_limits_and_preserves_day_guard_cleanup(self):
+    def capture_simulation(self, guard):
         from experiments.learner import contextual_rollout, contextual_storage
         from experiments.headless import env, process_deadline
         output = self.root / 'capture'; output.mkdir()
@@ -202,7 +207,7 @@ class OneFrozenGameTests(unittest.TestCase):
             def close_owned_groups(self, **kwargs): events.append('groups_closed')
             def assert_closed(self): events.append('groups_verified')
         self_test = self
-        plan = dict(output=str(output), binary='/unused/client', data='/unused/data', game_map='/unused/map',
+        plan = dict(policy_support=guard, output=str(output), binary='/unused/client', data='/unused/data', game_map='/unused/map',
             model_checkpoint='published-1753', schedule=evaluation.seed_row(0),
             hard_deadline_monotonic=time.monotonic() + 3600, hard_deadline_unix=time.time() + 3600)
         with patch.object(contextual_rollout, 'ContextualCollector', FakeCollector), \
@@ -212,17 +217,32 @@ class OneFrozenGameTests(unittest.TestCase):
             folder = evaluation.collect(plan, (object(), object()))
         save.assert_called_once_with(folder / 'neural-rollout.json', collected)
         self.assertEqual(observed['collector']['purpose'], 'diagnostic')
-        self.assertEqual(observed['collector']['guard_version'], evaluation.campaign.GUARD)
+        self.assertEqual(observed['collector']['guard_version'], guard)
         self.assertEqual(observed['run']['max_requests_per_player'], 9920)
         self.assertEqual(observed['run']['max_dialog_requests_per_player'], 320)
         self.assertEqual((observed['limits'].max_actions, observed['limits'].max_days), (10240, 365))
         self.assertEqual(events, ['environment_closed', 'groups_closed', 'groups_verified'])
 
+    def test_capture_receives_doubled_per_player_limits_and_preserves_day_guard_cleanup(self):
+        self.capture_simulation(evaluation.campaign.GUARD)
+
+    def test_capture_passes_explicit_recruit_only_support_to_both_policy_seats(self):
+        from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSION
+        self.capture_simulation(RECRUIT_ONLY_VERSION)
+
+    def test_missing_or_unknown_policy_support_fails_before_capture(self):
+        from experiments.headless import process_deadline
+        with patch.object(process_deadline, 'DeadlineVcmiLauncher') as launch:
+            for plan in ({}, {'policy_support': None}, {'policy_support': 'unknown'}):
+                with self.subTest(plan=plan), self.assertRaisesRegex(ValueError, 'Unknown or missing'):
+                    evaluation.collect(plan, (object(), object()))
+        launch.assert_not_called()
+
     def worker_simulation(self, *, change_plan=False):
         import signal
         from validation.probes.validate_hero_policy import wall_limit
         output = self.root / 'worker'; output.mkdir()
-        plan = dict(output=str(output), supervisor_pid=os.getppid(), protected={}, execution={},
+        plan = dict(policy_support=evaluation.campaign.GUARD, output=str(output), supervisor_pid=os.getppid(), protected={}, execution={},
             hard_deadline_monotonic=time.monotonic() + 300, hard_deadline_unix=time.time() + 300)
         path = output / 'plan.json'; evaluation.write(path, plan, new=True)
         def capture(*args):
@@ -284,7 +304,7 @@ class OneFrozenGameTests(unittest.TestCase):
     def test_integrity_failure_still_persists_supervisor_cleanup_receipt(self):
         from experiments.headless import process_deadline
         output = self.root / 'supervised'; output.mkdir()
-        plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+        plan = dict(policy_support=evaluation.campaign.GUARD, output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
                     hard_deadline_unix=time.time() + 300)
         evaluation.write(output / 'plan.json', plan, new=True)
         evaluation.write(output / 'report.json', {'status': 'passed'}, new=True)
@@ -304,7 +324,7 @@ class OneFrozenGameTests(unittest.TestCase):
         from experiments.headless import process_deadline
         from experiments.learner.game_progress import GameProgress, progress_path
         output = self.root / 'progress-failure'; output.mkdir()
-        plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+        plan = dict(policy_support=evaluation.campaign.GUARD, output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
                     hard_deadline_unix=time.time() + 300)
         evaluation.write(output / 'plan.json', plan, new=True)
         progress = GameProgress(progress_path(output, 1), episode=1, ordinary=9920, reserved=320)
@@ -325,7 +345,7 @@ class OneFrozenGameTests(unittest.TestCase):
     def test_missing_plan_still_persists_failed_shutdown_and_cleanup(self):
         from experiments.headless import process_deadline
         output = self.root / 'supervised'; output.mkdir()
-        plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+        plan = dict(policy_support=evaluation.campaign.GUARD, output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
                     hard_deadline_unix=time.time() + 300)
         path = output / 'plan.json'; evaluation.write(path, plan, new=True)
         evaluation.write(output / 'report.json', {'status': 'passed', 'plan': evaluation.binding(path)}, new=True)

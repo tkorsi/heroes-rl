@@ -16,7 +16,7 @@ from pathlib import Path
 
 from experiments.episodes.scoring import HEADLESS_TRUNCATIONS
 from experiments.headless import contextual_evidence as evidence
-from experiments.headless.contextual_protocol import ContextualProducer, exact
+from experiments.headless.contextual_protocol import ContextualProducer, exact, declared_army_information
 from experiments.learner import contextual as contract
 
 COLORS = ("red", "blue")
@@ -76,6 +76,7 @@ def _bound_metadata(directory, manifest, final):
              and type(manifest.get("schema_version")) is int and manifest["schema_version"] == 1,
              "Unsupported contextual manifest")
     profile = contract.profile_for(manifest.get("environment"))
+    army_information = declared_army_information(manifest, profile.environment)
     _require(manifest["environment"] == profile.environment
              and manifest.get("history_schema") == profile.history_schema
              and manifest.get("action_schema") == profile.action_schema,
@@ -90,6 +91,10 @@ def _bound_metadata(directory, manifest, final):
     _require(_identity(path)["sha256"] == digest, "Finalization file digest mismatch")
     document = evidence.strict_json(path.read_bytes())
     _require(final == document and type(final) is dict, "Supplied finalization differs from its file")
+    _require(declared_army_information(final, profile.environment) == army_information
+             and declared_army_information(manifest.get("identity", {}), profile.environment) == army_information
+             and manifest.get("launch", {}).get("environment", {}).get("EXPLORER_RL_ARMY_INFORMATION") == army_information,
+             "Own-army information is not bound to finalization, identity and native launch")
     _require(final.get("schema") == "heroes-contextual-finalization-evidence-v1"
              and final.get("episode") == manifest["episode"]
              and final.get("identity") == manifest.get("identity")
@@ -162,7 +167,8 @@ def _reconstruct(directory, manifest, final, profile, player):
     path = evidence.inside(directory, f"agents/{color}/bridge.jsonl")
     bridge_identity = _identity(path)
     _require(bridge_identity["sha256"] == final["raw_bridge_sha256"][color], f"{color}: bridge digest mismatch")
-    producer = ContextualProducer(manifest["episode"], player, interface=profile.environment)
+    producer = ContextualProducer(manifest["episode"], player, interface=profile.environment,
+                                  army_information=declared_army_information(manifest, profile.environment))
     digest, counts, frame_count = hashlib.sha256(), Counter(), 0
 
     def appended(frames):

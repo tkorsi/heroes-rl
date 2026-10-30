@@ -1268,3 +1268,25 @@ legacy/custom-worker mock signature failures were corrected without weakening
 production checks. Native tiny gameplay and speed remain unmeasured. See the
 [report](research/tiny-one-game-2026-10-30.md) and
 [validation](../validation/tiny-one-game-2026-10-30.json).
+
+## 2026-10-30: temporary recruit-only army experiment (preregistered)
+
+The user requested a second explicit simplification alongside automatic combat:
+remove troop-slot rearrangement, splitting, merging and individual transfers.
+Stack opening and upgrades are temporarily disabled. The user explicitly retained
+whole-hero garrison entry/exit so purchased town troops can reach the hero, and
+requested current own-army composition/combat statistics without clicks.
+
+The source audit corrected a false assumption: the previous interface exposed
+only troop IDs/counts after opening a hero/town/exchange; stack clicks supplied
+upgrade offers, not combat statistics. The new versioned own-army extension is
+owner-only and binds its native ready/header, manifest, finalization, history,
+policy input and replay. Historical wire/features retain their prior shape.
+
+The permanent [temporary restriction register](temporary-restrictions.md) includes
+an explicit removal checklist. This support change must be lifted in a separately
+versioned experiment, not silently erased from historical reports. Rewards remain
+terminal-only and model tensors/PPO are unchanged. Native acceptance is pending: a
+clean build, both-seat bounded mechanics prefixes, exact replay, a fabricated-stat
+rejection control and a frozen tiny technical prefix are required before release.
+All diagnostic experience remains excluded from training.

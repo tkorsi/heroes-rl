@@ -101,6 +101,7 @@ private:
 	int64_t completedBattles = 0;
 	bool contextual = false;
 	bool expandedInterface = false; ///< opt-in protocol-10 native adventure capabilities
+	bool ownArmyInformation = false; ///< opt-in v8 passive owned-army composition and popup statistics
 	std::string evidenceActor;
 	bool townEconomy = false; ///< separate protocol-5 profile; never changes v2
 	bool heroRecruitment = false; ///< opt-in protocol-7 owned-town tavern and multiple heroes

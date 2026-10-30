@@ -39,6 +39,23 @@ STORAGE_PROGRESS_PATHS = frozenset({
 })
 STORAGE_PROGRESS_NEW = frozenset({'experiments/learner/contextual_storage.py',
                                   'experiments/learner/game_progress.py'})
+# Exact reviewed additions to policy support; legacy support retains its rules.
+# These digests bind the reviewed opt-in observation and support release.
+RECRUIT_ONLY_SOURCE_SHA256 = {
+    'engine/ExperimentReplay/ContextualReplay.cpp': 'bebe4b98fc48abe048e32240767baacd8f443d71631dc3ca666178c2aada43e4',
+    'engine/ExplorerRL/Contextual.cpp': '09ddb160a8c70e060f3e2b2093a2879e24aabab078a0b5f4770bbc0ec7a2db63',
+    'engine/ExplorerRL/ContextualEvidence.cpp': '4e31338745b9cfbe867d99949112fb63340a3a389fe82458dff839ac51574154',
+    'engine/ExplorerRL/ContextualEvidence.h': 'f43e34373fd36a52f5b3d377ed876af513b47db0ef5334b78a0adb5f0017631b',
+    'engine/ExplorerRL/ExplorerRL.cpp': '97ca85b5363236143fa78fe3cce7b734acdff0a2b7fa4aae6b978fcb7c226d94',
+    'engine/ExplorerRL/ExplorerRL.h': 'cac4746edd8d9f4443024202ca968db620d127d321fc52364691c5a494fc0b9d',
+    'experiments/headless/contextual_env.py': 'a1ca9947b7c21262fa2b71520868da537c690fbaf3da8c55bacdea8419e640cd',
+    'experiments/headless/contextual_protocol.py': '62dc02cb177181b7b51e5972d06c6cf73426ca09188324e89b255344eb78eebc',
+    'experiments/headless/contextual_replay.py': '4a5173bd3d87ee1729f763daa067b5a2fad60e2cf319fbde852b3e43378355ab',
+    'experiments/headless/contextual_replay_history.py': '5cf37e415f90c435c5fa910de10f9c35ede6feaad4012873c46d021cc5fca529',
+    'experiments/learner/contextual.py': '69893b70595307a50cc936927eae7fd624ebe0355a040464864f798cfe676883',
+    'experiments/learner/contextual_model.py': '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe',
+    'experiments/learner/interaction_guard.py': 'd5b295bcdca6c37da6aa050007526b7b11e4da574ccae0693d61038a093418c4',
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -48,9 +65,11 @@ require, read, write, binding, bound = campaign.require, campaign.read, campaign
 
 
 def verify_runtime_sources(implementation):
-    """Allow only exact reviewed storage/UI bytes over the unchanged engine/model base."""
+    """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
             'Evaluation source identity omitted a reviewed storage/progress dependency')
+    require(RECRUIT_ONLY_SOURCE_SHA256.keys() <= implementation.keys(),
+            'Evaluation source identity omitted a reviewed recruit-only dependency')
     def committed(commit, names):
         archive = subprocess.check_output(['git', 'archive', commit, *sorted(names)], cwd=ROOT)
         with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
@@ -60,11 +79,12 @@ def verify_runtime_sources(implementation):
         return files
     original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW)
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
+    original.update(RECRUIT_ONLY_SOURCE_SHA256)
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
 def source_identity():
-    """All reused sources match the accepted base or the narrow storage/UI release."""
+    """Every reused source matches an explicit reviewed content identity."""
     from validation.probes.validate_capabilities import capability_implementation_identity
     from experiments.learner.inference import source_identity as learner_identity
     implementation = capability_implementation_identity()
@@ -77,7 +97,16 @@ def source_identity():
         unchanged_runtime_base=BASE_COMMIT, implementation=implementation,
         reporting_controller_base=CONTROLLER_COMMIT,
         storage_progress_base=STORAGE_PROGRESS_COMMIT,
+        recruit_only_sources=RECRUIT_ONLY_SOURCE_SHA256,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
+
+
+def policy_support(plan):
+    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSION
+    version = plan.get('policy_support')
+    require(version in (campaign.GUARD, RECRUIT_ONLY_VERSION),
+            'Unknown or missing one-game policy support')
+    return version
 
 
 def seed_row(offset):
@@ -200,13 +229,17 @@ def frozen_models(plan):
 
 
 def verify_capture(folder, plan, models, remaining, *, identity_check=None):
+    from experiments.headless.contextual_protocol import declared_army_information
     from experiments.learner.contextual_rollout import behavior_guard_version
     from experiments.learner.contextual_storage import load_collected
     from experiments.learner.contextual_model import weights_sha256
     from experiments.learner import selfplay_training as training
     from experiments.headless import contextual_replay
+    guard = policy_support(plan)
     collected = load_collected(folder / 'neural-rollout.json')
     manifest = read(folder / 'manifest.json')
+    require(declared_army_information(manifest, campaign.INTERFACE) == plan.get('army_information'),
+            'Evaluation army information extension differs from its plan')
     require(json.loads(collected.manifest_json) == manifest,
             'Persisted paired evaluation capture changed')
     require(manifest['episode'] == '1' and manifest['seed'] == plan['schedule']['engine_seed']
@@ -221,7 +254,7 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None):
                 and rollout.behavior_checkpoint == rollout.opponent_checkpoint == plan['model_checkpoint']
                 and rollout.weights_sha256 == rollout.opponent_weights_sha256 == plan['weights_sha256'] == weights_sha256(model)
                 and json.loads(config) == model.config.to_dict(), 'Frozen evaluation policy identity or exclusion differs')
-        require((behavior_guard_version(rollout.decisions) == campaign.GUARD or not rollout.decisions and not rollout.samples)
+        require((behavior_guard_version(rollout.decisions) == guard or not rollout.decisions and not rollout.samples)
                 and len(rollout.decisions) <= BUDGET['hard_choices_per_player']
                 and all(rollout.history[decision.decision_seq].day <= 365 for decision in rollout.decisions),
                 'Evaluation guard, choices or sampled-day boundary differs')
@@ -235,7 +268,7 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None):
     require(read(folder / 'evaluation-verification/contextual-replay-verification.json') == replay
             and training._files(folder, manifest) == originals, 'Evidence changed during evaluation verification')
     remaining(); (check_identity if identity_check is None else identity_check)(plan)
-    proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0,
+    proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0, policy_support=guard,
                  choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts])
     write(folder / 'evaluation-policy-reconstruction.json', proof, new=True)
     return proof, manifest
@@ -248,6 +281,7 @@ def collect(plan, models):
     from experiments.headless.env import HeadlessSelfPlayEnv, Limits
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
     from validation.probes.validate_hero_policy import wall_limit, retain_failed_evidence
+    guard = policy_support(plan)
     output = Path(plan['output'])
     progress = GameProgress(progress_path(output, 1), episode=1,
         ordinary=BUDGET['ordinary_choices_per_player'], reserved=BUDGET['reserved_dialog_choices_per_player'])
@@ -261,12 +295,13 @@ def collect(plan, models):
             return super().act(request)
     collector = DayBoundedCollector(models, (plan['model_checkpoint'],) * 2, learner_player=0,
         opponent_pool=campaign.POOL, interface=campaign.INTERFACE, purpose='diagnostic', origin='native',
-        policy_seeds=tuple(plan['schedule']['policy_seeds']), guard_version=campaign.GUARD)
+        policy_seeds=tuple(plan['schedule']['policy_seeds']), guard_version=guard)
+    observation_options = ({'army_information': plan['army_information']} if 'army_information' in plan else {})
     env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=365, max_actions=10240,
         watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30),
         ledger=True, replay=True, interface=campaign.INTERFACE,
         agents={color: dict(checkpoint=plan['model_checkpoint'], kind='frozen-neural', purpose='diagnostic')
-                for color in ('red', 'blue')})
+                for color in ('red', 'blue')}, **observation_options)
     try:
         with wall_limit(campaign.remaining(dict(hard_deadline_monotonic=deadline, hard_deadline_unix=wall))):
             collected = collector.run_episode(env, episode=1, seed=plan['schedule']['engine_seed'],
@@ -300,7 +335,9 @@ def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=S
     write(output / 'worker-claim.json', dict(pid=os.getpid(), plan_sha256=sha), new=True)
     report = dict(schema=result_schema + '-result', status='running', plan=binding(path), checkpoint=checkpoint,
         physical_games=1, purpose='diagnostic', training_input=False, training_samples_admitted=0, optimizer_updates=0,
-        budget=BUDGET, policy_support=campaign.GUARD, owned_cleanup_verified=False)
+        budget=BUDGET, policy_support=policy_support(plan), owned_cleanup_verified=False)
+    if 'army_information' in plan:
+        report['army_information'] = plan['army_information']
     write(output / 'report.json', report, new=True)
     try:
         with wall_limit(campaign.remaining(plan, 30)):
@@ -376,7 +413,9 @@ def supervise(plan, *, worker_script=None, result_schema=SCHEMA, checkpoint=1753
     report = read(output / 'report.json') if (output / 'report.json').exists() else {}
     require(process is not None and process.returncode == 0 and not errors and protected and plan_unchanged
             and report.get('plan') == plan_binding and report.get('status') == 'passed'
-            and report.get('schema') == result_schema + '-result' and report.get('checkpoint') == checkpoint,
+            and report.get('schema') == result_schema + '-result' and report.get('checkpoint') == checkpoint
+            and report.get('policy_support') == policy_support(plan)
+            and report.get('army_information') == plan.get('army_information'),
             'Evaluation stopped; preserve this evidence and use fresh seeds for another manual attempt')
     return report
 

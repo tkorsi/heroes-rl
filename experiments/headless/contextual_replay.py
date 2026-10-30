@@ -22,6 +22,7 @@ import time
 
 from experiments.headless import contextual_evidence as evidence
 from experiments.headless import replay as legacy
+from experiments.headless.contextual_protocol import declared_army_information
 from experiments.headless.army_replay_mutations import army_management_mutations
 from experiments.headless.dialog_replay_mutations import adventure_dialogs_mutations
 from experiments.learner import contextual as contract
@@ -123,6 +124,10 @@ def cross_check_wire(episode, manifest, tape):
     """Bind the verifier's regenerated wire to exactly what each player received."""
     profile = contract.profile_for(manifest["environment"])
     header = tape[0] if tape else {}
+    army_information = declared_army_information(manifest, profile.environment)
+    if (declared_army_information(header, profile.environment) != army_information
+            or manifest.get("launch", {}).get("environment", {}).get("EXPLORER_RL_ARMY_INFORMATION") != army_information):
+        raise ReplayError("Native replay header or launch differs from the army information declaration")
     expected = {"schema": SCHEMA, "episode": manifest["episode"], "interface": profile.environment,
                 "protocol_version": profile.protocol, "history_schema": profile.history_schema,
                 "action_schema": profile.action_schema}

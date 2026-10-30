@@ -34,6 +34,7 @@ DIALOGS_ENVIRONMENT = "adventure-dialogs-v1"
 EXPANDED_SCHEMA = "heroes-player-history-v8"
 EXPANDED_ACTION_SCHEMA = "heroes-context-actions-v8"
 EXPANDED_ENVIRONMENT = "adventure-capabilities-v1"
+OWN_ARMY_INFORMATION = "own-army-details-v1"
 TRAJECTORY_SCHEMA = "heroes-context-trajectory-v1"
 TERMINAL_TRAJECTORY_SCHEMA = "heroes-context-trajectory-v2"
 MAX_INT = 2**63 - 1
@@ -1096,6 +1097,63 @@ class Window:
 
 
 @dataclass(frozen=True)
+class OwnArmyStack:
+    """Current non-battle statistics of an owned stack, delivered without a click."""
+    slot: int
+    creature: int
+    count: int
+    name_text_id: str
+    attack: int
+    defense: int
+    damage_min: int
+    damage_max: int
+    health: int
+    speed: int
+    shots: int
+    casts: int
+    morale: int
+    luck: int
+    shooter: bool
+    flying: bool
+    undead: bool
+
+    def __post_init__(self):
+        _integer(self.slot, high=6)
+        _integer(self.creature)
+        _integer(self.count, low=1)
+        if (type(self.name_text_id) is not str
+                or re.fullmatch(r"creatures\.[A-Za-z0-9_.-]+\.name\.plural", self.name_text_id) is None):
+            raise ValueError("Invalid public creature name text identifier")
+        for name in ("attack", "defense", "damage_min", "damage_max", "speed", "shots", "casts"):
+            _integer(getattr(self, name), name=name)
+        _integer(self.health, low=1, name="stack creature health")
+        if self.damage_min > self.damage_max:
+            raise ValueError("Owned stack damage bounds are reversed")
+        for name in ("morale", "luck"):
+            _integer(getattr(self, name), low=-(2**31), high=2**31-1, name=name)
+        for name in ("shooter", "flying", "undead"):
+            if type(getattr(self, name)) is not bool:
+                raise ValueError("Owned stack capability flags must be boolean")
+
+
+@dataclass(frozen=True)
+class OwnArmy:
+    """One owned hero or town's actual army; a garrison hero is never duplicated."""
+    subject: str
+    role: str
+    slots: tuple[OwnArmyStack, ...]
+
+    def __post_init__(self):
+        _text(self.subject)
+        if self.role not in ("hero", "town_garrison"):
+            raise ValueError("Passive army information is limited to owned heroes and towns")
+        _tuple(self.slots, OwnArmyStack, "passive owned army slots")
+        indices = tuple(slot.slot for slot in self.slots)
+        if indices != tuple(sorted(set(indices))):
+            raise ValueError("Passive owned army slots must be unique and ordered")
+
+
+@dataclass(frozen=True)
 class Observation:
     size: tuple[int, int, int]
     tiles: tuple[Tile, ...]
@@ -1104,6 +1162,8 @@ class Observation:
     heroes: tuple[Hero, ...]
     towns: tuple[Town, ...]
     window: Window | None = None
+    army_information: str | None = None
+    own_armies: tuple[OwnArmy, ...] | None = None
 
     def __post_init__(self):
         _position(self.size)
@@ -1121,6 +1181,18 @@ class Observation:
         for name in ("objects", "heroes", "towns"):
             _unique([entry.handle for entry in getattr(self, name)], name + " handle")
         _unique([x.handle for x in (*self.heroes, *self.towns)], "own subject handle")
+        if self.army_information is None:
+            if self.own_armies is not None:
+                raise ValueError("Passive own armies require their explicit information version")
+        else:
+            if self.army_information != OWN_ARMY_INFORMATION:
+                raise ValueError("Unsupported passive own army information version")
+            _tuple(self.own_armies, OwnArmy, "passive own armies")
+            _unique([army.subject for army in self.own_armies], "passive own army subject")
+            expected = {hero.handle: "hero" for hero in self.heroes}
+            expected.update({town.handle: "town_garrison" for town in self.towns})
+            if {army.subject: army.role for army in self.own_armies} != expected:
+                raise ValueError("Passive armies must cover exactly the currently owned heroes and towns")
         _tuple(self.resources, int, "resources")
         if len(self.resources) != 7:
             raise ValueError("Expected seven resource amounts")
@@ -1129,6 +1201,20 @@ class Observation:
         if self.window is not None:
             if type(self.window) is not Window:
                 raise ValueError("Expected typed active window")
+            if self.own_armies is not None:
+                passive = {army.subject: army for army in self.own_armies}
+                for displayed in self.window.armies or ():
+                    if displayed.subject in passive:
+                        actual = tuple((slot.slot, slot.creature, slot.count) for slot in passive[displayed.subject].slots)
+                        visible = tuple((slot.slot, slot.creature, slot.count) for slot in displayed.slots if slot.count)
+                        if actual != visible:
+                            raise ValueError("Passive owned army disagrees with its displayed army")
+                stack_panel = self.window.stack_panel
+                if stack_panel is not None and self.window.context.subject in passive:
+                    source = stack_panel.source
+                    actual = next((slot for slot in passive[self.window.context.subject].slots if slot.slot == source.slot), None)
+                    if actual is None or (actual.creature, actual.count) != (source.creature, source.count):
+                        raise ValueError("Passive owned stack disagrees with its displayed stack")
             own = (self.towns if self.window.context.kind == "town" else
                    (*self.heroes, *self.towns) if self.window.context.kind in ("stack", "capability") else self.heroes)
             stack = self.window.stack_panel
@@ -1988,6 +2074,8 @@ def _validate_panel(panel, profile):
 
 def _validate_observation(observation, profile):
     _validate_context(observation.context, profile)
+    if observation.army_information is not None and not profile.capabilities:
+        raise ValueError("Passive own army information requires history v8")
     if any(profile.army_management != (hero.in_garrison is not None) for hero in observation.heroes):
         raise ValueError("Explicit garrison flags belong only to v6 owned hero rosters")
     if observation.window is not None:
@@ -3097,6 +3185,17 @@ def decode_observation(raw, *, schema=SCHEMA):
     if schema != profile.history_schema:
         raise ValueError("Observation decoding requires its enclosing history schema")
     data = _record(raw, Observation)
+    if ("army_information" in data) != ("own_armies" in data):
+        raise ValueError("Passive own army fields must be present together")
+    if "army_information" in data:
+        if data["army_information"] != OWN_ARMY_INFORMATION:
+            raise ValueError("Unsupported passive own army information version")
+        armies = []
+        for raw_army in _array(data["own_armies"]):
+            row = _exact_record(raw_army, OwnArmy)
+            row["slots"] = tuple(OwnArmyStack(**_exact_record(slot, OwnArmyStack)) for slot in _array(row["slots"]))
+            armies.append(OwnArmy(**row))
+        data["own_armies"] = tuple(armies)
     for name in ("size", "resources"):
         if name in data:
             data[name] = _array(data[name])
@@ -3207,6 +3306,8 @@ def _wire(value):
                     del data[name]
         elif kind is Hero and value.in_garrison is None:
             del data["in_garrison"]
+        elif kind is Observation and value.army_information is None:
+            del data["army_information"], data["own_armies"]
         elif kind is VisibleEvent:
             for name in ("partner", "dialog", "capability"):
                 if getattr(value, name) is None:

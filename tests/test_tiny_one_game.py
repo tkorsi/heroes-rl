@@ -43,6 +43,22 @@ class TinyOneGameTests(unittest.TestCase):
         self.assertEqual(result['optimizer_updates'], 0)
         self.assertNotIn('exact_model_adam_rng_progress_sampler_pool', result)
 
+    def test_temporary_experiment_is_separate_from_initialization_and_tampering_rejects(self):
+        spec = tiny.experiment()
+        self.assertTrue(spec['temporary'])
+        self.assertEqual(spec['policy_support'], tiny.GUARD)
+        self.assertNotEqual(spec['policy_support'], tiny.campaign.GUARD)
+        self.assertEqual(tiny.read(tiny.candidate.CONFIG)['policy_support'], tiny.campaign.GUARD)
+        self.assertEqual(tiny.expected_metadata()['configuration'], tiny.binding(tiny.candidate.CONFIG))
+        path = self.root / 'experiment.json'
+        for update in ({'temporary': False}, {'blocked_actions': []}, {'policy_support': tiny.campaign.GUARD},
+                       {'restoration_reminder': ''}, {'training_launcher_accepted': True},
+                       {'rewards': {'win': 1, 'loss': -1, 'ordinary_transition': -0.01}}):
+            tiny.write(path, {**spec, **update})
+            with self.subTest(update=update), patch.object(tiny, 'EXPERIMENT_CONFIG', path), \
+                 self.assertRaisesRegex(ValueError, 'restriction contract changed'):
+                tiny.experiment()
+
     def test_invalid_budget_and_busy_machine_stop_before_prepare(self):
         with patch.object(tiny, 'prepare') as prepare, patch.object(evaluation, 'supervise') as launch, \
              patch.object(tiny, 'inspect_candidate') as inspect, patch('builtins.print'):
@@ -197,7 +213,7 @@ class TinyOneGameTests(unittest.TestCase):
         baseline_binding = tiny.binding(baseline_file)
         baseline = dict(parent={'checkpoint': 1753}, checkpoint=1753, model_checkpoint='published-1753',
             weights_sha256='old', optimizer_steps=1753, source={'old': True},
-            protected={str(baseline_file): baseline_binding}, binary='/unused/client')
+            protected={str(baseline_file): baseline_binding}, binary='/unused/client', game_map=str(baseline_file))
         preparation = dict(status='prepared_untrained', progress=dict(updates=0, rollouts=0, decisions=0),
             policy=plan['tiny_policy'], weights_sha256=plan['weights_sha256'], exact_model_rng_pool_restore=True,
             training_launcher_accepted=False, protected={}, config=tiny.candidate.specification()[1].to_dict())
@@ -205,7 +221,8 @@ class TinyOneGameTests(unittest.TestCase):
         with self.pinned_fixture(plan), patch.object(tiny, 'PREPARATION', receipt), \
              patch.object(tiny, 'PREPARATION_SHA', tiny.binding(receipt)['sha256']), \
              patch.object(evaluation, 'inspect_parent', return_value=baseline), \
-             patch.object(tiny, 'source_identity', return_value={'new': True}):
+             patch.object(tiny, 'source_identity', return_value={'new': True}), \
+             patch.object(tiny, 'inspect_runtime', return_value={'runtime_protected': {}}):
             checked = tiny.inspect_candidate()
             self.assertEqual(checked['comparison_baseline'], baseline['parent'])
             self.assertNotIn('parent', checked)
@@ -246,13 +263,15 @@ class TinyOneGameTests(unittest.TestCase):
         reservation = tiny.reserve(self.root / 'run')
         plan = dict(schema=tiny.SCHEMA + '-plan', source={'frozen': True}, budget=tiny.BUDGET,
             physical_games=1, purpose='diagnostic', training_input=False, optimizer_updates=0,
-            policy_support=tiny.campaign.GUARD, checkpoint=tiny.CHECKPOINT,
+            policy_support=tiny.GUARD, checkpoint=tiny.CHECKPOINT,
             initialization='random_initialization', initialized_from_checkpoint=None,
             training_launcher_accepted=False, parameters=15460,
             model_config=tiny.candidate.specification()[1].to_dict(), optimizer_state='not created',
             binary='/unused/client', runtime={'binary': 'bound'}, replay_binary=files['replay'],
             native_manifest=files['native'], preparation=files['preparation'], tiny_policy=files['policy'],
-            reservation=reservation, schedule=tiny.seed_row(0), protected={})
+            reservation=reservation, schedule=tiny.seed_row(0), protected={},
+            experiment=tiny.experiment(), experiment_configuration=tiny.binding(tiny.EXPERIMENT_CONFIG),
+            runtime_comparison_map=files['policy'])
         return plan
 
     def test_source_runtime_and_learning_plan_tampering_fail_closed(self):
@@ -261,10 +280,12 @@ class TinyOneGameTests(unittest.TestCase):
         with patch.object(tiny, 'source_identity', return_value=plan['source']), \
              patch.object(tiny, 'PREPARATION', Path(plan['preparation']['path'])), \
              patch.object(tiny, 'PREPARATION_SHA', plan['preparation']['sha256']), \
+             patch.object(tiny, 'inspect_runtime', return_value={'runtime_protected': {}}), \
              patch.object(contextual_evidence, 'runtime_identity', return_value=plan['runtime']):
             tiny.check_identity(plan)
             changes = ({'source': {}}, {'runtime': {}}, {'physical_games': 2}, {'purpose': 'training'},
                        {'training_input': True}, {'optimizer_updates': 1}, {'policy_support': 'none'},
+                       {'policy_support': tiny.campaign.GUARD}, {'experiment': {}}, {'experiment_configuration': {}},
                        {'checkpoint': 'published-1753'}, {'initialization': 'distillation'},
                        {'initialized_from_checkpoint': 1753}, {'training_launcher_accepted': True},
                        {'parameters': 74344}, {'optimizer_state': 'restored'},
@@ -278,7 +299,7 @@ class TinyOneGameTests(unittest.TestCase):
         for fail in (False, True):
             with self.subTest(failed_verification=fail):
                 output = self.root / ('worker-' + str(fail)); output.mkdir()
-                plan = dict(output=str(output), supervisor_pid=os.getppid(), protected={}, execution={},
+                plan = dict(policy_support=tiny.GUARD, output=str(output), supervisor_pid=os.getppid(), protected={}, execution={},
                     hard_deadline_monotonic=time.monotonic() + 300, hard_deadline_unix=time.time() + 300)
                 path = output / 'plan.json'; tiny.write(path, plan, new=True)
                 identity, loader = Mock(), Mock(return_value=(object(), object()))
@@ -307,10 +328,10 @@ class TinyOneGameTests(unittest.TestCase):
     def test_supervisor_uses_tiny_driver_in_guarded_child_command(self):
         from experiments.headless import process_deadline
         output = self.root / 'supervised'; output.mkdir()
-        plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+        plan = dict(policy_support=tiny.GUARD, output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
                     hard_deadline_unix=time.time() + 300)
         tiny.write(output / 'plan.json', plan, new=True)
-        report = dict(status='passed', schema=tiny.SCHEMA + '-result', checkpoint=tiny.CHECKPOINT,
+        report = dict(status='passed', policy_support=tiny.GUARD, schema=tiny.SCHEMA + '-result', checkpoint=tiny.CHECKPOINT,
                       plan=tiny.binding(output / 'plan.json'))
         tiny.write(output / 'report.json', report, new=True)
         process = SimpleNamespace(returncode=0, wait=lambda **kwargs: None)
@@ -325,13 +346,13 @@ class TinyOneGameTests(unittest.TestCase):
 
     def test_supervisor_rejects_report_from_wrong_checkpoint_or_schema(self):
         from experiments.headless import process_deadline
-        for index, mismatch in enumerate(({'checkpoint': 1753}, {'schema': evaluation.SCHEMA + '-result'})):
+        for index, mismatch in enumerate(({'checkpoint': 1753}, {'schema': evaluation.SCHEMA + '-result'}, {'policy_support': tiny.campaign.GUARD})):
             with self.subTest(mismatch=mismatch):
                 output = self.root / f'mixed-report-{index}'; output.mkdir()
-                plan = dict(output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
+                plan = dict(policy_support=tiny.GUARD, output=str(output), protected={}, hard_deadline_monotonic=time.monotonic() + 300,
                             hard_deadline_unix=time.time() + 300)
                 tiny.write(output / 'plan.json', plan, new=True)
-                report = dict(status='passed', schema=tiny.SCHEMA + '-result', checkpoint=tiny.CHECKPOINT,
+                report = dict(status='passed', policy_support=tiny.GUARD, schema=tiny.SCHEMA + '-result', checkpoint=tiny.CHECKPOINT,
                               plan=tiny.binding(output / 'plan.json'))
                 tiny.write(output / 'report.json', {**report, **mismatch}, new=True)
                 process = SimpleNamespace(returncode=0, wait=lambda **kwargs: None)
@@ -345,11 +366,11 @@ class TinyOneGameTests(unittest.TestCase):
     def test_custom_identity_does_not_bypass_policy_reconstruction_or_native_history_proofs(self):
         from experiments.learner import contextual_storage, contextual_rollout, contextual_model, selfplay_training
         from experiments.headless import contextual_replay
-        cases = ('passed', 'native_rejected', 'history_rejected', 'missing_blue', 'identity_changed')
+        cases = ('passed', 'native_rejected', 'history_rejected', 'missing_blue', 'identity_changed', 'wrong_guard')
         for case in cases:
             with self.subTest(case=case):
                 folder = self.root / case; folder.mkdir()
-                plan = dict(schedule=tiny.seed_row(0), model_checkpoint=tiny.CHECKPOINT, weights_sha256='a' * 64,
+                plan = dict(policy_support=tiny.GUARD, schedule=tiny.seed_row(0), model_checkpoint=tiny.CHECKPOINT, weights_sha256='a' * 64,
                     runtime={'runtime': 'bound'}, native={'map_sha256': 'map'}, data='/unused/data', replay_binary={})
                 manifest = dict(episode='1', seed=tiny.seed_row(0)['engine_seed'], environment=tiny.campaign.INTERFACE,
                     status='truncated', identity={'native_runtime_sha256': plan['runtime'], **plan['native']})
@@ -371,7 +392,8 @@ class TinyOneGameTests(unittest.TestCase):
                     return replay
                 identity = Mock(side_effect=ValueError('identity changed') if case == 'identity_changed' else None)
                 with patch.object(contextual_storage, 'load_collected', return_value=collected), \
-                     patch.object(contextual_rollout, 'behavior_guard_version', return_value=tiny.campaign.GUARD), \
+                     patch.object(contextual_rollout, 'behavior_guard_version',
+                                  return_value=tiny.campaign.GUARD if case == 'wrong_guard' else tiny.GUARD), \
                      patch.object(contextual_model, 'weights_sha256', return_value='a' * 64), \
                      patch.object(selfplay_training, '_files', return_value={'capture': 'unchanged'}), \
                      patch.object(selfplay_training, 'reconstruct_policies', return_value=[{'player': 0}, {'player': 1}]) as reconstruct, \
@@ -388,8 +410,12 @@ class TinyOneGameTests(unittest.TestCase):
                         with self.assertRaises(ValueError):
                             evaluation.verify_capture(folder, plan, models, lambda: 30, identity_check=identity)
                         self.assertFalse((folder / 'evaluation-policy-reconstruction.json').exists())
-                reconstruct.assert_called_once_with(collected, models, plan['schedule']['policy_seeds'], unittest.mock.ANY)
-                native.assert_called_once(); original_identity.assert_not_called(); update.assert_not_called()
+                if case == 'wrong_guard':
+                    reconstruct.assert_not_called(); native.assert_not_called()
+                else:
+                    reconstruct.assert_called_once_with(collected, models, plan['schedule']['policy_seeds'], unittest.mock.ANY)
+                    native.assert_called_once()
+                original_identity.assert_not_called(); update.assert_not_called()
                 if case in ('passed', 'identity_changed'): identity.assert_called_once_with(plan)
                 else: identity.assert_not_called()
 

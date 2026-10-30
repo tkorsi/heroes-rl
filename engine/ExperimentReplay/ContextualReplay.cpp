@@ -109,6 +109,17 @@ bool automaticAllowed(const CPack & pack, const std::string & operation)
 void ContextualReplay::configureControllers(const JsonNode & header)
 {
 	unsetenv("EXPLORER_RL_PLAYER");
+	// The recorded contract selects regenerated observation fields. Do not inherit
+	// a caller's opt-in when verifying an older capture without this extension.
+	if(header.Struct().count("army_information"))
+	{
+		if(header["interface"].String() != "adventure-capabilities-v1" || !header["army_information"].isString()
+			|| header["army_information"].String() != explorer_rl::ContextualEvidence::OWN_ARMY_INFORMATION)
+			throw std::runtime_error("Unsupported contextual replay army information contract");
+		setenv("EXPLORER_RL_ARMY_INFORMATION", explorer_rl::ContextualEvidence::OWN_ARMY_INFORMATION, 1);
+	}
+	else
+		unsetenv("EXPLORER_RL_ARMY_INFORMATION");
 	if(header["schema"].String() == explorer_rl::ContextualEvidence::BUILTIN_SCHEMA)
 	{
 		const auto & players = header["controllers"]["explorer_players"];

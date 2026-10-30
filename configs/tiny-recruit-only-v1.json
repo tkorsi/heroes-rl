@@ -1,0 +1,26 @@
+{
+  "schema": "heroes-tiny-recruit-only-experiment-v1",
+  "experiment": "tiny-recruit-only-v1",
+  "initial_policy": "tiny-v1-untrained-initial",
+  "policy_support": "visible-interaction-budget-recruit-only-v1",
+  "temporary": true,
+  "blocked_actions": [
+    "open_stack",
+    "split_stack",
+    "merge_stacks",
+    "swap_stacks",
+    "transfer_stack",
+    "select_upgrade",
+    "upgrade_stack"
+  ],
+  "recruitment": "unchanged_native_purchase",
+  "combat": "automatic_unchanged",
+  "rewards": {
+    "win": 1,
+    "loss": -1,
+    "ordinary_transition": 0
+  },
+  "restoration_reminder": "Restore manual army arrangement and stack inspection in a separately versioned experiment.",
+  "training_launcher_accepted": false,
+  "army_information": "own-army-details-v1"
+}

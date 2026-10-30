@@ -102,23 +102,26 @@ bool ContextualEvidence::cancelled()
 	return value->replay ? value->stopping : value->sealed;
 }
 
-ContextualEvidence & ContextualEvidence::live(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs, bool expanded)
+ContextualEvidence & ContextualEvidence::live(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs, bool expanded, bool ownArmies)
 {
+	if(ownArmies && !expanded)
+		throw std::runtime_error("Passive army information requires the v8 interface");
 	if(auto * existing = current())
 	{
 		const auto & existingMetadata = existing->metadata;
 		if(existing->metadata["episode"].String() != episode
 			|| existingMetadata["controllers"] != experimentBuiltinControllers()
+			|| existingMetadata["army_information"] != (ownArmies ? JsonNode(OWN_ARMY_INFORMATION) : JsonNode())
 			|| existing->metadata["interface"].String() != (expanded ? "adventure-capabilities-v1" : dialogs ? "adventure-dialogs-v1" : management ? "adventure-army-management-v1" : heroes ? "adventure-heroes-v1" : armies ? "adventure-armies-v1" : town ? "adventure-town-v1" : "adventure-windows-v1"))
 			throw std::runtime_error("Contextual replay identity changed during initialization");
 		return *existing;
 	}
-	recorder.reset(new ContextualEvidence(episode, town, armies, heroes, management, dialogs, expanded));
+	recorder.reset(new ContextualEvidence(episode, town, armies, heroes, management, dialogs, expanded, ownArmies));
 	setExperimentEvidenceHooks(recorder);
 	return *recorder;
 }
 
-ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs, bool expanded)
+ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, bool armies, bool heroes, bool management, bool dialogs, bool expanded, bool ownArmies)
 {
 	const char * directory = std::getenv("VCMI_EXPERIMENT_DIR");
 	if(!directory || !*directory)
@@ -136,6 +139,8 @@ ContextualEvidence::ContextualEvidence(const std::string & episode, bool town, b
 	metadata["protocol_version"].Integer() = expanded ? 10 : dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4;
 	metadata["history_schema"].String() = expanded ? "heroes-player-history-v8" : dialogs ? "heroes-player-history-v7" : management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2";
 	metadata["action_schema"].String() = expanded ? "heroes-context-actions-v8" : dialogs ? "heroes-context-actions-v7" : management ? "heroes-context-actions-v6" : heroes ? "heroes-context-actions-v5" : armies ? "heroes-context-actions-v4" : town ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+	if(ownArmies)
+		metadata["army_information"].String() = OWN_ARMY_INFORMATION;
 	output << line(metadata) << '\n';
 	output.flush();
 	if(!output)
@@ -178,6 +183,9 @@ ContextualEvidence::ContextualEvidence(const std::vector<JsonNode> & tape, bool 
 	const bool heroes = metadata["interface"].String() == "adventure-heroes-v1";
 	const bool armies = metadata["interface"].String() == "adventure-armies-v1";
 	const bool town = metadata["interface"].String() == "adventure-town-v1";
+	if(metadata.Struct().count("army_information")
+		&& (!expanded || !metadata["army_information"].isString() || metadata["army_information"].String() != OWN_ARMY_INFORMATION))
+		throw std::runtime_error("Unsupported recorded passive army information contract");
 	if((!expanded && !dialogs && !management && !heroes && !armies && !town && metadata["interface"].String() != "adventure-windows-v1")
 		|| metadata["protocol_version"].Integer() != (expanded ? 10 : dialogs ? 9 : management ? 8 : heroes ? 7 : armies ? 6 : town ? 5 : 4)
 		|| metadata["history_schema"].String() != (expanded ? "heroes-player-history-v8" : dialogs ? "heroes-player-history-v7" : management ? "heroes-player-history-v6" : heroes ? "heroes-player-history-v5" : armies ? "heroes-player-history-v4" : town ? "heroes-player-history-v3" : "heroes-player-history-v2")

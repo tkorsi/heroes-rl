@@ -22,9 +22,9 @@ from test_contextual_evidence import write_barriers
 
 
 def obs():
-    return json.loads(json.dumps(asdict(c.Observation((4, 4, 1),
+    return c.encode_observation(c.Observation((4, 4, 1),
         (c.Tile((1, 1, 0), 2, 0, False, False),), (), (0,) * 7,
-        (c.Hero("local-hero", (1, 1, 0), 100),), (c.Town("local-town", (1, 1, 0)),)))))
+        (c.Hero("local-hero", (1, 1, 0), 100),), (c.Town("local-town", (1, 1, 0)),)))
 
 
 def ready(player=0):

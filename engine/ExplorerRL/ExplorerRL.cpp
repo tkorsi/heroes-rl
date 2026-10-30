@@ -179,6 +179,12 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 		townEconomy = heroRecruitment || armyTransfer || name == "adventure-town-v1";
 		contextual = townEconomy || name == "adventure-windows-v1";
 	}
+	if(const char * information = std::getenv("EXPLORER_RL_ARMY_INFORMATION"); information && *information)
+	{
+		if(!expandedInterface || std::string(information) != explorer_rl::ContextualEvidence::OWN_ARMY_INFORMATION)
+			throw std::runtime_error("Unsupported passive army information contract");
+		ownArmyInformation = true;
+	}
 	if(contextual && playerID != PlayerColor(0) && playerID != PlayerColor(1))
 		throw std::runtime_error("Contextual interface requires the two baseline players");
 	callback->waitTillRealize = false;
@@ -186,7 +192,7 @@ void ExplorerRL::initGameInterface(std::shared_ptr<Environment> ENV, std::shared
 	const char * episodeValue = std::getenv("EXPLORER_RL_EPISODE");
 	episode = episodeValue ? episodeValue : "unspecified";
 	if(contextual && contextualEvidenceEnabled())
-		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs, expandedInterface);
+		explorer_rl::ContextualEvidence::live(episode, townEconomy, armyTransfer, heroRecruitment, armyManagement, adventureDialogs, expandedInterface, ownArmyInformation);
 	profile = environmentInteger("EXPLORER_RL_PROFILE", 0, 0, 1) == 1;
 	timeoutSeconds = environmentInteger("EXPLORER_RL_TIMEOUT", 30, 1, 300);
 	snapshotEvery = environmentInteger("EXPLORER_RL_SNAPSHOT_EVERY", 1, 0, 1000000);
@@ -323,6 +329,8 @@ void ExplorerRL::run() noexcept
 			ready["interface"].String() = expandedInterface ? "adventure-capabilities-v1" : adventureDialogs ? "adventure-dialogs-v1" : armyManagement ? "adventure-army-management-v1" : heroRecruitment ? "adventure-heroes-v1" : armyTransfer ? "adventure-armies-v1" : townEconomy ? "adventure-town-v1" : "adventure-windows-v1";
 			ready["history_schema"].String() = expandedInterface ? "heroes-player-history-v8" : adventureDialogs ? "heroes-player-history-v7" : armyManagement ? "heroes-player-history-v6" : heroRecruitment ? "heroes-player-history-v5" : armyTransfer ? "heroes-player-history-v4" : townEconomy ? "heroes-player-history-v3" : "heroes-player-history-v2";
 			ready["action_schema"].String() = expandedInterface ? "heroes-context-actions-v8" : adventureDialogs ? "heroes-context-actions-v7" : armyManagement ? "heroes-context-actions-v6" : heroRecruitment ? "heroes-context-actions-v5" : armyTransfer ? "heroes-context-actions-v4" : townEconomy ? "heroes-context-actions-v3" : "heroes-context-actions-v2";
+			if(ownArmyInformation)
+				ready["army_information"].String() = explorer_rl::ContextualEvidence::OWN_ARMY_INFORMATION;
 		}
 		else
 		{

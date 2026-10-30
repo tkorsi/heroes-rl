@@ -1106,6 +1106,10 @@ def observation_semantics(observation):
         if window.context.kind == "exchange":
             bindings.append(_node("exchange_partner", _subject(observation, window.context.selection)))
         own = _node("management_observation", own, _set("army_bindings", bindings))
+    if observation.own_armies is not None:
+        bindings = [_node("own_army", _semantic(army), _subject(observation, army.subject))
+                    for army in observation.own_armies]
+        own = _node("passive_army_observation", own, _set("own_army_bindings", bindings))
     return own
 
 
@@ -1730,7 +1734,8 @@ class ContextualDistribution:
         return tuple(choice for choice in choices if self._permitted(action_for(choice)))
 
     def _coordinates(self, subject):
-        if self.guard is not None and self.guard.version == interaction_guard.REVEALED_VERSION:
+        if self.guard is not None and self.guard.version in (
+                interaction_guard.REVEALED_VERSION, interaction_guard.RECRUIT_ONLY_VERSION):
             return self.guard.movement_coordinates(subject, self.observation, self.offers)
         width, height, _ = self.offers.size
         return (index for index in range(width * height)

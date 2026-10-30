@@ -1,5 +1,6 @@
 #include "StdInc.h"
 #include "ExplorerRL.h"
+#include "ContextualEvidence.h"
 #include "KnowledgePlanner.h"
 #include "Notice.h"
 #include "VisibleWorld.h"
@@ -14,6 +15,8 @@
 #include "../../lib/mapping/TerrainTile.h"
 #include "../../lib/networkPacks/ArtifactLocation.h"
 
+#include <algorithm>
+#include <limits>
 #include <set>
 
 namespace
@@ -44,6 +47,55 @@ JsonNode army(const CArmedInstance & object)
 		node.Vector().push_back(std::move(item));
 	}
 	return node;
+}
+
+JsonNode ownArmyDetails(const CArmedInstance & object, PlayerColor player, const std::string & subject, const char * role)
+{
+	// This opt-in view may read only the player's own callback-provided armies.
+	// It intentionally has no path through visible enemy/neutral object handles.
+	if(object.getOwner() != player)
+		throw std::runtime_error("Passive army information requires an owned army");
+	JsonNode result;
+	result["subject"].String() = subject;
+	result["role"].String() = role;
+	result["slots"].Vector();
+	for(const auto & [slot, stack] : object.Slots())
+	{
+		if(!slot.validSlot() || !stack || !stack->getCreature() || stack->getCount() <= 0
+			|| stack->getCount() > std::numeric_limits<int32_t>::max())
+			throw std::runtime_error("Unsupported owned army detail slot");
+		// Match CCreatureWindow's adventure-map popup convention: attack,
+		// defense and damage use ranged mode for a shooter with shots. These
+		// are current stack/hero bonuses, not the creature's unmodified base.
+		const int shots = stack->valOfBonuses(BonusType::SHOTS);
+		const bool shooter = stack->hasBonusOfType(BonusType::SHOOTER) && shots != 0;
+		JsonNode item;
+		item["slot"].Integer() = slot.getNum();
+		item["creature"].Integer() = stack->getCreatureID().getNum();
+		item["count"].Integer() = stack->getCount();
+		item["name_text_id"].String() = stack->getCreature()->getNamePluralTextID();
+		item["attack"].Integer() = stack->getAttack(shooter);
+		item["defense"].Integer() = stack->getDefense(shooter);
+		item["damage_min"].Integer() = stack->getMinDamage(shooter);
+		item["damage_max"].Integer() = stack->getMaxDamage(shooter);
+		item["health"].Integer() = stack->getMaxHealth();
+		item["speed"].Integer() = stack->getMovementRange();
+		item["shots"].Integer() = shooter ? shots : 0;
+		item["casts"].Integer() = stack->valOfBonuses(BonusType::CASTS);
+		// MoraleLuckBox suppresses these values even when a MAX_* bonus is
+		// present, so apply its displayed immunity override explicitly.
+		item["morale"].Integer() = stack->unaffectedByMorale() ? 0 : stack->moraleVal();
+		item["luck"].Integer() = stack->hasBonusOfType(BonusType::NO_LUCK) ? 0 : stack->luckVal();
+		item["shooter"].Bool() = shooter;
+		item["flying"].Bool() = stack->hasBonusOfType(BonusType::FLYING);
+		item["undead"].Bool() = stack->hasBonusOfType(BonusType::UNDEAD);
+		result["slots"].Vector().push_back(std::move(item));
+	}
+	std::sort(result["slots"].Vector().begin(), result["slots"].Vector().end(), [](const JsonNode & first, const JsonNode & second)
+	{
+		return first["slot"].Integer() < second["slot"].Integer();
+	});
+	return result;
 }
 
 void fields(const JsonNode & value, const std::set<std::string> & allowed, const std::set<std::string> & required)
@@ -127,8 +179,9 @@ void ContextualState::supersede(int day, const char * reason)
 
 JsonNode ExplorerRL::contextualObservation()
 {
-	// Caller holds a stable engine view and stateMutex. No closed-panel army,
-	// skill, mana or level reads occur on the map path.
+	// Caller holds a stable engine view and stateMutex. Historical observations
+	// still require opened windows for armies; only the explicit owned-army
+	// extension adds passive composition and popup statistics on the map path.
 	const auto size = callback->getMapSize();
 	if(size.z != 1 || size.x <= 0 || size.y <= 0)
 		throw std::runtime_error("Contextual interface requires one map level");
@@ -137,6 +190,11 @@ JsonNode ExplorerRL::contextualObservation()
 	for(const char * key : {"tiles", "objects", "resources", "heroes", "towns"})
 		observation[key].Vector();
 	observation["window"] = JsonNode();
+	if(ownArmyInformation)
+	{
+		observation["army_information"].String() = explorer_rl::ContextualEvidence::OWN_ARMY_INFORMATION;
+		observation["own_armies"].Vector();
+	}
 	const CGHeroInstance * openHero = nullptr;
 	const CGTownInstance * openTown = nullptr;
 	for(const auto * hero : callback->getHeroesInfo())
@@ -151,6 +209,8 @@ JsonNode ExplorerRL::contextualObservation()
 		item["movement_max"].Integer() = hero->movementPointsLimit();
 		if(armyManagement) item["in_garrison"].Bool() = hero->isGarrisoned();
 		observation["heroes"].Vector().push_back(std::move(item));
+		if(ownArmyInformation)
+			observation["own_armies"].Vector().push_back(ownArmyDetails(*hero, playerID, handle, "hero"));
 		if(contextState.context == "hero" && contextState.subject == handle)
 			openHero = hero;
 	}
@@ -163,9 +223,18 @@ JsonNode ExplorerRL::contextualObservation()
 		item["handle"].String() = handle;
 		item["position"] = coordinates(town->visitablePos());
 		observation["towns"].Vector().push_back(std::move(item));
+		// A garrison hero was already emitted with the owned heroes. Reading
+		// the town itself, rather than getUpperArmy(), avoids duplicating it.
+		if(ownArmyInformation)
+			observation["own_armies"].Vector().push_back(ownArmyDetails(*town, playerID, handle, "town_garrison"));
 		if(contextState.context == "town" && contextState.subject == handle)
 			openTown = town;
 	}
+	if(ownArmyInformation)
+		std::sort(observation["own_armies"].Vector().begin(), observation["own_armies"].Vector().end(), [](const JsonNode & first, const JsonNode & second)
+		{
+			return first["subject"].String() < second["subject"].String();
+		});
 	for(int resource = 0; resource < 7; ++resource)
 		observation["resources"].Vector().emplace_back(callback->getResourceAmount(GameResID(resource)));
 	std::set<int> seen;

@@ -57,6 +57,21 @@ def exact(raw, fields, name):
         raise ValueError(f"Unexpected or missing {name} fields")
 
 
+def validate_army_information(interface, value):
+    if value is not None and (interface != contract.EXPANDED_ENVIRONMENT or value != contract.OWN_ARMY_INFORMATION):
+        raise ValueError("Own-army information requires the explicit supported v8 extension")
+    return value
+
+
+def declared_army_information(document, interface):
+    if type(document) is not dict:
+        raise ValueError("Army information declaration requires an object")
+    value = document.get("army_information")
+    if "army_information" in document and value is None:
+        raise ValueError("Absent army information must omit its declaration")
+    return validate_army_information(interface, value)
+
+
 def clone_history(history):
     cloned = contract.PlayerHistory(history.episode, history.player, schema=history.schema)
     for frame in history.frames:
@@ -67,11 +82,12 @@ def clone_history(history):
 class ContextualProducer:
     """One socket recipient. No other player's state is available here."""
 
-    def __init__(self, episode, player, *, interface=contract.ENVIRONMENT):
+    def __init__(self, episode, player, *, interface=contract.ENVIRONMENT, army_information=None):
         self.episode, self.player = episode, player
         self.profile = contract.profile_for(interface)
         if interface != self.profile.environment:
             raise ValueError("Producer requires an explicit environment interface")
+        self.army_information = validate_army_information(interface, army_information)
         self.live = contract.PlayerHistory(episode, player, schema=self.profile.history_schema)
         self.history = self.live
         self.ready = False
@@ -89,9 +105,11 @@ class ContextualProducer:
         if message.get("episode") != self.episode or type(message.get("player")) is not int or message.get("player") != self.player:
             raise ValueError("Cross-player or cross-episode contextual envelope")
         if kind == "ready":
-            exact(message, base | {"interface", "history_schema", "action_schema"}, "ready")
+            extension = {"army_information"} if self.army_information is not None else set()
+            exact(message, base | {"interface", "history_schema", "action_schema"} | extension, "ready")
             if (self.ready or message["interface"] != self.profile.environment or message["history_schema"] != self.profile.history_schema
-                    or message["action_schema"] != self.profile.action_schema):
+                    or message["action_schema"] != self.profile.action_schema
+                    or declared_army_information(message, self.profile.environment) != self.army_information):
                 raise ValueError("Duplicate ready or mismatched contextual schema")
             self.ready = True
             return ()
@@ -123,6 +141,9 @@ class ContextualProducer:
                     raw["decision_seq"] = self.decision_ids[native_id]
             raw.update(schema=self.profile.history_schema, episode=self.episode, player=self.player, seq=self.live.frame_count)
             observation = None
+            if "observation" in raw:
+                if declared_army_information(raw["observation"], self.profile.environment) != self.army_information:
+                    raise ValueError("Observation army information differs from the negotiated extension")
             if record_kind == "decision":
                 observation = contract.decode_observation(raw["observation"], schema=self.profile.history_schema)
                 raw["offers"] = contract.encode_offers(contract.Offers.from_observation(observation, schema=self.profile.action_schema))

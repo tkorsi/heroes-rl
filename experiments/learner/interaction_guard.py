@@ -14,7 +14,15 @@ from . import contextual as c
 
 VERSION = "visible-interaction-budget-v1"
 REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
-SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION)
+RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
+SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, RECRUIT_ONLY_VERSION)
+# Temporary experiment restriction. Removing it requires a new explicit support
+# selection; historical captures must continue to reconstruct this exact set.
+# Whole-hero garrison changes are separate from moving stacks between slots.
+RECRUIT_ONLY_BLOCKED_KINDS = frozenset({
+    "split_stack", "merge_stacks", "swap_stacks", "transfer_stack",
+    "open_stack", "select_upgrade", "upgrade_stack",
+})
 ACTIVE_VERSION = None
 NAVIGATION_LIMIT = 2
 MANAGEMENT_LIMIT = 32
@@ -139,6 +147,8 @@ class GuardSupport:
 
     def permits(self, action, observation, offers):
         if not offers.permits(action):
+            return False
+        if self.version == RECRUIT_ONLY_VERSION and action.kind in RECRUIT_ONLY_BLOCKED_KINDS:
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability", "end_turn"):
             return True
