@@ -1,0 +1,932 @@
+{
+  "admitted_games": 8,
+  "analysis_integrity": {
+    "admitted_games": 8,
+    "all_bound_inputs_unchanged": true,
+    "analysis_source_unchanged": true,
+    "checkpoint": 1730,
+    "elapsed_seconds": 320.76807233301224,
+    "first10_requested": {
+      "loss": 1,
+      "unscored_cutoff": 8,
+      "win": 1
+    },
+    "global_checkout_note": "Other agents were authorized to prepare manual continuation code; only analysis-relevant source hashes are asserted unchanged.",
+    "limitations": [
+      "Twelve physical games completed because collection was parallel; only the first eight entered two fully published PPO updates.",
+      "The interrupted third optimizer attempt has no published checkpoint; games 9\u201312 are excluded.",
+      "Cutoff games are not natural draws or losses; their learner values are bootstrapped.",
+      "Travel counts use delivered player-visible observations; new tiles sum separate player perspectives and may overlap.",
+      "Revisits and days without observed travel, revelation or capture do not by themselves establish aimlessness or inactivity.",
+      "No new game, policy call, model restore or optimizer update was performed by this analysis."
+    ],
+    "native_games_launched": 0,
+    "policy_input": false,
+    "ppo_updates_applied": 0,
+    "protected_original_count": 15,
+    "protected_original_unchanged": true,
+    "reward_input": false,
+    "schema": "heroes-stopped-selfplay-posthoc-v1",
+    "status": "passed",
+    "training_input": false,
+    "verified_games": 12
+  },
+  "automatic_restart": false,
+  "check_default": true,
+  "checkpoint": 1730,
+  "cohorts": {
+    "all12_verified": {
+      "both_player_perspectives": {
+        "choices": 63767,
+        "days_without_observed_travel_reveal_or_capture": 697,
+        "movement_attempts": 2818,
+        "newly_observed_tiles_summed_perspectives": 4149,
+        "no_route_known": 50,
+        "perspectives": 24,
+        "policy_action_days": 1575,
+        "position_changes": 12835,
+        "revealed_targets": 2818,
+        "revisits": 11413,
+        "swap_stacks": 43812,
+        "town_captures": 3,
+        "unrevealed_targets": 0
+      },
+      "cutoff_games": 9,
+      "learner_outcomes": {
+        "loss": 1,
+        "unscored_cutoff": 9,
+        "win": 2
+      },
+      "natural_games": 3,
+      "physical_games": 12,
+      "policy_input": false,
+      "reward_input": false,
+      "roles": {
+        "frozen_opponent": {
+          "action_counts": {
+            "back": 1185,
+            "close": 1562,
+            "close_capability": 1288,
+            "construct": 4,
+            "end_turn": 783,
+            "merge_stacks": 181,
+            "move_artifact": 7,
+            "move_to": 1582,
+            "open_building": 7,
+            "open_capability": 1288,
+            "open_hero": 1044,
+            "open_panel": 81,
+            "open_stack": 1146,
+            "open_town": 523,
+            "recruit": 41,
+            "select_recruit": 47,
+            "split_stack": 183,
+            "swap_stacks": 22896
+          },
+          "choices": {
+            "available_games": 12,
+            "maximum": 4960,
+            "mean": 2820.6666666666665,
+            "median": 2467.5,
+            "minimum": 420,
+            "total": 33848
+          },
+          "days_with_policy_actions": 788,
+          "days_without_observed_travel_reveal_or_capture": 297,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 12,
+            "maximum": 112,
+            "mean": 66.08333333333333,
+            "median": 79.5,
+            "minimum": 9,
+            "total": 793
+          },
+          "movement_results": {
+            "hero_unavailable": 2,
+            "interaction": 9,
+            "movement_limit": 409,
+            "no_route_known": 29,
+            "reached": 1133
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 12,
+            "maximum": 302,
+            "mean": 174.33333333333334,
+            "median": 155.0,
+            "minimum": 65,
+            "total": 2092
+          },
+          "own_position_changes": {
+            "available_games": 12,
+            "maximum": 1240,
+            "mean": 600.3333333333334,
+            "median": 246.5,
+            "minimum": 28,
+            "total": 7204
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 12,
+            "maximum": 1205,
+            "mean": 539.8333333333334,
+            "median": 195.0,
+            "minimum": 1,
+            "total": 6478
+          },
+          "town_captures": {
+            "available_games": 12,
+            "maximum": 1,
+            "mean": 0.08333333333333333,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 12,
+            "maximum": 131,
+            "mean": 61.5,
+            "median": 41.5,
+            "minimum": 22,
+            "total": 738
+          }
+        },
+        "learner": {
+          "action_counts": {
+            "back": 1035,
+            "close": 1355,
+            "close_capability": 878,
+            "construct": 2,
+            "end_turn": 783,
+            "merge_stacks": 149,
+            "move_artifact": 9,
+            "move_to": 1236,
+            "open_building": 12,
+            "open_capability": 878,
+            "open_hero": 836,
+            "open_panel": 92,
+            "open_stack": 976,
+            "open_town": 523,
+            "recruit": 41,
+            "select_recruit": 45,
+            "split_stack": 153,
+            "swap_stacks": 20916
+          },
+          "choices": {
+            "available_games": 12,
+            "maximum": 4960,
+            "mean": 2493.25,
+            "median": 1736.0,
+            "minimum": 262,
+            "total": 29919
+          },
+          "days_with_policy_actions": 787,
+          "days_without_observed_travel_reveal_or_capture": 400,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 2,
+          "last_public_day": {
+            "available_games": 12,
+            "maximum": 112,
+            "mean": 66.16666666666667,
+            "median": 79.5,
+            "minimum": 9,
+            "total": 794
+          },
+          "movement_results": {
+            "hero_unavailable": 5,
+            "interaction": 11,
+            "movement_limit": 321,
+            "no_route_known": 21,
+            "reached": 878
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 12,
+            "maximum": 298,
+            "mean": 171.41666666666666,
+            "median": 166.0,
+            "minimum": 60,
+            "total": 2057
+          },
+          "own_position_changes": {
+            "available_games": 12,
+            "maximum": 1198,
+            "mean": 469.25,
+            "median": 199.5,
+            "minimum": 69,
+            "total": 5631
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 12,
+            "maximum": 1109,
+            "mean": 411.25,
+            "median": 162.5,
+            "minimum": 13,
+            "total": 4935
+          },
+          "town_captures": {
+            "available_games": 12,
+            "maximum": 1,
+            "mean": 0.16666666666666666,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 2
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 12,
+            "maximum": 142,
+            "mean": 59,
+            "median": 50.0,
+            "minimum": 26,
+            "total": 708
+          }
+        }
+      },
+      "schema": "heroes-selfplay-travel-v1",
+      "termination_reasons": {
+        "collection_window": 9,
+        "natural_terminal": 3
+      },
+      "training_input": false
+    },
+    "first10_requested": {
+      "both_player_perspectives": {
+        "choices": 55555,
+        "days_without_observed_travel_reveal_or_capture": 631,
+        "movement_attempts": 2433,
+        "newly_observed_tiles_summed_perspectives": 3525,
+        "no_route_known": 39,
+        "perspectives": 20,
+        "policy_action_days": 1390,
+        "position_changes": 11099,
+        "revealed_targets": 2433,
+        "revisits": 9902,
+        "swap_stacks": 38034,
+        "town_captures": 2,
+        "unrevealed_targets": 0
+      },
+      "cutoff_games": 8,
+      "learner_outcomes": {
+        "loss": 1,
+        "unscored_cutoff": 8,
+        "win": 1
+      },
+      "natural_games": 2,
+      "physical_games": 10,
+      "policy_input": false,
+      "reward_input": false,
+      "roles": {
+        "frozen_opponent": {
+          "action_counts": {
+            "back": 1029,
+            "close": 1316,
+            "close_capability": 1086,
+            "construct": 4,
+            "end_turn": 691,
+            "merge_stacks": 155,
+            "move_artifact": 5,
+            "move_to": 1284,
+            "open_building": 7,
+            "open_capability": 1086,
+            "open_hero": 850,
+            "open_panel": 76,
+            "open_stack": 992,
+            "open_town": 470,
+            "recruit": 38,
+            "select_recruit": 45,
+            "split_stack": 157,
+            "swap_stacks": 19177
+          },
+          "choices": {
+            "available_games": 10,
+            "maximum": 4960,
+            "mean": 2846.8,
+            "median": 2467.5,
+            "minimum": 514,
+            "total": 28468
+          },
+          "days_with_policy_actions": 695,
+          "days_without_observed_travel_reveal_or_capture": 297,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 10,
+            "maximum": 112,
+            "mean": 70,
+            "median": 79.5,
+            "minimum": 12,
+            "total": 700
+          },
+          "movement_results": {
+            "hero_unavailable": 2,
+            "interaction": 5,
+            "movement_limit": 333,
+            "no_route_known": 21,
+            "reached": 923
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 10,
+            "maximum": 302,
+            "mean": 174.3,
+            "median": 155.0,
+            "minimum": 65,
+            "total": 1743
+          },
+          "own_position_changes": {
+            "available_games": 10,
+            "maximum": 1240,
+            "mean": 584.8,
+            "median": 246.5,
+            "minimum": 28,
+            "total": 5848
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 10,
+            "maximum": 1205,
+            "mean": 527.8,
+            "median": 195.0,
+            "minimum": 1,
+            "total": 5278
+          },
+          "town_captures": {
+            "available_games": 10,
+            "maximum": 1,
+            "mean": 0.1,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 10,
+            "maximum": 131,
+            "mean": 58,
+            "median": 41.5,
+            "minimum": 22,
+            "total": 580
+          }
+        },
+        "learner": {
+          "action_counts": {
+            "back": 950,
+            "close": 1225,
+            "close_capability": 820,
+            "construct": 2,
+            "end_turn": 691,
+            "merge_stacks": 131,
+            "move_artifact": 7,
+            "move_to": 1149,
+            "open_building": 12,
+            "open_capability": 820,
+            "open_hero": 779,
+            "open_panel": 83,
+            "open_stack": 896,
+            "open_town": 450,
+            "recruit": 37,
+            "select_recruit": 43,
+            "split_stack": 135,
+            "swap_stacks": 18857
+          },
+          "choices": {
+            "available_games": 10,
+            "maximum": 4960,
+            "mean": 2708.7,
+            "median": 1736.0,
+            "minimum": 262,
+            "total": 27087
+          },
+          "days_with_policy_actions": 695,
+          "days_without_observed_travel_reveal_or_capture": 334,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 10,
+            "maximum": 112,
+            "mean": 70,
+            "median": 79.5,
+            "minimum": 12,
+            "total": 700
+          },
+          "movement_results": {
+            "hero_unavailable": 5,
+            "interaction": 10,
+            "movement_limit": 300,
+            "no_route_known": 18,
+            "reached": 816
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 10,
+            "maximum": 298,
+            "mean": 178.2,
+            "median": 184.0,
+            "minimum": 60,
+            "total": 1782
+          },
+          "own_position_changes": {
+            "available_games": 10,
+            "maximum": 1198,
+            "mean": 525.1,
+            "median": 199.5,
+            "minimum": 69,
+            "total": 5251
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 10,
+            "maximum": 1109,
+            "mean": 462.4,
+            "median": 162.5,
+            "minimum": 13,
+            "total": 4624
+          },
+          "town_captures": {
+            "available_games": 10,
+            "maximum": 1,
+            "mean": 0.1,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 10,
+            "maximum": 142,
+            "mean": 63.7,
+            "median": 51.5,
+            "minimum": 26,
+            "total": 637
+          }
+        }
+      },
+      "schema": "heroes-selfplay-travel-v1",
+      "termination_reasons": {
+        "collection_window": 8,
+        "natural_terminal": 2
+      },
+      "training_input": false
+    },
+    "first8_admitted": {
+      "both_player_perspectives": {
+        "choices": 42163,
+        "days_without_observed_travel_reveal_or_capture": 489,
+        "movement_attempts": 1820,
+        "newly_observed_tiles_summed_perspectives": 2821,
+        "no_route_known": 30,
+        "perspectives": 16,
+        "policy_action_days": 1057,
+        "position_changes": 8290,
+        "revealed_targets": 1820,
+        "revisits": 7349,
+        "swap_stacks": 28855,
+        "town_captures": 2,
+        "unrevealed_targets": 0
+      },
+      "cutoff_games": 6,
+      "learner_outcomes": {
+        "loss": 1,
+        "unscored_cutoff": 6,
+        "win": 1
+      },
+      "natural_games": 2,
+      "physical_games": 8,
+      "policy_input": false,
+      "reward_input": false,
+      "roles": {
+        "frozen_opponent": {
+          "action_counts": {
+            "back": 675,
+            "close": 853,
+            "close_capability": 704,
+            "construct": 3,
+            "end_turn": 526,
+            "merge_stacks": 101,
+            "move_artifact": 3,
+            "move_to": 748,
+            "open_building": 6,
+            "open_capability": 704,
+            "open_hero": 488,
+            "open_panel": 61,
+            "open_stack": 642,
+            "open_town": 367,
+            "recruit": 28,
+            "select_recruit": 38,
+            "split_stack": 103,
+            "swap_stacks": 12498
+          },
+          "choices": {
+            "available_games": 8,
+            "maximum": 4960,
+            "mean": 2318.5,
+            "median": 1510.0,
+            "minimum": 514,
+            "total": 18548
+          },
+          "days_with_policy_actions": 528,
+          "days_without_observed_travel_reveal_or_capture": 296,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 8,
+            "maximum": 112,
+            "mean": 66.625,
+            "median": 77.0,
+            "minimum": 12,
+            "total": 533
+          },
+          "movement_results": {
+            "hero_unavailable": 2,
+            "interaction": 4,
+            "movement_limit": 187,
+            "no_route_known": 16,
+            "reached": 539
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 8,
+            "maximum": 302,
+            "mean": 174.5,
+            "median": 155.0,
+            "minimum": 65,
+            "total": 1396
+          },
+          "own_position_changes": {
+            "available_games": 8,
+            "maximum": 1207,
+            "mean": 422,
+            "median": 205.0,
+            "minimum": 28,
+            "total": 3376
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 8,
+            "maximum": 1161,
+            "mean": 364.625,
+            "median": 128.0,
+            "minimum": 1,
+            "total": 2917
+          },
+          "town_captures": {
+            "available_games": 8,
+            "maximum": 1,
+            "mean": 0.125,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 8,
+            "maximum": 131,
+            "mean": 58.375,
+            "median": 41.5,
+            "minimum": 22,
+            "total": 467
+          }
+        },
+        "learner": {
+          "action_counts": {
+            "back": 826,
+            "close": 1064,
+            "close_capability": 768,
+            "construct": 2,
+            "end_turn": 525,
+            "merge_stacks": 116,
+            "move_artifact": 6,
+            "move_to": 1072,
+            "open_building": 9,
+            "open_capability": 768,
+            "open_hero": 729,
+            "open_panel": 66,
+            "open_stack": 784,
+            "open_town": 339,
+            "recruit": 29,
+            "select_recruit": 35,
+            "split_stack": 120,
+            "swap_stacks": 16357
+          },
+          "choices": {
+            "available_games": 8,
+            "maximum": 4960,
+            "mean": 2951.875,
+            "median": 3187.5,
+            "minimum": 262,
+            "total": 23615
+          },
+          "days_with_policy_actions": 529,
+          "days_without_observed_travel_reveal_or_capture": 193,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 8,
+            "maximum": 112,
+            "mean": 66.5,
+            "median": 77.0,
+            "minimum": 12,
+            "total": 532
+          },
+          "movement_results": {
+            "hero_unavailable": 4,
+            "interaction": 8,
+            "movement_limit": 277,
+            "no_route_known": 14,
+            "reached": 769
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 8,
+            "maximum": 298,
+            "mean": 178.125,
+            "median": 184.0,
+            "minimum": 60,
+            "total": 1425
+          },
+          "own_position_changes": {
+            "available_games": 8,
+            "maximum": 1198,
+            "mean": 614.25,
+            "median": 589.5,
+            "minimum": 69,
+            "total": 4914
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 8,
+            "maximum": 1109,
+            "mean": 554,
+            "median": 552.0,
+            "minimum": 13,
+            "total": 4432
+          },
+          "town_captures": {
+            "available_games": 8,
+            "maximum": 1,
+            "mean": 0.125,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 8,
+            "maximum": 142,
+            "mean": 61.25,
+            "median": 51.5,
+            "minimum": 26,
+            "total": 490
+          }
+        }
+      },
+      "schema": "heroes-selfplay-travel-v1",
+      "termination_reasons": {
+        "collection_window": 6,
+        "natural_terminal": 2
+      },
+      "training_input": false
+    },
+    "last4_excluded": {
+      "both_player_perspectives": {
+        "choices": 21604,
+        "days_without_observed_travel_reveal_or_capture": 208,
+        "movement_attempts": 998,
+        "newly_observed_tiles_summed_perspectives": 1328,
+        "no_route_known": 20,
+        "perspectives": 8,
+        "policy_action_days": 518,
+        "position_changes": 4545,
+        "revealed_targets": 998,
+        "revisits": 4064,
+        "swap_stacks": 14957,
+        "town_captures": 1,
+        "unrevealed_targets": 0
+      },
+      "cutoff_games": 3,
+      "learner_outcomes": {
+        "unscored_cutoff": 3,
+        "win": 1
+      },
+      "natural_games": 1,
+      "physical_games": 4,
+      "policy_input": false,
+      "reward_input": false,
+      "roles": {
+        "frozen_opponent": {
+          "action_counts": {
+            "back": 510,
+            "close": 709,
+            "close_capability": 584,
+            "construct": 1,
+            "end_turn": 257,
+            "merge_stacks": 80,
+            "move_artifact": 4,
+            "move_to": 834,
+            "open_building": 1,
+            "open_capability": 584,
+            "open_hero": 556,
+            "open_panel": 20,
+            "open_stack": 504,
+            "open_town": 156,
+            "recruit": 13,
+            "select_recruit": 9,
+            "split_stack": 80,
+            "swap_stacks": 10398
+          },
+          "choices": {
+            "available_games": 4,
+            "maximum": 4960,
+            "mean": 3825,
+            "median": 4960.0,
+            "minimum": 420,
+            "total": 15300
+          },
+          "days_with_policy_actions": 260,
+          "days_without_observed_travel_reveal_or_capture": 1,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 0,
+          "last_public_day": {
+            "available_games": 4,
+            "maximum": 84,
+            "mean": 65,
+            "median": 83.5,
+            "minimum": 9,
+            "total": 260
+          },
+          "movement_results": {
+            "interaction": 5,
+            "movement_limit": 222,
+            "no_route_known": 13,
+            "reached": 594
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 4,
+            "maximum": 279,
+            "mean": 174,
+            "median": 173.5,
+            "minimum": 70,
+            "total": 696
+          },
+          "own_position_changes": {
+            "available_games": 4,
+            "maximum": 1240,
+            "mean": 957,
+            "median": 1228.0,
+            "minimum": 132,
+            "total": 3828
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 4,
+            "maximum": 1205,
+            "mean": 890.25,
+            "median": 1128.0,
+            "minimum": 100,
+            "total": 3561
+          },
+          "town_captures": {
+            "available_games": 4,
+            "maximum": 0,
+            "mean": 0,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 0
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 4,
+            "maximum": 125,
+            "mean": 67.75,
+            "median": 56.5,
+            "minimum": 33,
+            "total": 271
+          }
+        },
+        "learner": {
+          "action_counts": {
+            "back": 209,
+            "close": 291,
+            "close_capability": 110,
+            "end_turn": 258,
+            "merge_stacks": 33,
+            "move_artifact": 3,
+            "move_to": 164,
+            "open_building": 3,
+            "open_capability": 110,
+            "open_hero": 107,
+            "open_panel": 26,
+            "open_stack": 192,
+            "open_town": 184,
+            "recruit": 12,
+            "select_recruit": 10,
+            "split_stack": 33,
+            "swap_stacks": 4559
+          },
+          "choices": {
+            "available_games": 4,
+            "maximum": 2439,
+            "mean": 1576,
+            "median": 1736.0,
+            "minimum": 393,
+            "total": 6304
+          },
+          "days_with_policy_actions": 258,
+          "days_without_observed_travel_reveal_or_capture": 207,
+          "games_with_no_observed_hero_position_change": 0,
+          "games_with_town_capture": 1,
+          "last_public_day": {
+            "available_games": 4,
+            "maximum": 85,
+            "mean": 65.5,
+            "median": 84.0,
+            "minimum": 9,
+            "total": 262
+          },
+          "movement_results": {
+            "hero_unavailable": 1,
+            "interaction": 3,
+            "movement_limit": 44,
+            "no_route_known": 7,
+            "reached": 109
+          },
+          "newly_observed_tiles_after_initial": {
+            "available_games": 4,
+            "maximum": 270,
+            "mean": 158,
+            "median": 149.0,
+            "minimum": 64,
+            "total": 632
+          },
+          "own_position_changes": {
+            "available_games": 4,
+            "maximum": 268,
+            "mean": 179.25,
+            "median": 168.5,
+            "minimum": 112,
+            "total": 717
+          },
+          "position_changes_revisiting_observed_hero_position": {
+            "available_games": 4,
+            "maximum": 241,
+            "mean": 125.75,
+            "median": 98.0,
+            "minimum": 66,
+            "total": 503
+          },
+          "town_captures": {
+            "available_games": 4,
+            "maximum": 1,
+            "mean": 0.25,
+            "median": 0.0,
+            "minimum": 0,
+            "total": 1
+          },
+          "unique_hero_position_pairs_including_initial": {
+            "available_games": 4,
+            "maximum": 110,
+            "mean": 54.5,
+            "median": 40.0,
+            "minimum": 28,
+            "total": 218
+          }
+        }
+      },
+      "schema": "heroes-selfplay-travel-v1",
+      "termination_reasons": {
+        "collection_window": 3,
+        "natural_terminal": 1
+      },
+      "training_input": false
+    }
+  },
+  "complete_updates": 2,
+  "date": "2026-10-30",
+  "elapsed_seconds": 2501.82,
+  "manual_command": "./continue-selfplay.sh --hours 10",
+  "original_checkpoint": 1728,
+  "original_next_sequence": 1369,
+  "original_remaining_games": 604,
+  "preservation": {
+    "copied_files": 73,
+    "exact_model_adam_rng_progress_sampler_pool": true,
+    "owned_cleanup_verified": true,
+    "protected_original_files": 15,
+    "retained_evidence_files": 155
+  },
+  "private_receipt_hashes": {
+    "preserve1730-attempt1/report.json": "0a71851ef85d73cd4a54a229a6a50be4114987d4dded8b5022884d0cf41c5382",
+    "stopped-training-analysis-attempt1/status.json": "0fefee0a574612af31b9d89cb67b74ab3fc458ee9b9764b112f59d349a17373f"
+  },
+  "progress": {
+    "decisions": 1002418,
+    "rollouts": 6920,
+    "updates": 1730
+  },
+  "remaining_target_games": 92,
+  "report": "docs/research/selfplay100-2026-10-30.md",
+  "requested_report_games": 10,
+  "reserved_games_remain_consumed": 100,
+  "schema": "heroes-selfplay-stopped-results-v1",
+  "status": "stopped_by_user",
+  "total_optimizer_steps": 33554,
+  "training_source_commit": "28c57a26416715d28a3b0250b980f81a93960cd5",
+  "unpublished_optimizer_attempt_excluded": true,
+  "unpublished_optimizer_steps_known": false,
+  "validation_before_launch": {
+    "diagnostic_optimizer_updates_admitted": 0,
+    "frozen_policy_choices": 47222,
+    "frozen_policy_games": 8,
+    "full_suite_passed": 2074,
+    "full_suite_skipped": 33,
+    "native_cutoff_controls": 4,
+    "post_deadline_passed": 82,
+    "post_deadline_skipped": 1
+  },
+  "verified_games": 12
+}

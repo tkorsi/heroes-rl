@@ -2,7 +2,8 @@
 """A separate, explicitly invoked 100-game self-play experiment from update 1728.
 
 The original Nullkiller campaign is read-only. Diagnostics, consumed seeds and
-failed batches cannot become training inputs. No command resumes an old run.
+failed batches cannot become training inputs. Manual continuations use new run
+directories, fresh reservations and the latest published lineage checkpoint.
 """
 from __future__ import annotations
 
@@ -31,6 +32,10 @@ ORIGINAL = ARTIFACTS / 'local-script-training/original'
 BASE = ARTIFACTS / 'selfplay-training'
 NATIVE = ARTIFACTS / 'native-learner-builds/remove-telemetry-v1-attempt1/manifest.json'
 NATIVE_SHA = '53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573'
+CONTINUATION_BASE = '28c57a26416715d28a3b0250b980f81a93960cd5'
+BASE_ACCEPTANCE_SHA = '37bdf290216778c565997aab35517d387826684881563e69975751f63150d992'
+LINEAGE = BASE / 'selfplay100-lineage.json'
+CONTINUATION_ACCEPTANCE = BASE / 'continuation-acceptance-v1.json'
 INTERFACE = 'adventure-capabilities-v1'
 GUARD = 'visible-interaction-budget-revealed-v1'
 POOL = 'selfplay-batch-start-v1'
@@ -176,13 +181,17 @@ def inspect_parent():
     return pointer, state, cfg, execution, protected, plan
 
 
-def reserve_schedule(output, mode, count):
+def reserve_schedule(output, mode, count, *, expected_ledger=None):
     """Reserve the entire run before launch, including games never reached."""
-    require(mode in NAMESPACES and count == (100 if mode == 'training' else 8), 'Wrong experiment size')
+    require(mode in NAMESPACES and type(count) is int
+            and (count == 8 if mode == 'diagnostic' else 4 <= count <= 100 and count % 4 == 0),
+            'Wrong experiment size')
     BASE.mkdir(parents=True, exist_ok=True)
     with (BASE / 'namespace.lock').open('a+b') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         ledger_path = BASE / 'seed-reservations.json'
+        if expected_ledger is not None:
+            require(bound(expected_ledger) == ledger_path.resolve(), 'Continuation seed ledger changed after inspection')
         ledger = read(ledger_path) if ledger_path.exists() else {'schema': 'heroes-selfplay-seeds-v1', 'reservations': []}
         require(ledger['schema'] == 'heroes-selfplay-seeds-v1', 'Unknown seed ledger')
         offset = sum(item['count'] for item in ledger['reservations'] if item['mode'] == mode)
@@ -197,6 +206,27 @@ def reserve_schedule(output, mode, count):
     return reservation
 
 
+def seed_preview(mode, count):
+    """Inspect the durable namespace without reserving or changing any seed."""
+    ledger = read(BASE / 'seed-reservations.json')
+    require(ledger.get('schema') == 'heroes-selfplay-seeds-v1', 'Unknown seed ledger')
+    offsets = {name: 0 for name in NAMESPACES}
+    outputs = set()
+    for row in ledger['reservations']:
+        namespace = row['mode']
+        require(namespace in NAMESPACES and type(row['count']) is int and row['count'] > 0
+                and row['output'] not in outputs and row['offset'] == offsets[namespace]
+                and row['consumed_including_unstarted'] is True, 'Consumed seed ledger is inconsistent')
+        engine, policy = NAMESPACES[namespace]
+        require(row['engine_base'] == engine + row['offset']
+                and row['policy_base'] == policy + 2 * row['offset'], 'Consumed seed namespace differs')
+        offsets[namespace] += row['count']; outputs.add(row['output'])
+    engine, policy = NAMESPACES[mode]
+    require(offsets[mode] + count < 1_000_000, 'Self-play namespace exhausted')
+    return dict(count=count, consumed_before=offsets[mode], engine_base=engine + offsets[mode],
+                policy_base=policy + 2 * offsets[mode], reserved=False)
+
+
 def schedule(reservation, start, count):
     require(type(start) is int and type(count) is int and 0 <= start < start + count <= reservation['count'],
             'Schedule exceeds its consumed reservation')
@@ -204,6 +234,308 @@ def schedule(reservation, start, count):
                  engine_seed=reservation['engine_base'] + start + i,
                  policy_seeds=[reservation['policy_base'] + 2 * (start + i),
                                reservation['policy_base'] + 2 * (start + i) + 1]) for i in range(count)]
+
+
+def stopped_run_proof(output, launch, report, shutdown):
+    require(shutdown.get('owned_cleanup_verified') is True
+            and shutdown.get('protected_inputs_unchanged') is True, 'Previous self-play ownership is not closed')
+    if report.get('status') == 'completed' and shutdown.get('returncode') == 0:
+        return None
+    path = Path(output) / 'stop-finalization.json'
+    proof = read(path)
+    require(proof.get('schema') == 'heroes-selfplay-stop-finalization-v1'
+            and proof.get('status') in ('stopped_by_user', 'stopped')
+            and proof.get('owned_cleanup_verified') is True
+            and proof.get('protected_inputs_unchanged') is True
+            and proof.get('no_unpublished_experience_admitted') is True,
+            'Previous interrupted run has no verified stop finalization')
+    for name in ('launch', 'report', 'shutdown'):
+        require(bound(proof[name]) == Path(output) / (name + '.json'), 'Stop finalization binding differs')
+    latest = Path(output) / 'latest-checkpoint.json'
+    require(proof.get('latest') == (binding(latest) if latest.exists() else None),
+            'Stop finalization latest publication changed')
+    return binding(path)
+
+
+def initial_checkpoint_state(original):
+    from experiments.learner import builtin_training_resume as resume, checkpoints as cp
+    plan, report = read(bound(original['plan'])), read(bound(original['report']))
+    progress, steps, sampler = resume._completion(plan, report)
+    policy = cp._read(bound(original['policy']), 'policy', resume._metadata(plan, original['plan']['sha256']),
+                      (cp.BUILTIN_GAMEPLAY_PROVENANCE,), INTERFACE)
+    require(policy['weights_sha256'] == report['after_checkpoint']['weights_sha256'],
+            'Initial checkpoint weights differ from the original verified report')
+    return dict(progress=vars(progress), optimizer_steps=steps, sampler=sampler,
+                checkpoint=policy['checkpoint'], weights_sha256=policy['weights_sha256'])
+
+
+def check_relocated_pair(pair, published):
+    expected = deepcopy(published)
+    for name in ('policy', 'resume'):
+        bound(pair[name]); bound(published[name])
+        require(all(pair[name][key] == published[name][key] for key in ('sha256', 'bytes')),
+                'Relocated continuation checkpoint bytes differ from the published pair')
+        expected[name] = pair[name]
+    require(pair == expected, 'Relocated continuation progress, Adam, RNG or metadata differs')
+
+
+def inspect_lineage(path):
+    """Follow only registered launches and their published, complete batch pairs."""
+    path = Path(path).resolve()
+    lineage = read(path)
+    require(lineage.get('schema') == 'heroes-selfplay-lineage-v1' and lineage.get('target_games') == 100
+            and type(lineage.get('runs')) is list and lineage['runs'], 'Unknown self-play lineage')
+    initial = read(bound(lineage['runs'][0]))
+    require(initial['source']['checkout']['commit'] == CONTINUATION_BASE
+            and initial['mode'] == 'training' and initial['reservation']['count'] == 100,
+            'Lineage must begin at the accepted 100-game self-play launch')
+    original = initial['original_parent']
+    ledger_binding = binding(BASE / 'seed-reservations.json')
+    seed_preview('training', 0)
+    reservations = read(BASE / 'seed-reservations.json')['reservations']
+    initial_state = initial_checkpoint_state(original)
+    initial_progress = initial_state['progress']
+    require(initial_progress['updates'] == 1728, 'Wrong initial self-play checkpoint')
+    decisions, steps = initial_progress['decisions'], initial_state['optimizer_steps']
+    previous_policy, previous_checkpoint, previous_weights = original['policy'], initial_state['checkpoint'], initial_state['weights_sha256']
+    total, latest, selected, seen = 0, None, None, set()
+    protected = dict(initial['protected'])
+    for number, launch_binding in enumerate(lineage['runs']):
+        launch_path = bound(launch_binding)
+        launch = read(launch_path); output = launch_path.parent
+        require(str(output) not in seen and launch['output'] == str(output) and launch['mode'] == 'training'
+                and launch['original_parent'] == original and launch['configuration'] == initial['configuration']
+                and launch['native_manifest'] == initial['native_manifest']
+                and launch['runtime'] == initial['runtime'] and launch['native'] == initial['native']
+                and launch.get('admitted_before', 0) == total,
+                'Registered self-play launch is not the next unchanged lineage window')
+        require(launch['reservation'] in reservations, 'Registered launch has no durable consumed seed reservation')
+        seen.add(str(output))
+        if number:
+            require(launch.get('resume_parent', {}).get('latest') == latest,
+                    'Continuation does not start from the preceding published checkpoint')
+            require(launch['resume_parent']['checkpoint'] == selected['checkpoint'], 'Continuation selected another checkpoint pair')
+            check_relocated_pair(launch['resume_pair'], selected['checkpoint'])
+            previous_policy = launch['resume_pair']['policy']
+        verify_protected(launch['protected'])
+        report_path, shutdown_path = output / 'report.json', output / 'shutdown.json'
+        report, shutdown = read(report_path), read(shutdown_path)
+        require(report.get('source') == launch['source'] and report.get('mode') == 'training',
+                'Previous report identity differs')
+        finalization = stopped_run_proof(output, launch, report, shutdown)
+        for value in (launch_binding, binding(report_path), binding(shutdown_path), finalization):
+            if value is not None:
+                protected[value['path']] = value
+        pointer_path = output / 'latest-checkpoint.json'
+        if not pointer_path.exists():
+            require(report.get('admitted_games') == 0, 'Missing published checkpoint for admitted games')
+            continue
+        pointer = read(pointer_path)
+        require(pointer.get('schema') == 'heroes-selfplay-latest-v1' and pointer.get('purpose') == 'training'
+                and pointer.get('campaign_id') == launch['campaign_id']
+                and type(pointer.get('batch')) is int and 0 <= pointer['batch'] < 25,
+                'Invalid latest self-play publication')
+        window_games = (pointer['batch'] + 1) * 4
+        require(window_games <= launch['reservation']['count']
+                and pointer['admitted_games'] == total + window_games
+                and report.get('admitted_games') == window_games,
+                'Published batch and admission counters differ')
+        for index in range(pointer['batch'] + 1):
+            batch = report['batches'][index]
+            require(batch.get('index') == index and batch.get('status') == 'checkpoint_verified'
+                    and len(batch.get('attempts', [])) == 4
+                    and all(row.get('status') == 'passed' and row.get('replay_verified') is True
+                            and row.get('both_policies_reconstructed') is True for row in batch['attempts']),
+                    'Published parent contains an incomplete batch')
+            plan_path = bound(batch['plan']); plan = read(plan_path)
+            pair = batch['after_checkpoint']; progress = pair['progress']
+            ppo = batch['ppo']
+            require(type(ppo.get('samples')) is int and ppo['samples'] > 0
+                    and type(ppo.get('optimizer_steps')) is int and 0 < ppo['optimizer_steps'] <= 640,
+                    'Published batch lacks exact sample and optimizer-step counters')
+            decisions += ppo['samples']; steps += ppo['optimizer_steps']
+            require(plan_path == output / f'batch-{index:03d}' / 'plan.json'
+                    and plan['launch'] == launch_binding and plan['configuration'] == initial['configuration']
+                    and plan['source'] == launch['source']['source']
+                    and plan['implementation'] == launch['source']['implementation']
+                    and pair['metadata']['purpose'] == 'training'
+                    and pair['metadata']['initial_checkpoint'] == original['policy']
+                    and pair['metadata']['campaign_id'] == launch['campaign_id']
+                    and pair['metadata']['plan_sha256'] == batch['plan']['sha256']
+                    and pair['metadata']['opponent_checkpoint'] == plan['opponent_checkpoint']
+                    and pair['exact_model_adam_rng_progress_pool'] is True
+                    and plan['learner_checkpoint'] == previous_checkpoint
+                    and plan['learner_weights_sha256'] == plan['opponent_weights_sha256'] == previous_weights
+                    and plan['checkpoint_source'] == plan['opponent_checkpoint_source']
+                    and plan['checkpoint_source']['opponent_checkpoint'] == previous_policy
+                    and progress['updates'] == 1728 + (total + (index + 1) * 4) // 4
+                    and progress['rollouts'] == initial_progress['rollouts'] + total + (index + 1) * 4
+                    and progress['decisions'] == decisions
+                    and pair['sampler_state']['next_batch_index'] == (total + (index + 1) * 4) // 4
+                    and pair['sampler_state']['consumed_schedule_offset'] == total + (index + 1) * 4
+                    and pair['sampler_state']['optimizer_steps'] == steps
+                    and pair['sampler_state']['batch_optimizer_steps'] == ppo['optimizer_steps']
+                    and pair['sampler_state']['original_parent_sampler'] == initial_state['sampler'],
+                    'Published self-play checkpoint ancestry differs')
+            for value in (batch['plan'], pair['policy'], pair['resume'], pair['metadata']['opponent_checkpoint']):
+                bound(value); protected[value['path']] = value
+            previous_policy, previous_checkpoint, previous_weights = pair['policy'], pair['checkpoint'], pair['weights_sha256']
+        require(pointer['checkpoint'] == pair and pointer['plan'] == batch['plan']
+                and pointer['cumulative_progress'] == pair['progress'], 'Latest pointer differs from its verified batch')
+        total += window_games
+        latest = binding(pointer_path); protected[latest['path']] = latest
+        selected = dict(latest=latest, checkpoint=pair, plan=batch['plan'], launch=launch_binding)
+    require(selected is not None and 0 < total <= 100 and total % 4 == 0, 'No eligible published self-play parent')
+    verify_protected(protected)
+    bound(ledger_binding)
+    return dict(lineage=binding(path), lineage_value=lineage, initial_launch=initial,
+                selected=selected, admitted_games=total, remaining_games=100 - total, protected=protected,
+                optimizer_steps=steps, seed_ledger=ledger_binding)
+
+
+def validate_continuation_acceptance(path, identity, lineage):
+    """Reuse frozen native evidence only for the reviewed resume-only transition."""
+    gate = read(path)
+    require(gate.get('schema') == 'heroes-selfplay-continuation-acceptance-v1'
+            and gate.get('accepted_for_manual_continuation') is True and gate.get('source') == identity,
+            'Manual continuation requires its exact reviewed source acceptance')
+    initial = lineage['initial_launch']
+    require(all(read(bound(value))['source'] in (initial['source'], identity)
+                for value in lineage['lineage_value']['runs']), 'Lineage contains an unreviewed source transition')
+    base = read(bound(gate['base_acceptance']))
+    require(gate['base_acceptance']['sha256'] == BASE_ACCEPTANCE_SHA
+            and initial['acceptance'] == gate['base_acceptance']
+            and base['source']['checkout']['commit'] == CONTINUATION_BASE
+            and base['source'] == initial['source'] and base['accepted_for_training'] is True
+            and gate['initial_launch'] == lineage['lineage_value']['runs'][0]
+            and gate['native_manifest'] == base['native_manifest'] == binding(NATIVE),
+            'Continuation does not descend from the accepted native release')
+    for key in ('diagnostic_report', 'copied_update_report', 'offline_tests', 'prepare_vcmi_check', 'cutoff_report'):
+        bound(base[key])
+    diagnostic = read(base['diagnostic_report']['path'])
+    require(diagnostic['source'] == base['source'] and diagnostic['status'] == 'completed'
+            and len(diagnostic['batches']) == 2 and diagnostic['optimizer_updates'] == 0,
+            'Original frozen native proof differs')
+    for batch in diagnostic['batches']:
+        bound(batch['plan'])
+        require(len(batch['attempts']) == 4, 'Original frozen cohort differs')
+        for attempt in batch['attempts']:
+            require(attempt['status'] == 'passed' and attempt['replay_verified'] is True
+                    and attempt['both_policies_reconstructed'] is True, 'Original frozen policy proof failed')
+            for value in attempt['evidence'].values():
+                bound(value)
+    validate_resume_source_transition(base['source'], identity, gate.get('reviewed_files'))
+    tests = read(bound(gate['offline_tests']))
+    restored = read(bound(gate['restore_check']))
+    require(tests.get('status') == 'passed' and tests.get('source') == identity
+            and restored.get('status') == 'passed' and restored.get('source') == identity
+            and restored.get('checkpoint') == 1730
+            and restored.get('published_latest') == binding(Path(initial['output']) / 'latest-checkpoint.json')
+            and restored.get('exact_model_adam_rng_progress_sampler_pool') is True,
+            'Current continuation lacks offline and full-state restore validation')
+    require(gate['launcher'] == binding(ROOT / 'continue-selfplay.sh'), 'Manual launcher differs from reviewed source')
+    return binding(path)
+
+
+def validate_resume_source_transition(base_source, identity, reviewed_files):
+    import ast
+    old = dict(base_source['implementation']); old.update(base_source['source']['source_sha256'])
+    current = dict(identity['implementation']); current.update(identity['source']['source_sha256'])
+    require(old.keys() == current.keys(), 'Continuation cannot add an unreviewed runtime module')
+    changed = {name: dict(before=old[name], after=current[name]) for name in old if old[name] != current[name]}
+    allowed = {'tools/run_selfplay_training.py', 'experiments/learner/selfplay_training.py',
+               'experiments/learner/local_script_training.py'}
+    require(set(changed) <= allowed and reviewed_files == changed,
+            'Continuation changes unreviewed runtime behavior')
+    def historical(name):
+        data = subprocess.check_output(['git', 'show', CONTINUATION_BASE + ':' + name], cwd=ROOT)
+        require(hashlib.sha256(data).hexdigest() == old[name], 'Original source hash is not committed')
+        return ast.parse(data)
+    helper = 'experiments/learner/selfplay_training.py'
+    before, after = historical(helper), ast.parse((ROOT / helper).read_bytes())
+    added = [node for node in after.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and node.name == 'restore_checkpoint_pair']
+    require(len(added) == 1 and ast.dump(before) == ast.dump(ast.Module(
+        body=[node for node in after.body if node not in added], type_ignores=[])),
+        'Resume helper changed a preexisting learner/admission definition')
+    adapter = 'experiments/learner/local_script_training.py'
+    pins = {'FAST_PATH_SOURCES', 'FAST_PATH_TREE', 'LOCAL_ADAPTER_TRANSITION_AST'}
+    def without_pins(tree):
+        tree.body = [node for node in tree.body if not (isinstance(node, ast.Assign)
+            and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) and node.targets[0].id in pins)]
+        return ast.dump(tree)
+    require(without_pins(historical(adapter)) == without_pins(ast.parse((ROOT / adapter).read_bytes())),
+            'Original adapter transition must change reviewed pins only')
+    controller = 'tools/run_selfplay_training.py'
+    old_functions = {node.name: ast.dump(node) for node in historical(controller).body if isinstance(node, ast.FunctionDef)}
+    new_functions = {node.name: ast.dump(node) for node in ast.parse((ROOT / controller).read_bytes()).body
+                     if isinstance(node, ast.FunctionDef)}
+    unchanged = ('capture_worker', 'collect_batch', 'close_collection_jobs', 'batch_plan',
+                 'batch_phase_deadlines', 'phase_remaining', 'configure_native', 'validate_configuration', 'schedule')
+    require(all(old_functions[name] == new_functions[name] for name in unchanged),
+            'Manual continuation changed capture, verification, policy support, or phase behavior')
+    return changed
+
+
+def inspect_continuation(args):
+    from experiments.learner import selfplay_training as training
+    from experiments.learner.native_execution import native_execution_choice
+    from experiments.headless.contextual_evidence import runtime_identity
+    identity = source_identity()
+    lineage = inspect_lineage(args.lineage)
+    acceptance = validate_continuation_acceptance(args.acceptance, identity, lineage)
+    initial = lineage['initial_launch']
+    cfg = validate_configuration(initial['configuration'])
+    require(binding(NATIVE) == initial['native_manifest']
+            and runtime_identity(Path(initial['binary']).parent) == initial['runtime'],
+            'Accepted engine or native learner changed')
+    execution = native_execution_choice(NATIVE, NATIVE_SHA, cpu_cap=16, require_acceptance=False)
+    require(execution == initial['execution'], 'Manual continuation resource contract changed')
+    pair = lineage['selected']['checkpoint']
+    state = training.restore_checkpoint_pair(pair, expected_metadata=pair['metadata'], expected_ppo_config=PPO,
+        expected_optimizer_steps=lineage['optimizer_steps'])
+    require(state.progress.updates == 1728 + lineage['admitted_games'] // 4,
+            'Restored checkpoint differs from published lineage')
+    verify_protected(lineage['protected'])
+    return identity, lineage, state, cfg, execution, acceptance
+
+
+def prepare_continuation(args):
+    from tools.benchmark_copied_training import copy_verified
+    identity, lineage, _, cfg, execution, acceptance = inspect_continuation(args)
+    count = lineage['remaining_games']
+    require(count > 0, 'The 100-game self-play target is already complete')
+    seconds = args.hours * 3600
+    require(math.isfinite(seconds) and 120 <= seconds <= 36000, 'Use a finite budget from 120 seconds to ten hours')
+    output = private_output(args.output or BASE / (
+        'run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + secrets.token_hex(4)))
+    output.mkdir(parents=True, mode=0o700)
+    selected, initial = lineage['selected'], lineage['initial_launch']
+    pair = deepcopy(selected['checkpoint'])
+    for name in ('policy', 'resume'):
+        target = output / 'input' / ('parent-' + name + '.pt')
+        copy_verified(bound(pair[name]), target, pair[name])
+        pair[name] = binding(target)
+        lineage['protected'][pair[name]['path']] = pair[name]
+    check_relocated_pair(pair, selected['checkpoint'])
+    reservation = reserve_schedule(output, 'training', count, expected_ledger=lineage['seed_ledger'])
+    now, wall = time.monotonic(), time.time()
+    launch = {key: deepcopy(initial[key]) for key in ('original_parent', 'parent_descriptor',
+        'parent_policy_sha256', 'policy_support', 'binary', 'data', 'game_map', 'replay_binary', 'native', 'runtime')}
+    launch.update(schema=SCHEMA, campaign_id=output.name, mode='training', output=str(output),
+        supervisor_pid=os.getpid(), created_utc=datetime.now(timezone.utc).isoformat(), source=identity,
+        protected=lineage['protected'], reservation=reservation, configuration=cfg, execution=execution,
+        native_manifest=binding(NATIVE), acceptance=acceptance, maximum_seconds=seconds,
+        hard_deadline_monotonic=now + seconds, hard_deadline_unix=wall + seconds,
+        admitted_before=lineage['admitted_games'], target_games=100, resume_parent=selected, resume_pair=pair,
+        parent_optimizer_steps=lineage['optimizer_steps'],
+        lineage_path=str(Path(args.lineage).resolve()))
+    write(output / 'launch.json', launch, new=True)
+    bound(lineage['lineage'])
+    registered = deepcopy(lineage['lineage_value'])
+    registered['runs'].append(binding(output / 'launch.json'))
+    write(args.lineage, registered)
+    return launch
 
 
 def validate_acceptance(path, identity, pointer):
@@ -359,6 +691,10 @@ def load_launch(path, sha):
     require(runtime_identity(Path(launch['binary']).parent) == launch['runtime'], 'Engine runtime changed')
     bound(launch['replay_binary'])
     verify_protected(launch['protected'])
+    if 'resume_parent' in launch:
+        parent = read(bound(launch['resume_parent']['latest']))
+        require(parent['checkpoint'] == launch['resume_parent']['checkpoint'], 'Published continuation parent changed')
+        check_relocated_pair(launch['resume_pair'], parent['checkpoint'])
     return launch
 
 
@@ -612,12 +948,21 @@ def coordinator(args):
         source=launch['source'], parent_policy_sha256=launch['parent_policy_sha256'], native_manifest=launch['native_manifest'],
         runtime=launch['runtime'], native=launch['native'],
         policy_support=GUARD, configuration=launch['configuration'], optimizer_updates=0,
-        admitted_games=0, training_samples_admitted=0, original_campaign_updates=0,
+        admitted_games=0, admitted_before=launch.get('admitted_before', 0),
+        training_samples_admitted=0, original_campaign_updates=0,
         owned_cleanup_verified=False, protected_inputs_unchanged=False)
     write(output / 'report.json', report, new=True)
     try:
-        state = local.restore_parent(launch['parent_descriptor'])
-        previous_policy = launch['original_parent']['policy']
+        if 'resume_parent' in launch:
+            pair = launch['resume_pair']
+            state = training.restore_checkpoint_pair(pair, expected_metadata=pair['metadata'], expected_ppo_config=PPO,
+                expected_optimizer_steps=launch['parent_optimizer_steps'])
+            require(state.progress.updates == 1728 + launch['admitted_before'] // 4,
+                    'Continuation restore differs from the admitted starting checkpoint')
+            previous_policy = pair['policy']
+        else:
+            state = local.restore_parent(launch['parent_descriptor'])
+            previous_policy = launch['original_parent']['policy']
         total = launch['reservation']['count']
         size = 4
         for index, start in enumerate(range(0, total, size)):
@@ -646,7 +991,8 @@ def coordinator(args):
                 state.model.eval()
                 progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + 4,
                                             state.progress.decisions + result.samples)
-                sampler = dict(next_batch_index=index + 1, consumed_schedule_offset=start + 4,
+                consumed = launch.get('admitted_before', 0) + start + 4
+                sampler = dict(next_batch_index=consumed // 4, consumed_schedule_offset=consumed,
                     optimizer_steps=state.optimizer_steps + result.optimizer_steps,
                     batch_optimizer_steps=result.optimizer_steps,
                     original_parent_sampler=(state.sampler_state.get('original_parent_sampler', state.sampler_state)))
@@ -670,10 +1016,12 @@ def coordinator(args):
                     report['optimizer_updates'] += 1; report['admitted_games'] += 4
                     report['training_samples_admitted'] += result.samples
                     report['cumulative_progress'] = vars(progress)
+                    report['cumulative_admitted_games'] = report['admitted_before'] + report['admitted_games']
                     write(output / 'report.json', report)
                     write(output / 'latest-checkpoint.json', dict(schema='heroes-selfplay-latest-v1', purpose='training',
                         campaign_id=launch['campaign_id'], batch=index, plan=binding(plan_path), checkpoint=pair,
-                        cumulative_progress=vars(progress), admitted_games=report['admitted_games']))
+                        cumulative_progress=vars(progress), admitted_games=report['cumulative_admitted_games'],
+                        window_admitted_games=report['admitted_games']))
                 del rollouts
             else:
                 training.release_receipts(receipts)
@@ -745,10 +1093,32 @@ def supervise(launch):
         protected = verify_protected(launch['protected'])
         write(output / 'shutdown.json', dict(owned_cleanup_verified=not errors, errors=errors,
               returncode=process.returncode if process else None, protected_inputs_unchanged=protected), new=True)
+        if launch['mode'] == 'training' and not errors and protected:
+            finalize_stopped_run(output, launch)
     report = read(output / 'report.json') if (output / 'report.json').exists() else {'status': 'stopped'}
     require(process is not None and process.returncode == 0 and not errors and report['status'] == 'completed',
             'Self-play stopped; preserve this run and do not replay its reservation')
     return report
+
+
+def finalize_stopped_run(output, launch):
+    """Seal stop evidence without promoting an unpublished in-flight update."""
+    output = Path(output)
+    report_path = output / 'report.json'
+    if not report_path.exists():
+        write(report_path, dict(status='stopped', source=launch['source'], mode='training', batches=[], admitted_games=0), new=True)
+    report = read(report_path)
+    if report.get('status') == 'completed' and read(output / 'shutdown.json').get('returncode') == 0:
+        return
+    pointer_path = output / 'latest-checkpoint.json'
+    pointer = read(pointer_path) if pointer_path.exists() else None
+    last = pointer['batch'] if pointer else -1
+    write(output / 'stop-finalization.json', dict(schema='heroes-selfplay-stop-finalization-v1', status='stopped',
+        launch=binding(output / 'launch.json'), report=binding(report_path), shutdown=binding(output / 'shutdown.json'),
+        latest=binding(pointer_path) if pointer else None, owned_cleanup_verified=True, protected_inputs_unchanged=True,
+        admitted_games=pointer['admitted_games'] if pointer else launch.get('admitted_before', 0),
+        ignored_unpublished_batches=[row['index'] for row in report.get('batches', []) if row['index'] > last],
+        no_unpublished_experience_admitted=True), new=True)
 
 
 def main(argv=None):
@@ -762,6 +1132,13 @@ def main(argv=None):
     run.add_argument('--output', type=Path, required=True)
     run.add_argument('--acceptance', type=Path, required=True)
     run.add_argument('--hours', type=float, default=10)
+    for name in ('continuation-check', 'continue'):
+        continuation = sub.add_parser(name, help='Check or manually continue the registered self-play lineage')
+        continuation.add_argument('--lineage', type=Path, default=LINEAGE)
+        continuation.add_argument('--acceptance', type=Path, default=CONTINUATION_ACCEPTANCE)
+        if name == 'continue':
+            continuation.add_argument('--output', type=Path)
+            continuation.add_argument('--hours', type=float, required=True)
     for name in ('_coordinator', '_capture'):
         worker = sub.add_parser(name)
         worker.add_argument('--plan', type=Path, required=True); worker.add_argument('--sha256', required=True)
@@ -782,8 +1159,17 @@ def main(argv=None):
                 result = dict(status='passed', checkpoint=state.progress.updates, source=identity,
                               parent=pointer['parent'], configuration=cfg, execution=execution,
                               protected_files=len(protected), gameplay_performed=False, optimizer_updates=0)
+            elif args.command == 'continuation-check':
+                identity, lineage, state, cfg, execution, acceptance = inspect_continuation(args)
+                result = dict(status='passed', checkpoint=state.progress.updates, source=identity,
+                    admitted_games=lineage['admitted_games'], remaining_games=lineage['remaining_games'],
+                    target_games=100, parent=lineage['selected'], configuration=cfg, execution=execution,
+                    acceptance=acceptance, gameplay_performed=False, optimizer_updates=0,
+                    exact_model_adam_rng_progress_sampler_pool=True,
+                    next_fresh_seeds=seed_preview('training', lineage['remaining_games']))
             else:
-                launch = prepare(args, 'training' if args.command == 'run' else 'diagnostic')
+                launch = (prepare_continuation(args) if args.command == 'continue'
+                          else prepare(args, 'training' if args.command == 'run' else 'diagnostic'))
                 result = supervise(launch)
                 analyze_completed(result, launch['output'])
         print(json.dumps(result, indent=2)); return 0

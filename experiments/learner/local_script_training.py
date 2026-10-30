@@ -262,7 +262,7 @@ FAST_PATH_TREE = {
     'experiments/learner/selfplay_behavior.py': ('',
         '0254112dd1995300e9dd74ad7306676b7e6c1a243feb49f6f5db4eae2a123dc9'),
     'experiments/learner/selfplay_training.py': ('',
-        '60b30dd0640784cdd732f88838d0efe4dfbbe3b1831b2a587dfd3265d6338a59'),
+        '94a3fe602ac060bd132be7099899bc5f55b65bfa6624a10c50df8cec7591bb08'),
     'native/learner/replay_tape.h': ('',
         '7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1'),
     'tools/acceleration3/campaign_summary.py': ('',
@@ -306,7 +306,7 @@ FAST_PATH_TREE = {
     'tools/run_local_training.py': ('0333046aa00dc09153998ed5f21825528546bfb7',
         '3691a3f1913572101cd1b1e7f137209b607747f0c51ea73a5a0d221786cb5d39'),
     'tools/run_selfplay_training.py': ('',
-        '7524e7ceb1b60bbf4578639bca68bc3dc0c39ecade3f073a939faa3840014cd8'),
+        'c3ea361cf236148c645866c6d0e54ba79cecfe0024e52533fc204d77e2585e6c'),
     'tools/train_1000_games.py': ('',
         '6049476285153033694e5307a19b46e4a3e223c3f67f8bcb637669401799b817'),
     'tools/training_environment.py': ('',
@@ -332,7 +332,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '272d7dd6b9264a4c5adb6736d14820c79719fb680d4b77c701a3330938d93789'
+LOCAL_ADAPTER_TRANSITION_AST = 'dad48b57f947aa360d42952734dd0cc4ac1c516f23d82d3fe4b721ea294c9acd'
 
 
 def write_new(path, value):

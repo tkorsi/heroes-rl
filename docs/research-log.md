@@ -1102,7 +1102,7 @@ remaining goal and prints elapsed time. No official training was started.
 
 ## 2026-10-30: performance telemetry removal protocol
 
-The user requested removal of CPU counters and phase profiling, retaining parallel execution and all learning/integrity settings. Self-play is explanation only. Full checkpoint1728 and its completed-run evidence are protected. The [prospective protocol](research/telemetry-removal-2026-10-30.md) requires a fresh native build, exact numerical parity, excluded native/policy diagnostics and a real manual preflight. No training launch is authorized.
+The user requested removal of CPU counters and phase profiling, retaining parallel execution and all learning/integrity settings. Self-play is explanation only. Full checkpoint 1728 and its completed-run evidence are protected. The [prospective protocol](research/telemetry-removal-2026-10-30.md) requires a fresh native build, exact numerical parity, excluded native/policy diagnostics and a real manual preflight. No training launch is authorized.
 
 ## 2026-10-30: telemetry removal accepted for manual continuation
 
@@ -1133,3 +1133,22 @@ batches and all other learning settings, and uses frozen batch-start opponents.
 Validation must precede training. Technical failures remain unscored and stop
 the campaign; verified collection/day cutoffs retain their ordinary bootstrap
 contract. Post-run travel metrics are never policy inputs or rewards.
+
+## 2026-10-30: self-play stopped for a ten-game report
+
+The accepted separate experiment ran from 1728 to 1730 with two complete updates
+and eight admitted games. User stop at ten raced with four-way collection: twelve
+games verified, but the interrupted third update never published and all its four
+games remain excluded. First-ten outcomes are one learner win, one loss and eight
+action-budget cutoffs; these are not wall timeouts. Learner movement included
+1,149 revealed targets, 18 no-route responses, one town capture and substantial
+repetition (88.1% position revisits; 69.6% stack swaps). No playing-strength claim
+is supported. Complete 1730 state and evidence are preserved and restored exactly.
+
+The manual continuation follows the published lineage and reserves 92 fresh games
+after the entire consumed 100-seed window. Default check performs no gameplay or
+reservation. All original Nullkiller state stays unchanged. The
+[report](research/selfplay100-2026-10-30.md) and
+[compact results](../validation/selfplay100-stopped-2026-10-30.json) separate all
+denominators and disclose diagnostic failures and the stop race. No restart was
+performed after the user's stop.

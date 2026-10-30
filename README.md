@@ -11,13 +11,23 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
-A separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
-from checkpoint 1,728 is now explicitly authorized. Its v8 controller and excluded
-validation are being prepared on `codex/selfplay-100`; training has not started.
-It preserves the original campaign and learning settings, replaces Nullkiller
-with a frozen copy of the batch-start policy, and measures travel, captures and
-natural versus limit endings from existing visible-history records. The prior
-explanation-only restriction is superseded for this experiment.
+The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
+was stopped at the user's request for a ten-game report. Parallel collection had
+finished twelve games; only eight entered two complete PPO updates. The exact
+published self-play state is **checkpoint 1,730**, with **92 admitted games still
+needed** for the separate 100-game target. The interrupted third update was never
+published, and its four games remain excluded. No automatic restart is scheduled.
+The first ten games produced one learner win, one loss and eight action-budget
+cutoffs. The learner traveled and captured one town, but frequently revisited
+positions and swapped army stacks. These training results do not establish
+improved playing strength.
+
+The reviewed manual continuation is `./continue-selfplay.sh --hours 10` in the
+`codex/selfplay-100` checkout. With no arguments, or `--check`, it restores and
+checks the latest published self-play descendant without gameplay or seed
+reservation. Explicit launch recalculates the remaining target and reserves fresh
+seeds; all 100 seeds from the stopped window remain consumed. The original
+Nullkiller campaign and its separate launcher remain unchanged.
 
 The latest user-launched one-hour session advanced **checkpoint 1,585 to 1,728**
 in **143 complete PPO updates / 572 admitted games**, all natural losses. Its

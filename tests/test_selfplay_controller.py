@@ -3,6 +3,7 @@ from contextlib import nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+import hashlib
 import os
 from pathlib import Path
 import tempfile
@@ -65,6 +66,177 @@ class SelfPlayControllerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'already reserved'):
                 controller.reserve_schedule(self.root / 'fresh', 'training', 100)
             self.assertEqual((controller.BASE / 'seed-reservations.json').read_bytes(), before)
+
+    def test_continuation_reserves_92_fresh_seeds_after_all_100_consumed(self):
+        with patch.object(controller, 'BASE', self.root / 'ledger'):
+            original = controller.reserve_schedule(self.root / 'original', 'training', 100)
+            before = (controller.BASE / 'seed-reservations.json').read_bytes()
+            preview = controller.seed_preview('training', 92)
+            self.assertEqual((controller.BASE / 'seed-reservations.json').read_bytes(), before)
+            self.assertFalse(preview['reserved'])
+            self.assertEqual(preview['consumed_before'], 100)
+            resumed = controller.reserve_schedule(self.root / 'resumed', 'training', 92)
+            self.assertEqual(resumed['count'], 92)
+            self.assertEqual(resumed['engine_base'], original['engine_base'] + 100)
+            self.assertEqual(resumed['policy_base'], original['policy_base'] + 200)
+            self.assertEqual(len(controller.schedule(resumed, 0, 92)), 92)
+
+    def test_continuation_reservation_never_recreates_a_missing_verified_ledger(self):
+        with patch.object(controller, 'BASE', self.root / 'ledger'):
+            controller.reserve_schedule(self.root / 'original', 'training', 100)
+            path = controller.BASE / 'seed-reservations.json'
+            expected = controller.binding(path)
+            before = path.read_bytes(); path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                controller.reserve_schedule(self.root / 'resumed', 'training', 92, expected_ledger=expected)
+            self.assertFalse(path.exists())
+            path.write_bytes(before)
+            changed = controller.read(path); changed['reservations'] = []
+            controller.write(path, changed)
+            with self.assertRaisesRegex(ValueError, 'artifact changed'):
+                controller.reserve_schedule(self.root / 'resumed', 'training', 92, expected_ledger=expected)
+            self.assertEqual(controller.read(path), changed)
+
+    def lineage_fixture(self):
+        original = (self.root / 'original').resolve(); original.mkdir()
+        source = dict(checkout={'commit': controller.CONTINUATION_BASE}, source={}, implementation={})
+        parent = dict(policy=self.artifact('parent.pt', {'checkpoint': 1728}),
+                      report=self.artifact('parent-report.json', {'cumulative_progress': {'updates': 1728, 'rollouts': 6912}}))
+        with patch.object(controller, 'BASE', self.root / 'ledger'):
+            reservation = controller.reserve_schedule(original, 'training', 100)
+        launch = dict(output=str(original), campaign_id=original.name, source=source, mode='training',
+                      original_parent=parent, reservation=reservation, configuration=configuration(),
+                      protected={}, native_manifest={}, runtime={}, native={})
+        launch_binding = self.artifact('original/launch.json', launch)
+        initial = dict(progress=dict(updates=1728, rollouts=6912, decisions=978803),
+                       optimizer_steps=32814, sampler={'optimizer_steps': 32814},
+                       checkpoint='initial1728', weights_sha256='initial-weights')
+        patcher = patch.object(controller, 'initial_checkpoint_state', return_value=initial)
+        patcher.start(); self.addCleanup(patcher.stop)
+        previous_policy, previous_checkpoint, previous_weights = parent['policy'], initial['checkpoint'], initial['weights_sha256']
+        batches = []
+        for index in range(2):
+            plan = dict(launch=launch_binding, configuration=configuration(), source={}, implementation={},
+                learner_checkpoint=previous_checkpoint, learner_weights_sha256=previous_weights,
+                opponent_weights_sha256=previous_weights, opponent_checkpoint=parent['policy'],
+                checkpoint_source={'opponent_checkpoint': previous_policy},
+                opponent_checkpoint_source={'opponent_checkpoint': previous_policy})
+            plan_binding = self.artifact(f'original/batch-{index:03d}/plan.json', plan)
+            pair = dict(progress=dict(updates=1729 + index, rollouts=6916 + index * 4, decisions=978813 + index * 10),
+                policy=self.artifact(f'original/batch-{index:03d}/policy.pt', {'policy': index}),
+                resume=self.artifact(f'original/batch-{index:03d}/resume.pt', {'adam': index}),
+                exact_model_adam_rng_progress_pool=True, checkpoint=f'selfplay{1729 + index}', weights_sha256=f'weights{index}',
+                sampler_state=dict(next_batch_index=index + 1, consumed_schedule_offset=(index + 1) * 4,
+                    optimizer_steps=32815 + index, batch_optimizer_steps=1, original_parent_sampler=initial['sampler']),
+                metadata=dict(purpose='training', initial_checkpoint=parent['policy'], campaign_id=original.name,
+                    plan_sha256=plan_binding['sha256'], opponent_checkpoint=parent['policy']))
+            attempts = [dict(status='passed', replay_verified=True, both_policies_reconstructed=True) for _ in range(4)]
+            batches.append(dict(index=index, status='checkpoint_verified', plan=plan_binding,
+                                attempts=attempts, after_checkpoint=pair, ppo={'samples': 10, 'optimizer_steps': 1}))
+            previous_policy, previous_checkpoint, previous_weights = pair['policy'], pair['checkpoint'], pair['weights_sha256']
+        batches.append(dict(index=2, status='updating', attempts=deepcopy(batches[0]['attempts'])))
+        pointer = dict(schema='heroes-selfplay-latest-v1', purpose='training', campaign_id=original.name,
+            batch=1, admitted_games=8, checkpoint=pair, plan=plan_binding, cumulative_progress=pair['progress'])
+        self.artifact('original/latest-checkpoint.json', pointer)
+        self.artifact('original/report.json', dict(source=source, mode='training', status='running', admitted_games=8, batches=batches))
+        self.artifact('original/shutdown.json', dict(owned_cleanup_verified=True, protected_inputs_unchanged=True, returncode=-9))
+        controller.finalize_stopped_run(original, launch)
+        path = self.artifact('lineage.json', dict(schema='heroes-selfplay-lineage-v1', target_games=100, runs=[launch_binding]))['path']
+        return Path(path), original, pointer
+
+    def test_lineage_uses_published_1730_and_ignores_interrupted_third_update(self):
+        path, original, pointer = self.lineage_fixture()
+        self.artifact('original/batch-002/unpublished-policy.pt', {'must_not_load': 1731})
+        with patch.object(controller, 'BASE', self.root / 'ledger'):
+            result = controller.inspect_lineage(path)
+        self.assertEqual(result['admitted_games'], 8)
+        self.assertEqual(result['remaining_games'], 92)
+        self.assertEqual(result['selected']['checkpoint'], pointer['checkpoint'])
+        self.assertEqual(controller.read(original / 'stop-finalization.json')['ignored_unpublished_batches'], [2])
+
+    def test_lineage_rejects_a_candidate_promoted_outside_the_published_chain(self):
+        path, original, pointer = self.lineage_fixture()
+        pointer.update(batch=2, admitted_games=12)
+        controller.write(original / 'latest-checkpoint.json', pointer)
+        with patch.object(controller, 'BASE', self.root / 'ledger'), self.assertRaisesRegex(ValueError, 'publication changed'):
+            controller.inspect_lineage(path)
+
+    def test_lineage_rejects_missing_tampered_or_deleted_consumed_reservation(self):
+        path, _, _ = self.lineage_fixture()
+        ledger_path = self.root / 'ledger/seed-reservations.json'
+        before = ledger_path.read_bytes()
+        with patch.object(controller, 'BASE', self.root / 'ledger'):
+            ledger_path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                controller.inspect_lineage(path)
+            ledger_path.write_bytes(before)
+            changed = controller.read(ledger_path); changed['reservations'][0]['offset'] = 1
+            controller.write(ledger_path, changed)
+            with self.assertRaisesRegex(ValueError, 'ledger is inconsistent'):
+                controller.inspect_lineage(path)
+            controller.write(ledger_path, {'schema': 'heroes-selfplay-seeds-v1', 'reservations': []})
+            with self.assertRaisesRegex(ValueError, 'no durable consumed seed reservation'):
+                controller.inspect_lineage(path)
+
+    def test_continuation_check_does_not_reserve_register_or_launch(self):
+        state = SimpleNamespace(progress=SimpleNamespace(updates=1730))
+        lineage = dict(admitted_games=8, remaining_games=92, selected={'checkpoint': 'published'})
+        with patch.object(controller, 'activity_lease', side_effect=nullcontext), \
+             patch.object(controller, 'inspect_continuation', return_value=({}, lineage, state, configuration(), {}, {})), \
+             patch.object(controller, 'seed_preview', return_value={'reserved': False}), \
+             patch.object(controller, 'reserve_schedule') as reserve, patch.object(controller, 'supervise') as launch, \
+             patch.object(controller, 'write') as write, patch('builtins.print'):
+            self.assertEqual(controller.main(['continuation-check']), 0)
+        reserve.assert_not_called(); launch.assert_not_called(); write.assert_not_called()
+
+    def test_resume_transition_rejects_changes_to_existing_helper_or_capture_logic(self):
+        names = ('tools/run_selfplay_training.py', 'experiments/learner/selfplay_training.py',
+                 'experiments/learner/local_script_training.py')
+        actual_root, git = controller.ROOT, controller.subprocess.check_output
+        before, after = {}, {}
+        for name in names:
+            previous = git(['git', 'show', controller.CONTINUATION_BASE + ':' + name], cwd=actual_root)
+            current = (actual_root / name).read_bytes()
+            before[name] = hashlib.sha256(previous).hexdigest()
+            after[name] = hashlib.sha256(current).hexdigest()
+            target = self.root / name; target.parent.mkdir(parents=True, exist_ok=True); target.write_bytes(current)
+        base = dict(implementation=before, source={'source_sha256': before})
+        identity = dict(implementation=after, source={'source_sha256': after})
+        reviewed = {name: dict(before=before[name], after=after[name]) for name in names if before[name] != after[name]}
+        def historical(args, **kwargs):
+            return git(args, **{**kwargs, 'cwd': actual_root})
+        with patch.object(controller, 'ROOT', self.root), patch.object(controller.subprocess, 'check_output', side_effect=historical):
+            self.assertEqual(controller.validate_resume_source_transition(base, identity, reviewed), reviewed)
+            helper = self.root / names[1]
+            original = helper.read_text()
+            self.assertIn('Self-play verification/update deadline exhausted', original)
+            helper.write_text(original.replace('Self-play verification/update deadline exhausted', 'Changed verifier behavior'))
+            after[names[1]] = hashlib.sha256(helper.read_bytes()).hexdigest()
+            reviewed[names[1]]['after'] = after[names[1]]
+            with self.assertRaisesRegex(ValueError, 'preexisting learner/admission'):
+                controller.validate_resume_source_transition(base, identity, reviewed)
+            helper.write_text(original)
+            after[names[1]] = hashlib.sha256(helper.read_bytes()).hexdigest()
+            reviewed[names[1]]['after'] = after[names[1]]
+            script = self.root / names[0]
+            script.write_text(script.read_text().replace("'Self-play capture failed; no retries or partial batch admission'", "'changed capture'"))
+            after[names[0]] = hashlib.sha256(script.read_bytes()).hexdigest()
+            reviewed[names[0]]['after'] = after[names[0]]
+            with self.assertRaisesRegex(ValueError, 'capture, verification'):
+                controller.validate_resume_source_transition(base, identity, reviewed)
+
+    def test_relocated_parent_must_preserve_full_pair_and_both_file_bytes(self):
+        published = dict(policy=self.artifact('published-policy.pt', {'weights': 1730}),
+                         resume=self.artifact('published-resume.pt', {'adam': 33554}), progress={'updates': 1730})
+        relocated = deepcopy(published)
+        for name in ('policy', 'resume'):
+            target = self.root / ('copied-' + name + '.pt')
+            target.write_bytes(Path(published[name]['path']).read_bytes())
+            relocated[name] = controller.binding(target)
+        controller.check_relocated_pair(relocated, published)
+        relocated['progress']['updates'] = 1731
+        with self.assertRaisesRegex(ValueError, 'progress, Adam, RNG'):
+            controller.check_relocated_pair(relocated, published)
 
     def test_original_lease_excludes_competing_launch_without_writing_locks(self):
         artifacts = self.root / 'artifacts'; original = artifacts / 'local-script-training/original'
@@ -304,7 +476,7 @@ class SelfPlayControllerTests(unittest.TestCase):
         self.assertFalse((output / 'latest-checkpoint.json').exists())
         update.assert_not_called()
 
-    def complete_update(self, *, after_pair_error=None):
+    def complete_update(self, *, after_pair_error=None, admitted_before=0):
         import torch
         from experiments.learner import local_script_training as local, selfplay_training as training
         from experiments.learner.builtin_training_resume import ParentState
@@ -315,13 +487,16 @@ class SelfPlayControllerTests(unittest.TestCase):
             optimizer_steps: int = 1
         output = self.root / 'run'; output.mkdir()
         model = torch.nn.Linear(1, 1).eval().requires_grad_(False)
-        state = ParentState(model, object(), object(), object(), TrainingProgress(1728, 6912, 978803),
+        state = ParentState(model, object(), object(), object(), TrainingProgress(1728 + admitted_before // 4, 6912 + admitted_before, 978803),
                             {'old_sampler': 1}, {}, 'parent', 'old', {}, 500)
         launch = dict(output=str(output), mode='training', source={}, parent_policy_sha256='a' * 64,
             native_manifest={}, runtime={}, native={}, configuration=configuration(), protected={}, supervisor_pid=os.getppid(),
             execution={}, parent_descriptor={}, original_parent={'policy': {}}, campaign_id='test',
             reservation=dict(count=4, mode='training', engine_base=100, policy_base=200),
             hard_deadline_monotonic=time.monotonic() + 300, hard_deadline_unix=time.time() + 300)
+        if admitted_before:
+            launch.update(admitted_before=admitted_before, resume_parent={}, parent_optimizer_steps=500,
+                          resume_pair={'metadata': {}, 'policy': {}, 'sampler_state': {'optimizer_steps': 500}})
         folder = output / 'batch-000'; folder.mkdir()
         plan = dict(schedule=controller.schedule(launch['reservation'], 0, 4), opponent_checkpoint={},
                     execution_output=str(folder / 'execution'))
@@ -337,10 +512,12 @@ class SelfPlayControllerTests(unittest.TestCase):
             self.assertTrue(all(parameter.requires_grad for parameter in model.parameters()))
             controller.write(output / 'candidate.json', {'verified_pair': True}, new=True)
             return dict(exact_model_adam_rng_progress_pool=True, policy={'path': 'private-policy'},
-                        weights_sha256='new', metadata=kwargs['metadata'], progress=vars(kwargs['progress']))
+                        weights_sha256='new', metadata=kwargs['metadata'], progress=vars(kwargs['progress']),
+                        sampler_state=kwargs['sampler_state'])
         checks = [launch, after_pair_error or launch, launch]
         with patch.object(controller, 'load_launch', side_effect=checks), patch.object(controller, 'configure_native'), \
              patch.object(local, 'restore_parent', return_value=state), \
+             patch.object(training, 'restore_checkpoint_pair', return_value=state), \
              patch.object(controller, 'batch_plan', return_value=(folder / 'plan.json', plan, object())), \
              patch.object(controller, 'collect_batch', side_effect=collect), \
              patch.object(training, 'native_update', return_value=(Result(), (object(),) * 4)), \
@@ -359,6 +536,19 @@ class SelfPlayControllerTests(unittest.TestCase):
         self.assertEqual(pointer['admitted_games'], 4)
         self.assertFalse(any(parameter.requires_grad for parameter in model.parameters()))
         self.assertEqual(state.progress.updates, 1728)  # Original frozen ParentState was replaced, not mutated.
+
+    def test_resumed_update_preserves_global_sampler_and_cumulative_admission(self):
+        result, output, _, state = self.complete_update(admitted_before=8)
+        self.assertEqual(result['status'], 'completed', result.get('error'))
+        self.assertEqual(result['admitted_games'], 4)
+        pointer = controller.read(output / 'latest-checkpoint.json')
+        self.assertEqual(pointer['admitted_games'], 12)
+        self.assertEqual(pointer['window_admitted_games'], 4)
+        self.assertEqual(pointer['checkpoint']['progress']['updates'], 1731)
+        sampler = pointer['checkpoint']['sampler_state']
+        self.assertEqual((sampler['next_batch_index'], sampler['consumed_schedule_offset']), (3, 12))
+        self.assertEqual(sampler['original_parent_sampler'], {'old_sampler': 1})
+        self.assertEqual(state.progress.updates, 1730)
 
     def test_source_drift_after_candidate_save_prevents_admission_and_latest_publication(self):
         result, output, _, _ = self.complete_update(after_pair_error=ValueError('source changed during PPO'))

@@ -121,3 +121,77 @@ class SelfplayCheckpointTests(unittest.TestCase):
                 expected_source_metadata=self.meta, generators={'minibatch': self.generator}, at_rollout_boundary=True,
                 interface=c.EXPANDED_ENVIRONMENT, allowed_provenance=(sp.PROVENANCE,))
         equal_state(self, self.snapshot(), before)
+
+    def test_published_pair_restores_every_component_and_freezes_returned_policy(self):
+        sampler = dict(self.sampler, optimizer_steps=1)
+        receipt = self.save(sampler_state=sampler)
+        before = self.snapshot()
+        torch.manual_seed(999); random.seed(999)
+        restored = sp.restore_checkpoint_pair(receipt, expected_metadata=self.meta,
+            expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+        self.assertEqual(restored.progress, self.progress)
+        self.assertEqual(restored.sampler_state, sampler)
+        self.assertEqual(restored.optimizer_steps, 1)
+        self.assertFalse(restored.model.training)
+        self.assertTrue(all(not p.requires_grad for p in restored.model.parameters()))
+        equal_state(self, dict(restored.model.state_dict()), dict(self.model.state_dict()))
+        equal_state(self, restored.optimizer.state_dict(), before['optimizer'])
+        equal_state(self, restored.pool.state_dict(), before['pool'])
+        equal_state(self, restored.generator.get_state(), before['generator'])
+        equal_state(self, torch.get_rng_state(), before['torch'])
+        equal_state(self, random.getstate(), before['python'])
+        self.assertTrue(restored.bindings['exact_model_adam_rng_progress_pool'])
+
+    def test_restore_rejects_diagnostic_descriptor_drift_and_wrong_optimizer_count(self):
+        receipt = self.save(sampler_state=dict(self.sampler, optimizer_steps=1))
+        changes = (dict(receipt, checkpoint='unpublished'), dict(receipt, exact_model_adam_rng_progress_pool=False),
+                   dict(receipt, progress={**receipt['progress'], 'updates': 4}),
+                   dict(receipt, metadata={**self.meta, 'purpose': 'diagnostic'}))
+        before = self.snapshot()
+        for changed in changes:
+            with self.subTest(changed=changed['checkpoint']), self.assertRaises(ValueError):
+                sp.restore_checkpoint_pair(changed, expected_metadata=self.meta,
+                    expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+            equal_state(self, self.snapshot(), before)
+        with self.assertRaises(ValueError):
+            sp.restore_checkpoint_pair(receipt, expected_metadata=self.meta,
+                expected_ppo_config=self.ppo, expected_optimizer_steps=2)
+        diagnostic = self.save('diagnostic', metadata={**self.meta, 'purpose': 'diagnostic'},
+                               sampler_state=dict(self.sampler, optimizer_steps=1))
+        with self.assertRaises(ValueError):
+            sp.restore_checkpoint_pair(diagnostic, expected_metadata=diagnostic['metadata'],
+                expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+        equal_state(self, self.snapshot(), before)
+
+    def test_restore_rejects_matching_weights_with_different_policy_rng(self):
+        receipt = self.save(sampler_state=dict(self.sampler, optimizer_steps=1))
+        payload = torch.load(sp.checked(receipt['policy']), weights_only=True)
+        payload['rng']['torch_cpu'] = torch.Generator().manual_seed(999).get_state()
+        changed = self.root / 'wrong-policy-rng.pt'; torch.save(payload, changed)
+        tampered = dict(receipt, policy=sp.binding(changed))
+        before = self.snapshot()
+        with self.assertRaises(ValueError):
+            sp.restore_checkpoint_pair(tampered, expected_metadata=self.meta,
+                expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+        equal_state(self, self.snapshot(), before)
+
+    def test_restore_rejects_serialized_adam_cast_and_preserves_rng_on_late_failure(self):
+        receipt = self.save(sampler_state=dict(self.sampler, optimizer_steps=1))
+        payload = torch.load(sp.checked(receipt['resume']), weights_only=True)
+        next(iter(payload['resume']['optimizer_state']['state'].values()))['exp_avg_sq'] = (
+            next(iter(payload['resume']['optimizer_state']['state'].values()))['exp_avg_sq'].double())
+        changed = self.root / 'wrong-adam.pt'; torch.save(payload, changed)
+        before = self.snapshot()
+        with self.assertRaises(ValueError):
+            sp.restore_checkpoint_pair(dict(receipt, resume=sp.binding(changed)), expected_metadata=self.meta,
+                expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+        equal_state(self, self.snapshot(), before)
+        actual = cp.load_checkpoint
+        def fail_after_restore(*args, **kwargs):
+            actual(*args, **kwargs)
+            torch.rand(1); random.random()
+            raise ValueError('injected post-restore failure')
+        with patch.object(cp, 'load_checkpoint', side_effect=fail_after_restore), self.assertRaisesRegex(ValueError, 'injected'):
+            sp.restore_checkpoint_pair(receipt, expected_metadata=self.meta,
+                expected_ppo_config=self.ppo, expected_optimizer_steps=1)
+        equal_state(self, self.snapshot(), before)

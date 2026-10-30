@@ -399,3 +399,73 @@ def save_checkpoint_pair(output, model, optimizer, *, checkpoint, ppo_config, pr
         torch.set_rng_state(before["torch_rng"])
         random.setstate(before["python_rng"])
         generator.set_state(before["minibatch_rng"])
+
+
+def restore_checkpoint_pair(pair, *, expected_metadata, expected_ppo_config, expected_optimizer_steps):
+    """Restore a previously published training pair after the caller audits its chain.
+
+    This does not admit saved trajectories or apply an update. The controller
+    must independently bind publication, source compatibility and runtime before
+    calling. Success installs the checkpoint RNGs; failure preserves caller RNGs.
+    """
+    from .builtin_training_resume import ParentState, _exact
+    original_torch, original_python = torch.get_rng_state().clone(), random.getstate()
+    try:
+        fields = {"policy", "resume", "checkpoint", "weights_sha256", "exact_model_adam_rng_progress_pool",
+                  "progress", "sampler_state", "metadata"}
+        require(type(pair) is dict and set(pair) == fields
+                and pair["exact_model_adam_rng_progress_pool"] is True
+                and type(expected_metadata) is dict and expected_metadata.get("purpose") == "training"
+                and canonical(pair["metadata"]) == canonical(expected_metadata)
+                and type(expected_ppo_config) is dict
+                and type(expected_optimizer_steps) is int and expected_optimizer_steps > 0,
+                "Restore requires an exact published training checkpoint descriptor")
+        policy_path, resume_path = checked(pair["policy"]), checked(pair["resume"])
+        options = dict(expected_source_metadata=expected_metadata, allowed_provenance=(PROVENANCE,),
+                       interface=c.EXPANDED_ENVIRONMENT)
+        policy_raw = cp._read(policy_path, "policy", **options)
+        resume_raw = cp._read(resume_path, "optimizer", **options)
+        # A matching label or weight digest is insufficient: the paired policy
+        # must also carry the identical archived pool and full sampling state.
+        for name in policy_raw.keys() - {"kind", "resume"}:
+            _exact(policy_raw[name], resume_raw[name])
+        require(policy_raw["checkpoint"] == pair["checkpoint"]
+                and policy_raw["weights_sha256"] == pair["weights_sha256"]
+                and resume_raw["resume"]["progress"] == pair["progress"]
+                and resume_raw["resume"]["sampler_state"] == pair["sampler_state"]
+                and type(pair["sampler_state"].get("optimizer_steps")) is int
+                and pair["sampler_state"]["optimizer_steps"] == expected_optimizer_steps,
+                "Published checkpoint identity, progress or optimizer count differs")
+        policy = load_policy(policy_path, expected_metadata)
+        model = policy.model.requires_grad_(True)
+        optimizer = torch.optim.Adam(model.parameters())
+        generator = torch.Generator(device="cpu")
+        restored = cp.load_checkpoint(resume_path, model, optimizer, expected_ppo_config=expected_ppo_config,
+            generators={"minibatch": generator}, at_rollout_boundary=True, **options)
+        expected_rng = resume_raw["rng"]
+        require(set(expected_rng["torch_generators"]) == {"minibatch"}
+                and expected_rng["python_generators"] == {}, "Unexpected self-play RNG inventory")
+        for actual, expected in (
+                (dict(model.state_dict()), resume_raw["model_state"]),
+                (optimizer.state_dict(), resume_raw["resume"]["optimizer_state"]),
+                (restored.opponent_pool.state_dict(), resume_raw["opponent_pool"]),
+                (torch.get_rng_state(), expected_rng["torch_cpu"]),
+                (random.getstate(), expected_rng["python"]),
+                (generator.get_state(), expected_rng["torch_generators"]["minibatch"]),
+                (vars(restored.progress), pair["progress"]),
+                (restored.sampler_state, pair["sampler_state"])):
+            _exact(actual, expected)
+        require(restored.checkpoint == pair["checkpoint"] and weights_sha256(model) == pair["weights_sha256"]
+                and optimizer.state and any(item["step"].item() > 0 for item in optimizer.state.values())
+                and all(item["step"].item() <= expected_optimizer_steps for item in optimizer.state.values()),
+                "Restored model/Adam differs from the published complete update")
+        checked(pair["policy"]); checked(pair["resume"])
+        model.eval().requires_grad_(False)
+        return ParentState(model, optimizer, generator, restored.opponent_pool, restored.progress,
+            deepcopy(restored.sampler_state), deepcopy(expected_metadata), restored.checkpoint,
+            pair["weights_sha256"], {"policy": dict(pair["policy"]), "resume": dict(pair["resume"]),
+                "exact_model_adam_rng_progress_pool": True}, expected_optimizer_steps)
+    except BaseException:
+        torch.set_rng_state(original_torch)
+        random.setstate(original_python)
+        raise
