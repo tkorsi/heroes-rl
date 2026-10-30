@@ -1,4 +1,5 @@
 """Progress is a disposable UI channel, never admission or policy state."""
+from contextlib import nullcontext
 import io
 import json
 import os
@@ -61,6 +62,52 @@ class ProgressTests(unittest.TestCase):
         output = io.StringIO()
         ProgressDisplay(self.path.parent, stream=output).poll()
         self.assertEqual(output.getvalue(), '')
+
+    def test_deeply_nested_small_sidecar_never_interrupts_handoff_or_cleanup(self):
+        from experiments.learner.game_progress import finish_unfinished
+        self.path.parent.mkdir()
+        nested = '[' * 1500 + '0' + ']' * 1500
+        self.assertLess(len(nested), 4096)
+        self.path.write_text(nested)
+        # The C decoder's nesting threshold varies across Python versions.
+        for recursive_decoder in (False, True):
+            decoder = (patch('experiments.learner.game_progress.json.loads', side_effect=RecursionError('decoder nesting'))
+                       if recursive_decoder else nullcontext())
+            with self.subTest(recursive_decoder=recursive_decoder), decoder:
+                set_phase(self.path, 'verifying')
+                self.assertFalse(finish_unfinished(self.path.parent))
+                output = io.StringIO()
+                display = ProgressDisplay(self.path.parent, stream=output)
+                display.poll()
+                self.assertEqual(output.getvalue(), '')
+                display.finish(failed=True)
+                self.assertIn('Run failed or interrupted', output.getvalue())
+        self.assertEqual(self.path.read_text(), nested)
+
+    def test_closed_display_stream_never_masks_poll_finish_or_initialization(self):
+        for stage in ('poll', 'finish', 'initialization'):
+            with self.subTest(stage=stage):
+                self.progress((3, 2), 'verified')
+                stream = io.StringIO()
+                if stage == 'initialization':
+                    stream.close()
+                display = ProgressDisplay(self.path.parent, stream=stream)
+                if stage == 'finish':
+                    display.poll()
+                stream.close()
+                if stage == 'poll':
+                    display.poll()
+                display.finish(failed=True)
+                self.assertTrue(display.disabled)
+                self.assertEqual(self.read()['phase'], 'verified')
+
+    def test_closed_warning_stream_does_not_replace_disk_failure(self):
+        stream = io.StringIO(); stream.close()
+        with patch('experiments.learner.game_progress._write', side_effect=OSError('disk unavailable')), \
+             patch('sys.stderr', new=stream):
+            self.progress((1, 0))
+            self.progress.phase('failed')
+        self.assertTrue(self.progress.warned)
 
     def test_nonterminal_output_is_throttled_and_phases_force_display(self):
         output = io.StringIO()

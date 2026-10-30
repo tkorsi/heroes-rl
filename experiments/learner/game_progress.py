@@ -39,7 +39,10 @@ def _read(path):
         payload = source.read(4097)
     if len(payload) > 4096:
         raise ValueError("Oversized progress snapshot")
-    value = json.loads(payload)
+    try:
+        value = json.loads(payload)
+    except RecursionError as error:
+        raise ValueError("Progress snapshot nesting is excessive") from error
     if not _valid(value):
         raise ValueError("Invalid progress snapshot")
     return value
@@ -84,7 +87,7 @@ class GameProgress:
             if not self.warned:
                 try:
                     print(f"Game progress display unavailable: {error}", file=sys.stderr, flush=True)
-                except OSError:
+                except (OSError, ValueError):
                     pass
                 self.warned = True
         self.last_write = now
@@ -146,9 +149,12 @@ class ProgressDisplay:
         self.stream = sys.stderr if stream is None else stream
         self.clock, self.last_output = clock, float("-inf")
         self.previous, self.lines = {}, 0
-        self.tty = (bool(getattr(self.stream, "isatty", lambda: False)())
-                    and shutil.get_terminal_size(fallback=(80, 24)).columns >= 80)
         self.disabled = False
+        try:
+            self.tty = (bool(getattr(self.stream, "isatty", lambda: False)())
+                        and shutil.get_terminal_size(fallback=(80, 24)).columns >= 80)
+        except (OSError, ValueError):
+            self.tty, self.disabled = False, True
 
     def poll(self, *, final=False):
         if self.disabled:
@@ -186,7 +192,7 @@ class ProgressDisplay:
                     self.stream.write(format_progress(value) + "\n")
             self.stream.flush()
             self.previous, self.last_output = values, now
-        except OSError:
+        except (OSError, ValueError):
             self.disabled = True
 
     def finish(self, *, failed=False):
@@ -196,7 +202,7 @@ class ProgressDisplay:
             try:
                 self.stream.write("Run failed or interrupted; see shutdown.json for cleanup status.\n")
                 self.stream.flush()
-            except OSError:
+            except (OSError, ValueError):
                 self.disabled = True
 
     def wait(self, process, *, timeout):
