@@ -14,6 +14,8 @@ from unittest.mock import patch
 from tests import test_builtin_gameplay as fixtures
 from experiments.learner import builtin_gameplay as gameplay
 from experiments.learner import contextual_model as models
+from experiments.learner import interaction_guard
+from experiments.learner.contextual_rollout import behavior_guard_version
 from experiments.learner.gameplay import assert_same_state
 from experiments.learner.ppo import PPOConfig
 from experiments.headless import process_deadline
@@ -236,8 +238,8 @@ class LiveCaptureTransferTests(unittest.TestCase):
         self.addCleanup(gameplay._PARALLEL_CAPTURES.pop, id(lease), None)
         return lease
 
-    def child(self, lease, *, message_changes=None, capture_changes=None):
-        experience = fixtures.synthetic_experience(self.model)
+    def child(self, lease, *, message_changes=None, capture_changes=None, revealed_move=False):
+        experience = fixtures.synthetic_experience(self.model, revealed_move=revealed_move)
         capture = gameplay.TrainingCapture(experience, self.binding).to_dict()
         capture.update(capture_changes or {})
         payload = dict(folder=self.binding.folder, capture=capture, token=lease.token,
@@ -346,20 +348,65 @@ print(json.dumps(message), flush=True)
         with self.assertRaisesRegex(ValueError, 'another binding'):
             gameplay._complete_parallel_capture(lease)
 
-    def test_guarded_plan_rejects_unguarded_capture_before_import(self):
-        from experiments.learner.interaction_guard import VERSION
-        # Freeze a new binding after declaring support, then transfer the same
-        # genuine synthetic unguarded decisions through the live child pipe.
-        self.plan['policy_support'] = VERSION
+    def support_binding(self, root, version):
+        self.root = root
+        self.root.mkdir()
+        self.path, self.plan = fixtures.write_plan(self.root, rows=2)
+        self.plan['policy_support'] = version
         self.path.write_text(json.dumps(self.plan))
         self.binding = fixtures.binding_for(self.root, self.model, self.path, self.plan, 0)
         self.addCleanup(gameplay._BINDINGS.pop, id(self.binding), None)
-        lease = self.lease()
-        self.child(lease)
-        before = set(gameplay._CAPTURES)
-        with self.assertRaisesRegex(ValueError, 'policy support differs'):
-            gameplay._complete_parallel_capture(lease)
-        self.assertEqual(set(gameplay._CAPTURES), before)
+
+    def test_registered_plan_support_survives_live_capture_transfer_with_different_active_default(self):
+        root, receipts = self.root, set(gameplay._RECEIPTS)
+        for index, version in enumerate((None, interaction_guard.VERSION, interaction_guard.REVEALED_VERSION)):
+            with self.subTest(version=version):
+                self.support_binding(root / str(index), version)
+                lease = self.lease()
+                with patch.object(interaction_guard, 'ACTIVE_VERSION', version):
+                    self.child(lease, revealed_move=True)
+                # Decoding and capture validation must use the recorded version.
+                other = interaction_guard.REVEALED_VERSION if version is None else None
+                with patch.object(interaction_guard, 'ACTIVE_VERSION', other):
+                    capture, _ = gameplay._complete_parallel_capture(lease)
+                self.addCleanup(gameplay._CAPTURES.pop, id(capture), None)
+                self.assertEqual(behavior_guard_version(capture.decisions), version)
+                self.assertEqual(json.loads(Path(self.binding.plan_path).read_text())['policy_support'], version)
+                self.assertFalse(capture.experience.optimization_eligible)
+                self.assertEqual(set(gameplay._RECEIPTS), receipts)
+
+    def test_plan_support_mismatch_rejects_before_live_capture_import(self):
+        root, index = self.root, 0
+        versions = (None, interaction_guard.VERSION, interaction_guard.REVEALED_VERSION)
+        for planned in versions:
+            for captured in versions:
+                if planned == captured:
+                    continue
+                with self.subTest(planned=planned, captured=captured):
+                    self.support_binding(root / str(index), planned)
+                    index += 1
+                    lease = self.lease()
+                    with patch.object(interaction_guard, 'ACTIVE_VERSION', captured):
+                        self.child(lease, revealed_move=True)
+                    before = set(gameplay._CAPTURES)
+                    with self.assertRaisesRegex(ValueError, 'policy support differs'):
+                        gameplay._complete_parallel_capture(lease)
+                    self.assertEqual(set(gameplay._CAPTURES), before)
+                    self.assertFalse((Path(self.binding.folder) / 'training-receipt.json').exists())
+
+    def test_unknown_or_nonstring_plan_support_rejects_before_live_capture_import(self):
+        root = self.root
+        for index, version in enumerate(('unknown', '', False, 1, [], {})):
+            with self.subTest(version=version):
+                self.support_binding(root / str(index), version)
+                lease = self.lease()
+                with patch.object(interaction_guard, 'ACTIVE_VERSION', None):
+                    self.child(lease)
+                before = set(gameplay._CAPTURES)
+                with self.assertRaisesRegex(ValueError, 'Unknown planned policy support'):
+                    gameplay._complete_parallel_capture(lease)
+                self.assertEqual(set(gameplay._CAPTURES), before)
+                self.assertFalse((Path(self.binding.folder) / 'training-receipt.json').exists())
 
 
 if __name__ == '__main__':

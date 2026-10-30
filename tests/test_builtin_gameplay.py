@@ -30,9 +30,10 @@ from tests.test_builtin_env import manifest_for
 from tests.test_builtin_ppo_numerics import synthetic_dialog_rollout
 
 
-def synthetic_experience(model, *, player=0, boundary="natural", closure=False, episode=1, seed=11):
+def synthetic_experience(model, *, player=0, boundary="natural", closure=False, episode=1, seed=11, revealed_move=False):
     """Typed private records only; these fixtures make no native-proof claim."""
-    prior = synthetic_dialog_rollout(model, player=player, boundary=boundary, terminal_closure=closure)
+    prior = synthetic_dialog_rollout(model, player=player, boundary=boundary, terminal_closure=closure,
+                                     revealed_move=revealed_move)
     history = c.PlayerHistory(str(episode), player, schema=c.DIALOGS_SCHEMA)
     prefixes, hasher = {}, hashlib.sha256()
     for frame in prior.history:

@@ -320,9 +320,10 @@ def _check_capture(capture, binding):
 def _check_policy_support(episode, plan):
     """Recorded behavior must use the support intervention declared by its plan."""
     from .contextual_rollout import behavior_guard_version
-    from .interaction_guard import VERSION
+    from .interaction_guard import SUPPORTED_VERSIONS
     expected = plan.get('policy_support')
-    require(expected is None or expected == VERSION, 'Unknown planned policy support')
+    require(expected is None or (type(expected) is str and expected in SUPPORTED_VERSIONS),
+            'Unknown planned policy support')
     if episode.decisions:
         require(behavior_guard_version(episode.decisions) == expected,
                 'Captured policy support differs from the immutable plan')

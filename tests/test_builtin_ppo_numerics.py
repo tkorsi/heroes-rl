@@ -30,7 +30,7 @@ from tests.test_contextual_dialogs import (
 
 
 def synthetic_dialog_rollout(model, *, player=0, boundary="natural", family="chest",
-                             terminal_closure=False, other_gold=4000):
+                             terminal_closure=False, other_gold=4000, revealed_move=False):
     """Direct typed v7 examples, explicitly synthetic and never engine evidence."""
     if boundary not in ("natural", "cutoff", "failure") or terminal_closure and boundary != "natural":
         raise ValueError("Unsupported synthetic boundary")
@@ -43,6 +43,10 @@ def synthetic_dialog_rollout(model, *, player=0, boundary="natural", family="che
             changed = dict(episode=episode, player=seat)
             if frame.observation is not None:
                 obs = replace(frame.observation, resources=(0, 0, 0, 0, 0, 0, gold))
+                if revealed_move:
+                    # The fixture's submitted move targets (3, 2); explicitly
+                    # deliver that tile when testing revealed movement support.
+                    obs = replace(obs, tiles=(*obs.tiles, c.Tile((3, 2, 0), 1, 0, False, False)))
                 changed["observation"] = obs
                 if frame.offers is not None:
                     changed["offers"] = c.Offers.from_observation(obs, schema=c.DIALOGS_ACTION_SCHEMA)

@@ -250,3 +250,26 @@ after each move, and requires the recorded singleton layout before returning the
 extra item. It preserves all prior gates. An artifacts-only, both-seat bounded
 preflight will precede the next complete 44-control schedule. Failed reservations
 and evidence remain consumed and immutable.
+
+The final native preflight and full controls on `18aa3de` passed: 2 artifact
+preflights, 16 garrison controls and 28 legacy controls, with owned cleanup and
+all protected inputs unchanged. The first actual-policy study then completed
+four native games but rejected the entire first batch at capture validation:
+`Unknown planned policy support`. `builtin_gameplay._check_policy_support`
+imported the historical VERSION alias and still allowed only that version.
+This was a missed integration registration, not a timeout or engine failure.
+No completion receipt, PPO sample or optimizer update was admitted. The eight
+reserved paired starts remain consumed; the study is failed acceptance and its
+report remains unchanged. A separate post-failure audit verifies exact original
+and copied full checkpoint 1585 and all protected input hashes.
+
+The capture gate now recognizes only None or an exact string in the registered
+support versions and still requires exact plan/capture agreement. Real private-pipe
+capture import tests cover both versions, historical None, all cross-version
+mismatches and invalid types. Fifty-one focused tests passed. The initial test
+fixture intentionally moved to an undisclosed tile and correctly failed under
+the new guard; new capture tests now explicitly supply that visible tile, with
+historical fixture defaults unchanged. An independent source audit found no
+other stale production whitelist. The final native-policy study must use fresh
+seeds and the current source; the full native controls must also be refreshed
+because their complete dependency identity changed.

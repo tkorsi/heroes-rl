@@ -82,6 +82,7 @@ LOCAL_ADAPTER_ORIGINS = {
 # source pins are checked alongside the execution pins, but they must never be
 # reported as an identical-policy acceleration transition.
 POLICY_SUPPORT_SOURCES = frozenset({
+    'experiments/learner/builtin_gameplay.py',
     'experiments/learner/builtin_rollout.py',
     'experiments/learner/contextual.py',
     'experiments/learner/contextual_model.py',
@@ -104,7 +105,7 @@ FAST_PATH_SOURCES = {
         '80002aac82dfb9c5c4676584acde63b1c1825303a1f5a967fb506428b0e99fb2'),
     'experiments/learner/builtin_gameplay.py': (
         ('21587802605cab4fd781734ac60e7de301013306331f18231d0f216574c69540', '39859d22d19b0dcaff2add4ab0299475acc63dbb55ded700af9ce7dc9aab8a65', '8edb0a7e26a976c2da0f5d9389a0ff598e056ed2e8e2b5573a2694418b7de401', 'ef604ae79abc47b31fa63d6e4f39da8e58959c349b4e1c0593a8d571b9020e0d', 'fc0ad6a7afdffe698f337b54bd83aba14b6aa76fa60bdd15a7cda4ae71de1831',),
-        '8edb0a7e26a976c2da0f5d9389a0ff598e056ed2e8e2b5573a2694418b7de401'),
+        '8a0b927474b7ce599bd260423249b075d3d89fcc7c08bb1b9756d617c4cdbc82'),
     'experiments/learner/builtin_rollout.py': (
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
@@ -313,7 +314,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '776df7d9c306e06a8883bc7d111c97a8b3ffbd5b024f299da12af45ef98595e3'
+LOCAL_ADAPTER_TRANSITION_AST = '2b605c17b8eeeccbd62026d3aef1bc938510f215c6426e0b908a1a37929dd2c8'
 
 
 def write_new(path, value):
