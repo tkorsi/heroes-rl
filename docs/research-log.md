@@ -1152,3 +1152,13 @@ reservation. All original Nullkiller state stays unchanged. The
 [compact results](../validation/selfplay100-stopped-2026-10-30.json) separate all
 denominators and disclose diagnostic failures and the stop race. No restart was
 performed after the user's stop.
+
+## 2026-10-30: one manual self-play evaluation with doubled choices
+
+The separate 100-game target completed at checkpoint 1753: three learner wins,
+eight losses and 89 collection cutoffs, with three learner town captures. All
+natural victories belonged to Blue. The user now requests one manually launched
+game with twice the choice budget. The [protocol](research/selfplay-one-game-2x-2026-10-30.md)
+uses frozen 1753 policies, 9920 normal plus 320 reserved choices per player, and a
+10240 hard ceiling. It preserves the day horizon, map, support and rewards, and
+performs no PPO update. Preparation must not launch the game.

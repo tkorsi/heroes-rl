@@ -12,22 +12,24 @@ paragraphs are historical, not new instructions to run experiments.
 ## Current state
 
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
-was stopped at the user's request for a ten-game report. Parallel collection had
-finished twelve games; only eight entered two complete PPO updates. The exact
-published self-play state is **checkpoint 1,730**, with **92 admitted games still
-needed** for the separate 100-game target. The interrupted third update was never
-published, and its four games remain excluded. No automatic restart is scheduled.
-The first ten games produced one learner win, one loss and eight action-budget
-cutoffs. The learner traveled and captured one town, but frequently revisited
-positions and swapped army stacks. These training results do not establish
-improved playing strength.
+completed at **checkpoint 1,753**, with 100 admitted games and 25 complete PPO
+updates from 1,728. Outcomes were three learner wins, eight losses and 89
+choice-budget cutoffs. The learner captured three towns; stack swaps accounted
+for 69.6% of submitted choices. Every naturally decided game was won by Blue,
+including opponent wins. These observations do not establish improved strength.
+Four games from the earlier user-interrupted batch remain excluded.
 
-The reviewed manual continuation is `./continue-selfplay.sh --hours 10` in the
-`codex/selfplay-100` checkout. With no arguments, or `--check`, it restores and
-checks the latest published self-play descendant without gameplay or seed
-reservation. Explicit launch recalculates the remaining target and reserves fresh
-seeds; all 100 seeds from the stopped window remain consumed. The original
-Nullkiller campaign and its separate launcher remain unchanged.
+The user has requested a separate [one-game evaluation with doubled choice
+limits](docs/research/selfplay-one-game-2x-2026-10-30.md). The prepared
+`play-one-selfplay-2x.sh` checks by default; explicit `--run` plays one frozen
+self-play game from the latest verified completed checkpoint, currently 1,753.
+Both players receive 9,920 normal choices and 320 reserved dialog choices, with a
+10,240-choice hard ceiling. This evaluation performs no PPO update and changes no
+training checkpoint, sampler, seed reservation or completed campaign target.
+
+The old `continue-selfplay.sh` retains its completed 100-game target and must not
+be used to start this evaluation. The separate original Nullkiller campaign and
+its launcher remain unchanged at checkpoint 1,728, with 604 games remaining.
 
 The latest user-launched one-hour session advanced **checkpoint 1,585 to 1,728**
 in **143 complete PPO updates / 572 admitted games**, all natural losses. Its
