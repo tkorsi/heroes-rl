@@ -1,5 +1,5 @@
 """Controller contracts use disposable files and mocks, never native gameplay."""
-from contextlib import nullcontext
+from contextlib import contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import dataclass
 import json
@@ -7,6 +7,7 @@ import hashlib
 import os
 from pathlib import Path
 import tempfile
+import sys
 import time
 from types import SimpleNamespace
 import unittest
@@ -188,6 +189,192 @@ class SelfPlayControllerTests(unittest.TestCase):
              patch.object(controller, 'write') as write, patch('builtins.print'):
             self.assertEqual(controller.main(['continuation-check']), 0)
         reserve.assert_not_called(); launch.assert_not_called(); write.assert_not_called()
+
+    def test_completed_training_releases_lease_without_starting_optional_report(self):
+        held = False
+        events = []
+        @contextmanager
+        def lease():
+            nonlocal held
+            held = True
+            try:
+                yield
+            finally:
+                held = False
+                events.append('released')
+        def supervise(launch):
+            self.assertTrue(held)
+            events.append('verified_shutdown')
+            return dict(status='completed')
+        def printed(*args, **kwargs):
+            self.assertFalse(held)
+        with patch.object(controller, 'activity_lease', lease), \
+             patch.object(controller, 'prepare_continuation', return_value={'output': str(self.root / 'run')}), \
+             patch.object(controller, 'supervise', side_effect=supervise), \
+             patch.object(controller, 'analyze_completed') as analyze, \
+             patch.object(controller, 'report_completed') as report, patch('builtins.print', side_effect=printed):
+            self.assertEqual(controller.main(['continue', '--hours', '10']), 0)
+        self.assertEqual(events, ['verified_shutdown', 'released'])
+        analyze.assert_not_called(); report.assert_not_called()
+
+    def test_failed_training_does_not_start_optional_report(self):
+        with patch.object(controller, 'activity_lease', side_effect=nullcontext), \
+             patch.object(controller, 'prepare_continuation', return_value={'output': str(self.root)}), \
+             patch.object(controller, 'supervise', side_effect=ValueError('unverified shutdown')), \
+             patch.object(controller, 'analyze_completed') as analyze, patch('builtins.print'):
+            with self.assertRaisesRegex(ValueError, 'unverified shutdown'):
+                controller.main(['continue', '--hours', '10'])
+        analyze.assert_not_called()
+
+    def test_explicit_report_never_acquires_training_lease_or_launches_training(self):
+        with patch.object(controller, 'activity_lease', side_effect=AssertionError('training lease')), \
+             patch.object(controller, 'report_completed', return_value={'status': 'completed'}) as report, \
+             patch.object(controller, 'prepare') as prepare, patch.object(controller, 'prepare_continuation') as resume, \
+             patch.object(controller, 'reserve_schedule') as reserve, patch.object(controller, 'supervise') as launch, \
+             patch('builtins.print'):
+            self.assertEqual(controller.main(['report', '--run-dir', str(self.root)]), 0)
+        self.assertEqual(report.call_args.args[0].seconds, 600)
+        prepare.assert_not_called(); resume.assert_not_called(); reserve.assert_not_called(); launch.assert_not_called()
+
+    def reporting_fixture(self):
+        folder = self.root / 'completed'
+        source = {'checkout': {'commit': 'accepted'}}
+        self.artifact('completed/launch.json', dict(output=str(folder), source=source))
+        self.artifact('completed/report.json', dict(schema=controller.SCHEMA + '-result', status='completed', source=source,
+            owned_cleanup_verified=True, protected_inputs_unchanged=True, batches=[{'attempts': [
+                dict(status='passed', episode_directory=str(folder / 'episode-1'), learner_player=0)]}]))
+        self.artifact('completed/shutdown.json', dict(returncode=0, owned_cleanup_verified=True,
+                      protected_inputs_unchanged=True, errors=[]))
+        return folder
+
+    def test_report_rejects_active_or_unverified_run_and_duplicate_episodes(self):
+        folder = self.reporting_fixture()
+        original = controller.read(folder / 'report.json')
+        for status in ('running', 'stopped'):
+            controller.write(folder / 'report.json', {**original, 'status': status})
+            with self.assertRaisesRegex(ValueError, 'completed training'):
+                controller.report_inputs(folder)
+        controller.write(folder / 'report.json', original)
+        shutdown = controller.read(folder / 'shutdown.json')
+        controller.write(folder / 'shutdown.json', {**shutdown, 'returncode': -9})
+        with self.assertRaisesRegex(ValueError, 'successful shutdown'):
+            controller.report_inputs(folder)
+        controller.write(folder / 'shutdown.json', shutdown)
+        original['batches'][0]['attempts'] *= 2
+        controller.write(folder / 'report.json', original)
+        with self.assertRaisesRegex(ValueError, 'unique passed episodes'):
+            controller.report_inputs(folder)
+
+    def test_report_progress_and_partial_failure_remain_separate_from_training(self):
+        from experiments.learner import selfplay_behavior
+        folder = self.reporting_fixture()
+        report = controller.read(folder / 'report.json')
+        report['batches'][0]['attempts'].append(dict(status='passed', episode_directory=str(folder / 'episode-2'), learner_player=1))
+        output = self.root / 'optional'; output.mkdir()
+        originals = {path: path.read_bytes() for path in folder.iterdir()}
+        with patch.object(selfplay_behavior, 'analyze_episode', side_effect=[{'game': 1}, ValueError('bad history')]), \
+             patch.object(selfplay_behavior, 'aggregate_episodes', return_value={'physical_games': 1}), \
+             patch('builtins.print') as progress:
+            self.assertFalse(controller.analyze_completed(report, output))
+        self.assertEqual(progress.call_args_list[0].args, ('Reporting game 1/2',))
+        self.assertEqual(progress.call_args_list[1].args, ('Reporting game 2/2',))
+        saved = controller.read(output / 'behavior-progress.json')
+        self.assertEqual((saved['processed_games'], saved['successful_games']), (2, 1))
+        self.assertFalse(controller.read(output / 'behavior-analysis.json')['complete'])
+        self.assertEqual({path: path.read_bytes() for path in folder.iterdir()}, originals)
+
+    def test_report_deadline_stops_only_owned_worker_and_preserves_training(self):
+        from experiments.headless import process_deadline
+        folder = self.reporting_fixture()
+        originals = {path: path.read_bytes() for path in folder.iterdir()}
+        output = self.root / 'bounded-report'
+        spawn = process_deadline.guarded_popen
+        def slow_report(command, **kwargs):
+            return spawn([sys.executable, '-c', 'import time; time.sleep(30)'], **kwargs)
+        start = time.monotonic()
+        with patch.object(controller, 'private_output', return_value=output), \
+             patch.object(process_deadline, 'guarded_popen', side_effect=slow_report), patch('builtins.print'):
+            result = controller.report_completed(SimpleNamespace(run_dir=folder, output=output, seconds=1))
+        self.assertLess(time.monotonic() - start, 8)
+        self.assertEqual(result['status'], 'incomplete')
+        self.assertTrue(result['owned_cleanup_verified'])
+        self.assertEqual(result['returncode'], -9)
+        self.assertEqual({path: path.read_bytes() for path in folder.iterdir()}, originals)
+        evidence = [json.loads(line) for line in (output / 'report-deadline.jsonl').read_text().splitlines()]
+        self.assertTrue(any(row['event'] == 'deadline_expired' for row in evidence))
+
+    def test_report_refuses_invalid_deadline_or_output_inside_training_run(self):
+        folder = self.reporting_fixture()
+        for seconds in (0, float('nan'), float('inf'), 7201):
+            with self.assertRaisesRegex(ValueError, 'finite report budget'):
+                controller.report_completed(SimpleNamespace(run_dir=folder, output=None, seconds=seconds))
+        output = folder / 'new-report'
+        with patch.object(controller, 'private_output', return_value=output):
+            with self.assertRaisesRegex(ValueError, 'outside the completed training'):
+                controller.report_completed(SimpleNamespace(run_dir=folder, output=output, seconds=600))
+        self.assertFalse(output.exists())
+
+    def test_interrupted_report_records_incomplete_and_cleans_real_owned_worker(self):
+        from experiments.headless import process_deadline
+        folder = self.reporting_fixture()
+        originals = {path: path.read_bytes() for path in folder.iterdir()}
+        spawn = process_deadline.guarded_popen
+        for interruption in (KeyboardInterrupt, SystemExit):
+            output = self.root / interruption.__name__
+            def interrupted_report(command, **kwargs):
+                process = spawn([sys.executable, '-c', 'import time; time.sleep(30)'], **kwargs)
+                wait = process.wait
+                first = True
+                def interrupted_wait(*args, **kwargs):
+                    nonlocal first
+                    if first:
+                        first = False
+                        time.sleep(0.1)
+                        raise interruption()
+                    return wait(*args, **kwargs)
+                process.wait = interrupted_wait
+                return process
+            with self.subTest(interruption=interruption.__name__), \
+                 patch.object(controller, 'private_output', return_value=output), \
+                 patch.object(process_deadline, 'guarded_popen', side_effect=interrupted_report), \
+                 patch('builtins.print'):
+                with self.assertRaises(interruption):
+                    controller.report_completed(SimpleNamespace(run_dir=folder, output=output, seconds=30))
+            saved = controller.read(output / 'shutdown.json')
+            self.assertEqual(saved['status'], 'incomplete')
+            self.assertTrue(saved['owned_cleanup_verified'])
+            self.assertLess(saved['returncode'], 0)
+            self.assertIn(interruption.__name__, saved['errors'][0])
+            self.assertEqual({path: path.read_bytes() for path in folder.iterdir()}, originals)
+
+    def test_report_worker_rechecks_plan_after_analysis(self):
+        folder = self.reporting_fixture()
+        inputs, _ = controller.report_inputs(folder)
+        path = self.root / 'report-input.json'
+        controller.write(path, dict(schema=controller.SCHEMA + '-offline-report', training_input=False,
+            run_dir=str(folder), output=str(self.root / 'report'), inputs=inputs))
+        digest = controller.binding(path)['sha256']
+        def changed_plan(*args):
+            path.write_bytes(path.read_bytes() + b'\n')
+            return True
+        with patch.object(controller, 'analyze_completed', side_effect=changed_plan), patch.object(controller.os, 'nice'):
+            with self.assertRaisesRegex(ValueError, 'plan changed during analysis'):
+                controller.report_worker(SimpleNamespace(plan=path, sha256=digest))
+
+    def test_report_supervisor_rechecks_plan_after_successful_worker(self):
+        from experiments.headless import process_deadline
+        folder = self.reporting_fixture()
+        output = self.root / 'changed-plan'
+        def mutate_plan(command, **kwargs):
+            plan = output.resolve() / 'report-input.json'
+            plan.write_bytes(plan.read_bytes() + b'\n')
+            return SimpleNamespace(returncode=0, wait=lambda **kwargs: 0)
+        with patch.object(controller, 'private_output', return_value=output), \
+             patch.object(process_deadline, 'guarded_popen', side_effect=mutate_plan), \
+             patch.object(process_deadline, 'close_owned_process'), patch('builtins.print'):
+            saved = controller.report_completed(SimpleNamespace(run_dir=folder, output=output, seconds=30))
+        self.assertEqual(saved['status'], 'incomplete')
+        self.assertIn('Report input changed', saved['errors'][0])
 
     def test_resume_transition_rejects_changes_to_existing_helper_or_capture_logic(self):
         names = ('tools/run_selfplay_training.py', 'experiments/learner/selfplay_training.py',

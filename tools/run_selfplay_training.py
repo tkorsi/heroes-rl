@@ -19,6 +19,7 @@ import math
 import os
 from pathlib import Path
 import secrets
+import shlex
 import subprocess
 import sys
 import time
@@ -1054,21 +1055,112 @@ def analyze_completed(report, output):
     """Post hoc descriptions cannot change admission, rewards or checkpoint status."""
     from experiments.learner.selfplay_behavior import analyze_episode, aggregate_episodes
     rows, errors = [], []
-    for batch in report.get('batches', []):
-        for attempt in batch['attempts']:
-            if attempt.get('status') != 'passed':
-                continue
-            try:
-                rows.append(analyze_episode(attempt['episode_directory'], attempt['learner_player']))
-            except Exception as error:
-                errors.append(dict(episode_directory=attempt['episode_directory'], error=str(error)))
+    attempts = [attempt for batch in report.get('batches', []) for attempt in batch['attempts']
+                if attempt.get('status') == 'passed']
+    for index, attempt in enumerate(attempts, 1):
+        print(f"Reporting game {index}/{len(attempts)}", flush=True)
+        try:
+            rows.append(analyze_episode(attempt['episode_directory'], attempt['learner_player']))
+        except Exception as error:
+            errors.append(dict(episode_directory=attempt['episode_directory'], error=str(error)))
+        write(Path(output) / 'behavior-progress.json', dict(processed_games=index, total_games=len(attempts),
+              successful_games=len(rows), errors=errors, training_input=False))
     try:
         summary = aggregate_episodes(rows)
         write(Path(output) / 'behavior-analysis.json', dict(summary=summary, errors=errors,
               complete=not errors, policy_input=False, reward_input=False, admission_input=False), new=True)
+        return not errors
     except Exception as error:
         write(Path(output) / 'behavior-analysis-error.json', dict(error=str(error), errors=errors,
               admission_unchanged=True), new=True)
+        return False
+
+
+def report_inputs(run_dir):
+    """Accept only an already completed run; never restore or modify training."""
+    run_dir = Path(run_dir).resolve()
+    inputs = {name: binding(run_dir / name) for name in ('launch.json', 'report.json', 'shutdown.json')}
+    launch, report, shutdown = (read(bound(inputs[name])) for name in inputs)
+    require(Path(launch['output']).resolve() == run_dir and report.get('schema') == SCHEMA + '-result'
+            and report.get('source') == launch['source'] and report.get('status') == 'completed'
+            and report.get('owned_cleanup_verified') is True and report.get('protected_inputs_unchanged') is True
+            and shutdown.get('returncode') == 0 and shutdown.get('owned_cleanup_verified') is True
+            and shutdown.get('protected_inputs_unchanged') is True and shutdown.get('errors') == [],
+            'Reporting requires completed training and verified successful shutdown')
+    attempts = [attempt for batch in report['batches'] for attempt in batch['attempts']]
+    folders = [Path(attempt['episode_directory']).resolve() for attempt in attempts]
+    require(attempts and all(attempt.get('status') == 'passed' for attempt in attempts)
+            and len(set(folders)) == len(folders) and all(folder.is_relative_to(run_dir) for folder in folders),
+            'Reporting requires unique passed episodes inside the completed run')
+    return inputs, report
+
+
+def report_worker(args):
+    require(binding(args.plan)['sha256'] == args.sha256, 'Reporting plan changed')
+    plan = read(args.plan)
+    require(plan.get('schema') == SCHEMA + '-offline-report' and plan.get('training_input') is False,
+            'Unexpected reporting plan')
+    inputs, report = report_inputs(plan['run_dir'])
+    require(inputs == plan['inputs'], 'Completed run changed before reporting')
+    os.nice(10)
+    complete = analyze_completed(report, plan['output'])
+    for value in inputs.values():
+        bound(value)
+    require(binding(args.plan)['sha256'] == args.sha256, 'Reporting plan changed during analysis')
+    return 0 if complete else 1
+
+
+def report_completed(args):
+    """Run optional statistics separately with no campaign lease or training calls."""
+    from experiments.headless.process_deadline import guarded_popen, close_owned_process
+    require(math.isfinite(args.seconds) and 1 <= args.seconds <= 7200,
+            'Use a finite report budget from 1 to 7200 seconds')
+    inputs, _ = report_inputs(args.run_dir)
+    run_dir = Path(args.run_dir).resolve()
+    output = private_output(args.output or ARTIFACTS / 'selfplay-reports' / (
+        run_dir.name + '-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + secrets.token_hex(4))).resolve()
+    require(not output.is_relative_to(run_dir), 'Write optional reports outside the completed training run')
+    output.mkdir(parents=True, mode=0o700)
+    plan = dict(schema=SCHEMA + '-offline-report', run_dir=str(run_dir), output=str(output), inputs=inputs,
+                training_input=False, maximum_seconds=args.seconds)
+    path = output / 'report-input.json'; write(path, plan, new=True)
+    plan_binding = binding(path)
+    print(f'Optional report output: {output}', flush=True)
+    process, errors, cleanup, interruption = None, [], False, None
+    try:
+        process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_report',
+            '--plan', str(path), '--sha256', plan_binding['sha256']],
+            deadline_monotonic=time.monotonic() + args.seconds, deadline_wall=time.time() + args.seconds,
+            evidence_path=output / 'report-deadline.jsonl', cwd=ROOT, stdin=subprocess.DEVNULL)
+        process.wait(timeout=args.seconds + 1)
+        if process.returncode != 0:
+            errors.append(f'Report worker exited with status {process.returncode}; training remains completed')
+    except (KeyboardInterrupt, SystemExit) as error:
+        interruption = error
+        errors.append(f'{type(error).__name__}: optional reporting interrupted; training remains completed')
+    except Exception as error:
+        errors.append(f'{type(error).__name__}: {error}')
+    finally:
+        try:
+            if process is not None:
+                close_owned_process(process, timeout=5)
+            cleanup = True
+        except Exception as error:
+            errors.append(f'Report cleanup: {error}')
+        try:
+            bound(plan_binding)
+            for value in inputs.values():
+                bound(value)
+        except Exception as error:
+            errors.append(f'Report input changed: {error}')
+        completed = process is not None and process.returncode == 0 and cleanup and not errors
+        result = dict(status='completed' if completed else 'incomplete', output=str(output), errors=errors,
+            owned_cleanup_verified=cleanup, returncode=process.returncode if process else None,
+            training_input=False, optimizer_updates=0, gameplay_performed=False)
+        write(output / 'shutdown.json', result, new=True)
+    if interruption is not None:
+        raise interruption
+    return result
 
 
 def supervise(launch):
@@ -1132,6 +1224,10 @@ def main(argv=None):
     run.add_argument('--output', type=Path, required=True)
     run.add_argument('--acceptance', type=Path, required=True)
     run.add_argument('--hours', type=float, default=10)
+    report = sub.add_parser('report', help='Optional bounded statistics for a completed run; no training lock')
+    report.add_argument('--run-dir', type=Path, required=True)
+    report.add_argument('--output', type=Path)
+    report.add_argument('--seconds', type=float, default=600)
     for name in ('continuation-check', 'continue'):
         continuation = sub.add_parser(name, help='Check or manually continue the registered self-play lineage')
         continuation.add_argument('--lineage', type=Path, default=LINEAGE)
@@ -1139,7 +1235,7 @@ def main(argv=None):
         if name == 'continue':
             continuation.add_argument('--output', type=Path)
             continuation.add_argument('--hours', type=float, required=True)
-    for name in ('_coordinator', '_capture'):
+    for name in ('_coordinator', '_capture', '_report'):
         worker = sub.add_parser(name)
         worker.add_argument('--plan', type=Path, required=True); worker.add_argument('--sha256', required=True)
         if name == '_capture':
@@ -1150,8 +1246,15 @@ def main(argv=None):
         capture_worker(args); return 0
     if args.command == '_coordinator':
         return int(coordinator(args)['status'] != 'completed')
+    if args.command == '_report':
+        return report_worker(args)
     started = time.monotonic()
     try:
+        if args.command == 'report':
+            result = report_completed(args)
+            print(json.dumps(result, indent=2))
+            return int(result['status'] != 'completed')
+        launch = None
         with activity_lease():
             if args.command == 'check':
                 identity = source_identity()
@@ -1171,7 +1274,10 @@ def main(argv=None):
                 launch = (prepare_continuation(args) if args.command == 'continue'
                           else prepare(args, 'training' if args.command == 'run' else 'diagnostic'))
                 result = supervise(launch)
-                analyze_completed(result, launch['output'])
+        if launch is not None:
+            print('Run completed and training lock released. Optional behavior statistics were not started.', flush=True)
+            print('Generate them separately: ' + shlex.join([sys.executable, str(Path(__file__).resolve()),
+                  'report', '--run-dir', launch['output'], '--seconds', '600']), flush=True)
         print(json.dumps(result, indent=2)); return 0
     finally:
         print(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
