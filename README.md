@@ -9,6 +9,10 @@ This README is the authoritative project overview and agreement. Updated
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
+Use `/Users/orsi/Projects/Heroes` as the working checkout and run the manual
+launchers there. Keep existing worktrees referenced by active processes or
+historical validation evidence intact.
+
 ## Current state
 
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)

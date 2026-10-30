@@ -59,7 +59,7 @@ sources are required to match the accepted base release byte for byte.
 ## Manual command
 
 ```sh
-cd /Users/orsi/.codex/worktrees/selfplay-one-game-2x/Heroes
+cd /Users/orsi/Projects/Heroes
 ./play-one-selfplay-2x.sh --check
 ./play-one-selfplay-2x.sh --run
 ```
