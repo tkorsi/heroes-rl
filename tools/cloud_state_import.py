@@ -39,7 +39,7 @@ RECEIPT_KEY = 'cloud_import/receipt'
 RUNTIME_UPGRADES = {
     'telemetry-free-1728-v1': {
         'historical_machine_sha256': '51776f9d27f6b2879a2ddf5b6ef442a9820ea76737ea85afcc09248a7b42e27c',
-        'descriptor_sha256': 'PENDING_VALIDATION',
+        'descriptor_sha256': '09a7f0f484b097bf27bb4712cfc515cd099ca7688db388a64f9127665d15b831',
         'python_environment': NEXT_LAUNCH_ENVIRONMENT,
     },
     'revealed-movement-1585-v1': {

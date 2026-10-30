@@ -1,0 +1,202 @@
+{
+  "checkpoint": 1728,
+  "copied_ppo": {
+    "candidate_runtime_timings_absent": true,
+    "cleanup_verified": true,
+    "difference": {
+      "adam": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 117
+      },
+      "gradients": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 35
+      },
+      "model": {
+        "differing": 0,
+        "max_absolute": 0.0,
+        "max_relative": 0.0,
+        "tensors": 39
+      }
+    },
+    "full_state_exact": true,
+    "optimizer_steps": 13,
+    "original_inputs_unchanged_after_both_runs": true,
+    "samples": 363
+  },
+  "engine_sources_match_generated": true,
+  "evidence": {
+    "copied_ppo": {
+      "bytes": 4633,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/copied1728-comparison.json",
+      "sha256": "5997e6512c81d647b6f8fced294ca50e2188cf588a3059f1d387cd293ec9bbd5"
+    },
+    "failed_policy_report": {
+      "bytes": 84727,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/telemetry-free1728-attempt1/report.json",
+      "sha256": "fe7ae3ff37ae4efe7dc2509590eac2dabc90dc71d89f1c51ef7634d82f1cf1cb"
+    },
+    "policy_report": {
+      "bytes": 110399,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/telemetry-free1728-attempt2/report.json",
+      "sha256": "0ce6009de738c8d6f7c51b26c8d614652c7375ec96a14292b770930ba69b934a"
+    },
+    "policy_shutdown": {
+      "bytes": 202,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/pipeline-collection/telemetry-free1728-attempt2/shutdown.json",
+      "sha256": "7df5107de8c66eba14cb74c83a2d4ee2914425309a939523bef97135e06ba502"
+    },
+    "protocol": {
+      "bytes": 4044,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-telemetry-removal/protocol.json",
+      "sha256": "21ae84930593a9d8670b4d788711bb8ea6b20711e1ffb6b2acfeedb52f05e025"
+    }
+  },
+  "failed_diagnostic_attempts": [
+    {
+      "attempt": "telemetry-free1728-attempt1",
+      "cause": "Concurrent untracked validation report triggered the clean-checkout gate between arms.",
+      "choices": 971,
+      "completed_games": 8,
+      "consumed_engine_seeds": [
+        1730000040,
+        1730000041,
+        1730000042,
+        1730000043,
+        1730000044,
+        1730000045,
+        1730000046,
+        1730000047
+      ],
+      "error": "ValueError: Selected checkout must be clean and committed",
+      "full_parent_unchanged_final_assertion_reached": false,
+      "optimizer_updates": 0,
+      "owned_cleanup_verified": true,
+      "pipeline_games_started": 0,
+      "protected_canonical_inputs_independently_unchanged": 15,
+      "training_samples_admitted": 0
+    }
+  ],
+  "implementation_commit": "221d3198b1698b932b2e55755a3fa9fc2990ce35",
+  "limitations": [
+    "Instrumentation overhead and whole-training speedup are not established.",
+    "Native engine behavior can differ between equal-seed arms; policy pair semantic digests differed.",
+    "No improved playing strength is demonstrated.",
+    "Explicit bounded evaluation tools retain diagnostic timing; production CPU counters and training phase profiling were removed."
+  ],
+  "machine_configuration": {
+    "bytes": 206582,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/local-script-training/machine-original-native-v6.json",
+    "sha256": "c86bff9aa8ddf802f8ffd674a35819f044de67769af777cddadfa26b23b5b520"
+  },
+  "manual_preflight": {
+    "command": "cd /Users/orsi/Projects/Heroes && ./continue-1585.sh --check --hours 10",
+    "status": "pending"
+  },
+  "native_binary_sha256": "3d7099e10b8ad3ba73e0a8f30ef0642d714689e3cd45e88b029c79bf5f6db19b",
+  "native_controls": {
+    "garrison": 16,
+    "legacy": 28,
+    "passed": 44,
+    "report": "validation/telemetry-native-controls-2026-10-30.json"
+  },
+  "native_manifest": {
+    "bytes": 2318,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/native-learner-builds/remove-telemetry-v1-attempt1/manifest.json",
+    "sha256": "53970605c4560bbe14b655442df373d3577efef3de0c5f824b95cfa22a74b573"
+  },
+  "native_tests": {
+    "passed": 43,
+    "run": 43,
+    "skipped": 0
+  },
+  "next_sequence": 1369,
+  "official_samples_admitted": 0,
+  "official_seed_reservations": 0,
+  "official_training_started": false,
+  "official_updates": 0,
+  "original_admitted_games": 4396,
+  "performance_telemetry": "removed",
+  "policy": {
+    "choices": 2030,
+    "cleanup_verified": true,
+    "comparison": {
+      "all_semantic_matches": false,
+      "identical_workload_speedup": null,
+      "observed_timing_ratio": 1.0875639956397494
+    },
+    "consumed_engine_seeds": [
+      1730000048,
+      1730000049,
+      1730000050,
+      1730000051,
+      1730000052,
+      1730000053,
+      1730000054,
+      1730000055
+    ],
+    "full_parent_restore": true,
+    "full_parent_unchanged": true,
+    "games": 16,
+    "maximum_reconstruction_difference": 0,
+    "natural_losses": 16,
+    "receipt_revoked_games": 16,
+    "revealed_movement": {
+      "movement_choices": 142,
+      "revealed_targets": 142,
+      "unrevealed_targets": 0
+    }
+  },
+  "policy_validation_commit": "4b83e6ce32fb1308c98614a762c4f518334cfee2",
+  "protected_inputs_unchanged": 15,
+  "remaining_original_games": 604,
+  "runtime_acceptance": {
+    "bytes": 15509,
+    "path": "/Users/orsi/Projects/Heroes-artifacts/runtime/local-v8-terminal-replay-repair2/telemetry-free1728-acceptance-v1.json",
+    "sha256": "09a7f0f484b097bf27bb4712cfc515cd099ca7688db388a64f9127665d15b831"
+  },
+  "runtime_release": "telemetry-free-1728-v1",
+  "schema": "heroes-telemetry-removal-validation-v1",
+  "self_play": {
+    "authorized_scope": "explanation only",
+    "implemented": false,
+    "opponent_unchanged": "Nullkiller Easy"
+  },
+  "status": "runtime_accepted_final_preflight_pending",
+  "tests": {
+    "corrected_launcher_tests": {
+      "passed": 23,
+      "run": 23
+    },
+    "final_suite": "pending",
+    "first_suite": {
+      "cause": "Old native manifest expectations in three launcher tests.",
+      "failures": 3,
+      "passed": 2025,
+      "run": 2061,
+      "skipped": 33
+    }
+  },
+  "timestamp_utc": "2026-10-30T09:51:04.856503+00:00",
+  "travel": {
+    "captured_towns_later_lost": 3,
+    "enemy_initial_town_captures": 2,
+    "evaluation_games": 24,
+    "evidence": {
+      "bytes": 7088,
+      "path": "/Users/orsi/Projects/Heroes-artifacts/run-investigations/2026-10-30-latest-run-audit/travel.json",
+      "sha256": "0009caf5cddb4204a869c868ac5f01e028f7ae6adbfc5b9a403bb48462bd2d30"
+    },
+    "mean_newly_observed_tiles_after_initial": 76.8444055944056,
+    "median_last_game_day": 2,
+    "median_unique_hero_position_pairs_including_initial": 14,
+    "recaptures_of_initially_owned_town": 1,
+    "training_games": 572,
+    "training_games_with_observed_hero_position_change": 572,
+    "training_town_captures": 3
+  }
+}

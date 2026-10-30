@@ -41,7 +41,7 @@ RUNTIME_ACCEPTANCE_SCHEMA = "heroes-local-training-runtime-acceptance-v1"
 ACCEPTED_RUNTIME_RELEASES = {
     "telemetry-free-1728-v1": {
         "descriptor": DEFAULT_ARTIFACT_ROOT / "runtime/local-v8-terminal-replay-repair2/telemetry-free1728-acceptance-v1.json",
-        "sha256": "PENDING_VALIDATION",
+        "sha256": "09a7f0f484b097bf27bb4712cfc515cd099ca7688db388a64f9127665d15b831",
         "python_environment": NEXT_LAUNCH_ENVIRONMENT,
     },
     "revealed-movement-1585-v1": {
