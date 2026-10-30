@@ -51,6 +51,8 @@ ROUTING_MODULES = {'heroes-update146-curriculum-v3': 'curriculum_training',
 # bytes may cross that orchestration transition; learner/PPO source stays exact.
 ACCEPTED_ADAPTER_COMMIT = 'a8ac411d32658387598376c792136bc586edc5f9'
 LOCAL_ADAPTER_ORIGINS = {
+    # Telemetry-free release preceding the separately authorized v8 self-play experiment.
+    'd7855872afd5c2dc5b707b9bd5a27ea04abc2ccb': '6f176788b0b76b122e02f46219894df2d7f0b6138ae9a8ba49e90efc02f61b5d',
     # Verified revealed-movement run1585->1728; telemetry removal preserves its learned state.
     'a08229b27b8be7902bdb92a7f1b32c6aefd01543': '1e9980c7e54b328ffa7e8e6a5a34e48f9a9e88dc1e40d239948cc55793e9cc38',
     # Accepted CPU/NumPy preparation before the explicit revealed-target intervention.
@@ -112,7 +114,7 @@ FAST_PATH_SOURCES = {
         ('08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db', 'a9c2df339a63fa384bf6b53f1c182b197015f39182a59ca01c67e5970d37a67b', 'c2461ed510c8b9c58fa3fd86a53fc86e4b7e7caf316fbdec40092d53aa5073a6',),
         '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db'),
     'experiments/learner/builtin_training.py': (
-        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '165a3b03a58c29c9bd63587c835a32c86c7cc59cada89d8ab3d67ee49ca7725a', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
+        ('00d51447c0a3fcf4f16ce020f0e970e6382ce889a037e228394e6fdcbbe70768', '165a3b03a58c29c9bd63587c835a32c86c7cc59cada89d8ab3d67ee49ca7725a', '1a8289ec3afd360d2ed6081830ea8a687b609081e882b9b858217ec8bc846bc4', '3c00700df647f0a72ef17a6c2fab90a4d7e3b0f89dae394ad835e1192a527600', '780dc35866ac7deaa7fd9887ca8743e5c7f763daa46c5a4fd4f0111a428b6b87', '980cfc3c922ae13c19ed96a7ea7ca9ab749ce6276f3fd635c471e9657521a73d',),
         '1a8289ec3afd360d2ed6081830ea8a687b609081e882b9b858217ec8bc846bc4'),
     'experiments/learner/builtin_training_metrics.py': (
         ('785777db63972ba2868533ecb581fa699f5ac2866e955b837fad87f5b310ead6', 'aab1a57558019be7ce09bf4bba0866dff7bdd90f4cdfec059e5e73967e10d98f',),
@@ -120,6 +122,9 @@ FAST_PATH_SOURCES = {
     'experiments/learner/builtin_training_resume.py': (
         ('3853da06e4e510586cf1b4af0d251b63659dd9f14db394d871b1071d54ef53fb', '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423',),
         '55a7c226b0791221512e2bf007975b45e5ceeddd71327a4ca89e00ca7ccb5423'),
+    'experiments/learner/checkpoints.py': (
+        ('be624a6fc8d02ddae134c85a8cd458b6abb63298df5ae22868894a6a4eaf4b03',),
+        'a33dabaea5d34cdf2330cf07c8464b3f103463cc8309c5bc394387a692a0d68e'),
     'experiments/learner/contextual.py': (
         ('01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358', '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
         '01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358'),
@@ -128,7 +133,7 @@ FAST_PATH_SOURCES = {
         'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
-        '2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346'),
+        '6bb591e907338d849609e1877c0c404fe2ae3236d8dbfd7f0604d4cf27972f07'),
     'experiments/learner/evaluate_builtin_opponent.py': (
         ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
@@ -151,19 +156,19 @@ FAST_PATH_SOURCES = {
         ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56', 'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189',),
         'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189'),
     'experiments/learner/parallel_collection.py': (
-        ('4d06e48ac4fb5d7afaedbc61407ccddae645c9237c42c966896c77145589b351', '7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10', '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c', '93d88f0fe616ee01a2b07ce305e8431d682f1edbe5874021a481ed9ec026567b',),
+        ('4d06e48ac4fb5d7afaedbc61407ccddae645c9237c42c966896c77145589b351', '5044b233f000ee4193a27eae130605133d61836783f4e09f1ddee2cb20098079', '7b671987eef08757bff846cabe8eec77eaa99f311d9ba0b1711c3a1c2afc9e10', '91bbe33fcb453c999b8284796a3c4b41f55bd01c82240a53041c9871ddf0078c', '93d88f0fe616ee01a2b07ce305e8431d682f1edbe5874021a481ed9ec026567b',),
         '5044b233f000ee4193a27eae130605133d61836783f4e09f1ddee2cb20098079'),
     'experiments/learner/ppo.py': (
-        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd', 'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74',),
+        ('0a574d72b0fa94e02a1eab32150b547bfeb1a117b2a547094289a82bc0708e60', '4d9ff6194e1ab8fd46d4fa5adf643cfafa152ac593a60e7848cfc86d93bd7682', '6278c7675471aaa94f37745102e28dbf0ec3562e97e79c6ba42079ba0f794fcd', 'b835502024f347863cf6110259e641903a1c294d9b29fa1eca6f461636849444', 'd78c5dee16c10e60639feb2c44011b50b930854c8f94631397e0fcb3c1e89f74',),
         'b835502024f347863cf6110259e641903a1c294d9b29fa1eca6f461636849444'),
     'experiments/learner/resources.py': (
         ('ad885d6b377cc735670b3e753440e13f4119ed83815296fdcfea5b3ad98d49ee', 'cb465fbc53516c11f091e71c54b8d1f0de99d07f11569e86bf19e7e90d67198d',),
         'cb465fbc53516c11f091e71c54b8d1f0de99d07f11569e86bf19e7e90d67198d'),
     'native/learner/kernels.cpp': (
-        ('99f698eac796f5dcf6a60a94f281dc1a746c826f6074e3764fab24a564a581e2',),
+        ('232b1f816e29ee1bc209e2a70be23448db518f2f928997cd2a62309445028b6f', '99f698eac796f5dcf6a60a94f281dc1a746c826f6074e3764fab24a564a581e2',),
         '232b1f816e29ee1bc209e2a70be23448db518f2f928997cd2a62309445028b6f'),
     'native/learner/text_replay.h': (
-        ('9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd',),
+        ('9c13aef3fde2c7250c1ee4b1ff1b02265cc62c0d0e4f75375375f404638cc8bd', 'bd76c3320e9d5f2769046d829266ec4c37a7bd9620ea38f4d98e9ec8dbe2ab60',),
         'bd76c3320e9d5f2769046d829266ec4c37a7bd9620ea38f4d98e9ec8dbe2ab60'),
 }
 # The rest of the code a fast-path run executes (collector, game interface, admission verifiers,
@@ -176,6 +181,7 @@ REVIEWED_TREE = ('experiments', 'native/learner', 'validation/probes', 'dependen
                  'tools/training_environment.py', 'tools/prepare_next_training_environment.py',
                  'tools/isolated_diagnostic.py',
                  'tools/accept_cpu_next_launch.py', 'tools/benchmark_pipeline_collection.py',
+                 'tools/run_selfplay_training.py',
                  'tools/benchmark_parallel_collection.py', 'tools/acceleration3/campaign_summary.py',
                  'tools/benchmark_copied_training.py', 'tools/acceleration3/ppo_bench.py',
                  'tools/validate_garrison_regressions.py',
@@ -230,13 +236,13 @@ FAST_PATH_TREE = {
     'experiments/headless/builtin_replay.py': ('d7bde5cffd1124000838c1ba0f20b765b07efd39',
         '90e0e73702ac18ddbea89dff9d2a1e013808c23ef2cd797cd5fe5870f45cc2af'),
     'experiments/headless/contextual_env.py': ('e2a75d2327589a8ea27518823dc24318a95109ab',
-        '4d555029eb5902f02a5883ca5386066fa150a4a91441b2163dfb8dc286de9ff5'),
+        'c44340201a2ff896406255094d90fae7a838b95d9828a95c9dd776dec04da444'),
     'experiments/headless/contextual_evidence.py': ('44b664e57028145c573d6397bd00f7c1227c5dc1',
         '494221e9a137fc7f8e1e237800b2cb79c572118125d4b0e4ef07810df65ff111'),
     'experiments/headless/contextual_protocol.py': ('e3e8b85713c15e54f7522e4f337a7ef8a184662d',
         '481120ae6411e353a1c02fb4ce00352cee0adf220f823263c4b6af5421742c96'),
     'experiments/headless/contextual_replay_history.py': ('e424d6d5bd0b23112f21d8ac641fbb4c4a9436da',
-        '9e252f7f6b79f8a70ce020cc4114ae0919850307d4644082dbff8c9af69c179e'),
+        'e23c7e5e3a0efc01dca2e1afed2d5933d49f84cead003db872a9a3c9cf463989'),
     'experiments/headless/digest_scope.py': ('',
         '482450e81c49a798595cd8a1f264590d051085e7aada90c4ad30163ad5e24a5b'),
     'experiments/headless/embedded_env.py': ('',
@@ -253,12 +259,16 @@ FAST_PATH_TREE = {
         '6a35dc0694ef1b28e18855cf1476678d505ef7cb2af434a489bfee8250db5f26'),
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
+    'experiments/learner/selfplay_behavior.py': ('',
+        '0254112dd1995300e9dd74ad7306676b7e6c1a243feb49f6f5db4eae2a123dc9'),
+    'experiments/learner/selfplay_training.py': ('',
+        '60b30dd0640784cdd732f88838d0efe4dfbbe3b1831b2a587dfd3265d6338a59'),
     'native/learner/replay_tape.h': ('',
         '7690a71eac058c56d5b257f5bd76b213e7f4cbd701b42c66df82d51623aea2a1'),
     'tools/acceleration3/campaign_summary.py': ('',
         'f6b335454df29e6ff92a194f3e3fea2e7bc6217838fde69b31afa80e2503b546'),
     'tools/acceleration3/fast_path_pins.py': ('',
-        '2199af330cbee22adc38f0f92e96595f16ba02905c1d007d493214fc1f795166'),
+        'd28310398dd9d7112e087399007186917a2b4f6d3a608e23647983fa8c644d25'),
     'tools/acceleration3/ppo_bench.py': ('',
         'a36abb21c469894e8d8a1207ff242c342a424a246ded353d9e39bf7db899f681'),
     'tools/accept_cpu_next_launch.py': ('',
@@ -307,6 +317,8 @@ FAST_PATH_TREE = {
         'f8699aed9f5d629c21122ba15c20767e67ff0e4441ec912260f9fd7801947782'),
     'train-local.sh': ('c44f88f9c5ddcdeacce63951a81ee74c0c305a28',
         '1b121b2b7b4aa4039c986ec9c3215618a2d5de1d1db59b47eefed71b4c9a7997'),
+    'validation/probes/audit_contextual_histories.py': ('afd2924c92eedf8b9e05abcdbf960bd001ba0161',
+        'fb05fa52042f1e67c455538df88e121788ee148b0874b28ff7d77a15e6b6099c'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
     'validation/probes/validate_capabilities.py': ('bb494ac4cc7c95ea34f2a866dfdec1694e26a3f7',
@@ -318,7 +330,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '2820010d61ef52073aad60504044a41a5587061f029d781f0e1955fb2cba92ae'
+LOCAL_ADAPTER_TRANSITION_AST = 'ae558151b7b78052296d663c98afb26e8051bd4a24cf428f3ff7d72d9b6fc91c'
 
 
 def write_new(path, value):

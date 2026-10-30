@@ -604,7 +604,9 @@ class ContextualMixin:
             "engine_verified_outcomes": outcomes if status == "completed" else None,
             "natural_terminal_after_cutoff": natural_after_cutoff,
             "continuation": {"limit_per_player": CONTINUATION_LIMIT, "actions": [self.sides[p].validator.continuation_steps for p in (0, 1)],
-                             "allowed_actions": (["back", "close", "end_turn"] if self.context_profile != contract.WINDOWS_PROFILE
+                             "allowed_actions": (["back", "close", "close_capability", "end_turn"]
+                                                 if self.context_profile == contract.EXPANDED_PROFILE else
+                                                 ["back", "close", "end_turn"] if self.context_profile != contract.WINDOWS_PROFILE
                                                  else ["close", "end_turn"]), "learner_excluded": True},
             "raw_bridge_sha256": {side.color: scoring.digest(self.episode_dir / "agents" / side.color / "bridge.jsonl")
                                   for side in self.sides.values()}, "identity": identity,

@@ -23,6 +23,7 @@ ROLLOUT_SCHEMA = "heroes-context-rollout-v1"
 TERMINAL_ROLLOUT_SCHEMA = "heroes-context-rollout-v2"
 _TRAJECTORIES = {ROLLOUT_SCHEMA: c.TRAJECTORY_SCHEMA, TERMINAL_ROLLOUT_SCHEMA: c.TERMINAL_TRAJECTORY_SCHEMA}
 COLORS = ("red", "blue")
+_DEFAULT_GUARD = object()
 
 
 def _text(value, name):
@@ -430,12 +431,14 @@ class ContextualRollout:
 class ContextualSession:
     """One player's incremental history and private recurrent state."""
 
-    def __init__(self, model, episode, player, checkpoint, opponent_checkpoint, *, schema=c.TOWN_SCHEMA, seed=0):
+    def __init__(self, model, episode, player, checkpoint, opponent_checkpoint, *, schema=c.TOWN_SCHEMA, seed=0,
+                 guard_version=_DEFAULT_GUARD):
         _text(checkpoint, "checkpoint"); _text(opponent_checkpoint, "opponent checkpoint")
         self.model, self.checkpoint, self.opponent_checkpoint = model, checkpoint, opponent_checkpoint
         self._weights = WeightsSnapshot(model)
         self.weights_sha256 = self._weights.digest
-        self.encoder = ContextualEncoder(episode, player, schema)
+        guard = {} if guard_version is _DEFAULT_GUARD else {"guard_version": guard_version}
+        self.encoder = ContextualEncoder(episode, player, schema, **guard)
         self.history = c.PlayerHistory(episode, player, schema=schema)
         self._state = model.initial_state().detach().clone()
         self._digest = hashlib.sha256()
@@ -612,7 +615,8 @@ class ContextualCollector:
     """Fixed two-policy collection; run_episode never invokes an optimizer."""
 
     def __init__(self, models, checkpoints, *, learner_player, opponent_pool, interface=c.TOWN_ENVIRONMENT,
-                 purpose="diagnostic", origin="native", policy_seeds=(0, 1), trajectory_schema=c.TERMINAL_TRAJECTORY_SCHEMA):
+                 purpose="diagnostic", origin="native", policy_seeds=(0, 1), trajectory_schema=c.TERMINAL_TRAJECTORY_SCHEMA,
+                 guard_version=_DEFAULT_GUARD):
         if type(models) is not tuple or len(models) != 2 or type(checkpoints) is not tuple or len(checkpoints) != 2:
             raise ValueError("Collection requires fixed models/checkpoints for both seats")
         c._integer(learner_player, high=1); _text(opponent_pool, "opponent pool")
@@ -629,6 +633,9 @@ class ContextualCollector:
         self.trajectory_schema = trajectory_schema
         self.learner_player, self.opponent_pool, self.purpose, self.origin = learner_player, opponent_pool, purpose, origin
         self.policy_seeds = policy_seeds
+        if guard_version is not _DEFAULT_GUARD:
+            Tracker(version=guard_version)  # Validate before any native episode starts.
+        self.guard_version = guard_version
         self.sessions = None
         self._episodes = set()
 
@@ -637,10 +644,15 @@ class ContextualCollector:
         if episode in self._episodes or self.sessions is not None and not all(s.finished for s in self.sessions):
             raise ValueError("Finish prior collection and use a fresh episode identity")
         self.sessions = tuple(ContextualSession(model, episode, player, self.checkpoints[player], self.checkpoints[1 - player],
-            schema=self.profile.history_schema, seed=self.policy_seeds[player]) for player, model in enumerate(self.models))
+            schema=self.profile.history_schema, seed=self.policy_seeds[player], guard_version=self.guard_version)
+            for player, model in enumerate(self.models))
         self._episodes.add(episode)
 
     def act(self, request):
+        session, last = self._request_session(request)
+        return session.choose(last.seq).action
+
+    def _request_session(self, request):
         if (self.sessions is None or request.done or request.kind != "contextual" or request.past_horizon
                 or type(request.player) is not int or request.player not in (0, 1) or request.color != COLORS[request.player]
                 or request.reward != 0 or not request.frames):
@@ -650,7 +662,7 @@ class ContextualCollector:
         last = c.decode_frame(request.frames[-1])
         if last.kind != "decision" or c.decode_frame(request.record) != last:
             raise ValueError("Request must end at its exact decision frame")
-        return session.choose(last.seq).action
+        return session, last
 
     def finish(self, end, *, histories, manifest_path=None):
         try:
@@ -709,22 +721,47 @@ class ContextualCollector:
         for session in self.sessions: session._check_weights(); session.finished = True
         return result
 
-    def run_episode(self, env, *, episode, seed, max_requests=None):
+    def run_episode(self, env, *, episode, seed, max_requests=None,
+                    max_requests_per_player=None, max_dialog_requests_per_player=None):
+        """Collect a fixed pair, with an optional separately declared seat budget.
+
+        The historical ``max_requests`` counts both players together. The seat
+        budget instead starts one shared cutoff when either player reaches its
+        ordinary allowance. Only mandatory, policy-sampled answers may follow;
+        neither player may exceed its ordinary plus reserved allowance. The
+        environment's existing dialog-chain bound remains independently active.
+        """
         if getattr(env, "interface", None) != self.profile.environment:
             raise ValueError("Collector/environment interface mismatch")
         if max_requests is not None: c._integer(max_requests, low=1)
+        if max_requests_per_player is not None:
+            c._integer(max_requests_per_player, low=1)
+            c._integer(max_dialog_requests_per_player)
+            if max_requests is not None:
+                raise ValueError("Choose either a combined or a per-player collection budget")
+        elif max_dialog_requests_per_player is not None:
+            raise ValueError("Reserved dialog choices require a per-player collection budget")
         self.start(str(episode))
         request = env.reset(episode=episode, seed=seed)
         choices = 0
+        seat_choices = [0, 0]
         while not request.done:
-            if max_requests is not None and choices >= max_requests:
-                decision = c.decode_frame(request.frames[-1])
-                if self.profile.dialogs and decision.observation.context.kind == "dialog":
+            horizon = ((max_requests is not None and choices >= max_requests)
+                       or (max_requests_per_player is not None
+                           and max(seat_choices) >= max_requests_per_player))
+            if horizon:
+                session, _ = self._request_session(request)
+                if session.history.requires_choice:
+                    if (max_requests_per_player is not None and seat_choices[request.player]
+                            >= max_requests_per_player + max_dialog_requests_per_player):
+                        raise ValueError("Mandatory policy query exceeds the per-player hard collection bound; episode is inadmissible")
                     env.defer_dialog_cutoff("collection_window")
-                    request = env.step(self.act(request)); choices += 1
                 else:
                     request = env.truncate("collection_window")
-            else:
-                request = env.step(self.act(request)); choices += 1
+                    continue
+            player = request.player
+            request = env.step(self.act(request))
+            choices += 1
+            seat_choices[player] += 1
         return self.finish(request, histories=(env.history("red"), env.history("blue")),
                            manifest_path=env.episode_dir / "manifest.json" if self.origin == "native" else None)

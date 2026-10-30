@@ -109,12 +109,15 @@ def _bound_metadata(directory, manifest, final):
     continuation = final.get("continuation")
     exact(continuation, {"limit_per_player", "actions", "allowed_actions", "learner_excluded"},
           "continuation declaration")
-    allowed = ["back", "close", "end_turn"] if profile != contract.WINDOWS_PROFILE else ["close", "end_turn"]
+    allowed = [["back", "close", "end_turn"] if profile != contract.WINDOWS_PROFILE else ["close", "end_turn"]]
+    if profile == contract.EXPANDED_PROFILE:
+        # Older captures declare only the three actions they could reconstruct.
+        allowed.append(["back", "close", "close_capability", "end_turn"])
     _require(type(continuation["limit_per_player"]) is int
              and continuation["limit_per_player"] == CONTINUATION_LIMIT
              and type(continuation["actions"]) is list and len(continuation["actions"]) == 2
              and all(type(n) is int and 0 <= n <= CONTINUATION_LIMIT for n in continuation["actions"])
-             and continuation["allowed_actions"] == allowed and continuation["learner_excluded"] is True,
+             and continuation["allowed_actions"] in allowed and continuation["learner_excluded"] is True,
              "Invalid bounded continuation declaration")
     exact(manifest.get("players"), set(COLORS), "player declarations")
     exact(final.get("raw_bridge_sha256"), set(COLORS), "bridge digest declarations")
@@ -217,11 +220,15 @@ def _reconstruct(directory, manifest, final, profile, player):
             _require(actual == expected, f"{color}: submitted response does not match its actual request")
             if producer.cutoff is not None:
                 context = producer.live.context
-                kind = ("end_turn" if context.kind == "map" else "back"
+                _require(not producer.live.requires_choice,
+                         f"{color}: mandatory choice cannot be technical continuation")
+                kind = ("close_capability" if profile == contract.EXPANDED_PROFILE and context.kind == "capability" else
+                        "end_turn" if context.kind == "map" else "back"
                         if context.kind == "stack" or context.panel in ("hall", "building", "recruitment", "tavern") else "close")
-                neutral = contract.Action(kind, subject=context.subject if kind == "back" else None,
+                neutral = contract.Action(kind, subject=context.subject if kind in ("back", "close_capability") else None,
                                           schema=profile.action_schema)
-                _require(action == neutral and producer.continuation_steps < CONTINUATION_LIMIT,
+                _require(action == neutral and action.kind in final["continuation"]["allowed_actions"]
+                         and producer.continuation_steps < CONTINUATION_LIMIT,
                          f"{color}: action is not the declared bounded technical continuation")
             appended((producer.submitted(action),))
             counts["delivered_actions"] += 1

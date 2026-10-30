@@ -103,9 +103,12 @@ class Fixture:
             socket_outcomes=self.outcomes if self.natural else [None, None],
             engine_verified_outcomes=dict(zip(("red", "blue"), self.outcomes)) if self.natural else None,
             continuation=dict(limit_per_player=8, actions=[p.continuation_steps for p in self.producers],
-                allowed_actions=["back", "close", "end_turn"] if self.profile != c.WINDOWS_PROFILE else ["close", "end_turn"],
+                allowed_actions=getattr(self, "allowed_actions", ["back", "close", "close_capability", "end_turn"] if self.profile == c.EXPANDED_PROFILE
+                    else ["back", "close", "end_turn"] if self.profile != c.WINDOWS_PROFILE else ["close", "end_turn"]),
                 learner_excluded=True),
             raw_bridge_sha256={color: sha(self.directory / f"agents/{color}/bridge.jsonl") for color in ("red", "blue")})
+        if self.profile.dialogs:
+            self.final["dialog_cutoff_drain"] = None
         dump(self.directory / "contextual-finalization.json", self.final)
         ref = "contextual-finalization.json#sha256=" + sha(self.directory / "contextual-finalization.json")
         self.prefixes = [p.history.digest() for p in self.producers]
@@ -141,6 +144,8 @@ class Fixture:
             outcomes_by_player=dict(zip(("red", "blue"), self.outcomes)) if self.natural else dict.fromkeys(("red", "blue")),
             rewards_by_player={color: 1 if outcome == "win" else -1 for color, outcome in zip(("red", "blue"), self.outcomes)}
                 if self.natural else dict.fromkeys(("red", "blue")), players=declarations)
+        if self.profile.dialogs:
+            self.manifest["dialog_cutoff_drain"] = None
         dump(self.directory / "manifest.json", self.manifest)
 
     def rebind(self):

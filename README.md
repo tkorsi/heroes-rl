@@ -11,6 +11,14 @@ paragraphs are historical, not new instructions to run experiments.
 
 ## Current state
 
+A separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)
+from checkpoint 1,728 is now explicitly authorized. Its v8 controller and excluded
+validation are being prepared on `codex/selfplay-100`; training has not started.
+It preserves the original campaign and learning settings, replaces Nullkiller
+with a frozen copy of the batch-start policy, and measures travel, captures and
+natural versus limit endings from existing visible-history records. The prior
+explanation-only restriction is superseded for this experiment.
+
 The latest user-launched one-hour session advanced **checkpoint 1,585 to 1,728**
 in **143 complete PPO updates / 572 admitted games**, all natural losses. Its
 24 evaluation games were excluded from PPO. It stopped normally at the compute
@@ -44,8 +52,9 @@ observation on the same map level. Its version remains
 without a path-feasibility or strategic mask. The latest official run selected
 4,311/4,311 revealed movement targets across training and evaluation. Existing
 captures show travel and three training town captures, but all games were lost;
-this does not establish strategic improvement. Self-play was discussed only,
-as requested; no opponent change or self-play campaign was prepared or launched.
+this does not establish strategic improvement. The telemetry-removal change
+included explanation only for self-play; the separate experiment authorized
+afterward is described above.
 
 The accepted [CPU and NumPy changes](docs/research/cpu-next-launch-2026-10-29.md)
 remain integrated. The separate environment adds NumPy 2.3.5 with unchanged

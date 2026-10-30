@@ -190,6 +190,21 @@ def _is_digest(value):
     return type(value) is str and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
 
 
+def _mandatory_answer_kinds(frame):
+    """Exact allowed replies to an already validated mandatory decision."""
+    if frame.kind != "decision":
+        return frozenset()
+    context = frame.observation.context
+    if context.kind == "dialog":
+        return frozenset(("choose_dialog",))
+    panel = frame.offers.capability_panel
+    if (contract.profile_for(frame.schema).capabilities and context.kind == "capability"
+            and panel is not None and panel.mandatory):
+        return {"level_up": frozenset(("choose_level_up",)),
+                "spell_target": frozenset(("choose_spell_target", "cancel_spell_target"))}.get(panel.kind, frozenset())
+    return frozenset()
+
+
 def _dialog_cutoff_checks(manifest, histories):
     """Derive post-budget choices from immutable player histories, not counters."""
     if not histories[0].profile.dialogs:
@@ -214,8 +229,7 @@ def _dialog_cutoff_checks(manifest, histories):
         raise ValueError("Invalid strategic dialog cutoff trigger")
     player, seq = trigger["player"], trigger["decision_seq"]
     frames = histories[player].frames
-    if (seq >= len(frames) or frames[seq].kind != "decision"
-            or frames[seq].observation.context.kind != "dialog"):
+    if seq >= len(frames) or not _mandatory_answer_kinds(frames[seq]):
         raise ValueError("Dialog cutoff trigger is not its real own decision")
     before = sum(frame.kind == "submitted" for frame in frames[:seq])
     other = sum(frame.kind == "submitted" for frame in histories[1-player].frames)
@@ -224,7 +238,8 @@ def _dialog_cutoff_checks(manifest, histories):
     submitted = [frame for frame in frames[seq+1:] if frame.kind == "submitted"]
     expected = [{"player": player, "decision_seq": frame.decision_seq} for frame in submitted]
     if (type(drain["choices"]) is not list or drain["choices"] != expected or len(expected) > 8
-            or any(frame.action.kind != "choose_dialog" for frame in submitted)):
+            or any(frame.action.kind not in _mandatory_answer_kinds(frames[frame.decision_seq])
+                   or not frames[frame.decision_seq].offers.permits(frame.action) for frame in submitted)):
         raise ValueError("Post-budget dialog choices disagree with learner experience")
     if manifest["status"] == "truncated" and manifest["termination_reason"] != drain["reason"]:
         raise ValueError("Deferred cutoff lost its original horizon reason")

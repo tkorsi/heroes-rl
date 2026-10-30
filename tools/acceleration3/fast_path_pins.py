@@ -32,7 +32,8 @@ ACCEPTED = ('3268f2f8cae6a01277c1629c5d0a9fb8958b5786', 'a8ac411d32658387598376c
             'c6c668ee551e85b98b9982b91a5f1390a7d5b1bb',
             '10d3d4f5038025a276b33a0a3d81096e5778130b',
             'c289408c3bcfd57dcc5ba4f5f21b63f798737d65',
-            'a08229b27b8be7902bdb92a7f1b32c6aefd01543')
+            'a08229b27b8be7902bdb92a7f1b32c6aefd01543',
+            'd7855872afd5c2dc5b707b9bd5a27ea04abc2ccb')
 ADAPTER = 'experiments/learner/local_script_training.py'
 
 

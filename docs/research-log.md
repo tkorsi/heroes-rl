@@ -1123,3 +1123,13 @@ No training or self-play was launched. The [report](research/telemetry-removal-2
 and [compact evidence](../validation/telemetry-removal-2026-10-30.json) distinguish
 production telemetry removal, retained integrity evidence, observed map travel,
 and the explanation-only self-play discussion.
+
+## 2026-10-30: authorized 100-game self-play protocol
+
+The user now requests 100 actual self-play training games and an examination of
+travel, aimless repetition and time-limit endings. The [prospective protocol](research/selfplay100-2026-10-30.md)
+starts from full checkpoint 1728 in a separate lineage, retains four-game PPO
+batches and all other learning settings, and uses frozen batch-start opponents.
+Validation must precede training. Technical failures remain unscored and stop
+the campaign; verified collection/day cutoffs retain their ordinary bootstrap
+contract. Post-run travel metrics are never policy inputs or rewards.

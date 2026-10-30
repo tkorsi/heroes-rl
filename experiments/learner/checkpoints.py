@@ -18,7 +18,9 @@ import torch
 
 SCHEMA = "heroes-context-checkpoint-v1"
 BUILTIN_GAMEPLAY_PROVENANCE = "approved_builtin_gameplay_v1"
-OPTIMIZER_PROVENANCES = ("synthetic_optimizer_test", "approved_gameplay", BUILTIN_GAMEPLAY_PROVENANCE)
+SELFPLAY_GAMEPLAY_PROVENANCE = "approved_selfplay_gameplay_v1"
+EXACT_GAMEPLAY_PROVENANCES = (BUILTIN_GAMEPLAY_PROVENANCE, SELFPLAY_GAMEPLAY_PROVENANCE)
+OPTIMIZER_PROVENANCES = ("synthetic_optimizer_test", "approved_gameplay", *EXACT_GAMEPLAY_PROVENANCES)
 PROVENANCES = ("random_initialization", *OPTIMIZER_PROVENANCES)
 
 
@@ -210,6 +212,9 @@ def _write(path, payload):
 
 
 def _check_gameplay_provenance(provenance, source_metadata, interface):
+    if provenance == SELFPLAY_GAMEPLAY_PROVENANCE:
+        _check_selfplay_gameplay_metadata(source_metadata, interface)
+        return
     if provenance == BUILTIN_GAMEPLAY_PROVENANCE:
         _check_builtin_gameplay_metadata(source_metadata, interface)
         return
@@ -223,6 +228,28 @@ def _check_gameplay_provenance(provenance, source_metadata, interface):
 
 def _sha256(value):
     return type(value) is str and len(value) == 64 and all(char in "0123456789abcdef" for char in value)
+
+
+def _check_selfplay_gameplay_metadata(metadata, interface):
+    """A new v8 self-play lineage cannot masquerade as built-in or legacy v4 play."""
+    from .contextual import EXPANDED_ENVIRONMENT
+    from .interaction_guard import REVEALED_VERSION
+    if (interface != EXPANDED_ENVIRONMENT or type(metadata) is not dict
+            or not _sha256(metadata.get("plan_sha256"))
+            or type(metadata.get("campaign_id")) is not str or not metadata["campaign_id"].strip()
+            or metadata.get("policy_support") != REVEALED_VERSION
+            or metadata.get("opponent_pool") != "selfplay-batch-start-v1"
+            or metadata.get("purpose") not in ("training", "diagnostic")
+            or metadata.get("learner_only_ppo") is not True
+            or metadata.get("frozen_opponent") is not True
+            or "native_opponent" in metadata):
+        raise ValueError("Self-play checkpoint requires its explicit v8 frozen-opponent contract")
+    for name in ("initial_checkpoint", "opponent_checkpoint"):
+        value = metadata.get(name)
+        if (type(value) is not dict or set(value) != {"path", "sha256", "bytes"}
+                or type(value["path"]) is not str or not Path(value["path"]).is_absolute()
+                or not _sha256(value["sha256"]) or type(value["bytes"]) is not int or value["bytes"] <= 0):
+            raise ValueError("Self-play checkpoint requires its bound initial and opponent policy files")
 
 
 def _check_builtin_gameplay_metadata(metadata, interface):
@@ -254,7 +281,7 @@ def _payload(model, checkpoint, provenance, source_metadata, generators, python_
     _check_gameplay_provenance(provenance, source_metadata, interface)
     if next(model.parameters()).device.type != "cpu":
         raise ValueError("Only the validated CPU checkpoint path is enabled")
-    if provenance == BUILTIN_GAMEPLAY_PROVENANCE and any(
+    if provenance in EXACT_GAMEPLAY_PROVENANCES and any(
             value.dtype != torch.float32 or value.device.type != "cpu" for value in model.state_dict().values()):
         raise ValueError("Built-in gameplay checkpoint requires CPU float32 model tensors")
     contracts = _contracts(interface)
@@ -305,8 +332,9 @@ def _read(path, kind, expected_source_metadata, allowed_provenance, interface, h
     _text(payload["checkpoint"])
     _json(payload["source_metadata"])
     _check_gameplay_provenance(payload["provenance"], payload["source_metadata"], interface)
-    if payload["provenance"] == BUILTIN_GAMEPLAY_PROVENANCE and expected_source_metadata is None:
-        raise ValueError("Built-in gameplay load requires explicit expected plan and opponent metadata")
+    if payload["provenance"] in EXACT_GAMEPLAY_PROVENANCES and expected_source_metadata is None:
+        label = "Built-in" if payload["provenance"] == BUILTIN_GAMEPLAY_PROVENANCE else "Self-play"
+        raise ValueError(label + " gameplay load requires explicit expected plan and opponent metadata")
     if expected_source_metadata is not None and payload["source_metadata"] != _json(expected_source_metadata):
         raise ValueError("Checkpoint source metadata differs")
     return payload
@@ -449,7 +477,7 @@ def save_checkpoint(path, model, optimizer, *, checkpoint, ppo_config, progress,
         raise ValueError("Resume requires its nonempty frozen opponent pool")
     layout = _optimizer_layout(model, optimizer)
     _validate_adam_state(optimizer, optimizer.state_dict(),
-                         strict_serialized_dtypes=provenance == BUILTIN_GAMEPLAY_PROVENANCE)
+                         strict_serialized_dtypes=provenance in EXACT_GAMEPLAY_PROVENANCES)
     payload = _payload(model, checkpoint, provenance, source_metadata,
                        generators or {}, python_generators or {}, opponent_pool, interface)
     payload["kind"] = "optimizer"
@@ -482,7 +510,7 @@ def load_checkpoint(path, model, optimizer, *, expected_ppo_config, expected_sou
     _validate_rng(payload["rng"], generators or {}, python_generators or {})
     # Validate compatibility before modifying the caller's live objects.
     _validate_adam_state(optimizer, resume["optimizer_state"],
-                         strict_serialized_dtypes=payload["provenance"] == BUILTIN_GAMEPLAY_PROVENANCE)
+                         strict_serialized_dtypes=payload["provenance"] in EXACT_GAMEPLAY_PROVENANCES)
     model.load_state_dict(candidate.state_dict(), strict=True)
     optimizer.load_state_dict(resume["optimizer_state"])
     _restore_rng(payload["rng"], generators or {}, python_generators or {})
