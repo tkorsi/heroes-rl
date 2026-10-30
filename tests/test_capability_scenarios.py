@@ -12,6 +12,19 @@ from experiments.explorer.create_hero_scenario import hero_scenario_payloads
 
 
 class CapabilityScenarioTests(unittest.TestCase):
+    def test_artifact_fixture_guarantees_extra_item_parking_without_changing_ordinary_map(self):
+        ordinary = scenarios.ordinary_payloads()
+        for player in scenarios.COLORS:
+            value = scenarios.capability_payloads("artifacts", player)
+            actor = next(obj for obj in value["objects.json"] if obj["instanceName"] == "hero_" + str(scenarios.COLORS.index(player)))
+            self.assertEqual(actor["options"]["artifacts"]["backpack"],
+                             ["core:centaurAxe", "core:pendantOfFreeWill"])
+            partner = next(obj for obj in value["objects.json"] if obj["instanceName"] == "diagnostic_partner")
+            self.assertEqual(partner["options"]["artifacts"], {})
+        self.assertEqual(scenarios.ordinary_payloads(), ordinary)
+        self.assertEqual(hashlib.sha256((scenarios.MAPS / "hero-management-v2.vmap").read_bytes()).hexdigest(),
+                         json.loads((scenarios.MAPS / "hero-management-v2.manifest.json").read_text())["map_sha256"])
+
     def test_ordinary_revision_changes_only_native_level_limit_and_metadata(self):
         original = hero_scenario_payloads()
         updated = scenarios.ordinary_payloads()

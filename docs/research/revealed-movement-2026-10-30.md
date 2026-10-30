@@ -187,3 +187,47 @@ cd ~/Projects/Heroes
 The last command is for the user to launch. At this preregistration boundary it
 is **not yet certified ready**. No new learning or playing-strength result can
 be inferred from the proposed small frozen-policy validation cohort.
+
+## Validation attempts retained before acceptance
+
+The first full offline suite on `cc49ec0` ran 2045 tests in 328.834 seconds:
+2012 passed and 33 platform or optional cases were skipped. Both native-test
+manifest variables selected the unchanged accepted native learner. A subsequent
+compiled PPO regression used 24 synthetic revealed-target movement samples in
+one complete update with two minibatches. Python and actual C++ results matched
+exactly for weights, gradients, populated Adam, minibatch RNG, global Torch and
+Python RNG and the non-timing report. Its final 11-test focused selection passed.
+An initial test-only attempt incorrectly left the synthetic PPO fixture at two
+epochs while asserting one epoch's optimizer-step count; it stopped in the
+reference branch before native execution. The corrected test explicitly uses
+one epoch, matching the unchanged official setting. Both attempts are retained.
+
+Native control attempt 1 used frozen `cc49ec0` and separately reserved seeds.
+All 16 garrison controls passed with exact replay/history checks and owned
+cleanup. The legacy group passed four controls, then its artifact control failed
+at seed 1930100256: `Regression fixture must start with one backpack artifact`.
+The remaining 23 controls did not start. The diagnostic fixture's singleton
+assumption did not account for a native random starting bonus. The failed capture,
+original artifact inventory and complete shutdown evidence are retained; no
+sample or update entered official training. The entire reserved schedule is
+consumed, including unstarted entries. This failed group is not runtime acceptance.
+The one-item invalid-append coverage and exact ownership checks must be preserved
+when repairing this diagnostic assumption; selecting a luckier seed is not a fix.
+
+The retained failing panel showed authored Centaur Axe (ID 7) at slot 19 and
+an additional Pendant of Free Will (ID 105) at slot 20; its neck slot was already
+occupied. The additional item is consistent with the native random starting
+bonus. The probe now temporarily transfers every extra backpack item to the
+existing visible owned partner using only currently offered native actions.
+Each transfer checks exact visible owner/slot/item layouts, including locked
+reservations. It retains the singleton invalid-append assertion, both three-item
+reorder directions and assembly/disassembly checks, then returns all extras and
+requires the complete original layout. Missing items/offers or unrelated changes
+still fail. Twenty focused fixture/probe/acceptance-identity tests passed.
+
+Only the two authored diagnostic artifact maps now deliberately include ID 105
+alongside ID 7, guaranteeing that fresh controls exercise this setup and return
+on both seats. Random native bonuses remain possible and are separately accounted
+for. Historical frozen maps/captures remain immutable. The official
+hero-management-v2 map remains SHA-256
+`ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3`.

@@ -198,10 +198,20 @@ FAST_PATH_TREE = {
         '016bb23621a0af974e201ac14ddcbd170431c12630a7030583deb30ef474cfc1'),
     'experiments/episodes/scoring.py': ('2fee3829c13828963d0fec3a2aa215039656d4ff',
         '8bdd7158233685a3a90e08977c23702d60e1d2c596b07f9f303d29119964ec78'),
+    'experiments/explorer/create_capability_scenarios.py': ('2387f276ce34c1f000c3e396c30b01d0baa73466',
+        '060f0472f2cc5751c43b8a0e352c8016a9496dc1a20de4ccc7152d98a1f0463f'),
     'experiments/explorer/create_curriculum_scenario.py': ('',
         'd887ace1ba78c095f6485f2b0e894d40eb8a1eadd21482215b6625ed23db573a'),
     'experiments/explorer/create_garrison_scenarios.py': ('',
         '177f10c5a062476feff4f5503f7d62f878855a4fe66e41446299c77c1dd83aa0'),
+    'experiments/explorer/maps/capability-artifacts-blue-v1.manifest.json': ('e88bd34c1e6330578b24f08f3a9906c54b264613',
+        '38c5f4f88f5e773bfcaf48570e3a9175869f605dfea141d6f00c01878fa9c448'),
+    'experiments/explorer/maps/capability-artifacts-blue-v1.vmap': ('a97890f4f47345e008a27284663b8d3bb88aca66',
+        'b3bf3ef5ae733c1e792f12e2c0f4ccf2eddd06630cb5acf605739498041a5638'),
+    'experiments/explorer/maps/capability-artifacts-red-v1.manifest.json': ('4981789898425bd4ac1984a61e97b63f9db6dc80',
+        '3765395f38e68ebb517d18065c16cbe698cec2aae4c106de1705ca5e759f9608'),
+    'experiments/explorer/maps/capability-artifacts-red-v1.vmap': ('4e6565c9b668aed558429e180d250c5dfbd076dc',
+        '2f305cef71e76e762c964482a3903a4e76244f6bfe8c119c8e26bfbe8afd029b'),
     'experiments/headless/background_check.py': ('',
         'eb79612ff90cd684f3832b97b44c9a5fa84d16e905dca06b60c04d901801db5b'),
     'experiments/headless/builtin_env.py': ('e2290432ef893081d7e5beccb897c717ed4444b3',
@@ -294,6 +304,8 @@ FAST_PATH_TREE = {
         '1b121b2b7b4aa4039c986ec9c3215618a2d5de1d1db59b47eefed71b4c9a7997'),
     'validation/probes/audit_neural_rollout.py': ('9b0254de7e7d5d5007f722ce86385dbb007018ee',
         '5179f792366377667acd75d041fc16026c2907f8e3f8c82989e0aeebcd841773'),
+    'validation/probes/validate_capabilities.py': ('bb494ac4cc7c95ea34f2a866dfdec1694e26a3f7',
+        '61124df9164b2e607e4d2a90338c14ec2dec0e16b9df49599c7e0036080e9df8'),
     'validation/probes/validate_garrison_dialogs.py': ('',
         'b5e2cccac2381d6b4ac360e74ab16f8305bec6703ef769dd41f30bd16b44a03d'),
     'validation/probes/validate_hero_policy.py': ('55badab454804f7fc2e1d544840ad830c1aab5ec',
@@ -301,7 +313,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '273d92ee32163f60346742f3fd002ddeee94e39fe9fa63520479597447574ebf'
+LOCAL_ADAPTER_TRANSITION_AST = '8d08641d211b5308599c6aa91f09d17257943ec51b01a25bd6c6557c19c3c56f'
 
 
 def write_new(path, value):

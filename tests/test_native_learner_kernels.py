@@ -10,6 +10,7 @@ from dataclasses import replace
 import json
 import os
 from pathlib import Path
+import random
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -20,6 +21,8 @@ except ModuleNotFoundError:
     raise unittest.SkipTest("Optional PyTorch is not installed")
 
 from experiments.learner import ppo
+from experiments.learner import interaction_guard
+from experiments.learner.checkpoints import TrainingProgress
 from experiments.learner.contextual_model import ContextualActorCritic, ModelConfig, encode_history
 from experiments.learner.native_backend import load_backend, sha256, verified_manifest
 from experiments.learner.native_recipes import compile_history
@@ -293,6 +296,61 @@ class NativeLearnerKernelTests(unittest.TestCase):
             equal_tree(self, [p.grad for p in candidate.parameters()], [p.grad for p in reference.parameters()])
             equal_tree(self, optimizers[1].state_dict(), optimizers[0].state_dict())
             equal_tree(self, generators[1].get_state(), generators[0].get_state())
+
+    def test_revealed_movement_complete_update_matches_reference_exactly(self):
+        reference, candidate = deepcopy(self.model), deepcopy(self.model)
+        models = (reference, candidate)
+        optimizers = [torch.optim.Adam(model.parameters(), lr=0.0003) for model in models]
+        generators = [torch.Generator().manual_seed(4412) for _ in models]
+        with patch.object(interaction_guard, "ACTIVE_VERSION", interaction_guard.REVEALED_VERSION):
+            rollouts = tuple(synthetic_rollout(reference, turns=6, movement=True,
+                             episode=f"synthetic-revealed-native-{index}", player=index % 2)
+                             for index in range(4))
+        for rollout in rollouts:
+            self.assertEqual(len(rollout.samples), 6)
+            for decision in rollout.decisions:
+                self.assertEqual(decision.action.kind, "move_to")
+                self.assertEqual(decision.support.guard.version, interaction_guard.REVEALED_VERSION)
+                self.assertEqual(decision.conditionals[-1].support_size, 2)
+                frame = rollout.history[decision.decision_seq]
+                hidden = replace(decision.action, x=0, y=1)
+                self.assertTrue(frame.offers.permits(hidden))
+                self.assertFalse(decision.support.guard.permits(hidden, frame.observation, frame.offers))
+        execution = {"manifest": MANIFEST, "sha256": self.digest, "prefix_threads": 4}
+        config = ppo.PPOConfig(epochs=1)
+        torch_rng, python_rng = torch.get_rng_state().clone(), random.getstate()
+        self.addCleanup(torch.set_rng_state, torch_rng)
+        self.addCleanup(random.setstate, python_rng)
+        before_coordinate = reference.coordinate[0].weight.detach().clone()
+        reports, progresses = [], []
+        for model, optimizer, generator, selected, default in zip(
+                models, optimizers, generators, (None, execution), (None, interaction_guard.VERSION)):
+            torch.set_rng_state(torch_rng)
+            random.setstate(python_rng)
+            with patch.object(ppo, "NATIVE_EXECUTION", selected), patch.object(ppo, "PREFIX_HELPERS", 0), \
+                    patch.object(ppo, "EXPERIMENTS", frozenset()), \
+                    patch.object(interaction_guard, "ACTIVE_VERSION", default):
+                report = ppo.ppo_update(model, optimizer, rollouts, config=config, generator=generator)
+            reports.append(report)
+            # The synthetic kernel returns complete-update counts; it never
+            # admits data or writes an official TrainingProgress/checkpoint.
+            progresses.append(TrainingProgress(updates=1, rollouts=len(rollouts), decisions=report.samples))
+            self.assertEqual(report.optimizer_steps, 2)
+            self.assertEqual(report.samples, 24)
+            self.assertIsNone(report.entropy)
+            equal_tree(self, torch.get_rng_state(), torch_rng)
+            self.assertEqual(random.getstate(), python_rng)
+        self.assertEqual(progresses, [TrainingProgress(1, 4, 24)] * 2)
+        self.assertEqual(replace(reports[0], timings_seconds=None), replace(reports[1], timings_seconds=None))
+        self.assertGreater(reports[1].timings_seconds['native_tape_replays'], 0)
+        self.assertGreater(reports[1].timings_seconds['native_forward_parallel_frames'], 0)
+        self.assertNotIn('native_tape_replays', reports[0].timings_seconds)
+        self.assertFalse(torch.equal(reference.coordinate[0].weight, before_coordinate))
+        self.assertTrue(optimizers[0].state_dict()['state'])
+        equal_tree(self, candidate.state_dict(), reference.state_dict())
+        equal_tree(self, [p.grad for p in candidate.parameters()], [p.grad for p in reference.parameters()])
+        equal_tree(self, optimizers[1].state_dict(), optimizers[0].state_dict())
+        equal_tree(self, generators[1].get_state(), generators[0].get_state())
 
     def test_native_loss_matches_reference_and_detaches_behavior_inputs(self):
         values = [torch.tensor([-0.2, 0.4, -0.7], requires_grad=True) for _ in range(6)]

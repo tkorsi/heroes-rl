@@ -20,7 +20,8 @@ else:
     from experiments.learner.ppo import PPOConfig, clipped_losses, evaluate_window, gae, ppo_update
 
 
-def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic-ppo", unresolved=False, turns=2):
+def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic-ppo", unresolved=False, turns=2,
+                      movement=False):
     """Build typed contract examples directly, never masquerading as native play."""
     pair = tuple(c.PlayerHistory(episode, seat, schema=c.TOWN_SCHEMA) for seat in (0, 1))
     for history in pair:
@@ -28,10 +29,16 @@ def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic
             obs = c.Observation((2, 2, 1), (c.Tile((0, 0, 0), 1, 0, False, False),), (),
                                 (0, 0, 0, 0, 0, 0, 100 + turn),
                                 (c.Hero("own", (0, 0, 0), 100),), (), None)
+            if movement:
+                positions = ((0, 0, 0), (1, 0, 0), (1, 1, 0))
+                target = positions[(turn + 1) % len(positions)]
+                obs = replace(obs, tiles=tuple(c.Tile(position, 1, 0, False, False) for position in positions),
+                              heroes=(c.Hero("own", positions[turn % len(positions)], 100),))
             history.emit("view", day=turn + 1, observation=obs)
             decision = history.emit("decision", observation=obs, revision=history.revision + 1,
                                     offers=c.Offers.from_observation(obs, schema=c.TOWN_ACTION_SCHEMA))
-            action = c.Action("end_turn", schema=c.TOWN_ACTION_SCHEMA)
+            action = (c.Action("move_to", "own", target[0], target[1], schema=c.TOWN_ACTION_SCHEMA)
+                      if movement else c.Action("end_turn", schema=c.TOWN_ACTION_SCHEMA))
             history.emit("submitted", decision_seq=decision.seq, action=action)
             history.emit("consumed", decision_seq=decision.seq, consumer="engine")
             if unresolved and turn == 1:
@@ -39,7 +46,11 @@ def synthetic_rollout(model, *, boundary="natural", player=0, episode="synthetic
                 break
             history.emit("issued", decision_seq=decision.seq, command_index=0)
             history.emit("acknowledged", decision_seq=decision.seq, command_index=0, accepted=True)
-            history.emit("result", decision_seq=decision.seq, result=c.Result("turn_ended", True))
+            result = (c.Result("reached", True, position=target, movement=90, destination_reached=True)
+                      if movement else c.Result("turn_ended", True))
+            history.emit("result", decision_seq=decision.seq, result=result)
+            if movement:
+                obs = replace(obs, heroes=(replace(obs.heroes[0], position=target, movement=90),))
         if boundary == "cutoff":
             decision = history.emit("decision", observation=obs, revision=history.revision + 1,
                                     offers=c.Offers.from_observation(obs, schema=c.TOWN_ACTION_SCHEMA))

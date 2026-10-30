@@ -85,7 +85,10 @@ def capability_payloads(fixture, player, seed=0):
                                {"amount": 6, "character": "compliant", "neverFlees": True, "noGrowing": True}))
     elif fixture == "artifacts":
         actor["options"]["artifacts"] = {slot: "core:" + name for slot, name in COMBINATION.items()}
-        actor["options"]["artifacts"]["backpack"] = ["core:centaurAxe"]
+        # Explicitly exercise temporary parking of the extra artifact observed
+        # in a failed diagnostic. The probe still establishes and checks the
+        # one-item backpack through real offered native transfers.
+        actor["options"]["artifacts"]["backpack"] = ["core:centaurAxe", "core:pendantOfFreeWill"]
         partner = deepcopy(actor)
         partner.update(instanceName="diagnostic_partner", x=x + 1, y=10)
         partner["options"].update(type="core:valeska", artifacts={})

@@ -108,7 +108,7 @@
   "fixture": "artifacts",
   "fog": "normal native team fog",
   "layout_seed": 0,
-  "map_sha256": "144be008825c2cd1bd8101f43bdb836b9c5c59be71a837e54b1592c54fa2740a",
+  "map_sha256": "2f305cef71e76e762c964482a3903a4e76244f6bfe8c119c8e26bfbe8afd029b",
   "native_hero_level_limit": 0,
   "note": "Generator identity only. Native loading, triggered branches and independent replay need separate evidence.",
   "object_changes": [
@@ -284,7 +284,8 @@
           ],
           "artifacts": {
             "backpack": [
-              "core:centaurAxe"
+              "core:centaurAxe",
+              "core:pendantOfFreeWill"
             ],
             "feet": "core:sandalsOfTheSaint",
             "head": "core:helmOfHeavenlyEnlightenment",

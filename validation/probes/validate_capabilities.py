@@ -70,6 +70,110 @@ def inventory_counts(items):
     return Counter((item.subject, item.id) for item in items if item.kind == "artifact" and not item.locked)
 
 
+def inventory_layout(items):
+    """Keep displayed slots and locked reservations as well as artifact IDs."""
+    return tuple(sorted((item.subject, item.slot, item.id, item.locked)
+                        for item in items if item.kind == "artifact"))
+
+
+def checked_backpack_transfer(run, choice, label):
+    """Transfer one offered item and check every owner's exact visible layout."""
+    panel = run.capability()
+    base.ensure(choice in panel.choices and choice.kind == "move_artifact"
+                and choice.subject != choice.destination and choice.slot >= 19,
+                "Temporary artifact transfer is not a displayed inter-hero backpack move")
+    before = inventory_layout(panel.items)
+    counts = inventory_counts(panel.items)
+    source = (choice.subject, choice.slot, choice.artifact, False)
+    base.ensure(source in before, "Temporary transfer source artifact is absent")
+    destination = [row for row in before if row[0] == choice.destination and row[1] >= 19]
+    base.ensure(choice.destination_slot == 19 + len(destination),
+                "Temporary artifact transfer must append to the displayed partner backpack")
+    expected_layout = [
+        (owner, slot - int(owner == choice.subject and slot > choice.slot and slot >= 19), artifact, locked)
+        for owner, slot, artifact, locked in before if (owner, slot, artifact, locked) != source]
+    expected_layout.append((choice.destination, choice.destination_slot, choice.artifact, False))
+    expected_counts = counts.copy()
+    expected_counts[(choice.subject, choice.artifact)] -= 1
+    expected_counts[(choice.destination, choice.artifact)] += 1
+    run.choose(choice)
+    after = inventory_layout(run.capability().items)
+    base.ensure(after == tuple(sorted(expected_layout))
+                and +inventory_counts(run.capability().items) == +expected_counts,
+                "Temporary native artifact transfer changed unrelated slots or ownership")
+    run.check(label, "passed", artifact=choice.artifact, source=choice.subject,
+              source_slot=choice.slot, destination=choice.destination,
+              destination_slot=choice.destination_slot, before=before, after=after)
+
+
+def open_owned_artifact_exchange(run, actor, partner):
+    run.close_to_map()
+    hero = next((hero for hero in run.inspect_request().observation.heroes if hero.handle == partner), None)
+    base.ensure(hero is not None, "Visible owned partner is unavailable for temporary artifact transfer")
+    run.call(run.action("move_to", subject=actor, x=hero.position[0], y=hero.position[1]),
+             "explicit_visit_owned_artifact_parking_partner")
+    base.ensure(run.inspect_request().observation.context.kind == "exchange",
+                "Visible own-hero visit did not open artifact exchange")
+    return run.open_capability("artifacts")
+
+
+def park_backpack_extras(run, actor):
+    """Keep the singleton regression despite a real native starting-bonus item.
+
+    Extras stay visible, owned and replayed. Only offered native transfers to
+    the existing visible partner may temporarily establish the fixture shape.
+    """
+    original_actor = inventory_layout(run.capability().items)
+    backpack = [row for row in original_actor if row[0] == actor and row[1] >= 19 and not row[3]]
+    base.ensure(backpack and backpack[0] == (actor, 19, 7, False),
+                "Regression fixture lacks its authored Centaur Axe at backpack slot 19")
+    extras = backpack[1:]
+    if not extras:
+        return None
+    partner = next((hero.handle for hero in run.inspect_request().observation.heroes if hero.handle != actor), None)
+    base.ensure(partner is not None, "Extra backpack artifacts require a visible owned parking partner")
+    panel = open_owned_artifact_exchange(run, actor, partner)
+    initial = inventory_layout(panel.items)
+    base.ensure(tuple(row for row in initial if row[0] == actor) == original_actor,
+                "Opening native artifact exchange changed the actor inventory")
+    parked = []
+    for owner, slot, artifact, locked in reversed(extras):
+        destination_slot = 19 + sum(item.kind == "artifact" and item.subject == partner and item.slot >= 19
+                                   for item in run.capability().items)
+        choice = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                       and choice.subject == actor and choice.destination == partner and choice.slot == slot
+                       and choice.artifact == artifact and choice.destination_slot == destination_slot), None)
+        base.ensure(choice is not None, "Extra artifact lacks an offered temporary transfer to the owned partner")
+        checked_backpack_transfer(run, choice, "native_extra_artifact_parked_exact_owners")
+        parked.append({"artifact": artifact, "original_slot": slot, "partner_slot": destination_slot})
+    run.close_to_map()
+    run.open_hero_capability("artifacts")
+    base.ensure(run.inspect_request().observation.context.subject == actor,
+                "Temporary artifact parking reopened a different actor")
+    return {"actor": actor, "partner": partner, "initial": initial, "parked": parked}
+
+
+def restore_backpack_extras(run, reservation):
+    if reservation is None:
+        return
+    actor, partner = reservation["actor"], reservation["partner"]
+    actor_before = inventory_layout(run.capability().items)
+    panel = open_owned_artifact_exchange(run, actor, partner)
+    base.ensure(tuple(row for row in inventory_layout(panel.items) if row[0] == actor) == actor_before,
+                "Reopening native artifact exchange changed the tested actor inventory")
+    for parked in reversed(reservation["parked"]):
+        choice = next((choice for choice in run.capability().choices if choice.kind == "move_artifact"
+                       and choice.subject == partner and choice.destination == actor
+                       and choice.slot == parked["partner_slot"] and choice.artifact == parked["artifact"]
+                       and choice.destination_slot == parked["original_slot"]), None)
+        base.ensure(choice is not None, "Parked artifact lacks its offered return to the original owner and slot")
+        checked_backpack_transfer(run, choice, "native_extra_artifact_returned_exact_owners")
+    base.ensure(inventory_layout(run.capability().items) == reservation["initial"],
+                "Artifact regression and temporary parking failed to restore the complete original inventory")
+    run.check("native_extra_artifact_parking_roundtrip", "passed", parked=reservation["parked"],
+              initial=reservation["initial"], restored=inventory_layout(run.capability().items))
+
+
 def value_digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
@@ -236,8 +340,10 @@ def purchases_case(run):
 def artifacts_case(run):
     panel = run.open_hero_capability("artifacts")
     run.reject_foreign_choice("move_artifact")
-    before_counts = inventory_counts(panel.items)
     actor = run.inspect_request().observation.context.subject
+    parked = park_backpack_extras(run, actor)
+    panel = run.capability()
+    before_counts = inventory_counts(panel.items)
 
     def backpack():
         return tuple(item.id for item in sorted(run.capability().items, key=lambda item: item.slot)
@@ -332,6 +438,7 @@ def artifacts_case(run):
     run.check("native_inventory_and_combination_roundtrip", "passed", owned_before=[
         {"subject": subject, "artifact": artifact, "count": count}
         for (subject, artifact), count in sorted(before_counts.items())])
+    restore_backpack_extras(run, parked)
     run.close_to_map()
 
 
