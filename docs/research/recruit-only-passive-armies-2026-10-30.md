@@ -65,6 +65,10 @@ recruitment and garrison controls, authored artifact Red/Blue controls, and the
 frozen tiny policy. Its 24 mechanics checks passed. The tiny seats made 64 and 25
 choices; every choice and value reconstructed exactly, without weight changes.
 All six captures passed native replay and independent history reconstruction.
+After the historical-trainer isolation fix, a second attempt used fresh seeds and
+passed all six prefixes and 24 controls in 10.232 seconds. Its tiny seats made
+62 and 64 exactly reconstructed choices. Both attempts are retained; the final
+acceptance binds the final 214-file implementation inventory.
 Adding one to a captured own-stack attack was rejected by native regenerated-record
 comparison, not merely by a file-hash gate. The artifact fixture tests a declared
 Sword of Judgement stat effect; it is not evidence that the original map starts
@@ -87,8 +91,15 @@ isolation gap: the historical local trainer inherited the shared registry of
 experimental support versions. It now accepts only its two previously released
 versions and rejects passive-army declarations at session, plan, configuration,
 checkpoint-metadata and lineage boundaries. Thus a new tiny experiment cannot
-silently change a historical training continuation. Final results are recorded in
-the compact validation receipt below.
+silently change a historical training continuation. An additional focused test attempt started before the pin writer finished and
+loaded stale constants; a tuple/set fixture typo also failed. The corrected,
+stable focused pass ran 49 tests successfully (one skipped). Final results are
+recorded in the compact validation receipts below. The second full run executed
+2,252 tests with one failure and 33 skips: one additional legacy test still
+expected all globally registered experiments to be admitted by the old trainer.
+Its expectation now explicitly names the two historical versions. Only that test
+fixture changed after the second full run; production behavior was not loosened.
+The affected module and launcher/native focused regressions were then rerun.
 
 ## Manual use and limits
 
@@ -115,3 +126,5 @@ The [restriction register](../temporary-restrictions.md) contains the required
 removal checklist. The legacy 1753 evaluator retains its existing runtime and old
 observation/support; acceptance of the new tiny runtime is not a claim that the
 historical evaluator has been rebuilt.
+
+Native release evidence: [compact acceptance](../../validation/passive-armies-native-2026-10-30.json).

@@ -23,7 +23,9 @@ owned hero/town composition and current numeric combat statistics without clicks
 See the [implementation and validation report](docs/research/recruit-only-passive-armies-2026-10-30.md).
 The [temporary restriction register](docs/temporary-restrictions.md) explicitly
 requires restoring army management in a later version; automatic combat is also
-recorded there. Native release validation is in progress; no training is started.
+recorded there. The clean rebuilt runtime passed two sets of six bounded native
+probes, including exact policy reconstruction and fabricated-stat rejection.
+No full game or training campaign was launched by this change.
 
 The [self-play storage and progress update](docs/research/rollout-storage-2026-10-30.md)
 stores policy results separately from the existing hash-bound player histories,
@@ -46,8 +48,8 @@ and synthetic PPO/checkpoint controls passed. A separate
 tiny weights, the same doubled choice limits, progress display and full replay
 checks, with no PPO update. The first user-launched tiny game subsequently passed
 replay/reconstruction and reached the day limit with no winner or weight update.
-The new restricted/passive-information experiment still needs its separate
-runtime acceptance; a tiny training campaign remains unaccepted. The existing
+The new restricted/passive-information experiment has separate native runtime
+acceptance; a tiny training campaign remains unaccepted. The existing
 1753 launcher keeps its original checkpoint.
 
 The separate [100-game self-play experiment](docs/research/selfplay100-2026-10-30.md)

@@ -73,7 +73,8 @@ class ExactSourceAndMapTests(unittest.TestCase):
             previous = subprocess.check_output(['git', 'show', commit+':'+path], cwd=local.ROOT, timeout=10)
             proof = local.local_adapter_transition(commit, digest, previous, current)
             self.assertEqual(proof['transition'], 'reviewed_policy_support_adapter')
-            self.assertEqual(proof['policy_support_contracts'], sorted(local.interaction_guard.SUPPORTED_VERSIONS))
+            self.assertEqual(proof['policy_support_contracts'], sorted((
+                local.interaction_guard.VERSION, local.interaction_guard.REVEALED_VERSION)))
             with self.assertRaisesRegex(ValueError, 'historical local adapter'):
                 local.local_adapter_transition('0'*40, digest, previous, current)
             with self.assertRaisesRegex(ValueError, 'historical local adapter'):
