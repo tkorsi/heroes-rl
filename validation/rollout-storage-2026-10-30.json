@@ -1,0 +1,193 @@
+{
+  "benchmark_failed_attempts": 0,
+  "canonical_engine_check": "passed",
+  "checkpoint": 1753,
+  "cleanup": {
+    "errors": [],
+    "owned_cleanup_verified": true,
+    "returncode": 0
+  },
+  "date": "2026-10-30",
+  "diagnostic_elapsed_seconds": 273.44634191598743,
+  "diagnostic_failures": [
+    "Initial unit fixtures lacked launch.output and the new serializer mock.",
+    "Historical resume test initially applied old acceptance rules to current sources; fixed to its accepted historical fixture.",
+    "Expanded storage fixture initially omitted dialog_cutoff_drain=None; fixture corrected.",
+    "Initial recursion fixture assumed this Python decoder would reject1500 nested arrays; actual nested input and injected decoder RecursionError now test both paths."
+  ],
+  "final_integration_tests": {
+    "passed": 152,
+    "run": 153,
+    "seconds": 43.015,
+    "skipped": 1,
+    "status": "passed"
+  },
+  "gameplay_started": false,
+  "implementation_commit": "7b35538e945b38a3f6eb55be1661f696664b49d3",
+  "limitations": [
+    "One archived long cutoff game, one timing measurement per operation; caches were not flushed.",
+    "No full-game or full-training throughput claim; engine and policy semantics are unchanged.",
+    "The projected episode size replaces only the duplicated rollout; raw replay/history evidence is retained.",
+    "Historical optional offline_profile.py remains legacy-envelope-only.",
+    "The full suite began after storage/policy timings; native validation time is not a comparative benchmark.",
+    "The diagnostic tool minimum-deadline parser was corrected after this default900-second benchmark; runtime sources are unchanged."
+  ],
+  "native": {
+    "summary": {
+      "boundary": {
+        "barrier_id": null,
+        "client_packets": 39894,
+        "kind": "cutoff"
+      },
+      "captured_prefix_only": true,
+      "checked": {
+        "client_packets": 39894,
+        "messages": 23533,
+        "requests": 11076,
+        "responses": 11765,
+        "transactions": 102220
+      },
+      "final_client_position": {
+        "completed": 39894,
+        "index": 39894,
+        "phase": "callbacks_complete",
+        "type": 84
+      },
+      "loaded": {
+        "client_packets": 39894,
+        "messages": 23533,
+        "requests": 11076,
+        "responses": 11765,
+        "transactions": 102220
+      },
+      "open_final_transaction": false,
+      "regenerated_server_packets_after_prefix": 0,
+      "server": {
+        "boundaries": {
+          "battle_end": 2,
+          "end_turn": 207
+        },
+        "client_packs": 39894,
+        "inputs": 11076,
+        "observations_after_prefix": 0,
+        "packs_sent": 39894,
+        "prefix": true,
+        "terminals": [],
+        "timing_seconds": {
+          "episode_init": 0.00432342,
+          "episode_start": 0.000560959,
+          "input_decode": 0.00238132,
+          "native_transition_inclusive": 0.091178,
+          "observation_verification": 0.000746806,
+          "state_verification": 0.163792
+        }
+      },
+      "server_verified": true,
+      "terminal_barrier": null,
+      "unchecked": {
+        "client_packets": 0,
+        "messages": 0,
+        "requests": 0,
+        "responses": 0,
+        "transactions": 0
+      }
+    },
+    "verified": true
+  },
+  "offline_suite": {
+    "passed": 2103,
+    "run": 2177,
+    "seconds": 315.872,
+    "skipped": 74,
+    "status": "passed"
+  },
+  "optimizer_updates": 0,
+  "players": [
+    {
+      "boundary": "cutoff",
+      "decisions": 9920,
+      "estimates": 9921,
+      "frames": 73825,
+      "history_sha256": "39332e407fccd99807de00f9bc0916cbaf06e0cec4cb12131ba772b421e8635b",
+      "optimization_eligible": false,
+      "player": 0,
+      "samples": 9920,
+      "weights_sha256": "cb40725fc0d5cf0dbf74c76d37e1f36960ec32a1eceb7a345afb513a5744ed2d"
+    },
+    {
+      "boundary": "cutoff",
+      "decisions": 1843,
+      "estimates": 1844,
+      "frames": 15621,
+      "history_sha256": "8e35e4b4871f4cdf5309599fa631b55c4a4711b2b9c3e347557a8144c5df262e",
+      "optimization_eligible": false,
+      "player": 1,
+      "samples": 1843,
+      "weights_sha256": "cb40725fc0d5cf0dbf74c76d37e1f36960ec32a1eceb7a345afb513a5744ed2d"
+    }
+  ],
+  "policies": [
+    {
+      "actions_resampled": 9920,
+      "checkpoint": "selfplay-run-20261030T121929Z-7292fcc8-update-1753",
+      "conditionals_recomputed": 25588,
+      "maximum_absolute_difference": 0,
+      "player": 0,
+      "private_memory_reset": true,
+      "values_recomputed": 9921,
+      "weights_unchanged": true
+    },
+    {
+      "actions_resampled": 1843,
+      "checkpoint": "selfplay-run-20261030T121929Z-7292fcc8-update-1753",
+      "conditionals_recomputed": 4899,
+      "maximum_absolute_difference": 0,
+      "player": 1,
+      "private_memory_reset": true,
+      "values_recomputed": 1844,
+      "weights_unchanged": true
+    }
+  ],
+  "preservation": {
+    "original_files_checked": 158,
+    "originals_unchanged": true
+  },
+  "private_evidence_sha256": "af38209db486fd4f18c23a527a3bfc5dababfa89d6b5dba290c4476493721fe7",
+  "protected_source_hashes": {
+    "experiments/headless/contextual_replay.py": "9f5650d4177865a4bfd39d430236881824c08e4e9c191ef68c1f2ee7c66cf8cb",
+    "experiments/headless/contextual_replay_history.py": "e23c7e5e3a0efc01dca2e1afed2d5933d49f84cead003db872a9a3c9cf463989",
+    "experiments/learner/contextual_rollout.py": "6c9439d52c304c504bc7a17227112f23b2cb7c47796fd404dcd8ccf1a9ca1b71",
+    "experiments/learner/contextual_storage.py": "8d7c4b7bd1035291a9e95f136806ce33869a026d382a09b0064cd3569239496e",
+    "experiments/learner/selfplay_training.py": "01eda52e6ed91753262bbb2ac72a33f47698184bdba6c1f4e3c7cf5e27dd3e85",
+    "tools/validate_rollout_storage.py": "ecf492460e266e00acb377f9ad2914a6764fc6a5bc3a19bf93671a75d6470dc4",
+    "validation/probes/validate_hero_policy.py": "574850634c7f617b0e9e5a9dada02cdb08e211ca7e05379af98133f2089d85f2"
+  },
+  "report": "docs/research/rollout-storage-2026-10-30.md",
+  "review": {
+    "exact_source_pins": "passed",
+    "progress_rng_and_failure_isolation": "passed",
+    "storage_codec_and_admission": "no remaining finding"
+  },
+  "samples_admitted": 0,
+  "schema": "heroes-selfplay-storage-validation-v1",
+  "seeds_reserved": false,
+  "status": "copied_game_validation_passed",
+  "storage": {
+    "bytes": {
+      "external_envelope": 30279926,
+      "legacy_rollout": 2482037019,
+      "projected_episode": 4081506161,
+      "source_episode": 6533263254
+    },
+    "exact_decoded_equality": true,
+    "schema": "heroes-context-rollout-storage-v1",
+    "seconds": {
+      "external_load_and_roundtrip": 43.67201995803043,
+      "external_seal_write": 1.2953982499893755,
+      "legacy_load_and_roundtrip": 55.489288832992315,
+      "legacy_pretty_write": 18.235914667020552
+    }
+  },
+  "storage_progress_release_commit": "3bd810060f0d1a211c985a723df4f67a10665a0e",
+  "tiny_model_selected": false
+}

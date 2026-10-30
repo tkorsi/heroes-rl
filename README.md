@@ -15,6 +15,16 @@ historical validation evidence intact.
 
 ## Current state
 
+The [self-play storage and progress update](docs/research/rollout-storage-2026-10-30.md)
+stores policy results separately from the existing hash-bound player histories,
+and removes a duplicate transport-history reconstruction. All policy and native
+replay checks remain mandatory. On one copied long game the rollout artifact
+shrank from 2.48 GB to 30.3 MB, and write plus strict reload fell from 73.7 to
+45.0 seconds; this is not a whole-game speedup. Manual self-play launchers show
+Red/Blue action-budget bars and separate storage/verification phases. Existing
+checkpoints and learning settings remain unchanged; no game or training campaign
+was started by this update.
+
 A separate [tiny-policy candidate](docs/research/tiny-policy-2026-10-30.md) reduces
 the recurrent hidden size from 64 to 8 and feature width from 32 to 4: 15,460
 parameters instead of 74,344. It has fresh random weights, zero games/updates,

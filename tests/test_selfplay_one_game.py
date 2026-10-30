@@ -50,31 +50,32 @@ class OneFrozenGameTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'finite total budget'):
             evaluation.main(['--seconds', 'nan'])
 
-    def test_reporting_controller_pin_does_not_relax_runtime_or_controller_integrity(self):
-        original = {evaluation.CONTROLLER_PATH: b'original controller',
-                    'engine/runtime.cpp': b'accepted engine'}
-        repaired_controller = b'reviewed reporting-only controller'
-        archive = io.BytesIO()
-        with tarfile.open(fileobj=archive, mode='w') as stream:
-            for name, data in original.items():
-                entry = tarfile.TarInfo(name); entry.size = len(data)
-                stream.addfile(entry, io.BytesIO(data))
-        expected = {name: hashlib.sha256(data).hexdigest() for name, data in original.items()}
-        expected[evaluation.CONTROLLER_PATH] = hashlib.sha256(repaired_controller).hexdigest()
+    def test_storage_release_pin_keeps_every_dependency_and_runtime_exact(self):
+        original = {name: ('original ' + name).encode() for name in evaluation.STORAGE_PROGRESS_PATHS
+                    if name not in evaluation.STORAGE_PROGRESS_NEW}
+        original['engine/runtime.cpp'] = b'accepted engine'
+        reviewed = {name: ('reviewed ' + name).encode() for name in evaluation.STORAGE_PROGRESS_PATHS}
+        expected = {name: hashlib.sha256(data).hexdigest() for name, data in {**original, **reviewed}.items()}
         def git_read(command, *, cwd):
-            if command[:2] == ['git', 'archive']:
-                self.assertEqual(command[2], evaluation.BASE_COMMIT)
-                return archive.getvalue()
-            self.assertEqual(command, ['git', 'show', evaluation.CONTROLLER_COMMIT + ':' + evaluation.CONTROLLER_PATH])
-            return repaired_controller
+            self.assertEqual(command[:2], ['git', 'archive'])
+            available = original if command[2] == evaluation.BASE_COMMIT else reviewed
+            self.assertIn(command[2], (evaluation.BASE_COMMIT, evaluation.STORAGE_PROGRESS_COMMIT))
+            archive = io.BytesIO()
+            with tarfile.open(fileobj=archive, mode='w') as stream:
+                for name in command[3:]:
+                    data = available[name]
+                    entry = tarfile.TarInfo(name); entry.size = len(data)
+                    stream.addfile(entry, io.BytesIO(data))
+            return archive.getvalue()
         with patch.object(evaluation.subprocess, 'check_output', side_effect=git_read):
             evaluation.verify_runtime_sources(expected)
             for name in expected:
                 changed = dict(expected, **{name: '0' * 64})
                 with self.subTest(tampered=name), self.assertRaisesRegex(ValueError, 'changed an existing'):
                     evaluation.verify_runtime_sources(changed)
-            with self.assertRaisesRegex(ValueError, 'omitted the campaign controller'):
-                evaluation.verify_runtime_sources({'engine/runtime.cpp': expected['engine/runtime.cpp']})
+            for name in evaluation.STORAGE_PROGRESS_PATHS:
+                with self.subTest(missing=name), self.assertRaisesRegex(ValueError, 'omitted a reviewed'):
+                    evaluation.verify_runtime_sources({key: value for key, value in expected.items() if key != name})
 
     def test_one_physical_game_reservation_uses_two_policy_seeds_and_never_reuses_unstarted(self):
         self.assertEqual(evaluation.seed_ledger()['reservations'], [])

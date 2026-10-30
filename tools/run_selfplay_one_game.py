@@ -31,6 +31,14 @@ from tools import run_selfplay_training as campaign
 BASE_COMMIT = 'b47c1b9aed1bbe8d2c52d87a02bcdac3e4931617'
 CONTROLLER_COMMIT = '04cfe4d38a88d87c71a133a18dcbd895260624f6'
 CONTROLLER_PATH = 'tools/run_selfplay_training.py'
+STORAGE_PROGRESS_COMMIT = '3bd810060f0d1a211c985a723df4f67a10665a0e'
+STORAGE_PROGRESS_PATHS = frozenset({
+    CONTROLLER_PATH, 'experiments/learner/contextual_rollout.py',
+    'experiments/learner/contextual_storage.py', 'experiments/learner/game_progress.py',
+    'experiments/learner/selfplay_training.py', 'experiments/learner/local_script_training.py',
+})
+STORAGE_PROGRESS_NEW = frozenset({'experiments/learner/contextual_storage.py',
+                                  'experiments/learner/game_progress.py'})
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -40,20 +48,23 @@ require, read, write, binding, bound = campaign.require, campaign.read, campaign
 
 
 def verify_runtime_sources(implementation):
-    """Pin the reporting-only controller repair separately from the original runtime."""
-    archive = subprocess.check_output(['git', 'archive', BASE_COMMIT, *sorted(implementation)], cwd=ROOT)
-    with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
-        original = {member.name: hashlib.sha256(source.extractfile(member).read()).hexdigest()
-                    for member in source.getmembers() if member.isfile()}
-    controller = subprocess.check_output(['git', 'show', CONTROLLER_COMMIT + ':' + CONTROLLER_PATH], cwd=ROOT)
-    require(CONTROLLER_PATH in original and CONTROLLER_PATH in implementation,
-            'Evaluation source identity omitted the campaign controller')
-    original[CONTROLLER_PATH] = hashlib.sha256(controller).hexdigest()
+    """Allow only exact reviewed storage/UI bytes over the unchanged engine/model base."""
+    require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
+            'Evaluation source identity omitted a reviewed storage/progress dependency')
+    def committed(commit, names):
+        archive = subprocess.check_output(['git', 'archive', commit, *sorted(names)], cwd=ROOT)
+        with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
+            files = {member.name: hashlib.sha256(source.extractfile(member).read()).hexdigest()
+                     for member in source.getmembers() if member.isfile()}
+        require(files.keys() == names, 'Committed evaluation source inventory differs')
+        return files
+    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW)
+    original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
 def source_identity():
-    """All reused sources match their exact accepted runtime or reporting repair."""
+    """All reused sources match the accepted base or the narrow storage/UI release."""
     from validation.probes.validate_capabilities import capability_implementation_identity
     from experiments.learner.inference import source_identity as learner_identity
     implementation = capability_implementation_identity()
@@ -65,6 +76,7 @@ def source_identity():
     return dict(checkout=copies.checkout_identity(ROOT), source=learner,
         unchanged_runtime_base=BASE_COMMIT, implementation=implementation,
         reporting_controller_base=CONTROLLER_COMMIT,
+        storage_progress_base=STORAGE_PROGRESS_COMMIT,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

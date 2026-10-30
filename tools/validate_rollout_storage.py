@@ -153,7 +153,9 @@ def main():
     parser.add_argument("--seconds", type=float, default=900)
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args()
-    require(math.isfinite(args.seconds) and 60 <= args.seconds <= 900, "Use a 60..900-second offline deadline")
+    minimum = 50 if args.worker else 60  # The parent reserves ten seconds for cleanup.
+    require(math.isfinite(args.seconds) and minimum <= args.seconds <= 900,
+            f"Use a {minimum}..900-second offline deadline")
     run = args.run.resolve()
     output = private_path(args.output, fresh=not args.worker)
     require(not output.is_relative_to(run) and not run.is_relative_to(output), "Use a separate diagnostic copy")

@@ -86,4 +86,58 @@ This starts no game, consumes no new gameplay seeds, and admits no samples.
 
 Timing is one measurement per operation on one archived long cutoff game; caches
 are not flushed. It cannot establish full-game or training-campaign throughput.
-Results and all failed diagnostic attempts are recorded below after completion.
+The copied-game attempt passed in 273.45 seconds under its independent deadline;
+owned cleanup passed with exit code zero. All 158 protected original files stayed
+unchanged. The actual accepted `vcmireplay` verified 102,220 transactions and
+39,894 client packets, with zero unchecked records. Both policies reproduced all
+11,763 actions, 11,765 values and 30,487 conditional probabilities exactly across
+89,446 history frames. Neither diagnostic rollout became optimizer eligible.
+
+| Same archived game | Previous storage | New storage |
+| --- | ---: | ---: |
+| Rollout artifact | 2,482,037,019 bytes | 30,279,926 bytes |
+| Complete episode, replacing only that artifact | 6,533,263,254 bytes | 4,081,506,161 bytes |
+| Serialize and persist rollout | 18.24 s | 1.30 s |
+| Reload and strict typed roundtrip | 55.49 s | 43.67 s |
+| Write plus reload/roundtrip | 73.73 s | 44.97 s |
+
+The envelope is 98.78% smaller; the projected complete retained episode is 37.53%
+smaller. The measured write/load portion is 1.64 times faster. Policy reconstruction
+and native replay remain additional work; these figures are not a whole-game
+speedup. The full offline test suite was started only after the storage and policy
+timing phases had finished; the native replay duration is validation, not a
+comparative performance measurement.
+
+Regression controls cover legacy/external equality, natural/cutoff/failure and
+terminal closures, expanded guard support, tampered inputs, duplicate/partial
+records, wrong paths and atomic publication failures. Progress controls compare
+complete synthetic rollouts and both RNG states with/without the display, exercise
+an actual short subprocess with redirected output and a timeout, and check failed
+worker/cleanup handling. Initial focused test attempts exposed stale synthetic
+fixtures: missing launch-output paths, the old mocked serializer, a historical
+resume test using current rather than its accepted historical sources, and an
+expanded fixture missing its cutoff declaration. The fixtures were corrected;
+no production checks were relaxed. The full copied-game diagnostic passed on its
+first attempt.
+
+The exact source transition pins six reviewed files to commit `3bd8100`: the
+rollout decoder/collector, storage codec, progress display, self-play verifier,
+training controller, and local adapter's generated source pins. All other reused
+engine, model, PPO, native learner and replay sources remain pinned to the
+accepted `b47c1b9` runtime base. The original checkpoint metadata remains intact.
+The completed 100-game campaign's historical continuation gate stays closed;
+this release does not create a new campaign or accept the tiny model for play.
+
+The complete offline suite passed: 2,177 tests run, 2,103 passed and 74 skipped
+for optional/platform-specific controls. The final progress robustness changes
+received focused regression checks after that suite; malformed deeply nested
+sidecars and closed output streams cannot interrupt shutdown or integrity checks.
+The benchmark tool minimum-deadline parser also received a focused correction
+(parent60 seconds includes a ten-second cleanup reserve); its measured default
+900-second path and all measured storage/runtime sources are unchanged.
+
+After the final source-pin, display robustness and benchmark CLI corrections,
+the focused integration suite ran153 tests:152 passed and one optional control
+was skipped. The original complete suite and the focused rerun are reported
+separately rather than added as unique test coverage. See
+[compact validation](../../validation/rollout-storage-2026-10-30.json).
