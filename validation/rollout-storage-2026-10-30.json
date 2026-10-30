@@ -32,6 +32,21 @@
     "The full suite began after storage/policy timings; native validation time is not a comparative benchmark.",
     "The diagnostic tool minimum-deadline parser was corrected after this default900-second benchmark; runtime sources are unchanged."
   ],
+  "manual_check": {
+    "checkout": {
+      "commit": "a31b47cad16cfcfb0b8e5121081e8cb5e05f3e21",
+      "path": "/Users/orsi/Projects/Heroes"
+    },
+    "checkpoint": 1753,
+    "command": "./play-one-selfplay-2x.sh --check",
+    "exact_model_adam_rng_progress_sampler_pool": true,
+    "gameplay_performed": false,
+    "optimizer_updates": 0,
+    "seeds_reserved": false,
+    "status": "passed",
+    "stderr_bytes": 0,
+    "stdout_sha256": "c8717af0f96c3a0fdba7924dba3efb0d800ce9cc48c95efcafa3d9a7b37c5190"
+  },
   "native": {
     "summary": {
       "boundary": {
@@ -171,7 +186,7 @@
   "samples_admitted": 0,
   "schema": "heroes-selfplay-storage-validation-v1",
   "seeds_reserved": false,
-  "status": "copied_game_validation_passed",
+  "status": "passed_manual_ready",
   "storage": {
     "bytes": {
       "external_envelope": 30279926,

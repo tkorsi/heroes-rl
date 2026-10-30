@@ -141,3 +141,9 @@ the focused integration suite ran153 tests:152 passed and one optional control
 was skipped. The original complete suite and the focused rerun are reported
 separately rather than added as unique test coverage. See
 [compact validation](../../validation/rollout-storage-2026-10-30.json).
+
+The real `/Users/orsi/Projects/Heroes` checkout on `main` passed
+`./play-one-selfplay-2x.sh --check` at `a31b47c`, restoring checkpoint1753's exact
+model, Adam, RNG, progress, sampler and pool. It reserved no seeds, ran no game
+and applied no update; stderr was empty. The next manual evaluation continues
+to use frozen1753 and the original doubled per-player choice limits.
