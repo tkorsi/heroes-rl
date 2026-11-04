@@ -299,7 +299,7 @@ def frozen_models(plan):
     return models
 
 
-def verify_capture(folder, plan, models, remaining, *, identity_check=None):
+def verify_capture(folder, plan, models, remaining, *, identity_check=None, analyze=None):
     from experiments.headless.contextual_protocol import declared_army_information
     from experiments.learner.contextual_rollout import behavior_guard_version
     from experiments.learner.contextual_storage import load_collected
@@ -344,6 +344,9 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None):
     remaining(); (check_identity if identity_check is None else identity_check)(plan)
     proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0, policy_support=guard,
                  choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts])
+    if analyze is not None:
+        proof['analytics'] = analyze(collected)
+        remaining()
     write(folder / 'evaluation-policy-reconstruction.json', proof, new=True)
     return proof, manifest
 
