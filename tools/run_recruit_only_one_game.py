@@ -276,14 +276,16 @@ def wait_for_verification(plan, folder):
         time.sleep(0.25)
 
 
-def first_win(args, checked, *, human, color):
+def run_batch(args, checked, *, human, color):
     from experiments.headless.process_deadline import (
         guarded_popen, close_owned_process, cleanup_from_evidence, _release_owned_process,
     )
     started = time.monotonic()
     deadline = (started + args.seconds, time.time() + args.seconds)
+    fixed_count = args.games is not None
+    mode = 'win-count' if fixed_count else 'first-win'
     root = evaluation.copies.private_path(args.output or evaluation.BASE / (
-        'first-win-' + secrets.token_hex(6)), fresh=True)
+        mode + '-' + secrets.token_hex(6)), fresh=True)
     root.mkdir(parents=True, mode=0o700)
     print(f'Private evidence: {root}', file=sys.stderr, flush=True)
     active, results, cleanup_errors = {}, [], []
@@ -304,16 +306,25 @@ def first_win(args, checked, *, human, color):
             except Exception as error:
                 cleanup_errors.append(f'{folder.name}: {error}')
 
+    def wins(colour):
+        return sum(row.get('winner', {}).get('colour') == colour for row in results)
+
     def display(pending, *, final=False):
         elapsed = time.monotonic() - started
         done = sum(row['status'] == 'verified' for row in results)
         cutoffs = sum(row.get('cutoff', False) for row in results)
         failures = sum(row['status'] == 'failed' for row in results)
-        heading = f'FIRST WIN  •  CHECKPOINT {CHECKPOINT:,}'
+        title = 'WIN COUNT' if fixed_count else 'FIRST WIN'
+        heading = f'{title}  •  CHECKPOINT {CHECKPOINT:,}'
         cells = [('Elapsed', _duration(elapsed)), ('Completed', str(done)),
                  ('Active', str(len(active))), ('Cutoffs', str(cutoffs)),
-                 ('Failures', str(failures)), ('Winner', winner['colour'] if winner else
-                  'awaiting verification' if pending else 'searching' if not final else 'none')]
+                 ('Failures', str(failures))]
+        if fixed_count:
+            cells.extend([('Attempts', f'{launched}/{args.max_games}'),
+                          ('Red wins', str(wins('red'))), ('Blue wins', str(wins('blue')))])
+        else:
+            cells.append(('Winner', winner['colour'] if winner else
+                          'awaiting verification' if pending else 'searching' if not final else 'none'))
         if human:
             width = shutil.get_terminal_size((80, 24)).columns
             bar = '━' * min(30, int(30 * elapsed / args.seconds))
@@ -338,7 +349,7 @@ def first_win(args, checked, *, human, color):
                 candidate = victory(manifest)
                 code = process.poll()
                 if code is None:
-                    if candidate:
+                    if candidate and not fixed_count:
                         pending.append(folder)
                     if (folder / 'capture-ready').exists() and not (folder / 'verify-now').exists():
                         ready.append(folder)
@@ -359,15 +370,17 @@ def first_win(args, checked, *, human, color):
                     candidate = victory(dict(status=report['episode_status'],
                         outcomes_by_player=report['outcomes'], rewards_by_player=report['rewards'],
                         natural_terminal_after_horizon=report.get('natural_terminal_after_horizon')))
+                    outcome = dict(game=folder.name, status='verified',
+                                   cutoff=report['episode_status'] == 'truncated' or
+                                   bool(report.get('natural_terminal_after_horizon')))
                     if candidate:
                         require(type(proof['terminal_day']) is int and proof['terminal_day'] > 0,
                                 'Verified terminal day missing')
-                        if winner is None:
-                            winner = dict(colour=candidate, day=proof['terminal_day'], seeds=schedule,
-                                          evidence=str(capture), proof=report['proof'])
-                    results.append(dict(game=folder.name, status='verified',
-                                        cutoff=report['episode_status'] == 'truncated' or
-                                        bool(report.get('natural_terminal_after_horizon'))))
+                        outcome['winner'] = dict(colour=candidate, day=proof['terminal_day'], seeds=schedule,
+                                                 evidence=str(capture), proof=report['proof'])
+                        if not fixed_count and winner is None:
+                            winner = outcome['winner']
+                    results.append(outcome)
                 except (OSError, ValueError, KeyError) as error:
                     results.append(dict(game=folder.name, status='failed', error=str(error)))
             if winner or cleanup_errors:
@@ -401,6 +414,7 @@ def first_win(args, checked, *, human, color):
                 # Fill empty slots promptly, then poll at a low frequency.
                 continue
             if not active:
+                reason = 'game limit reached'
                 break
             if time.monotonic() - last_display >= (1 if human else 15):
                 display(pending)
@@ -420,7 +434,12 @@ def first_win(args, checked, *, human, color):
             protected = campaign.verify_protected(checked['protected'])
         except Exception as error:
             cleanup_errors.append(f'Protected inputs: {error}')
-        summary = dict(winner=winner, reason='verified victory' if winner else reason,
+        summary = dict(mode=mode, winner=winner, reason='verified victory' if winner else reason,
+                       requested_attempts=args.max_games, red_wins=wins('red'), blue_wins=wins('blue'),
+                       verified=sum(row['status'] == 'verified' for row in results),
+                       cutoffs=sum(row.get('cutoff', False) for row in results),
+                       failures=sum(row['status'] == 'failed' for row in results),
+                       interrupted=sum(row['status'] == 'interrupted' for row in results),
                        games=results, launched=launched, elapsed_seconds=time.monotonic() - started,
                        owned_cleanup_verified=not cleanup_errors, cleanup_errors=cleanup_errors,
                        protected_inputs_unchanged=protected, optimizer_updates=0, training_samples_admitted=0)
@@ -428,6 +447,11 @@ def first_win(args, checked, *, human, color):
     display(False, final=True)
     message = (f"{winner['colour'].title()} won on day {winner['day']}. Seeds {winner['seeds']}. "
                f"Evidence {winner['evidence']}" if winner else 'No verified winner within the budget.')
+    if fixed_count:
+        message = (f"Red wins {summary['red_wins']} | Blue wins {summary['blue_wins']} | "
+                   f"Verified {summary['verified']} | Cutoffs {summary['cutoffs']} | "
+                   f"Failures {summary['failures']} | Interrupted {summary['interrupted']}\n"
+                   f"Started {launched}/{args.max_games} attempts. Stop reason: {reason}.")
     if args.json:
         print(json.dumps(summary, indent=2))
     else:
@@ -441,7 +465,9 @@ def main(argv=None):
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--check', action='store_true'); modes.add_argument('--run', action='store_true')
     parser.add_argument('--output', type=Path)
-    parser.add_argument('--until-first-win', action='store_true', help='Search with frozen checkpoint 1753 and 16× gameplay limits')
+    batch_modes = parser.add_mutually_exclusive_group()
+    batch_modes.add_argument('--games', type=int, help='Count wins across this many frozen attempts')
+    batch_modes.add_argument('--until-first-win', action='store_true', help='Search with frozen checkpoint 1753 and 16× gameplay limits')
     parser.add_argument('--workers', type=int, default=10)
     parser.add_argument('--max-games', type=int, default=100)
     parser.add_argument('--disk-reserve-gib', type=int, default=30)
@@ -464,12 +490,14 @@ def main(argv=None):
     color = human and terminal_color_enabled(sys.stdout)
     columns = shutil.get_terminal_size(fallback=(80, 24)).columns
     started = time.monotonic()
-    if args.until_first_win:
+    if args.until_first_win or args.games is not None:
+        if args.games is not None:
+            args.max_games = args.games
         require(1 <= args.workers <= 10 and 1 <= args.max_games <= 10000 and args.disk_reserve_gib >= 1,
                 'Use 1–10 workers, 1–10,000 games and a positive disk reserve')
         if args.run:
             with campaign.activity_lease():
-                return first_win(args, inspect_candidate(HERO_RELATIVE_VERSION), human=human, color=color)
+                return run_batch(args, inspect_candidate(HERO_RELATIVE_VERSION), human=human, color=color)
         checked = inspect_candidate(HERO_RELATIVE_VERSION)
         print(json.dumps(dict(status='ready', checkpoint=CHECKPOINT, map=checked['game_map'],
             experiment=checked['experiment'], budget=evaluation.FIRST_WIN_BUDGET,

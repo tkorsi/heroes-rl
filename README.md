@@ -47,6 +47,12 @@ exact policy reconstruction and native replay. Cutoffs are unscored, and
 interrupted games are tracked separately. Training admission and PPO updates
 are disabled.
 
+To count wins across a fixed number of attempts, use
+`./play-one-selfplay.sh --run --games 20 --seconds 7200`. This uses the same
+frozen setup and continues after verified victories. The dashboard and final
+report show Red and Blue wins, with separate counts for cutoffs, failures and
+interruptions. The time budget can end the run before all attempts settle.
+
 ## Source layout
 
 | Path | Responsibility |
