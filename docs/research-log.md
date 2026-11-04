@@ -1768,3 +1768,21 @@ no automatic publication of raw evidence. Checkpoint 1,753 and the active frozen
 run remain untouched. Preparing this candidate did not launch any native game
 or official optimizer update. Tests, fixtures and diagnostic scripts are not part
 of the committed change.
+
+The real `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10`
+preflight passed at candidate `2fd20c3` in 8.99 seconds. It restored checkpoint
+1,753 with exact model/Adam/RNG/progress/sampler/pool state, verified the existing
+runtime and map bindings, and reported zero gameplay and optimizer updates.
+The new training artifacts directory was still absent afterward: no seeds were
+reserved. Review of its output found unused historical seed lists and an old
+wall-time field inherited into the displayed configuration. They were removed
+from the ten-game configuration, which now declares its actual budget and
+read-only next-seed preview. This correction changes no sampling or PPO behavior.
+
+At the final integration check the main checkout remained clean at `06346c3`,
+and its manually launched fixed-count frozen run was still active. The candidate
+therefore remains isolated on `codex/selfplay-batch-learning`; merging it into
+main while that run owns the source would invalidate the run. After the current
+run finishes, manual integration is `git merge --ff-only codex/selfplay-batch-learning`
+from `/Users/orsi/Projects/Heroes`, followed by the read-only preflight above and
+the corresponding `--run` command. Do not merge while the run is active.

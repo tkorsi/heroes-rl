@@ -129,7 +129,7 @@ TEN_BATCH_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': '01eda52e6ed91753262bbb2ac72a33f47698184bdba6c1f4e3c7cf5e27dd3e85',
         'after': 'c02baa2e2aec16b768afda8cfedcf10a7ebacf3d11bd41e39637fafb73d35427'},
     CONTROLLER_PATH: {'before': '3acb278be3534db303b3fcf3d0edfa146edbbd468f24e11e40df2bd152b1818e',
-        'after': 'ab5eb3625fd6bf390ba5f18594568b5ff8e68b8dc081f4e7ffaef0a2f81b0437'},
+        'after': 'be95ae65753af7befaf0c47413152c3317d22d7a6f2e1e5ce95d4e1df01b8d37'},
 }
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'

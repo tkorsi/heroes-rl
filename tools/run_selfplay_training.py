@@ -1311,7 +1311,10 @@ def ten_configuration(checked, seconds):
     from experiments.learner import selfplay_training as training
     from experiments.learner.ppo import PPOConfig
     parent = read(bound(checked['parent']['launch']))
-    cfg = validate_configuration(parent['configuration'])
+    inherited = validate_configuration(parent['configuration'])
+    cfg = {key: deepcopy(inherited[key]) for key in
+           ('interface', 'adam', 'ppo', 'torch_threads', 'allow_verified_training_prefix')}
+    cfg.update(schema='heroes-selfplay-batch-ten-config-v1', maximum_seconds=seconds)
     cfg.update(training.TEN_GAMEPLAY)
     cfg.update(max_optimizer_steps=training.optimizer_step_cap(PPOConfig(**PPO), 10, cfg['max_total_choices']),
                attempt_wall_seconds=seconds, cleanup_reserve_seconds=30,
@@ -1355,6 +1358,17 @@ def ten_reservations(requests=None):
         outputs.add((str(output), mode)); added[mode] = row
     write(path, value)
     return added
+
+
+def ten_seed_preview(count):
+    """Describe the next fresh reservation without allocating seeds or files."""
+    _, offsets = ten_reservations()
+    offset = offsets['training']
+    require(type(count) is int and count > 0 and count % 10 == 0 and offset + count < 1_000_000,
+            'Invalid or exhausted ten-game seed preview')
+    engine, policy = TEN_NAMESPACES['training']
+    return dict(count=count, consumed_before=offset, engine_base=engine + offset,
+                policy_base=policy + 2 * offset, policy_seed_count=count * 2, reserved=False)
 
 
 def ten_inspect():
@@ -1804,6 +1818,7 @@ def main(argv=None):
                         training_games=args.batches * 10, held_out_games=0,
                         total_physical_games=args.batches * 10,
                         expected_optimizer_updates=args.batches,
+                        next_fresh_seeds=ten_seed_preview(args.batches * 10),
                         next_command='batch10-run' if inspected['lineage'] is None else 'batch10-continue')
                 else:
                     launch = prepare_ten(args, inspected)
