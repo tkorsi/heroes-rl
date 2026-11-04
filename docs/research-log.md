@@ -1480,3 +1480,39 @@ enabled in this game, so it cannot isolate their effects. The launcher without
 the flag retains the previous experiment. Offline controls checked both seats
 with checkpoint 1753, command filtering, quantity probabilities, and agreement
 with the native recipe. Gameplay remains a manual launch.
+
+## 2026-11-04: ten concurrent frozen games, first deadline attempt
+
+The user requested ten simultaneous games with ten visible terminal rows and a
+20-minute end-to-end limit, retaining the current checkpoint-1753 hero-relative
+experiment. The runner was committed before testing (894c7cc, followed by
+8c0ea73). No tests, probes or raw evidence were published.
+
+The first private trial observed all ten native leaders alive concurrently.
+All ten reached their original game boundary, but only eight passed full
+verification before the work deadline. External elapsed time was 1,159.30
+seconds; this is a failed acceptance, not a ten-game success. The two longest
+captures contained 12,429 and 10,833 choices. Both stopped during verification
+because of the declared wall limit; the replay report for the latter wrapped
+its timeout as an unsuccessful replay. There was no demonstrated replay
+mismatch. All recorded worker/native groups were independently confirmed closed,
+and all protected checkpoint inputs were unchanged. No PPO updates occurred.
+The initial aggregate incorrectly combined game failures with cleanup status;
+the next runner revision separates these outcomes.
+
+The existing focused suite passed 58 of 59 tests. Its source-inventory fixture
+failure was reproduced against pre-change commit 054d99d with identical test
+bytes. The real runtime preflight and canonical engine preparation check passed.
+A bounded 45-second profile of a preserved long rollout intentionally expired:
+it showed substantial repeated map-record serialization and strict history
+loading. A two-second native stack sample was also taken late in the failed
+trial; this attempt is not a clean standalone speed benchmark.
+
+The next candidate streams history hashes, avoids redundant prefix scans and
+copies, specializes serialization of simple immutable map records, and retains
+just-validated canonical frame text through paired validation. Every exact
+round-trip, hash, chronology, policy and native replay check remains. Analytics
+now counts submitted terminal moves even when no ordinary result follows.
+Terminal disconnects cannot suppress private result reporting. These changes
+are committed before their validation and fresh-seed batch; acceptance remains
+pending. Historical seeds and failed captures remain consumed and private.

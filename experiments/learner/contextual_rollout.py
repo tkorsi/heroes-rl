@@ -54,6 +54,13 @@ def _frame_bytes(frame):
     return (c.canonical_frame(frame) + "\n").encode()
 
 
+def _history_digest(frames):
+    digest = hashlib.sha256()
+    for frame in frames:
+        digest.update(_frame_bytes(frame))
+    return digest.hexdigest()
+
+
 def _wire_text(raw):
     try:
         return json.dumps(raw, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -491,7 +498,9 @@ class ContextualSession:
         return last
 
     def _consume(self, frames):
-        known, last = list(self.history.frames), None
+        # The history is the sole writer; append below also advances this
+        # lookup without copying every earlier frame for each request.
+        known, last = self.history._frames, None
         for raw in frames:
             if type(raw) is not c.Frame and _repeats(raw, known, self._verbatim):
                 last = known[raw["seq"]]  # byte-identical redelivery of that accepted frame
@@ -503,7 +512,6 @@ class ContextualSession:
             # Contract/encoder failures abort collection; a failed episode is
             # never recoverable as an eligible partial rollout.
             self.history.append(frame)
-            known.append(frame)
             if type(raw) is dict and _wire_text(raw) == c.canonical_frame(frame):
                 self._verbatim.add(frame.seq)
             encoded = self.encoder.encode(frame)
@@ -555,10 +563,11 @@ def _paired_binding(histories, manifest):
     status = {"natural": "completed", "cutoff": "truncated", "failure": "failed"}.get(red.boundary)
     if status is None or manifest.get("status") != status: raise ValueError("Unfinalized or mismatched collection boundary")
     _text(manifest.get("evidence_ref"), "finalization evidence")
+    prefixes = None
     if red.boundary in ("natural", "cutoff"):
         name = "verification" if red.boundary == "natural" else "cutoff_verification"
         proofs = tuple(getattr(h.frames[-1], name) for h in histories)
-        prefixes = tuple(hashlib.sha256(b"".join(_frame_bytes(f) for f in h.frames[:-1])).hexdigest() for h in histories)
+        prefixes = tuple(_history_digest(h.frames[:-1]) for h in histories)
         if (proofs[0] is None or proofs[0] != proofs[1] or proofs[0].history_sha256 != prefixes
                 or proofs[0].evidence_ref != manifest["evidence_ref"]):
             raise ValueError("Both final proofs must bind the complete player prefixes")
@@ -568,12 +577,18 @@ def _paired_binding(histories, manifest):
         raise ValueError("Manifest rewards/outcomes disagree with verified boundaries")
     if status == "completed" and (type(manifest.get("returncode")) is not int or manifest["returncode"] != 0):
         raise ValueError("Natural collection requires clean process exit")
-    for color, h in zip(COLORS, histories):
+    for player, (color, h) in enumerate(zip(COLORS, histories)):
         declaration = manifest.get("players", {}).get(color, {}).get(profile.history_key, {})
         if declaration.get("canonical_sha256") != h.digest() or declaration.get("boundary") != h.boundary:
             raise ValueError("Manifest does not bind the full player history")
-        prefix = h.frames[:-1] if h.frames[-1].kind in ("finalized", "cutoff_finalized") else h.frames
-        digest = hashlib.sha256(b"".join(_frame_bytes(frame) for frame in prefix)).hexdigest()
+        if prefixes is None:
+            frames = h.frames
+            prefix = frames[:-1] if frames[-1].kind in ("finalized", "cutoff_finalized") else frames
+            digest = _history_digest(prefix)
+        else:
+            # The same immutable finalized prefix was just checked against
+            # both closing proofs; bind its digest to the manifest as well.
+            digest = prefixes[player]
         if declaration.get("prefix_sha256") != digest:
             raise ValueError("Manifest does not bind the exact pre-finalization prefix")
         if status != "failed" and declaration.get("complete") is not True:

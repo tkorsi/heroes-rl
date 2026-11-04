@@ -985,7 +985,7 @@ class ContextualEncoder:
 
     def encode(self, frame):
         candidate = copy(self.history)
-        candidate._frames = list(self.history.frames)
+        candidate._frames = self.history._frames.copy()
         candidate.dialog_refs = set(self.history.dialog_refs)
         candidate.capability_refs = set(self.history.capability_refs)
         candidate.append(frame)

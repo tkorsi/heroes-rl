@@ -94,7 +94,11 @@ def _history(folder, reference):
             digest.update(line); size += len(line)
             row = evidence.strict_json(line)
             frame = c.decode_frame(row)
-            _require(c.encode_frame(frame) == row, "External history record does not roundtrip exactly")
+            encoded = c.encode_frame(frame)
+            _require(encoded == row, "External history record does not roundtrip exactly")
+            # Reuse only the just-validated canonical representation of this
+            # immutable frame; no file cache or persisted proof is trusted.
+            object.__setattr__(frame, "_canonical_json", _canonical(encoded))
             frames.append(frame)
     _require(size == reference["bytes"] and digest.hexdigest() == reference["sha256"],
              "External history bytes changed while loading")
@@ -115,22 +119,22 @@ def load_collected(path):
              "Invalid external rollout envelope")
     manifest = evidence.strict_json(evidence.inside(path.parent, "manifest.json").read_bytes())
     _require(data["manifest"] == manifest, "External rollout manifest differs from its file")
-    rollouts = []
+    rollouts, histories = [], []
     try:
         for player, entry in enumerate(data["rollouts"]):
             entry = _record(entry, ("history_ref", "records"))
             reference = _reference(path.parent, manifest, player, entry["history_ref"])
             history = _history(path.parent, reference)
-            try:
-                rollout = ContextualRollout.from_decoded_history(entry["records"], history,
-                    trajectory_schema=_TRAJECTORIES[data["artifact_schema"]])
-                _require(rollout.player == player and rollout.history_sha256 == reference["canonical_sha256"]
-                         and _metadata(rollout) == entry["records"], "External rollout records changed on reconstruction")
-                rollouts.append(rollout)
-            finally:
-                c.release_canonical(history)
+            histories.append(history)
+            rollout = ContextualRollout.from_decoded_history(entry["records"], history,
+                trajectory_schema=_TRAJECTORIES[data["artifact_schema"]])
+            _require(rollout.player == player and rollout.history_sha256 == reference["canonical_sha256"]
+                     and _metadata(rollout) == entry["records"], "External rollout records changed on reconstruction")
+            rollouts.append(rollout)
         return CollectedEpisode(tuple(rollouts), _canonical(manifest), _canonical(data["audit"]),
                                 tuple(_canonical(value) for value in data["model_configs"]), data["artifact_schema"])
     finally:
-        for rollout in rollouts:
-            c.release_canonical(rollout.history)
+        # Paired validation uses these same immutable frames. Release after
+        # that final check, instead of serializing both histories again.
+        for history in histories:
+            c.release_canonical(history)

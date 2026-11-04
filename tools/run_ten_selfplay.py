@@ -38,6 +38,14 @@ GUARD = one.HERO_RELATIVE_VERSION
 SCHEMA = 'heroes-ten-frozen-selfplay-v1'
 
 
+def emit(*args, **kwargs):
+    """A closed terminal must not prevent private reports or owned cleanup."""
+    try:
+        print(*args, **kwargs)
+    except OSError:
+        pass
+
+
 def source():
     return dict(driver=binding(__file__), launcher=binding(ROOT / 'play-ten-selfplay.sh'))
 
@@ -54,6 +62,7 @@ def analyze(collected):
     for rollout, color in zip(collected.rollouts, ('red', 'blue')):
         actions, results, events, moves = Counter(), Counter(), Counter(), Counter()
         submitted, visits, previous_heroes = {}, {}, {}
+        unresolved_moves = set()
         known, positions, action_days, progress_days = set(), set(), set(), set()
         first = previous = None
         previous_seq = -1
@@ -63,21 +72,27 @@ def analyze(collected):
                 submitted[f.decision_seq] = f.action
                 actions[f.action.kind] += 1
                 action_days.add(f.day)
+                if f.action.kind == 'move_to':
+                    action = f.action
+                    obs = rollout.history[f.decision_seq].observation
+                    hero = next(h for h in obs.heroes if h.handle == action.subject)
+                    target = (action.x, action.y, hero.position[2])
+                    unresolved_moves.add(f.decision_seq)
+                    moves['attempts'] += 1
+                    moves['revealed_targets'] += any(t.position == target for t in obs.tiles)
+                    moves['targets_left_edge'] += action.x == 0
+                    moves['targets_visible_opponent_town'] += any(
+                        obj.kind == 98 and obj.owner == 'opponent' and obj.position == target for obj in obs.objects)
             if f.result is not None:
                 results[f.result.status] += 1
                 action = submitted[f.decision_seq]
                 if action.kind == 'move_to':
                     obs = rollout.history[f.decision_seq].observation
                     hero = next(h for h in obs.heroes if h.handle == action.subject)
-                    target = (action.x, action.y, hero.position[2])
-                    moves['attempts'] += 1
+                    unresolved_moves.remove(f.decision_seq)
                     moves[f.result.status] += 1
-                    moves['revealed_targets'] += any(t.position == target for t in obs.tiles)
                     moves['endpoint_changes'] += f.result.position is not None and f.result.position != hero.position
                     moves['missing_endpoints'] += f.result.position is None
-                    moves['targets_left_edge'] += action.x == 0
-                    moves['targets_visible_opponent_town'] += any(
-                        obj.kind == 98 and obj.owner == 'opponent' and obj.position == target for obj in obs.objects)
             if f.event is not None:
                 events[f.event.kind] += 1
                 if f.event.kind == 'visit' and f.event.object_kind == 98:
@@ -112,6 +127,9 @@ def analyze(collected):
             known.update(tiles)
             positions.update(heroes.items())
             previous, previous_seq, previous_heroes = obs, f.seq, heroes
+        if unresolved_moves:
+            moves['no_result'] += len(unresolved_moves)
+            moves['missing_endpoints'] += len(unresolved_moves)
         require(first is not None and previous is not None, 'Analytics requires visible observations')
         players[color] = dict(choices=sum(actions.values()), last_day=max(f.day for f in rollout.history),
             actions=dict(actions), results=dict(results), events=dict(events), movement=dict(moves),
@@ -198,7 +216,7 @@ class Display:
             return
         width = max(20, shutil.get_terminal_size((100, 24)).columns - 1)
         if self.tty and self.lines:
-            print(f'\x1b[{self.lines}F\x1b[J', end='')
+            emit(f'\x1b[{self.lines}F\x1b[J', end='')
         rows = [f'TEN FROZEN GAMES | {elapsed:6.1f}s / {SECONDS}s | checkpoint 1753',
                 'Choices used (not time remaining); 9,920 ordinary + 320 dialog / player']
         rows = [row[:width] for row in rows]
@@ -209,7 +227,7 @@ class Display:
             row = f'{slot:02} Day {day:3} [{"#" * used}{"-" * (8-used)}] R {counts[0]:5} B {counts[1]:5}  {value["phase"]}'
             code = '1;32' if value['phase'] == 'verified' else '1;31' if value['phase'] == 'failed' else '36'
             rows.append(progress.color_text(row[:width], code, self.color))
-        print('\n'.join(rows), flush=True)
+        emit('\n'.join(rows), flush=True)
         self.lines, self.last, self.phases = len(rows), elapsed, phases
 
 
@@ -265,9 +283,9 @@ def run(output, started, wall):
     folders = [Path(p['output']) for p in plans]
     bindings = [binding(folder / 'plan.json') for folder in folders]
     display = Display(folders, started)
-    processes, errors, witness = [], [], None
+    processes, errors, cleanup_errors, witness = [], [], [], None
     cleanup = dict(deadline_monotonic=started + SECONDS - 2, deadline_wall=wall + SECONDS - 2)
-    print(f'Private results: {output}\nFrozen weights; no PPO. All ten slots launch together.', flush=True)
+    emit(f'Private results: {output}\nFrozen weights; no PPO. All ten slots launch together.', flush=True)
     try:
         for folder, plan, pin in zip(folders, plans, bindings):
             with (folder / 'worker.log').open('xb') as log:
@@ -297,10 +315,11 @@ def run(output, started, wall):
                 close_owned_process(process, timeout=10, **cleanup)
                 cleanup_from_evidence(folder / 'native-process-deadline.jsonl', timeout=10, **cleanup)
             except Exception as error:
-                errors.append(f'{folder.name}: {error}')
+                cleanup_errors.append(f'{folder.name}: {error}')
         for folder in folders:
             progress.finish_unfinished(folder / 'progress')
         display.poll(final=True)
+    errors.extend(cleanup_errors)
     protected = False
     try:
         protected = campaign.verify_protected(checked['protected'])
@@ -328,7 +347,7 @@ def run(output, started, wall):
         checkpoint=one.CHECKPOINT, games_requested=GAMES, games_verified=len(games),
         total_seconds=elapsed, deadline_seconds=SECONDS, all_ten_native_overlap=witness is not None,
         overlap=binding(output / 'parallel-native-witness.json') if witness else None,
-        protected_inputs_unchanged=protected, owned_cleanup_verified=not any(p.poll() is None for p in processes) and not errors,
+        protected_inputs_unchanged=protected, owned_cleanup_verified=not any(p.poll() is None for p in processes) and not cleanup_errors,
         training_input=False, optimizer_updates=0, errors=errors, games=games,
         red_wins=sum(g['outcomes'].get('red') == 'win' for g in games),
         blue_wins=sum(g['outcomes'].get('blue') == 'win' for g in games),
@@ -348,17 +367,17 @@ def run(output, started, wall):
     lines.extend(['', 'Moves count observed endpoint changes, not clicks. Day/choice cutoffs are unscored.',
                   'Per-player action counts, movement failures, battles and timing phases are in report.json.'])
     (output / 'analytics.md').write_text('\n'.join(lines) + '\n')
-    print('\n'.join(lines[2:]), flush=True)
-    print(f'Analytics: {output / "analytics.md"}\nFull report: {output / "report.json"}', flush=True)
+    emit('\n'.join(lines[2:]), flush=True)
+    emit(f'Analytics: {output / "analytics.md"}\nFull report: {output / "report.json"}', flush=True)
     if errors:
-        print('\n'.join(errors), file=sys.stderr, flush=True)
+        emit('\n'.join(errors), file=sys.stderr, flush=True)
     elapsed = time.monotonic() - started
     # Include analytics creation and terminal rendering, reserving one second
     # for the small final report and return to the shell.
     passed = passed and elapsed < SECONDS - 1
     report.update(total_seconds=elapsed, status='passed' if passed else 'failed')
     write(output / 'report.json', report, new=True)
-    print(f"Batch {report['status']}: {elapsed:.2f} seconds including analytics.", flush=True)
+    emit(f"Batch {report['status']}: {elapsed:.2f} seconds including analytics.", flush=True)
     return 0 if passed else 1
 
 
@@ -379,16 +398,16 @@ def main():
     try:
         if not args.run:
             one.inspect_candidate(GUARD)
-            print('READY: 10 parallel frozen games from checkpoint 1753; hero-relative exact-command cooldown.')
-            print('Unchanged 9,920 + 320 choices/player, 365 days, all replay checks. No seeds consumed.')
-            print('Total limit: 20 minutes including verification and analytics. Timeouts fail; no automatic retry.')
-            print('Launch: ./play-ten-selfplay.sh --run')
+            emit('READY: 10 parallel frozen games from checkpoint 1753; hero-relative exact-command cooldown.')
+            emit('Unchanged 9,920 + 320 choices/player, 365 days, all replay checks. No seeds consumed.')
+            emit('Total limit: 20 minutes including verification and analytics. Timeouts fail; no automatic retry.')
+            emit('Launch: ./play-ten-selfplay.sh --run')
             return 0
         with campaign.activity_lease():
             with wall_limit(SECONDS - 5 - (time.monotonic() - started)):
                 return run(args.output, started, wall)
     finally:
-        print(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
+        emit(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
 
 
 if __name__ == '__main__':

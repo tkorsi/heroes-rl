@@ -97,6 +97,19 @@ HERO_RELATIVE_SOURCES = {
     'experiments/learner/local_script_training.py': {'before': TOWN_COOLDOWN_SOURCES['experiments/learner/local_script_training.py']['after'],
         'after': '17ac5d27f4c57b5fc28ce2b4e5533316c142d13efa96ee36c726f5db14511b7b'},
 }
+# Exact semantics-preserving history/storage changes for the ten-game runner.
+PARALLEL_HISTORY_SOURCES = {
+    'experiments/learner/contextual.py': {'before': 'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0',
+        'after': 'f4af40ce598dd6d0a35906168b22f62485dd27a20d7cef6270b2b01793552cff'},
+    'experiments/learner/contextual_model.py': {'before': '12a3b8e9339a2b9fcf5809668a9f3dd3984a48337cb8db963e1c3da83d3816fe',
+        'after': '811e59b3b39d48a29e37a5cfba37af20946d8a85c2fde8c420ca3e974d5fc0bf'},
+    'experiments/learner/contextual_rollout.py': {'before': '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab',
+        'after': '5be32aca8d10122e353b6743b076fbab8258cf2acde4c8498ef0717681c085a4'},
+    'experiments/learner/contextual_storage.py': {'before': '8d7c4b7bd1035291a9e95f136806ce33869a026d382a09b0064cd3569239496e',
+        'after': 'c7b001a244592493831355fab4d425c855afa43b3f705c2eaa06303704e30736'},
+    'experiments/learner/local_script_training.py': {'before': '17ac5d27f4c57b5fc28ce2b4e5533316c142d13efa96ee36c726f5db14511b7b',
+        'after': '18ceabbd5e8e1486bf17d433e33ee220fba8a0f8505e9a3957bcf58d30cf933b'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -127,6 +140,7 @@ def verify_runtime_sources(implementation):
     original.update(STARTING_EQUIPMENT_SOURCES)
     original.update({name: pins['after'] for name, pins in TOWN_COOLDOWN_SOURCES.items()})
     original.update({name: pins['after'] for name, pins in HERO_RELATIVE_SOURCES.items()})
+    original.update({name: pins['after'] for name, pins in PARALLEL_HISTORY_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -139,7 +153,8 @@ def verify_native_validation_sources(accepted, current):
     expected = dict(accepted)
     transitions = (('reviewed_display_only_day_progress', DAY_PROGRESS_SOURCES),
                    ('reviewed_policy_support_town_cooldown', TOWN_COOLDOWN_SOURCES),
-                   ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES))
+                   ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES),
+                   ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -169,6 +184,7 @@ def source_identity():
         starting_equipment_sources=STARTING_EQUIPMENT_SOURCES,
         town_cooldown_sources=TOWN_COOLDOWN_SOURCES,
         hero_relative_sources=HERO_RELATIVE_SOURCES,
+        parallel_history_sources=PARALLEL_HISTORY_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

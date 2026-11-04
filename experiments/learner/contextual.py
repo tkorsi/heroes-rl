@@ -7,6 +7,7 @@ numeric neural features. Frozen records preserve every delivered prefix.
 """
 from __future__ import annotations
 
+from bisect import bisect_right
 from dataclasses import asdict, dataclass, fields, replace
 import hashlib
 import json
@@ -2949,7 +2950,10 @@ class PlayerHistory:
         eligible = self.boundary in ("natural", "cutoff")
         transitions = []
         for index, (decision, action, result, closure) in enumerate(completed):
-            successor = next((seq for seq in decisions if seq > result), None) if result is not None else None
+            # Chronology makes decisions strictly ordered; locate the same
+            # first later decision without rescanning the complete prefix.
+            successor_index = bisect_right(decisions, result) if result is not None else len(decisions)
+            successor = decisions[successor_index] if successor_index < len(decisions) else None
             terminal_owner = (self.boundary == "natural" and index == len(completed) - 1
                               and not any(seq > decision for seq in consumed))
             if terminal_owner:
@@ -3297,6 +3301,16 @@ def _wire(value):
     kind = type(value)
     if kind in _WIRE_LEAVES:
         return value
+    # These frozen scalar records dominate visible-map serialization. Keep
+    # each result detached while avoiding generic field traversal per tile.
+    if kind is Tile:
+        return {"position": list(value.position), "terrain": value.terrain, "road": value.road,
+                "blocked": value.blocked, "visitable": value.visitable}
+    if kind is ObjectView:
+        return {"handle": value.handle, "position": list(value.position), "kind": value.kind,
+                "subtype": value.subtype, "owner": value.owner}
+    if kind is Town:
+        return {"handle": value.handle, "position": list(value.position)}
     if isinstance(value, tuple):
         return [item if type(item) in _WIRE_LEAVES else _wire(item) for item in value]
     if hasattr(value, "__dataclass_fields__"):
