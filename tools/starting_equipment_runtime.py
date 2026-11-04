@@ -8,10 +8,10 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'no-artifacts-v1'
 RELEASE = dict(
     directory=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2',
-    freeze_sha='PENDING_NATIVE_BUILD',
-    preflight_sha='PENDING_NATIVE_BUILD',
+    freeze_sha='5e340b7060e0a9ad9bc268e7ce5c691b3adc07eab94426cb080a0b999288deeb',
+    preflight_sha='ef621bb08e83471fd5bfc889f4524cf6b47c5ac087216e9373041abdf0fa94ad',
     validation=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2/native-acceptance.json',
-    validation_sha='PENDING_NATIVE_VALIDATION',
+    validation_sha='2c5ffa0904e80099428fa31f8183c94c4036498c5cc90efcd522ab9fe703893a',
     schema='heroes-starting-artifacts-native-v1',
 )
 

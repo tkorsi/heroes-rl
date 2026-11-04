@@ -197,3 +197,28 @@ The separate native parser run passed 438 controls against the actual repaired
 library. Local Python validation ran 160 tests (159 passed, one skipped), followed
 by the expanded private fixture regressions. Later acceptance must bind the final
 runtime after the packet initialization repair.
+
+## Final native acceptance
+
+Attempt 6 passed all nine paired controls and 220 checks, including both hired
+heroes, ground artifacts, factories and native replay. Its negative test correctly
+rejected the omitted setting at the initial game-state digest; the private harness
+incorrectly expected exit status 2/3, while native `Divergence` returns 1. The
+recognizer now requires a real differing expected/actual field and the documented
+1/3 exit statuses. Native integrity checks were not changed.
+
+Fresh attempt `attempt-20261104T181859Z-46e02b` passed: 220 mechanics controls,
+nine paired comparisons, all random-bonus branches, native replay and independent
+histories for every capture, and correct rejection of the wrong-setting mutant.
+Two hired heroes remained entirely equipment-free; both ground-artifact and
+factory visits retained their objects and delivered the exact restriction notice.
+The frozen checkpoint-1753 prefix reconstructed 64 Red and 33 Blue choices with
+zero numerical difference, unchanged weights, and zero admitted samples/updates.
+This is 18 mechanics captures plus one short policy prefix, not 19 full games.
+
+The final runtime is `local-v8-no-artifacts-v1-repair2`, built from a fresh
+782-object tree and validated through its actual loader. All 438 native notice
+controls also passed against this final library. Local test/harness changes and
+raw captures remain private. General mixed authored reward notices remain the
+explicit limitation described above; acceptance covers the original map and the
+listed fixtures. This does not establish improved strategy or performance.

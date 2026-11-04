@@ -1420,3 +1420,17 @@ neutral camps really spawned. Red repeatedly attacked them without collecting th
 large recruited town army and lost 12 heroes. Red hired Edric after Blue lost him,
 which can make the replay's allegiance changes confusing. See the
 [source-bounded audit and validation protocol](research/no-starting-equipment-2026-10-31.md).
+
+The 4 November follow-up established that Blue never built a Tavern, while Red
+built one on day 165 and first hired on day 187. Red targeted the left edge in
+86.8% of movement commands; ten of twelve fatal camp encounters followed adjacent
+guarded-tile moves. Neither side learned during the frozen game. Exact enemy
+garrison/camp quantities were absent from policy observations.
+
+Final `no-artifacts-v1` acceptance passed 220 native controls, nine paired
+comparisons, 438 native parser controls and 97 exactly reconstructed frozen-policy
+choices. Validation also fixed ordinary artifact pickup notice recognition and
+an uninitialized empty-Tavern packet role. Failed diagnostic attempts and their
+consumed seeds remain private. No tests, fixtures, probes or validation tooling
+are included in the publication diff; the pinned acceptance receipt stays local.
+No full game or official training was started.

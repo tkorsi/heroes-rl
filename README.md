@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**31 October 2026**. Earlier stages are preserved in
+**4 November 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -27,7 +27,9 @@ All artifacts, spellbooks and war machines are disabled, including equipment fro
 starting heroes, later hires, purchases, loot and rewards. This is an explicitly
 requested temporary game-rule change.
 The map, starting armies, random gold/resource bonuses, model and limits stay fixed.
-The launcher requires separate rebuilt-runtime acceptance before it can run.
+The selected rebuilt runtime passed 220 native controls, nine paired comparisons,
+438 native notice checks and exact reconstruction of 97 frozen-policy choices.
+The launcher binds that acceptance; no full game or training was started.
 See the [equipment preparation and game audit](docs/research/no-starting-equipment-2026-10-31.md).
 Progress includes the observed
 in-game day beside both action counters. The terminal groups model/settings,
