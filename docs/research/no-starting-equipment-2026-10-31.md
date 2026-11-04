@@ -172,3 +172,28 @@ diagnostic harness are preserved privately outside the publication diff. Earlier
 unpublished implementation commits remain on a local evidence branch. No test
 or diagnostic-tool changes will be pushed. The runtime acceptance receipt also
 remains local; the production launcher binds its exact digest.
+
+Further private fixture attempts preserved strict checks and consumed fresh seeds:
+
+- Attempt 3 (`attempt-20261104T180418Z-0ffba6`) failed an incorrect Tavern
+  preview expectation. Native UI intentionally excludes spellbooks/machines
+  (slots 13-17) from its displayed artifact count. The corrected check binds that
+  count to the actual post-hire inventory while still requiring a fully empty
+  inventory under the ban and book/catapult presence in the native control.
+- Attempt 4 (`attempt-20261104T180634Z-dc7734`) hired successfully, but a legacy
+  helper looked in `town_panel.armies` rather than v8 `window.armies`. The local
+  check now validates the actual final visiting-hero projection, retaining exact
+  command receipt, cost, hero identity and town-position checks.
+- Attempt 5 (`attempt-20261104T181044Z-4c36b7`) passed the authored default
+  mechanics and both independent histories, then failed native replay on packet
+  99 (`SetAvailableHero`) after hiring from an exhausted Tavern pool. Native code
+  left serialized `roleID` uninitialized in the empty replacement case. This is
+  real native nondeterminism. The repair initializes the role to `NONE`; the
+  exhausted-pool control and every packet/state replay comparison stay intact.
+
+All failed attempts completed owned-process cleanup; none entered PPO. The 819
+protected historical files were rehashed on 4 November and remained unchanged.
+The separate native parser run passed 438 controls against the actual repaired
+library. Local Python validation ran 160 tests (159 passed, one skipped), followed
+by the expanded private fixture regressions. Later acceptance must bind the final
+runtime after the packet initialization repair.

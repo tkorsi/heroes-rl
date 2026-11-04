@@ -72,7 +72,7 @@ DAY_PROGRESS_SOURCES = {
 STARTING_EQUIPMENT_SOURCES = {
     'engine/ExplorerRL/Capabilities.cpp': '7af2b13258455d60107c866a2d72c52d16fc80f2879616f57a3516e26c4ef342',
     'engine/ExplorerRL/Notice.cpp': '1dea22d4c1c4bf667e90c6c5ead9d8c55a5969c7b06ff151b2c1f43f9d74fa95',
-    'engine/patches/0031-no-starting-equipment.patch': '9ecc48d8680d66388f0feea9e712dd6a679d56d0c0c5a7104454f3c0af101ba8',
+    'engine/patches/0031-no-starting-equipment.patch': '03959e119f28370abaecbc54ef5a264cbada063bf922f6ebc71f07352212775c',
     'experiments/headless/env.py': '4b7e4086b8bc6fcb334d71c704867a58e4cc12d70b438076cf54dfc1a3dcf563',
     'experiments/learner/contextual.py': 'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0',
     'experiments/learner/local_script_training.py': '8d3855d879581f7aedb24ff5d0ddfc9be05e004cdfb0246d0e87ed7c87e86aad',

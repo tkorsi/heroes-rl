@@ -482,3 +482,14 @@ diff --git a/lib/rewardable/Reward.cpp b/lib/rewardable/Reward.cpp
  
  	for(const SpellID & spell : takenScrolls)
  		comps.emplace_back(ComponentType::SPELL, spell);
+diff --git a/lib/networkPacks/PacksForClient.h b/lib/networkPacks/PacksForClient.h
+--- a/lib/networkPacks/PacksForClient.h
++++ b/lib/networkPacks/PacksForClient.h
+@@ -456,6 +456,7 @@
+ struct DLL_LINKAGE SetAvailableHero : public CPackForClient
+ {
+ 	SetAvailableHero()
++		: roleID(TavernSlotRole::NONE)
+ 	{
+ 		army.clearSlots();
+ 	}

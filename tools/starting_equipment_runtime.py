@@ -7,10 +7,10 @@ from tools import run_tiny_selfplay_one_game as verified_runtime
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'no-artifacts-v1'
 RELEASE = dict(
-    directory=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair1',
+    directory=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2',
     freeze_sha='PENDING_NATIVE_BUILD',
     preflight_sha='PENDING_NATIVE_BUILD',
-    validation=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair1/native-acceptance.json',
+    validation=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2/native-acceptance.json',
     validation_sha='PENDING_NATIVE_VALIDATION',
     schema='heroes-starting-artifacts-native-v1',
 )
