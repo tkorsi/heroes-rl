@@ -1434,3 +1434,21 @@ an uninitialized empty-Tavern packet role. Failed diagnostic attempts and their
 consumed seeds remain private. No tests, fixtures, probes or validation tooling
 are included in the publication diff; the pinned acceptance receipt stays local.
 No full game or official training was started.
+
+## 2026-11-04: one-action town cooldown
+
+In the archived checkpoint-1753 game, 139 of 466 town closes were followed by
+opening the same town on the same day. In 126 of those 139 cases the player had
+chosen nothing inside the town. The next manual frozen game tests a separate
+policy support version that suppresses all town openings after a confirmed town
+close until another action completes. It preserves town purchases, ending the
+turn, movement, and mandatory dialogue choices. Alternating between hero and town
+windows can still satisfy the rule. The weights and coordinate encoding remain
+the same; hero-relative coordinates are a separate experiment. No performance
+or outcome comparison is available until the user launches the game.
+
+Offline checks passed 60 existing tests. At both seats' archived reopen decisions,
+the new support blocked the submitted reopen before sampling, and independent
+history reconstruction produced the same support. The old support still allowed
+those choices. Synthetic controls verified that the cooldown covers multiple
+towns, survives a rejected action and clears after an accepted end turn.

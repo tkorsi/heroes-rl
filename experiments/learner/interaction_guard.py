@@ -15,7 +15,9 @@ from . import contextual as c
 VERSION = "visible-interaction-budget-v1"
 REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
 RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
-SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, RECRUIT_ONLY_VERSION)
+TOWN_COOLDOWN_VERSION = "visible-interaction-budget-recruit-only-town-cooldown-v1"
+RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION)
+SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS)
 # Temporary experiment restriction. Removing it requires a new explicit support
 # selection; historical captures must continue to reconstruct this exact set.
 # Whole-hero garrison changes are separate from moving stacks between slots.
@@ -148,7 +150,7 @@ class GuardSupport:
     def permits(self, action, observation, offers):
         if not offers.permits(action):
             return False
-        if self.version == RECRUIT_ONLY_VERSION and action.kind in RECRUIT_ONLY_BLOCKED_KINDS:
+        if self.version in RECRUIT_ONLY_VERSIONS and action.kind in RECRUIT_ONLY_BLOCKED_KINDS:
             return False
         if _mandatory(offers) or action.kind in ("close", "back", "close_capability", "end_turn"):
             return True
@@ -230,6 +232,7 @@ class Tracker:
         self.navigation = Counter()
         self.management = Counter()
         self.failed_coordinates = set()
+        self.town_reopen_blocked = False
         self.decision = None
         self.action = None
         self.consumed = False
@@ -277,8 +280,11 @@ class Tracker:
             self.decision, self.action, self.consumed = frame, None, False
             movable = tuple(sorted(h.handle for h in frame.observation.heroes if h.movement > 0 and not h.in_garrison))
             blocked = self.failed_coordinates | {(h.handle, h.position[0], h.position[1]) for h in frame.observation.heroes}
+            navigation = {key for key, count in self.navigation.items() if count >= NAVIGATION_LIMIT}
+            if self.town_reopen_blocked:
+                navigation.update(("open_town", subject) for subject in frame.offers.town_refs)
             return GuardSupport(self.version,
-                tuple(sorted(key for key, count in self.navigation.items() if count >= NAVIGATION_LIMIT)),
+                tuple(sorted(navigation)),
                 tuple(sorted(subject for subject, count in self.management.items() if count >= MANAGEMENT_LIMIT)),
                 movable, tuple(sorted(blocked)))
         if frame.kind == "submitted":
@@ -299,6 +305,11 @@ class Tracker:
             self._progress()
         elif frame.kind == "result" and self.action is not None and self.consumed:
             result = frame.result
+            if self.version == TOWN_COOLDOWN_VERSION and result.accepted:
+                # Only a resolved player choice advances this cooldown. Changes
+                # in the visible world may reset the separate navigation budget.
+                self.town_reopen_blocked = (self.action.kind == "close" and result.status == "closed"
+                                            and self.decision.offers.context.kind == "town")
             if (result.accepted and (result.status in ("built", "recruited", "hired", "upgraded")
                     or result.status == "capability_applied" and self.action.kind in
                         ("trade_resource", "buy_artifact", "choose_level_up"))):

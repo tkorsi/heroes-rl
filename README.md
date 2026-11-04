@@ -26,6 +26,10 @@ uses `no-artifacts-v1`: every hero has an empty inventory throughout the game.
 All artifacts, spellbooks and war machines are disabled, including equipment from
 starting heroes, later hires, purchases, loot and rewards. This is an explicitly
 requested temporary game-rule change.
+The manual game also uses a temporary town cooldown. After closing a town, a
+player must complete another action before opening any town. The policy derives
+this restriction from its own history. The coordinate encoding stays unchanged
+for this experiment.
 The map, starting armies, random gold/resource bonuses, model and limits stay fixed.
 The selected rebuilt runtime passed 220 native controls, nine paired comparisons,
 438 native notice checks and exact reconstruction of 97 frozen-policy choices.

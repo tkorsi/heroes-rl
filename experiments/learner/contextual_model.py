@@ -1734,8 +1734,7 @@ class ContextualDistribution:
         return tuple(choice for choice in choices if self._permitted(action_for(choice)))
 
     def _coordinates(self, subject):
-        if self.guard is not None and self.guard.version in (
-                interaction_guard.REVEALED_VERSION, interaction_guard.RECRUIT_ONLY_VERSION):
+        if self.guard is not None and self.guard.version != interaction_guard.VERSION:
             return self.guard.movement_coordinates(subject, self.observation, self.offers)
         width, height, _ = self.offers.size
         return (index for index in range(width * height)

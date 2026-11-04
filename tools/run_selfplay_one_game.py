@@ -78,6 +78,15 @@ STARTING_EQUIPMENT_SOURCES = {
     'experiments/learner/local_script_training.py': '8d3855d879581f7aedb24ff5d0ddfc9be05e004cdfb0246d0e87ed7c87e86aad',
 }
 STARTING_EQUIPMENT_NEW = frozenset({'engine/patches/0031-no-starting-equipment.patch'})
+# Only the policy support and its source pins changed after native acceptance.
+TOWN_COOLDOWN_SOURCES = {
+    'experiments/learner/contextual_model.py': {'before': RECRUIT_ONLY_SOURCE_SHA256['experiments/learner/contextual_model.py'],
+        'after': 'c7b4972f29aca29b5422b3027e5ef3fe68586e35f18365e6af540922541d097b'},
+    'experiments/learner/interaction_guard.py': {'before': RECRUIT_ONLY_SOURCE_SHA256['experiments/learner/interaction_guard.py'],
+        'after': '295accf489ed94e0a7e7e5d491706b1a7e9c8c09f1fd697cb0553ca7a944795f'},
+    'experiments/learner/local_script_training.py': {'before': STARTING_EQUIPMENT_SOURCES['experiments/learner/local_script_training.py'],
+        'after': 'efa4822f4ae560fbc2f0a78f25640f29f268c79d9ade7c4f8b50f73e0e6f82b0'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -106,22 +115,28 @@ def verify_runtime_sources(implementation):
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
     original.update(STARTING_EQUIPMENT_SOURCES)
+    original.update({name: pins['after'] for name, pins in TOWN_COOLDOWN_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
 def verify_native_validation_sources(accepted, current):
-    """Retain the original native receipt, allowing only a reviewed UI delta."""
+    """Retain the native receipt with only exact reviewed source transitions."""
     require(type(accepted) is dict and type(current) is dict,
             'Passive-army runtime lacks complete two-seat native validation sources')
     if accepted == current:
         return dict(kind='exact_native_validation_sources', changed=[])
     expected = dict(accepted)
-    for name, pins in DAY_PROGRESS_SOURCES.items():
-        require(accepted.get(name) == pins['before'] and current.get(name) == pins['after'],
-                'Passive-army runtime lacks complete two-seat native validation source transition')
-        expected[name] = pins['after']
+    changed = {}
+    for transition in (DAY_PROGRESS_SOURCES, TOWN_COOLDOWN_SOURCES):
+        if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
+            expected.update({name: pins['after'] for name, pins in transition.items()})
+            changed.update(transition)
+        if expected == current:
+            break
     require(expected == current, 'Passive-army runtime lacks complete two-seat native validation source agreement')
-    return dict(kind='reviewed_display_only_day_progress', changed=DAY_PROGRESS_SOURCES,
+    kind = ('reviewed_policy_support_town_cooldown' if changed.keys() & TOWN_COOLDOWN_SOURCES.keys()
+            else 'reviewed_display_only_day_progress')
+    return dict(kind=kind, changed=changed,
                 native_capture_repeated=False)
 
 
@@ -142,13 +157,14 @@ def source_identity():
         recruit_only_sources=RECRUIT_ONLY_SOURCE_SHA256,
         day_progress_sources=DAY_PROGRESS_SOURCES,
         starting_equipment_sources=STARTING_EQUIPMENT_SOURCES,
+        town_cooldown_sources=TOWN_COOLDOWN_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
 def policy_support(plan):
-    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSION
+    from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSIONS
     version = plan.get('policy_support')
-    require(version in (campaign.GUARD, RECRUIT_ONLY_VERSION),
+    require(version in (campaign.GUARD, *RECRUIT_ONLY_VERSIONS),
             'Unknown or missing one-game policy support')
     return version
 

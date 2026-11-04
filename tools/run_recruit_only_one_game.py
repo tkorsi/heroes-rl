@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One manual frozen game with trained checkpoint 1753 and all artifacts disabled.
+"""One manual frozen game from checkpoint 1753 with a town cooldown.
 
 The large model, original map and doubled budgets remain unchanged. The explicit
 observation/support intervention does not rewrite the checkpoint's provenance.
@@ -24,7 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from experiments.learner.contextual import OWN_ARMY_INFORMATION
-from experiments.learner.interaction_guard import RECRUIT_ONLY_VERSION
+from experiments.learner.interaction_guard import TOWN_COOLDOWN_VERSION
 from experiments.learner.game_progress import color_text, terminal_color_enabled
 from tools import run_selfplay_one_game as evaluation
 from tools import run_selfplay_training as campaign
@@ -36,7 +36,7 @@ CHECKPOINT = 1753
 PARAMETERS = 74344
 MODEL_CONFIG = dict(schema='heroes-context-model-v6', hidden_size=64, feature_size=32, max_map_side=256)
 BUDGET = evaluation.BUDGET
-GUARD = RECRUIT_ONLY_VERSION
+GUARD = TOWN_COOLDOWN_VERSION
 
 
 def _human_terminal(stream):
@@ -93,6 +93,7 @@ def render_setup(*, ready, seconds=3600, color=False, columns=80):
             ('Combat', 'Automatic battles.', '36'),
             ('Artifacts OFF', 'No artifacts, spellbooks or war machines for any hero. Temporary rule.', '1;33'),
             ('All game', 'No equipment from starts, hires, purchases, loot or rewards.', '1;33'),
+            ('Town cooldown', 'After closing a town, complete one other action before opening any town.', '1;33'),
             ('Movement', 'Revealed tiles only.', '36'),
             ('Information', 'Your armies and combat stats are visible without clicks.', '36'),
         ]),
@@ -154,16 +155,17 @@ def render_failure(error, *, output=None, color=False, columns=80):
 
 
 def experiment():
-    return dict(experiment='trained1753-no-artifacts-v1', temporary=True,
+    return dict(experiment='trained1753-town-cooldown-v1', temporary=True,
                 policy_support=GUARD, army_information=OWN_ARMY_INFORMATION,
                 equipment_policy=runtime_validation.VERSION,
+                town_reopen_cooldown_actions=1,
                 later_hired_heroes='empty_inventory',
                 artifacts='disabled_for_all_heroes_and_acquisition_paths',
                 checkpoint=CHECKPOINT, model_config=MODEL_CONFIG, parameters=PARAMETERS,
                 recruitment='unchanged_native_purchase', whole_hero_garrison='allowed',
                 combat='automatic_unchanged', rewards=dict(win=1, loss=-1, ordinary_transition=0),
                 training_launcher_accepted=False,
-                restoration_reminder='Restore all artifact acquisition and troop-slot management in separately versioned experiments.')
+                restoration_reminder='Review the town cooldown and restore artifact acquisition and troop-slot management in separately versioned experiments.')
 
 
 def source_identity():

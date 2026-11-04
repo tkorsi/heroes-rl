@@ -133,7 +133,7 @@ FAST_PATH_SOURCES = {
         'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72', 'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a',),
-        '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe'),
+        'c7b4972f29aca29b5422b3027e5ef3fe68586e35f18365e6af540922541d097b'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
         '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab'),
@@ -154,7 +154,7 @@ FAST_PATH_SOURCES = {
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/interaction_guard.py': (
         ('0793539c2e93a75a92cc57445caef4f6906f377d5810605f894d6c0f3f9ccc4e', '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f',),
-        'd5b295bcdca6c37da6aa050007526b7b11e4da574ccae0693d61038a093418c4'),
+        '295accf489ed94e0a7e7e5d491706b1a7e9c8c09f1fd697cb0553ca7a944795f'),
     'experiments/learner/native_execution.py': (
         ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56', 'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189',),
         'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189'),
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '2912ea4756af0733b824a7e7868524eec752a0b5e0de21e3508070c22a11e7c3'
+LOCAL_ADAPTER_TRANSITION_AST = 'bdb8f29744798b711c6be6867eee5df637c2e58dc4df97fbb5194268f82329f4'
 
 
 def write_new(path, value):

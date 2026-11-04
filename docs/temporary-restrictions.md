@@ -6,8 +6,9 @@ rules of Heroes III and must not be forgotten when interpreting results.
 | Restriction | Current scope | Removal work |
 | --- | --- | --- |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
-| No manual troop-slot management | The next trained-1753 one-game experiment uses `visible-interaction-budget-recruit-only-v1`. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
+| No manual troop-slot management | The trained-1753 one-game experiment retains the recruitment-only action restrictions. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
 | No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
+| One-action town cooldown | `visible-interaction-budget-recruit-only-town-cooldown-v1` excludes `open_town` after a player closes a town, until that player completes a different action. It also applies after an empty visit. | Review repeat openings and menu alternation after the frozen game. Remove the cooldown by selecting a different support version and retain the original version for replay. |
 
 The second restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,
