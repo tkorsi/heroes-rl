@@ -22,6 +22,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import re
 import shutil
 import signal
 import socket
@@ -49,6 +50,15 @@ MAX_MESSAGE_BYTES = 16 * 1024 * 1024
 TAIL_BYTES = 64 * 1024  # first window when reading the end of an evidence file
 REPLAY_TAIL_SECONDS = 5.0  # longest wait for the server's replay log before a stop
 READER_DRAIN_SECONDS = 5.0  # after an engine exit of its own, for every bridge reader to reach its end of stream
+NO_ARTIFACTS = "no-artifacts-v1"
+
+
+def _read_commented_json(path: Path) -> dict:
+    """Read VCMI JSON comments without treating quoted URLs as comments."""
+    tokens = r'"(?:\\.|[^"\\])*"|//[^\r\n]*|/\*.*?\*/'
+    source = re.sub(tokens, lambda match: match[0] if match[0].startswith('"') else " ",
+                    path.read_text(), flags=re.DOTALL)
+    return json.loads(source)
 
 
 @dataclass(frozen=True)
@@ -139,13 +149,17 @@ class _Side:
 class VcmiLauncher:
     """Launches the real headless client with an isolated per-episode profile."""
 
-    def __init__(self, binary: Path, data: Path, game_map: Path, log_level: str = "info"):
+    def __init__(self, binary: Path, data: Path, game_map: Path, log_level: str = "info", *,
+                 equipment_policy: str | None = None):
         self.binary = binary.expanduser().resolve()
         self.data = data.expanduser().resolve()
         self.game_map = game_map.expanduser().resolve()
         if log_level not in {"trace", "debug", "info"}:
             raise ValueError("Use log level trace, debug or info; scoring needs info-level engine evidence")
         self.log_level = log_level
+        if equipment_policy is not None and equipment_policy != NO_ARTIFACTS:
+            raise ValueError("Unsupported equipment policy")
+        self.equipment_policy = equipment_policy
         suffix = ".dylib" if sys.platform == "darwin" else ".so"
         self.ai_library = self.binary.parent / "AI" / f"libExplorerRL{suffix}"
 
@@ -162,19 +176,39 @@ class VcmiLauncher:
             raise ValueError(f"Rebuild ExplorerRL: its terminal lacks the consumption watermark: {self.ai_library}")
         if b"VCMI_EXPERIMENT_REPLAY" not in content or b"observations-p" not in library:
             raise ValueError("Client or ExplorerRL lacks replay recording (engine patch 0013); rebuild vcmi/build")
+        if self.equipment_policy is not None:
+            suffix = ".dylib" if sys.platform == "darwin" else ".so"
+            core = self.binary.parent / ("libvcmi" + suffix)
+            if not core.is_file() or NO_ARTIFACTS.encode() not in core.read_bytes():
+                raise ValueError("Runtime lacks no-artifacts-v1; use its separately validated build")
+            # VCMI's maximize removes non-required settings, even declared ones.
+            # Check the packaged schema as well as the compiled implementation.
+            try:
+                schema = _read_commented_json(self.binary.parent / "config/schemas/settings.json")
+                server_schema = schema["properties"]["server"]
+                option = server_schema["properties"]["experimentEquipmentPolicy"]
+                if ("experimentEquipmentPolicy" not in server_schema["required"]
+                        or option.get("type") != "string" or option.get("default") != "native"
+                        or option.get("enum") != ["native", NO_ARTIFACTS]):
+                    raise ValueError("Equipment policy option would be dropped or reinterpreted")
+            except (OSError, KeyError, TypeError, ValueError, AttributeError) as error:
+                raise ValueError("Runtime schema does not preserve no-artifacts-v1") from error
         if not (self.data / "Data").is_dir():
             raise ValueError(f"Missing original game assets: {self.data / 'Data'}")
         if not self.game_map.is_file() or self.game_map.suffix.lower() not in {".vmap", ".h3m"}:
             raise ValueError(f"Expected a real .vmap or .h3m map: {self.game_map}")
 
     def identity(self) -> dict:
-        return {"binary": str(self.binary), "binary_sha256": scoring.digest(self.binary),
+        result = {"binary": str(self.binary), "binary_sha256": scoring.digest(self.binary),
                 "explorer_rl_sha256": scoring.digest(self.ai_library),
                 "map": {"name": self.game_map.name, "sha256": scoring.digest(self.game_map)},
                 "log_level": self.log_level}
+        if self.equipment_policy is not None:
+            result["equipment_policy"] = self.equipment_policy
+        return result
 
     def settings(self, seed: int) -> dict:
-        return {
+        result = {
             "general": {"lastDifficulty": 0, "music": 0, "sound": 0},
             "server": {"seed": seed, "useProcess": False, "localPort": 0},
             "ai": {"adventureEnemyAI": "Nullkiller", "adventureAlliedAI": "Nullkiller",
@@ -183,6 +217,9 @@ class VcmiLauncher:
             "logging": {"loggers": [{"domain": "global", "level": self.log_level},
                                     {"domain": "rng", "level": "info"}]},
         }
+        if self.equipment_policy is not None:
+            result["server"]["experimentEquipmentPolicy"] = self.equipment_policy
+        return result
 
     def launch(self, directory: Path, seed: int, environment: dict, log) -> tuple[subprocess.Popen, dict]:
         profile, logs, engine = directory / "profile", directory / "logs", directory / "engine"

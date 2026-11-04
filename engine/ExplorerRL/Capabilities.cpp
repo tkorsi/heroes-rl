@@ -141,16 +141,19 @@ JsonNode ExplorerRL::capabilityControls()
 	{
 		const auto * current = hero(*callback, contextState, contextState.subject);
 		result.Vector().emplace_back("artifacts");
-		if(current->hasSpellbook()) result.Vector().emplace_back("spellbook");
+		if(ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK) && current->hasSpellbook())
+			result.Vector().emplace_back("spellbook");
 		if(current->hasBonusOfType(BonusType::VISIONS)) result.Vector().emplace_back("visions");
 	}
 	else if(contextState.context == "town" && contextState.panel == "overview")
 	{
 		const auto * current = town(*callback, contextState, contextState.subject);
 		if(current->hasBuilt(BuildingID::MARKETPLACE)) result.Vector().emplace_back("marketplace");
-		bool purchase = current->hasBuilt(BuildingID::MAGES_GUILD_1);
+		bool purchase = ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK)
+			&& current->hasBuilt(BuildingID::MAGES_GUILD_1);
 		for(const auto & artifact : LIBRARY->arth->objects)
-			if(artifact && artifact->getWarMachine().hasValue() && current->isWarMachineAvailable(artifact->getId())) purchase = true;
+			if(artifact && ArtifactUtils::isEquipmentAllowed(artifact->getId())
+				&& artifact->getWarMachine().hasValue() && current->isWarMachineAvailable(artifact->getId())) purchase = true;
 		if(purchase) result.Vector().emplace_back("purchases");
 	}
 	else if(contextState.context == "exchange" && contextState.ownHeroExchange
@@ -190,7 +193,7 @@ JsonNode ExplorerRL::capabilityPanel()
 			if(!owner || owner->getOwner() != playerID) continue;
 			for(const auto & artifact : LIBRARY->arth->objects)
 			{
-				if(!artifact) continue;
+				if(!artifact || !ArtifactUtils::isEquipmentAllowed(artifact->getId())) continue;
 				const auto id = artifact->getId();
 				const bool book = id == ArtifactID::SPELLBOOK;
 				if(book ? !current->hasBuilt(BuildingID::MAGES_GUILD_1) || owner->hasSpellbook() || owner->isCampaignYog()
@@ -333,6 +336,7 @@ JsonNode ExplorerRL::capabilityPanel()
 	else if(contextState.panel == "spellbook")
 	{
 		const auto * caster = hero(*callback, contextState, subject);
+		if(!ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK)) return result;
 		for(const auto & spell : LIBRARY->spellh->objects)
 		{
 			if(!spell || !spell->isAdventure() || !caster->canCastThisSpell(spell.get())) continue;

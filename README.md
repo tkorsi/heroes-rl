@@ -5,7 +5,7 @@ VCMI engine. The policy receives structured, player-visible state and chooses
 typed actions; it does not consume screenshots. Combat is automatic.
 
 This README is the authoritative project overview and agreement. Updated
-**30 October 2026**. Earlier stages are preserved in
+**31 October 2026**. Earlier stages are preserved in
 [project history](docs/project-history.md); their status and authorization
 paragraphs are historical, not new instructions to run experiments.
 
@@ -21,7 +21,15 @@ the selected next experiment. Use the trained **checkpoint 1,753** model
 (64 hidden / 32 features, 74,344 parameters) for the next manual one-game test:
 `./play-one-selfplay.sh --check`, then explicit `./play-one-selfplay.sh --run`.
 This retains the temporary troop-slot restriction and passive own-army information,
-with one frozen self-play game and zero PPO updates. Progress includes the observed
+with one frozen self-play game and zero PPO updates. The next experiment also
+uses `no-artifacts-v1`: every hero has an empty inventory throughout the game.
+All artifacts, spellbooks and war machines are disabled, including equipment from
+starting heroes, later hires, purchases, loot and rewards. This is an explicitly
+requested temporary game-rule change.
+The map, starting armies, random gold/resource bonuses, model and limits stay fixed.
+The launcher requires separate rebuilt-runtime acceptance before it can run.
+See the [equipment preparation and game audit](docs/research/no-starting-equipment-2026-10-31.md).
+Progress includes the observed
 in-game day beside both action counters. The terminal groups model/settings,
 allowed actions and temporary restrictions, with Red/Blue progress colors and
 separate saving/verification states. Colors respect `NO_COLOR` and `TERM=dumb`;

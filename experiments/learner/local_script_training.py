@@ -130,7 +130,7 @@ FAST_PATH_SOURCES = {
         'a33dabaea5d34cdf2330cf07c8464b3f103463cc8309c5bc394387a692a0d68e'),
     'experiments/learner/contextual.py': (
         ('01d63bbf2279475c4f79fa1947b8662cd23814e4cced7616f68dff819e6f9358', '070203b248ac12949e192ac6c419832f66441010ac0f592dbf167fe3aa732dda', 'fc9188d3833f1508909d0d04922510111303d10fe3659d30f734a4875676242d',),
-        '69893b70595307a50cc936927eae7fd624ebe0355a040464864f798cfe676883'),
+        'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72', 'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a',),
         '14f505e78974cb1fd8c2e26afa956996f7cd23caef49a671a376fc00e44f4cfe'),
@@ -255,7 +255,7 @@ FAST_PATH_TREE = {
     'experiments/headless/embedded_evidence.py': ('',
         '71c6bc91c4fe74896e1fc6f43ef9d1f759f2d60e683c93a6623fdfad09c48b14'),
     'experiments/headless/env.py': ('3da283d9ebb185878d35ef989551ffd04cd18ab2',
-        '1f5fb796cb67cd68bc9a755197f73128c16ee22bf19118428babf5ef281c519b'),
+        '4b7e4086b8bc6fcb334d71c704867a58e4cc12d70b438076cf54dfc1a3dcf563'),
     'experiments/headless/spawned_replay.py': ('',
         '8eb64b260c8e80dc894b08ab9df37d7812cb25a8aea40cc0f7836e89c9b802a9'),
     'experiments/learner/contextual_storage.py': ('',
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'c0f1c9c6df3e4c6cb5305c33122fddefeee82d4e4fd5cac116fc5446c509b3d2'
+LOCAL_ADAPTER_TRANSITION_AST = '2912ea4756af0733b824a7e7868524eec752a0b5e0de21e3508070c22a11e7c3'
 
 
 def write_new(path, value):

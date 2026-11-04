@@ -1400,3 +1400,23 @@ under the existing campaign lease. Actual main `--check --json`, canonical engin
 agreement and two real PTY checks passed; all 137 protected files remain exact.
 No seed was reserved and no gameplay was started. See
 [compact validation](../validation/terminal-ux-2026-10-30.json).
+
+## 2026-10-31: explicit empty-equipment start and completed-game explanation
+
+The user requested artifact-free starts and explicitly included spellbooks and
+war machines. The final opt-in `no-artifacts-v1` disables every artifact for every hero throughout
+the game, including ordinary items, spellbooks, war machines and acquisitions
+from hires, purchases, loot and rewards. This follows two explicit scope
+clarifications; narrower candidates were not accepted. Native initialization RNG,
+map, starting armies and gold/resource bonuses remain preserved. This changes
+starting siege and magic capabilities and is recorded in the temporary restriction
+register. The trained-1753 frozen one-game launcher requires new runtime acceptance;
+no full game, training run or official seed reservation is started by preparation.
+
+The latest completed game's initial artifact panels contain only catapults, not
+treasure. Later spellbook/tent items arrived with hired heroes. Blue lost to Red's
+town garrison on day 18; Red's original hero survived until day 197. Four new-month
+neutral camps really spawned. Red repeatedly attacked them without collecting the
+large recruited town army and lost 12 heroes. Red hired Edric after Blue lost him,
+which can make the replay's allegiance changes confusing. See the
+[source-bounded audit and validation protocol](research/no-starting-equipment-2026-10-31.md).

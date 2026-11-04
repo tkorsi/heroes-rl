@@ -69,14 +69,22 @@ def source_identity():
                 experiment_configuration=binding(EXPERIMENT_CONFIG))
 
 
-def inspect_runtime(baseline):
-    """Bind the new observation runtime without changing the comparison baseline."""
+def inspect_runtime(baseline, *, release=None):
+    """Verify a pinned runtime release without changing the comparison baseline.
+
+    The default remains the historical passive-army release. A new experiment
+    supplies its own freeze and native acceptance pins; none are inferred.
+    """
     from experiments.episodes.scoring import engine_recipe_digests
     from experiments.headless.contextual_evidence import runtime_identity
     from experiments.learner.contextual import OWN_ARMY_INFORMATION
     from tools.freeze_local_runtime import ARTIFACTS as REQUIRED_ARTIFACTS
-    directory = RUNTIME.resolve()
-    require(directory == RUNTIME and not RUNTIME.is_symlink(), 'Passive-army runtime path changed')
+    release = release or dict(directory=RUNTIME, freeze_sha=RUNTIME_FREEZE_SHA,
+        preflight_sha=RUNTIME_PREFLIGHT_SHA, validation=REQUIRED_NATIVE_VALIDATION,
+        validation_sha=REQUIRED_NATIVE_VALIDATION_SHA, schema='heroes-passive-armies-native-v1')
+    directory = Path(release['directory']).resolve()
+    require(directory == Path(release['directory']) and not Path(release['directory']).is_symlink(),
+            'Frozen runtime path changed')
     protected = {}
     def keep(path, expected_sha=None, expected_bytes=None):
         value = binding(path)
@@ -84,8 +92,8 @@ def inspect_runtime(baseline):
         require(expected_bytes is None or value['bytes'] == expected_bytes, 'Passive-army runtime file size changed')
         protected[value['path']] = value
         return value
-    freeze_binding = keep(directory / 'freeze-receipt.json', RUNTIME_FREEZE_SHA)
-    preflight_binding = keep(directory / 'preflight.json', RUNTIME_PREFLIGHT_SHA)
+    freeze_binding = keep(directory / 'freeze-receipt.json', release['freeze_sha'])
+    preflight_binding = keep(directory / 'preflight.json', release['preflight_sha'])
     freeze, preflight = read(bound(freeze_binding)), read(bound(preflight_binding))
     binary_dir = directory / 'bin'
     require(freeze.get('schema') == 'heroes-local-runtime-freeze-v2'
@@ -135,9 +143,9 @@ def inspect_runtime(baseline):
             and preflight.get('map') == freeze['map']
             and any(str(binary_dir / 'libvcmi.dylib') in line for line in preflight.get('actual_client_libvcmi_load', [])),
             'Passive-army actual runtime loader preflight differs')
-    acceptance_binding = keep(REQUIRED_NATIVE_VALIDATION, REQUIRED_NATIVE_VALIDATION_SHA)
+    acceptance_binding = keep(release['validation'], release['validation_sha'])
     acceptance = read(bound(acceptance_binding))
-    require(acceptance.get('schema') == 'heroes-passive-armies-native-v1' and acceptance.get('status') == 'passed'
+    require(acceptance.get('schema') == release['schema'] and acceptance.get('status') == 'passed'
             and acceptance.get('army_information') == OWN_ARMY_INFORMATION and acceptance.get('policy_support') == GUARD
             and acceptance.get('runtime') == runtime
             and acceptance.get('players') == [0, 1] and type(acceptance.get('controls')) is int and acceptance['controls'] > 0

@@ -576,6 +576,20 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	const auto tokens = readTokens(text, adventureDialogs ? 512 : 64);
 	if(tokens.empty())
 		unsupported("Empty informational notice");
+	// One exact public explanation of the opted-in equipment rule. It is an
+	// informational native visit result, never a policy-controlled query reply.
+	if(expanded && mode == EInfoWindowMode::AUTO && components.empty() && tokens.size() == 1
+		&& exact(tokens.front(), APPEND_RAW,
+			"Artifacts are disabled by the current experiment equipment policy (no-artifacts-v1)."))
+	{
+		JsonNode result;
+		result["display_mode"].String() = "auto";
+		auto token = textToken("append_text", "heroes.experiment.no_artifacts_v1");
+		for(const char * key : {"number", "owner"}) token[key] = JsonNode();
+		result["text"].Vector().push_back(std::move(token));
+		result["components"].Vector();
+		return result;
+	}
 	if(adventureDialogs)
 	{
 		auto notice = adventureNotice(mode, tokens, components, recipient, ownHeroNameTextIds, expanded);
@@ -594,6 +608,19 @@ JsonNode normalizeNotice(EInfoWindowMode mode, const MetaString & text,
 	bool dropPlayerReplacement = false;
 	std::string normalizedResult;
 	std::vector<std::string> trophyContent;
+	// CGArtifact::onHeroVisit delivers the artifact's event text and its one
+	// displayed type. Bind them through the static catalog, never world state.
+	if(expanded && mode == EInfoWindowMode::AUTO && tokens.size() == 1 && components.size() == 1
+		&& components.front().type == ComponentType::ARTIFACT)
+	{
+		const auto content = trophyContentID(components.front());
+		const auto * artifact = LIBRARY->artifacts()->getById(components.front().subType.as<ArtifactID>());
+		if(exact(tokens.front(), APPEND_TEXT, artifact->getEventTextID()))
+		{
+			supported = true;
+			trophyContent.push_back(content);
+		}
+	}
 	// CGResource::collectRes: the quantity is in the component, not text.
 	if(mode == EInfoWindowMode::INFO && tokens.size() == 2 && components.size() == 1
 		&& exact(tokens[0], APPEND_LOCAL, "core.advevent.113"))

@@ -1,0 +1,484 @@
+diff --git a/lib/gameState/CGameState.cpp b/lib/gameState/CGameState.cpp
+--- a/lib/gameState/CGameState.cpp
++++ b/lib/gameState/CGameState.cpp
+@@ -19,6 +19,7 @@
+ #include "QuestInfo.h"
+ 
+ #include "../GameSettings.h"
++#include "../CConfigHandler.h"
+ #include "../texts/CGeneralTextHandler.h"
+ #include "../CPlayerState.h"
+ #include "../CStopWatch.h"
+@@ -226,6 +227,57 @@
+ 	initDifficulty();
+ 	initHeroes(gameRandomizer);
+ 	initStartingBonus(gameRandomizer);
++
++	// All heroes obey the ongoing artifact ban. Remove the final random
++	// starting artifacts after preserving ordinary bonus draws and resources.
++	// Native removal also detaches equipped bonuses and handles combined artifacts.
++	const auto & equipmentPolicy = settings["server"]["experimentEquipmentPolicy"];
++	if(!equipmentPolicy.isNull() && (!equipmentPolicy.isString()
++		|| (equipmentPolicy.String() != "native" && equipmentPolicy.String() != "no-artifacts-v1")))
++		throw std::runtime_error("Unsupported experimentEquipmentPolicy policy");
++	if(equipmentPolicy.isString() && equipmentPolicy.String() == "no-artifacts-v1")
++	{
++		if(scenarioOps->mode != EStartMode::NEW_GAME)
++			throw std::runtime_error("no-artifacts-v1 requires a new single scenario");
++		for(const auto heroID : map->getHeroesOnMap())
++		{
++			auto hero = getHero(heroID);
++			std::vector<ArtifactPosition> worn;
++			for(const auto & [slot, info] : hero->artifactsWorn)
++				if(!info.locked)
++					worn.push_back(slot);
++			int removed = 0;
++			for(const auto & slot : worn)
++				if(hero->getArt(slot))
++				{
++					map->removeArtifactInstance(*hero, slot);
++					++removed;
++				}
++			while(!hero->artifactsInBackpack.empty())
++			{
++				map->removeArtifactInstance(*hero, ArtifactPosition::BACKPACK_START);
++				++removed;
++			}
++			if(hero->getArt(ArtifactPosition::TRANSITION_POS))
++			{
++				map->removeArtifactInstance(*hero, ArtifactPosition::TRANSITION_POS);
++				++removed;
++			}
++			if(!hero->artifactsWorn.empty() || !hero->artifactsInBackpack.empty())
++				throw std::runtime_error("Starting equipment removal left occupied slots");
++			// Recompute army morale and opening caches after equipment bonuses disappear.
++			if(removed)
++			{
++				hero->armyChanged();
++				hero->setMovementPoints(hero->movementPointsLimit(true));
++				hero->mana = hero->manaLimit();
++			}
++			const auto playerInfo = scenarioOps->playerInfos.find(hero->getOwner());
++			logGlobal->info("Equipment policy no-artifacts-v1: player=%d hero=%d resolved_bonus=%d removed_items=%d",
++				hero->getOwner().getNum(), hero->id.getNum(),
++				playerInfo != scenarioOps->playerInfos.end() ? static_cast<int>(playerInfo->second.bonus) : -1, removed);
++		}
++	}
+ 	initTowns(randomGenerator);
+ 	initTownNames(randomGenerator);
+ 	placeHeroesInTowns();
+diff --git a/config/schemas/settings.json b/config/schemas/settings.json
+--- a/config/schemas/settings.json
++++ b/config/schemas/settings.json
+@@ -574,7 +574,7 @@
+ 			"type" : "object",
+ 			"additionalProperties" : false,
+ 			"default" : {},
+-			"required" : [ "localHostname", "localPort", "remoteHostname", "remotePort", "seed"],
++			"required" : [ "localHostname", "localPort", "remoteHostname", "remotePort", "seed", "experimentEquipmentPolicy"],
+ 			"properties" : {
+ 				"localHostname" : {
+ 					"type" : "string",
+@@ -595,6 +595,11 @@
+ 				"seed" : {
+ 					"type" : "number",
+ 					"default" : 0
++				},
++				"experimentEquipmentPolicy" : {
++					"type" : "string",
++					"enum" : [ "native", "no-artifacts-v1" ],
++					"default" : "native"
+ 				}
+ 			}
+ 		},
+diff --git a/lib/entities/artifact/ArtifactUtils.h b/lib/entities/artifact/ArtifactUtils.h
+--- a/lib/entities/artifact/ArtifactUtils.h
++++ b/lib/entities/artifact/ArtifactUtils.h
+@@ -19,6 +19,8 @@
+ 
+ namespace ArtifactUtils
+ {
++	// The opt-in equipment policy forbids every artifact for every hero.
++	DLL_LINKAGE bool isEquipmentAllowed(const ArtifactID & aid);
+ 	DLL_LINKAGE bool checkIfSlotValid(const CArtifactSet & artSet, const ArtifactPosition & slot);
+ 	DLL_LINKAGE ArtifactPosition getArtAnyPosition(const CArtifactSet * target, const ArtifactID & aid);
+ 	DLL_LINKAGE ArtifactPosition getArtEquippedPosition(const CArtifactSet * target, const ArtifactID & aid);
+diff --git a/lib/entities/artifact/ArtifactUtils.cpp b/lib/entities/artifact/ArtifactUtils.cpp
+--- a/lib/entities/artifact/ArtifactUtils.cpp
++++ b/lib/entities/artifact/ArtifactUtils.cpp
+@@ -16,12 +16,23 @@
+ #include "CArtifactFittingSet.h"
+ 
+ #include "../../IGameSettings.h"
++#include "../../CConfigHandler.h"
+ #include "../../GameLibrary.h"
+ #include "../../mapObjects/CGHeroInstance.h"
+ 
+ #include <vcmi/spells/Spell.h>
+ 
+ VCMI_LIB_NAMESPACE_BEGIN
++
++DLL_LINKAGE bool ArtifactUtils::isEquipmentAllowed(const ArtifactID & aid)
++{
++	const auto & policy = settings["server"]["experimentEquipmentPolicy"];
++	if(policy.isNull() || (policy.isString() && policy.String() == "native"))
++		return true;
++	if(!policy.isString() || policy.String() != "no-artifacts-v1")
++		throw std::runtime_error("Unsupported experimentEquipmentPolicy policy");
++	return !aid.hasValue();
++}
+ 
+ DLL_LINKAGE bool ArtifactUtils::checkIfSlotValid(const CArtifactSet & artSet, const ArtifactPosition & slot)
+ {
+@@ -166,6 +177,8 @@
+ 
+ DLL_LINKAGE bool ArtifactUtils::checkSpellbookIsNeeded(const CGHeroInstance * heroPtr, const ArtifactID & artID, const ArtifactPosition & slot)
+ {
++	if(!isEquipmentAllowed(ArtifactID::SPELLBOOK))
++		return false;
+ 	// TODO what'll happen if Titan's thunder is equipped by pickin git up or the start of game?
+ 	// Titan's Thunder creates new spellbook on equip
+ 	if(artID == ArtifactID::TITANS_THUNDER && slot == ArtifactPosition::RIGHT_HAND)
+diff --git a/lib/mapObjects/CGHeroInstance.cpp b/lib/mapObjects/CGHeroInstance.cpp
+--- a/lib/mapObjects/CGHeroInstance.cpp
++++ b/lib/mapObjects/CGHeroInstance.cpp
+@@ -474,6 +474,30 @@
+ 	//initialize bonuses
+ 	recreateSecondarySkillsBonuses();
+ 
++	// Run native initialization first so army rolls and artifact IDs remain
++	// deterministic, then remove forbidden equipment from on-map and pool heroes.
++	if(!isFake && !ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK))
++	{
++		std::vector<ArtifactPosition> forbidden;
++		for(const auto & [slot, info] : artifactsWorn)
++			if(!info.locked && !ArtifactUtils::isEquipmentAllowed(info.getArt()->getTypeId()))
++				forbidden.push_back(slot);
++		for(size_t index = artifactsInBackpack.size(); index > 0; --index)
++			if(!ArtifactUtils::isEquipmentAllowed(artifactsInBackpack[index - 1].getArt()->getTypeId()))
++				forbidden.emplace_back(ArtifactPosition::BACKPACK_START + static_cast<int>(index - 1));
++		if(const auto * art = getArt(ArtifactPosition::TRANSITION_POS);
++			art && !ArtifactUtils::isEquipmentAllowed(art->getTypeId()))
++			forbidden.push_back(ArtifactPosition::TRANSITION_POS);
++		for(const auto & slot : forbidden)
++			cb->gameState().getMap().removeArtifactInstance(*this, slot);
++		if(!forbidden.empty())
++		{
++			armyChanged();
++			logGlobal->info("Equipment policy no-artifacts-v1: initialized_hero_type=%d removed_forbidden_items=%d",
++				getHeroTypeID().getNum(), static_cast<int>(forbidden.size()));
++		}
++	}
++
+ 	movement = movementPointsLimit(true);
+ 	mana = manaLimit(); //after all bonuses are taken into account, make sure this line is the last one
+ }
+diff --git a/server/CGameHandler.cpp b/server/CGameHandler.cpp
+--- a/server/CGameHandler.cpp
++++ b/server/CGameHandler.cpp
+@@ -2534,6 +2534,8 @@
+ 	const auto * c = crid.toCreature();
+ 
+ 	const bool warMachine = c->warMachine != ArtifactID::NONE;
++	COMPLAIN_RET_FALSE_IF(warMachine && !ArtifactUtils::isEquipmentAllowed(c->warMachine),
++		"Equipment policy forbids recruiting war machines");
+ 
+ 	//TODO: check if hero is actually visiting object
+ 
+@@ -3207,6 +3209,8 @@
+ 
+ bool CGameHandler::buyArtifact(ObjectInstanceID hid, ArtifactID aid)
+ {
++	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::isEquipmentAllowed(aid),
++		"Equipment policy forbids buying artifacts");
+ 	const CGHeroInstance * hero = gameInfo().getHero(hid);
+ 	COMPLAIN_RET_FALSE_IF(nullptr == hero, "Invalid hero index");
+ 	const CGTownInstance * town = hero->getVisitedTown();
+@@ -3258,6 +3262,8 @@
+ 
+ bool CGameHandler::buyArtifact(const IMarket *m, const CGHeroInstance *h, GameResID rid, ArtifactID aid)
+ {
++	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::isEquipmentAllowed(aid),
++		"Equipment policy forbids buying artifacts");
+ 	if(!h)
+ 		COMPLAIN_RET("Only hero can buy artifacts!");
+ 
+@@ -3913,6 +3919,8 @@
+ 
+ bool CGameHandler::dig(const CGHeroInstance *h)
+ {
++	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::isEquipmentAllowed(ArtifactID::GRAIL),
++		"Equipment policy forbids digging for the Grail");
+ 	if (h->diggingStatus() != EDiggingStatus::CAN_DIG) //checks for terrain and movement
+ 		COMPLAIN_RETF("Hero cannot dig (error code %d)!", static_cast<int>(h->diggingStatus()));
+ 
+@@ -4259,6 +4267,8 @@
+ {
+ 	const auto * artInst = gameInfo().getArtInstance(id);
+ 	assert(artInst && artInst->getType());
++	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::isEquipmentAllowed(artInst->getTypeId()),
++		"Equipment policy forbids acquiring artifacts");
+ 	ArtifactLocation dst(al.artHolder, ArtifactPosition::PRE_FIRST);
+ 	dst.creature = al.creature;
+ 	const auto * putTo = gameState().getArtSet(al);
+@@ -4301,6 +4311,8 @@
+ 	const CGHeroInstance * h, const CArtifact * artType, const SpellID & spellId, const ArtifactPosition & pos)
+ {
+ 	assert(artType);
++	COMPLAIN_RET_FALSE_IF(!ArtifactUtils::isEquipmentAllowed(artType->getId()),
++		"Equipment policy forbids granting artifacts");
+ 
+ 	NewArtifact na;
+ 	na.artHolder = h->id;
+diff --git a/lib/gameState/GameStatePackVisitor.cpp b/lib/gameState/GameStatePackVisitor.cpp
+--- a/lib/gameState/GameStatePackVisitor.cpp
++++ b/lib/gameState/GameStatePackVisitor.cpp
+@@ -707,6 +707,8 @@
+ 
+ void GameStatePackVisitor::visitNewArtifact(NewArtifact & pack)
+ {
++	if(!ArtifactUtils::isEquipmentAllowed(pack.artId))
++		throw std::runtime_error("Equipment policy rejected forbidden NewArtifact packet");
+ 	auto art = gs.createArtifact(pack.artId, pack.spellId);
+ 	PutArtifact pa(art->getId(), ArtifactLocation(pack.artHolder, pack.pos), false);
+ 	pa.visit(*this);
+@@ -871,6 +873,8 @@
+ void GameStatePackVisitor::visitPutArtifact(PutArtifact & pack)
+ {
+ 	auto art = gs.getArtInstance(pack.id);
++	if(art && !ArtifactUtils::isEquipmentAllowed(art->getTypeId()))
++		throw std::runtime_error("Equipment policy rejected forbidden PutArtifact packet");
+ 	assert(!art->getParentNodes().empty());
+ 	auto hero = gs.getHero(pack.al.artHolder);
+ 	assert(hero);
+@@ -924,6 +928,18 @@
+ 
+ void GameStatePackVisitor::visitBulkMoveArtifacts(BulkMoveArtifacts & pack)
+ {
++	// Validate both directions before removing anything from either inventory.
++	const auto validate = [this](ObjectInstanceID holder, const std::optional<SlotID> & creature,
++		const std::vector<MoveArtifactInfo> & moves)
++	{
++		const auto * artSet = gs.getArtSet(ArtifactLocation(holder, creature));
++		for(const auto & move : moves)
++			if(const auto * art = artSet->getArt(move.srcPos);
++				art && !ArtifactUtils::isEquipmentAllowed(art->getTypeId()))
++				throw std::runtime_error("Equipment policy rejected forbidden BulkMoveArtifacts packet");
++	};
++	validate(pack.srcArtHolder, pack.srcCreature, pack.artsPack0);
++	validate(pack.dstArtHolder, pack.dstCreature, pack.artsPack1);
+ 	const auto bulkArtsRemove = [this](std::vector<MoveArtifactInfo> & artsPack, CArtifactSet & artSet)
+ 	{
+ 		std::vector<ArtifactPosition> packToRemove;
+@@ -983,6 +999,8 @@
+ 
+ void GameStatePackVisitor::visitAssembledArtifact(AssembledArtifact & pack)
+ {
++	if(!ArtifactUtils::isEquipmentAllowed(pack.artId))
++		throw std::runtime_error("Equipment policy rejected forbidden AssembledArtifact packet");
+ 	auto artSet = gs.getArtSet(pack.al.artHolder);
+ 	assert(artSet);
+ 	const auto transformedArt = artSet->getArt(pack.al.slot);
+diff --git a/server/battles/BattleResultProcessor.cpp b/server/battles/BattleResultProcessor.cpp
+--- a/server/battles/BattleResultProcessor.cpp
++++ b/server/battles/BattleResultProcessor.cpp
+@@ -527,6 +527,8 @@
+ 		const auto addArtifactToTransfer = [&artFittingSet, &dyingArtifacts](BulkMoveArtifacts & pack, const ArtifactPosition & srcSlot, const CArtifactInstance * art)
+ 		{
+ 			assert(art);
++			if(!ArtifactUtils::isEquipmentAllowed(art->getTypeId()))
++				return;
+ 			if (vstd::contains(dyingArtifacts, art->getId()))
+ 				return; // artifact will be removed soon and can't be transferred to winner hero
+ 
+diff --git a/lib/mapObjects/CGDwelling.cpp b/lib/mapObjects/CGDwelling.cpp
+--- a/lib/mapObjects/CGDwelling.cpp
++++ b/lib/mapObjects/CGDwelling.cpp
+@@ -15,6 +15,7 @@
+ #include "../callback/IGameRandomizer.h"
+ #include "../serializer/JsonSerializeFormat.h"
+ #include "../entities/faction/CTownHandler.h"
++#include "../entities/artifact/ArtifactUtils.h"
+ #include "../mapping/CMap.h"
+ #include "../mapObjectConstructors/AObjectTypeHandler.h"
+ #include "../mapObjectConstructors/CObjectClassesHandler.h"
+@@ -267,6 +268,16 @@
+ 		gameEvents.setOwner(this, h->tempOwner);
+ 	}
+ 
++	if(ID == Obj::WAR_MACHINE_FACTORY && !ArtifactUtils::isEquipmentAllowed(ArtifactID::CATAPULT))
++	{
++		InfoWindow info;
++		info.type = EInfoWindowMode::AUTO;
++		info.player = h->getOwner();
++		info.text.appendRawString("Artifacts are disabled by the current experiment equipment policy (no-artifacts-v1).");
++		gameEvents.showInfoDialog(&info);
++		return;
++	}
++
+ 	BlockingDialog bd (true,false);
+ 	bd.player = h->tempOwner;
+ 	if(ID == Obj::CREATURE_GENERATOR1 || ID == Obj::CREATURE_GENERATOR4)
+diff --git a/lib/mapObjects/CGTownInstance.cpp b/lib/mapObjects/CGTownInstance.cpp
+--- a/lib/mapObjects/CGTownInstance.cpp
++++ b/lib/mapObjects/CGTownInstance.cpp
+@@ -10,6 +10,7 @@
+ 
+ #include "StdInc.h"
+ #include "CGTownInstance.h"
++#include "../entities/artifact/ArtifactUtils.h"
+ 
+ #include "TownBuildingInstance.h"
+ 
+@@ -1194,6 +1195,8 @@
+ 
+ bool CGTownInstance::isWarMachineAvailable(ArtifactID warMachine) const
+ {
++	if(!ArtifactUtils::isEquipmentAllowed(warMachine))
++		return false;
+ 	for (auto const & buildingID : builtBuildings)
+ 		if (getTown()->buildings.at(buildingID)->warMachine == warMachine)
+ 			return true;
+diff --git a/lib/mapObjects/MiscObjects.cpp b/lib/mapObjects/MiscObjects.cpp
+--- a/lib/mapObjects/MiscObjects.cpp
++++ b/lib/mapObjects/MiscObjects.cpp
+@@ -730,6 +730,15 @@
+ 
+ void CGArtifact::onHeroVisit(IGameEventCallback & gameEvents, const CGHeroInstance * h) const
+ {
++	if(!ArtifactUtils::isEquipmentAllowed(getArtifactType()))
++	{
++		InfoWindow info;
++		info.type = EInfoWindowMode::AUTO;
++		info.player = h->getOwner();
++		info.text.appendRawString("Artifacts are disabled by the current experiment equipment policy (no-artifacts-v1).");
++		gameEvents.showInfoDialog(&info);
++		return;
++	}
+ 	if(!stacksCount())
+ 	{
+ 		InfoWindow iw;
+diff --git a/lib/mapObjects/CGCreature.cpp b/lib/mapObjects/CGCreature.cpp
+--- a/lib/mapObjects/CGCreature.cpp
++++ b/lib/mapObjects/CGCreature.cpp
+@@ -26,6 +26,7 @@
+ #include "../networkPacks/StackLocation.h"
+ #include "../serializer/JsonSerializeFormat.h"
+ #include "../entities/faction/CTownHandler.h"
++#include "../entities/artifact/ArtifactUtils.h"
+ #include "../entities/ResourceTypeHandler.h"
+ 
+ #include <vstd/RNG.h>
+@@ -720,8 +721,19 @@
+ 
+ 	if(gainedArtifact != ArtifactID::NONE)
+ 	{
+-		gameEvents.giveHeroNewArtifact(h, gainedArtifact, ArtifactPosition::FIRST_AVAILABLE);
+-		iw.components.emplace_back(ComponentType::ARTIFACT, gainedArtifact);
++		if(ArtifactUtils::isEquipmentAllowed(gainedArtifact))
++		{
++			gameEvents.giveHeroNewArtifact(h, gainedArtifact, ArtifactPosition::FIRST_AVAILABLE);
++			iw.components.emplace_back(ComponentType::ARTIFACT, gainedArtifact);
++		}
++		else
++		{
++			InfoWindow info;
++			info.type = EInfoWindowMode::AUTO;
++			info.player = h->getOwner();
++			info.text.appendRawString("Artifacts are disabled by the current experiment equipment policy (no-artifacts-v1).");
++			gameEvents.showInfoDialog(&info);
++		}
+ 	}
+ 
+ 	if(!iw.components.empty())
+diff --git a/lib/rewardable/Interface.cpp b/lib/rewardable/Interface.cpp
+--- a/lib/rewardable/Interface.cpp
++++ b/lib/rewardable/Interface.cpp
+@@ -17,6 +17,7 @@
+ #include "../callback/IGameInfoCallback.h"
+ #include "../callback/IGameEventCallback.h"
+ #include "../entities/hero/CHeroHandler.h"
++#include "../entities/artifact/ArtifactUtils.h"
+ #include "../gameState/CGameState.h"
+ #include "../spells/CSpellHandler.h"
+ #include "../spells/ISpellMechanics.h"
+@@ -199,10 +200,12 @@
+ 	}
+ 
+ 	for(const ArtifactID & art : info.reward.grantedArtifacts)
+-		gameEvents.giveHeroNewArtifact(hero, art, ArtifactPosition::FIRST_AVAILABLE);
++		if(ArtifactUtils::isEquipmentAllowed(art))
++			gameEvents.giveHeroNewArtifact(hero, art, ArtifactPosition::FIRST_AVAILABLE);
+ 
+ 	for(const SpellID & spell : info.reward.grantedScrolls)
+-		gameEvents.giveHeroNewScroll(hero, spell, ArtifactPosition::FIRST_AVAILABLE);
++		if(ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELL_SCROLL))
++			gameEvents.giveHeroNewScroll(hero, spell, ArtifactPosition::FIRST_AVAILABLE);
+ 
+ 	if(!info.reward.spells.empty())
+ 	{
+@@ -272,9 +275,22 @@
+ void Rewardable::Interface::grantRewardWithMessage(IGameEventCallback & gameEvents, const CGHeroInstance * contextHero, int index, bool markAsVisit) const
+ {
+ 	auto vi = configuration.info.at(index);
++	const bool artifactSuppressed = !ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELLBOOK)
++		&& (!vi.reward.grantedArtifacts.empty() || !vi.reward.grantedScrolls.empty());
++	if(artifactSuppressed)
++	{
++		InfoWindow info;
++		info.type = EInfoWindowMode::AUTO;
++		info.player = contextHero->getOwner();
++		info.text.appendRawString("Artifacts are disabled by the current experiment equipment policy (no-artifacts-v1).");
++		gameEvents.showInfoDialog(&info);
++		// An authored sentence may claim that an artifact was awarded. Keep only
++		// the actual non-artifact reward components in the ordinary announcement.
++		vi.message = MetaString();
++	}
+ 	logGlobal->debug("Granting reward %d. Message says: %s", index, vi.message.toString());
+ 	// show message only if it is not empty or in infobox
+-	if (configuration.infoWindowType != EInfoWindowMode::MODAL || !vi.message.toString().empty())
++	if (configuration.infoWindowType != EInfoWindowMode::MODAL || !vi.message.toString().empty() || artifactSuppressed)
+ 	{
+ 		InfoWindow iw;
+ 		iw.player = contextHero->tempOwner;
+diff --git a/lib/rewardable/Reward.cpp b/lib/rewardable/Reward.cpp
+--- a/lib/rewardable/Reward.cpp
++++ b/lib/rewardable/Reward.cpp
+@@ -15,6 +15,7 @@
+ #include "../serializer/JsonSerializeFormat.h"
+ #include "../constants/StringConstants.h"
+ #include "../CSkillHandler.h"
++#include "../entities/artifact/ArtifactUtils.h"
+ 
+ VCMI_LIB_NAMESPACE_BEGIN
+ 
+@@ -95,7 +96,8 @@
+ void Rewardable::Reward::loadComponents(std::vector<Component> & comps, const CGHeroInstance * h) const
+ {
+ 	for (auto comp : extraComponents)
+-		comps.push_back(comp);
++		if(comp.type != ComponentType::ARTIFACT || ArtifactUtils::isEquipmentAllowed(comp.subType.as<ArtifactID>()))
++			comps.push_back(comp);
+ 	
+ 	for (auto & bonus : heroBonuses)
+ 	{
+@@ -133,7 +135,8 @@
+ 	}
+ 
+ 	for(const auto & entry : grantedArtifacts)
+-		comps.emplace_back(ComponentType::ARTIFACT, entry);
++		if(ArtifactUtils::isEquipmentAllowed(entry))
++			comps.emplace_back(ComponentType::ARTIFACT, entry);
+ 
+ 	for(const auto & entry : takenArtifacts)
+ 		comps.emplace_back(ComponentType::ARTIFACT, entry);
+@@ -149,7 +152,8 @@
+ 	}
+ 
+ 	for(const SpellID & spell : grantedScrolls)
+-		comps.emplace_back(ComponentType::SPELL, spell);
++		if(ArtifactUtils::isEquipmentAllowed(ArtifactID::SPELL_SCROLL))
++			comps.emplace_back(ComponentType::SPELL, spell);
+ 
+ 	for(const SpellID & spell : takenScrolls)
+ 		comps.emplace_back(ComponentType::SPELL, spell);

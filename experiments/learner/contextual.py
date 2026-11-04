@@ -1505,9 +1505,10 @@ DIALOG_NOTICE_TEXT_IDS = frozenset({
     *(f"core.genrltxt.{index}" for index in (29, 139, 140, 141, 142, 147, 148)),
     "heroes.notice.comma_space",
 })
-CAPABILITY_NOTICE_TEXT_IDS = frozenset({*(f"core.genrltxt.{index}" for index in (70, 123, 124, 125, 135, 221, 335, 336, 337, 580)), "heroes.notice.period"})
+CAPABILITY_NOTICE_TEXT_IDS = frozenset({*(f"core.genrltxt.{index}" for index in (70, 123, 124, 125, 135, 221, 335, 336, 337, 580)), "heroes.notice.period", "heroes.experiment.no_artifacts_v1"})
 NECROMANCY_NOTICE_TEXT_IDS = frozenset({"core.genrltxt.145", "core.genrltxt.146"})
 _REWARD_NOTICE_TEXT_ID = re.compile(r"(?:spell|skill|artifact)\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.name")
+_ARTIFACT_EVENT_TEXT_ID = re.compile(r"artifact\.core\.[A-Za-z][A-Za-z0-9_]{0,63}\.event")
 # VCMI CCreature::getName{Singular,Plural}TextID uses the plural "creatures"
 # namespace. The producer must still prove the delivered template/operation
 # sequence and that the referenced creature is legitimate player information.
@@ -1532,6 +1533,7 @@ class NoticeToken:
                 if (type(self.text_id) is not str or self.text_id not in NOTICE_TEXT_IDS | TOWN_NOTICE_TEXT_IDS | MANAGEMENT_NOTICE_TEXT_IDS | DIALOG_TEXT_IDS | DIALOG_NOTICE_TEXT_IDS | NECROMANCY_NOTICE_TEXT_IDS | CAPABILITY_NOTICE_TEXT_IDS
                         and _CREATURE_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
                         and _REWARD_NOTICE_TEXT_ID.fullmatch(self.text_id) is None
+                        and _ARTIFACT_EVENT_TEXT_ID.fullmatch(self.text_id) is None
                         and _HERO_NAME_TEXT_ID.fullmatch(self.text_id) is None):
                     raise ValueError("Unsupported notice text ID")
             elif self.owner not in ("self", "opponent"):
@@ -1841,8 +1843,14 @@ def _eagle_eye_notice(notice):
 def _capability_notice(notice):
     if _eagle_eye_notice(notice):
         return True
+    if (notice.display_mode == "auto" and len(notice.components) == 1
+            and notice.components[0].kind == "artifact"
+            and notice.text == (NoticeToken("append_text",
+                text_id=f"artifact.core.{notice.components[0].content_id[5:]}.event"),)):
+        return True
     if (notice.display_mode == "auto" and not notice.components
-            and notice.text == (NoticeToken("append_text", text_id="core.genrltxt.580"),)):
+            and notice.text in ((NoticeToken("append_text", text_id="core.genrltxt.580"),),
+                                (NoticeToken("append_text", text_id="heroes.experiment.no_artifacts_v1"),))):
         return True
     if notice.display_mode != "modal" or notice.components:
         return False
@@ -1855,7 +1863,8 @@ def _capability_notice(notice):
 
 
 def _validate_notice(notice, profile):
-    if any(token.text_id in CAPABILITY_NOTICE_TEXT_IDS for token in notice.text):
+    if any(token.text_id in CAPABILITY_NOTICE_TEXT_IDS or token.text_id is not None
+           and _ARTIFACT_EVENT_TEXT_ID.fullmatch(token.text_id) is not None for token in notice.text):
         if not profile.capabilities or not _capability_notice(notice):
             raise ValueError("Expanded notice requires its exact delivered v8 grammar")
         return

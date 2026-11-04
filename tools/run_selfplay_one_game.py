@@ -67,6 +67,17 @@ DAY_PROGRESS_SOURCES = {
     'experiments/learner/local_script_training.py': {'before': 'ea50cf114414f73f119494aaa06af19ba26f4bf8ff54613bc8b94924f4031acd',
         'after': 'e3f0da4db3583b1a80ea3a36c857ff5e1ab4a0066a9d37fa00905e8d58975c64'},
 }
+# This reviewed opt-in changes native artifact rules and their action offers.
+# It requires its own native acceptance; it is not a display-only delta.
+STARTING_EQUIPMENT_SOURCES = {
+    'engine/ExplorerRL/Capabilities.cpp': '7af2b13258455d60107c866a2d72c52d16fc80f2879616f57a3516e26c4ef342',
+    'engine/ExplorerRL/Notice.cpp': '1dea22d4c1c4bf667e90c6c5ead9d8c55a5969c7b06ff151b2c1f43f9d74fa95',
+    'engine/patches/0031-no-starting-equipment.patch': '9ecc48d8680d66388f0feea9e712dd6a679d56d0c0c5a7104454f3c0af101ba8',
+    'experiments/headless/env.py': '4b7e4086b8bc6fcb334d71c704867a58e4cc12d70b438076cf54dfc1a3dcf563',
+    'experiments/learner/contextual.py': 'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0',
+    'experiments/learner/local_script_training.py': '8d3855d879581f7aedb24ff5d0ddfc9be05e004cdfb0246d0e87ed7c87e86aad',
+}
+STARTING_EQUIPMENT_NEW = frozenset({'engine/patches/0031-no-starting-equipment.patch'})
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -81,6 +92,8 @@ def verify_runtime_sources(implementation):
             'Evaluation source identity omitted a reviewed storage/progress dependency')
     require(RECRUIT_ONLY_SOURCE_SHA256.keys() <= implementation.keys(),
             'Evaluation source identity omitted a reviewed recruit-only dependency')
+    require(STARTING_EQUIPMENT_SOURCES.keys() <= implementation.keys(),
+            'Evaluation source identity omitted a reviewed starting-equipment dependency')
     def committed(commit, names):
         archive = subprocess.check_output(['git', 'archive', commit, *sorted(names)], cwd=ROOT)
         with tarfile.open(fileobj=io.BytesIO(archive), mode='r:') as source:
@@ -88,10 +101,11 @@ def verify_runtime_sources(implementation):
                      for member in source.getmembers() if member.isfile()}
         require(files.keys() == names, 'Committed evaluation source inventory differs')
         return files
-    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW)
+    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW)
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
+    original.update(STARTING_EQUIPMENT_SOURCES)
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -127,6 +141,7 @@ def source_identity():
         storage_progress_base=STORAGE_PROGRESS_COMMIT,
         recruit_only_sources=RECRUIT_ONLY_SOURCE_SHA256,
         day_progress_sources=DAY_PROGRESS_SOURCES,
+        starting_equipment_sources=STARTING_EQUIPMENT_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
@@ -269,6 +284,9 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None):
     manifest = read(folder / 'manifest.json')
     require(declared_army_information(manifest, campaign.INTERFACE) == plan.get('army_information'),
             'Evaluation army information extension differs from its plan')
+    require(manifest.get('launch', {}).get('requested_settings', {}).get('server', {}).get(
+                'experimentEquipmentPolicy') == plan.get('equipment_policy'),
+            'Evaluation starting-equipment rule differs from its plan')
     require(json.loads(collected.manifest_json) == manifest,
             'Persisted paired evaluation capture changed')
     require(manifest['episode'] == '1' and manifest['seed'] == plan['schedule']['engine_seed']
@@ -317,7 +335,8 @@ def collect(plan, models):
     deadline = min(time.monotonic() + BUDGET['capture_seconds'], plan['hard_deadline_monotonic'] - 30)
     wall = min(time.time() + BUDGET['capture_seconds'], plan['hard_deadline_unix'] - 30)
     launcher = DeadlineVcmiLauncher(Path(plan['binary']), Path(plan['data']), Path(plan['game_map']),
-        deadline_monotonic=deadline, deadline_wall=wall, evidence_path=output / 'native-process-deadline.jsonl')
+        deadline_monotonic=deadline, deadline_wall=wall, evidence_path=output / 'native-process-deadline.jsonl',
+        **({'equipment_policy': plan['equipment_policy']} if 'equipment_policy' in plan else {}))
     class DayBoundedCollector(ContextualCollector):
         def act(self, request):
             require(request.record['day'] <= 365, 'A sampled evaluation action exceeds the preserved day365 bound')
@@ -367,6 +386,8 @@ def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=S
         budget=BUDGET, policy_support=policy_support(plan), owned_cleanup_verified=False)
     if 'army_information' in plan:
         report['army_information'] = plan['army_information']
+    if 'equipment_policy' in plan:
+        report['equipment_policy'] = plan['equipment_policy']
     write(output / 'report.json', report, new=True)
     try:
         with wall_limit(campaign.remaining(plan, 30)):
@@ -444,7 +465,8 @@ def supervise(plan, *, worker_script=None, result_schema=SCHEMA, checkpoint=1753
             and report.get('plan') == plan_binding and report.get('status') == 'passed'
             and report.get('schema') == result_schema + '-result' and report.get('checkpoint') == checkpoint
             and report.get('policy_support') == policy_support(plan)
-            and report.get('army_information') == plan.get('army_information'),
+            and report.get('army_information') == plan.get('army_information')
+            and report.get('equipment_policy') == plan.get('equipment_policy'),
             'Evaluation stopped; preserve this evidence and use fresh seeds for another manual attempt')
     return report
 

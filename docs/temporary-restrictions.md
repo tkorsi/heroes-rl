@@ -7,6 +7,7 @@ rules of Heroes III and must not be forgotten when interpreting results.
 | --- | --- | --- |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
 | No manual troop-slot management | The next trained-1753 one-game experiment uses `visible-interaction-budget-recruit-only-v1`. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
+| No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
 
 The second restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,
@@ -46,3 +47,14 @@ the next trained-1753 manual game. Historical captures retain their original
 support. The prior trained-1753 evaluation and completed training campaigns are
 not relabeled as restricted experiments.
 This change does not authorize launching a training campaign.
+
+On 31 October 2026 the user first chose to remove all opening equipment, then
+explicitly expanded the rule to every artifact for every hero throughout the
+game. This includes ordinary artifacts, spellbooks, war machines and all later
+acquisitions. Normal initialization and starting-bonus RNG draws still occur;
+gold/resource bonuses are retained. The map and army composition are unchanged.
+Native rules reject prohibited acquisitions, and the adapter reflects those
+rules. No policy dialog is silently closed. Empty artifact windows may still be
+opened; this rule is not a claim that repeated empty-window visits are useful.
+Review and remove the entire `no-artifacts-v1` restriction explicitly before
+restoring ordinary artifact behavior. Siege and spell access intentionally differ.
