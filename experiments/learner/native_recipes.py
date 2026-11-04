@@ -63,10 +63,9 @@ class _RecipeDistribution(ContextualDistribution):
                 "numeric": self.model._float((low / maximum, high / maximum, log1p(maximum), depth / 31)),
                 "offsets": self.model._float((log1p(middle - low), log1p(high - middle - 1)))}
 
-    def _coordinate_logits(self, semantic, width, height):
+    def _coordinate_logits(self, semantic, subject, width, height):
         return {"kind": "coordinate", "root": self._features(semantic),
-                "positions": self.model._float([(x / max(width - 1, 1), y / max(height - 1, 1))
-                                                for y in range(height) for x in range(width)]),
+                "positions": self._coordinate_positions(subject, width, height),
                 "indices": None}
 
     def _coordinate_subset(self, logits, coordinates):

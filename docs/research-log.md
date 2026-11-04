@@ -1452,3 +1452,31 @@ the new support blocked the submitted reopen before sampling, and independent
 history reconstruction produced the same support. The old support still allowed
 those choices. Synthetic controls verified that the cooldown covers multiple
 towns, survives a rejected action and clears after an accepted end turn.
+
+## 2026-11-04: hero-relative destinations and exact command cooldown
+
+The completed town-cooldown game reached the 365-day limit with neither town
+captured. It verified all 12,723 choices with zero updates. There were zero
+immediate reopens after 344 town closes. Opening and closing empty artifact
+windows accounted for 4,480 choices. Red still chose the leftmost column for
+1,452 of its 1,696 movement commands.
+
+The worker ran for 21 minutes 45 seconds. The manifest and rollout timestamps
+divide this into about 8 minutes 2 seconds through finalized gameplay, 3 minutes
+39 seconds to assemble and save the rollout, and 10 minutes 4 seconds to reload
+the evidence, reconstruct the frozen policies, run the native replay, and close
+out the report. These are phase estimates from file and process timestamps, not
+per-function profiling. The original player histories totaled 1.59 GB, and the
+independent replay wrote a 1.60 GB contextual tape. The 30 MB rollout is only the
+envelope that references those histories.
+
+The optional `--hero-relative` launcher mode keeps checkpoint 1753 and changes
+the destination scorer's two coordinate inputs to normalized offsets from the
+selected hero. Native map indices and candidate ordering remain intact. The
+mode also adds a cooldown for the same command from that player's last choice.
+A different hero, destination or quantity remains available. Required answers,
+window exits and a last-resort end turn preserve progress. Both changes are
+enabled in this game, so it cannot isolate their effects. The launcher without
+the flag retains the previous experiment. Offline controls checked both seats
+with checkpoint 1753, command filtering, quantity probabilities, and agreement
+with the native recipe. Gameplay remains a manual launch.

@@ -133,7 +133,7 @@ FAST_PATH_SOURCES = {
         'dec7fe26a31823c6cd3b9aab2629a26dec696a4fdd0579dc000427730a830bd0'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72', 'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a',),
-        'c7b4972f29aca29b5422b3027e5ef3fe68586e35f18365e6af540922541d097b'),
+        '12a3b8e9339a2b9fcf5809668a9f3dd3984a48337cb8db963e1c3da83d3816fe'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
         '66cb89c252208f8de6468fa82b6fdc38af1eb25415ab04da73dacdb8d8c426ab'),
@@ -154,7 +154,7 @@ FAST_PATH_SOURCES = {
         'ba95349f5265c6bd3aaff2caf607af86975f74f8addca1f2b4a2a4bf78a101e8'),
     'experiments/learner/interaction_guard.py': (
         ('0793539c2e93a75a92cc57445caef4f6906f377d5810605f894d6c0f3f9ccc4e', '4ae5603f79f61339ce2df5a9a3005b27ceeee1d95d9bc7821bd9abfc8ccd699f',),
-        '295accf489ed94e0a7e7e5d491706b1a7e9c8c09f1fd697cb0553ca7a944795f'),
+        'eeec528257a70169353d7c8c8e15b22874405a20589e8bcdf7d63a241aea6639'),
     'experiments/learner/native_execution.py': (
         ('5fea67e23ee5eb5e8b02a86c892a14515fe4c9fee622bcb1f12ab7391a718c56', 'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189',),
         'a0513493920cf2b18da2777387c03b089ab7cee4688390a03e5177f2de82a189'),
@@ -265,7 +265,7 @@ FAST_PATH_TREE = {
     'experiments/learner/native_backend.py': ('',
         'cc8649c548e22e50101fdfc38f9ee25318b09d5d789492e6117af2c5465ad864'),
     'experiments/learner/native_recipes.py': ('',
-        '6a35dc0694ef1b28e18855cf1476678d505ef7cb2af434a489bfee8250db5f26'),
+        '61c4fa7dd90b12fe3c22e9ad4f9bf8342f25f9ddba4fea781bfcbaab434d6d93'),
     'experiments/learner/prefix_pool.py': ('',
         '316e1fa5677563a640b34285e88d34b08a99f4c29d82b02dc1e5cb8b492b505a'),
     'experiments/learner/selfplay_behavior.py': ('',
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = 'bdb8f29744798b711c6be6867eee5df637c2e58dc4df97fbb5194268f82329f4'
+LOCAL_ADAPTER_TRANSITION_AST = '7c59c5b9738f1ea35d94425837036aee9e8bdca0c3fc989ff16171b6730acd8a'
 
 
 def write_new(path, value):

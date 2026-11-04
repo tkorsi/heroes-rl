@@ -87,6 +87,16 @@ TOWN_COOLDOWN_SOURCES = {
     'experiments/learner/local_script_training.py': {'before': STARTING_EQUIPMENT_SOURCES['experiments/learner/local_script_training.py'],
         'after': 'efa4822f4ae560fbc2f0a78f25640f29f268c79d9ade7c4f8b50f73e0e6f82b0'},
 }
+HERO_RELATIVE_SOURCES = {
+    'experiments/learner/contextual_model.py': {'before': TOWN_COOLDOWN_SOURCES['experiments/learner/contextual_model.py']['after'],
+        'after': '12a3b8e9339a2b9fcf5809668a9f3dd3984a48337cb8db963e1c3da83d3816fe'},
+    'experiments/learner/interaction_guard.py': {'before': TOWN_COOLDOWN_SOURCES['experiments/learner/interaction_guard.py']['after'],
+        'after': 'eeec528257a70169353d7c8c8e15b22874405a20589e8bcdf7d63a241aea6639'},
+    'experiments/learner/native_recipes.py': {'before': '6a35dc0694ef1b28e18855cf1476678d505ef7cb2af434a489bfee8250db5f26',
+        'after': '61c4fa7dd90b12fe3c22e9ad4f9bf8342f25f9ddba4fea781bfcbaab434d6d93'},
+    'experiments/learner/local_script_training.py': {'before': TOWN_COOLDOWN_SOURCES['experiments/learner/local_script_training.py']['after'],
+        'after': '17ac5d27f4c57b5fc28ce2b4e5533316c142d13efa96ee36c726f5db14511b7b'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -116,6 +126,7 @@ def verify_runtime_sources(implementation):
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
     original.update(STARTING_EQUIPMENT_SOURCES)
     original.update({name: pins['after'] for name, pins in TOWN_COOLDOWN_SOURCES.items()})
+    original.update({name: pins['after'] for name, pins in HERO_RELATIVE_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -126,18 +137,17 @@ def verify_native_validation_sources(accepted, current):
     if accepted == current:
         return dict(kind='exact_native_validation_sources', changed=[])
     expected = dict(accepted)
-    changed = {}
-    for transition in (DAY_PROGRESS_SOURCES, TOWN_COOLDOWN_SOURCES):
+    transitions = (('reviewed_display_only_day_progress', DAY_PROGRESS_SOURCES),
+                   ('reviewed_policy_support_town_cooldown', TOWN_COOLDOWN_SOURCES),
+                   ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES))
+    for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
-            changed.update(transition)
         if expected == current:
-            break
-    require(expected == current, 'Passive-army runtime lacks complete two-seat native validation source agreement')
-    kind = ('reviewed_policy_support_town_cooldown' if changed.keys() & TOWN_COOLDOWN_SOURCES.keys()
-            else 'reviewed_display_only_day_progress')
-    return dict(kind=kind, changed=changed,
-                native_capture_repeated=False)
+            changed = {name: {'before': accepted[name], 'after': digest} for name, digest in current.items()
+                       if accepted[name] != digest}
+            return dict(kind=kind, changed=changed, native_capture_repeated=False)
+    require(False, 'Passive-army runtime lacks complete two-seat native validation source agreement')
 
 
 def source_identity():
@@ -158,6 +168,7 @@ def source_identity():
         day_progress_sources=DAY_PROGRESS_SOURCES,
         starting_equipment_sources=STARTING_EQUIPMENT_SOURCES,
         town_cooldown_sources=TOWN_COOLDOWN_SOURCES,
+        hero_relative_sources=HERO_RELATIVE_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

@@ -1652,9 +1652,15 @@ class ContextualDistribution:
         middle = (low + high) // 2
         return logits + self.model._float((log1p(middle - low), log1p(high - middle - 1)))
 
-    def _coordinate_logits(self, semantic, width, height):
-        positions = self.model._float([(px / max(width - 1, 1), py / max(height - 1, 1))
-                                      for py in range(height) for px in range(width)])
+    def _coordinate_positions(self, subject, width, height):
+        hx = hy = 0
+        if self.guard is not None and self.guard.version == interaction_guard.HERO_RELATIVE_VERSION:
+            hx, hy, _ = next(hero.position for hero in self.observation.heroes if hero.handle == subject)
+        return self.model._float([((x - hx) / max(width - 1, 1), (y - hy) / max(height - 1, 1))
+                                  for y in range(height) for x in range(width)])
+
+    def _coordinate_logits(self, semantic, subject, width, height):
+        positions = self._coordinate_positions(subject, width, height)
         target = self._features(semantic).expand(width * height, -1)
         state = self.state.expand(width * height, -1)
         return self.model.coordinate(torch.cat((state, target, self.cells, positions), -1)).squeeze(-1)
@@ -1759,12 +1765,39 @@ class ContextualDistribution:
         return self._action(kind, selection=source, destination=destination,
                             count=1 if kind in ("transfer_stack", "split_stack") else None)
 
+    def _repeated_quantity(self, action):
+        return self.guard.repeated_quantity(action, self.observation, self.offers) if self.guard else None
+
+    def _quantity_representative(self, kind, maximum, **values):
+        action = self._action(kind, count=1, **values)
+        if maximum > 1 and self._repeated_quantity(action) == 1:
+            return self._action(kind, count=2, **values)
+        return action
+
+    def _choose_count(self, choose, features, maximum, selected, excluded):
+        low, high, depth = 1, maximum, 0
+        while low < high:
+            middle = (low + high) // 2
+            # If a branch contains only the excluded quantity, take its sibling.
+            if excluded == low == middle:
+                branch = 1
+            elif excluded == high == middle + 1:
+                branch = 0
+            else:
+                logits = self._quantity_logits(features, low, high, maximum, depth)
+                branch = choose(f"count:{low}:{high}", logits, int(selected > middle) if selected else None)
+            if branch:
+                low = middle + 1
+            else:
+                high = middle
+            depth += 1
+        return low
+
     def _representatives(self, kind):
         """One completion per non-quantity leaf, used before choosing a kind.
 
-        The visible interaction budget is quantity independent. Movement stays
-        lazy here, so testing whether a hero has a destination never materializes
-        the rectangle or scores a second policy distribution.
+        Movement stays lazy here, so testing whether a hero has a destination
+        never materializes the rectangle or scores a second policy distribution.
         """
         offers = self.offers
         if kind in ("move_to", "open_hero", "open_town"):
@@ -1781,7 +1814,8 @@ class ContextualDistribution:
         elif kind in c.CAPABILITY_ACTIONS:
             for choice in offers.capability_panel.choices:
                 if choice.kind == kind:
-                    yield self._action(kind, selection=choice.ref, count=1 if kind == "trade_resource" else None)
+                    yield (self._quantity_representative(kind, choice.max_count, selection=choice.ref)
+                           if kind == "trade_resource" else self._action(kind, selection=choice.ref))
         elif kind == "choose_dialog":
             for choice in offers.dialog_panel.choices:
                 yield self._action(kind, selection=choice.ref)
@@ -1806,7 +1840,8 @@ class ContextualDistribution:
                 yield self._pair_action(kind, pair)
         elif kind == "recruit":
             recruit = offers.panel.recruitment
-            yield self._action(kind, selection=recruit.selected_offer_ref, destination=recruit.destination.ref, count=1)
+            yield self._quantity_representative(kind, recruit.slider_max, selection=recruit.selected_offer_ref,
+                                                destination=recruit.destination.ref)
         elif kind == "construct":
             yield self._action(kind, selection=offers.panel.building.ref)
         elif kind == "hire_hero":
@@ -1845,22 +1880,16 @@ class ContextualDistribution:
             subject = self.offers.context.subject
         elif kind in c.CAPABILITY_ACTIONS:
             choices = self._filtered(tuple(item for item in self.offers.capability_panel.choices if item.kind == kind),
-                                     lambda item: self._action(kind, selection=item.ref, count=1 if kind == "trade_resource" else None))
+                                     lambda item: self._quantity_representative(kind, item.max_count, selection=item.ref)
+                                     if kind == "trade_resource" else self._action(kind, selection=item.ref))
             index = choose("capability_choice", self._logits([_capability_choice(item, self.observation) for item in choices]),
                            next(i for i, item in enumerate(choices) if item.ref == action.selection) if action else None)
             choice = choices[index]
             subject, selection = self.offers.context.subject, choice.ref
             if kind == "trade_resource":
-                low, high, maximum, depth = 1, choice.max_count, choice.max_count, 0
                 features = self._features(_capability_choice(choice, self.observation))
-                while low < high:
-                    middle = (low + high) // 2
-                    logits = self._quantity_logits(features, low, high, maximum, depth)
-                    branch = choose(f"count:{low}:{high}", logits, int(action.count > middle) if action else None)
-                    if branch: low = middle + 1
-                    else: high = middle
-                    depth += 1
-                count = low
+                excluded = self._repeated_quantity(self._action(kind, selection=selection, count=1))
+                count = self._choose_count(choose, features, choice.max_count, action.count if action else None, excluded)
         elif kind == "choose_dialog":
             delivered = self.offers.dialog_panel
             choices = delivered.choices
@@ -1874,7 +1903,7 @@ class ContextualDistribution:
             subject = refs[index]
             if kind == "move_to":
                 width, height, _ = self.offers.size
-                logits = self._coordinate_logits(semantics[index], width, height)
+                logits = self._coordinate_logits(semantics[index], subject, width, height)
                 if self.guard is None:
                     index = choose("coordinate", logits, action.y * width + action.x if action else None)
                 else:
@@ -1957,21 +1986,10 @@ class ContextualDistribution:
             elif kind == "recruit":
                 recruit = self.offers.panel.recruitment
                 selection, destination = recruit.selected_offer_ref, recruit.destination.ref
-                low, high, maximum = 1, recruit.slider_max, recruit.slider_max
                 chosen = next(card for card in recruit.offers if card.ref == selection)
                 features = self._features(_node("quantity", _semantic(chosen), _semantic(recruit.destination)))
-                depth = 0
-                while low < high:
-                    middle = (low + high) // 2
-                    # A zero learned logit yields uniform integer mass even when
-                    # the two subtree sizes differ. This is support geometry.
-                    logits = self._quantity_logits(features, low, high, maximum, depth)
-                    selected = int(action.count > middle) if action else None
-                    branch = choose(f"count:{low}:{high}", logits, selected)
-                    if branch: low = middle + 1
-                    else: high = middle
-                    depth += 1
-                count = low
+                excluded = self._repeated_quantity(self._action(kind, selection=selection, destination=destination, count=1))
+                count = self._choose_count(choose, features, recruit.slider_max, action.count if action else None, excluded)
         selected_action = c.Action(kind, subject, x, y, schema=self.offers.schema,
                                    panel=panel, selection=selection, count=count, destination=destination)
         if not self.offers.permits(selected_action) or not self._permitted(selected_action) or action is not None and selected_action != action:

@@ -16,7 +16,8 @@ VERSION = "visible-interaction-budget-v1"
 REVEALED_VERSION = "visible-interaction-budget-revealed-v1"
 RECRUIT_ONLY_VERSION = "visible-interaction-budget-recruit-only-v1"
 TOWN_COOLDOWN_VERSION = "visible-interaction-budget-recruit-only-town-cooldown-v1"
-RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION)
+HERO_RELATIVE_VERSION = "visible-interaction-budget-hero-relative-cooldown-v1"
+RECRUIT_ONLY_VERSIONS = (RECRUIT_ONLY_VERSION, TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION)
 SUPPORTED_VERSIONS = (VERSION, REVEALED_VERSION, *RECRUIT_ONLY_VERSIONS)
 # Temporary experiment restriction. Removing it requires a new explicit support
 # selection; historical captures must continue to reconstruct this exact set.
@@ -85,6 +86,34 @@ def nav_key(action, observation, offers):
     return (*prefix, item.destination)
 
 
+def _command_key(action, observation, offers):
+    """Identify a command by visible targets, without revision-scoped refs."""
+    kind, context = action.kind, offers.context
+    navigation = nav_key(action, observation, offers)
+    if navigation is not None:
+        target = navigation[2:]
+    elif kind == "move_to":
+        target = (action.x, action.y)
+    elif kind == "recruit":
+        panel = offers.panel.recruitment
+        card = next(card for card in panel.offers if card.ref == action.selection)
+        target = (card.creature, panel.destination.role)
+    elif kind == "construct":
+        target = (offers.panel.building.name_text_id,)
+    elif kind == "hire_hero":
+        card = next(card for card in offers.panel.tavern.offers if card.ref == action.selection)
+        target = (card.name_text_id, card.portrait)
+    elif kind in c.CAPABILITY_ACTIONS:
+        choice = next(choice for choice in offers.capability_panel.choices if choice.ref == action.selection)
+        target = (choice.artifact, choice.slot, choice.destination, choice.destination_slot,
+                  choice.spell, choice.skill, choice.skill_level, choice.resource_from,
+                  choice.resource_to, choice.x, choice.y)
+    else:
+        target = (action.selection, action.destination)
+    return tuple("" if item is None else str(item) for item in (
+        kind, context.kind, context.panel, context.subject, action.subject, *target, action.count))
+
+
 def management_subjects(action, observation, offers):
     """Charge both actors, preventing budget renewal by reversing a transfer."""
     if action.kind not in MANAGEMENT_KINDS:
@@ -124,10 +153,16 @@ class GuardSupport:
     blocked_management_subjects: tuple[str, ...] = ()
     movable_heroes: tuple[str, ...] = ()
     blocked_coordinates: tuple[tuple[str, int, int], ...] = ()
+    previous_command: tuple[str, ...] | None = None
 
     def __post_init__(self):
         if self.version not in SUPPORTED_VERSIONS:
             raise ValueError("Unsupported interaction guard version")
+        if self.previous_command is not None and (self.version != HERO_RELATIVE_VERSION
+                or type(self.previous_command) is not tuple or len(self.previous_command) < 6
+                or any(type(item) is not str for item in self.previous_command)
+                or not self.previous_command[0] or not self.previous_command[1]):
+            raise ValueError("Malformed previous command in interaction guard")
         _strings(self.blocked_management_subjects, "management subjects")
         _strings(self.movable_heroes, "movable heroes")
         if type(self.blocked_navigation) is not tuple:
@@ -152,7 +187,11 @@ class GuardSupport:
             return False
         if self.version in RECRUIT_ONLY_VERSIONS and action.kind in RECRUIT_ONLY_BLOCKED_KINDS:
             return False
-        if _mandatory(offers) or action.kind in ("close", "back", "close_capability", "end_turn"):
+        if _mandatory(offers) or action.kind in ("close", "back", "close_capability"):
+            return True
+        if self._repeats_command(action, observation, offers):
+            return action.kind == "end_turn" and not self._map_has_alternative(observation, offers)
+        if action.kind == "end_turn":
             return True
         if action.kind == "move_to":
             return self._permits_movement(action.subject, action.x, action.y,
@@ -160,6 +199,24 @@ class GuardSupport:
         if action.kind in MANAGEMENT_KINDS:
             return not set(management_subjects(action, observation, offers)).intersection(self.blocked_management_subjects)
         return nav_key(action, observation, offers) not in self.blocked_navigation
+
+    def _repeats_command(self, action, observation, offers):
+        return (self.previous_command is not None and self.previous_command[0] == action.kind
+                and self.previous_command == _command_key(action, observation, offers))
+
+    def _map_has_alternative(self, observation, offers):
+        return (any(self.permits(c.Action(kind, subject, schema=offers.schema), observation, offers)
+                    for kind, refs in (("open_hero", offers.hero_refs), ("open_town", offers.town_refs))
+                    for subject in refs)
+                or any(next(self.movement_coordinates(subject, observation, offers), None) is not None
+                       for subject in self.movable_heroes))
+
+    def repeated_quantity(self, action, observation, offers):
+        previous = self.previous_command
+        if (previous is not None and previous[0] == action.kind and not _mandatory(offers)
+                and previous[:-1] == _command_key(action, observation, offers)[:-1]):
+            return int(previous[-1])
+        return None
 
     def _revealed_coordinates(self, subject, observation):
         if self.version == VERSION:
@@ -187,26 +244,36 @@ class GuardSupport:
                 and self._permits_movement(subject, index % width, index // width, revealed))
 
     def to_dict(self):
-        return {
+        value = {
             "version": self.version,
             "blocked_navigation": [list(key) for key in self.blocked_navigation],
             "blocked_management_subjects": list(self.blocked_management_subjects),
             "movable_heroes": list(self.movable_heroes),
             "blocked_coordinates": [list(item) for item in self.blocked_coordinates],
         }
+        if self.version == HERO_RELATIVE_VERSION:
+            value["previous_command"] = (list(self.previous_command) if self.previous_command is not None else None)
+        return value
 
     @classmethod
     def from_dict(cls, value):
         names = {"version", "blocked_navigation", "blocked_management_subjects", "movable_heroes", "blocked_coordinates"}
-        if type(value) is not dict or set(value) != names:
+        if type(value) is not dict:
+            raise ValueError("Malformed interaction guard support")
+        relative = value.get("version") == HERO_RELATIVE_VERSION
+        if set(value) != (names | {"previous_command"} if relative else names):
             raise ValueError("Malformed interaction guard support")
         if any(type(value[name]) is not list for name in names - {"version"}):
             raise ValueError("Guard support collections must be JSON arrays")
         if any(type(item) is not list for name in ("blocked_navigation", "blocked_coordinates") for item in value[name]):
             raise ValueError("Guard support rows must be JSON arrays")
+        previous = value.get("previous_command")
+        if previous is not None and type(previous) is not list:
+            raise ValueError("Previous command must be a JSON array or null")
         return cls(value["version"], tuple(tuple(key) for key in value["blocked_navigation"]),
                    tuple(value["blocked_management_subjects"]), tuple(value["movable_heroes"]),
-                   tuple(tuple(item) for item in value["blocked_coordinates"]))
+                   tuple(tuple(item) for item in value["blocked_coordinates"]),
+                   tuple(previous) if previous is not None else None)
 
 
 def _world(observation):
@@ -233,6 +300,8 @@ class Tracker:
         self.management = Counter()
         self.failed_coordinates = set()
         self.town_reopen_blocked = False
+        self.previous_command = None
+        self.previous_move = None
         self.decision = None
         self.action = None
         self.consumed = False
@@ -280,13 +349,15 @@ class Tracker:
             self.decision, self.action, self.consumed = frame, None, False
             movable = tuple(sorted(h.handle for h in frame.observation.heroes if h.movement > 0 and not h.in_garrison))
             blocked = self.failed_coordinates | {(h.handle, h.position[0], h.position[1]) for h in frame.observation.heroes}
+            if self.previous_move is not None:
+                blocked.add(self.previous_move)
             navigation = {key for key, count in self.navigation.items() if count >= NAVIGATION_LIMIT}
             if self.town_reopen_blocked:
                 navigation.update(("open_town", subject) for subject in frame.offers.town_refs)
             return GuardSupport(self.version,
                 tuple(sorted(navigation)),
                 tuple(sorted(subject for subject, count in self.management.items() if count >= MANAGEMENT_LIMIT)),
-                movable, tuple(sorted(blocked)))
+                movable, tuple(sorted(blocked)), self.previous_command)
         if frame.kind == "submitted":
             self.action = frame.action
         elif frame.kind == "consumed":
@@ -295,6 +366,10 @@ class Tracker:
             self.consumed = True
             self.action_epoch = self.epoch
             obs, offers = self.decision.observation, self.decision.offers
+            if self.version == HERO_RELATIVE_VERSION:
+                self.previous_command = _command_key(self.action, obs, offers)
+                self.previous_move = ((self.action.subject, self.action.x, self.action.y)
+                                      if self.action.kind == "move_to" else None)
             key = nav_key(self.action, obs, offers)
             if key is not None:
                 self.navigation[key] += 1
@@ -305,7 +380,7 @@ class Tracker:
             self._progress()
         elif frame.kind == "result" and self.action is not None and self.consumed:
             result = frame.result
-            if self.version == TOWN_COOLDOWN_VERSION and result.accepted:
+            if self.version in (TOWN_COOLDOWN_VERSION, HERO_RELATIVE_VERSION) and result.accepted:
                 # Only a resolved player choice advances this cooldown. Changes
                 # in the visible world may reset the separate navigation budget.
                 self.town_reopen_blocked = (self.action.kind == "close" and result.status == "closed"

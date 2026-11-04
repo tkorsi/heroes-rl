@@ -19,7 +19,12 @@ The user stopped the small-network experiment. Its initialization, completed
 capture and seed history remain preserved for reproducibility; it is no longer
 the selected next experiment. Use the trained **checkpoint 1,753** model
 (64 hidden / 32 features, 74,344 parameters) for the next manual one-game test:
-`./play-one-selfplay.sh --check`, then explicit `./play-one-selfplay.sh --run`.
+`./play-one-selfplay.sh --check --hero-relative`, then explicit
+`./play-one-selfplay.sh --run --hero-relative`. This experiment scores destinations
+as offsets from the selected hero and blocks consecutive identical commands.
+Different movement targets remain available. The engine and replay retain map
+coordinates. Without `--hero-relative`, the launcher selects the previous
+town-cooldown experiment with absolute coordinate features.
 This retains the temporary troop-slot restriction and passive own-army information,
 with one frozen self-play game and zero PPO updates. The next experiment also
 uses `no-artifacts-v1`: every hero has an empty inventory throughout the game.
@@ -28,8 +33,7 @@ starting heroes, later hires, purchases, loot and rewards. This is an explicitly
 requested temporary game-rule change.
 The manual game also uses a temporary town cooldown. After closing a town, a
 player must complete another action before opening any town. The policy derives
-this restriction from its own history. The coordinate encoding stays unchanged
-for this experiment.
+this restriction from its own history. Both variants retain this town rule.
 The map, starting armies, random gold/resource bonuses, model and limits stay fixed.
 The selected rebuilt runtime passed 220 native controls, nine paired comparisons,
 438 native notice checks and exact reconstruction of 97 frozen-policy choices.
@@ -39,7 +43,7 @@ Progress includes the observed
 in-game day beside both action counters. The terminal groups model/settings,
 allowed actions and temporary restrictions, with Red/Blue progress colors and
 separate saving/verification states. Colors respect `NO_COLOR` and `TERM=dumb`;
-redirected output remains plain. Use `./play-one-selfplay.sh --check --json` for
+redirected output remains plain. Use `./play-one-selfplay.sh --check --hero-relative --json` for
 machine-readable checks. See the
 [manual preparation report](docs/research/large-one-game-day-progress-2026-10-30.md).
 
