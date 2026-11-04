@@ -8,7 +8,7 @@ directories, fresh reservations and the latest published lineage checkpoint.
 from __future__ import annotations
 
 import argparse
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, nullcontext
 from copy import deepcopy
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
@@ -20,6 +20,7 @@ import os
 from pathlib import Path
 import secrets
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -48,6 +49,10 @@ PPO = dict(gamma=1.0, gae_lambda=1.0, clip_ratio=0.2, value_clip=0.2,
 # Separate from original 40M/50M, easier-map 20M/30M and native diagnostic seeds.
 NAMESPACES = {'training': (1_950_000_000, 1_952_000_000),
               'diagnostic': (1_940_000_000, 1_942_000_000)}
+TEN_BASE = ARTIFACTS / 'selfplay-batch10-training'
+TEN_LAUNCH = 'heroes-selfplay-batch-ten-campaign-v1'
+TEN_DISK_RESERVE_GIB = 30
+TEN_NAMESPACES = {'training': (1_970_000_000, 1_972_000_000)}
 
 
 def require(value, message):
@@ -686,6 +691,8 @@ def prepare(args, mode):
 def load_launch(path, sha):
     require(binding(path)['sha256'] == sha, 'Launch plan hash changed')
     launch = read(path)
+    if launch.get('schema') == TEN_LAUNCH:
+        return load_ten_launch(path, sha)
     require(launch['schema'] == SCHEMA and source_identity() == launch['source'], 'Frozen experiment source changed')
     require(launch['native_manifest'] == binding(NATIVE), 'Native learner changed')
     from experiments.headless.contextual_evidence import runtime_identity
@@ -784,8 +791,14 @@ def capture_worker(args):
             'Worker cannot extend the campaign deadline')
     configure_native(plan['execution'])
     row = plan['schedule'][args.index]
+    ten = plan.get('schema') == training.TEN_SCHEMA
+    cfg = plan['configuration']
+    ordinary = cfg['ordinary_choice_limit'] if ten else 4960
+    reserved = cfg['reserved_dialog_choices'] if ten else 160
+    days = cfg['max_days'] if ten else 365
+    hard_choices = cfg['max_total_choices'] if ten else 5120
     progress = GameProgress(progress_path(launch['output'], row['episode']), episode=row['episode'],
-                            ordinary=4960, reserved=160)
+                            ordinary=ordinary, reserved=reserved)
     learner = training.load_policy(bound(plan['checkpoint']), plan['checkpoint_source'])
     opponent = training.load_policy(bound(plan['opponent_checkpoint']), plan['opponent_checkpoint_source'])
     seat = row['learner_player']
@@ -794,23 +807,26 @@ def capture_worker(args):
     output = Path(plan['execution_output']); output.mkdir(exist_ok=True)
     launcher = DeadlineVcmiLauncher(Path(plan['binary']), Path(plan['data']), Path(plan['game_map']),
         deadline_monotonic=args.deadline, deadline_wall=args.wall_deadline,
-        evidence_path=output / f"native-{row['episode']:06d}-deadline.jsonl")
+        evidence_path=output / f"native-{row['episode']:06d}-deadline.jsonl",
+        **({'equipment_policy': plan['equipment_policy']} if ten else {}))
     class DayBoundedCollector(ContextualCollector):
         def act(self, request):
-            require(request.record['day'] <= 365, 'A sampled policy action exceeds the preserved day365 bound')
+            require(request.record['day'] <= days, 'A sampled policy action exceeds its declared day bound')
             return super().act(request)
 
     collector = DayBoundedCollector(models, checkpoints, learner_player=seat, opponent_pool=POOL,
-        interface=INTERFACE, purpose=plan['mode'], origin='native', policy_seeds=tuple(row['policy_seeds']), guard_version=GUARD)
-    env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=365, max_actions=5120,
+        interface=INTERFACE, purpose=plan['mode'], origin='native', policy_seeds=tuple(row['policy_seeds']),
+        guard_version=plan['policy_support'] if ten else GUARD)
+    env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=days, max_actions=hard_choices,
         watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30),
         ledger=True, replay=True, interface=INTERFACE,
         agents={color: {'checkpoint': checkpoint, 'kind': 'frozen-neural', 'purpose': plan['mode']}
-                for color, checkpoint in zip(('red', 'blue'), checkpoints)})
+                for color, checkpoint in zip(('red', 'blue'), checkpoints)},
+        **({'army_information': plan['army_information']} if ten else {}))
     cleanup = False
     try:
         collected = collector.run_episode(env, episode=row['episode'], seed=row['engine_seed'],
-                                         max_requests_per_player=4960, max_dialog_requests_per_player=160,
+                                         max_requests_per_player=ordinary, max_dialog_requests_per_player=reserved,
                                          progress=progress)
         folder = env.episode_dir
         progress.phase('storing')
@@ -849,10 +865,12 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
     output = Path(plan['execution_output']); output.mkdir()
     jobs, receipts, attempts = [], [], []
     current_index = None
+    current_stage = 'capture'
     try:
-        for first in range(0, len(plan['schedule']), 4):
+        width = 10 if plan.get('schema') == training.TEN_SCHEMA else 4
+        for first in range(0, len(plan['schedule']), width):
             wave = []
-            for index in range(first, min(first + 4, len(plan['schedule']))):
+            for index in range(first, min(first + width, len(plan['schedule']))):
                 current_index = index
                 phase_remaining(phase_deadline)
                 row = plan['schedule'][index]
@@ -879,8 +897,12 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                                         rewards={'red': None, 'blue': None}, deadlines=job['deadlines']))
             for job in wave:
                 current_index = job['index']
+                current_stage = 'capture'
                 process = job['process']
-                stdout, _ = process.communicate(timeout=min(605, phase_remaining(phase_deadline)))
+                wait_seconds = phase_remaining(phase_deadline)
+                if plan.get('schema') != training.TEN_SCHEMA:
+                    wait_seconds = min(605, wait_seconds)
+                stdout, _ = process.communicate(timeout=wait_seconds)
                 require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
                 close_owned_process(process, timeout=min(5, phase_remaining(phase_deadline)))
                 cleanup_from_evidence(output / f"native-{plan['schedule'][job['index']]['episode']:06d}-deadline.jsonl",
@@ -890,6 +912,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                 def verification_remaining():
                     return phase_remaining(phase_deadline)
                 set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
+                current_stage = 'verification'
                 with wall_limit(verification_remaining()):
                     receipt = training.verify_training_capture(job['binding'], learner, opponent,
                         replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
@@ -906,6 +929,8 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                         'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
                         'training-verification/native-report.json', 'training-receipt.json')},
                     verification=receipt.to_dict(), deadlines=job['deadlines'])
+                if plan.get('schema') == training.TEN_SCHEMA:
+                    attempt['natural_terminal_after_horizon'] = manifest.get('natural_terminal_after_horizon')
                 attempts.append(attempt); receipts.append(receipt)
                 save_attempt(job['index'], attempt)
         require(len(receipts) == len(plan['schedule']), 'Incomplete self-play batch')
@@ -913,11 +938,18 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
     except Exception as error:
         if current_index is not None:
             set_phase(progress_path(launch['output'], plan['schedule'][current_index]['episode']), 'failed')
-            save_attempt(current_index, dict(**plan['schedule'][current_index], status='failed',
+            details = {}
+            if plan.get('schema') == training.TEN_SCHEMA:
+                details = ten_capture_fields(output / f"episode-{plan['schedule'][current_index]['episode']:06d}")
+                details.update(failure_stage=current_stage,
+                               verification_status='failed' if current_stage == 'verification' else 'not_started')
+            failure = dict(**plan['schedule'][current_index], status='failed',
                 error=f'{type(error).__name__}: {error}', outcomes={'red': None, 'blue': None},
                 rewards={'red': None, 'blue': None}, training_samples_admitted=0,
                 deadlines=next((job['deadlines'] for job in jobs if job['index'] == current_index),
-                               {'collection_and_verification': phase_deadline})))
+                               {'collection_and_verification': phase_deadline}))
+            failure.update(details)
+            save_attempt(current_index, failure)
         raise
     finally:
         errors = close_collection_jobs(jobs, output, launch)
@@ -952,6 +984,8 @@ def coordinator(args):
     from experiments.learner.ppo import PPOConfig
     from validation.probes.validate_hero_policy import wall_limit
     launch = load_launch(args.plan, args.sha256)
+    if launch.get('schema') == TEN_LAUNCH:
+        return ten_coordinator(args)
     require(os.getppid() == launch['supervisor_pid'], 'Only the lease-owning supervisor may launch this campaign')
     configure_native(launch['execution'])
     output = Path(launch['output']); started = time.monotonic()
@@ -1179,6 +1213,7 @@ def supervise(launch):
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
     from experiments.learner.game_progress import ProgressDisplay
     output = Path(launch['output']); path = output / 'launch.json'; process = None; errors = []
+    cleanup_errors = []
     display = ProgressDisplay(output / 'progress')
     try:
         with (output / 'coordinator.log').open('xb') as log:
@@ -1187,7 +1222,34 @@ def supervise(launch):
                 deadline_monotonic=launch['hard_deadline_monotonic'], deadline_wall=launch['hard_deadline_unix'],
                 evidence_path=output / 'coordinator-deadline.jsonl', cwd=ROOT,
                 stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
-            display.wait(process, timeout=remaining(launch) + 1)
+            if launch.get('schema') == TEN_LAUNCH:
+                emitted, last_report = set(), 0.0
+                while process.poll() is None:
+                    display.poll()
+                    if time.monotonic() - last_report >= 2:
+                        require(shutil.disk_usage(output).free >=
+                                launch['configuration']['disk_reserve_gib'] * 1024**3,
+                                'Ten-game disk reserve reached; stopping owned workers')
+                        try:
+                            current = read(output / 'report.json')
+                            for phase in current.get('batches', []):
+                                if phase.get('status') == 'checkpoint_verified' and phase['name'] not in emitted:
+                                    display.lines = 0
+                                    ten_print_phase(phase)
+                                    emitted.add(phase['name'])
+                        except (OSError, ValueError):
+                            pass
+                        last_report = time.monotonic()
+                    try:
+                        process.wait(timeout=min(0.5, remaining(launch)))
+                    except subprocess.TimeoutExpired:
+                        pass
+            else:
+                display.wait(process, timeout=remaining(launch) + 1)
+    except BaseException as error:
+        if launch.get('schema') != TEN_LAUNCH:
+            raise
+        errors.append(f'{type(error).__name__}: {error}')
     finally:
         try:
             if process is not None:
@@ -1196,13 +1258,30 @@ def supervise(launch):
                 cleanup_from_evidence(evidence, timeout=5)
         except Exception as error:
             errors.append(str(error))
+            cleanup_errors.append(str(error))
         display.finish(failed=bool(errors) or process is None or process.returncode != 0)
-        protected = verify_protected(launch['protected'])
-        write(output / 'shutdown.json', dict(owned_cleanup_verified=not errors, errors=errors,
+        if launch.get('schema') == TEN_LAUNCH:
+            try:
+                protected = verify_protected(launch['protected'])
+            except Exception as error:
+                protected = False; errors.append(str(error))
+        else:
+            protected = verify_protected(launch['protected'])
+        write(output / 'shutdown.json', dict(
+              owned_cleanup_verified=not cleanup_errors if launch.get('schema') == TEN_LAUNCH else not errors,
+              errors=errors,
               returncode=process.returncode if process else None, protected_inputs_unchanged=protected), new=True)
-        if launch['mode'] == 'training' and not errors and protected:
+        if launch['mode'] == 'training' and launch.get('schema') != TEN_LAUNCH and not errors and protected:
             finalize_stopped_run(output, launch)
     report = read(output / 'report.json') if (output / 'report.json').exists() else {'status': 'stopped'}
+    if launch.get('schema') == TEN_LAUNCH:
+        shutdown = read(output / 'shutdown.json')
+        report.update(owned_cleanup_verified=shutdown['owned_cleanup_verified'],
+                      protected_inputs_unchanged=shutdown['protected_inputs_unchanged'])
+        if process is None or process.returncode != 0 or errors or report['status'] != 'completed':
+            report.update(status='stopped', supervisor_errors=errors)
+        ten_finalize_report(output, report)
+        return report
     require(process is not None and process.returncode == 0 and not errors and report['status'] == 'completed',
             'Self-play stopped; preserve this run and do not replay its reservation')
     return report
@@ -1228,6 +1307,442 @@ def finalize_stopped_run(output, launch):
         no_unpublished_experience_admitted=True), new=True)
 
 
+def ten_configuration(checked, seconds):
+    from experiments.learner import selfplay_training as training
+    from experiments.learner.ppo import PPOConfig
+    parent = read(bound(checked['parent']['launch']))
+    cfg = validate_configuration(parent['configuration'])
+    cfg.update(training.TEN_GAMEPLAY)
+    cfg.update(max_optimizer_steps=training.optimizer_step_cap(PPOConfig(**PPO), 10, cfg['max_total_choices']),
+               attempt_wall_seconds=seconds, cleanup_reserve_seconds=30,
+               disk_reserve_gib=TEN_DISK_RESERVE_GIB,
+               phase_deadlines_seconds={'training': seconds, 'update': seconds})
+    return cfg
+
+
+def ten_reservations(requests=None):
+    """Use separate durable namespaces; every reserved attempt stays consumed."""
+    path = TEN_BASE / 'seed-reservations.json'
+    require(path.exists() or not TEN_BASE.exists()
+            or all(item.name == 'namespace.lock' for item in TEN_BASE.iterdir()),
+            'Ten-game seed ledger is missing while prior artifacts remain; refusing seed reuse')
+    value = read(path) if path.exists() else dict(schema=TEN_LAUNCH + '-seeds', reservations=[])
+    require(value.get('schema') == TEN_LAUNCH + '-seeds' and type(value.get('reservations')) is list,
+            'Unknown ten-game seed ledger')
+    offsets, outputs = dict.fromkeys(TEN_NAMESPACES, 0), set()
+    for row in value['reservations']:
+        mode = row['mode']
+        require(mode in offsets and type(row['count']) is int and row['count'] > 0
+                and row['count'] % 10 == 0 and row['offset'] == offsets[mode]
+                and row['consumed_including_unstarted'] is True
+                and (row['output'], mode) not in outputs, 'Invalid ten-game seed reservation')
+        engine, policy = TEN_NAMESPACES[mode]
+        require(row['engine_base'] == engine + row['offset']
+                and row['policy_base'] == policy + 2 * row['offset'], 'Ten-game seed namespace changed')
+        offsets[mode] += row['count']; outputs.add((row['output'], mode))
+    if requests is None:
+        return value, offsets
+    added = {}
+    for mode, count, output in requests:
+        require(mode in offsets and type(count) is int and count > 0 and count % 10 == 0
+                and offsets[mode] + count < 1_000_000 and (str(output), mode) not in outputs,
+                'Invalid or reused ten-game seed request')
+        engine, policy = TEN_NAMESPACES[mode]
+        row = dict(mode=mode, output=str(output), offset=offsets[mode], count=count,
+                   engine_base=engine + offsets[mode], policy_base=policy + 2 * offsets[mode],
+                   consumed_including_unstarted=True)
+        value['reservations'].append(row); offsets[mode] += count
+        outputs.add((str(output), mode)); added[mode] = row
+    write(path, value)
+    return added
+
+
+def ten_inspect():
+    """Audit the new publication chain, then restore only its complete last pair."""
+    from tools import run_recruit_only_one_game as one
+    from experiments.learner import selfplay_training as training
+    require(shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
+            'Ten-game launch requires the existing 30 GiB disk reserve')
+    checked = one.inspect_candidate(one.HERO_RELATIVE_VERSION)
+    initial = checked['parent']['checkpoint']
+    selected, steps = initial, checked['optimizer_steps']
+    lineage_path, latest_path = TEN_BASE / 'lineage.json', TEN_BASE / 'latest-checkpoint.json'
+    lineage = read(lineage_path) if lineage_path.exists() else None
+    protected = dict(checked['protected'])
+    publication = None
+    seed_ledger, _ = ten_reservations()
+    reported_publications, all_publications = set(), set()
+    if lineage is not None:
+        require(lineage.get('schema') == TEN_LAUNCH and lineage.get('initial_checkpoint') == initial
+                and lineage.get('initial_optimizer_steps') == steps and type(lineage.get('runs')) is list,
+                'Ten-game lineage initial state changed')
+        outputs = set()
+        for launch_pin in lineage['runs']:
+            launch = read(bound(launch_pin)); output = Path(launch['output'])
+            require(launch.get('schema') == TEN_LAUNCH and str(output) not in outputs,
+                    'Duplicate or foreign ten-game launch')
+            outputs.add(str(output))
+            require(all(row in seed_ledger['reservations'] for row in launch['reservations'].values())
+                    and launch['reservations']['training']['count'] == launch['batches'] * 10,
+                    'Registered ten-game launch has lost its consumed reservation')
+            shutdown = read(output / 'shutdown.json')
+            require(shutdown.get('owned_cleanup_verified') is True
+                    and shutdown.get('protected_inputs_unchanged') is True,
+                    'Previous ten-game run has not closed its owned processes')
+            report = read(output / 'report.json')
+            all_publications.update(binding(path)['sha256'] for path in output.glob('batch-*/publication.json'))
+            for phase in report.get('batches', []):
+                if phase.get('status') == 'checkpoint_verified':
+                    path = Path(bound(phase['plan'])).parent / 'publication.json'
+                    item = read(path)
+                    require(item['checkpoint'] == phase['after_checkpoint'], 'Reported checkpoint publication changed')
+                    reported_publications.add(binding(path)['sha256'])
+        if latest_path.exists():
+            latest = read(latest_path)
+            require(latest.get('schema') == TEN_LAUNCH + '-latest', 'Unknown ten-game latest pointer')
+            publication = latest['publication']
+            cursor, reverse, seen = publication, [], set()
+            while cursor is not None:
+                require(cursor['sha256'] not in seen, 'Cyclic ten-game checkpoint chain')
+                seen.add(cursor['sha256'])
+                row = read(bound(cursor))
+                require(row.get('schema') == TEN_LAUNCH + '-publication'
+                        and row['launch'] in lineage['runs'], 'Unregistered ten-game checkpoint publication')
+                reverse.append(row); cursor = row['previous_publication']
+            for row in reversed(reverse):
+                plan = read(bound(row['plan']))
+                require(plan.get('schema') == training.TEN_SCHEMA and plan['mode'] == 'training'
+                        and row['parent_checkpoint'] == selected and row['parent_optimizer_steps'] == steps
+                        and row['checkpoint']['metadata']['plan_sha256'] == row['plan']['sha256']
+                        and row['checkpoint']['metadata']['training_contract'] == training.TEN_SCHEMA,
+                        'Ten-game checkpoint ancestry changed')
+                require(len(row['receipts']) == 10 and len({item['path'] for item in row['receipts']}) == 10,
+                        'Ten-game publication lacks its complete receipt set')
+                for index, receipt in enumerate(row['receipts']):
+                    proof = read(bound(receipt))
+                    folder = Path(plan['execution_output']) / f'episode-{index + 1:06d}'
+                    require(proof.get('schema') == training.RECEIPT_SCHEMA
+                            and proof.get('plan_sha256') == row['plan']['sha256']
+                            and proof.get('schedule_index') == index and proof.get('learner_player') == index % 2
+                            and Path(proof['folder']).resolve() == folder.resolve()
+                            and proof.get('admission_from_file') is False and proof.get('learner_only_ppo') is True
+                            and proof['verification'].get('replay_verified') is True,
+                            'Published training receipt identity changed')
+                    from experiments.headless import contextual_evidence as evidence
+                    for name, expected in proof['files'].items():
+                        require(evidence.file_identity(evidence.inside(folder, name)) == expected,
+                                'Published ten-game evidence changed: ' + name)
+                before, after = selected['progress'], row['checkpoint']['progress']
+                require(after['updates'] == before['updates'] + 1
+                        and after['rollouts'] == before['rollouts'] + 10
+                        and after['decisions'] == before['decisions'] + row['ppo']['samples']
+                        and row['optimizer_steps'] == steps + row['ppo']['optimizer_steps']
+                        and row['checkpoint']['sampler_state']['optimizer_steps'] == row['optimizer_steps'],
+                        'Ten-game progress or optimizer count changed')
+                selected, steps = row['checkpoint'], row['optimizer_steps']
+            require(latest['checkpoint'] == selected and latest['optimizer_steps'] == steps,
+                    'Latest pointer differs from its complete publication chain')
+            require(reported_publications <= seen, 'Latest checkpoint pointer was rolled back')
+            require(all_publications <= seen,
+                    'Unpublished checkpoint candidate or rolled-back pointer remains; recover explicitly before continuing')
+        else:
+            require(not all_publications, 'Ten-game latest pointer is missing while checkpoint candidates remain; recover explicitly')
+    else:
+        require(not latest_path.exists(), 'Ten-game latest pointer has no lineage')
+    state = training.restore_checkpoint_pair(selected, expected_metadata=selected['metadata'],
+        expected_ppo_config=PPO, expected_optimizer_steps=steps)
+    require(state.progress.updates >= 1753 and state.progress.rollouts - initial['progress']['rollouts']
+            == 10 * (state.progress.updates - 1753), 'Ten-game restored progress differs')
+    for pair in (initial, selected):
+        for name in ('policy', 'resume'):
+            protected[pair[name]['path']] = pair[name]
+    verify_protected(protected)
+    ten_reservations()
+    return dict(checked=checked, initial=initial, parent=selected, optimizer_steps=steps,
+                publication=publication, lineage=lineage, protected=protected, state=state)
+
+
+def prepare_ten(args, inspected):
+    require(type(args.batches) is int and 1 <= args.batches <= 100,
+            'Use between one and 100 complete ten-game batches')
+    seconds = args.hours * 3600
+    require(math.isfinite(seconds) and 120 <= seconds <= 36000, 'Use a finite budget up to ten hours')
+    checked, lineage = inspected['checked'], inspected['lineage']
+    require((lineage is None) == (args.command == 'batch10-run'),
+            'Use batch10-run for a new lineage, or batch10-continue for its latest complete checkpoint')
+    if args.command == 'batch10-continue':
+        require(lineage['runs'] and Path(read(bound(lineage['runs'][-1]))['output']).resolve()
+                == args.run_dir.resolve(), 'Continue only from the latest registered ten-game run')
+    output = private_output(args.output or TEN_BASE / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+                                                    + '-' + secrets.token_hex(4)))
+    TEN_BASE.mkdir(parents=True, exist_ok=True)
+    with (TEN_BASE / 'namespace.lock').open('a+b') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        reservations = ten_reservations([('training', args.batches * 10, output)])
+    output.mkdir(parents=True, mode=0o700)
+    now, wall = time.monotonic(), time.time()
+    launch = dict(schema=TEN_LAUNCH, campaign_id=output.name, mode='training', output=str(output),
+        supervisor_pid=os.getpid(), created_utc=datetime.now(timezone.utc).isoformat(), source=source_identity(),
+        parent_pair=inspected['parent'], parent_optimizer_steps=inspected['optimizer_steps'],
+        parent_publication=inspected['publication'], original_parent=inspected['initial'],
+        parent_policy_sha256=inspected['parent']['policy']['sha256'], protected=inspected['protected'],
+        reservations=reservations, batches=args.batches,
+        configuration=ten_configuration(checked, seconds), execution=checked['execution'],
+        policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
+        army_information=checked['army_information'], maximum_seconds=seconds,
+        hard_deadline_monotonic=now + seconds, hard_deadline_unix=wall + seconds,
+        **{key: checked[key] for key in ('binary', 'data', 'game_map', 'replay_binary', 'native', 'runtime', 'native_manifest')})
+    write(output / 'launch.json', launch, new=True)
+    if lineage is None:
+        lineage = dict(schema=TEN_LAUNCH, initial_checkpoint=inspected['initial'],
+                       initial_optimizer_steps=checked['optimizer_steps'], runs=[])
+    lineage['runs'].append(binding(output / 'launch.json'))
+    write(TEN_BASE / 'lineage.json', lineage)
+    return launch
+
+
+def load_ten_launch(path, sha):
+    require(binding(path)['sha256'] == sha, 'Ten-game launch changed')
+    launch = read(path)
+    require(launch.get('schema') == TEN_LAUNCH and launch['source'] == source_identity(),
+            'Ten-game launch source changed')
+    require(launch['configuration'].get('disk_reserve_gib') == TEN_DISK_RESERVE_GIB,
+            'Ten-game disk reserve changed')
+    require(launch['native_manifest'] == binding(NATIVE), 'Native learner changed')
+    from experiments.headless.contextual_evidence import runtime_identity
+    require(runtime_identity(Path(launch['binary']).parent) == launch['runtime'], 'Ten-game engine runtime changed')
+    bound(launch['replay_binary']); verify_protected(launch['protected'])
+    ledger, _ = ten_reservations()
+    require(all(row in ledger['reservations'] for row in launch['reservations'].values()),
+            'Ten-game consumed seed reservation changed')
+    lineage = read(TEN_BASE / 'lineage.json')
+    require(binding(path) in lineage['runs'], 'Ten-game launch is not registered')
+    return launch
+
+
+def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent_policy):
+    from experiments.learner import checkpoints as cp, selfplay_training as training
+    folder = Path(launch['output']) / name
+    folder.mkdir(); inputs = folder / 'input'; inputs.mkdir()
+    metadata = training.metadata(binding(Path(launch['output']) / 'launch.json')['sha256'],
+        launch['original_parent']['policy'], opponent_policy, campaign_id=launch['campaign_id'],
+        purpose=mode, training_contract=training.TEN_SCHEMA)
+    opponent = deepcopy(opponent_model).eval().requires_grad_(False)
+    opponent_id = f"{launch['campaign_id']}-{name}-frozen"
+    for filename, model, checkpoint in (('learner.pt', state.model, state.checkpoint),
+                                         ('opponent.pt', opponent, opponent_id)):
+        cp.save_policy_checkpoint(inputs / filename, model, checkpoint=checkpoint,
+            provenance=cp.SELFPLAY_GAMEPLAY_PROVENANCE, source_metadata=metadata,
+            opponent_pool=state.pool, generators={'minibatch': state.generator}, interface=INTERFACE)
+    plan = dict(schema=training.TEN_SCHEMA, campaign_id=launch['campaign_id'], mode=mode,
+        output=str(folder), execution_output=str(folder / 'execution'), launch=binding(Path(launch['output']) / 'launch.json'),
+        source=launch['source']['source'], implementation=launch['source']['implementation'],
+        configuration=launch['configuration'], checkpoint=binding(inputs / 'learner.pt'),
+        opponent_checkpoint=binding(inputs / 'opponent.pt'), checkpoint_source=metadata, opponent_checkpoint_source=metadata,
+        learner_checkpoint=state.checkpoint, opponent_checkpoint_id=opponent_id,
+        learner_weights_sha256=cp.model_weight_digest(state.model), opponent_weights_sha256=cp.model_weight_digest(opponent),
+        opponent_pool=POOL, schedule=schedule(launch['reservations'][mode], start, 10),
+        **{key: launch[key] for key in ('native', 'runtime', 'binary', 'data', 'game_map', 'replay_binary',
+                                      'policy_support', 'execution', 'army_information', 'equipment_policy')})
+    write(folder / 'plan.json', plan, new=True)
+    return folder / 'plan.json', plan, opponent
+
+
+def ten_capture_fields(folder):
+    """Preserve game facts even when later verification fails or is interrupted."""
+    try:
+        manifest = read(Path(folder) / 'manifest.json')
+    except (OSError, ValueError):
+        return {}
+    return dict(episode_status=manifest.get('status'), outcomes=manifest.get('outcomes_by_player', {}),
+                rewards=manifest.get('rewards_by_player', {}), termination_reason=manifest.get('termination_reason'),
+                natural_terminal_after_horizon=manifest.get('natural_terminal_after_horizon'))
+
+
+def ten_finalize_report(output, report):
+    # The pointer is the admission boundary. Reconcile a crash after that atomic
+    # write without granting admission to an orphan candidate checkpoint.
+    latest_path = TEN_BASE / 'latest-checkpoint.json'
+    committed = []
+    if latest_path.exists():
+        latest = read(latest_path)
+        cursor, seen = latest['publication'], set()
+        while cursor is not None:
+            require(cursor['sha256'] not in seen, 'Cyclic committed checkpoint chain')
+            seen.add(cursor['sha256'])
+            row = read(bound(cursor))
+            if not committed and cursor == latest['publication']:
+                require(latest['checkpoint'] == row['checkpoint'], 'Latest checkpoint and publication differ')
+            if Path(row['launch']['path']).resolve() == (Path(output) / 'launch.json').resolve():
+                committed.append(row)
+            cursor = row['previous_publication']
+    by_plan = {row['plan']['sha256']: row for row in committed}
+    for phase in report.get('batches', []):
+        row = by_plan.get(phase['plan']['sha256'])
+        if row is not None:
+            pair = row['checkpoint']
+            phase.update(status='checkpoint_verified', ppo=row['ppo'], after_checkpoint=pair,
+                checkpoint_before=row['parent_checkpoint']['progress']['updates'], checkpoint_after=pair['progress']['updates'],
+                weights_before=row['parent_checkpoint']['weights_sha256'], weights_after=pair['weights_sha256'],
+                weights_changed=row['parent_checkpoint']['weights_sha256'] != pair['weights_sha256'], admitted_games=10)
+        elif phase.get('status') in ('collecting', 'updating'):
+            phase['status'] = 'failed'
+        folder = Path(phase['plan']['path']).parent / 'execution'
+        for attempt in phase.get('attempts', []):
+            if attempt.get('status') != 'passed':
+                attempt.update(ten_capture_fields(folder / f"episode-{attempt['episode']:06d}"))
+            if attempt.get('status') == 'running':
+                attempt['status'] = 'interrupted'
+                attempt['verification_status'] = ('interrupted'
+                    if attempt.get('episode_status') in ('completed', 'truncated') else 'not_started')
+        phase['counts'] = ten_outcomes(phase.get('attempts', []))
+    report['optimizer_updates'] = len(committed)
+    report['admitted_games'] = len(committed) * 10
+    report['training_samples_admitted'] = sum(row['ppo']['samples'] for row in committed)
+    if committed:
+        report['latest_checkpoint'] = max(row['checkpoint']['progress']['updates'] for row in committed)
+    write(Path(output) / 'report.json', report)
+
+
+def ten_print_phase(phase):
+    counts = phase.get('counts', {})
+    print(f"{phase['name']}: Red {counts.get('red_wins', 0)}, Blue {counts.get('blue_wins', 0)}, "
+          f"cutoffs {counts.get('game_cutoffs', 0)}, verified {counts.get('verified', 0)}/10, "
+          f"verification failures {counts.get('verification_failures', 0)}; "
+          f"checkpoint {phase.get('checkpoint_before')} -> {phase.get('checkpoint_after', 'not updated')}", flush=True)
+
+
+def ten_outcomes(attempts):
+    from tools.run_recruit_only_one_game import captured_game_result, summarize_game_results
+    rows = []
+    learner_wins = learner_losses = 0
+    for item in attempts:
+        passed = item.get('status') == 'passed'
+        outcomes = item.get('outcomes', {})
+        row = dict(status='verified' if passed else item.get('status', 'not_started'),
+                   verification_status='passed' if passed else item.get('verification_status', 'not_started'),
+                   failure_stage=item.get('failure_stage'))
+        row.update(captured_game_result(dict(status=item.get('episode_status'), outcomes_by_player=outcomes,
+            rewards_by_player=item.get('rewards', {}), termination_reason=item.get('termination_reason'),
+            natural_terminal_after_horizon=item.get('natural_terminal_after_horizon'))))
+        rows.append(row)
+        if passed:
+            outcome = outcomes.get(('red', 'blue')[item['learner_player']])
+            learner_wins += outcome == 'win'; learner_losses += outcome == 'loss'
+    return dict(**summarize_game_results(rows), learner_wins=learner_wins, learner_losses=learner_losses,
+                learner_win_fraction_all_verified=(learner_wins / sum(r['verification_status'] == 'passed' for r in rows)
+                    if any(r['verification_status'] == 'passed' for r in rows) else None))
+
+
+def ten_coordinator(args):
+    from experiments.learner import selfplay_training as training
+    from experiments.learner.checkpoints import TrainingProgress
+    from experiments.learner.ppo import PPOConfig
+    from validation.probes.validate_hero_policy import wall_limit
+    launch = load_ten_launch(args.plan, args.sha256)
+    require(os.getppid() == launch['supervisor_pid'], 'Only the lease owner may launch ten-game training')
+    configure_native(launch['execution'])
+    output = Path(launch['output']); started = time.monotonic()
+    state = training.restore_checkpoint_pair(launch['parent_pair'], expected_metadata=launch['parent_pair']['metadata'],
+        expected_ppo_config=PPO, expected_optimizer_steps=launch['parent_optimizer_steps'])
+    report = dict(schema=TEN_LAUNCH + '-result', status='running', mode='training', batches=[],
+        optimizer_updates=0, admitted_games=0, training_samples_admitted=0,
+        parent_checkpoint=state.progress.updates, latest_checkpoint=state.progress.updates,
+        owned_cleanup_verified=False, protected_inputs_unchanged=False)
+    write(output / 'report.json', report, new=True)
+    previous_pair, publication = launch['parent_pair'], launch['parent_publication']
+
+    def collect_phase(name, mode, start, opponent_model, opponent_policy):
+        load_ten_launch(args.plan, args.sha256)
+        path, plan, opponent = ten_batch_plan(launch, state, name=name, mode=mode, start=start,
+                                             opponent_model=opponent_model, opponent_policy=opponent_policy)
+        phase = dict(name=name, mode=mode, plan=binding(path), status='collecting',
+                     comparison_checkpoint='batch_start',
+                     checkpoint_before=state.progress.updates, weights_before=state.weights_sha256,
+                     planned_games=10,
+                     attempts=[dict(**row, status='not_started') for row in plan['schedule']])
+        report['batches'].append(phase); write(output / 'report.json', report)
+        def record(index, value):
+            phase['attempts'][index] = value
+            phase['counts'] = ten_outcomes(phase['attempts'])
+            write(path.parent / 'attempts.json', phase['attempts'])
+            write(output / 'report.json', report)
+        deadlines = batch_phase_deadlines(launch)
+        receipts, attempts = collect_batch(path, plan, state.model, opponent, launch, record,
+                                           phase_deadline=deadlines['training'])
+        phase.update(status='verified', attempts=attempts, counts=ten_outcomes(attempts))
+        write(output / 'report.json', report)
+        return path, plan, phase, receipts, deadlines
+
+    try:
+        for index in range(launch['batches']):
+            remaining(launch, 60)
+            path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', index * 10,
+                state.model, previous_pair['policy'])
+            phase['status'] = 'updating'; write(output / 'report.json', report)
+            state.model.train().requires_grad_(True)
+            with wall_limit(phase_remaining(deadlines['update'])):
+                result, rollouts = training.native_update(state.model, state.optimizer, receipts,
+                    plan_sha256=binding(path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
+                    remaining=lambda: phase_remaining(deadlines['update']),
+                    max_optimizer_steps=launch['configuration']['max_optimizer_steps'])
+            state.model.eval()
+            next_progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + 10,
+                                             state.progress.decisions + result.samples)
+            steps = state.optimizer_steps + result.optimizer_steps
+            sampler = dict(next_batch_index=next_progress.updates - 1753,
+                consumed_schedule_offset=(next_progress.updates - 1753) * 10,
+                optimizer_steps=steps, batch_optimizer_steps=result.optimizer_steps,
+                original_parent_sampler=(state.sampler_state['original_parent_sampler']
+                    if state.metadata.get('training_contract') == training.TEN_SCHEMA else state.sampler_state))
+            metadata = training.metadata(binding(path)['sha256'], launch['original_parent']['policy'],
+                plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training',
+                training_contract=training.TEN_SCHEMA)
+            with wall_limit(phase_remaining(deadlines['update'], 0)):
+                pair = training.save_checkpoint_pair(path.parent / 'checkpoint', state.model, state.optimizer,
+                    checkpoint=f"selfplay-ten-{launch['campaign_id']}-update-{next_progress.updates}",
+                    ppo_config=PPO, progress=next_progress, metadata=metadata, opponent_pool=state.pool,
+                    sampler_state=sampler, generator=state.generator)
+                require(pair['exact_model_adam_rng_progress_pool'] is True, 'Ten-game checkpoint roundtrip incomplete')
+                load_ten_launch(args.plan, args.sha256)
+                entry = dict(schema=TEN_LAUNCH + '-publication', launch=binding(args.plan), plan=binding(path),
+                    previous_publication=publication, parent_checkpoint=previous_pair,
+                    parent_optimizer_steps=state.optimizer_steps, checkpoint=pair, optimizer_steps=steps,
+                    ppo=asdict(result), receipts=[binding(Path(item['episode_directory']) / 'training-receipt.json')
+                                                for item in phase['attempts']])
+                write(path.parent / 'publication.json', entry, new=True)
+                publication = binding(path.parent / 'publication.json')
+                write(TEN_BASE / 'latest-checkpoint.json', dict(schema=TEN_LAUNCH + '-latest',
+                    publication=publication, checkpoint=pair, optimizer_steps=steps))
+            state.model.requires_grad_(False)
+            state = replace(state, progress=next_progress, sampler_state=sampler, checkpoint=pair['checkpoint'],
+                optimizer_steps=steps, metadata=metadata, weights_sha256=pair['weights_sha256'])
+            previous_pair = pair
+            phase.update(status='checkpoint_verified', ppo=asdict(result), after_checkpoint=pair,
+                checkpoint_after=next_progress.updates, weights_after=pair['weights_sha256'],
+                weights_changed=phase['weights_before'] != pair['weights_sha256'], admitted_games=10)
+            report['optimizer_updates'] += 1; report['admitted_games'] += 10
+            report['training_samples_admitted'] += result.samples
+            report['latest_checkpoint'] = next_progress.updates
+            write(output / 'report.json', report)
+            del receipts, rollouts
+        load_ten_launch(args.plan, args.sha256)
+        report['status'] = 'completed'
+    except Exception as error:
+        report.update(status='stopped', error=f'{type(error).__name__}: {error}')
+        ten_finalize_report(output, report)
+    finally:
+        shutdowns = [read(path) for path in output.glob('batch-*/execution/shutdown.json')]
+        report['owned_cleanup_verified'] = bool(shutdowns) and all(row['owned_cleanup_verified'] for row in shutdowns)
+        try:
+            report['protected_inputs_unchanged'] = verify_protected(launch['protected'])
+        except Exception as error:
+            report.update(status='stopped', protection_error=str(error))
+        report['elapsed_seconds'] = time.monotonic() - started
+        write(output / 'report.json', report)
+    return report
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -1250,6 +1765,12 @@ def main(argv=None):
         if name == 'continue':
             continuation.add_argument('--output', type=Path)
             continuation.add_argument('--hours', type=float, required=True)
+    for name in ('batch10-check', 'batch10-run', 'batch10-continue'):
+        ten = sub.add_parser(name, help='Ten-game learning batches from verified1753; no extra evaluation games')
+        ten.add_argument('--batches', type=int, default=1)
+        ten.add_argument('--hours', type=float, default=10)
+        ten.add_argument('--output', type=Path)
+        ten.add_argument('--run-dir', type=Path, required=name == 'batch10-continue')
     for name in ('_coordinator', '_capture', '_report'):
         worker = sub.add_parser(name)
         worker.add_argument('--plan', type=Path, required=True); worker.add_argument('--sha256', required=True)
@@ -1265,6 +1786,32 @@ def main(argv=None):
         return report_worker(args)
     started = time.monotonic()
     try:
+        if args.command.startswith('batch10-'):
+            with (nullcontext() if args.command == 'batch10-check' else activity_lease()):
+                inspected = ten_inspect()
+                require(type(args.batches) is int and 1 <= args.batches <= 100
+                        and math.isfinite(args.hours) and 120 <= args.hours * 3600 <= 36000,
+                        'Use 1–100 ten-game batches and a finite time budget up to ten hours')
+                if args.run_dir is not None:
+                    require(inspected['lineage'] is not None and inspected['lineage']['runs']
+                        and Path(read(bound(inspected['lineage']['runs'][-1]))['output']).resolve() == args.run_dir.resolve(),
+                        'The supplied run is not the latest ten-game launch')
+                if args.command == 'batch10-check':
+                    result = dict(status='passed', gameplay_performed=False, optimizer_updates=0,
+                        checkpoint=inspected['state'].progress.updates,
+                        exact_model_adam_rng_progress_sampler_pool=True,
+                        configuration=ten_configuration(inspected['checked'], args.hours * 3600),
+                        training_games=args.batches * 10, held_out_games=0,
+                        total_physical_games=args.batches * 10,
+                        expected_optimizer_updates=args.batches,
+                        next_command='batch10-run' if inspected['lineage'] is None else 'batch10-continue')
+                else:
+                    launch = prepare_ten(args, inspected)
+                    print(f"Private run: {launch['output']}", flush=True)
+                    result = supervise(launch)
+            for phase in result.get('batches', []):
+                ten_print_phase(phase)
+            print(json.dumps(result, indent=2)); return int(result['status'] not in ('passed', 'completed'))
         if args.command == 'report':
             result = report_completed(args)
             print(json.dumps(result, indent=2))

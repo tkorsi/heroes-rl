@@ -267,6 +267,39 @@ def victory(manifest):
     return None
 
 
+def captured_game_result(manifest):
+    """Describe the capture without treating its declared outcome as verified."""
+    winner = victory(manifest)
+    cutoff = (manifest.get('status') == 'truncated'
+              or bool(manifest.get('natural_terminal_after_horizon')))
+    outcome = (f'{winner}_win' if winner else 'cutoff' if cutoff else
+               'completed_without_winner' if manifest.get('status') == 'completed' else 'unknown')
+    return dict(game_outcome=outcome, capture_status=manifest.get('status', 'incomplete'),
+                termination_reason=manifest.get('termination_reason'),
+                observed_outcomes=manifest.get('outcomes_by_player', {}), cutoff=cutoff)
+
+
+def summarize_game_results(rows):
+    """Count game outcomes and verification separately; these totals can overlap."""
+    verified = [row for row in rows if row.get('verification_status') == 'passed']
+    return dict(
+        red_wins=sum(row.get('game_outcome') == 'red_win' for row in verified),
+        blue_wins=sum(row.get('game_outcome') == 'blue_win' for row in verified),
+        verified=len(verified),
+        game_cutoffs=sum(row.get('game_outcome') == 'cutoff' for row in rows),
+        verified_cutoffs=sum(row.get('game_outcome') == 'cutoff' for row in verified),
+        verification_failures=sum(row.get('verification_status') == 'failed' for row in rows),
+        capture_failures=sum(row.get('failure_stage') == 'capture' for row in rows),
+        interrupted=sum(row.get('status') == 'interrupted' for row in rows),
+        verification_interrupted=sum(row.get('verification_status') == 'interrupted' for row in rows),
+        unverified_red_wins=sum(row.get('game_outcome') == 'red_win'
+                                and row.get('verification_status') != 'passed' for row in rows),
+        unverified_blue_wins=sum(row.get('game_outcome') == 'blue_win'
+                                 and row.get('verification_status') != 'passed' for row in rows),
+        failures=sum(row.get('status') == 'failed' for row in rows),
+    )
+
+
 def wait_for_verification(plan, folder):
     output = Path(plan['output'])
     require(folder == output / 'episode-000001', 'Unexpected capture directory')
@@ -306,22 +339,57 @@ def run_batch(args, checked, *, human, color):
             except Exception as error:
                 cleanup_errors.append(f'{folder.name}: {error}')
 
-    def wins(colour):
-        return sum(row.get('winner', {}).get('colour') == colour for row in results)
+    def completed_result(folder, process, pin, schedule, manifest):
+        capture = folder / 'episode-000001'
+        outcome = dict(game=folder.name, **captured_game_result(manifest))
+        try:
+            report = read(folder / 'report.json')
+            require(process.poll() == 0 and report['status'] == 'passed' and report['plan'] == pin
+                    and binding(folder / 'plan.json') == pin
+                    and report['native_replay_verified'] is True
+                    and report['both_policies_reconstructed'] is True
+                    and report['protected_inputs_unchanged'] is True
+                    and report['training_input'] is False and report['optimizer_updates'] == 0
+                    and report['training_samples_admitted'] == 0,
+                    report.get('error', 'Evaluation worker did not pass'))
+            proof = read(bound(report['proof']))
+            candidate = victory(dict(status=report['episode_status'],
+                outcomes_by_player=report['outcomes'], rewards_by_player=report['rewards'],
+                natural_terminal_after_horizon=report.get('natural_terminal_after_horizon')))
+            outcome.update(captured_game_result(dict(status=report['episode_status'],
+                termination_reason=report['termination_reason'],
+                outcomes_by_player=report['outcomes'], rewards_by_player=report['rewards'],
+                natural_terminal_after_horizon=report.get('natural_terminal_after_horizon'))),
+                status='verified', verification_status='passed')
+            if candidate:
+                require(type(proof['terminal_day']) is int and proof['terminal_day'] > 0,
+                        'Verified terminal day missing')
+                outcome['winner'] = dict(colour=candidate, day=proof['terminal_day'], seeds=schedule,
+                                         evidence=str(capture), proof=report['proof'])
+        except (OSError, ValueError, KeyError) as error:
+            captured = (folder / 'capture-ready').exists()
+            outcome.update(status='failed', error=str(error),
+                           failure_stage='verification' if captured else 'capture',
+                           verification_status='failed' if captured else 'not_started')
+        return outcome
 
     def display(pending, *, final=False):
         elapsed = time.monotonic() - started
-        done = sum(row['status'] == 'verified' for row in results)
-        cutoffs = sum(row.get('cutoff', False) for row in results)
-        failures = sum(row['status'] == 'failed' for row in results)
+        counts = summarize_game_results(results)
         title = 'WIN COUNT' if fixed_count else 'FIRST WIN'
         heading = f'{title}  •  CHECKPOINT {CHECKPOINT:,}'
-        cells = [('Elapsed', _duration(elapsed)), ('Completed', str(done)),
-                 ('Active', str(len(active))), ('Cutoffs', str(cutoffs)),
-                 ('Failures', str(failures))]
+        cells = [('Elapsed', _duration(elapsed)), ('Verified games', str(counts['verified'])),
+                 ('Active', str(len(active))), ('Red wins (verified)', str(counts['red_wins'])),
+                 ('Blue wins (verified)', str(counts['blue_wins'])),
+                 ('Game cutoffs', f"{counts['game_cutoffs']} ({counts['verified_cutoffs']} verified)"),
+                 ('Verification failures', str(counts['verification_failures'])),
+                 ('Capture failures', str(counts['capture_failures'])),
+                 ('Interrupted', str(counts['interrupted']))]
+        unverified_wins = counts['unverified_red_wins'] + counts['unverified_blue_wins']
+        if unverified_wins:
+            cells.append(('Unverified win claims', str(unverified_wins)))
         if fixed_count:
-            cells.extend([('Attempts', f'{launched}/{args.max_games}'),
-                          ('Red wins', str(wins('red'))), ('Blue wins', str(wins('blue')))])
+            cells.append(('Attempts', f'{launched}/{args.max_games}'))
         else:
             cells.append(('Winner', winner['colour'] if winner else
                           'awaiting verification' if pending else 'searching' if not final else 'none'))
@@ -356,33 +424,10 @@ def run_batch(args, checked, *, human, color):
                     continue
                 close(folder, process)
                 del active[folder]
-                try:
-                    report = read(folder / 'report.json')
-                    require(code == 0 and report['status'] == 'passed' and report['plan'] == pin
-                            and binding(folder / 'plan.json') == pin
-                            and report['native_replay_verified'] is True
-                            and report['both_policies_reconstructed'] is True
-                            and report['protected_inputs_unchanged'] is True
-                            and report['training_input'] is False and report['optimizer_updates'] == 0
-                            and report['training_samples_admitted'] == 0 and not cleanup_errors,
-                            report.get('error', 'Evaluation worker did not pass'))
-                    proof = read(bound(report['proof']))
-                    candidate = victory(dict(status=report['episode_status'],
-                        outcomes_by_player=report['outcomes'], rewards_by_player=report['rewards'],
-                        natural_terminal_after_horizon=report.get('natural_terminal_after_horizon')))
-                    outcome = dict(game=folder.name, status='verified',
-                                   cutoff=report['episode_status'] == 'truncated' or
-                                   bool(report.get('natural_terminal_after_horizon')))
-                    if candidate:
-                        require(type(proof['terminal_day']) is int and proof['terminal_day'] > 0,
-                                'Verified terminal day missing')
-                        outcome['winner'] = dict(colour=candidate, day=proof['terminal_day'], seeds=schedule,
-                                                 evidence=str(capture), proof=report['proof'])
-                        if not fixed_count and winner is None:
-                            winner = outcome['winner']
-                    results.append(outcome)
-                except (OSError, ValueError, KeyError) as error:
-                    results.append(dict(game=folder.name, status='failed', error=str(error)))
+                outcome = completed_result(folder, process, pin, schedule, manifest)
+                results.append(outcome)
+                if not fixed_count and winner is None and outcome.get('winner'):
+                    winner = outcome['winner']
             if winner or cleanup_errors:
                 break
             if shutil.disk_usage(root).free < args.disk_reserve_gib * 1024**3:
@@ -425,21 +470,34 @@ def run_batch(args, checked, *, human, color):
     finally:
         for process, _, _ in active.values():
             _release_owned_process(process)
-        for folder, (process, _, _) in active.items():
+        for folder, (process, pin, schedule) in active.items():
+            finished = process.poll() is not None
             close(folder, process)
-            results.append(dict(game=folder.name, status='interrupted'))
+            try:
+                manifest = read(folder / 'episode-000001/manifest.json')
+            except (OSError, ValueError):
+                manifest = {}
+            if finished or process.poll() == 0:
+                outcome = completed_result(folder, process, pin, schedule, manifest)
+            else:
+                outcome = dict(game=folder.name, status='interrupted',
+                               verification_status='interrupted' if (folder / 'verify-now').exists()
+                               else 'pending' if (folder / 'capture-ready').exists() else 'not_started',
+                               **captured_game_result(manifest))
+            results.append(outcome)
+            if not fixed_count and winner is None and outcome.get('winner'):
+                winner = outcome['winner']
         active.clear()
         protected = False
         try:
             protected = campaign.verify_protected(checked['protected'])
         except Exception as error:
             cleanup_errors.append(f'Protected inputs: {error}')
+        counts = summarize_game_results(results)
         summary = dict(mode=mode, winner=winner, reason='verified victory' if winner else reason,
-                       requested_attempts=args.max_games, red_wins=wins('red'), blue_wins=wins('blue'),
-                       verified=sum(row['status'] == 'verified' for row in results),
-                       cutoffs=sum(row.get('cutoff', False) for row in results),
-                       failures=sum(row['status'] == 'failed' for row in results),
-                       interrupted=sum(row['status'] == 'interrupted' for row in results),
+                       requested_attempts=args.max_games, **counts,
+                       cutoffs=counts['verified_cutoffs'],
+                       counting_note='Wins require verification; captured cutoffs and verification failures may overlap.',
                        games=results, launched=launched, elapsed_seconds=time.monotonic() - started,
                        owned_cleanup_verified=not cleanup_errors, cleanup_errors=cleanup_errors,
                        protected_inputs_unchanged=protected, optimizer_updates=0, training_samples_admitted=0)
@@ -447,11 +505,12 @@ def run_batch(args, checked, *, human, color):
     display(False, final=True)
     message = (f"{winner['colour'].title()} won on day {winner['day']}. Seeds {winner['seeds']}. "
                f"Evidence {winner['evidence']}" if winner else 'No verified winner within the budget.')
-    if fixed_count:
-        message = (f"Red wins {summary['red_wins']} | Blue wins {summary['blue_wins']} | "
-                   f"Verified {summary['verified']} | Cutoffs {summary['cutoffs']} | "
-                   f"Failures {summary['failures']} | Interrupted {summary['interrupted']}\n"
-                   f"Started {launched}/{args.max_games} attempts. Stop reason: {reason}.")
+    counts_message = (f"Red wins {summary['red_wins']} | Blue wins {summary['blue_wins']} (verified) | "
+                      f"Game cutoffs {summary['game_cutoffs']} ({summary['verified_cutoffs']} verified) | "
+                      f"Verification failures {summary['verification_failures']} | "
+                      f"Capture failures {summary['capture_failures']} | Interrupted {summary['interrupted']}\n"
+                      f"Started {launched}/{args.max_games} attempts. Stop reason: {summary['reason']}.")
+    message = counts_message if fixed_count else message + '\n' + counts_message
     if args.json:
         print(json.dumps(summary, indent=2))
     else:

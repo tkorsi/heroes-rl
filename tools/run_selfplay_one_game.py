@@ -121,6 +121,16 @@ DIRECT_HISTORY_SOURCES = {
     'experiments/learner/local_script_training.py': {'before': '18ceabbd5e8e1486bf17d433e33ee220fba8a0f8505e9a3957bcf58d30cf933b',
         'after': 'd550cac1d1695736916d93cf40f311435c1cfed84f7a2334eb3885e021e3596c'},
 }
+# Reviewed Python admission/checkpoint/controller changes for a separate ten-game
+# training contract. The native runtime, policy encoding and PPO kernel are unchanged.
+TEN_BATCH_SOURCES = {
+    'experiments/learner/checkpoints.py': {'before': 'a33dabaea5d34cdf2330cf07c8464b3f103463cc8309c5bc394387a692a0d68e',
+        'after': '808a708c494e9d3099e82172e77ae393bf2971b2f6699ab43bfc140e313131ce'},
+    'experiments/learner/selfplay_training.py': {'before': '01eda52e6ed91753262bbb2ac72a33f47698184bdba6c1f4e3c7cf5e27dd3e85',
+        'after': 'c02baa2e2aec16b768afda8cfedcf10a7ebacf3d11bd41e39637fafb73d35427'},
+    CONTROLLER_PATH: {'before': '3acb278be3534db303b3fcf3d0edfa146edbbd468f24e11e40df2bd152b1818e',
+        'after': 'ab5eb3625fd6bf390ba5f18594568b5ff8e68b8dc081f4e7ffaef0a2f81b0437'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -155,6 +165,9 @@ def verify_runtime_sources(implementation):
     original.update({name: pins['after'] for name, pins in HERO_RELATIVE_SOURCES.items()})
     original.update({name: pins['after'] for name, pins in PARALLEL_HISTORY_SOURCES.items()})
     original.update({name: pins['after'] for name, pins in DIRECT_HISTORY_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in TEN_BATCH_SOURCES.items()),
+            'Ten-game source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in TEN_BATCH_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -169,7 +182,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_policy_support_town_cooldown', TOWN_COOLDOWN_SOURCES),
                    ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES),
                    ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES),
-                   ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES))
+                   ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES),
+                   ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -201,6 +215,7 @@ def source_identity():
         hero_relative_sources=HERO_RELATIVE_SOURCES,
         parallel_history_sources=PARALLEL_HISTORY_SOURCES,
         direct_history_sources=DIRECT_HISTORY_SOURCES,
+        ten_batch_sources=TEN_BATCH_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

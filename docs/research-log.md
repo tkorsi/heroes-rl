@@ -1614,3 +1614,157 @@ During the fourth run the user explicitly requested finishing this batch, making
 conclusions and stopping. No fifth trial, training campaign or further performance
 change was started. The candidate remains committed and checkable, but it is not
 accepted as satisfying the requested 20-minute ten-game result.
+
+## 2026-11-04 — Outcome reporting correction and ten-game training preparation
+
+The user requested separate Red wins, Blue wins, game cutoffs and verification
+failures, followed by training in ten-game batches to investigate improvement.
+They also requested a mandatory research journal and explicitly retained manual
+control of script launches. `AGENTS.md` now requires recording meaningful
+investigation, design, implementation, validation, failure and result steps,
+including corrections and the limits of the evidence. No new training or native
+game is authorized for automatic execution during this preparation.
+
+The preceding explanation of apparently sudden victories was incomplete. An
+audit of the individual private reports found that the earlier ten-game trials
+already contained three fully verified wins with analytics enabled: trial 1,
+game 1 was a Blue victory on day 14 (316 choices); trial 2, game 2 was a Red
+victory on day 9 (210 choices); trial 3, game 10 was a Blue victory on day 16
+(383 choices). Their policy reconstructions had zero differences and their
+native replays passed. The corresponding overall batches failed the requirement
+to finish verification of all ten games within their time budgets. Across four
+trials, 28 of 40 games were verified: three victories and 25 cutoffs. The other
+12 captures did not complete verification and are not accepted outcomes.
+
+The two later first-win searches stopped on Blue victories on days 21 and 5,
+respectively, then interrupted nine other games each. They used the same frozen
+checkpoint 1,753, original map, native runtime and policy-support version as the
+prior hero-relative trials. Their 16-fold horizons cannot explain these early
+victories: the horizons only control cutoff boundaries, not early action masks
+or network inputs. Analytics was downstream of gameplay and did not influence
+decisions. First-win searches do not estimate a win rate because the unfinished
+games are censored. Evidence remains private under `selfplay-ten/trial-20261104-*`
+and `selfplay-one-game-2x/first-win-1473804f9d17` and
+`selfplay-one-game-2x/first-win-8997e617ba83` in the durable artifacts root.
+
+At preparation start, the manually launched frozen run
+`selfplay-one-game-2x/win-count-1acc104c29f3` was active in the main checkout at
+`06346c3164cf6820cec181e3126b20014d21ca40`. To preserve its source identity and
+processes, changes are being prepared in a separate checkout on
+`codex/selfplay-batch-learning`. The active run, its seeds and its artifacts are
+not reused as training inputs. Main-checkout synchronization must wait until
+its owned processes have stopped and its final evidence is sealed.
+
+The new experiment is explicitly separate from the historical four-game update
+contract. The proposed hypothesis is that ten-game PPO batches reduce unscored
+cutoffs and improve performance against frozen checkpoint 1,753. Decisive
+self-play frequency is a completion measure, not by itself a strength measure.
+The proposed protocol starts from the complete verified 1,753 model, Adam, RNG,
+progress, sampler and opponent-pool state; keeps the large architecture, PPO and
+Adam hyperparameters, original map, automatic combat, terminal-only rewards,
+hero-relative coordinates, existing cooldowns, revealed movement support,
+own-army observations, equipment prohibition and troop-slot restrictions; and
+retains the explicitly requested 5,840-day and 158,720 ordinary plus 5,120
+reserved choices per-player limits. Ten physical games, alternating learner
+seats, replace four per update; only the scheduled learner trajectory is trained
+from each game. Both policies are frozen during collection.
+
+Training requires ten fresh, fully verified receipts before one transactional
+PPO update. A failed or incomplete cohort cannot train, but its verified game
+outcomes must remain visible. The optimizer-step safety ceiling must be derived
+from the declared batch/choice/window configuration (51,200 at the maximum),
+rather than retaining the obsolete 640-step ceiling; this is a safety bound,
+not a change to PPO epochs or minibatch settings. Checkpoint publication follows
+an exact model/Adam/RNG/progress/sampler/pool roundtrip. A separate diagnostic
+evaluation against frozen 1,753 uses fresh disjoint seeds, balanced seats and no
+training admission, before training and after saved updates. Its failures must
+not erase an already verified training checkpoint. Ten-game results are noisy
+pilot evidence, not sufficient evidence for a paper's claim of improvement.
+
+Implementation and validation are in progress. No completed training result,
+speedup or learning improvement is claimed by this entry. An initial patch to
+the journal rule used the wrong context and made no change; the corrected patch
+added the rule successfully. Existing tests and additional local checks will
+remain outside the published change unless separately authorized.
+
+The user then selected only ten training games per batch and deferred the
+additional frozen-1,753 evaluation games. The final implementation scope has no
+extra baseline or evaluation games. Retain the fixed-opponent, balanced-seat,
+held-out evaluation protocol above as a future option; do not activate it
+automatically. Batch outcomes can measure decisive-game frequency and cutoff
+frequency, while an improvement in strategic strength remains unproven without
+a suitable independent comparison.
+
+A second correction concerns an earlier conversational explanation of learning
+without wins: this project's PPO configuration has `entropy_coefficient=0.0`.
+There is no entropy-loss exploration term. Value estimation, advantages and
+cutoff bootstrapping can still produce updates without a positive terminal
+reward, but those updates do not supply an example of a successful victory.
+
+Initial local validation passed 21 existing admission/checkpoint tests and six
+new inline synthetic controls, including a real PPO update on temporary synthetic
+test trajectories, second-admission rejection, incomplete/duplicate/reordered/
+forged receipt rejection, diagnostic exclusion, new-plan drift rejection, bound
+arithmetic and exact new-metadata checkpoint restoration. These controls did not
+admit any captured game or modify an official checkpoint. Reporting validation
+passed eight local mocked controls and four existing launcher/UI tests, covering
+mixed wins/failures, unverified claims, cutoff/verification overlap, post-horizon
+terminals, interruption and cleanup failure. No test or probe files were added
+to the published source. An independent read-only review found no admission
+defect in these two learner files; controller integration is still pending.
+
+The unchanged canonical engine recipe was checked read-only in the main checkout:
+`python3 tools/prepare_vcmi.py --check` passed. No runtime rebuild is needed for
+the current Python reporting/admission changes. Runtime artifact identity and
+historical native acceptance still require the actual launcher preflight.
+
+Independent controller review found two defects before acceptance: the supervisor
+mixed interruption errors with owned-process cleanup failures, incorrectly
+blocking continuation after a clean stop; and an interruption after atomic
+checkpoint publication but before report persistence could leave stale admission
+counts. These must be corrected by separating operational status from cleanup
+evidence and reconciling reports only from the committed publication chain, never
+from orphan checkpoint candidates.
+
+A broader existing offline selection ran 60 tests (self-play behavior, collection,
+one-game launcher, recruit-only launcher and progress display), with six failure
+events and five errors. Running the identical selection read-only at the unchanged
+main commit `06346c3` reproduced the same failures. These older fixtures omit
+equipment-policy/source-transition fields or mock superseded runtime interfaces;
+this is not an all-green test-suite claim. Test files and production integrity
+checks were left intact. Targeted new-contract controls remain necessary in
+addition to the working existing tests.
+
+The controller implementation now has explicit check/run/continue commands in
+the existing launcher, a separate seed namespace and checkpoint lineage, ten
+simultaneous collectors, and no optional behavior analytics or held-out games.
+All ten verified learner trajectories precede one unchanged PPO operation.
+Live completed-batch lines and the final table show Red/Blue wins, captured
+cutoffs, verification failures and checkpoint advancement. Captured victories
+without completed verification remain separate unverified claims.
+
+The recovery findings were corrected and independently reviewed. Finalization
+reconciles only publications reachable from the atomic latest pointer; orphan
+publications and rollback/missing-pointer cases block continuation for explicit
+recovery. Operational interruptions remain distinct from actual cleanup failure,
+and final reports use the supervisor's authoritative cleanup/protection evidence.
+The existing 30 GiB operational disk reserve is retained, checked before launch
+and every two seconds by the supervisor. No automatic restart is added.
+
+All 37 existing controller tests passed again on the final controller. Additional
+temporary controls passed for fresh consumed seeds, missing ledgers, mixed game
+and verification outcomes, publication/report crash recovery, orphan exclusion,
+idempotent finalization, clean interruption, cleanup failure and low-disk stopping.
+Independent reviewers found no remaining defect in the reviewed admission,
+checkpoint and finalization paths. Exact source inventory validation passed for
+215 files, including three negative source-tamper controls. The native binaries,
+engine sources, encoding and PPO kernel are unchanged; the exact reviewed Python
+transition retains prior native acceptance and does not claim a repeated native
+capture. An initial full source-identity call correctly refused the still-dirty
+checkout; full manual preflight will be run from the committed candidate.
+
+The final scope is manual training only, with no baseline/evaluation games and
+no automatic publication of raw evidence. Checkpoint 1,753 and the active frozen
+run remain untouched. Preparing this candidate did not launch any native game
+or official optimizer update. Tests, fixtures and diagnostic scripts are not part
+of the committed change.

@@ -4,6 +4,30 @@ Read `README.md` before changing this project. It is the single authoritative
 document for the purpose, agreed constraints, experiment stages, and current
 status. Update it when an experiment changes these decisions.
 
+## Research journal
+
+Keep a chronological research journal in `docs/research-log.md` for every
+meaningful step in this project, including investigation, design decisions,
+implementation, validation, manual launches, failures, corrections and results.
+Record the question or hypothesis and acceptance criteria before an experiment;
+afterward record what actually ran and what the evidence supports. This journal
+must be usable when preparing a research paper, not only for successful runs.
+
+Include the source/runtime/configuration identity, parent checkpoint, seed
+allocation, changed settings, commands or durable evidence references, timing,
+denominators, validation status and limitations when relevant. Separate intended,
+implemented, tested and observed behavior. Distinguish game outcomes from
+verification failures, training admission and checkpoint publication. Preserve
+earlier entries; append explicit corrections when a prior claim was incomplete
+or wrong. Never infer learning solely from more decisive self-play games.
+
+Journal entries and committed documentation must be in English. Keep raw game
+captures, checkpoints, private data and bulky diagnostic artifacts in private
+storage; reference them rather than copying them into the public repository.
+Summarize routine repetitive operations, but record every experiment attempt,
+including failed or interrupted attempts. Journaling does not authorize a game,
+training launch, publication, or changes outside the user's requested scope.
+
 This chat/workspace is the Heroes experiment track. RL lessons and Breakout
 belong to the separate learning chat. Do not start a training campaign as part
 of a recorder check, or describe built-in AI footage as a learned policy.

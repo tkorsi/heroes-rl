@@ -10,11 +10,11 @@ record previous experiments and their limits.
 
 ## Baseline for new experiments
 
-No experiment is selected for execution. Start each new experiment with an
-explicit hypothesis, configuration, seed allocation, output directory and
+The current prepared experiment trains in ten-game self-play batches from
+verified checkpoint 1,753. Launches remain manual. Start other experiments with
+an explicit hypothesis, configuration, seed allocation, output directory and
 acceptance criteria. Choose explicitly between fresh weights and a verified
-checkpoint. Keep diagnostic games separate from training admission and launch
-training manually after reviewing the plan and preflight.
+checkpoint. Keep diagnostic games separate from training admission.
 
 The baseline retains the native adapter and replay checks, checkpoint recovery,
 rollout storage, progress display and shared performance fixes. Checkpoint 1,753
@@ -52,6 +52,39 @@ To count wins across a fixed number of attempts, use
 frozen setup and continues after verified victories. The dashboard and final
 report show Red and Blue wins, with separate counts for cutoffs, failures and
 interruptions. The time budget can end the run before all attempts settle.
+
+## Train in batches of ten
+
+Run `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10` for a
+read-only preflight. To launch one batch manually, use
+`./continue-selfplay.sh --batch-ten --run --batches 1 --hours 10`. Set
+`--batches 10` for ten successive batches (100 training games), subject to the
+same overall ten-hour deadline. No held-out evaluation games are added.
+
+Each batch collects ten games concurrently with balanced learner seats and a
+frozen copy of the current policy as opponent. Only the scheduled learner's
+trajectory from each game enters PPO. All ten games must pass policy
+reconstruction and native replay before one update and a complete checkpoint
+roundtrip. A partial or failed batch never trains. Captured game cutoffs and
+verification failures are separate, potentially overlapping counts; Red and Blue
+win totals include verified wins only. Unverified captured victories remain
+explicitly labelled. Reports include checkpoint and weight changes per batch.
+
+This separate lineage preserves the full original 1,753 checkpoint and uses
+fresh, durably consumed seeds. Subsequent launches require
+`./continue-selfplay.sh --batch-ten --resume --run-dir PRIVATE_RUN_PATH --batches 1 --hours 10`;
+the path must identify its latest run. Continuation restores the latest complete
+published checkpoint, never an in-flight update. The launcher rejects concurrent
+game/training activity and retains a 30 GiB disk reserve. Do not change the
+source checkout while a run uses it.
+
+The map, large network, PPO/Adam settings, terminal rewards and current temporary
+rules are unchanged. The experiment retains the first-win mode's extended
+horizons: 5,840 days and 158,720 ordinary plus 5,120 reserved choices per player.
+Ten games per update replaces the historical four-game batch contract. More
+decisive self-play games alone do not establish stronger play; evaluation against
+frozen 1,753 is recorded as a future option and is currently disabled. Meaningful
+research steps and corrections belong in [the research journal](docs/research-log.md).
 
 ## Source layout
 

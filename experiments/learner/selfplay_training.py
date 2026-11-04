@@ -23,6 +23,8 @@ from .ppo import PPOConfig, _admit
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "heroes-selfplay-batch-v1"
+TEN_SCHEMA = cp.SELFPLAY_TEN_SCHEMA
+TEN_GAMEPLAY = dict(cp.SELFPLAY_TEN_GAMEPLAY)
 COMPLETION_SCHEMA = "heroes-selfplay-capture-complete-v1"
 RECEIPT_SCHEMA = "heroes-selfplay-training-receipt-v1"
 PROVENANCE = cp.SELFPLAY_GAMEPLAY_PROVENANCE
@@ -70,11 +72,16 @@ def time_left(remaining):
     return value
 
 
-def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_id, opponent_pool=POOL, purpose="training"):
+def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_id, opponent_pool=POOL,
+             purpose="training", training_contract=SCHEMA):
+    require(training_contract in (SCHEMA, TEN_SCHEMA), "Unknown self-play training contract")
     value = dict(plan_sha256=plan_sha256, initial_checkpoint=dict(initial_checkpoint),
                  opponent_checkpoint=dict(opponent_checkpoint), campaign_id=campaign_id,
                  opponent_pool=opponent_pool, policy_support=interaction_guard.REVEALED_VERSION,
                  learner_only_ppo=True, frozen_opponent=True, purpose=purpose)
+    if training_contract == TEN_SCHEMA:
+        value.update(training_contract=TEN_SCHEMA, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
+                     **TEN_GAMEPLAY)
     cp._check_selfplay_gameplay_metadata(value, c.EXPANDED_ENVIRONMENT)
     checked(initial_checkpoint); checked(opponent_checkpoint)
     return value
@@ -96,11 +103,22 @@ def implementation_identity():
     return expected
 
 
+def optimizer_step_cap(config, game_count, max_choices):
+    """Bound the unchanged PPO kernel by all declared learner-seat windows."""
+    require(type(config) is PPOConfig and type(game_count) is int and game_count > 0
+            and type(max_choices) is int and max_choices > 0, "Invalid PPO window bound")
+    windows = game_count * ((max_choices + config.decisions_per_window - 1) // config.decisions_per_window)
+    return config.epochs * ((windows + config.windows_per_minibatch - 1) // config.windows_per_minibatch)
+
+
 def _plan(path, digest):
     require(binding(path)["sha256"] == digest, "Self-play plan changed")
     value = read(path)
-    require(value.get("schema") == SCHEMA and value.get("mode") in ("training", "diagnostic")
-            and value.get("policy_support") == interaction_guard.REVEALED_VERSION
+    ten_game = value.get("schema") == TEN_SCHEMA
+    game_count = TEN_GAMEPLAY["training_games"] if ten_game else 4
+    guard = interaction_guard.HERO_RELATIVE_VERSION if ten_game else interaction_guard.REVEALED_VERSION
+    require(value.get("schema") in (SCHEMA, TEN_SCHEMA) and value.get("mode") in ("training", "diagnostic")
+            and value.get("policy_support") == guard
             and value.get("opponent_pool") == POOL, "Unsupported self-play plan contract")
     require(value.get("source") == source_identity(c.EXPANDED_ENVIRONMENT)
             and value["source"].get("tracked_worktree_dirty") is False,
@@ -112,21 +130,33 @@ def _plan(path, digest):
         require(binding(path)["sha256"] == digest, "Self-play implementation changed: " + name)
     checked(value["checkpoint"]); checked(value["opponent_checkpoint"]); checked(value["replay_binary"])
     cfg, rows = value["configuration"], value["schedule"]
-    require(type(rows) is list and len(rows) == 4 and cfg["training_games"] == 4
+    require(type(rows) is list and len(rows) == game_count and cfg["training_games"] == game_count
             and cfg["allow_verified_training_prefix"] is False,
-            "Self-play requires all four planned games; partial batches cannot train")
-    require([row.get("episode") for row in rows] == [1, 2, 3, 4]
-            and [row.get("learner_player") for row in rows] == [0, 1, 0, 1]
+            "Self-play requires every planned game; partial batches cannot train")
+    require([row.get("episode") for row in rows] == list(range(1, game_count + 1))
+            and [row.get("learner_player") for row in rows] == [index % 2 for index in range(game_count)]
             and all(row.get("phase") == value["mode"] for row in rows), "Self-play schedule changed")
     require(all(type(row.get("engine_seed")) is int and 0 < row["engine_seed"] < 2**31
             and type(row.get("policy_seeds")) is list and len(row["policy_seeds"]) == 2
             and all(type(seed) is int and 0 <= seed < 2**63 for seed in row["policy_seeds"]) for row in rows)
-            and len({row["engine_seed"] for row in rows}) == 4
-            and len({seed for row in rows for seed in row["policy_seeds"]}) == 8,
+            and len({row["engine_seed"] for row in rows}) == game_count
+            and len({seed for row in rows for seed in row["policy_seeds"]}) == 2 * game_count,
             "Self-play needs distinct explicit game and per-player policy seeds")
-    require(cfg["ordinary_choice_limit"] == 4960 and cfg["reserved_dialog_choices"] == 160
-            and cfg["max_total_choices"] == 5120 and cfg["max_optimizer_steps"] == 640,
-            "Self-play must preserve the original collection/update limits")
+    if ten_game:
+        require(all(cfg.get(key) == expected and type(cfg.get(key)) is type(expected)
+                    for key, expected in TEN_GAMEPLAY.items()),
+                "Ten-game self-play gameplay configuration differs")
+        require(value.get("army_information") == TEN_GAMEPLAY["army_information"]
+                and value.get("equipment_policy") == TEN_GAMEPLAY["equipment_policy"],
+                "Ten-game self-play must declare its army and equipment rules")
+        config = PPOConfig(**cfg["ppo"])
+        require(type(cfg.get("max_optimizer_steps")) is int and cfg["max_optimizer_steps"]
+                == optimizer_step_cap(config, game_count, cfg["max_total_choices"]),
+                "Ten-game self-play must budget every declared PPO window")
+    else:
+        require(cfg["ordinary_choice_limit"] == 4960 and cfg["reserved_dialog_choices"] == 160
+                and cfg["max_total_choices"] == 5120 and cfg["max_optimizer_steps"] == 640,
+                "Self-play must preserve the original collection/update limits")
     return value
 
 
@@ -151,7 +181,8 @@ class CaptureBinding:
 
 def create_capture_binding(plan_path, plan_sha256, schedule_index, folder):
     plan = _plan(plan_path, plan_sha256)
-    require(type(schedule_index) is int and 0 <= schedule_index < 4, "Invalid self-play schedule index")
+    require(type(schedule_index) is int and 0 <= schedule_index < len(plan["schedule"]),
+            "Invalid self-play schedule index")
     folder = Path(folder).resolve()
     expected = Path(plan["execution_output"]).resolve() / f"episode-{plan['schedule'][schedule_index]['episode']:06d}"
     require(folder == expected and not folder.exists(), "Self-play capture must start in its absent planned folder")
@@ -213,6 +244,12 @@ def _check_collected(bound, collected, models):
     require(manifest["identity"].get("native_runtime_sha256") == plan["runtime"]
             and all(manifest["identity"].get(key) == value for key, value in plan["native"].items()),
             "Self-play capture used another engine/map/runtime")
+    if plan.get("schema") == TEN_SCHEMA:
+        from experiments.headless.contextual_protocol import declared_army_information
+        require(declared_army_information(manifest, c.EXPANDED_ENVIRONMENT) == plan["army_information"]
+                and manifest.get("launch", {}).get("requested_settings", {}).get("server", {}).get(
+                    "experimentEquipmentPolicy") == plan["equipment_policy"],
+                "Ten-game self-play capture changed its army or equipment rules")
     require(models[0] is not models[1] and not ({p.data_ptr() for p in models[0].parameters()}
             & {p.data_ptr() for p in models[1].parameters()}), "Learner and frozen opponent must own separate tensors")
     cfg = plan["configuration"]
@@ -321,12 +358,15 @@ def verify_training_capture(bound, learner_model, opponent_model, *, replay_bina
 
 
 def _admit_selfplay(receipts, model, *, plan_sha256):
-    require(type(receipts) is tuple and len(receipts) == 4 and len({id(r) for r in receipts}) == 4,
-            "Self-play admission requires exactly four unique verified games")
+    require(type(receipts) is tuple and receipts and all(type(r) is VerifiedTrainingReceipt for r in receipts),
+            "Self-play admission requires typed verified games")
+    count = TEN_GAMEPLAY["training_games"] if receipts[0].binding.plan.get("schema") == TEN_SCHEMA else 4
+    require(len(receipts) == count and len({id(r) for r in receipts}) == count,
+            "Self-play admission requires every unique verified game in its batch")
     require(all(type(r) is VerifiedTrainingReceipt and _RECEIPTS.get(id(r)) is r
                 and (r.binding.plan_sha256, r.binding.schedule_index) not in _USED
                 for r in receipts), "Self-play receipt is forged, diagnostic or already consumed")
-    require([r.binding.schedule_index for r in receipts] == [0, 1, 2, 3], "Self-play receipt order changed")
+    require([r.binding.schedule_index for r in receipts] == list(range(count)), "Self-play receipt order changed")
     for receipt in receipts:
         bound = receipt.binding; bound.recheck()
         require(bound.plan_sha256 == plan_sha256 and bound.plan["mode"] == "training", "Self-play receipt plan/purpose differs")
