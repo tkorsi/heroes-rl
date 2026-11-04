@@ -1786,3 +1786,15 @@ main while that run owns the source would invalidate the run. After the current
 run finishes, manual integration is `git merge --ff-only codex/selfplay-batch-learning`
 from `/Users/orsi/Projects/Heroes`, followed by the read-only preflight above and
 the corresponding `--run` command. Do not merge while the run is active.
+
+The corrected code at `4c87a3f` passed the same real preflight in 5.55 seconds:
+checkpoint 1,753, exact complete-state restoration, ten physical training games,
+zero held-out games, one expected update, a 36,000-second budget, and fresh engine
+seeds starting at 1,970,000,000 with 20 policy seeds starting at 1,972,000,000.
+The preview explicitly reports `reserved=false`; the training artifacts directory
+remains absent. The private transcript is under
+`Heroes-artifacts/diagnostics/batch-ten-preparation-20261104/4c87a3f0224c84fd20e70a754955181963de0492-preflight.log`.
+A read-only check of an existing verified native manifest confirmed that its
+army-information/equipment fields match the new admission checks. This is reuse
+of existing native evidence, not a newly executed training batch. Full native
+execution of the new ten-game training mode remains for the user's manual launch.
