@@ -29,6 +29,24 @@ concurrently and fully verified five within the time budget. The twenty-minute
 acceptance criterion remained unmet. Checkpoints and raw captures are stored
 separately in the private artifacts directory.
 
+## Search for a first verified win
+
+Use `./play-one-selfplay.sh --check --until-first-win` to inspect the configuration.
+To launch manually, use `./play-one-selfplay.sh --run --until-first-win --seconds 7200 --max-games 100`.
+The mode starts with up to ten workers. Use `--workers` to compare concurrency
+under the same time budget. Waiting captures occupy worker slots, and one
+additional verifier slot is reserved for a victory candidate. The disk reserve
+defaults to 30 GiB and is configurable with `--disk-reserve-gib`.
+
+The experiment uses the pinned original map and large frozen checkpoint 1,753,
+with hero-relative coordinates, the existing cooldowns, artifact restrictions
+and troop-slot rules. Only the gameplay horizons increase, to 5,840 days and
+158,720 ordinary plus 5,120 reserved choices per player. Each game reserves fresh
+seeds and retains verification evidence in private storage. A victory requires
+exact policy reconstruction and native replay. Cutoffs are unscored, and
+interrupted games are tracked separately. Training admission and PPO updates
+are disabled.
+
 ## Source layout
 
 | Path | Responsibility |

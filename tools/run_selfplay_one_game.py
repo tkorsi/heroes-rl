@@ -125,6 +125,8 @@ BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
               hard_choices_per_player=10240, max_days=365, capture_seconds=1200)
+FIRST_WIN_BUDGET = {key: value * 16 if key != 'capture_seconds' else None
+                    for key, value in BUDGET.items()}
 ENGINE_SEED, POLICY_SEED = 1_960_000_000, 1_962_000_000
 require, read, write, binding, bound = campaign.require, campaign.read, campaign.write, campaign.binding, campaign.bound
 
@@ -337,6 +339,7 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None, anal
     from experiments.learner import selfplay_training as training
     from experiments.headless import contextual_replay
     guard = policy_support(plan)
+    budget = plan.get('budget', BUDGET)
     from experiments.headless.process_deadline import guarded_popen, close_owned_process
     replay_process = None
     try:
@@ -374,8 +377,8 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None, anal
                     and rollout.weights_sha256 == rollout.opponent_weights_sha256 == plan['weights_sha256'] == weights_sha256(model)
                     and json.loads(config) == model.config.to_dict(), 'Frozen evaluation policy identity or exclusion differs')
             require((behavior_guard_version(rollout.decisions) == guard or not rollout.decisions and not rollout.samples)
-                    and len(rollout.decisions) <= BUDGET['hard_choices_per_player']
-                    and all(rollout.history[decision.decision_seq].day <= 365 for decision in rollout.decisions),
+                    and len(rollout.decisions) <= budget['hard_choices_per_player']
+                    and all(rollout.history[decision.decision_seq].day <= budget['max_days'] for decision in rollout.decisions),
                     'Evaluation guard, choices or sampled-day boundary differs')
         policies = training.reconstruct_policies(collected, models, plan['schedule']['policy_seeds'], remaining)
         if replay_process is None:
@@ -395,6 +398,9 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None, anal
         proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0, policy_support=guard,
                      choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts],
                      parallel_native_replay=parallel_replay)
+        if plan.get('until_first_win') and manifest['status'] == 'completed':
+            proof['terminal_day'] = max(frame.day for rollout in collected.rollouts
+                                        for frame in rollout.history if frame.kind == 'terminal')
         if analyze is not None:
             proof['analytics'] = analyze(collected)
             remaining()
@@ -415,22 +421,26 @@ def collect(plan, models):
     from validation.probes.validate_hero_policy import wall_limit, retain_failed_evidence
     guard = policy_support(plan)
     output = Path(plan['output'])
+    budget = plan.get('budget', BUDGET)
     progress = GameProgress(progress_path(output, 1), episode=1,
-        ordinary=BUDGET['ordinary_choices_per_player'], reserved=BUDGET['reserved_dialog_choices_per_player'])
-    deadline = min(time.monotonic() + BUDGET['capture_seconds'], plan['hard_deadline_monotonic'] - 30)
-    wall = min(time.time() + BUDGET['capture_seconds'], plan['hard_deadline_unix'] - 30)
+        ordinary=budget['ordinary_choices_per_player'], reserved=budget['reserved_dialog_choices_per_player'])
+    deadline = plan['hard_deadline_monotonic'] - 30
+    wall = plan['hard_deadline_unix'] - 30
+    if budget['capture_seconds'] is not None:
+        deadline = min(deadline, time.monotonic() + budget['capture_seconds'])
+        wall = min(wall, time.time() + budget['capture_seconds'])
     launcher = DeadlineVcmiLauncher(Path(plan['binary']), Path(plan['data']), Path(plan['game_map']),
         deadline_monotonic=deadline, deadline_wall=wall, evidence_path=output / 'native-process-deadline.jsonl',
         **({'equipment_policy': plan['equipment_policy']} if 'equipment_policy' in plan else {}))
     class DayBoundedCollector(ContextualCollector):
         def act(self, request):
-            require(request.record['day'] <= 365, 'A sampled evaluation action exceeds the preserved day365 bound')
+            require(request.record['day'] <= budget['max_days'], 'A sampled evaluation action exceeds the pinned day bound')
             return super().act(request)
     collector = DayBoundedCollector(models, (plan['model_checkpoint'],) * 2, learner_player=0,
         opponent_pool=campaign.POOL, interface=campaign.INTERFACE, purpose='diagnostic', origin='native',
         policy_seeds=tuple(plan['schedule']['policy_seeds']), guard_version=guard)
     observation_options = ({'army_information': plan['army_information']} if 'army_information' in plan else {})
-    env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=365, max_actions=10240,
+    env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=budget['max_days'], max_actions=budget['hard_choices_per_player'],
         watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30),
         ledger=True, replay=True, interface=campaign.INTERFACE,
         agents={color: dict(checkpoint=plan['model_checkpoint'], kind='frozen-neural', purpose='diagnostic')
@@ -438,7 +448,8 @@ def collect(plan, models):
     try:
         with wall_limit(campaign.remaining(dict(hard_deadline_monotonic=deadline, hard_deadline_unix=wall))):
             collected = collector.run_episode(env, episode=1, seed=plan['schedule']['engine_seed'],
-                max_requests_per_player=9920, max_dialog_requests_per_player=320, progress=progress)
+                max_requests_per_player=budget['ordinary_choices_per_player'],
+                max_dialog_requests_per_player=budget['reserved_dialog_choices_per_player'], progress=progress)
             progress.phase('storing')
             save_collected(env.episode_dir / 'neural-rollout.json', collected)
             return env.episode_dir
@@ -457,7 +468,7 @@ def collect(plan, models):
             launcher.close_owned_groups(timeout=10); launcher.assert_closed()
 
 
-def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=SCHEMA, checkpoint=1753):
+def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=SCHEMA, checkpoint=1753, before_verify=None):
     from validation.probes.validate_hero_policy import wall_limit
     from experiments.learner.game_progress import progress_path, set_phase
     identity_check = check_identity if identity_check is None else identity_check
@@ -468,7 +479,7 @@ def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=S
     write(output / 'worker-claim.json', dict(pid=os.getpid(), plan_sha256=sha), new=True)
     report = dict(schema=result_schema + '-result', status='running', plan=binding(path), checkpoint=checkpoint,
         physical_games=1, purpose='diagnostic', training_input=False, training_samples_admitted=0, optimizer_updates=0,
-        budget=BUDGET, policy_support=policy_support(plan), owned_cleanup_verified=False)
+        budget=plan.get('budget', BUDGET), policy_support=policy_support(plan), owned_cleanup_verified=False)
     if 'army_information' in plan:
         report['army_information'] = plan['army_information']
     if 'equipment_policy' in plan:
@@ -481,13 +492,18 @@ def worker(path, sha, *, identity_check=None, model_loader=None, result_schema=S
         # The capture and verification timers are sequential: wall_limit rejects
         # nesting, while the process guardian bounds the entire worker.
         folder = collect(plan, models)
+        del models
+        if before_verify is not None:
+            before_verify(plan, folder)
         set_phase(progress_path(output, 1), 'verifying')
         with wall_limit(campaign.remaining(plan, 30)):
             proof, manifest = verify_capture(folder, plan, model_loader(plan), lambda: campaign.remaining(plan, 30),
-                                             identity_check=identity_check)
+                                             identity_check=identity_check,
+                                             **({'parallel_replay': True} if before_verify is not None else {}))
             require(binding(path)['sha256'] == sha, 'Evaluation plan changed during execution')
             report.update(status='passed', episode_directory=str(folder), episode_status=manifest['status'],
                 termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
+                natural_terminal_after_horizon=manifest.get('natural_terminal_after_horizon'),
                 rewards=manifest['rewards_by_player'], choices_by_player=proof['choices_by_player'],
                 native_replay_verified=True, both_policies_reconstructed=True,
                 proof=binding(folder / 'evaluation-policy-reconstruction.json'), owned_cleanup_verified=True)

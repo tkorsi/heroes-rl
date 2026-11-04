@@ -1,5 +1,5 @@
 #!/bin/sh
-# Check by default; --run plays one frozen game with the trained large model.
+# Check by default; explicit --run starts the selected frozen evaluation.
 set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 TRAINER_PYTHON=${HEROES_PYTHON:-"$HOME/Projects/Heroes-artifacts/python/next-launch-numpy235-v1/venv/bin/python"}
@@ -9,7 +9,7 @@ if [ ! -x "$TRAINER_PYTHON" ]; then
 fi
 case "${1:---check}" in
     --check|--run) ;;
-    *) echo "Usage: $0 [--check | --run] [--hero-relative] [--seconds SECONDS] [--output PATH] [--json]" >&2; exit 2 ;;
+    *) echo "Usage: $0 [--check | --run] [--hero-relative | --until-first-win] [--workers N] [--max-games N] [--disk-reserve-gib N] [--seconds SECONDS] [--output PATH] [--json]" >&2; exit 2 ;;
 esac
 if [ "${1:-}" = --run ] && command -v caffeinate >/dev/null 2>&1; then
     exec caffeinate -i "$TRAINER_PYTHON" "$SCRIPT_DIR/tools/run_recruit_only_one_game.py" "$@"

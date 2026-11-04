@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import subprocess
 import sys
 import textwrap
 import time
@@ -213,27 +214,34 @@ def inspect_candidate(guard=GUARD):
     return checked
 
 
-def prepare(args, guard=GUARD):
+def prepare(args, guard=GUARD, *, checked=None, deadline=None):
     require(math.isfinite(args.seconds) and 180 <= args.seconds <= 7200,
             'Use a finite total budget from 180 to 7200 seconds')
-    checked = inspect_candidate(guard)
+    checked = inspect_candidate(guard) if checked is None else checked
+    first_win = deadline is not None
     output = evaluation.copies.private_path(args.output or evaluation.BASE / (
         'run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ') + '-' + secrets.token_hex(4)), fresh=True)
     # Share the established large-model ledger, including its consumed attempts.
     reservation = evaluation.reserve(output)
     output.mkdir(parents=True, mode=0o700)
-    plan = dict(schema=SCHEMA + '-plan', **checked, output=str(output), budget=BUDGET, policy_support=guard,
+    plan = dict(schema=SCHEMA + '-plan', **checked, output=str(output),
+        budget=evaluation.FIRST_WIN_BUDGET if first_win else BUDGET, policy_support=guard,
         physical_games=1, learner_player_for_reporting=0, purpose='diagnostic', training_input=False,
         optimizer_updates=0, reservation=reservation, schedule=read(bound(reservation))['schedule'],
         supervisor_pid=os.getpid(), maximum_seconds=args.seconds,
         hard_deadline_monotonic=time.monotonic() + args.seconds, hard_deadline_unix=time.time() + args.seconds)
+    if first_win:
+        plan.update(until_first_win=True, hard_deadline_monotonic=deadline[0], hard_deadline_unix=deadline[1])
     write(output / 'plan.json', plan, new=True)
     return plan
 
 
 def check_identity(plan):
     guard = plan.get('policy_support')
-    require(plan['schema'] == SCHEMA + '-plan' and plan['budget'] == BUDGET
+    first_win = plan.get('until_first_win') is True
+    budget = evaluation.FIRST_WIN_BUDGET if first_win else BUDGET
+    require(plan['schema'] == SCHEMA + '-plan' and plan['budget'] == budget
+            and (not first_win or guard == HERO_RELATIVE_VERSION)
             and plan['physical_games'] == 1 and plan['purpose'] == 'diagnostic'
             and plan['training_input'] is False and plan['optimizer_updates'] == 0
             and guard in (GUARD, HERO_RELATIVE_VERSION) and plan['army_information'] == OWN_ARMY_INFORMATION
@@ -249,28 +257,225 @@ def check_identity(plan):
     campaign.verify_protected(plan['protected'])
 
 
+def victory(manifest):
+    outcomes = manifest.get('outcomes_by_player', {})
+    rewards = manifest.get('rewards_by_player', {})
+    if manifest.get('status') == 'completed' and not manifest.get('natural_terminal_after_horizon'):
+        for winner, loser in (('red', 'blue'), ('blue', 'red')):
+            if outcomes == {winner: 'win', loser: 'loss'} and rewards == {winner: 1, loser: -1}:
+                return winner
+    return None
+
+
+def wait_for_verification(plan, folder):
+    output = Path(plan['output'])
+    require(folder == output / 'episode-000001', 'Unexpected capture directory')
+    (output / 'capture-ready').touch(exist_ok=False)
+    while not (output / 'verify-now').exists():
+        campaign.remaining(plan, 30)
+        time.sleep(0.25)
+
+
+def first_win(args, checked, *, human, color):
+    from experiments.headless.process_deadline import (
+        guarded_popen, close_owned_process, cleanup_from_evidence, _release_owned_process,
+    )
+    started = time.monotonic()
+    deadline = (started + args.seconds, time.time() + args.seconds)
+    root = evaluation.copies.private_path(args.output or evaluation.BASE / (
+        'first-win-' + secrets.token_hex(6)), fresh=True)
+    root.mkdir(parents=True, mode=0o700)
+    print(f'Private evidence: {root}', file=sys.stderr, flush=True)
+    active, results, cleanup_errors = {}, [], []
+    winner = None
+    launched = 0
+    reason = 'budget'
+    env = {**os.environ, **{key: '1' for key in
+           ('OMP_NUM_THREADS', 'OPENBLAS_NUM_THREADS', 'MKL_NUM_THREADS',
+            'VECLIB_MAXIMUM_THREADS', 'NUMEXPR_NUM_THREADS')}}
+
+    def close(folder, process):
+        limits = dict(timeout=10, deadline_monotonic=deadline[0], deadline_wall=deadline[1])
+        for operation in [lambda: close_owned_process(process, **limits)] + [
+                lambda receipt=receipt: cleanup_from_evidence(receipt, **limits)
+                for receipt in folder.glob('*native-process-deadline.jsonl')]:
+            try:
+                operation()
+            except Exception as error:
+                cleanup_errors.append(f'{folder.name}: {error}')
+
+    def display(pending, *, final=False):
+        elapsed = time.monotonic() - started
+        done = sum(row['status'] == 'verified' for row in results)
+        cutoffs = sum(row.get('cutoff', False) for row in results)
+        failures = sum(row['status'] == 'failed' for row in results)
+        heading = f'FIRST WIN  •  CHECKPOINT {CHECKPOINT:,}'
+        cells = [('Elapsed', _duration(elapsed)), ('Completed', str(done)),
+                 ('Active', str(len(active))), ('Cutoffs', str(cutoffs)),
+                 ('Failures', str(failures)), ('Winner', winner['colour'] if winner else
+                  'awaiting verification' if pending else 'searching' if not final else 'none')]
+        if human:
+            width = shutil.get_terminal_size((80, 24)).columns
+            bar = '━' * min(30, int(30 * elapsed / args.seconds))
+            view = _panel(heading, 'Finished' if final else 'Frozen evaluation',
+                          [('Run', [(key, value, '1;36') for key, value in cells]
+                                    + [('Time budget', bar.ljust(30, '─'), '1;32')])],
+                          color=color, columns=width)
+            print(('\x1b[H\x1b[2J' if not final else '\n') + view, flush=True)
+        elif not args.json:
+            print(' | '.join(f'{key} {value}' for key, value in cells), flush=True)
+
+    try:
+        last_display = -60
+        while time.monotonic() < deadline[0] - 32 and time.time() < deadline[1] - 32:
+            pending, ready = [], []
+            for folder, (process, pin, schedule) in list(active.items()):
+                capture = folder / 'episode-000001'
+                try:
+                    manifest = read(capture / 'manifest.json')
+                except (FileNotFoundError, json.JSONDecodeError):
+                    manifest = {}
+                candidate = victory(manifest)
+                code = process.poll()
+                if code is None:
+                    if candidate:
+                        pending.append(folder)
+                    if (folder / 'capture-ready').exists() and not (folder / 'verify-now').exists():
+                        ready.append(folder)
+                    continue
+                close(folder, process)
+                del active[folder]
+                try:
+                    report = read(folder / 'report.json')
+                    require(code == 0 and report['status'] == 'passed' and report['plan'] == pin
+                            and binding(folder / 'plan.json') == pin
+                            and report['native_replay_verified'] is True
+                            and report['both_policies_reconstructed'] is True
+                            and report['protected_inputs_unchanged'] is True
+                            and report['training_input'] is False and report['optimizer_updates'] == 0
+                            and report['training_samples_admitted'] == 0 and not cleanup_errors,
+                            report.get('error', 'Evaluation worker did not pass'))
+                    proof = read(bound(report['proof']))
+                    candidate = victory(dict(status=report['episode_status'],
+                        outcomes_by_player=report['outcomes'], rewards_by_player=report['rewards'],
+                        natural_terminal_after_horizon=report.get('natural_terminal_after_horizon')))
+                    if candidate:
+                        require(type(proof['terminal_day']) is int and proof['terminal_day'] > 0,
+                                'Verified terminal day missing')
+                        if winner is None:
+                            winner = dict(colour=candidate, day=proof['terminal_day'], seeds=schedule,
+                                          evidence=str(capture), proof=report['proof'])
+                    results.append(dict(game=folder.name, status='verified',
+                                        cutoff=report['episode_status'] == 'truncated' or
+                                        bool(report.get('natural_terminal_after_horizon'))))
+                except (OSError, ValueError, KeyError) as error:
+                    results.append(dict(game=folder.name, status='failed', error=str(error)))
+            if winner or cleanup_errors:
+                break
+            if shutil.disk_usage(root).free < args.disk_reserve_gib * 1024**3:
+                reason = 'disk reserve reached'
+                break
+            verifying = {folder for folder in active if (folder / 'verify-now').exists()}
+            # One ordinary verifier and a reserved priority slot for a victory.
+            # Waiting captures occupy worker slots, so the queue cannot grow unbounded.
+            if pending:
+                if not verifying.intersection(pending):
+                    priority = next((folder for folder in ready if folder in pending), None)
+                    if priority is not None and len(verifying) < 2:
+                        (priority / 'verify-now').touch(exist_ok=False)
+            elif ready and not verifying:
+                (ready[0] / 'verify-now').touch(exist_ok=False)
+            if not pending and launched < args.max_games and len(active) < args.workers:
+                launched += 1
+                folder = root / f'game-{launched:06d}'
+                game_args = argparse.Namespace(output=folder, seconds=args.seconds)
+                plan = prepare(game_args, HERO_RELATIVE_VERSION, checked=checked, deadline=deadline)
+                pin = binding(folder / 'plan.json')
+                with (folder / 'worker.log').open('xb') as log:
+                    process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_first_win_worker',
+                        '--plan', pin['path'], '--sha256', pin['sha256']],
+                        deadline_monotonic=deadline[0], deadline_wall=deadline[1],
+                        evidence_path=folder / 'worker-process-deadline.jsonl', cwd=ROOT, env=env,
+                        stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+                active[folder] = (process, pin, plan['schedule'])
+                # Fill empty slots promptly, then poll at a low frequency.
+                continue
+            if not active:
+                break
+            if time.monotonic() - last_display >= (1 if human else 15):
+                display(pending)
+                last_display = time.monotonic()
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        reason = 'interrupted by operator'
+    finally:
+        for process, _, _ in active.values():
+            _release_owned_process(process)
+        for folder, (process, _, _) in active.items():
+            close(folder, process)
+            results.append(dict(game=folder.name, status='interrupted'))
+        active.clear()
+        protected = False
+        try:
+            protected = campaign.verify_protected(checked['protected'])
+        except Exception as error:
+            cleanup_errors.append(f'Protected inputs: {error}')
+        summary = dict(winner=winner, reason='verified victory' if winner else reason,
+                       games=results, launched=launched, elapsed_seconds=time.monotonic() - started,
+                       owned_cleanup_verified=not cleanup_errors, cleanup_errors=cleanup_errors,
+                       protected_inputs_unchanged=protected, optimizer_updates=0, training_samples_admitted=0)
+        write(root / 'report.json', summary, new=True)
+    display(False, final=True)
+    message = (f"{winner['colour'].title()} won on day {winner['day']}. Seeds {winner['seeds']}. "
+               f"Evidence {winner['evidence']}" if winner else 'No verified winner within the budget.')
+    if args.json:
+        print(json.dumps(summary, indent=2))
+    else:
+        print(message, flush=True)
+        print(f'Report: {root / "report.json"}', flush=True)
+    return 2 if cleanup_errors or not protected else 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--check', action='store_true'); modes.add_argument('--run', action='store_true')
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--until-first-win', action='store_true', help='Search with frozen checkpoint 1753 and 16× gameplay limits')
+    parser.add_argument('--workers', type=int, default=10)
+    parser.add_argument('--max-games', type=int, default=100)
+    parser.add_argument('--disk-reserve-gib', type=int, default=30)
     parser.add_argument('--hero-relative', action='store_true', help='Use hero-relative coordinates and the general repeat cooldown')
     parser.add_argument('--seconds', type=float, default=3600)
     parser.add_argument('--json', action='store_true', help='Print the machine-readable result, including in a terminal')
-    parser.add_argument('command', nargs='?', choices=('_worker',))
+    parser.add_argument('command', nargs='?', choices=('_worker', '_first_win_worker'))
     parser.add_argument('--plan', type=Path); parser.add_argument('--sha256')
     args = parser.parse_args(argv)
-    if args.command == '_worker':
+    if args.command in ('_worker', '_first_win_worker'):
         require(args.plan is not None and args.sha256 is not None and not args.run and not args.check and not args.hero_relative,
                 'Trained worker requires a bound plan')
+        options = {'before_verify': wait_for_verification} if args.command == '_first_win_worker' else {}
         return int(evaluation.worker(args.plan, args.sha256, identity_check=check_identity,
-            model_loader=frozen_models, result_schema=SCHEMA, checkpoint=CHECKPOINT)['status'] != 'passed')
+            model_loader=frozen_models, result_schema=SCHEMA, checkpoint=CHECKPOINT,
+            **options)['status'] != 'passed')
     require(math.isfinite(args.seconds) and 180 <= args.seconds <= 7200,
             'Use a finite total budget from 180 to 7200 seconds')
     human = _human_terminal(sys.stdout) and not args.json
     color = human and terminal_color_enabled(sys.stdout)
     columns = shutil.get_terminal_size(fallback=(80, 24)).columns
     started = time.monotonic()
+    if args.until_first_win:
+        require(1 <= args.workers <= 10 and 1 <= args.max_games <= 10000 and args.disk_reserve_gib >= 1,
+                'Use 1–10 workers, 1–10,000 games and a positive disk reserve')
+        if args.run:
+            with campaign.activity_lease():
+                return first_win(args, inspect_candidate(HERO_RELATIVE_VERSION), human=human, color=color)
+        checked = inspect_candidate(HERO_RELATIVE_VERSION)
+        print(json.dumps(dict(status='ready', checkpoint=CHECKPOINT, map=checked['game_map'],
+            experiment=checked['experiment'], budget=evaluation.FIRST_WIN_BUDGET,
+            workers=args.workers, max_games=args.max_games, seconds=args.seconds,
+            disk_reserve_gib=args.disk_reserve_gib), indent=2))
+        return 0
     plan = None
     guard = HERO_RELATIVE_VERSION if args.hero_relative else GUARD
     try:
