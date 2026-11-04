@@ -1565,3 +1565,52 @@ choice limit, model, action support, reward or learning setting changes. The
 Markdown analytics now defers final batch status/time to the authoritative JSON
 report, avoiding a preliminary success label near the deadline. These production
 changes are committed before validation; performance acceptance remains pending.
+
+The 237afe4 candidate passed 228 existing tests and the actual launcher preflight
+and canonical engine preparation check. The broader adapter test invocation
+initially failed because its legacy imports require the tests directory on the
+module path; unittest discovery supplied that path and all 31 adapter tests
+passed. Local validation also passed 31 typed-history controls, 239,904 bounded
+slice cases, 952 index cases, eight post-append rollback controls, 469 baseline
+encoder/snapshot comparisons, 36 exact model-state frames and nine exact sampled
+choices/RNG comparisons. No test or diagnostic source was published.
+
+The typed-history harness first needed the headless module import directory.
+A deliberate object.__setattr__ mutation of a copied frozen frame carrying an
+old private canonical cache can defeat in-process cached-text comparisons; this
+violates the immutable-object contract and was not treated as a supported input
+path. Normal frozen construction rejects that malformed frame, and fresh forged
+records, persisted JSON tampering and typed/JSON prefix changes were rejected.
+The adapter accessor returns only already decoded and chronology-validated frozen
+frames. Independent disk reload and replay remain mandatory.
+
+The fourth fresh-seed batch ended with failed acceptance: 5/10 verified, external
+wall time 1,159.26 seconds (internal 1,158.84 seconds including analytics). All ten
+native games were independently observed running concurrently, with ten persistent
+terminal rows. The terminal recorded the last collecting state at 666.8 seconds
+and all gameplay complete at 667.3 seconds. The captures contained 87,446 choices.
+Eight reached the day boundary and two reached a player's ordinary-choice limit;
+these capture declarations do not certify the five unverified games.
+
+Games 2, 3, 5, 6 and 10 timed out during verification after collection/storage had
+completed. None has a completed policy-reconstruction or native-replay proof.
+The five successful games were 1, 4, 7, 8 and 9; all were unscored day-limit
+cutoffs with zero wins and zero confirmed town captures. Across their 33,022
+choices, 23,754 (71.93%) opened, closed or navigated windows. Their 4,905 movement
+attempts all targeted revealed tiles, 4,781 changed the observed endpoint and
+76 returned no_route_known. These analytics cover only the five verified games.
+
+All 30 owned worker/native/replay process groups were independently confirmed
+empty after exit; no recorded leader, guardian or writer PID remained. All 805
+protected checkpoint bindings rehashed unchanged, with zero admitted samples and
+zero PPO updates. Failed captures and consumed seed reservations remain private.
+The main conclusion is limited: ten-game concurrency and terminal progress work,
+but full saving, verification and analytics for all ten still exceed the target.
+The different seeds and substantially different choice totals across attempts
+do not establish a controlled speedup ratio. The remaining measured delay is
+post-game history processing and verification; checks were not weakened.
+
+During the fourth run the user explicitly requested finishing this batch, making
+conclusions and stopping. No fifth trial, training campaign or further performance
+change was started. The candidate remains committed and checkable, but it is not
+accepted as satisfying the requested 20-minute ten-game result.

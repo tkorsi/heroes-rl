@@ -15,8 +15,8 @@ historical validation evidence intact.
 
 ## Current state
 
-A ten-game parallel runner is being validated: `./play-ten-selfplay.sh --check`
-checks the frozen checkpoint 1,753 configuration; explicit `--run` launches ten
+A ten-game parallel runner is implemented but has not passed its timing target.
+`./play-ten-selfplay.sh --check` checks the frozen checkpoint 1,753 configuration; explicit `--run` launches ten
 isolated hero-relative self-play games together. It retains the existing
 9,920 ordinary plus 320 reserved choices per player and 365-day limit. Ten fixed
 terminal rows show each game's day, choices and verification phase. The shared
@@ -24,7 +24,12 @@ terminal rows show each game's day, choices and verification phase. The shared
 a timeout fails the batch and does not count as a completed game. Every game
 uses fresh reserved seeds, full policy reconstruction and native replay, with
 zero PPO updates. Evidence and per-game analytics stay in private artifacts.
-Measured acceptance is pending; the runner is committed before its first trial.
+The latest committed candidate (237afe4) completed all ten gameplay captures in
+667.3 seconds, but only five finished full verification before the work deadline.
+External total time was 1,159.26 seconds, including cleanup and analytics for the
+verified games. This is a failed 10/10 acceptance, not a 20-minute success. The
+user requested stopping after this fourth trial; no further run was launched.
+See the [research log](docs/research-log.md) for all attempts and limitations.
 
 The user stopped the small-network experiment. Its initialization, completed
 capture and seed history remain preserved for reproducibility; it is no longer
