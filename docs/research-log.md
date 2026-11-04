@@ -1545,3 +1545,23 @@ The design follows the profiling and independent-work overlap principles in
 and [EnvPool](https://proceedings.nips.cc/paper_files/paper/2022/hash/8caaf08e49ddbad6694fae067442ee21-Abstract-Datasets_and_Benchmarks.html);
 no external throughput figures are claimed for Heroes and no asynchronous
 learning or policy-lag settings are introduced.
+
+The 46a4af5 parallel-verification candidate passed 41 existing process/progress
+checks, two sequential-verification controls, nine local guarded-process failure
+controls and a copied 210-choice native positive control (3.94 seconds). The third
+fresh-seed trial nevertheless failed acceptance: seven of ten games verified in
+1,159.03 external seconds. All ten native games overlapped and finished gameplay;
+the 11,208-, 11,585- and 11,724-choice captures exhausted verification time.
+Protected state and owned cleanup passed, with zero PPO updates. This batch is
+preserved as a failed attempt, not a successful ten-game performance result.
+
+The next candidate removes complete-history copying from the encoder and the
+adapter's incremental wire cache. Encoder snapshots retain fixed prefix bounds
+and branch safely after failed speculative encodings. Finalization can deliver
+validated immutable frames directly inside the process, retaining both structural
+and exact canonical prefix comparisons. The independent persisted audit, strict
+reload, full policy reconstruction and native replay remain required. No day or
+choice limit, model, action support, reward or learning setting changes. The
+Markdown analytics now defers final batch status/time to the authoritative JSON
+report, avoiding a preliminary success label near the deadline. These production
+changes are committed before validation; performance acceptance remains pending.

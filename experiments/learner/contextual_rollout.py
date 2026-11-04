@@ -506,8 +506,12 @@ class ContextualSession:
                 last = known[raw["seq"]]  # byte-identical redelivery of that accepted frame
                 continue
             frame = last = raw if type(raw) is c.Frame else c.decode_frame(raw)
+            if type(frame.seq) is not int or frame.seq < 0:
+                raise ValueError("Invalid history sequence")
             if frame.seq < len(known):
-                if known[frame.seq] != frame: raise ValueError("Previously delivered history prefix changed")
+                if (known[frame.seq] != frame
+                        or c.canonical_frame(known[frame.seq]) != c.canonical_frame(frame)):
+                    raise ValueError("Previously delivered history prefix changed")
                 continue
             # Contract/encoder failures abort collection; a failed episode is
             # never recoverable as an eligible partial rollout.
@@ -821,5 +825,6 @@ class ContextualCollector:
             seat_choices[player] += 1
             notify_progress("collecting")
         notify_progress("finalizing")
-        return self.finish(request, histories=(env.history("red"), env.history("blue")),
+        history = getattr(env, "typed_history", env.history)
+        return self.finish(request, histories=(history("red"), history("blue")),
                            manifest_path=env.episode_dir / "manifest.json" if self.origin == "native" else None)

@@ -55,9 +55,8 @@ _WIRE_CACHE = weakref.WeakKeyDictionary()
 
 def canonical_records(history):
     """Cache only immutable serialized frames, never a mutable public object."""
-    frames = history.frames
     cache = _WIRE_CACHE.setdefault(history, [])
-    for frame in frames[len(cache):]:
+    for frame in history._frames[len(cache):]:
         cache.append(contract.canonical_frame(frame))
     return cache
 
@@ -219,6 +218,12 @@ class ContextualMixin:
         if color not in COLORS:
             raise ValueError("Unknown player color")
         return encoded(self.sides[COLORS.index(color)].validator.history)
+
+    def typed_history(self, color):
+        """Immutable validated frames for in-process collector finalization."""
+        if color not in COLORS:
+            raise ValueError("Unknown player color")
+        return self.sides[COLORS.index(color)].validator.history.frames
 
     def history_v1(self, color):
         raise ValueError("Contextual history has no compatible v1 projection")

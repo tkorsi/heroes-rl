@@ -354,8 +354,8 @@ def run(output, started, wall):
         blue_wins=sum(g['outcomes'].get('blue') == 'win' for g in games),
         cutoffs=sum(g['episode_status'] == 'truncated' for g in games))
     lines = ['# Ten-game self-play results', '',
-        f"Status: {report['status']}. {len(games)}/10 verified in {elapsed:.1f} seconds. "
-        f"Ten native games observed concurrently: {witness is not None}. Zero PPO updates.", '',
+        f"{len(games)}/10 games verified. Ten native games observed concurrently: {witness is not None}. "
+        "Zero PPO updates. Final batch status and elapsed time are in report.json.", '',
         '| Game | Result | Day | Choices R/B | Moves R/B | New tiles R/B | Captures R/B | Hires R/B | Seconds |',
         '|---|---|---|---|---|---|---|---|---|']
     for game in games:

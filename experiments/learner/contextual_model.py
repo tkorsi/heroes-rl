@@ -12,9 +12,10 @@ from contextlib import contextmanager
 from copy import copy
 from dataclasses import asdict, dataclass, fields, is_dataclass
 import hashlib
+from itertools import islice
 import json
 from math import copysign, log1p, sqrt
-from operator import attrgetter
+from operator import attrgetter, index as index_value
 import signal
 from sys import getsizeof
 import threading
@@ -974,11 +975,56 @@ def frame_keys_until(keys, frames, stop):
     return keys
 
 
+class _HistoryPrefix:
+    """Bounded encoder history snapshots over append-only frame storage.
+
+    A successful candidate extends the shared tail without copying its prefix.
+    Older snapshots keep their own bounds. Appending after a failed candidate,
+    or to an older snapshot, copies only that branch's accepted prefix.
+    """
+
+    __slots__ = ("_backing", "_stop")
+
+    def __init__(self, backing=None, stop=None):
+        self._backing = [] if backing is None else backing
+        self._stop = len(self._backing) if stop is None else stop
+
+    def copy(self):
+        return _HistoryPrefix(self._backing, self._stop)
+
+    def __len__(self):
+        return self._stop
+
+    def __iter__(self):
+        return islice(self._backing, self._stop)
+
+    def __reversed__(self):
+        backing, stop = self._backing, self._stop
+        return (backing[position] for position in range(stop - 1, -1, -1))
+
+    def __getitem__(self, key):
+        if isinstance(key, slice):
+            return [self._backing[position] for position in range(*key.indices(self._stop))]
+        position = index_value(key)
+        if position < 0:
+            position += self._stop
+        if position < 0 or position >= self._stop:
+            raise IndexError("list index out of range")
+        return self._backing[position]
+
+    def append(self, frame):
+        if self._stop != len(self._backing):
+            self._backing = self._backing[:self._stop]
+        self._backing.append(frame)
+        self._stop += 1
+
+
 class ContextualEncoder:
     """Chronology checker plus temporary routing bindings, with no neural state."""
 
     def __init__(self, episode, player, schema=c.SCHEMA, *, guard_version=_DEFAULT_GUARD):
         self.history = c.PlayerHistory(episode, player, schema=schema)
+        self.history._frames = _HistoryPrefix()
         self.observation = None
         self.guard_tracker = (interaction_guard.Tracker() if guard_version is _DEFAULT_GUARD
                               else interaction_guard.Tracker(guard_version))

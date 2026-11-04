@@ -133,10 +133,10 @@ FAST_PATH_SOURCES = {
         'f4af40ce598dd6d0a35906168b22f62485dd27a20d7cef6270b2b01793552cff'),
     'experiments/learner/contextual_model.py': (
         ('0e887a870aea4a0a69e448c708b9917c163bcc5d41aeafdb1070ec396c5eea6f', '389434e4a181346498f4997f9e2ba1edc465d2e0b2583e8bca4a07119401bf2d', 'ca28026b2513b3bb115207d83a7f3f4d76c94b1de7358a29f0014bd3bf5d827f', 'e30871a589a04555e2636c5ff2524700e0477c1bcd9d7fc936257fb40a326f72', 'fda1c2e9b2a51f75959d461139dc98db630fa03ba4f1dd03feb57dbe9adbfc2a',),
-        '811e59b3b39d48a29e37a5cfba37af20946d8a85c2fde8c420ca3e974d5fc0bf'),
+        '4059e74ac24985b9f80897e6fc7c74d0034bcc627a8bce5b1bc0723d0188f9db'),
     'experiments/learner/contextual_rollout.py': (
         ('2213eb7d8e2d1556a6ae2dec3329c0b26d33a5422be2c7bd10dbc166a74ae346', 'afaec2277d4af982ce50dfb74e48be89956669ab7bc9aede2daa42dfb2d10637', 'bce5dbad0f69f8e415b93509f362e65b89fcddf3641bdb1ae9e8280bc7d0d205',),
-        '5be32aca8d10122e353b6743b076fbab8258cf2acde4c8498ef0717681c085a4'),
+        '7996f0f7d0a1dce052caa78c777f7a9b515d9328aa94da6feee27472dd24e2f8'),
     'experiments/learner/evaluate_builtin_opponent.py': (
         ('3771cb05b93c0389eb7752274c94558ca9d3027538a93b3580837fe183926dc0', '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45',),
         '6f3cb9727e9192a4e84ece61511d9c64a7281427a5355171b52d7dfb8babab45'),
@@ -239,7 +239,7 @@ FAST_PATH_TREE = {
     'experiments/headless/builtin_replay.py': ('d7bde5cffd1124000838c1ba0f20b765b07efd39',
         '90e0e73702ac18ddbea89dff9d2a1e013808c23ef2cd797cd5fe5870f45cc2af'),
     'experiments/headless/contextual_env.py': ('e2a75d2327589a8ea27518823dc24318a95109ab',
-        'a1ca9947b7c21262fa2b71520868da537c690fbaf3da8c55bacdea8419e640cd'),
+        'c532e2d45082021a4226b4493e792154c34ae5e56e82536bf8041b10fad909b6'),
     'experiments/headless/contextual_evidence.py': ('44b664e57028145c573d6397bd00f7c1227c5dc1',
         '494221e9a137fc7f8e1e237800b2cb79c572118125d4b0e4ef07810df65ff111'),
     'experiments/headless/contextual_protocol.py': ('e3e8b85713c15e54f7522e4f337a7ef8a184662d',
@@ -341,7 +341,7 @@ FAST_PATH_TREE = {
 }
 # The only execution choices a session may bind (``execution``); never an environment variable.
 NUMERICAL_EXPERIMENTS = ('shared_graph_encodings',)
-LOCAL_ADAPTER_TRANSITION_AST = '6bd09224a73828a8197f028352633977057a2bf70256de337ef925bad2aa1c29'
+LOCAL_ADAPTER_TRANSITION_AST = 'f98a222a8809c267fd6dd680a6a269d5653ff6ac1a757b78c91d063eb91c2b93'
 
 
 def write_new(path, value):

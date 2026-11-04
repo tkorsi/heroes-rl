@@ -110,6 +110,17 @@ PARALLEL_HISTORY_SOURCES = {
     'experiments/learner/local_script_training.py': {'before': '17ac5d27f4c57b5fc28ce2b4e5533316c142d13efa96ee36c726f5db14511b7b',
         'after': '18ceabbd5e8e1486bf17d433e33ee220fba8a0f8505e9a3957bcf58d30cf933b'},
 }
+# Exact in-process history transport and immutable encoder-prefix optimization.
+DIRECT_HISTORY_SOURCES = {
+    'experiments/headless/contextual_env.py': {'before': 'a1ca9947b7c21262fa2b71520868da537c690fbaf3da8c55bacdea8419e640cd',
+        'after': 'c532e2d45082021a4226b4493e792154c34ae5e56e82536bf8041b10fad909b6'},
+    'experiments/learner/contextual_model.py': {'before': '811e59b3b39d48a29e37a5cfba37af20946d8a85c2fde8c420ca3e974d5fc0bf',
+        'after': '4059e74ac24985b9f80897e6fc7c74d0034bcc627a8bce5b1bc0723d0188f9db'},
+    'experiments/learner/contextual_rollout.py': {'before': '5be32aca8d10122e353b6743b076fbab8258cf2acde4c8498ef0717681c085a4',
+        'after': '7996f0f7d0a1dce052caa78c777f7a9b515d9328aa94da6feee27472dd24e2f8'},
+    'experiments/learner/local_script_training.py': {'before': '18ceabbd5e8e1486bf17d433e33ee220fba8a0f8505e9a3957bcf58d30cf933b',
+        'after': 'd550cac1d1695736916d93cf40f311435c1cfed84f7a2334eb3885e021e3596c'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -141,6 +152,7 @@ def verify_runtime_sources(implementation):
     original.update({name: pins['after'] for name, pins in TOWN_COOLDOWN_SOURCES.items()})
     original.update({name: pins['after'] for name, pins in HERO_RELATIVE_SOURCES.items()})
     original.update({name: pins['after'] for name, pins in PARALLEL_HISTORY_SOURCES.items()})
+    original.update({name: pins['after'] for name, pins in DIRECT_HISTORY_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -154,7 +166,8 @@ def verify_native_validation_sources(accepted, current):
     transitions = (('reviewed_display_only_day_progress', DAY_PROGRESS_SOURCES),
                    ('reviewed_policy_support_town_cooldown', TOWN_COOLDOWN_SOURCES),
                    ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES),
-                   ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES))
+                   ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES),
+                   ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -185,6 +198,7 @@ def source_identity():
         town_cooldown_sources=TOWN_COOLDOWN_SOURCES,
         hero_relative_sources=HERO_RELATIVE_SOURCES,
         parallel_history_sources=PARALLEL_HISTORY_SOURCES,
+        direct_history_sources=DIRECT_HISTORY_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
