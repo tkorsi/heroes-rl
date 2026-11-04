@@ -18,6 +18,8 @@ import subprocess
 import sys
 import time
 
+STARTED, STARTED_WALL = time.monotonic(), time.time()
+
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -199,6 +201,7 @@ class Display:
             print(f'\x1b[{self.lines}F\x1b[J', end='')
         rows = [f'TEN FROZEN GAMES | {elapsed:6.1f}s / {SECONDS}s | checkpoint 1753',
                 'Choices used (not time remaining); 9,920 ordinary + 320 dialog / player']
+        rows = [row[:width] for row in rows]
         for slot, value in enumerate(values, 1):
             day = max((d for d in value.get('days', ()) if d is not None), default=0)
             counts = value['choices']
@@ -330,7 +333,6 @@ def run(output, started, wall):
         red_wins=sum(g['outcomes'].get('red') == 'win' for g in games),
         blue_wins=sum(g['outcomes'].get('blue') == 'win' for g in games),
         cutoffs=sum(g['episode_status'] == 'truncated' for g in games))
-    write(output / 'report.json', report, new=True)
     lines = ['# Ten-game self-play results', '',
         f"Status: {report['status']}. {len(games)}/10 verified in {elapsed:.1f} seconds. "
         f"Ten native games observed concurrently: {witness is not None}. Zero PPO updates.", '',
@@ -350,11 +352,18 @@ def run(output, started, wall):
     print(f'Analytics: {output / "analytics.md"}\nFull report: {output / "report.json"}', flush=True)
     if errors:
         print('\n'.join(errors), file=sys.stderr, flush=True)
+    elapsed = time.monotonic() - started
+    # Include analytics creation and terminal rendering, reserving one second
+    # for the small final report and return to the shell.
+    passed = passed and elapsed < SECONDS - 1
+    report.update(total_seconds=elapsed, status='passed' if passed else 'failed')
+    write(output / 'report.json', report, new=True)
+    print(f"Batch {report['status']}: {elapsed:.2f} seconds including analytics.", flush=True)
     return 0 if passed else 1
 
 
 def main():
-    started, wall = time.monotonic(), time.time()
+    started, wall = STARTED, STARTED_WALL
     parser = argparse.ArgumentParser(description=__doc__)
     modes = parser.add_mutually_exclusive_group()
     modes.add_argument('--check', action='store_true')
@@ -376,7 +385,8 @@ def main():
             print('Launch: ./play-ten-selfplay.sh --run')
             return 0
         with campaign.activity_lease():
-            return run(args.output, started, wall)
+            with wall_limit(SECONDS - 5 - (time.monotonic() - started)):
+                return run(args.output, started, wall)
     finally:
         print(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
 
