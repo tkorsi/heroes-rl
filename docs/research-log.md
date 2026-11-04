@@ -1516,3 +1516,32 @@ now counts submitted terminal moves even when no ordinary result follows.
 Terminal disconnects cannot suppress private result reporting. These changes
 are committed before their validation and fresh-seed batch; acceptance remains
 pending. Historical seeds and failed captures remain consumed and private.
+
+The 489840a candidate passed 117 existing core tests. Differential local checks
+covered 976 wire records across 34 record types and seven schemas, 84 transition
+comparisons, 21 paired-history checks and 84 tampered-hash rejections. Initial
+local harness retries corrected an import path, a legacy-map fixture/profile
+combination and a missing synthetic cutoff declaration; no production changes
+were needed for those harness issues. Closed-terminal and failed-worker controls
+passed. Independent reconstruction of all 10,833 choices from a preserved long
+capture was exact (87.09 seconds strict load, 142.24 seconds policy checks).
+Native replay intentionally rejected that historical capture's old adapter hash;
+this was not counted as full verification, and the source-binding gate remained.
+
+The second fresh-seed ten-game trial again verified eight games before its work
+deadline, with external elapsed time 1,158.69 seconds. All ten finished gameplay,
+but native replay for the 11,906- and 11,425-choice captures timed out. Cleanup
+and protected-state checks passed. These two failures are preserved privately;
+they are not admitted games or successful throughput results.
+
+The next revision overlaps independent native replay with strict reload and
+policy reconstruction using the existing replay CLI and guarded subprocess
+ownership. Every proof and before/after input hash is still required. Parent
+cleanup covers the replay process group as well as the game process group.
+The ordinary one-game verification path remains sequential by default. This
+runner revision is committed before its next validation and fresh-seed trial.
+The design follows the profiling and independent-work overlap principles in
+[Sample Factory's profiling documentation](https://www.samplefactory.dev/07-advanced-topics/profiling/)
+and [EnvPool](https://proceedings.nips.cc/paper_files/paper/2022/hash/8caaf08e49ddbad6694fae067442ee21-Abstract-Datasets_and_Benchmarks.html);
+no external throughput figures are claimed for Heroes and no asynchronous
+learning or policy-lag settings are introduced.

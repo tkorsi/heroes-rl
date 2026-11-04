@@ -315,7 +315,7 @@ def frozen_models(plan):
     return models
 
 
-def verify_capture(folder, plan, models, remaining, *, identity_check=None, analyze=None):
+def verify_capture(folder, plan, models, remaining, *, identity_check=None, analyze=None, parallel_replay=False):
     from experiments.headless.contextual_protocol import declared_army_information
     from experiments.learner.contextual_rollout import behavior_guard_version
     from experiments.learner.contextual_storage import load_collected
@@ -323,48 +323,73 @@ def verify_capture(folder, plan, models, remaining, *, identity_check=None, anal
     from experiments.learner import selfplay_training as training
     from experiments.headless import contextual_replay
     guard = policy_support(plan)
-    collected = load_collected(folder / 'neural-rollout.json')
-    manifest = read(folder / 'manifest.json')
-    require(declared_army_information(manifest, campaign.INTERFACE) == plan.get('army_information'),
-            'Evaluation army information extension differs from its plan')
-    require(manifest.get('launch', {}).get('requested_settings', {}).get('server', {}).get(
-                'experimentEquipmentPolicy') == plan.get('equipment_policy'),
-            'Evaluation starting-equipment rule differs from its plan')
-    require(json.loads(collected.manifest_json) == manifest,
-            'Persisted paired evaluation capture changed')
-    require(manifest['episode'] == '1' and manifest['seed'] == plan['schedule']['engine_seed']
-            and manifest['environment'] == campaign.INTERFACE and manifest['status'] in ('completed', 'truncated')
-            and manifest['identity']['native_runtime_sha256'] == plan['runtime']
-            and all(manifest['identity'].get(key) == value for key, value in plan['native'].items()),
-            'Evaluation manifest runtime, seed or terminal boundary differs')
-    for player, (rollout, model, config) in enumerate(zip(collected.rollouts, models, collected.model_configs_json)):
-        require(rollout.player == player and rollout.purpose == 'diagnostic' and rollout.origin == 'native'
-                and rollout.role == ('learner' if player == 0 else 'frozen_opponent')
-                and rollout.optimization_eligible is False and rollout.opponent_pool == campaign.POOL
-                and rollout.behavior_checkpoint == rollout.opponent_checkpoint == plan['model_checkpoint']
-                and rollout.weights_sha256 == rollout.opponent_weights_sha256 == plan['weights_sha256'] == weights_sha256(model)
-                and json.loads(config) == model.config.to_dict(), 'Frozen evaluation policy identity or exclusion differs')
-        require((behavior_guard_version(rollout.decisions) == guard or not rollout.decisions and not rollout.samples)
-                and len(rollout.decisions) <= BUDGET['hard_choices_per_player']
-                and all(rollout.history[decision.decision_seq].day <= 365 for decision in rollout.decisions),
-                'Evaluation guard, choices or sampled-day boundary differs')
-    originals = training._files(folder, manifest)
-    policies = training.reconstruct_policies(collected, models, plan['schedule']['policy_seeds'], remaining)
-    replay = contextual_replay.verify_episode(folder, binary=bound(plan['replay_binary']), data=Path(plan['data']),
-        output=folder / 'evaluation-verification', timeout=remaining())
-    require(replay.get('schema') == contextual_replay.REPORT_SCHEMA and replay.get('verified') is True
-            and replay.get('histories', {}).get('verified') is True
-            and set(replay['histories']['players']) == {'red', 'blue'}, 'Exact two-player native replay failed')
-    require(read(folder / 'evaluation-verification/contextual-replay-verification.json') == replay
-            and training._files(folder, manifest) == originals, 'Evidence changed during evaluation verification')
-    remaining(); (check_identity if identity_check is None else identity_check)(plan)
-    proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0, policy_support=guard,
-                 choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts])
-    if analyze is not None:
-        proof['analytics'] = analyze(collected)
-        remaining()
-    write(folder / 'evaluation-policy-reconstruction.json', proof, new=True)
-    return proof, manifest
+    from experiments.headless.process_deadline import guarded_popen, close_owned_process
+    replay_process = None
+    try:
+        manifest = read(folder / 'manifest.json')
+        originals = training._files(folder, manifest)
+        if parallel_replay:
+            # Native replay independently validates this sealed capture. It
+            # shares no model/RNG and cannot grant admission or update weights.
+            seconds = remaining()
+            with (Path(plan['output']) / 'replay-worker.log').open('xb') as log:
+                replay_process = guarded_popen([sys.executable, '-m', 'experiments.headless.contextual_replay',
+                    str(folder), '--binary', str(bound(plan['replay_binary'])), '--data', plan['data'],
+                    '--output', str(folder / 'evaluation-verification'), '--timeout', str(seconds)],
+                    deadline_monotonic=time.monotonic() + seconds, deadline_wall=time.time() + seconds,
+                    evidence_path=Path(plan['output']) / 'replay-native-process-deadline.jsonl', cwd=ROOT,
+                    stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+        collected = load_collected(folder / 'neural-rollout.json')
+        require(declared_army_information(manifest, campaign.INTERFACE) == plan.get('army_information'),
+                'Evaluation army information extension differs from its plan')
+        require(manifest.get('launch', {}).get('requested_settings', {}).get('server', {}).get(
+                    'experimentEquipmentPolicy') == plan.get('equipment_policy'),
+                'Evaluation starting-equipment rule differs from its plan')
+        require(json.loads(collected.manifest_json) == manifest,
+                'Persisted paired evaluation capture changed')
+        require(manifest['episode'] == '1' and manifest['seed'] == plan['schedule']['engine_seed']
+                and manifest['environment'] == campaign.INTERFACE and manifest['status'] in ('completed', 'truncated')
+                and manifest['identity']['native_runtime_sha256'] == plan['runtime']
+                and all(manifest['identity'].get(key) == value for key, value in plan['native'].items()),
+                'Evaluation manifest runtime, seed or terminal boundary differs')
+        for player, (rollout, model, config) in enumerate(zip(collected.rollouts, models, collected.model_configs_json)):
+            require(rollout.player == player and rollout.purpose == 'diagnostic' and rollout.origin == 'native'
+                    and rollout.role == ('learner' if player == 0 else 'frozen_opponent')
+                    and rollout.optimization_eligible is False and rollout.opponent_pool == campaign.POOL
+                    and rollout.behavior_checkpoint == rollout.opponent_checkpoint == plan['model_checkpoint']
+                    and rollout.weights_sha256 == rollout.opponent_weights_sha256 == plan['weights_sha256'] == weights_sha256(model)
+                    and json.loads(config) == model.config.to_dict(), 'Frozen evaluation policy identity or exclusion differs')
+            require((behavior_guard_version(rollout.decisions) == guard or not rollout.decisions and not rollout.samples)
+                    and len(rollout.decisions) <= BUDGET['hard_choices_per_player']
+                    and all(rollout.history[decision.decision_seq].day <= 365 for decision in rollout.decisions),
+                    'Evaluation guard, choices or sampled-day boundary differs')
+        policies = training.reconstruct_policies(collected, models, plan['schedule']['policy_seeds'], remaining)
+        if replay_process is None:
+            replay = contextual_replay.verify_episode(folder, binary=bound(plan['replay_binary']), data=Path(plan['data']),
+                output=folder / 'evaluation-verification', timeout=remaining())
+        else:
+            returncode = replay_process.wait(timeout=remaining())
+            replay = read(folder / 'evaluation-verification/contextual-replay-verification.json')
+            require(returncode == 0, f"Native replay worker failed: {replay.get('error', returncode)}")
+        require(replay.get('schema') == contextual_replay.REPORT_SCHEMA and replay.get('verified') is True
+                and replay.get('histories', {}).get('verified') is True
+                and set(replay['histories']['players']) == {'red', 'blue'},
+                f"Exact two-player native replay failed: {replay.get('error', 'invalid proof')}")
+        require(read(folder / 'evaluation-verification/contextual-replay-verification.json') == replay
+                and training._files(folder, manifest) == originals, 'Evidence changed during evaluation verification')
+        remaining(); (check_identity if identity_check is None else identity_check)(plan)
+        proof = dict(policies=policies, replay=replay, training_input=False, optimizer_updates=0, policy_support=guard,
+                     choices_by_player=[len(rollout.decisions) for rollout in collected.rollouts],
+                     parallel_native_replay=parallel_replay)
+        if analyze is not None:
+            proof['analytics'] = analyze(collected)
+            remaining()
+        write(folder / 'evaluation-policy-reconstruction.json', proof, new=True)
+        return proof, manifest
+    finally:
+        if replay_process is not None:
+            close_owned_process(replay_process, timeout=10,
+                deadline_monotonic=plan['hard_deadline_monotonic'], deadline_wall=plan['hard_deadline_unix'])
 
 
 def collect(plan, models):

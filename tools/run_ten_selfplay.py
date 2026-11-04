@@ -169,7 +169,7 @@ def worker(path, sha):
         tick = time.monotonic()
         with wall_limit(campaign.remaining(plan, 15)):
             proof, manifest = evaluation.verify_capture(folder, plan, one.frozen_models(plan),
-                lambda: campaign.remaining(plan, 15), identity_check=check_plan, analyze=analyze)
+                lambda: campaign.remaining(plan, 15), identity_check=check_plan, analyze=analyze, parallel_replay=True)
             require(binding(path)['sha256'] == sha, 'Worker plan changed during execution')
             report.update(status='passed', episode_directory=str(folder), episode_status=manifest['status'],
                 termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
@@ -313,7 +313,8 @@ def run(output, started, wall):
         for folder, process in zip(folders, processes):
             try:
                 close_owned_process(process, timeout=10, **cleanup)
-                cleanup_from_evidence(folder / 'native-process-deadline.jsonl', timeout=10, **cleanup)
+                for receipt in folder.glob('*native-process-deadline.jsonl'):
+                    cleanup_from_evidence(receipt, timeout=10, **cleanup)
             except Exception as error:
                 cleanup_errors.append(f'{folder.name}: {error}')
         for folder in folders:
@@ -330,7 +331,7 @@ def run(output, started, wall):
         try:
             report = read(folder / 'report.json')
             require(binding(folder / 'plan.json') == pin and report['plan'] == pin, 'Plan changed')
-            require(slot <= len(processes) and processes[slot-1].returncode == 0, 'Worker did not exit successfully')
+            require(slot <= len(processes) and processes[slot-1].returncode == 0, report.get('error', 'Worker did not exit successfully'))
             require(report.get('schema') == SCHEMA + '-game' and report.get('status') == 'passed'
                 and report.get('checkpoint') == one.CHECKPOINT and report.get('slot') == slot
                 and all(report.get(key) is True for key in ('native_replay_verified', 'both_policies_reconstructed',
