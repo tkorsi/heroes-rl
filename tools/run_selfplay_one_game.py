@@ -434,7 +434,7 @@ def collect(plan, models):
         **({'equipment_policy': plan['equipment_policy']} if 'equipment_policy' in plan else {}))
     class DayBoundedCollector(ContextualCollector):
         def act(self, request):
-            require(request.record['day'] <= budget['max_days'], 'A sampled evaluation action exceeds the pinned day bound')
+            require(request.record['day'] <= budget['max_days'], f"A sampled evaluation action exceeds the preserved day{budget['max_days']} bound")
             return super().act(request)
     collector = DayBoundedCollector(models, (plan['model_checkpoint'],) * 2, learner_player=0,
         opponent_pool=campaign.POOL, interface=campaign.INTERFACE, purpose='diagnostic', origin='native',
