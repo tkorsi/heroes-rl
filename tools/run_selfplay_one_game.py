@@ -183,6 +183,13 @@ BATCH_GRID_SOURCES = {
     'tools/run_selfplay_training.py': {'before': '51e4b2402f0ee4b1885630bc8bf8cc5e217b53a8450028a3eeb930469b88f765',
         'after': 'e346222977911579e233f9a7dc578332433d1c6b91ef21aa44bfcca765abe1cc'},
 }
+# Display-only hh:mm:ss formatting shared by the dashboard and final summary.
+DURATION_DISPLAY_SOURCES = {
+    'experiments/learner/game_progress.py': {'before': '10ced9236e481b885c963d2d0c0a98085650379d30812073709ceb75a67d0050',
+        'after': '976853e6bac5414d357f832d86b1e6ec76adeb46b4f7d84d67f477453862ba26'},
+    'tools/run_selfplay_training.py': {'before': 'e346222977911579e233f9a7dc578332433d1c6b91ef21aa44bfcca765abe1cc',
+        'after': '2023caa08329f69c39a63e6dfc30934461acefac451e44d62ca82b40bd4063e3'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -232,6 +239,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in BATCH_GRID_SOURCES.items()),
             'Batch-grid display source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in BATCH_GRID_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in DURATION_DISPLAY_SOURCES.items()),
+            'Duration-display source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in DURATION_DISPLAY_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -251,7 +261,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES),
                    ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES),
                    ('reviewed_capture_only_365_day_limit', CYCLE_DAY_LIMIT_SOURCES),
-                   ('reviewed_batch_grid_display', BATCH_GRID_SOURCES))
+                   ('reviewed_batch_grid_display', BATCH_GRID_SOURCES),
+                   ('reviewed_duration_display', DURATION_DISPLAY_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -288,6 +299,7 @@ def source_identity():
         loop_speed_sources=LOOP_SPEED_SOURCES,
         cycle_day_limit_sources=CYCLE_DAY_LIMIT_SOURCES,
         batch_grid_sources=BATCH_GRID_SOURCES,
+        duration_display_sources=DURATION_DISPLAY_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

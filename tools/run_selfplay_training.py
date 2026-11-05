@@ -2042,7 +2042,8 @@ def main(argv=None):
                   'report', '--run-dir', launch['output'], '--seconds', '600']), flush=True)
         print(json.dumps(result, indent=2)); return 0
     finally:
-        print(f'Total running time: {time.monotonic() - started:.2f} seconds.', flush=True)
+        from experiments.learner.game_progress import format_duration
+        print(f'Total running time: {format_duration(time.monotonic() - started)}', flush=True)
 
 
 if __name__ == '__main__':

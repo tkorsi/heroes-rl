@@ -2237,3 +2237,62 @@ deferred until owned workers exit; neither active source nor active-run files
 were modified. After current shutdown, fast-forward main from
 codex/batch-grid-ui to enable this UI for the next manual launch. The same
 existing launcher will select it automatically for an interactive terminal.
+
+
+## 2026-11-05 — Completed 365-day cycle analysis and elapsed-time format
+
+The user requested hh:mm:ss running time and analysis of the completed cycle.
+Read-only inspection confirmed latest run run-20261105T133736Z-09cc564e completed,
+return code zero, protected inputs unchanged and owned cleanup verified; no
+active training/game processes remained. Main was clean, so the previously
+prepared dashboard branch was reviewed and fast-forwarded into main at 084c43b.
+The dashboard is now in the user's Heroes checkout. The only additional behavior
+change requested here is a shared hh:mm:ss duration formatter for the panel and
+final console runtime; machine-readable elapsed_seconds fields remain numeric.
+Acceptance: existing UI/controller regressions, duration boundaries and real
+continuation preflight; no training or gameplay will be launched.
+
+The completed cycle admitted ten fresh learner trajectories (25,473 samples),
+performed one PPO update with 799 Adam steps, and published checkpoint 1,754.
+Both policy/resume file hashes match their published bindings; full save/restore
+was recorded true. Weights changed from cb40725f... to 2cdac931.... All ten
+training games reached the 365-day cutoff, engine Red/Blue wins 0/0, with zero
+capture/preparation/verification failures. Training games remain explicitly
+unverified as agreed; their published cutoff samples carry zero rewards and
+own-decision value bootstrap. Thus weights can change without a +1/-1 training
+terminal, and this batch supplied no observed winning training example.
+
+Total coordinator elapsed time was 1,772.899 seconds, displayed as 00:29:32
+(whole elapsed seconds are truncated, not rounded). Sum of training manifest
+wall times was 769.516 seconds; range 56.085-139.921 seconds/game. There were
+53,195 sampled choices across both seats; only the alternating learner seats
+entered PPO. Existing file modification timestamps estimate collection plus
+per-game preparation as 933.770 seconds (00:15:33), last capture receipt through
+checkpoint publication as 817.515 seconds (00:13:37), and evaluation plan through
+validated receipt as 19.246 seconds (00:00:19). These phase estimates include
+serialization/restore overhead and are not instrumented optimizer-kernel timing;
+report ppo.timings_seconds is null. Small startup/finalization gaps account for
+the remaining total. PPO/checkpoint work now consumes about 46% of the cycle;
+diagnostic validation is about 1%. Do not blame replay for the remaining runtime
+or attribute shorter games solely to acceleration: the day limit changed.
+
+The frozen post-update diagnostic used 1,754 on both seats, 334 choices
+(Red 141 / Blue 193), engine/manifest wall 5.770 seconds. Blue won naturally on
+day 13; replay verified the complete terminal barrier and server/client streams,
+and both policy reconstructions had maximum absolute difference zero. Blue's
+own observation changes from one town at (15,7,0) to two including (4,7,0) on
+day 6; Red loses its only town at the same boundary. Red's day-13 notice explicitly
+reports seven days without a town, followed by natural loss. Blue won neutral
+battles on days 2 and 3, recruited 14 creatures on day 3 and 28 on day 11, and
+revealed tiles increased 92->393; Red's increased 92->312. Red still spent 96/141
+choices on opening/closing hero/capability windows; Blue also retained many
+management/navigation choices. This is exploration/capture behavior in one
+validated game, not evidence of reduced aimless actions across the ten games,
+whose detailed analytics were intentionally omitted. Different seeds, a single
+updated-policy self-play game and no matched pre-update evaluation prevent a
+causal learning/strength conclusion. The validated win was never admitted to PPO.
+
+Private compact analysis: diagnostics/completed-cycle-20261105/analysis.json.
+The 56 existing progress/controller tests passed; local duration boundary controls
+passed minute/hour rollover and durations beyond 24/100 hours. Numeric evidence
+fields are unchanged. No tests/probes or raw captures are staged for publication.

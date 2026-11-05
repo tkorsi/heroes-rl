@@ -39,6 +39,13 @@ def color_text(text, code, enabled):
     return f"\x1b[{code}m{text}\x1b[0m" if enabled else text
 
 
+def format_duration(seconds):
+    """Elapsed hh:mm:ss, with hours continuing past midnight."""
+    hours, remaining = divmod(max(0, int(seconds)), 3600)
+    minutes, seconds = divmod(remaining, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
 def progress_path(output, episode):
     return Path(output) / "progress" / f"game-{episode:06d}.json"
 
@@ -406,7 +413,7 @@ class BatchProgressDisplay(ProgressDisplay):
             checkpoint = self.report.get('latest_checkpoint', self.launch.get('parent_pair', {}).get('progress', {}).get('updates', '?'))
             completed = sum(a.get('status') in ('captured', 'passed') for a in attempts.values())
             rows = [color_text('HEROES  /  TEN-GAME TRAINING'[:width], '1', self.color),
-                    f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/10 | Checkpoint {checkpoint} | {elapsed//3600:02d}:{elapsed//60%60:02d}:{elapsed%60:02d}"]
+                    f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/10 | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
             if width >= 74 and height >= 21:
                 rows += batch_terminal_lines(slots, width=width, color=self.color)
             else:
