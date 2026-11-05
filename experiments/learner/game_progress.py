@@ -452,8 +452,11 @@ class BatchProgressDisplay(ProgressDisplay):
                 check = ('PASSED' if evaluation.get('status') == 'evaluation_verified' else PHASE_LABELS.get(v.get('phase'), 'Starting'))
                 rows.append(f"PPO updates: {self.report.get('optimizer_updates', 0)} | Validation: {check} | Day {max(days) if days else '?'}")
             else:
-                status = 'UPDATING' if batch.get('status') == 'updating' else 'SAVED' if batch.get('status') == 'checkpoint_verified' else 'waiting for 10 ready games'
-                rows.append(f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
+                progress = read_ppo_progress(ppo_progress_path(self.directory.parent, batch.get('name', 'pending')))
+                status = ('UPDATING' if batch.get('status') == 'updating' else 'SAVED'
+                          if batch.get('status') == 'checkpoint_verified' else f'waiting for {self.batch_games} ready games')
+                rows.append(format_ppo_progress(progress) if progress is not None else
+                            f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
             if compact:
                 active = next((slot for slot in slots if slot['attempt'].get('status') == 'running'), None)
                 exact = active['value'].get('choices', [0, 0]) if active else [0, 0]
@@ -493,3 +496,87 @@ class BatchProgressDisplay(ProgressDisplay):
             self.poll(final=True)
         finally:
             self._close_screen()
+
+
+PPO_SCHEMA = 'heroes-ppo-progress-v1'
+PPO_PHASES = {'preparing', 'updating', 'optimizer_done', 'saving', 'saved', 'rolled_back', 'failed'}
+
+
+def ppo_progress_path(output, batch):
+    return Path(output) / 'progress' / f'ppo-{batch}.json'
+
+
+def _valid_ppo(value):
+    return (type(value) is dict and set(value) == {'schema', 'completed', 'total', 'phase',
+            'elapsed_seconds', 'remaining_seconds'} and value['schema'] == PPO_SCHEMA
+            and type(value['completed']) is int and type(value['total']) is int
+            and 0 <= value['completed'] <= value['total']
+            and type(value['elapsed_seconds']) is int and value['elapsed_seconds'] >= 0
+            and value['phase'] in PPO_PHASES
+            and (value['remaining_seconds'] is None or type(value['remaining_seconds']) is int
+                 and value['remaining_seconds'] >= 0))
+
+
+class PPOProgress:
+    """Best-effort one-second sidecar; never a checkpoint or admission receipt."""
+
+    def __init__(self, path, *, clock=time.monotonic):
+        self.path, self.clock = Path(path), clock
+        self.started = self.clock()
+        self.last_write, self.disabled = float('-inf'), False
+        self.value = dict(schema=PPO_SCHEMA, completed=0, total=0, phase='preparing',
+                          elapsed_seconds=0, remaining_seconds=None)
+
+    def __call__(self, completed, total, phase):
+        if self.disabled:
+            return
+        try:
+            now = self.clock()
+            elapsed = max(0, now - self.started)
+            remaining = (0 if total > 0 and completed == total else
+                         int(elapsed / completed * (total - completed))
+                         if completed >= 3 and elapsed >= 3 else None)
+            value = dict(schema=PPO_SCHEMA, completed=completed, total=total, phase=phase,
+                         elapsed_seconds=int(elapsed), remaining_seconds=remaining)
+            if not _valid_ppo(value):
+                self.disabled = True
+                return
+            changed = phase != self.value['phase']
+            self.value = value
+            if changed or now - self.last_write >= 1 or completed == total:
+                _write(self.path, value)
+                self.last_write = now
+        except Exception:
+            self.disabled = True
+
+    def phase(self, phase):
+        self(self.value['completed'], self.value['total'], phase)
+
+
+def read_ppo_progress(path):
+    try:
+        with Path(path).open('rb') as source:
+            payload = source.read(4097)
+        if len(payload) > 4096:
+            return None
+        value = json.loads(payload)
+        return value if _valid_ppo(value) else None
+    except (OSError, ValueError, TypeError, RecursionError):
+        return None
+
+
+def format_ppo_progress(value):
+    """ETA covers optimizer work; checkpoint saving is a separate phase."""
+    done, total, phase = value['completed'], value['total'], value['phase']
+    if phase in ('failed', 'rolled_back'):
+        return f"PPO {'ROLLED BACK' if phase == 'rolled_back' else 'STOPPED'} | {done:,}/{total:,} attempted steps"
+    percent = 100 * done // total if total else 0
+    filled = min(10, percent // 10)
+    bar = '#' * filled + '-' * (10 - filled)
+    lead = f'PPO [{bar}] {percent:3d}% {done:,}/{total:,}'
+    if phase in ('optimizer_done', 'saving', 'saved'):
+        return lead + ' | ' + {'optimizer_done': 'Optimizer complete; checkpoint pending',
+                               'saving': 'Saving and restore-checking checkpoint', 'saved': 'Checkpoint saved'}[phase]
+    eta = ('estimating...' if value['remaining_seconds'] is None
+           else '~' + format_duration(value['remaining_seconds']))
+    return lead + f" | Time {format_duration(value['elapsed_seconds'])} | ETA {eta}"

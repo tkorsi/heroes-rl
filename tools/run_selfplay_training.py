@@ -1816,6 +1816,7 @@ def ten_coordinator(args):
     from experiments.learner import selfplay_training as training
     from experiments.learner.checkpoints import TrainingProgress
     from experiments.learner.ppo import PPOConfig
+    from experiments.learner.game_progress import PPOProgress, ppo_progress_path
     from validation.probes.validate_hero_policy import wall_limit
     launch = load_ten_launch(args.plan, args.sha256)
     require(os.getppid() == launch['supervisor_pid'], 'Only the lease owner may launch ten-game training')
@@ -1829,6 +1830,7 @@ def ten_coordinator(args):
         owned_cleanup_verified=False, protected_inputs_unchanged=False)
     write(output / 'report.json', report, new=True)
     previous_pair, publication = launch['parent_pair'], launch['parent_publication']
+    update_progress = None
 
     def collect_phase(name, mode, start, opponent_model, opponent_policy):
         load_ten_launch(args.plan, args.sha256)
@@ -1868,12 +1870,14 @@ def ten_coordinator(args):
             path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', seed_offset + index * cycle_width(),
                 state.model, previous_pair['policy'])
             phase['status'] = 'updating'; write(output / 'report.json', report)
+            update_progress = PPOProgress(ppo_progress_path(output, phase['name'])) if CYCLE_MODE else None
             state.model.train().requires_grad_(True)
             with wall_limit(phase_remaining(deadlines['update'])):
                 result, rollouts = (training.live_native_update if CYCLE_MODE else training.native_update)(state.model, state.optimizer, receipts,
                     plan_sha256=binding(path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
                     remaining=lambda: phase_remaining(deadlines['update']),
-                    max_optimizer_steps=launch['configuration']['max_optimizer_steps'])
+                    max_optimizer_steps=launch['configuration']['max_optimizer_steps'],
+                    **({'progress': update_progress} if CYCLE_MODE else {}))
             state.model.eval()
             next_progress = TrainingProgress(state.progress.updates + 1, state.progress.rollouts + cycle_games(),
                                              state.progress.decisions + result.samples)
@@ -1886,6 +1890,8 @@ def ten_coordinator(args):
             metadata = training.metadata(binding(path)['sha256'], launch['original_parent']['policy'],
                 plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training',
                 training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA)
+            if update_progress is not None:
+                update_progress.phase('saving')
             with wall_limit(phase_remaining(deadlines['update'], 0)):
                 pair = training.save_checkpoint_pair(path.parent / 'checkpoint', state.model, state.optimizer,
                     checkpoint=f"selfplay-ten-{launch['campaign_id']}-update-{next_progress.updates}",
@@ -1913,6 +1919,8 @@ def ten_coordinator(args):
             report['training_samples_admitted'] += result.samples
             report['latest_checkpoint'] = next_progress.updates
             write(output / 'report.json', report)
+            if update_progress is not None:
+                update_progress.phase('saved')
             del receipts, rollouts
             if CYCLE_MODE:
                 import gc
@@ -1929,6 +1937,8 @@ def ten_coordinator(args):
         load_ten_launch(args.plan, args.sha256)
         report['status'] = 'completed'
     except Exception as error:
+        if update_progress is not None and update_progress.value['phase'] not in ('saved', 'rolled_back'):
+            update_progress.phase('failed')
         report.update(status='stopped', error=f'{type(error).__name__}: {error}')
         ten_finalize_report(output, report)
     finally:

@@ -72,7 +72,13 @@ terminal/cursor on exit. Elapsed time in the panel and final runtime summary use
 `hh:mm:ss`. Resize to at least 80 columns for the grid; smaller
 windows use a compact list. At 80x24, two-line cards keep all forty games visible;
 compact counts use whole thousands (`k`), with exact active counts below. Tall
-windows show full cards. Redirected output remains plain text.
+windows show full cards. Redirected output remains plain text. During PPO the
+panel shows completed/total optimizer minibatches, a progress bar, elapsed time
+and an approximate ETA from the current update. ETA stays unknown until at least
+three minibatches and three seconds have elapsed. Optimizer completion and
+checkpoint saving/restore verification are separate phases. Disposable progress
+snapshots are throttled to once per second apart from phase transitions; their
+failures cannot block or change learning.
 
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes

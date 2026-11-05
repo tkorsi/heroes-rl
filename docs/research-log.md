@@ -2377,3 +2377,49 @@ without resetting to 1,754, and allocates fresh forty-plus-one seeds. No claim o
 a full forty-game execution, optimizer parity across batch sizes or peak-memory
 measurement is made; only the user's chosen batch size changes the learning
 collection/update cadence.
+
+## 2026-11-05 — PPO progress and estimated remaining time
+
+The user requested an ETA and progress bar during PPO. Main is still running
+the prior ten-game cycle (checkpoint 1,755 already published, shutdown absent),
+so this work extends the isolated codex/forty-game-grid branch in Heroes-next-40.
+No active source or run artifact is changed. Acceptance: report completed/total
+actual optimizer minibatches using the existing after-step hook, estimate only
+from this update's observed pace after warm-up, distinguish optimizer completion
+from checkpoint save/publication, preserve numerical results/Adam/RNG and rollback,
+and make every display error fail open. No training campaign or native game is
+authorized for validation. The existing forty-game cadence remains unchanged.
+
+
+Implemented an optional observer on transactional_update's existing completed-step
+hook; the numerical PPO kernel, native ABI and minibatch shuffle are unchanged.
+The exact planned step count uses the same per-rollout windows/epoch arithmetic.
+The existing forty-game runner supplies a PPOProgress sidecar callback; default
+callers do not change. The sidecar is disposable, bounded, and atomically replaced
+at most once per second except phase changes. ETA uses elapsed/completed pace
+only after three completed minibatches and three seconds. It is approximate,
+with no historical promise or training-data scan. The 40-slot panel reads the
+sidecar independently of evidence. A 100% optimizer bar is explicitly separate
+from pending/saving/restore-checking/published checkpoint stages; rollback and
+failure have their own labels. Observer exceptions cannot trigger rollback or
+replace the actual failure. No learning setting or admission gate changes.
+
+All 84 existing progress/builtin-gameplay/self-play-controller/training tests
+passed. Private controls exercised actual disposable synthetic PPO updates with
+no observer, a recording observer, an observer throwing OSError, and the actual
+file-writing PPOProgress observer. Model weights, gradients, Adam state,
+Torch/Python/minibatch RNG and numerical PPO reports matched exactly, including
+when the installed native backend was selected with 16 prefix threads. A genuine
+two-step attempt then deadline failure restored the full pre-update state and
+reported rolled_back. ETA warm-up, one-second write throttling, malformed or
+oversized snapshots, disk failure, saving labels and forty-slot rendering passed.
+Private scripts/logs are under diagnostics/ppo-progress-20261105. An initial
+synthetic control inherited PPOConfig's default two epochs while declaring a
+six-step cap; the existing cap rejected it before any optimizer step. The fixture
+was corrected to the intended explicit one epoch. No official update/game ran.
+
+During this work the prior manual run completed naturally and published 1,755;
+its shutdown reports zero errors, protected inputs unchanged and owned cleanup
+complete, with no owned training/game processes remaining. Main can now be
+fast-forwarded safely under the existing activity lease, including the prepared
+forty-game panel and PPO ETA, then checked against the real latest state.

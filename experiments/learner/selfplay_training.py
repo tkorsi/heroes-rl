@@ -489,7 +489,7 @@ def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
 
 
 def live_native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
-                       remaining, max_optimizer_steps):
+                       remaining, max_optimizer_steps, progress=None):
     from .builtin_gameplay import transactional_update
     require(type(receipts) is tuple and len(receipts) == CYCLE_GAMEPLAY["training_games"]
             and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
@@ -523,7 +523,7 @@ def live_native_update(model, optimizer, receipts, *, plan_sha256, config, gener
             registry.pop(id(receipt.binding), None)
     result = transactional_update(model, optimizer, rollouts, config=config, generator=generator,
         remaining=lambda: time_left(remaining), max_optimizer_steps=max_optimizer_steps,
-        enable_training=True, prepared_native_inputs=programs)
+        enable_training=True, prepared_native_inputs=programs, progress=progress)
     return replace(result, purpose=PROVENANCE), rollouts
 
 

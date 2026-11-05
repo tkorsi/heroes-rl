@@ -710,7 +710,7 @@ class UpdateRolledBack(RuntimeError):
 
 
 def transactional_update(model, optimizer, rollouts, *, config, generator, remaining, max_optimizer_steps,
-                         enable_training=False, prepared_native_inputs=None):
+                         enable_training=False, prepared_native_inputs=None, progress=None):
     """Restore the entire attempted update on failure, including interrupted steps."""
     parameters = tuple(model.parameters())
     state, optimizer_state = deepcopy(model.state_dict()), deepcopy(optimizer.state_dict())
@@ -718,13 +718,27 @@ def transactional_update(model, optimizer, rollouts, *, config, generator, remai
     requires_grad = tuple(p.requires_grad for p in parameters)
     modes = tuple((module, module.training) for module in model.modules())
     torch_rng, python_rng, minibatch_rng = torch.get_rng_state().clone(), random.getstate(), generator.get_state().clone()
-    completed_steps = 0
+    completed_steps = planned_steps = 0
+
+    def observe(phase):
+        if progress is not None:
+            try:
+                progress(completed_steps, planned_steps, phase)
+            except Exception:
+                pass  # A disposable display must never roll back learning.
 
     def completed():
         nonlocal completed_steps
         completed_steps += 1
+        observe("updating")
 
     try:
+        if progress is not None:
+            windows = sum((len(item.samples) + config.decisions_per_window - 1)
+                          // config.decisions_per_window for item in rollouts)
+            planned_steps = config.epochs * ((windows + config.windows_per_minibatch - 1)
+                                            // config.windows_per_minibatch)
+            observe("preparing")
         remaining()
         if enable_training:
             model.requires_grad_(True)
@@ -732,6 +746,7 @@ def transactional_update(model, optimizer, rollouts, *, config, generator, remai
             before_step=remaining, after_step=completed, max_optimizer_steps=max_optimizer_steps,
             **({"prepared_native_inputs": prepared_native_inputs} if prepared_native_inputs is not None else {}))
         remaining()
+        observe("optimizer_done")
         return result
     except BaseException as error:
         model.load_state_dict(state, strict=True)
@@ -744,6 +759,7 @@ def transactional_update(model, optimizer, rollouts, *, config, generator, remai
         torch.set_rng_state(torch_rng)
         random.setstate(python_rng)
         generator.set_state(minibatch_rng)
+        observe("rolled_back")
         raise UpdateRolledBack(error, completed_steps) from error
     finally:
         if enable_training:
