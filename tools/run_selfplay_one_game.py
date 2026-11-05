@@ -176,6 +176,13 @@ CYCLE_DAY_LIMIT_SOURCES = {
     'tools/run_selfplay_training.py': {'before': '5be8888b2e7440ae0e4a0a3ec2541cd2ffab47bcbba9743f38348725ceb6c732',
         'after': '51e4b2402f0ee4b1885630bc8bf8cc5e217b53a8450028a3eeb930469b88f765'},
 }
+# Display-only stationary dashboard; no collection or learner changes.
+BATCH_GRID_SOURCES = {
+    'experiments/learner/game_progress.py': {'before': '1f2eb870df6088c04926d675fac993e7788da2ed0a217f8bffd037528fcacee4',
+        'after': '10ced9236e481b885c963d2d0c0a98085650379d30812073709ceb75a67d0050'},
+    'tools/run_selfplay_training.py': {'before': '51e4b2402f0ee4b1885630bc8bf8cc5e217b53a8450028a3eeb930469b88f765',
+        'after': 'e346222977911579e233f9a7dc578332433d1c6b91ef21aa44bfcca765abe1cc'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -222,6 +229,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in CYCLE_DAY_LIMIT_SOURCES.items()),
             '365-day cycle source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in CYCLE_DAY_LIMIT_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in BATCH_GRID_SOURCES.items()),
+            'Batch-grid display source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in BATCH_GRID_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -240,7 +250,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES),
                    ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES),
                    ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES),
-                   ('reviewed_capture_only_365_day_limit', CYCLE_DAY_LIMIT_SOURCES))
+                   ('reviewed_capture_only_365_day_limit', CYCLE_DAY_LIMIT_SOURCES),
+                   ('reviewed_batch_grid_display', BATCH_GRID_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -276,6 +287,7 @@ def source_identity():
         cycle_batch_sources=CYCLE_BATCH_SOURCES,
         loop_speed_sources=LOOP_SPEED_SOURCES,
         cycle_day_limit_sources=CYCLE_DAY_LIMIT_SOURCES,
+        batch_grid_sources=BATCH_GRID_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

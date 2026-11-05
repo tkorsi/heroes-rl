@@ -299,3 +299,166 @@ class ProgressDisplay:
                         raise
         finally:
             self.poll(final=True)
+
+
+def batch_terminal_lines(slots, *, width=80, color=False):
+    """Five columns, two rows; each card keeps result separate from preparation."""
+    cell = (width - 4) // 5
+    inner = cell - 2
+    cards = []
+    for slot in slots:
+        value, attempt = slot['value'], slot['attempt']
+        state = attempt.get('status', 'not_started')
+        phase = value.get('phase', 'starting')
+        done = state in ('captured', 'passed')
+        failed = state in ('failed', 'interrupted') or phase == 'failed'
+        outcomes = attempt.get('outcomes', {})
+        result = ('RED WIN' if outcomes.get('red') == 'win' and outcomes.get('blue') == 'loss'
+                  else 'BLUE WIN' if outcomes.get('blue') == 'win' and outcomes.get('red') == 'loss'
+                  else 'DAY LIMIT' if attempt.get('termination_reason') == 'game_day_limit'
+                  else 'CUTOFF' if attempt.get('episode_status') == 'truncated' else None)
+        active = state == 'running' and not failed
+        label = result or ('FAILED' if failed else 'READY' if done else
+                           {'collecting': 'PLAYING', 'starting': 'STARTING', 'finalizing': 'FINISHING',
+                            'storing': 'SAVING', 'preparing PPO': 'PREPARING PPO',
+                            'verifying': 'VERIFYING', 'awaiting verification': 'CHECKS QUEUED',
+                            'captured': 'CAPTURED', 'verified': 'VERIFIED'}.get(phase, phase.upper())
+                           if active else 'WAITING')
+        code = '1;31' if failed else '1;36' if active else '33' if result in ('DAY LIMIT', 'CUTOFF') else '32' if done else '2'
+        days = [n for n in value.get('days', ()) if n is not None]
+        day = f"Day {max(days) if days else '?'}/{value.get('max_days') or '?'}"
+        counts = value.get('choices', attempt.get('sampled_by_player', [0, 0]))
+        total = value.get('ordinary', 1) + value.get('reserved', 0)
+        used = min(inner, inner * sum(counts) // max(1, 2 * total))
+        footer = ('ERROR ' + attempt.get('failure_stage', 'run') if failed else
+                  'READY FOR PPO' if state == 'captured' else 'CHECKS PASSED' if state == 'passed' else
+                  '#' * used + '-' * (inner - used) if active else '')
+        def fit(text): return text[:inner].ljust(inner)
+        title = f"{'>' if active else ' '} Game {slot['episode']:02d} "
+        rows = [color_text('+' + title[:inner].ljust(inner, '-') + '+', code, color)]
+        for text, tint in ((label, code), (day, '2'),
+                           (f"R {counts[0]:,}", '91'), (f"B {counts[1]:,}", '94'), (footer, code)):
+            rows.append(color_text('|', code, color) + color_text(fit(text), tint, color) + color_text('|', code, color))
+        rows.append(color_text('+' + '-' * inner + '+', code, color))
+        cards.append(rows)
+    return [' '.join(cards[col][row] for col in range(start, start + 5))
+            for start in (0, 5) for row in range(7)]
+
+
+class BatchProgressDisplay(ProgressDisplay):
+    """A stationary ten-slot view of existing disposable progress and reports."""
+
+    def __init__(self, directory, *, launch, stream=None, clock=time.monotonic):
+        super().__init__(directory, stream=stream, clock=clock)
+        self.launch, self.report = launch, {}
+        self.started, self.opened = self.clock(), False
+        self.saved, self.phase_name, self.phase_start = {}, None, 0
+        self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
+
+    def update_report(self, report):
+        self.report = report
+
+    def _phase(self):
+        batches, evaluations = self.report.get('batches', []), self.report.get('evaluations', [])
+        batch = batches[-1] if batches else {}
+        evaluation = evaluations[-1] if evaluations else {}
+        evaluating = bool(evaluation and (not batch or batch.get('status') == 'checkpoint_verified'
+                          and evaluation.get('checkpoint_before') == batch.get('checkpoint_after')))
+        return batch, evaluation if evaluating else None
+
+    def poll(self, *, final=False):
+        if not self.dashboard:
+            return super().poll(final=final)
+        if self.disabled:
+            return
+        try:
+            size = shutil.get_terminal_size(fallback=(80, 24))
+            width, height = max(1, size.columns - 1), max(1, size.lines - 1)
+            batch, evaluation = self._phase()
+            phase = evaluation or batch
+            name = phase.get('name')
+            if name != self.phase_name:
+                self.phase_name = name
+                try:
+                    self.phase_start = Path(phase['plan']['path']).stat().st_mtime
+                except (KeyError, OSError):
+                    self.phase_start = float('inf')
+            current = {}
+            for path in self.directory.glob('game-*.json'):
+                try:
+                    if path.stat().st_mtime >= self.phase_start:
+                        value = _read(path)
+                        current[value['episode']] = value
+                except (OSError, ValueError):
+                    continue
+            if not evaluation:
+                for attempt in batch.get('attempts', []):
+                    episode = attempt['episode']
+                    if attempt['status'] != 'not_started' and episode in current:
+                        self.saved[(batch.get('name'), episode)] = current[episode]
+            attempts = {a['episode']: a for a in batch.get('attempts', [])}
+            cfg = self.launch.get('configuration', {})
+            defaults = dict(max_days=cfg.get('max_days'), ordinary=cfg.get('ordinary_choice_limit', 1),
+                            reserved=cfg.get('reserved_dialog_choices', 0))
+            slots = [dict(episode=n, attempt=attempts.get(n, {}),
+                          value={**defaults, **self.saved.get((batch.get('name'), n), {})}) for n in range(1, 11)]
+            elapsed = int(self.clock() - self.started)
+            checkpoint = self.report.get('latest_checkpoint', self.launch.get('parent_pair', {}).get('progress', {}).get('updates', '?'))
+            completed = sum(a.get('status') in ('captured', 'passed') for a in attempts.values())
+            rows = [color_text('HEROES  /  TEN-GAME TRAINING'[:width], '1', self.color),
+                    f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/10 | Checkpoint {checkpoint} | {elapsed//3600:02d}:{elapsed//60%60:02d}:{elapsed%60:02d}"]
+            if width >= 74 and height >= 21:
+                rows += batch_terminal_lines(slots, width=width, color=self.color)
+            else:
+                rows += ['Widen to 80 columns for the 5 x 2 grid.']
+                for slot in slots:
+                    a, v = slot['attempt'], slot['value']
+                    days = [d for d in v.get('days', ()) if d is not None]
+                    rows.append(f"Game {slot['episode']:02d} | {a.get('status', 'waiting')} | Day {max(days) if days else '?'} | R/B "
+                                + '/'.join(str(n) for n in v.get('choices', a.get('sampled_by_player', [0, 0]))))
+            counts = batch.get('counts', {})
+            red = counts.get('engine_red_wins', counts.get('red_wins', 0))
+            blue = counts.get('engine_blue_wins', counts.get('blue_wins', 0))
+            rows.append(f"Engine results: Red {red} | Blue {blue} | Cutoffs {counts.get('game_cutoffs', 0)} | Errors {counts.get('failures', 0)}")
+            if evaluation:
+                v = current.get(1, {})
+                days = [d for d in v.get('days', ()) if d is not None]
+                check = ('PASSED' if evaluation.get('status') == 'evaluation_verified' else PHASE_LABELS.get(v.get('phase'), 'Starting'))
+                rows.append(f"PPO updates: {self.report.get('optimizer_updates', 0)} | Validation: {check} | Day {max(days) if days else '?'}")
+            else:
+                status = 'UPDATING' if batch.get('status') == 'updating' else 'SAVED' if batch.get('status') == 'checkpoint_verified' else 'waiting for 10 ready games'
+                rows.append(f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
+            rows.append('> active | R/B = choices used | Bars = action budget, not time | Wins above are unverified')
+            if self.report.get('error'):
+                rows[-1] = 'STOPPED: ' + self.report['error']
+            # Clip before styling is applied to cards; other rows have no ANSI
+            # except the short heading. Never write into the last cell/row.
+            rows = [row if '\x1b' in row else row[:width] for row in rows][:height]
+            if not self.opened:
+                self.stream.write('\x1b[?1049h\x1b[?25l\x1b[2J')
+                self.opened = True
+            self.stream.write('\x1b[H' + '\n'.join(row + '\x1b[K' for row in rows) + '\x1b[J')
+            self.stream.flush()
+        except Exception:
+            # Display data is never a training gate; malformed UI/report fields
+            # must not propagate into the process-owning supervisor.
+            self.disabled = True
+            self._close_screen()
+
+    def _close_screen(self):
+        if self.opened:
+            try:
+                self.stream.write('\x1b[?25h\x1b[?1049l')
+                self.stream.flush()
+            except (OSError, ValueError):
+                pass
+            self.opened = False
+
+    def finish(self, *, failed=False):
+        if not self.dashboard:
+            return super().finish(failed=failed)
+        try:
+            finish_unfinished(self.directory)
+            self.poll(final=True)
+        finally:
+            self._close_screen()

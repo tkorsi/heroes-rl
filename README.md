@@ -64,6 +64,13 @@ diagnostic games under the shared ten-hour deadline. Both training and diagnosti
 games stop at 365 game days; the existing per-player choice limits remain
 158,720 ordinary plus 5,120 reserved choices.
 
+In an interactive terminal, the ten-game launcher displays a stationary 5 by 2
+grid of game slots. The active slot is marked `>` and highlighted; cards retain
+days, Red/Blue action counts and results. PPO and diagnostic validation have
+separate status lines. The panel uses the alternate screen and restores the
+terminal/cursor on exit. Resize to at least 80 columns for the grid; smaller
+windows use a compact list. Redirected output remains plain text.
+
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes
 and are explicitly unverified. All ten fresh completed captures must exist

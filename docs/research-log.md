@@ -2177,3 +2177,54 @@ and zero optimizer updates. All 22 consumed slots remain consumed; next engine
 seed is 1,980,000,022, next policy base 1,982,000,044, with no reservation by the
 check. Transcript: `diagnostics/loop-speed-20261105/preflight-365.log` under the
 private artifacts root. Manual launch remains with the user.
+
+## 2026-11-05 — Fixed ten-game terminal dashboard preparation
+
+The user requested a stationary 5-column by 2-row panel showing all ten game
+slots, active status, days/actions and clear results on the next manual launch.
+The current 365-day cycle is active in the main checkout (sixth capture observed
+at investigation), so implementation is isolated in Heroes-ui-next on branch
+codex/batch-grid-ui from 93e15e9. No active-run source or artifact is edited.
+This is a display-only change; gameplay, scheduling, learning and evidence gates
+must remain unchanged. Acceptance: existing progress/controller tests, local
+terminal render/resize/failure controls and source identity checks; no native
+game or official update will be launched for UI validation. Keep training
+outcomes separate from verification/admission, and keep all validation scripts
+and captures private. Integrate into main only after its owned workers exit.
+
+Implemented the existing supervisor's optional BatchProgressDisplay with all ten
+slots visible, a cyan/text-marked active slot, Red/Blue action counts, observed
+day, action-budget bars and separate result/preparation states. A failure after
+a reported engine win retains the win and an error label. The report footer
+separates engine totals, PPO and validated evaluation. Completed training cards
+are frozen while the diagnostic reuses episode slot 1; a later batch cannot
+reuse stale prior-batch snapshots. Worker scheduling, callbacks, sidecar format,
+models, PPO, native runtime and all gameplay limits remain unchanged.
+
+TTY output uses an alternate screen and redraws in place, leaving the last
+column/row unused to avoid implicit scrolling. Terminal dimensions are refreshed
+on each poll; narrow/short windows use a clipped compact list. NO_COLOR removes
+color but preserves geometry/state. Redirected/dumb-terminal output retains the
+existing plain-text path. Cursor and original screen restore on completion or
+failure. UI parsing/render exceptions are best-effort and cannot become a
+training gate. Existing two-second report polling supplies status; no extra
+history scans, analytics, profiler or per-action writes were introduced.
+
+All 77 existing progress/controller/checkpoint/training tests passed. Private
+controls under diagnostics/batch-grid-20261105 passed 80/140-column grids,
+60/30-column and short-window bounds, active/result/error labels, evaluation
+isolation, screen/cursor restoration, NO_COLOR and redirected output. Actual
+supervisor integration passed with mocked subprocess success/failure, preserving
+exit status and cleanup handling. Exact display source transition and mutation
+rejection passed. An initial local multi-size fixture reused sidecars after
+finish correctly marked the active slot failed; recreating its active phase
+between independent cases corrected the fixture. No native game or optimizer
+update ran for validation; no tests/probes are included in the staged diff.
+
+The new renderer also consumed a read-only snapshot of the real active run's
+existing report/progress into an in-memory terminal: all ten captured day-limit
+games appeared in their correct slots with their real action counts, and the
+footer showed PPO UPDATING. The preview called only screen-close, never progress
+finish/cleanup, and did not write any active-run file. Private plain/ANSI captures
+are actual-read-only-preview.* in the same diagnostic directory. This validates
+display compatibility only; it does not claim a completed optimizer update.

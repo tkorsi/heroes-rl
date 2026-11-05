@@ -1286,10 +1286,11 @@ def report_completed(args):
 
 def supervise(launch):
     from experiments.headless.process_deadline import guarded_popen, close_owned_process, cleanup_from_evidence
-    from experiments.learner.game_progress import ProgressDisplay
+    from experiments.learner.game_progress import ProgressDisplay, BatchProgressDisplay
     output = Path(launch['output']); path = output / 'launch.json'; process = None; errors = []
     cleanup_errors = []
-    display = ProgressDisplay(output / 'progress')
+    display = (BatchProgressDisplay(output / 'progress', launch=launch) if launch.get('schema') == TEN_LAUNCH
+               else ProgressDisplay(output / 'progress'))
     try:
         with (output / 'coordinator.log').open('xb') as log:
             process = guarded_popen([sys.executable, str(Path(__file__).resolve()), '_coordinator',
@@ -1309,15 +1310,18 @@ def supervise(launch):
                                 'Ten-game disk reserve reached; stopping owned workers')
                         try:
                             current = read(output / 'report.json')
+                            display.update_report(current)
                             for phase in current.get('batches', []):
                                 if phase.get('status') == 'checkpoint_verified' and phase['name'] not in emitted:
-                                    display.lines = 0
-                                    ten_print_phase(phase)
+                                    if not display.dashboard:
+                                        display.lines = 0
+                                        ten_print_phase(phase)
                                     emitted.add(phase['name'])
                             for phase in current.get('evaluations', []):
                                 if phase.get('status') == 'evaluation_verified' and phase['name'] not in emitted:
-                                    display.lines = 0
-                                    ten_print_phase(phase)
+                                    if not display.dashboard:
+                                        display.lines = 0
+                                        ten_print_phase(phase)
                                     emitted.add(phase['name'])
                         except (OSError, ValueError):
                             pass
@@ -1341,6 +1345,11 @@ def supervise(launch):
         except Exception as error:
             errors.append(str(error))
             cleanup_errors.append(str(error))
+        if launch.get('schema') == TEN_LAUNCH:
+            try:
+                display.update_report(read(output / 'report.json'))
+            except (OSError, ValueError):
+                pass
         display.finish(failed=bool(errors) or process is None or process.returncode != 0)
         if launch.get('schema') == TEN_LAUNCH:
             try:
