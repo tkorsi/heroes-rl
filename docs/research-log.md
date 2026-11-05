@@ -2625,3 +2625,13 @@ pointers/reservations and protected inputs were unchanged. This checks planning,
 not a fifty-game production completion or update. Canonical prepare_vcmi.py --check
 passed again. Main-checkout synchronization and its read-only launcher preflight
 remain the final handoff gates.
+
+Main was fast-forwarded cleanly from 6ab6268 to 1e1edbe under the existing
+activity lease, without unrelated changes. Its actual manual launcher passed
+`./continue-selfplay.sh --cycle --check --run-dir PRIVATE_LATEST_RUN --cycles 1
+--hours 10`: checkpoint 1,756, exact model/Adam/RNG/progress/sampler/pool,
+fifty training plus one diagnostic, ten rolling actors, one planned PPO update,
+and a non-reserving preview of 51 fresh slots at offset 85. Actual gameplay and
+optimizer updates were zero; main prepare_vcmi.py --check passed. Evidence:
+diagnostics/parallel50-20261105/main-continuation-check.log. Manual launch remains
+the user's responsibility; full fifty-game memory/runtime completion is not yet observed.
