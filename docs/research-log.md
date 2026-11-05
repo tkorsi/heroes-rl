@@ -2513,3 +2513,72 @@ examples and a preserved update. A win rate increase from earlier 0/10 and 1/10
 to 13/40 is descriptive across different seeds, policies and sample sizes; it is
 not a controlled estimate of strength. The single post-update diagnostic did
 not win. No frozen-opponent comparative evaluation or new campaign was started.
+
+## 2026-11-05 — Fifty-game batch and rolling ten-process collection preparation
+
+The user requested fifty games before one update, ten concurrent workers and a
+script, with measured acceleration. Fifty slots require a 5x10 grid. Parent is
+complete checkpoint 1,756 from run-20261105T153955Z-e97254e5; no owned training
+process was active. Main stays unchanged while implementation/diagnostics use
+codex/parallel-fifty in Heroes-parallel50 from 6ab6268. Mac reports 16 logical
+CPUs and 128 GiB physical RAM. PPO/day/action/opponent/reward settings remain
+unchanged except the explicitly requested fifty-game batch. No official training
+will be launched; bounded frozen diagnostic games may measure collection speed.
+
+Inspection found collection hard-coded sequential, with wave barriers in older
+parallel mode. Per-game native preparation averaged about eleven seconds in the
+last run, so merely raising wave size would leave slots idle. Plan: a lightweight
+rolling dispatcher replenishes ten independent single-inference-thread processes
+while main retains serial, deadline-bounded preparation; sort receipts by original
+schedule index before the unchanged PPO shuffle/update. Maintain fresh owned
+completion tokens, source/runtime hashes, guards, fail-closed cleanup and no
+partial admission. Reports distinguish active captures from queued preparation.
+Acceptance: rolling/cancellation/order controls, numerical regressions, actual
+bounded serial/parallel frozen-policy comparisons (including semantic equality,
+individual reconstruction/replay and cleanup), and real continuation preflight.
+Never infer full-cycle 10x acceleration from collection-only measurements.
+
+
+Implemented fifty-game admission/metadata while preserving 10/40-game checkpoint
+restore and old 11/41-slot reservations; new cycles reserve 51 slots. The actual
+capture configuration records ten processes, one math thread per actor and one
+preparation worker; the inherited numerical native-execution profile is unchanged.
+A lightweight dispatcher refills slots independently of main-thread, signal-bounded
+preparation. Shared report writes are locked. Captured-but-not-prepared work is
+separate from active games in the UI; deterministic receipt/attempt sorting
+retains schedule order for PPO. Failure stops dispatch and joins it before owned
+process cleanup; incomplete batches never update. Each actor receives its own
+seed/model/engine directory and bounded math-pool environment. Resource, deadline,
+completion-token and checkpoint gates remain enabled.
+
+All 77 existing training/checkpoint/controller/progress tests passed. A real
+collect_batch control with fifty lightweight disposable child processes observed
+peak ten, refilled past a deliberately slow first job, overlapped preparation,
+kept all model bindings before threading, returned sorted receipts and cleaned
+up. Cancellation stopped further launch and joined dispatch. UI controls passed
+all fifty slots and ten active jobs at 80x24/28 and 140x80. Local fifty-receipt
+controls passed one-update/partial/order/reuse rejection, legacy metadata and
+mixed seed-ledger checks. These controls launch no native game or PPO update.
+
+Failed development controls: an initial unconditional receipt sort broke a
+legacy mock receipt without a binding (fixed by sorting only the rolling live
+path, retaining historical-wave behavior); a lightweight child fixture omitted
+sealed artifact files and hit the real artifact binding check (fixture corrected,
+cleanup ran); the copied forty-game configuration control still expected one
+worker (updated to the requested ten). A symlink to the main generated VCMI was
+rejected by prepare_vcmi's path-containment check; it was replaced by an owned
+APFS clone of the dependency, and prepare_vcmi.py --check then passed exactly.
+No engine source or binary changed. Validation scripts/results remain private
+under diagnostics/parallel50-20261105, outside the staged diff.
+
+The preregistered native benchmark uses twelve paired frozen-1,756 diagnostic
+games per arm, one versus ten actors through the production rolling dispatcher,
+512 ordinary plus 32 reserved choices/player, 365 days, bounded deadlines and
+cleanup. Both arms use identical private engine/policy seeds, isolated profiles,
+unchanged map/support/rewards, and zero training admission/updates. Parent native
+program preparation is included and timed separately; every capture must later
+pass two-policy reconstruction and native replay. Compare action/probability/value
+and semantic pre-finalization history hashes; report any divergence and do not
+claim matched-workload acceleration if it occurs. Short prefixes and diagnostic
+full recording differ from full lean training episodes, so do not extrapolate
+this result to end-to-end fifty-game/PPO throughput. Raw evidence stays private.

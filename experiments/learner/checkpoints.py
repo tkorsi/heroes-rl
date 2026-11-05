@@ -24,7 +24,7 @@ SELFPLAY_CYCLE_SCHEMA = "heroes-selfplay-ten-then-check-v1"
 SELFPLAY_TEN_GAMEPLAY = dict(training_games=10, ordinary_choice_limit=158720,
     reserved_dialog_choices=5120, max_total_choices=163840, max_days=5840,
     army_information="own-army-details-v1", equipment_policy="no-artifacts-v1")
-SELFPLAY_CYCLE_GAMEPLAY = dict(SELFPLAY_TEN_GAMEPLAY, training_games=40, max_days=365)
+SELFPLAY_CYCLE_GAMEPLAY = dict(SELFPLAY_TEN_GAMEPLAY, training_games=50, max_days=365)
 EXACT_GAMEPLAY_PROVENANCES = (BUILTIN_GAMEPLAY_PROVENANCE, SELFPLAY_GAMEPLAY_PROVENANCE)
 OPTIMIZER_PROVENANCES = ("synthetic_optimizer_test", "approved_gameplay", *EXACT_GAMEPLAY_PROVENANCES)
 PROVENANCES = ("random_initialization", *OPTIMIZER_PROVENANCES)
@@ -260,11 +260,15 @@ def _check_selfplay_gameplay_metadata(metadata, interface):
             raise ValueError("Capture-only training must disclose its verification policy")
         expected = SELFPLAY_TEN_GAMEPLAY
         if metadata.get("training_contract") == SELFPLAY_CYCLE_SCHEMA:
-            # Restore published ten-game parents exactly; new collection plans
-            # independently require the current forty-game contract.
-            if type(metadata.get("training_games")) is not int or metadata["training_games"] not in (10, 40):
+            # Restore published ten-/forty-game parents exactly; new plans
+            # independently require fifty games and ten rolling actors.
+            if type(metadata.get("training_games")) is not int or metadata["training_games"] not in (10, 40, 50):
                 raise ValueError("Unknown capture-only checkpoint batch size")
             expected = dict(SELFPLAY_CYCLE_GAMEPLAY, training_games=metadata["training_games"])
+            if metadata["training_games"] == 50 and (
+                    type(metadata.get("collection_workers")) is not int or metadata["collection_workers"] != 10
+                    or metadata.get("collection_scheduling") != "rolling-v1"):
+                raise ValueError("Fifty-game checkpoint must disclose ten rolling actors")
         if any(metadata.get(key) != value or type(metadata.get(key)) is not type(value)
                for key, value in expected.items()):
             raise ValueError("Ten-game self-play checkpoint requires its complete gameplay contract")

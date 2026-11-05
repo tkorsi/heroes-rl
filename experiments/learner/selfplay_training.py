@@ -88,7 +88,8 @@ def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_i
         value.update(training_contract=training_contract, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
                      **(CYCLE_GAMEPLAY if training_contract == CYCLE_SCHEMA else TEN_GAMEPLAY))
     if training_contract == CYCLE_SCHEMA:
-        value.update(training_verification="not_performed", evaluation_games_per_cycle=1)
+        value.update(training_verification="not_performed", evaluation_games_per_cycle=1,
+                     collection_workers=10, collection_scheduling="rolling-v1")
     cp._check_selfplay_gameplay_metadata(value, c.EXPANDED_ENVIRONMENT)
     checked(initial_checkpoint); checked(opponent_checkpoint)
     return value
@@ -158,6 +159,14 @@ def _plan(path, digest):
         require(value.get("army_information") == TEN_GAMEPLAY["army_information"]
                 and value.get("equipment_policy") == TEN_GAMEPLAY["equipment_policy"],
                 "Ten-game self-play must declare its army and equipment rules")
+        if value["schema"] == CYCLE_SCHEMA:
+            require(type(cfg.get("collection_workers")) is int and cfg["collection_workers"] == 10
+                    and cfg.get("collection_scheduling") == "rolling-v1"
+                    and type(cfg.get("collection_worker_threads")) is int and cfg["collection_worker_threads"] == 1
+                    and type(cfg.get("preparation_workers")) is int and cfg["preparation_workers"] == 1
+                    and cfg["collection_workers"] + cfg["preparation_workers"]
+                        <= value["execution"]["resource_plan"]["budget_cpus"],
+                    "Fifty-game capture requires ten rolling actors")
         config = PPOConfig(**cfg["ppo"])
         require(type(cfg.get("max_optimizer_steps")) is int and cfg["max_optimizer_steps"]
                 == optimizer_step_cap(config, cfg["training_games"], cfg["max_total_choices"]),
@@ -493,7 +502,7 @@ def live_native_update(model, optimizer, receipts, *, plan_sha256, config, gener
     from .builtin_gameplay import transactional_update
     require(type(receipts) is tuple and len(receipts) == CYCLE_GAMEPLAY["training_games"]
             and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
-                    for r in receipts), 'Live training requires forty fresh capture capabilities')
+                    for r in receipts), 'Live training requires fifty fresh capture capabilities')
     require([r.binding.schedule_index for r in receipts] == list(range(CYCLE_GAMEPLAY['training_games'])), 'Live receipt order changed')
     for receipt in receipts:
         receipt.binding.recheck()

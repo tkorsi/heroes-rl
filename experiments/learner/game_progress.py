@@ -308,7 +308,7 @@ class ProgressDisplay:
             self.poll(final=True)
 
 
-def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
+def batch_terminal_lines(slots, *, width=80, color=False, compact=False, dense=False):
     """Five columns; compact rows keep forty games visible in a normal terminal."""
     cell = (width - 4) // 5
     inner = cell - 2
@@ -318,6 +318,7 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
         state = attempt.get('status', 'not_started')
         phase = value.get('phase', 'starting')
         done = state in ('captured', 'passed')
+        pending = state == 'preparing'
         failed = state in ('failed', 'interrupted') or phase == 'failed'
         outcomes = attempt.get('outcomes', {})
         result = ('RED WIN' if outcomes.get('red') == 'win' and outcomes.get('blue') == 'loss'
@@ -325,13 +326,13 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
                   else 'DAY LIMIT' if attempt.get('termination_reason') == 'game_day_limit'
                   else 'CUTOFF' if attempt.get('episode_status') == 'truncated' else None)
         active = state == 'running' and not failed
-        label = result or ('FAILED' if failed else 'READY' if done else
+        label = result or ('FAILED' if failed else 'READY' if done else 'PREP PPO' if pending else
                            {'collecting': 'PLAYING', 'starting': 'STARTING', 'finalizing': 'FINISHING',
                             'storing': 'SAVING', 'preparing PPO': 'PREPARING PPO',
                             'verifying': 'VERIFYING', 'awaiting verification': 'CHECKS QUEUED',
                             'captured': 'CAPTURED', 'verified': 'VERIFIED'}.get(phase, phase.upper())
                            if active else 'WAITING')
-        code = '1;31' if failed else '1;36' if active else '33' if result in ('DAY LIMIT', 'CUTOFF') else '32' if done else '2'
+        code = '1;31' if failed else '1;36' if active else '33' if result in ('DAY LIMIT', 'CUTOFF') else '33' if pending else '32' if done else '2'
         days = [n for n in value.get('days', ()) if n is not None]
         day = f"Day {max(days) if days else '?'}/{value.get('max_days') or '?'}"
         counts = value.get('choices', attempt.get('sampled_by_player', [0, 0]))
@@ -343,12 +344,12 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
         def fit(text): return text[:inner].ljust(inner)
         if compact:
             def short(count): return str(count) if count < 1000 else f"{count // 1000}k"
-            marker = '!' if failed else '>' if active else ' '
+            marker = '!' if failed else '>' if active else '~' if pending else ' '
             lines = (f"{slot['episode']:02d}{marker} {label}",
                      f"{max(days) if days else '---'} {short(counts[0])}/{short(counts[1])}")
-            cards.append([color_text('|' + fit(text) + '|', code, color) for text in lines])
+            cards.append([color_text('|' + fit(text) + '|', code, color) for text in (lines[:1] if dense else lines)])
             continue
-        title = f"{'>' if active else ' '} Game {slot['episode']:02d} "
+        title = f"{'>' if active else '~' if pending else ' '} Game {slot['episode']:02d} "
         rows = [color_text('+' + title[:inner].ljust(inner, '-') + '+', code, color)]
         for text, tint in ((label, code), (day, '2'),
                            (f"R {counts[0]:,}", '91'), (f"B {counts[1]:,}", '94'), (footer, code)):
@@ -356,7 +357,7 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
         rows.append(color_text('+' + '-' * inner + '+', code, color))
         cards.append(rows)
     return [' '.join(cards[col][row] for col in range(start, start + 5))
-            for start in range(0, len(cards), 5) for row in range(2 if compact else 7)]
+            for start in range(0, len(cards), 5) for row in range((1 if dense else 2) if compact else 7)]
 
 
 class BatchProgressDisplay(ProgressDisplay):
@@ -367,7 +368,7 @@ class BatchProgressDisplay(ProgressDisplay):
         self.launch, self.report = launch, {}
         self.batch_games = launch.get("configuration", {}).get("training_games", 10)
         self.overview = self.batch_games == 10 and launch.get("batches", 1) == 4
-        self.slot_count = 40 if self.batch_games == 40 or self.overview else 10
+        self.slot_count = self.batch_games if self.batch_games in (40, 50) else 40 if self.overview else 10
         self.started, self.opened = self.clock(), False
         self.saved, self.phase_name, self.phase_start = {}, None, 0
         self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
@@ -432,10 +433,12 @@ class BatchProgressDisplay(ProgressDisplay):
             rows = [color_text(f'HEROES  /  {self.slot_count}-GAME TRAINING'[:width], '1', self.color),
                     f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/{self.slot_count} | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
             compact = height < self.slot_count // 5 * 7 + 6
-            if width >= 74 and height >= self.slot_count // 5 * (2 if compact else 7) + 6:
-                rows += batch_terminal_lines(slots, width=width, color=self.color, compact=compact)
+            dense = compact and height < self.slot_count // 5 * 2 + 6
+            card_height = (1 if dense else 2) if compact else 7
+            if width >= 74 and height >= self.slot_count // 5 * card_height + 6:
+                rows += batch_terminal_lines(slots, width=width, color=self.color, compact=compact, dense=dense)
             else:
-                rows += ['Widen to 80 columns for the 5 x 2 grid.']
+                rows += [f'Widen to 80 columns for the 5 x {self.slot_count // 5} grid.']
                 for slot in slots:
                     a, v = slot['attempt'], slot['value']
                     days = [d for d in v.get('days', ()) if d is not None]
@@ -458,11 +461,25 @@ class BatchProgressDisplay(ProgressDisplay):
                 rows.append(format_ppo_progress(progress) if progress is not None else
                             f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
             if compact:
-                active = next((slot for slot in slots if slot['attempt'].get('status') == 'running'), None)
-                exact = active['value'].get('choices', [0, 0]) if active else [0, 0]
-                rows.append(f"Active {active['episode']:02d}: Red {exact[0]:,} | Blue {exact[1]:,}" if active else 'No active game')
-            rows.append('> active | ! error | Cards: day Red/Blue choices; k rounded down' if compact else
-                        '> active | R/B = choices used | Bars = action budget, not time | Wins above are unverified')
+                active = [slot for slot in slots if slot['attempt'].get('status') == 'running']
+                waiting = sum(slot['attempt'].get('status') == 'preparing' for slot in slots)
+                if len(active) == 1:
+                    exact = active[0]['value'].get('choices', [0, 0])
+                    rows.append(f"Active {active[0]['episode']:02d}: Red {exact[0]:,} | Blue {exact[1]:,} | Prep {waiting}")
+                else:
+                    rows.append(f"Playing {len(active)}/{cfg.get('collection_workers', 1)} | Queued/preparing PPO {waiting}")
+                if dense:
+                    def detail(slot):
+                        value = slot['value']
+                        days = [d for d in value.get('days', ()) if d is not None]
+                        counts = value.get('choices', [0, 0])
+                        return f"#{slot['episode']:02d} Day {max(days) if days else '?'} R {counts[0]:,} B {counts[1]:,}"
+                    half = max(1, (width - 3) // 2)
+                    for start in range(0, len(active), 2):
+                        rows.append(' | '.join(detail(slot)[:half].ljust(half) for slot in active[start:start + 2]))
+            rows.append('> playing | ~ prep | ! error | Enlarge for per-game days/counts' if dense else
+                        '> active | ~ prep | ! error | Cards: day Red/Blue choices; k rounded down' if compact else
+                        '> active | ~ prep | R/B = choices used | Bars = action budget, not time')
             if self.report.get('error'):
                 rows[-1] = 'STOPPED: ' + self.report['error']
             # Clip before styling is applied to cards; other rows have no ANSI

@@ -19,6 +19,8 @@ import math
 import os
 from pathlib import Path
 import secrets
+import queue
+import threading
 import shlex
 import shutil
 import subprocess
@@ -914,6 +916,85 @@ def require_cycle_memory_budget():
             'System memory pressure reached the cycle reserve; preserving the checkpoint')
 
 
+class CaptureDispatch:
+    """Replenish actor processes while main performs deadline-bound preparation.
+
+    The dispatcher never loads model tensors, admits data or runs PPO. The caller owns
+    all launched groups and joins this dispatcher before process cleanup/update.
+    """
+
+    def __init__(self, count, *, workers, launch, remaining, ready=None):
+        require(type(count) is int and count > 0 and type(workers) is int and workers > 0,
+                'Invalid capture dispatcher bounds')
+        self.count, self.workers = count, workers
+        self.launch, self.remaining, self.ready = launch, remaining, ready
+        self.stop, self.results = threading.Event(), queue.Queue()
+        self.thread = threading.Thread(target=self._run, name='capture-dispatch', daemon=True)
+
+    def _run(self):
+        active, next_index, current_index = [], 0, 0
+        def start_next():
+            nonlocal next_index, current_index
+            self.remaining()
+            if next_index < self.count and not self.stop.is_set():
+                index = current_index = next_index
+                next_index += 1
+                try:
+                    active.append(self.launch(index))
+                except BaseException as error:
+                    self.results.put(dict(index=index, error=error))
+                    self.stop.set()
+        try:
+            while len(active) < self.workers and next_index < self.count and not self.stop.is_set():
+                start_next()
+            while active and not self.stop.is_set():
+                self.remaining()
+                finished = [job for job in active if job['process'].poll() is not None]
+                if not finished:
+                    self.stop.wait(.05)
+                    continue
+                for job in finished:
+                    current_index = job['index']
+                    if self.stop.is_set():
+                        return
+                    job['stdout'] = job['process'].communicate(timeout=min(5, self.remaining()))[0]
+                    active.remove(job)
+                    if job['process'].returncode != 0:
+                        self.results.put(job)
+                        self.stop.set()
+                        return
+                    if self.ready is not None:
+                        self.ready(job)
+                    # Refill before handing heavy preparation to the main thread.
+                    start_next()
+                    self.results.put(job)
+            if not self.stop.is_set():
+                self.results.put(None)
+        except BaseException as error:
+            self.results.put(dict(index=current_index, error=error))
+            self.stop.set()
+
+    def __iter__(self):
+        self.thread.start()
+        while True:
+            self.remaining()
+            try:
+                job = self.results.get(timeout=.2)
+            except queue.Empty:
+                if not self.thread.is_alive():
+                    raise RuntimeError('Capture dispatcher exited without its completion marker')
+                continue
+            if job is None:
+                return
+            yield job
+
+    def close(self):
+        self.stop.set()
+        if self.thread.ident is not None:
+            self.thread.join(timeout=10)
+        return 'Capture dispatcher failed to stop' if self.thread.is_alive() else None
+
+
 def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, phase_deadline):
     from experiments.learner import selfplay_training as training
     from experiments.learner.game_progress import progress_path, set_phase
@@ -921,99 +1002,144 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
     from validation.probes.validate_hero_policy import wall_limit
     output = Path(plan['execution_output']); output.mkdir()
     jobs, receipts, attempts = [], [], []
-    current_index = None
-    current_stage = 'capture'
-    try:
-        live = plan.get('schema') == training.CYCLE_SCHEMA and plan['mode'] == 'training'
-        width = 1 if live else 10 if plan.get('schema') == training.TEN_SCHEMA else 4
+    current_index, current_stage, dispatch = None, 'capture', None
+    live = plan.get('schema') == training.CYCLE_SCHEMA and plan['mode'] == 'training'
+    bindings = []
+    worker_env = dict(os.environ)
+    if live:
+        # Cap dense-math pools per actor; the existing parent/native PPO thread
+        # configuration remains unchanged.
+        worker_env.update({name: '1' for name in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS',
+            'OPENBLAS_NUM_THREADS', 'VECLIB_MAXIMUM_THREADS', 'NUMEXPR_NUM_THREADS')})
+
+    def launch_capture(index):
+        phase_remaining(phase_deadline)
+        row = plan['schedule'][index]
+        folder = output / f"episode-{row['episode']:06d}"
+        capability = bindings[index] if live else training.create_capture_binding(
+            plan_path, binding(plan_path)['sha256'], index, folder)
+        token = secrets.token_hex(32)
+        allowance = plan['configuration']['attempt_wall_seconds']
+        deadline = min(time.monotonic() + allowance, phase_deadline['hard_deadline_monotonic'] - 2)
+        wall = min(time.time() + allowance, phase_deadline['hard_deadline_unix'] - 2)
+        log = (output / f'worker-{index:02d}.log').open('xb')
+        command = [sys.executable, str(Path(__file__).resolve()), '_capture', '--plan', str(plan_path),
+                   '--sha256', binding(plan_path)['sha256'], '--index', str(index), '--token', token,
+                   '--deadline', str(deadline), '--wall-deadline', str(wall)]
+        process = guarded_popen(command, deadline_monotonic=deadline, deadline_wall=wall,
+            evidence_path=output / f'worker-{index:02d}-deadline.jsonl', cwd=ROOT,
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log,
+            **({"env": worker_env} if live else {}))
+        job = dict(process=process, log=log, binding=capability, index=index, folder=folder,
+                   deadline=deadline, wall_deadline=wall,
+                   deadlines=dict(capture_seconds=allowance, capture_deadline_monotonic=deadline,
+                                  capture_deadline_unix=wall, collection_and_verification=phase_deadline))
+        jobs.append(job)
+        training.register_capture_launch(capability, process, token)
+        save_attempt(index, dict(**row, status='running', outcomes={'red': None, 'blue': None},
+                                rewards={'red': None, 'blue': None}, deadlines=job['deadlines']))
+        return job
+
+    def queued(job):
+        row = plan['schedule'][job['index']]
+        save_attempt(job['index'], dict(**row, status='preparing',
+            outcomes={'red': None, 'blue': None}, rewards={'red': None, 'blue': None},
+            deadlines=job['deadlines']))
+
+    def historical_waves():
+        nonlocal current_index
+        width = 10 if plan.get('schema') == training.TEN_SCHEMA else 4
         for first in range(0, len(plan['schedule']), width):
             wave = []
             for index in range(first, min(first + width, len(plan['schedule']))):
                 current_index = index
+                wave.append(launch_capture(index))
+            yield from wave
+
+    try:
+        if live:
+            require(plan['configuration'].get('collection_workers') == 10,
+                    'Fifty-game collection requires ten independent actors')
+            # Policy loading/binding stays on main before any dispatcher thread:
+            # no concurrent model construction or global RNG contexts.
+            for index, row in enumerate(plan['schedule']):
+                current_index = index
                 phase_remaining(phase_deadline)
-                row = plan['schedule'][index]
-                folder = output / f"episode-{row['episode']:06d}"
-                capability = training.create_capture_binding(plan_path, binding(plan_path)['sha256'], index, folder)
-                token = secrets.token_hex(32)
-                allowance = plan['configuration']['attempt_wall_seconds']
-                deadline = min(time.monotonic() + allowance, phase_deadline['hard_deadline_monotonic'] - 2)
-                wall = min(time.time() + allowance, phase_deadline['hard_deadline_unix'] - 2)
-                log = (output / f'worker-{index:02d}.log').open('xb')
-                command = [sys.executable, str(Path(__file__).resolve()), '_capture', '--plan', str(plan_path),
-                           '--sha256', binding(plan_path)['sha256'], '--index', str(index), '--token', token,
-                           '--deadline', str(deadline), '--wall-deadline', str(wall)]
-                process = guarded_popen(command, deadline_monotonic=deadline, deadline_wall=wall,
-                    evidence_path=output / f'worker-{index:02d}-deadline.jsonl', cwd=ROOT,
-                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log)
-                job = dict(process=process, log=log, binding=capability, index=index, folder=folder,
-                           deadline=deadline, wall_deadline=wall,
-                           deadlines=dict(capture_seconds=allowance, capture_deadline_monotonic=deadline,
-                                          capture_deadline_unix=wall, collection_and_verification=phase_deadline))
-                jobs.append(job); wave.append(job)
-                training.register_capture_launch(capability, process, token)
-                save_attempt(index, dict(**row, status='running', outcomes={'red': None, 'blue': None},
-                                        rewards={'red': None, 'blue': None}, deadlines=job['deadlines']))
-            for job in wave:
-                current_index = job['index']
-                current_stage = 'capture'
-                process = job['process']
-                wait_seconds = phase_remaining(phase_deadline)
-                if plan.get('schema') not in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
-                    wait_seconds = min(605, wait_seconds)
-                stdout, _ = process.communicate(timeout=wait_seconds)
-                require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
-                close_owned_process(process, timeout=min(5, phase_remaining(phase_deadline)))
-                cleanup_from_evidence(output / f"native-{plan['schedule'][job['index']]['episode']:06d}-deadline.jsonl",
-                                      timeout=min(5, phase_remaining(phase_deadline)))
-                require(len(stdout) <= 65536, 'Oversized capture completion')
-                training.accept_capture_completion(job['binding'], json.loads(stdout))
-                def verification_remaining():
-                    return phase_remaining(phase_deadline)
-                if live:
-                    current_stage = 'preparation'
-                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'preparing PPO')
-                    with wall_limit(verification_remaining()):
-                        receipt = training.prepare_live_capture(job['binding'], learner, opponent,
-                                                                remaining=verification_remaining)
-                    manifest = read(job['folder'] / 'manifest.json')
-                    row = plan['schedule'][job['index']]
-                    attempt = dict(**row, status='captured', verification_status='not_performed',
-                        cleanup_verified=True, replay_verified=False, both_policies_reconstructed=False,
-                        episode_status=manifest['status'], termination_reason=manifest['termination_reason'],
-                        outcomes=manifest['outcomes_by_player'], rewards=manifest['rewards_by_player'],
-                        episode_directory=str(job['folder']), sampled_by_player=list(receipt.choices),
-                        natural_terminal_after_horizon=manifest.get('natural_terminal_after_horizon'),
-                        evidence={name: binding(job['folder'] / name) for name in
-                            ('manifest.json', 'neural-rollout.json', 'training-capture-receipt.json')},
-                        verification=receipt.to_dict(), deadlines=job['deadlines'])
-                    discard_training_streams(job['folder'])
-                    set_phase(progress_path(launch['output'], row['episode']), 'captured')
-                else:
-                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
-                    current_stage = 'verification'
-                    with wall_limit(verification_remaining()):
-                        receipt = training.verify_training_capture(job['binding'], learner, opponent,
-                            replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                            remaining=verification_remaining)
-                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verified')
-                    manifest = read(job['folder'] / 'manifest.json')
-                    row = plan['schedule'][job['index']]
-                    attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
-                        both_policies_reconstructed=True, episode_status=manifest['status'],
-                        termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
-                        rewards=manifest['rewards_by_player'], episode_directory=str(job['folder']),
-                        sampled_by_player=[len(item.decisions) for item in receipt.collected.rollouts],
-                        evidence={name: binding(job['folder'] / name) for name in ('manifest.json', 'neural-rollout.json',
-                            'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
-                            'training-verification/native-report.json', 'training-receipt.json')},
-                        verification=receipt.to_dict(), deadlines=job['deadlines'])
-                    if plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
-                        attempt['natural_terminal_after_horizon'] = manifest.get('natural_terminal_after_horizon')
-                attempts.append(attempt); receipts.append(receipt)
-                save_attempt(job['index'], attempt)
+                bindings.append(training.create_capture_binding(plan_path, binding(plan_path)['sha256'], index,
+                    output / f"episode-{row['episode']:06d}"))
+            dispatch = CaptureDispatch(len(plan['schedule']), workers=10, launch=launch_capture,
+                remaining=lambda: phase_remaining(phase_deadline), ready=queued)
+            captures = dispatch
+        else:
+            captures = historical_waves()
+        for job in captures:
+            current_index = job['index']
+            current_stage = 'capture'
+            if 'error' in job:
+                raise job['error']
+            process = job['process']
+            wait_seconds = phase_remaining(phase_deadline)
+            if plan.get('schema') not in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
+                wait_seconds = min(605, wait_seconds)
+            stdout = job['stdout'] if live else process.communicate(timeout=wait_seconds)[0]
+            require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
+            close_owned_process(process, timeout=min(5, phase_remaining(phase_deadline)))
+            cleanup_from_evidence(output / f"native-{plan['schedule'][job['index']]['episode']:06d}-deadline.jsonl",
+                                  timeout=min(5, phase_remaining(phase_deadline)))
+            require(len(stdout) <= 65536, 'Oversized capture completion')
+            training.accept_capture_completion(job['binding'], json.loads(stdout))
+            def verification_remaining():
+                return phase_remaining(phase_deadline)
+            if live:
+                current_stage = 'preparation'
+                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'preparing PPO')
+                with wall_limit(verification_remaining()):
+                    receipt = training.prepare_live_capture(job['binding'], learner, opponent,
+                                                            remaining=verification_remaining)
+                manifest = read(job['folder'] / 'manifest.json')
+                row = plan['schedule'][job['index']]
+                attempt = dict(**row, status='captured', verification_status='not_performed',
+                    cleanup_verified=True, replay_verified=False, both_policies_reconstructed=False,
+                    episode_status=manifest['status'], termination_reason=manifest['termination_reason'],
+                    outcomes=manifest['outcomes_by_player'], rewards=manifest['rewards_by_player'],
+                    episode_directory=str(job['folder']), sampled_by_player=list(receipt.choices),
+                    natural_terminal_after_horizon=manifest.get('natural_terminal_after_horizon'),
+                    evidence={name: binding(job['folder'] / name) for name in
+                        ('manifest.json', 'neural-rollout.json', 'training-capture-receipt.json')},
+                    verification=receipt.to_dict(), deadlines=job['deadlines'])
+                discard_training_streams(job['folder'])
+                set_phase(progress_path(launch['output'], row['episode']), 'captured')
+            else:
+                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
+                current_stage = 'verification'
+                with wall_limit(verification_remaining()):
+                    receipt = training.verify_training_capture(job['binding'], learner, opponent,
+                        replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
+                        remaining=verification_remaining)
+                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verified')
+                manifest = read(job['folder'] / 'manifest.json')
+                row = plan['schedule'][job['index']]
+                attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
+                    both_policies_reconstructed=True, episode_status=manifest['status'],
+                    termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
+                    rewards=manifest['rewards_by_player'], episode_directory=str(job['folder']),
+                    sampled_by_player=[len(item.decisions) for item in receipt.collected.rollouts],
+                    evidence={name: binding(job['folder'] / name) for name in ('manifest.json', 'neural-rollout.json',
+                        'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
+                        'training-verification/native-report.json', 'training-receipt.json')},
+                    verification=receipt.to_dict(), deadlines=job['deadlines'])
+                if plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
+                    attempt['natural_terminal_after_horizon'] = manifest.get('natural_terminal_after_horizon')
+            attempts.append(attempt); receipts.append(receipt)
+            save_attempt(job['index'], attempt)
         require(len(receipts) == len(plan['schedule']), 'Incomplete self-play batch')
+        if live:
+            receipts.sort(key=lambda item: item.binding.schedule_index)
+            attempts.sort(key=lambda item: item["episode"])
         return tuple(receipts), attempts
     except Exception as error:
+        if dispatch is not None:
+            dispatch.stop.set()
         if current_index is not None:
             set_phase(progress_path(launch['output'], plan['schedule'][current_index]['episode']), 'failed')
             details = {}
@@ -1032,7 +1158,10 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
             save_attempt(current_index, failure)
         raise
     finally:
+        dispatch_error = dispatch.close() if dispatch is not None else None
         errors = close_collection_jobs(jobs, output, launch)
+        if dispatch_error:
+            errors.append(dispatch_error)
         write(output / 'shutdown.json', dict(owned_cleanup_verified=not errors, errors=errors), new=True)
         require(not errors, 'Self-play owned-process cleanup failed: ' + '; '.join(errors))
 
@@ -1419,7 +1548,8 @@ def ten_configuration(checked, seconds):
     if CYCLE_MODE:
         cfg.update(schema='heroes-selfplay-ten-then-check-config-v1',
                    training_verification='not_performed', evaluation_games_per_cycle=1,
-                   collection_workers=1, memory_reserve_gib=48,
+                   collection_workers=10, collection_worker_threads=1, preparation_workers=1,
+                   collection_scheduling='rolling-v1', memory_reserve_gib=48,
                    training_storage='owned-binary-v1', training_history_audit='not_performed',
                    training_bridge_ledger=False, training_history_jsonl=False)
     return cfg
@@ -1438,7 +1568,7 @@ def ten_reservations(requests=None):
     for row in value['reservations']:
         mode = row['mode']
         width = row.get('cycle_width', 11 if CYCLE_MODE else 10)
-        require(type(width) is int and width in ((11, 41) if CYCLE_MODE else (10,))
+        require(type(width) is int and width in ((11, 41, 51) if CYCLE_MODE else (10,))
                 and mode in offsets and type(row['count']) is int and row['count'] > 0
                 and row['count'] % width == 0 and row['offset'] == offsets[mode]
                 and row['consumed_including_unstarted'] is True
@@ -1564,7 +1694,7 @@ def ten_inspect():
                         and row['checkpoint']['metadata']['training_contract'] == (training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA),
                         'Ten-game checkpoint ancestry changed')
                 count = plan['configuration']['training_games']
-                require(type(count) is int and count in ((10, 40) if CYCLE_MODE else (10,))
+                require(type(count) is int and count in ((10, 40, 50) if CYCLE_MODE else (10,))
                         and len(plan['schedule']) == count
                         and row['checkpoint']['metadata'].get('training_games') == count
                         and len(row['receipts']) == count and len({item['path'] for item in row['receipts']}) == count,
@@ -1754,7 +1884,7 @@ def ten_finalize_report(output, report):
         for attempt in phase.get('attempts', []):
             if attempt.get('status') != 'passed':
                 attempt.update(ten_capture_fields(folder / f"episode-{attempt['episode']:06d}"))
-            if attempt.get('status') == 'running':
+            if attempt.get('status') in ('running', 'preparing'):
                 attempt['status'] = 'interrupted'
                 attempt['verification_status'] = ('interrupted'
                     if attempt.get('episode_status') in ('completed', 'truncated') else 'not_started')
@@ -1843,11 +1973,13 @@ def ten_coordinator(args):
                      attempts=[dict(**row, status='not_started') for row in plan['schedule']])
         target = 'evaluations' if CYCLE_MODE and mode == 'diagnostic' else 'batches'
         report.setdefault(target, []).append(phase); write(output / 'report.json', report)
+        record_lock = threading.Lock()
         def record(index, value):
-            phase['attempts'][index] = value
-            phase['counts'] = ten_outcomes(phase['attempts'])
-            write(path.parent / 'attempts.json', phase['attempts'])
-            write(output / 'report.json', report)
+            with record_lock:
+                phase['attempts'][index] = value
+                phase['counts'] = ten_outcomes(phase['attempts'])
+                write(path.parent / 'attempts.json', phase['attempts'])
+                write(output / 'report.json', report)
         deadlines = batch_phase_deadlines(launch)
         receipts, attempts = collect_batch(path, plan, state.model, opponent, launch, record,
                                            phase_deadline=deadlines['training'])
@@ -1977,7 +2109,7 @@ def main(argv=None):
             continuation.add_argument('--hours', type=float, required=True)
     for name in ('batch10-check', 'batch10-run', 'batch10-continue',
                  'cycle-check', 'cycle-run', 'cycle-continue'):
-        ten = sub.add_parser(name, help=('Forty training games, one PPO update and one validated self-play game'
+        ten = sub.add_parser(name, help=('Fifty training games, ten rolling actors, one PPO update and one validated self-play game'
             if name.startswith('cycle-') else 'Ten-game learning batches from verified1753; no extra evaluation games'))
         ten.add_argument('--batches', '--cycles', dest='batches', type=int, default=1)
         ten.add_argument('--hours', type=float, default=10)
