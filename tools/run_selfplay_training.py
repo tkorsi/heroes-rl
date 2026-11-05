@@ -1990,7 +1990,15 @@ def main(argv=None):
                     result = supervise(launch)
             for phase in result.get('batches', []) + result.get('evaluations', []):
                 ten_print_phase(phase)
-            print(json.dumps(result, indent=2)); return int(result['status'] not in ('passed', 'completed'))
+            if CYCLE_MODE and args.command != 'batch10-check':
+                print(f"Run {result['status']}; checkpoint {result.get('latest_checkpoint')}; "
+                      f"PPO updates {result.get('optimizer_updates', 0)}.", flush=True)
+                if result.get('error') or result.get('supervisor_errors'):
+                    print(result.get('error') or result['supervisor_errors'], flush=True)
+                print(f"Private report: {Path(launch['output']) / 'report.json'}", flush=True)
+            else:
+                print(json.dumps(result, indent=2))
+            return int(result['status'] not in ('passed', 'completed'))
         if args.command == 'report':
             result = report_completed(args)
             print(json.dumps(result, indent=2))

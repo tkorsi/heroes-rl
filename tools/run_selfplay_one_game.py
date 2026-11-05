@@ -145,7 +145,7 @@ CYCLE_BATCH_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': 'c02baa2e2aec16b768afda8cfedcf10a7ebacf3d11bd41e39637fafb73d35427',
         'after': '3f822e034aa5569cc7ccb9e78500de21aff4caeb7a654e630aa59142a774adfb'},
     'tools/run_selfplay_training.py': {'before': 'be95ae65753af7befaf0c47413152c3317d22d7a6f2e1e5ce95d4e1df01b8d37',
-        'after': '5920406adead2163c2f8a19cffcd32b6d4fc3ed827e0a1d89b8b54a3ea93c1ee'},
+        'after': '461f726811f286011598c5d4e3f18b5c99cd283fe23fe76a1dc785e5476e050d'},
 }
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'

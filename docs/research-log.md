@@ -1933,3 +1933,25 @@ tamper controls. No test, fixture or diagnostic script is staged for publication
 Real long-game peak memory, end-to-end cycle completion time and gameplay
 behavior remain unmeasured until the user's manual run. They are not inferred
 from the small synthetic fixtures.
+
+
+The actual main-checkout `--cycle --check --cycles 1 --hours 10` preflight passed
+at candidate `cf92730` in 2.66 seconds. It restored the complete 1,753 state,
+reported ten training games and one diagnostic, and previewed fresh unreserved
+seeds beginning at engine 1,980,000,000 and policy 1,982,000,000. The private log
+is `Heroes-artifacts/diagnostics/ten-then-check-20261105/preflight-cf92730.log`.
+The new lineage directory remains absent and no seeds were consumed.
+
+Four real-parent offline plan controls then passed: training and diagnostic
+plans for two cycles, actual frozen checkpoint loading, and prelaunch capture
+binding. They confirmed ten/one schedule lengths, correct phase labels and
+balanced learner seats even after eleven-slot offsets. An initially hand-built
+control launch omitted policy_support and failed before plan validation. Adding
+the field provided by the real prepare function corrected that fixture. These
+controls used disposable snapshots, started no native process, changed no parent
+weights and rehashed all protected inputs unchanged.
+
+The cycle terminal output is intentionally limited to engine-reported Red/Blue
+wins, cutoffs, PPO updates, weight changes, checkpoint and diagnostic result.
+Full source and recovery evidence remains in the private JSON report. The check
+command retains its explicit JSON configuration display.
