@@ -167,6 +167,15 @@ LOOP_SPEED_SOURCES = {
     'tools/run_selfplay_training.py': {'before': '461f726811f286011598c5d4e3f18b5c99cd283fe23fe76a1dc785e5476e050d',
         'after': '5be8888b2e7440ae0e4a0a3ec2541cd2ffab47bcbba9743f38348725ceb6c732'},
 }
+# Explicitly requested 365-day bound for the capture-only manual cycle.
+CYCLE_DAY_LIMIT_SOURCES = {
+    'experiments/learner/checkpoints.py': {'before': 'a848db2c02665dd22a0499b5e185190279a8d4df653c7bb646fe02443a76a123',
+        'after': '72807338ac95be22496cb293724ef964adff5173aa617c71d3b89cb020fd090f'},
+    'experiments/learner/selfplay_training.py': {'before': '2cb19a2ecd8c75368ae9a4b5a6998e18021d477b947b97844edab8ed32e2ff25',
+        'after': '8064f3f606060d5c683e0103099ddb204a8f45b7733c485101dd5c65e3c865d1'},
+    'tools/run_selfplay_training.py': {'before': '5be8888b2e7440ae0e4a0a3ec2541cd2ffab47bcbba9743f38348725ceb6c732',
+        'after': '51e4b2402f0ee4b1885630bc8bf8cc5e217b53a8450028a3eeb930469b88f765'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -210,6 +219,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in LOOP_SPEED_SOURCES.items()),
             'Main-loop source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in LOOP_SPEED_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in CYCLE_DAY_LIMIT_SOURCES.items()),
+            '365-day cycle source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in CYCLE_DAY_LIMIT_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -227,7 +239,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES),
                    ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES),
                    ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES),
-                   ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES))
+                   ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES),
+                   ('reviewed_capture_only_365_day_limit', CYCLE_DAY_LIMIT_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -262,6 +275,7 @@ def source_identity():
         ten_batch_sources=TEN_BATCH_SOURCES,
         cycle_batch_sources=CYCLE_BATCH_SOURCES,
         loop_speed_sources=LOOP_SPEED_SOURCES,
+        cycle_day_limit_sources=CYCLE_DAY_LIMIT_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

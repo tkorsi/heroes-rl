@@ -60,7 +60,9 @@ read-only preflight. Launch manually with
 `./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has ten
 training games, one PPO update and one diagnostic game. Both diagnostic seats
 use the newly saved weights. Use `--cycles 10` for 100 training games and ten
-diagnostic games under the shared ten-hour deadline.
+diagnostic games under the shared ten-hour deadline. Both training and diagnostic
+games stop at 365 game days; the existing per-player choice limits remain
+158,720 ordinary plus 5,120 reserved choices.
 
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes

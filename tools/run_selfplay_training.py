@@ -1397,7 +1397,7 @@ def ten_configuration(checked, seconds):
     cfg = {key: deepcopy(inherited[key]) for key in
            ('interface', 'adam', 'ppo', 'torch_threads', 'allow_verified_training_prefix')}
     cfg.update(schema='heroes-selfplay-batch-ten-config-v1', maximum_seconds=seconds)
-    cfg.update(training.TEN_GAMEPLAY)
+    cfg.update(training.CYCLE_GAMEPLAY if CYCLE_MODE else training.TEN_GAMEPLAY)
     cfg.update(max_optimizer_steps=training.optimizer_step_cap(PPOConfig(**PPO), 10, cfg['max_total_choices']),
                attempt_wall_seconds=seconds, cleanup_reserve_seconds=30,
                disk_reserve_gib=TEN_DISK_RESERVE_GIB,

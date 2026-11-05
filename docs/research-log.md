@@ -2148,3 +2148,25 @@ The loop remains blocked by long-game native recipe capacity; no repair or
 limit change is included in this status-check task. Do not report this launch
 as a successful learning cycle or the offline 21x storage result as whole-game
 acceleration.
+
+
+## 2026-11-05 — Restore the manual cycle's 365-day limit
+
+The user explicitly requested returning to 365 game days and a manual launch
+command after the long-game recipe-capacity failure. New ten-then-check training
+and diagnostic plans and checkpoint metadata now agree on max_days=365. The
+historical verified ten-game contract retains its separate 5,840-day declaration;
+checkpoint 1,753 is unchanged. Architecture, PPO/Adam, terminal rewards, existing
+choice limits, opponent, supports, ten-game update cadence and one validated
+diagnostic per cycle remain unchanged. This limits game length; it is not a
+repair or proof of unbounded native recipe capacity. Acceptance: existing
+self-play/checkpoint/controller regressions and the actual continuation preflight
+must pass with 365 in its configuration, full 1,753 restore and fresh seeds.
+No training launch is authorized here. Raw failed attempts and consumed slots
+remain preserved. The new manual command must reference the latest failed run,
+run-20261105T122341Z-c2124692, rather than its predecessor.
+
+All 77 existing self-play/checkpoint/controller/progress tests passed. Local
+controls passed exact source-transition binding, new-cycle metadata max_days=365,
+all other gameplay fields unchanged, and rejection of 5,840 as new-cycle metadata.
+There are no owned active training workers. No tests/probes were added to Git.

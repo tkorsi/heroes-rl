@@ -29,6 +29,7 @@ CYCLE_SCHEMA = cp.SELFPLAY_CYCLE_SCHEMA
 CAPTURE_RECEIPT_SCHEMA = "heroes-selfplay-live-capture-receipt-v1"
 _CAPTURE_RECEIPTS = {}
 TEN_GAMEPLAY = dict(cp.SELFPLAY_TEN_GAMEPLAY)
+CYCLE_GAMEPLAY = dict(cp.SELFPLAY_CYCLE_GAMEPLAY)
 COMPLETION_SCHEMA = "heroes-selfplay-capture-complete-v1"
 RECEIPT_SCHEMA = "heroes-selfplay-training-receipt-v1"
 PROVENANCE = cp.SELFPLAY_GAMEPLAY_PROVENANCE
@@ -85,7 +86,7 @@ def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_i
                  learner_only_ppo=True, frozen_opponent=True, purpose=purpose)
     if training_contract in (TEN_SCHEMA, CYCLE_SCHEMA):
         value.update(training_contract=training_contract, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
-                     **TEN_GAMEPLAY)
+                     **(CYCLE_GAMEPLAY if training_contract == CYCLE_SCHEMA else TEN_GAMEPLAY))
     if training_contract == CYCLE_SCHEMA:
         value.update(training_verification="not_performed", evaluation_games_per_cycle=1)
     cp._check_selfplay_gameplay_metadata(value, c.EXPANDED_ENVIRONMENT)
@@ -151,7 +152,7 @@ def _plan(path, digest):
             "Self-play needs distinct explicit game and per-player policy seeds")
     if ten_game:
         require(all(cfg.get(key) == expected and type(cfg.get(key)) is type(expected)
-                    for key, expected in TEN_GAMEPLAY.items()),
+                    for key, expected in (CYCLE_GAMEPLAY if value["schema"] == CYCLE_SCHEMA else TEN_GAMEPLAY).items()),
                 "Ten-game self-play gameplay configuration differs")
         require(value.get("army_information") == TEN_GAMEPLAY["army_information"]
                 and value.get("equipment_policy") == TEN_GAMEPLAY["equipment_policy"],
