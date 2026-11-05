@@ -2296,3 +2296,11 @@ Private compact analysis: diagnostics/completed-cycle-20261105/analysis.json.
 The 56 existing progress/controller tests passed; local duration boundary controls
 passed minute/hour rollover and durations beyond 24/100 hours. Numeric evidence
 fields are unchanged. No tests/probes or raw captures are staged for publication.
+
+The real main-checkout continuation preflight passed at b070efb with the merged
+dashboard and duration formatter. It restored complete checkpoint 1,754 with
+exact model/Adam/RNG/progress/sampler/pool agreement, max_days=365, zero gameplay
+and zero optimizer updates. All 33 consumed slots remain consumed; next fresh
+engine seed is 1,980,000,033 and policy base 1,982,000,066, not reserved by this
+check. The actual console ended `Total running time: 00:00:02`. Private transcript:
+diagnostics/completed-cycle-20261105/preflight.log. No training was restarted.
