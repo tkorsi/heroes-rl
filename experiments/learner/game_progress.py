@@ -150,7 +150,7 @@ def finish_unfinished(directory):
         for path in Path(directory).glob("game-*.json"):
             try:
                 value = _read(path)
-                if value["phase"] not in ("verified", "failed"):
+                if value["phase"] not in ("verified", "captured", "failed"):
                     unfinished = True
                     _write(path, {**value, "phase": "failed"})
             except (OSError, ValueError):

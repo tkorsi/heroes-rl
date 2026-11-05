@@ -10,9 +10,9 @@ record previous experiments and their limits.
 
 ## Baseline for new experiments
 
-The current prepared experiment trains in ten-game self-play batches from
-verified checkpoint 1,753. Launches remain manual. Start other experiments with
-an explicit hypothesis, configuration, seed allocation, output directory and
+The current prepared experiment repeats ten capture-only training games followed
+by one validated self-play game, starting from checkpoint 1,753. Launches remain
+manual. Start other experiments with an explicit hypothesis, configuration, seed allocation, output directory and
 acceptance criteria. Choose explicitly between fresh weights and a verified
 checkpoint. Keep diagnostic games separate from training admission.
 
@@ -53,7 +53,50 @@ frozen setup and continues after verified victories. The dashboard and final
 report show Red and Blue wins, with separate counts for cutoffs, failures and
 interruptions. The time budget can end the run before all attempts settle.
 
-## Train in batches of ten
+## Ten training games followed by one validated game
+
+Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
+read-only preflight. Launch manually with
+`./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has ten
+training games, one PPO update and one diagnostic game. Both diagnostic seats
+use the newly saved weights. Use `--cycles 10` for 100 training games and ten
+diagnostic games under the shared ten-hour deadline.
+
+Training games have no native replay, policy-probability reconstruction or
+behavior analytics. Their Red/Blue win totals come from engine-reported outcomes
+and are explicitly unverified. All ten fresh completed captures must exist
+before one PPO update. Basic source, seed, action, boundary, terminal reward and
+checkpoint integrity checks remain active. Checkpoint metadata explicitly records
+`training_verification=not_performed`. The historical verified mode remains a
+separate contract.
+
+Collection is sequential to limit concurrent memory. Each completed game is
+compiled into a native PPO program, then its full Python history is released.
+Temporary raw training streams are removed after compilation. The update retains
+all ten learner trajectories, the existing shuffled PPO windows and the original
+PPO/Adam settings. An owned-process resident-memory guard leaves 48 GiB of the
+Mac's physical RAM as headroom. It stops the attempt safely if the budget is
+exceeded. A system-wide memory-pressure check also stops below 20% free.
+The existing 30 GiB disk reserve applies. Long-game completion
+within these limits still requires observation during the user's manual run.
+
+After the full state is saved and restore-tested, one fresh diagnostic self-play
+game runs with both policies frozen at the new checkpoint. That game retains its
+capture, runs exact two-policy reconstruction and native replay, and never enters
+PPO. A failed diagnostic stops the loop while preserving the saved update.
+Continuation performs any outstanding diagnostic first, using fresh seeds.
+One self-play game supports inspection, not a statistical claim of stronger play.
+
+A separate lineage and seed namespace keep this experiment distinct from the
+previous failed runs. Subsequent manual launches use
+`./continue-selfplay.sh --cycle --resume --run-dir PRIVATE_RUN_PATH --cycles 1 --hours 10`.
+All reserved slots remain consumed, including unstarted games. If continuation
+needs an outstanding diagnostic, one additional eleven-slot block is reserved
+for it and its unused slots remain consumed. Reports separately record engine
+wins, cutoffs, PPO steps, whether weight bytes changed, the saved checkpoint and
+the diagnostic validation result. No training starts during `--check`.
+
+## Historical verified batches of ten
 
 Run `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10` for a
 read-only preflight. To launch one batch manually, use

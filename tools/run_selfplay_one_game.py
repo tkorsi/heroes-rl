@@ -131,6 +131,22 @@ TEN_BATCH_SOURCES = {
     CONTROLLER_PATH: {'before': '3acb278be3534db303b3fcf3d0edfa146edbbd468f24e11e40df2bd152b1818e',
         'after': 'be95ae65753af7befaf0c47413152c3317d22d7a6f2e1e5ce95d4e1df01b8d37'},
 }
+# Explicit capture-only admission and prepared-native PPO path. Engine binaries
+# and model encoding are unchanged; runtime receipts retain these exact deltas.
+CYCLE_BATCH_SOURCES = {
+    'experiments/learner/builtin_gameplay.py': {'before': '8a0b927474b7ce599bd260423249b075d3d89fcc7c08bb1b9756d617c4cdbc82',
+        'after': '143d18cf0038708c24d61b81fb22f7593f21dd2f1c5018d33885e4c6d6f8881b'},
+    'experiments/learner/checkpoints.py': {'before': '808a708c494e9d3099e82172e77ae393bf2971b2f6699ab43bfc140e313131ce',
+        'after': 'a848db2c02665dd22a0499b5e185190279a8d4df653c7bb646fe02443a76a123'},
+    'experiments/learner/game_progress.py': {'before': '968ba409785f7a11f7d08506bb9286a8a6842307384100683667c754581ea015',
+        'after': 'b5022050d1514a72a0286a6d646f6a09e9fa5fe8e3682e443e6ff1f063d5b14d'},
+    'experiments/learner/ppo.py': {'before': 'b835502024f347863cf6110259e641903a1c294d9b29fa1eca6f461636849444',
+        'after': 'd2bc6833098b596d52b26314ef0b2fbc87c827b1c5092d6c304f68552d5a2a8b'},
+    'experiments/learner/selfplay_training.py': {'before': 'c02baa2e2aec16b768afda8cfedcf10a7ebacf3d11bd41e39637fafb73d35427',
+        'after': '3f822e034aa5569cc7ccb9e78500de21aff4caeb7a654e630aa59142a774adfb'},
+    'tools/run_selfplay_training.py': {'before': 'be95ae65753af7befaf0c47413152c3317d22d7a6f2e1e5ce95d4e1df01b8d37',
+        'after': '5920406adead2163c2f8a19cffcd32b6d4fc3ed827e0a1d89b8b54a3ea93c1ee'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -168,6 +184,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in TEN_BATCH_SOURCES.items()),
             'Ten-game source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in TEN_BATCH_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in CYCLE_BATCH_SOURCES.items()),
+            'Capture-only cycle source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in CYCLE_BATCH_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -183,7 +202,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_hero_relative_and_repeat_cooldown', HERO_RELATIVE_SOURCES),
                    ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES),
                    ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES),
-                   ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES))
+                   ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES),
+                   ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -216,6 +236,7 @@ def source_identity():
         parallel_history_sources=PARALLEL_HISTORY_SOURCES,
         direct_history_sources=DIRECT_HISTORY_SOURCES,
         ten_batch_sources=TEN_BATCH_SOURCES,
+        cycle_batch_sources=CYCLE_BATCH_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

@@ -20,6 +20,7 @@ SCHEMA = "heroes-context-checkpoint-v1"
 BUILTIN_GAMEPLAY_PROVENANCE = "approved_builtin_gameplay_v1"
 SELFPLAY_GAMEPLAY_PROVENANCE = "approved_selfplay_gameplay_v1"
 SELFPLAY_TEN_SCHEMA = "heroes-selfplay-batch-ten-v1"
+SELFPLAY_CYCLE_SCHEMA = "heroes-selfplay-ten-then-check-v1"
 SELFPLAY_TEN_GAMEPLAY = dict(training_games=10, ordinary_choice_limit=158720,
     reserved_dialog_choices=5120, max_total_choices=163840, max_days=5840,
     army_information="own-army-details-v1", equipment_policy="no-artifacts-v1")
@@ -238,7 +239,7 @@ def _check_selfplay_gameplay_metadata(metadata, interface):
     """A new v8 self-play lineage cannot masquerade as built-in or legacy v4 play."""
     from .contextual import EXPANDED_ENVIRONMENT
     from .interaction_guard import HERO_RELATIVE_VERSION, REVEALED_VERSION
-    ten_game = type(metadata) is dict and metadata.get("training_contract") == SELFPLAY_TEN_SCHEMA
+    ten_game = type(metadata) is dict and metadata.get("training_contract") in (SELFPLAY_TEN_SCHEMA, SELFPLAY_CYCLE_SCHEMA)
     guard = HERO_RELATIVE_VERSION if ten_game else REVEALED_VERSION
     if (interface != EXPANDED_ENVIRONMENT or type(metadata) is not dict
             or not _sha256(metadata.get("plan_sha256"))
@@ -251,6 +252,11 @@ def _check_selfplay_gameplay_metadata(metadata, interface):
             or "native_opponent" in metadata):
         raise ValueError("Self-play checkpoint requires its explicit v8 frozen-opponent contract")
     if ten_game:
+        if metadata.get("training_contract") == SELFPLAY_CYCLE_SCHEMA and (
+                metadata.get("training_verification") != "not_performed"
+                or type(metadata.get("evaluation_games_per_cycle")) is not int
+                or metadata.get("evaluation_games_per_cycle") != 1):
+            raise ValueError("Capture-only training must disclose its verification policy")
         if any(metadata.get(key) != value or type(metadata.get(key)) is not type(value)
                for key, value in SELFPLAY_TEN_GAMEPLAY.items()):
             raise ValueError("Ten-game self-play checkpoint requires its complete gameplay contract")

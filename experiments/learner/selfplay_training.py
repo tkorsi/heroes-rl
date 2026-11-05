@@ -1,8 +1,9 @@
 """Fresh two-policy v8 capture, verification and single-use learner admission.
 
 Serialized reports are evidence, never admission capabilities. The coordinator
-creates a binding before launch, observes its owned child completion and verifies
-both policies independently before the unchanged PPO kernel sees learner samples.
+creates a binding before launch and observes its owned child completion. Verified
+training reconstructs both policies and native replay. The separately versioned
+capture-only cycle omits those checks and discloses that choice in its metadata.
 """
 from __future__ import annotations
 
@@ -24,6 +25,9 @@ from .ppo import PPOConfig, _admit
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "heroes-selfplay-batch-v1"
 TEN_SCHEMA = cp.SELFPLAY_TEN_SCHEMA
+CYCLE_SCHEMA = cp.SELFPLAY_CYCLE_SCHEMA
+CAPTURE_RECEIPT_SCHEMA = "heroes-selfplay-live-capture-receipt-v1"
+_CAPTURE_RECEIPTS = {}
 TEN_GAMEPLAY = dict(cp.SELFPLAY_TEN_GAMEPLAY)
 COMPLETION_SCHEMA = "heroes-selfplay-capture-complete-v1"
 RECEIPT_SCHEMA = "heroes-selfplay-training-receipt-v1"
@@ -74,14 +78,16 @@ def time_left(remaining):
 
 def metadata(plan_sha256, initial_checkpoint, opponent_checkpoint, *, campaign_id, opponent_pool=POOL,
              purpose="training", training_contract=SCHEMA):
-    require(training_contract in (SCHEMA, TEN_SCHEMA), "Unknown self-play training contract")
+    require(training_contract in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA), "Unknown self-play training contract")
     value = dict(plan_sha256=plan_sha256, initial_checkpoint=dict(initial_checkpoint),
                  opponent_checkpoint=dict(opponent_checkpoint), campaign_id=campaign_id,
                  opponent_pool=opponent_pool, policy_support=interaction_guard.REVEALED_VERSION,
                  learner_only_ppo=True, frozen_opponent=True, purpose=purpose)
-    if training_contract == TEN_SCHEMA:
-        value.update(training_contract=TEN_SCHEMA, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
+    if training_contract in (TEN_SCHEMA, CYCLE_SCHEMA):
+        value.update(training_contract=training_contract, policy_support=interaction_guard.HERO_RELATIVE_VERSION,
                      **TEN_GAMEPLAY)
+    if training_contract == CYCLE_SCHEMA:
+        value.update(training_verification="not_performed", evaluation_games_per_cycle=1)
     cp._check_selfplay_gameplay_metadata(value, c.EXPANDED_ENVIRONMENT)
     checked(initial_checkpoint); checked(opponent_checkpoint)
     return value
@@ -114,10 +120,11 @@ def optimizer_step_cap(config, game_count, max_choices):
 def _plan(path, digest):
     require(binding(path)["sha256"] == digest, "Self-play plan changed")
     value = read(path)
-    ten_game = value.get("schema") == TEN_SCHEMA
-    game_count = TEN_GAMEPLAY["training_games"] if ten_game else 4
+    ten_game = value.get("schema") in (TEN_SCHEMA, CYCLE_SCHEMA)
+    evaluation = value.get("schema") == CYCLE_SCHEMA and value.get("mode") == "diagnostic"
+    game_count = 1 if evaluation else TEN_GAMEPLAY["training_games"] if ten_game else 4
     guard = interaction_guard.HERO_RELATIVE_VERSION if ten_game else interaction_guard.REVEALED_VERSION
-    require(value.get("schema") in (SCHEMA, TEN_SCHEMA) and value.get("mode") in ("training", "diagnostic")
+    require(value.get("schema") in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA) and value.get("mode") in ("training", "diagnostic")
             and value.get("policy_support") == guard
             and value.get("opponent_pool") == POOL, "Unsupported self-play plan contract")
     require(value.get("source") == source_identity(c.EXPANDED_ENVIRONMENT)
@@ -130,7 +137,7 @@ def _plan(path, digest):
         require(binding(path)["sha256"] == digest, "Self-play implementation changed: " + name)
     checked(value["checkpoint"]); checked(value["opponent_checkpoint"]); checked(value["replay_binary"])
     cfg, rows = value["configuration"], value["schedule"]
-    require(type(rows) is list and len(rows) == game_count and cfg["training_games"] == game_count
+    require(type(rows) is list and len(rows) == game_count and cfg["training_games"] == (10 if evaluation else game_count)
             and cfg["allow_verified_training_prefix"] is False,
             "Self-play requires every planned game; partial batches cannot train")
     require([row.get("episode") for row in rows] == list(range(1, game_count + 1))
@@ -151,7 +158,7 @@ def _plan(path, digest):
                 "Ten-game self-play must declare its army and equipment rules")
         config = PPOConfig(**cfg["ppo"])
         require(type(cfg.get("max_optimizer_steps")) is int and cfg["max_optimizer_steps"]
-                == optimizer_step_cap(config, game_count, cfg["max_total_choices"]),
+                == optimizer_step_cap(config, cfg["training_games"], cfg["max_total_choices"]),
                 "Ten-game self-play must budget every declared PPO window")
     else:
         require(cfg["ordinary_choice_limit"] == 4960 and cfg["reserved_dialog_choices"] == 160
@@ -244,7 +251,7 @@ def _check_collected(bound, collected, models):
     require(manifest["identity"].get("native_runtime_sha256") == plan["runtime"]
             and all(manifest["identity"].get(key) == value for key, value in plan["native"].items()),
             "Self-play capture used another engine/map/runtime")
-    if plan.get("schema") == TEN_SCHEMA:
+    if plan.get("schema") in (TEN_SCHEMA, CYCLE_SCHEMA):
         from experiments.headless.contextual_protocol import declared_army_information
         require(declared_army_information(manifest, c.EXPANDED_ENVIRONMENT) == plan["army_information"]
                 and manifest.get("launch", {}).get("requested_settings", {}).get("server", {}).get(
@@ -406,6 +413,110 @@ def native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
     release_receipts(receipts)
     result = transactional_update(model, optimizer, rollouts, config=config, generator=generator,
         remaining=lambda: time_left(remaining), max_optimizer_steps=max_optimizer_steps, enable_training=True)
+    return replace(result, purpose=PROVENANCE), rollouts
+
+
+@dataclass(frozen=True)
+class CapturedRollout:
+    player: int
+    samples: tuple
+    decisions: tuple
+    weights_sha256: str
+    behavior_checkpoint: str
+    opponent_pool: str
+    frame_count: int
+
+
+@dataclass(frozen=True)
+class CapturedTrainingReceipt:
+    binding: CaptureBinding
+    rollout: CapturedRollout
+    native_history: object
+    files_json: str
+    choices: tuple
+
+    def to_dict(self):
+        return dict(schema=CAPTURE_RECEIPT_SCHEMA, plan_sha256=self.binding.plan_sha256,
+            schedule_index=self.binding.schedule_index, folder=self.binding.folder,
+            learner_player=self.rollout.player, samples=len(self.rollout.samples),
+            files=json.loads(self.files_json), verification=dict(replay_verified=False,
+                policies_reconstructed=False), admission_from_file=False, learner_only_ppo=True)
+
+
+def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
+    """Compile a fresh owned capture without replay or probability reconstruction."""
+    from .contextual_storage import load_collected
+    from .contextual_model import encode_history
+    from .native_backend import load_backend
+    from .native_recipes import compile_history
+    time_left(remaining); bound.recheck()
+    require(bound.plan['schema'] == CYCLE_SCHEMA and bound.plan['mode'] == 'training'
+            and id(bound) in _COMPLETIONS, 'Live training requires this fresh owned capture')
+    folder = Path(bound.folder)
+    files = {name: evidence.file_identity(folder / name)
+             for name in ('manifest.json', 'neural-rollout.json')}
+    require(canonical(files) == _COMPLETIONS[id(bound)], 'Completed live capture changed')
+    collected = load_collected(folder / 'neural-rollout.json')
+    models = ((learner_model, opponent_model) if bound.row['learner_player'] == 0
+              else (opponent_model, learner_model))
+    _check_collected(bound, collected, models)
+    rollout = collected.rollouts[bound.row['learner_player']]
+    _admit((rollout,), learner_model, native=True)
+    native = bound.plan['execution']['native_learner']
+    backend = load_backend(native['manifest'], native['sha256'])
+    flags = tuple(p.requires_grad for p in learner_model.parameters())
+    try:
+        learner_model.requires_grad_(True)
+        encoded = encode_history(rollout.history, guard_version=behavior_guard_version(rollout.decisions))
+        program = compile_history(learner_model, encoded, rollout.decisions, backend)
+    finally:
+        for parameter, flag in zip(learner_model.parameters(), flags):
+            parameter.requires_grad_(flag)
+    thin = CapturedRollout(rollout.player, rollout.samples, rollout.decisions, rollout.weights_sha256,
+        rollout.behavior_checkpoint, rollout.opponent_pool, len(rollout.history))
+    receipt = CapturedTrainingReceipt(bound, thin, program, canonical(files),
+        tuple(len(item.decisions) for item in collected.rollouts))
+    write_new(folder / 'training-capture-receipt.json', receipt.to_dict())
+    _CAPTURE_RECEIPTS[id(receipt)] = receipt
+    return receipt
+
+
+def live_native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
+                       remaining, max_optimizer_steps):
+    from .builtin_gameplay import transactional_update
+    require(type(receipts) is tuple and len(receipts) == 10
+            and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
+                    for r in receipts), 'Live training requires ten fresh capture capabilities')
+    require([r.binding.schedule_index for r in receipts] == list(range(10)), 'Live receipt order changed')
+    for receipt in receipts:
+        receipt.binding.recheck()
+        require(receipt.binding.plan['schema'] == CYCLE_SCHEMA
+                and receipt.binding.plan['mode'] == 'training'
+                and receipt.binding.plan_sha256 == plan_sha256
+                and (plan_sha256, receipt.binding.schedule_index) not in _USED
+                and receipt.rollout.weights_sha256 == weights_sha256(model),
+                'Live capture is consumed, diagnostic, foreign or off-policy')
+        require(read(Path(receipt.binding.folder) / 'training-capture-receipt.json') == receipt.to_dict(),
+                'Live capture receipt changed')
+        for name, expected in json.loads(receipt.files_json).items():
+            require(evidence.file_identity(Path(receipt.binding.folder) / name) == expected,
+                    'Live capture envelope changed')
+    cfg = receipts[0].binding.plan['configuration']
+    require(config.to_dict() == cfg['ppo'] and type(optimizer) is torch.optim.Adam
+            and len(optimizer.param_groups) == 1
+            and all(canonical(optimizer.param_groups[0][key]) == canonical(value)
+                    for key, value in cfg['adam'].items())
+            and max_optimizer_steps == cfg['max_optimizer_steps'], 'Live PPO settings changed')
+    rollouts = tuple(r.rollout for r in receipts)
+    programs = tuple(r.native_history for r in receipts)
+    _USED.update((plan_sha256, r.binding.schedule_index) for r in receipts)
+    for receipt in receipts:
+        _CAPTURE_RECEIPTS.pop(id(receipt), None)
+        for registry in (_BINDINGS, _LAUNCHES, _COMPLETIONS):
+            registry.pop(id(receipt.binding), None)
+    result = transactional_update(model, optimizer, rollouts, config=config, generator=generator,
+        remaining=lambda: time_left(remaining), max_optimizer_steps=max_optimizer_steps,
+        enable_training=True, prepared_native_inputs=programs)
     return replace(result, purpose=PROVENANCE), rollouts
 
 

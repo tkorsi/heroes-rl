@@ -710,7 +710,7 @@ class UpdateRolledBack(RuntimeError):
 
 
 def transactional_update(model, optimizer, rollouts, *, config, generator, remaining, max_optimizer_steps,
-                         enable_training=False):
+                         enable_training=False, prepared_native_inputs=None):
     """Restore the entire attempted update on failure, including interrupted steps."""
     parameters = tuple(model.parameters())
     state, optimizer_state = deepcopy(model.state_dict()), deepcopy(optimizer.state_dict())
@@ -729,7 +729,8 @@ def transactional_update(model, optimizer, rollouts, *, config, generator, remai
         if enable_training:
             model.requires_grad_(True)
         result = _update(model, optimizer, rollouts, config=config, generator=generator,
-            before_step=remaining, after_step=completed, max_optimizer_steps=max_optimizer_steps)
+            before_step=remaining, after_step=completed, max_optimizer_steps=max_optimizer_steps,
+            **({"prepared_native_inputs": prepared_native_inputs} if prepared_native_inputs is not None else {}))
         remaining()
         return result
     except BaseException as error:

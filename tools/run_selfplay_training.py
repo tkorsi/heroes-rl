@@ -52,6 +52,22 @@ NAMESPACES = {'training': (1_950_000_000, 1_952_000_000),
 TEN_BASE = ARTIFACTS / 'selfplay-batch10-training'
 TEN_LAUNCH = 'heroes-selfplay-batch-ten-campaign-v1'
 TEN_DISK_RESERVE_GIB = 30
+CYCLE_LAUNCH = "heroes-selfplay-ten-then-check-campaign-v1"
+CYCLE_MODE = False
+
+
+def select_cycle_mode():
+    global CYCLE_MODE, TEN_BASE, TEN_LAUNCH, TEN_NAMESPACES
+    CYCLE_MODE = True
+    TEN_BASE = ARTIFACTS / "selfplay-ten-then-check"
+    TEN_LAUNCH = CYCLE_LAUNCH
+    TEN_NAMESPACES = {"training": (1_980_000_000, 1_982_000_000)}
+
+
+def cycle_width():
+    return 11 if CYCLE_MODE else 10
+
+
 TEN_NAMESPACES = {'training': (1_970_000_000, 1_972_000_000)}
 
 
@@ -791,7 +807,7 @@ def capture_worker(args):
             'Worker cannot extend the campaign deadline')
     configure_native(plan['execution'])
     row = plan['schedule'][args.index]
-    ten = plan.get('schema') == training.TEN_SCHEMA
+    ten = plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA)
     cfg = plan['configuration']
     ordinary = cfg['ordinary_choice_limit'] if ten else 4960
     reserved = cfg['reserved_dialog_choices'] if ten else 160
@@ -857,6 +873,40 @@ def capture_worker(args):
     print(json.dumps(message), flush=True)
 
 
+def discard_training_streams(folder):
+    """Fresh training streams are temporary once native PPO programs are prepared."""
+    names = {'contextual-replay.jsonl', 'bridge.jsonl', 'history-v8.jsonl',
+             'live-history-v8.jsonl', 'replay.jsonl'}
+    removed = []
+    for path in Path(folder).rglob('*.jsonl'):
+        if path.name in names:
+            require(not path.is_symlink(), 'Training stream must be a regular owned file')
+            removed.append(dict(path=str(path.relative_to(folder)), bytes=path.stat().st_size))
+            path.unlink()
+    write(Path(folder) / 'temporary-streams-removed.json',
+          dict(training_verification='not_performed', files=removed), new=True)
+
+
+def require_cycle_memory_budget():
+    """Leave substantial headroom for macOS and temporary history compilation."""
+    rows = subprocess.check_output(['ps', '-axo', 'pid=,ppid=,rss='], text=True)
+    processes = [tuple(map(int, line.split())) for line in rows.splitlines()]
+    owned = {os.getpid()}
+    while True:
+        descendants = owned | {pid for pid, parent, rss in processes if parent in owned}
+        if descendants == owned:
+            break
+        owned = descendants
+    resident = sum(rss * 1024 for pid, parent, rss in processes if pid in owned)
+    physical = int(subprocess.check_output(['sysctl', '-n', 'hw.memsize'], text=True))
+    require(resident <= max(8 * 1024**3, physical - 48 * 1024**3),
+            'Cycle memory budget reached; stopping owned processes and preserving the checkpoint')
+    pressure = subprocess.check_output(['memory_pressure', '-Q'], text=True)
+    free_percent = int(pressure.rsplit(':', 1)[-1].strip().removesuffix('%'))
+    require(free_percent >= 20,
+            'System memory pressure reached the cycle reserve; preserving the checkpoint')
+
+
 def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, phase_deadline):
     from experiments.learner import selfplay_training as training
     from experiments.learner.game_progress import progress_path, set_phase
@@ -867,7 +917,8 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
     current_index = None
     current_stage = 'capture'
     try:
-        width = 10 if plan.get('schema') == training.TEN_SCHEMA else 4
+        live = plan.get('schema') == training.CYCLE_SCHEMA and plan['mode'] == 'training'
+        width = 1 if live else 10 if plan.get('schema') == training.TEN_SCHEMA else 4
         for first in range(0, len(plan['schedule']), width):
             wave = []
             for index in range(first, min(first + width, len(plan['schedule']))):
@@ -900,7 +951,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                 current_stage = 'capture'
                 process = job['process']
                 wait_seconds = phase_remaining(phase_deadline)
-                if plan.get('schema') != training.TEN_SCHEMA:
+                if plan.get('schema') not in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
                     wait_seconds = min(605, wait_seconds)
                 stdout, _ = process.communicate(timeout=wait_seconds)
                 require(process.returncode == 0, 'Self-play capture failed; no retries or partial batch admission')
@@ -911,26 +962,46 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                 training.accept_capture_completion(job['binding'], json.loads(stdout))
                 def verification_remaining():
                     return phase_remaining(phase_deadline)
-                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
-                current_stage = 'verification'
-                with wall_limit(verification_remaining()):
-                    receipt = training.verify_training_capture(job['binding'], learner, opponent,
-                        replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
-                        remaining=verification_remaining)
-                set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verified')
-                manifest = read(job['folder'] / 'manifest.json')
-                row = plan['schedule'][job['index']]
-                attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
-                    both_policies_reconstructed=True, episode_status=manifest['status'],
-                    termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
-                    rewards=manifest['rewards_by_player'], episode_directory=str(job['folder']),
-                    sampled_by_player=[len(item.decisions) for item in receipt.collected.rollouts],
-                    evidence={name: binding(job['folder'] / name) for name in ('manifest.json', 'neural-rollout.json',
-                        'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
-                        'training-verification/native-report.json', 'training-receipt.json')},
-                    verification=receipt.to_dict(), deadlines=job['deadlines'])
-                if plan.get('schema') == training.TEN_SCHEMA:
-                    attempt['natural_terminal_after_horizon'] = manifest.get('natural_terminal_after_horizon')
+                if live:
+                    current_stage = 'preparation'
+                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'preparing PPO')
+                    with wall_limit(verification_remaining()):
+                        receipt = training.prepare_live_capture(job['binding'], learner, opponent,
+                                                                remaining=verification_remaining)
+                    manifest = read(job['folder'] / 'manifest.json')
+                    row = plan['schedule'][job['index']]
+                    attempt = dict(**row, status='captured', verification_status='not_performed',
+                        cleanup_verified=True, replay_verified=False, both_policies_reconstructed=False,
+                        episode_status=manifest['status'], termination_reason=manifest['termination_reason'],
+                        outcomes=manifest['outcomes_by_player'], rewards=manifest['rewards_by_player'],
+                        episode_directory=str(job['folder']), sampled_by_player=list(receipt.choices),
+                        natural_terminal_after_horizon=manifest.get('natural_terminal_after_horizon'),
+                        evidence={name: binding(job['folder'] / name) for name in
+                            ('manifest.json', 'neural-rollout.json', 'training-capture-receipt.json')},
+                        verification=receipt.to_dict(), deadlines=job['deadlines'])
+                    discard_training_streams(job['folder'])
+                    set_phase(progress_path(launch['output'], row['episode']), 'captured')
+                else:
+                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verifying')
+                    current_stage = 'verification'
+                    with wall_limit(verification_remaining()):
+                        receipt = training.verify_training_capture(job['binding'], learner, opponent,
+                            replay_binary=Path(plan['replay_binary']['path']), data=Path(plan['data']),
+                            remaining=verification_remaining)
+                    set_phase(progress_path(launch['output'], plan['schedule'][job['index']]['episode']), 'verified')
+                    manifest = read(job['folder'] / 'manifest.json')
+                    row = plan['schedule'][job['index']]
+                    attempt = dict(**row, status='passed', cleanup_verified=True, replay_verified=True,
+                        both_policies_reconstructed=True, episode_status=manifest['status'],
+                        termination_reason=manifest['termination_reason'], outcomes=manifest['outcomes_by_player'],
+                        rewards=manifest['rewards_by_player'], episode_directory=str(job['folder']),
+                        sampled_by_player=[len(item.decisions) for item in receipt.collected.rollouts],
+                        evidence={name: binding(job['folder'] / name) for name in ('manifest.json', 'neural-rollout.json',
+                            'training-policy-reconstruction.json', 'training-verification/contextual-replay-verification.json',
+                            'training-verification/native-report.json', 'training-receipt.json')},
+                        verification=receipt.to_dict(), deadlines=job['deadlines'])
+                    if plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
+                        attempt['natural_terminal_after_horizon'] = manifest.get('natural_terminal_after_horizon')
                 attempts.append(attempt); receipts.append(receipt)
                 save_attempt(job['index'], attempt)
         require(len(receipts) == len(plan['schedule']), 'Incomplete self-play batch')
@@ -939,10 +1010,12 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
         if current_index is not None:
             set_phase(progress_path(launch['output'], plan['schedule'][current_index]['episode']), 'failed')
             details = {}
-            if plan.get('schema') == training.TEN_SCHEMA:
+            if plan.get('schema') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA):
                 details = ten_capture_fields(output / f"episode-{plan['schedule'][current_index]['episode']:06d}")
                 details.update(failure_stage=current_stage,
-                               verification_status='failed' if current_stage == 'verification' else 'not_started')
+                               verification_status=('not_performed' if plan.get('schema') == training.CYCLE_SCHEMA
+                                   and plan['mode'] == 'training' else
+                                   'failed' if current_stage == 'verification' else 'not_started'))
             failure = dict(**plan['schedule'][current_index], status='failed',
                 error=f'{type(error).__name__}: {error}', outcomes={'red': None, 'blue': None},
                 rewards={'red': None, 'blue': None}, training_samples_admitted=0,
@@ -1227,6 +1300,8 @@ def supervise(launch):
                 while process.poll() is None:
                     display.poll()
                     if time.monotonic() - last_report >= 2:
+                        if CYCLE_MODE:
+                            require_cycle_memory_budget()
                         require(shutil.disk_usage(output).free >=
                                 launch['configuration']['disk_reserve_gib'] * 1024**3,
                                 'Ten-game disk reserve reached; stopping owned workers')
@@ -1234,6 +1309,11 @@ def supervise(launch):
                             current = read(output / 'report.json')
                             for phase in current.get('batches', []):
                                 if phase.get('status') == 'checkpoint_verified' and phase['name'] not in emitted:
+                                    display.lines = 0
+                                    ten_print_phase(phase)
+                                    emitted.add(phase['name'])
+                            for phase in current.get('evaluations', []):
+                                if phase.get('status') == 'evaluation_verified' and phase['name'] not in emitted:
                                     display.lines = 0
                                     ten_print_phase(phase)
                                     emitted.add(phase['name'])
@@ -1254,7 +1334,7 @@ def supervise(launch):
         try:
             if process is not None:
                 close_owned_process(process, timeout=5)
-            for evidence in output.glob('batch-*/execution/*-deadline.jsonl'):
+            for evidence in output.glob('*/execution/*-deadline.jsonl' if CYCLE_MODE else 'batch-*/execution/*-deadline.jsonl'):
                 cleanup_from_evidence(evidence, timeout=5)
         except Exception as error:
             errors.append(str(error))
@@ -1320,6 +1400,10 @@ def ten_configuration(checked, seconds):
                attempt_wall_seconds=seconds, cleanup_reserve_seconds=30,
                disk_reserve_gib=TEN_DISK_RESERVE_GIB,
                phase_deadlines_seconds={'training': seconds, 'update': seconds})
+    if CYCLE_MODE:
+        cfg.update(schema='heroes-selfplay-ten-then-check-config-v1',
+                   training_verification='not_performed', evaluation_games_per_cycle=1,
+                   collection_workers=1, memory_reserve_gib=48)
     return cfg
 
 
@@ -1336,7 +1420,7 @@ def ten_reservations(requests=None):
     for row in value['reservations']:
         mode = row['mode']
         require(mode in offsets and type(row['count']) is int and row['count'] > 0
-                and row['count'] % 10 == 0 and row['offset'] == offsets[mode]
+                and row['count'] % cycle_width() == 0 and row['offset'] == offsets[mode]
                 and row['consumed_including_unstarted'] is True
                 and (row['output'], mode) not in outputs, 'Invalid ten-game seed reservation')
         engine, policy = TEN_NAMESPACES[mode]
@@ -1347,7 +1431,7 @@ def ten_reservations(requests=None):
         return value, offsets
     added = {}
     for mode, count, output in requests:
-        require(mode in offsets and type(count) is int and count > 0 and count % 10 == 0
+        require(mode in offsets and type(count) is int and count > 0 and count % cycle_width() == 0
                 and offsets[mode] + count < 1_000_000 and (str(output), mode) not in outputs,
                 'Invalid or reused ten-game seed request')
         engine, policy = TEN_NAMESPACES[mode]
@@ -1364,7 +1448,7 @@ def ten_seed_preview(count):
     """Describe the next fresh reservation without allocating seeds or files."""
     _, offsets = ten_reservations()
     offset = offsets['training']
-    require(type(count) is int and count > 0 and count % 10 == 0 and offset + count < 1_000_000,
+    require(type(count) is int and count > 0 and count % cycle_width() == 0 and offset + count < 1_000_000,
             'Invalid or exhausted ten-game seed preview')
     engine, policy = TEN_NAMESPACES['training']
     return dict(count=count, consumed_before=offset, engine_base=engine + offset,
@@ -1384,6 +1468,7 @@ def ten_inspect():
     lineage = read(lineage_path) if lineage_path.exists() else None
     protected = dict(checked['protected'])
     publication = None
+    completed_evaluations = {}
     seed_ledger, _ = ten_reservations()
     reported_publications, all_publications = set(), set()
     if lineage is not None:
@@ -1397,13 +1482,38 @@ def ten_inspect():
                     'Duplicate or foreign ten-game launch')
             outputs.add(str(output))
             require(all(row in seed_ledger['reservations'] for row in launch['reservations'].values())
-                    and launch['reservations']['training']['count'] == launch['batches'] * 10,
+                    and launch['reservations']['training']['count'] == launch.get('reserved_cycles', launch['batches']) * cycle_width(),
                     'Registered ten-game launch has lost its consumed reservation')
             shutdown = read(output / 'shutdown.json')
             require(shutdown.get('owned_cleanup_verified') is True
                     and shutdown.get('protected_inputs_unchanged') is True,
                     'Previous ten-game run has not closed its owned processes')
             report = read(output / 'report.json')
+            if CYCLE_MODE:
+                for evaluation in report.get('evaluations', []):
+                    if evaluation.get('status') != 'evaluation_verified':
+                        continue
+                    require(len(evaluation.get('attempts', [])) == 1, 'Cycle diagnostic result is incomplete')
+                    evaluation_plan = read(bound(evaluation['plan']))
+                    require(evaluation_plan.get('schema') == training.CYCLE_SCHEMA
+                            and evaluation_plan.get('mode') == 'diagnostic'
+                            and evaluation_plan['learner_weights_sha256']
+                                == evaluation_plan['opponent_weights_sha256'] == evaluation['weights_before'],
+                            'Cycle diagnostic must use the updated policy in both seats')
+                    attempt = evaluation['attempts'][0]
+                    require(attempt.get('replay_verified') is True
+                            and attempt.get('both_policies_reconstructed') is True,
+                            'Cycle diagnostic lacks complete validation')
+                    for pin in attempt['evidence'].values():
+                        bound(pin)
+                    proof = read(bound(attempt['evidence']['training-receipt.json']))
+                    require(proof == attempt['verification']
+                            and proof['verification'].get('replay_verified') is True
+                            and len(proof['verification'].get('policies', [])) == 2
+                            and all(policy.get('maximum_absolute_difference') == 0
+                                    for policy in proof['verification']['policies']),
+                            'Cycle diagnostic lacks persisted exact policy reconstruction')
+                    completed_evaluations[evaluation['checkpoint_before']] = evaluation['weights_before']
             all_publications.update(binding(path)['sha256'] for path in output.glob('batch-*/publication.json'))
             for phase in report.get('batches', []):
                 if phase.get('status') == 'checkpoint_verified':
@@ -1425,22 +1535,22 @@ def ten_inspect():
                 reverse.append(row); cursor = row['previous_publication']
             for row in reversed(reverse):
                 plan = read(bound(row['plan']))
-                require(plan.get('schema') == training.TEN_SCHEMA and plan['mode'] == 'training'
+                require(plan.get('schema') == (training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA) and plan['mode'] == 'training'
                         and row['parent_checkpoint'] == selected and row['parent_optimizer_steps'] == steps
                         and row['checkpoint']['metadata']['plan_sha256'] == row['plan']['sha256']
-                        and row['checkpoint']['metadata']['training_contract'] == training.TEN_SCHEMA,
+                        and row['checkpoint']['metadata']['training_contract'] == (training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA),
                         'Ten-game checkpoint ancestry changed')
                 require(len(row['receipts']) == 10 and len({item['path'] for item in row['receipts']}) == 10,
                         'Ten-game publication lacks its complete receipt set')
                 for index, receipt in enumerate(row['receipts']):
                     proof = read(bound(receipt))
                     folder = Path(plan['execution_output']) / f'episode-{index + 1:06d}'
-                    require(proof.get('schema') == training.RECEIPT_SCHEMA
+                    require(proof.get('schema') == (training.CAPTURE_RECEIPT_SCHEMA if CYCLE_MODE else training.RECEIPT_SCHEMA)
                             and proof.get('plan_sha256') == row['plan']['sha256']
                             and proof.get('schedule_index') == index and proof.get('learner_player') == index % 2
                             and Path(proof['folder']).resolve() == folder.resolve()
                             and proof.get('admission_from_file') is False and proof.get('learner_only_ppo') is True
-                            and proof['verification'].get('replay_verified') is True,
+                            and proof['verification'].get('replay_verified') is (not CYCLE_MODE),
                             'Published training receipt identity changed')
                     from experiments.headless import contextual_evidence as evidence
                     for name, expected in proof['files'].items():
@@ -1473,7 +1583,9 @@ def ten_inspect():
     verify_protected(protected)
     ten_reservations()
     return dict(checked=checked, initial=initial, parent=selected, optimizer_steps=steps,
-                publication=publication, lineage=lineage, protected=protected, state=state)
+                publication=publication, lineage=lineage, protected=protected, state=state,
+                pending_evaluation=CYCLE_MODE and state.progress.updates > 1753
+                    and completed_evaluations.get(state.progress.updates) != state.weights_sha256)
 
 
 def prepare_ten(args, inspected):
@@ -1487,12 +1599,13 @@ def prepare_ten(args, inspected):
     if args.command == 'batch10-continue':
         require(lineage['runs'] and Path(read(bound(lineage['runs'][-1]))['output']).resolve()
                 == args.run_dir.resolve(), 'Continue only from the latest registered ten-game run')
+    reserved_cycles = args.batches + int(inspected.get('pending_evaluation', False))
     output = private_output(args.output or TEN_BASE / ('run-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
                                                     + '-' + secrets.token_hex(4)))
     TEN_BASE.mkdir(parents=True, exist_ok=True)
     with (TEN_BASE / 'namespace.lock').open('a+b') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        reservations = ten_reservations([('training', args.batches * 10, output)])
+        reservations = ten_reservations([('training', reserved_cycles * cycle_width(), output)])
     output.mkdir(parents=True, mode=0o700)
     now, wall = time.monotonic(), time.time()
     launch = dict(schema=TEN_LAUNCH, campaign_id=output.name, mode='training', output=str(output),
@@ -1500,7 +1613,8 @@ def prepare_ten(args, inspected):
         parent_pair=inspected['parent'], parent_optimizer_steps=inspected['optimizer_steps'],
         parent_publication=inspected['publication'], original_parent=inspected['initial'],
         parent_policy_sha256=inspected['parent']['policy']['sha256'], protected=inspected['protected'],
-        reservations=reservations, batches=args.batches,
+        reservations=reservations, batches=args.batches, reserved_cycles=reserved_cycles,
+        pending_evaluation=inspected.get('pending_evaluation', False),
         configuration=ten_configuration(checked, seconds), execution=checked['execution'],
         policy_support=checked['experiment']['policy_support'], equipment_policy=checked['equipment_policy'],
         army_information=checked['army_information'], maximum_seconds=seconds,
@@ -1540,7 +1654,7 @@ def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent
     folder.mkdir(); inputs = folder / 'input'; inputs.mkdir()
     metadata = training.metadata(binding(Path(launch['output']) / 'launch.json')['sha256'],
         launch['original_parent']['policy'], opponent_policy, campaign_id=launch['campaign_id'],
-        purpose=mode, training_contract=training.TEN_SCHEMA)
+        purpose=mode, training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA)
     opponent = deepcopy(opponent_model).eval().requires_grad_(False)
     opponent_id = f"{launch['campaign_id']}-{name}-frozen"
     for filename, model, checkpoint in (('learner.pt', state.model, state.checkpoint),
@@ -1548,16 +1662,20 @@ def ten_batch_plan(launch, state, *, name, mode, start, opponent_model, opponent
         cp.save_policy_checkpoint(inputs / filename, model, checkpoint=checkpoint,
             provenance=cp.SELFPLAY_GAMEPLAY_PROVENANCE, source_metadata=metadata,
             opponent_pool=state.pool, generators={'minibatch': state.generator}, interface=INTERFACE)
-    plan = dict(schema=training.TEN_SCHEMA, campaign_id=launch['campaign_id'], mode=mode,
+    plan = dict(schema=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA, campaign_id=launch['campaign_id'], mode=mode,
         output=str(folder), execution_output=str(folder / 'execution'), launch=binding(Path(launch['output']) / 'launch.json'),
         source=launch['source']['source'], implementation=launch['source']['implementation'],
         configuration=launch['configuration'], checkpoint=binding(inputs / 'learner.pt'),
         opponent_checkpoint=binding(inputs / 'opponent.pt'), checkpoint_source=metadata, opponent_checkpoint_source=metadata,
         learner_checkpoint=state.checkpoint, opponent_checkpoint_id=opponent_id,
         learner_weights_sha256=cp.model_weight_digest(state.model), opponent_weights_sha256=cp.model_weight_digest(opponent),
-        opponent_pool=POOL, schedule=schedule(launch['reservations'][mode], start, 10),
+        opponent_pool=POOL, schedule=schedule(launch['reservations']['training' if CYCLE_MODE else mode], start,
+            1 if CYCLE_MODE and mode == 'diagnostic' else 10),
         **{key: launch[key] for key in ('native', 'runtime', 'binary', 'data', 'game_map', 'replay_binary',
                                       'policy_support', 'execution', 'army_information', 'equipment_policy')})
+    if CYCLE_MODE:
+        for index, row in enumerate(plan['schedule']):
+            row.update(phase=mode, learner_player=index % 2)
     write(folder / 'plan.json', plan, new=True)
     return folder / 'plan.json', plan, opponent
 
@@ -1591,7 +1709,7 @@ def ten_finalize_report(output, report):
                 committed.append(row)
             cursor = row['previous_publication']
     by_plan = {row['plan']['sha256']: row for row in committed}
-    for phase in report.get('batches', []):
+    for phase in report.get('batches', []) + report.get('evaluations', []):
         row = by_plan.get(phase['plan']['sha256'])
         if row is not None:
             pair = row['checkpoint']
@@ -1620,6 +1738,17 @@ def ten_finalize_report(output, report):
 
 def ten_print_phase(phase):
     counts = phase.get('counts', {})
+    if CYCLE_MODE:
+        if phase.get('mode') == 'diagnostic':
+            print(f"Validated self-play: Red wins {counts.get('red_wins', 0)}, "
+                  f"Blue wins {counts.get('blue_wins', 0)}, cutoffs {counts.get('game_cutoffs', 0)}", flush=True)
+        else:
+            print(f"{phase['name']}: engine Red wins {counts.get('engine_red_wins', 0)}, "
+                  f"Blue wins {counts.get('engine_blue_wins', 0)}, cutoffs {counts.get('game_cutoffs', 0)}; "
+                  f"PPO updates {int(phase.get('status') == 'checkpoint_verified')}, "
+                  f"weights changed {phase.get('weights_changed', False)}; "
+                  f"checkpoint {phase.get('checkpoint_before')} -> {phase.get('checkpoint_after', 'not updated')}", flush=True)
+        return
     print(f"{phase['name']}: Red {counts.get('red_wins', 0)}, Blue {counts.get('blue_wins', 0)}, "
           f"cutoffs {counts.get('game_cutoffs', 0)}, verified {counts.get('verified', 0)}/10, "
           f"verification failures {counts.get('verification_failures', 0)}; "
@@ -1643,7 +1772,10 @@ def ten_outcomes(attempts):
         if passed:
             outcome = outcomes.get(('red', 'blue')[item['learner_player']])
             learner_wins += outcome == 'win'; learner_losses += outcome == 'loss'
-    return dict(**summarize_game_results(rows), learner_wins=learner_wins, learner_losses=learner_losses,
+    return dict(**summarize_game_results(rows),
+                engine_red_wins=sum(row.get('game_outcome') == 'red_win' for row in rows),
+                engine_blue_wins=sum(row.get('game_outcome') == 'blue_win' for row in rows),
+                learner_wins=learner_wins, learner_losses=learner_losses,
                 learner_win_fraction_all_verified=(learner_wins / sum(r['verification_status'] == 'passed' for r in rows)
                     if any(r['verification_status'] == 'passed' for r in rows) else None))
 
@@ -1673,9 +1805,10 @@ def ten_coordinator(args):
         phase = dict(name=name, mode=mode, plan=binding(path), status='collecting',
                      comparison_checkpoint='batch_start',
                      checkpoint_before=state.progress.updates, weights_before=state.weights_sha256,
-                     planned_games=10,
+                     planned_games=len(plan['schedule']),
                      attempts=[dict(**row, status='not_started') for row in plan['schedule']])
-        report['batches'].append(phase); write(output / 'report.json', report)
+        target = 'evaluations' if CYCLE_MODE and mode == 'diagnostic' else 'batches'
+        report.setdefault(target, []).append(phase); write(output / 'report.json', report)
         def record(index, value):
             phase['attempts'][index] = value
             phase['counts'] = ten_outcomes(phase['attempts'])
@@ -1689,14 +1822,23 @@ def ten_coordinator(args):
         return path, plan, phase, receipts, deadlines
 
     try:
+        seed_offset = 0
+        if CYCLE_MODE and launch.get('pending_evaluation'):
+            _, _, recovery_phase, recovery_receipts, _ = collect_phase(
+                'evaluation-recovery', 'diagnostic', 0, state.model, previous_pair['policy'])
+            recovery_phase['status'] = 'evaluation_verified'
+            training.release_receipts(recovery_receipts)
+            del recovery_receipts
+            write(output / 'report.json', report)
+            seed_offset = cycle_width()
         for index in range(launch['batches']):
             remaining(launch, 60)
-            path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', index * 10,
+            path, plan, phase, receipts, deadlines = collect_phase(f'batch-train-{index:03d}', 'training', seed_offset + index * cycle_width(),
                 state.model, previous_pair['policy'])
             phase['status'] = 'updating'; write(output / 'report.json', report)
             state.model.train().requires_grad_(True)
             with wall_limit(phase_remaining(deadlines['update'])):
-                result, rollouts = training.native_update(state.model, state.optimizer, receipts,
+                result, rollouts = (training.live_native_update if CYCLE_MODE else training.native_update)(state.model, state.optimizer, receipts,
                     plan_sha256=binding(path)['sha256'], config=PPOConfig(**PPO), generator=state.generator,
                     remaining=lambda: phase_remaining(deadlines['update']),
                     max_optimizer_steps=launch['configuration']['max_optimizer_steps'])
@@ -1708,10 +1850,10 @@ def ten_coordinator(args):
                 consumed_schedule_offset=(next_progress.updates - 1753) * 10,
                 optimizer_steps=steps, batch_optimizer_steps=result.optimizer_steps,
                 original_parent_sampler=(state.sampler_state['original_parent_sampler']
-                    if state.metadata.get('training_contract') == training.TEN_SCHEMA else state.sampler_state))
+                    if state.metadata.get('training_contract') in (training.TEN_SCHEMA, training.CYCLE_SCHEMA) else state.sampler_state))
             metadata = training.metadata(binding(path)['sha256'], launch['original_parent']['policy'],
                 plan['opponent_checkpoint'], campaign_id=launch['campaign_id'], purpose='training',
-                training_contract=training.TEN_SCHEMA)
+                training_contract=training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA)
             with wall_limit(phase_remaining(deadlines['update'], 0)):
                 pair = training.save_checkpoint_pair(path.parent / 'checkpoint', state.model, state.optimizer,
                     checkpoint=f"selfplay-ten-{launch['campaign_id']}-update-{next_progress.updates}",
@@ -1722,7 +1864,7 @@ def ten_coordinator(args):
                 entry = dict(schema=TEN_LAUNCH + '-publication', launch=binding(args.plan), plan=binding(path),
                     previous_publication=publication, parent_checkpoint=previous_pair,
                     parent_optimizer_steps=state.optimizer_steps, checkpoint=pair, optimizer_steps=steps,
-                    ppo=asdict(result), receipts=[binding(Path(item['episode_directory']) / 'training-receipt.json')
+                    ppo=asdict(result), receipts=[binding(Path(item['episode_directory']) / ('training-capture-receipt.json' if CYCLE_MODE else 'training-receipt.json'))
                                                 for item in phase['attempts']])
                 write(path.parent / 'publication.json', entry, new=True)
                 publication = binding(path.parent / 'publication.json')
@@ -1740,13 +1882,25 @@ def ten_coordinator(args):
             report['latest_checkpoint'] = next_progress.updates
             write(output / 'report.json', report)
             del receipts, rollouts
+            if CYCLE_MODE:
+                import gc
+                gc.collect()
+                path, evaluation_plan, evaluation_phase, evaluation_receipts, _ = collect_phase(
+                    f'evaluation-{index:03d}', 'diagnostic', seed_offset + index * cycle_width() + 10,
+                    state.model, previous_pair['policy'])
+                evaluation_phase['status'] = 'evaluation_verified'
+                training.release_receipts(evaluation_receipts)
+                del evaluation_receipts
+                gc.collect()
+                write(output / 'report.json', report)
+                print(f"Validated self-play {index + 1}: {evaluation_phase['counts']}", flush=True)
         load_ten_launch(args.plan, args.sha256)
         report['status'] = 'completed'
     except Exception as error:
         report.update(status='stopped', error=f'{type(error).__name__}: {error}')
         ten_finalize_report(output, report)
     finally:
-        shutdowns = [read(path) for path in output.glob('batch-*/execution/shutdown.json')]
+        shutdowns = [read(path) for path in output.glob('*/execution/shutdown.json' if CYCLE_MODE else 'batch-*/execution/shutdown.json')]
         report['owned_cleanup_verified'] = bool(shutdowns) and all(row['owned_cleanup_verified'] for row in shutdowns)
         try:
             report['protected_inputs_unchanged'] = verify_protected(launch['protected'])
@@ -1779,12 +1933,14 @@ def main(argv=None):
         if name == 'continue':
             continuation.add_argument('--output', type=Path)
             continuation.add_argument('--hours', type=float, required=True)
-    for name in ('batch10-check', 'batch10-run', 'batch10-continue'):
-        ten = sub.add_parser(name, help='Ten-game learning batches from verified1753; no extra evaluation games')
-        ten.add_argument('--batches', type=int, default=1)
+    for name in ('batch10-check', 'batch10-run', 'batch10-continue',
+                 'cycle-check', 'cycle-run', 'cycle-continue'):
+        ten = sub.add_parser(name, help=('Ten training games, one PPO update and one validated self-play game'
+            if name.startswith('cycle-') else 'Ten-game learning batches from verified1753; no extra evaluation games'))
+        ten.add_argument('--batches', '--cycles', dest='batches', type=int, default=1)
         ten.add_argument('--hours', type=float, default=10)
         ten.add_argument('--output', type=Path)
-        ten.add_argument('--run-dir', type=Path, required=name == 'batch10-continue')
+        ten.add_argument('--run-dir', type=Path, required=name in ('batch10-continue', 'cycle-continue'))
     for name in ('_coordinator', '_capture', '_report'):
         worker = sub.add_parser(name)
         worker.add_argument('--plan', type=Path, required=True); worker.add_argument('--sha256', required=True)
@@ -1792,6 +1948,13 @@ def main(argv=None):
             worker.add_argument('--index', type=int, required=True); worker.add_argument('--token', required=True)
             worker.add_argument('--deadline', type=float, required=True); worker.add_argument('--wall-deadline', type=float, required=True)
     args = parser.parse_args(argv)
+    if args.command.startswith('cycle-'):
+        select_cycle_mode()
+        args.command = args.command.replace('cycle-', 'batch10-', 1)
+    elif args.command in ('_capture', '_coordinator'):
+        worker_plan = read(args.plan)
+        if worker_plan.get('schema') in (CYCLE_LAUNCH, 'heroes-selfplay-ten-then-check-v1'):
+            select_cycle_mode()
     if args.command == '_capture':
         capture_worker(args); return 0
     if args.command == '_coordinator':
@@ -1815,16 +1978,17 @@ def main(argv=None):
                         checkpoint=inspected['state'].progress.updates,
                         exact_model_adam_rng_progress_sampler_pool=True,
                         configuration=ten_configuration(inspected['checked'], args.hours * 3600),
-                        training_games=args.batches * 10, held_out_games=0,
-                        total_physical_games=args.batches * 10,
+                        training_games=args.batches * 10, held_out_games=(args.batches + int(inspected.get('pending_evaluation', False))) if CYCLE_MODE else 0,
+                        total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),
                         expected_optimizer_updates=args.batches,
-                        next_fresh_seeds=ten_seed_preview(args.batches * 10),
-                        next_command='batch10-run' if inspected['lineage'] is None else 'batch10-continue')
+                        next_fresh_seeds=ten_seed_preview((args.batches + int(inspected.get('pending_evaluation', False))) * cycle_width()),
+                        next_command=('cycle-run' if inspected['lineage'] is None else 'cycle-continue') if CYCLE_MODE else
+                            ('batch10-run' if inspected['lineage'] is None else 'batch10-continue'))
                 else:
                     launch = prepare_ten(args, inspected)
                     print(f"Private run: {launch['output']}", flush=True)
                     result = supervise(launch)
-            for phase in result.get('batches', []):
+            for phase in result.get('batches', []) + result.get('evaluations', []):
                 ten_print_phase(phase)
             print(json.dumps(result, indent=2)); return int(result['status'] not in ('passed', 'completed'))
         if args.command == 'report':

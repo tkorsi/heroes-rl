@@ -306,11 +306,11 @@ def _update(model, optimizer, rollouts, **options):
 
 
 def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step=None, after_step=None, max_optimizer_steps=None,
-                   pools=None):
+                   pools=None, prepared_native_inputs=None):
     """Shared numerical kernel; callers must establish admission before entering.
 
-    The public default entry point remains synthetic-only. The separately gated
-    gameplay runner verifies native artifacts and replay before using this kernel.
+    The public default entry point remains synthetic-only. Gameplay callers bind
+    either verified experience or the explicit fresh capture-only cycle contract.
     """
     from .contextual_model import encode_history, frame_keys_until
     if type(config) is not PPOConfig or type(generator) is not torch.Generator or generator.device.type != "cpu":
@@ -322,8 +322,16 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
     if set(optimized) != owned or len(optimized) != len(owned):
         raise ValueError("Optimizer must own exactly the current trainable model parameters")
     from .contextual_rollout import behavior_guard_version
-    inputs = tuple(encode_history(item.history, guard_version=behavior_guard_version(item.decisions)) for item in rollouts)
-    _verify_behavior(model, rollouts, inputs)
+    if prepared_native_inputs is None:
+        inputs = tuple(encode_history(item.history, guard_version=behavior_guard_version(item.decisions)) for item in rollouts)
+        _verify_behavior(model, rollouts, inputs)
+    else:
+        from .selfplay_training import CapturedRollout
+        if (NATIVE_EXECUTION is None or type(prepared_native_inputs) is not tuple
+                or len(prepared_native_inputs) != len(rollouts)
+                or any(type(item) is not CapturedRollout for item in rollouts)):
+            raise ValueError("Prepared capture-only inputs require the explicit native cycle contract")
+        inputs = tuple(range(item.frame_count) for item in rollouts)
     native_model = native_backend = native_inputs = None
     if NATIVE_EXECUTION is not None:
         from .native_backend import load_backend
@@ -338,8 +346,11 @@ def _update_kernel(model, optimizer, rollouts, *, config, generator, before_step
                                                  model.config.hidden_size)
         if pools is not None:
             pools.append(native_model)
-        native_inputs = tuple(compile_history(model, encoded, item.decisions, native_backend)
-                              for encoded, item in zip(inputs, rollouts))
+        native_inputs = (prepared_native_inputs if prepared_native_inputs is not None else
+            tuple(compile_history(model, encoded, item.decisions, native_backend)
+                  for encoded, item in zip(inputs, rollouts)))
+        if any(program.frame_count != len(encoded) for program, encoded in zip(native_inputs, inputs)):
+            raise ValueError("Prepared native history length differs")
     targets = tuple(gae(tuple(s.reward for s in item.samples), tuple(s.decision.value for s in item.samples),
                         tuple(0.0 if s.bootstrap_value is None else s.bootstrap_value for s in item.samples),
                         gae_lambda=config.gae_lambda) for item in rollouts)

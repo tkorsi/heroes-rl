@@ -1843,3 +1843,93 @@ games and failed. Inspecting the immutable launch and durable ledger confirmed
 that the user had reserved ten batches (100 games) before that attempt. All 100
 remain consumed under the existing reserve-including-unstarted rule. The
 corrected check against the actual ledger passed. No ledger was altered.
+
+
+## 2026-11-05 — Ten capture-only training games and one validated self-play game
+
+The user rejected full validation and analytics on every training game and
+requested a repeating ten-training/one-validation cycle. They explicitly retain
+manual launches. They selected both diagnostic seats using updated weights,
+instead of a frozen-1753 opponent. The new experiment begins at the full preserved
+checkpoint 1,753 and uses separate consumed seed namespaces. The hypothesis is
+that removing repeated native replay and old-probability reconstruction reduces
+training overhead while a retained diagnostic game permits qualitative review.
+A single self-play game cannot establish strategic improvement.
+
+The new contract explicitly discloses unverified training experience. Training
+outcomes come from the native engine. Ten fresh completed learner captures are
+required for one PPO update. No diagnostic, historical, partial, forged or reused
+experience is admitted. Basic collection, source, seed, terminal reward and
+checkpoint integrity constraints remain enforced. Native replay and frozen
+policy reconstruction run on the one post-update diagnostic only. Existing
+verified-training admission remains separate. PPO/Adam settings, architecture,
+map, opponent policy support, temporary restrictions and gameplay horizons remain
+as declared previously.
+
+The previous memory warning exposed unbounded concurrent full-history retention.
+The stopped run's report records KeyboardInterrupt, zero updates and clean owned
+process cleanup, rather than a captured Python MemoryError or measured memory
+peak. Current work therefore makes no claim about that exact peak. The new cycle
+collects one game at a time, compiles its learner history into native programs,
+retains compact loss records for all ten games and releases full Python history
+before the next capture. Temporary raw training streams are then removed. An
+owned-process memory guard leaves 48 GiB of physical RAM as headroom, alongside
+the existing 30 GiB disk reserve. This scheduling decision prioritizes memory
+safety and is independent of the PPO batch size of ten.
+
+The saved model/Adam/RNG/progress/sampler/pool pair precedes the diagnostic. A
+failed diagnostic preserves that saved update and stops the loop. Continuation
+must finish an outstanding diagnostic with fresh seeds before more training.
+All reserved training and diagnostic slots remain consumed after interruption.
+Acceptance requires offline protocol/admission/recovery controls, exact native
+PPO parity on disposable synthetic trajectories, complete checkpoint restore
+and the actual manual CLI preflight. No native game or official update is
+launched by the assistant during preparation.
+
+Initial validation passed 58 existing self-play admission, checkpoint and
+controller tests. A local actual-native control used ten synthetic trajectories
+and five Adam steps: model, Adam and minibatch RNG matched the original kernel
+exactly, while the new path did not call old-probability reconstruction. Seven
+live-admission controls passed for incomplete, reordered, duplicate, forged,
+diagnostic and repeated admission cases plus the complete scheduled batch.
+Explicit metadata drift and disjoint eleven-slot seed reservation controls also
+passed. No synthetic trajectory entered an official checkpoint. An initial
+collector mock omitted its hard-deadline fields and failed before exercising the
+new behavior; that fixture needs correction. A first tool orchestration block
+had a JavaScript syntax error and made no filesystem changes before retry.
+
+
+Final local protocol controls passed two ten-plus-one cycles with synthetic
+optimizer changes and real temporary checkpoint save/restore. The simulated
+checkpoints numbered 1,754/1,755 belong only to disposable test fixtures. The
+actual preserved training checkpoint remains 1,753. Injecting a diagnostic
+failure preserved the published fixture update. Its actual publication chain
+restored, marked the outstanding diagnostic, and a continuation completed that
+diagnostic before a fresh training batch and its own diagnostic. Both diagnostic
+policies used identical updated weight digests. Full report counts remained
+separate for training and diagnostic phases.
+
+The corrected collector fixture passed sequential capture/compile interleaving,
+zero replay calls during training, explicit unverified outcomes and removal of
+temporary streams while retaining compact manifests. An initial coordinator
+fixture created its output before reserving seeds and was correctly rejected by
+the missing-ledger safety check; reserving first fixed the fixture. Seven live
+admission controls and the strict metadata controls remained successful.
+
+An actual prepared-native PPO update on synthetic trajectories was interrupted
+after partial optimizer work. The transaction restored model, Adam, minibatch
+RNG, global Torch RNG and Python RNG exactly. Another 34 existing native/PPO/UI
+tests passed using the installed native backend, for 92 existing tests overall.
+Memory controls passed owned-descendant accounting, unrelated-app exclusion,
+the 80 GiB resident threshold on a 128 GiB model and the additional system-wide
+20% free-memory floor, which also covers pressure from compression and other
+applications. The real macOS pressure query format was checked read-only.
+
+The canonical VCMI recipe check passed. Engine, model encoding, native learner
+sources and binary ABI are unchanged. The installed native binary itself was
+loaded for numerical parity and rollback controls. Exact source-inventory and
+reviewed-transition checks cover all 215 implementation files, with six negative
+tamper controls. No test, fixture or diagnostic script is staged for publication.
+Real long-game peak memory, end-to-end cycle completion time and gameplay
+behavior remain unmeasured until the user's manual run. They are not inferred
+from the small synthetic fixtures.
