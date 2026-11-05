@@ -2363,3 +2363,17 @@ terminal sizes. No historical training contract is changed by the UI case.
 Main integration remains deferred until the active run's shutdown is complete.
 The handoff command must check the existing run first, fast-forward the prepared
 branch only after that check passes, then manually launch the forty-game cycle.
+
+All nine installed-native learner numerical regressions passed. The clean-source
+closed-lineage preflight passed again at 4706c63 after the grid visibility fix;
+its private transcript is closed-lineage-preflight.log in the diagnostic folder.
+At final handoff main still had the newer ten-game run actively collecting,
+with checkpoint 1,754 and no shutdown record. Main stayed clean and unchanged.
+The prepared branch is not yet integrated into the active checkout. The manual
+command first uses main's existing --check to require that run's completed owned
+shutdown; only a successful check permits the fast-forward and next --resume.
+The next launch restores whichever complete checkpoint that run publishes,
+without resetting to 1,754, and allocates fresh forty-plus-one seeds. No claim of
+a full forty-game execution, optimizer parity across batch sizes or peak-memory
+measurement is made; only the user's chosen batch size changes the learning
+collection/update cadence.
