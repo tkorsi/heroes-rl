@@ -2110,3 +2110,41 @@ owned baseline worktree was removed after benchmarks; its source commit and
 private results remain preserved. Only production source and documentation were
 committed; no benchmark/probe/test tooling was staged or pushed. Launch remains
 manual: ten training games, one update and one fully validated diagnostic game.
+
+## 2026-11-05 — Read-only check of the user's accelerated manual continuation
+
+The user requested progress and real-speed confirmation without interrupting
+training. Inspected lineage, process inventory, launch/report/progress manifests,
+process deadline records and unchanged parent policy/resume file hashes. No game,
+update, replay, stop or restart was issued. The latest launch is
+`run-20261105T122341Z-c2124692`, source `94c3404`, engine seed 1,980,000,011,
+policy seeds 1,982,000,022/23, preserved checkpoint 1,753. It actually used the
+owned-binary capture-only configuration and existing no-artifacts runtime.
+
+The run had already stopped itself: its first game reached the 5,840-day limit,
+with 46,239 Red and 59,031 Blue sampled choices, no winner. Native PPO recipe
+preparation then failed with `RuntimeError: Native history exceeds bounded
+recipe size`. This is a native learner preparation-size rejection, not a game
+engine crash, timeout, replay-verification failure or checkpoint publication
+failure. The rejecting guard in `native/learner/kernels.cpp:70` requires fewer
+than ten million recipe nodes and fewer than one million chronological frames.
+This read-only check did not reconstruct the enormous recipe to distinguish
+which count exceeded its bound. The small synthetic parity/handoff controls
+from implementation did not establish full long-game recipe capacity.
+
+Observed time through manifest finalization: previous 69,701 choices / 817.27
+seconds = 85.29 choices/second; latest 105,270 / 1,168.39 = 90.10 choices/second,
+a 5.64% higher observed normalized rate. The latest game took 19m28s rather than
+13m37s because it sampled about 51% more choices. Different seeds and game
+states prevent a controlled causal speedup claim. Full latest launch elapsed
+23m12s including failed preparation; zero games admitted, zero optimizer updates,
+checkpoint still 1,753. Both parent policy and resume file sizes/SHA-256 match
+the launch bindings. Report/shutdown confirm protected inputs unchanged and
+owned cleanup complete; no training/game workers remained during inspection.
+
+Private compact evidence: `diagnostics/loop-speed-20261105/
+manual-run-20261105T122341-audit.json`. Raw failed-attempt evidence is preserved.
+The loop remains blocked by long-game native recipe capacity; no repair or
+limit change is included in this status-check task. Do not report this launch
+as a successful learning cycle or the offline 21x storage result as whole-game
+acceleration.
