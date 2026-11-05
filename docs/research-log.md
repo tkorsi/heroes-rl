@@ -2096,3 +2096,17 @@ the correct paths. The buggy intermediate `candidate2.json` is not used for a
 performance claim. No failed attempt touched official model/Adam/RNG/progress,
 reused consumed seeds or entered PPO. Benchmark/probe scripts remain private
 and outside the committed diff.
+
+The real main-checkout continuation preflight passed at commit `88e2461`:
+`./continue-selfplay.sh --cycle --check --run-dir
+/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261105T111051Z-4911fcaa
+--cycles 1 --hours 10`. It restored checkpoint 1,753 with exact complete
+model/Adam/RNG/progress/sampler/pool agreement, performed zero gameplay and zero
+optimizer updates, and retained all eleven previously consumed slots. The next
+fresh engine seed is 1,980,000,011 and the policy base is 1,982,000,022; this check
+did not reserve them. Private transcript: `diagnostics/loop-speed-20261105/
+preflight-88e2461.log`. No owned training/game workers remained. The temporary
+owned baseline worktree was removed after benchmarks; its source commit and
+private results remain preserved. Only production source and documentation were
+committed; no benchmark/probe/test tooling was staged or pushed. Launch remains
+manual: ten training games, one update and one fully validated diagnostic game.
