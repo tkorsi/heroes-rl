@@ -1990,3 +1990,109 @@ The actual main-checkout resume preflight passed at `71f4b6a`, restoring the ful
 is 1,980,000,011. Its private transcript is
 `diagnostics/ten-then-check-20261105/progress-fix-preflight-71f4b6a.log` under the
 artifacts root. No game or optimizer update occurred during this check.
+
+
+## 2026-11-05 — Main-loop and trajectory-processing acceleration preparation
+
+The user requested maximum practical game/training throughput and realistic
+measurements, retaining detailed review for one diagnostic game. Manual launch
+ownership remains with the user. Baseline is main commit 036d1be, preserved in a
+detached diagnostic worktree. Checkpoint 1,753 restored before changes. No native
+game or official PPO update is authorized for automatic launch during this work.
+
+The preregistered comparison uses identical prefixes from the latest actual
+captured game, frozen 1,753 weights, per-player policy seeds and action/support
+traces. Offline actor timing excludes engine/transport and therefore cannot be
+reported as end-to-end throughput. Candidate acceptance requires identical
+choices, values, probabilities, supports and RNG progression, unchanged training
+admission/rewards, existing regressions and the actual manual preflight. Bounded
+microbenchmarks must report their workload and limits. The original game used
+69,701 sampled choices, approximately 798 seconds through its last bridge event,
+817.27 seconds through manifest finalization and 1,092.05 coordinator seconds.
+It produced about 20 GiB of raw JSONL data and a 200 MB rollout envelope.
+
+Initial code inspection found full-history tuple copies on each environment
+request, ignored typed-frame handoff in the self-play collector, redundant final
+frame decoding, and an independent full history audit still active during the
+explicit capture-only training mode. The candidate will reuse the existing
+checked typed-frame handoff used by the builtin collector, preserve mutable-wire
+tamper fallback, remove avoidable whole-history copies, and omit the independent
+file audit only under the declared capture-only training contract. Validated
+diagnostic games retain their full validation path. Raw captures and all timing
+artifacts remain private. No benchmark/test tooling is staged for publication.
+
+### Implemented candidate and offline measurements
+
+The main loop now avoids whole-history tuple copies per request, reuses typed
+frames only after exact canonical-wire/type agreement, and retains the original
+strict decode fallback for changed records. The observation memo's tile-key
+fast path produces the identical token sequence as the generic traversal.
+Capture-only training now omits duplicate bridge/frozen/live-history JSONL and
+its independent post-game history audit; native recording and terminal barriers
+remain enabled. A protocol-5 binary handoff replaces JSON re-decoding only for
+the fresh owned training child. The coordinator binds its completion token,
+process identity, seal, manifest and payload hashes before restricted loading.
+It still checks actual policy/runtime/support identity, eligibility and complete
+boundaries, then compiles the existing native PPO program. A file alone cannot
+be admitted or retrospectively become a verified episode. Diagnostics keep the
+original full JSONL/audit/reconstruction/replay path. The engine, installed native
+learner, model architecture, PPO/Adam, rewards, action support and game budgets
+are unchanged. Source transitions bind the exact reviewed Python delta.
+
+Private evidence is under `diagnostics/loop-speed-20261105` in the artifacts
+root. Benchmarks use checkpoint 1,753 and actual recorded inputs from the failed
+capture above; none runs a native game or an optimizer update:
+
+- `baseline-final.json` and `candidate-final.json`: identical 2,000 choices
+  (1,000/player), three repetitions. Median offline actor time 16.3978 ->
+  14.2762 seconds (1.149x throughput; 12.94% less time). Individual times overlap
+  (baseline 15.58-17.54, candidate 13.62-16.10 seconds), so host noise matters.
+  All six action/log-probability/value traces share SHA-256
+  `cefdb3f85c5f242458dff4b0d02e9ff6a6092d11019cd48bcf2093bd6da2cad5`,
+  with identical final RNG hashes for both players. Engine/transport/PPO excluded.
+- `storage.json`: serialize/fsync/hash and reload 5,000 actual typed frames,
+  three repetitions. Median combined JSON time 1.12719 seconds, binary 0.05350
+  seconds (21.07x). 44,411,511 -> 4,286,750 bytes (10.36x smaller). Exact frame
+  equality checked. This isolates frame storage, not the full episode handoff.
+- `request-baseline.json` and `request-candidate.json`: 100 request-tail calls
+  at a synthetic 300,000-frame history, three repetitions. Median 0.11987 ->
+  0.00466 seconds (25.73x). This measures removal of history-size-dependent
+  copying; repeated frames are a copy-cost fixture, not a valid played game.
+
+No end-to-end candidate gameplay, full ten-game update timing, peak-memory
+claim or one-minute-game result is established. The previous real game's
+approximately 13.3-minute gameplay plus finalization cannot be scaled by the
+storage benchmark's 21x. A next manual cycle is needed to measure the combined
+result. Native contextual recording remains a known source of disk/engine cost;
+this change does not claim to remove all recording.
+
+### Validation and failed diagnostic attempts
+
+The locked NumPy-enabled interpreter passed 246 existing tests covering
+headless/contextual adapters, storage, collectors, self-play admission/controller,
+checkpoint/progress and inference exactness; all nine native training tests
+passed against the installed native learner manifest. `python3
+tools/prepare_vcmi.py --check` passed exact canonical/generated agreement; no
+C++ source changed and no rebuild was needed. Local controls passed: actual
+owner-token binary transfer through real collection checks and installed native
+program compilation on disposable synthetic data; payload tamper and executable
+pickle-global rejection; general diagnostic-reader rejection of the owned
+format; default ledger guards; lean finalization; and preservation of the
+independent diagnostic audit. Exact generic/optimized memo keys matched 300
+actual frames and deliberately type-mutated edge cases. These controls do not
+constitute native gameplay validation or training admission.
+
+Failed preparation attempts are retained as development evidence: an initial
+trace serializer used a nonexistent `to_dict` on conditional records; a first
+tile-key implementation accidentally extended the traversal stack rather than
+the output and failed three existing exactness tests (fixed, with identical
+baseline keys and final traces afterward); an initial lean constructor hit the
+base replay/ledger guard (fixed with the explicit capture-only exception while
+preserving default guards). Early local controls omitted fixture seed/dialog
+metadata or attempted to construct an intentionally invalid tile directly;
+they stopped before the tested handoff/finalization and were corrected. Some
+commands lacked required project/test/headless import paths and were rerun with
+the correct paths. The buggy intermediate `candidate2.json` is not used for a
+performance claim. No failed attempt touched official model/Adam/RNG/progress,
+reused consumed seeds or entered PPO. Benchmark/probe scripts remain private
+and outside the committed diff.

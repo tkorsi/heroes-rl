@@ -72,7 +72,12 @@ separate contract.
 
 Collection is sequential to limit concurrent memory. Each completed game is
 compiled into a native PPO program, then its full Python history is released.
-Temporary raw training streams are removed after compilation. The update retains
+The owned worker transfers immutable typed rollouts in a compact binary file,
+bound to its completion token and file hashes. A restricted reader permits only
+the project's record classes. Training omits duplicate bridge/history JSONL and
+the independent post-game history audit. Native terminal evidence remains active.
+Diagnostic games retain full JSONL, audit and replay. Temporary raw training
+streams are removed after compilation. The update retains
 all ten learner trajectories, the existing shuffled PPO windows and the original
 PPO/Adam settings. An owned-process resident-memory guard leaves 48 GiB of the
 Mac's physical RAM as headroom. It stops the attempt safely if the budget is

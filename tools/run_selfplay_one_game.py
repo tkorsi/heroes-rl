@@ -147,6 +147,26 @@ CYCLE_BATCH_SOURCES = {
     'tools/run_selfplay_training.py': {'before': 'be95ae65753af7befaf0c47413152c3317d22d7a6f2e1e5ce95d4e1df01b8d37',
         'after': '461f726811f286011598c5d4e3f18b5c99cd283fe23fe76a1dc785e5476e050d'},
 }
+# Semantics-preserving actor/tail optimization and explicit capture-only binary
+# handoff. Diagnostic validation and native binaries remain unchanged.
+LOOP_SPEED_SOURCES = {
+    'experiments/headless/contextual_env.py': {'before': 'c532e2d45082021a4226b4493e792154c34ae5e56e82536bf8041b10fad909b6',
+        'after': '6fe0b8908964658aa2405c4aaa1347500ef6b5e97b99484fa01589bc4d0bd3cf'},
+    'experiments/headless/env.py': {'before': '4b7e4086b8bc6fcb334d71c704867a58e4cc12d70b438076cf54dfc1a3dcf563',
+        'after': 'e82f91dfea1c01444fc71a6658a510b5e0f3e7f770c32a17f54ac31169cc0786'},
+    'experiments/learner/builtin_rollout.py': {'before': '08d04449ee567146165417c8851a1f555d7921e921e0075284a773befa9516db',
+        'after': 'b9db3f2f20299ac1b2a608c0c621562f98bad85f5f678e9f0cf8633b6bd64696'},
+    'experiments/learner/contextual_model.py': {'before': '4059e74ac24985b9f80897e6fc7c74d0034bcc627a8bce5b1bc0723d0188f9db',
+        'after': '389d84b4693df9c18cfa4bdf416f2d9b00c07467a5ed794bbf6022ff13c13681'},
+    'experiments/learner/contextual_rollout.py': {'before': '7996f0f7d0a1dce052caa78c777f7a9b515d9328aa94da6feee27472dd24e2f8',
+        'after': '84636dcb0726a945a524556c3c196a89b0eb7f4699fc4379b5d7366e862e54a8'},
+    'experiments/learner/contextual_storage.py': {'before': 'c7b001a244592493831355fab4d425c855afa43b3f705c2eaa06303704e30736',
+        'after': 'e4c469394dab682ad3ad2d0518fbbaea102a10df844700228aee1fce447622d8'},
+    'experiments/learner/selfplay_training.py': {'before': '3f822e034aa5569cc7ccb9e78500de21aff4caeb7a654e630aa59142a774adfb',
+        'after': '2cb19a2ecd8c75368ae9a4b5a6998e18021d477b947b97844edab8ed32e2ff25'},
+    'tools/run_selfplay_training.py': {'before': '461f726811f286011598c5d4e3f18b5c99cd283fe23fe76a1dc785e5476e050d',
+        'after': '5be8888b2e7440ae0e4a0a3ec2541cd2ffab47bcbba9743f38348725ceb6c732'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -187,6 +207,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in CYCLE_BATCH_SOURCES.items()),
             'Capture-only cycle source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in CYCLE_BATCH_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in LOOP_SPEED_SOURCES.items()),
+            'Main-loop source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in LOOP_SPEED_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -203,7 +226,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_parallel_history_storage', PARALLEL_HISTORY_SOURCES),
                    ('reviewed_direct_history_transport', DIRECT_HISTORY_SOURCES),
                    ('reviewed_ten_game_training_contract', TEN_BATCH_SOURCES),
-                   ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES))
+                   ('reviewed_capture_only_training_cycle', CYCLE_BATCH_SOURCES),
+                   ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -237,6 +261,7 @@ def source_identity():
         direct_history_sources=DIRECT_HISTORY_SOURCES,
         ten_batch_sources=TEN_BATCH_SOURCES,
         cycle_batch_sources=CYCLE_BATCH_SOURCES,
+        loop_speed_sources=LOOP_SPEED_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

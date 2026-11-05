@@ -797,7 +797,7 @@ def batch_plan(launch, state, index, start, count, previous_policy):
 def capture_worker(args):
     from experiments.learner import selfplay_training as training
     from experiments.learner.contextual_rollout import ContextualCollector
-    from experiments.learner.contextual_storage import save_collected
+    from experiments.learner.contextual_storage import save_collected, save_live_collected
     from experiments.learner.game_progress import GameProgress, progress_path
     from experiments.headless.env import HeadlessSelfPlayEnv, Limits
     from experiments.headless.process_deadline import DeadlineVcmiLauncher
@@ -830,12 +830,14 @@ def capture_worker(args):
             require(request.record['day'] <= days, 'A sampled policy action exceeds its declared day bound')
             return super().act(request)
 
+    capture_only = plan.get('schema') == training.CYCLE_SCHEMA and plan['mode'] == 'training'
     collector = DayBoundedCollector(models, checkpoints, learner_player=seat, opponent_pool=POOL,
         interface=INTERFACE, purpose=plan['mode'], origin='native', policy_seeds=tuple(row['policy_seeds']),
-        guard_version=plan['policy_support'] if ten else GUARD)
+        guard_version=plan['policy_support'] if ten else GUARD,
+        capture_only=capture_only)
     env = HeadlessSelfPlayEnv(launcher, output, Limits(max_days=days, max_actions=hard_choices,
         watchdog_seconds=30, startup_seconds=30, shutdown_seconds=20, bridge_timeout=30),
-        ledger=True, replay=True, interface=INTERFACE,
+        ledger=not capture_only, replay=True, interface=INTERFACE, capture_only=capture_only,
         agents={color: {'checkpoint': checkpoint, 'kind': 'frozen-neural', 'purpose': plan['mode']}
                 for color, checkpoint in zip(('red', 'blue'), checkpoints)},
         **({'army_information': plan['army_information']} if ten else {}))
@@ -846,9 +848,9 @@ def capture_worker(args):
                                          progress=progress)
         folder = env.episode_dir
         progress.phase('storing')
-        save_collected(folder / 'neural-rollout.json', collected)
+        (save_live_collected if capture_only else save_collected)(folder / 'neural-rollout.json', collected)
         require(read(folder / 'manifest.json')['status'] in ('completed', 'truncated'), 'Technical capture failure')
-        progress.phase('awaiting verification')
+        progress.phase('captured' if capture_only else 'awaiting verification')
     except Exception as error:
         progress.phase('failed')
         from validation.probes.validate_hero_policy import retain_failed_evidence
@@ -869,7 +871,7 @@ def capture_worker(args):
     load_launch(plan['launch']['path'], plan['launch']['sha256'])
     message = dict(schema='heroes-selfplay-capture-complete-v1', token=args.token, episode=row['episode'],
                    files={name: {k: v for k, v in binding(folder / name).items() if k != 'path'}
-                          for name in ('manifest.json', 'neural-rollout.json')})
+                          for name in training.capture_artifact_names(plan)})
     print(json.dumps(message), flush=True)
 
 
@@ -1403,7 +1405,9 @@ def ten_configuration(checked, seconds):
     if CYCLE_MODE:
         cfg.update(schema='heroes-selfplay-ten-then-check-config-v1',
                    training_verification='not_performed', evaluation_games_per_cycle=1,
-                   collection_workers=1, memory_reserve_gib=48)
+                   collection_workers=1, memory_reserve_gib=48,
+                   training_storage='owned-binary-v1', training_history_audit='not_performed',
+                   training_bridge_ledger=False, training_history_jsonl=False)
     return cfg
 
 

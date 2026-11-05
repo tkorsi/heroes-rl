@@ -78,11 +78,14 @@ class ContextualMixin:
     _decode_message = staticmethod(loads)
 
     def __init__(self, launcher, output, limits=Limits(), *, ledger=True, profile=False, agents=None,
-                 snapshot_every=1, replay=True, interface=contract.ENVIRONMENT, army_information=None):
+                 snapshot_every=1, replay=True, interface=contract.ENVIRONMENT, army_information=None, capture_only=False):
         self.context_profile = contract.profile_for(interface)
         if interface != self.context_profile.environment:
             raise ValueError("Unknown contextual interface")
-        if not ledger:
+        if type(capture_only) is not bool or capture_only and (ledger or interface != contract.EXPANDED_ENVIRONMENT):
+            raise ValueError("Capture-only mode requires the explicit v8 training path without a bridge ledger")
+        self.capture_only = capture_only
+        if not ledger and not capture_only:
             raise ValueError("Contextual validation requires complete raw bridge and action ledgers")
         if not replay:
             raise ValueError("Contextual validation requires native replay and terminal barrier evidence")
@@ -161,7 +164,7 @@ class ContextualMixin:
             side = _Side(player, color, producer, producer.history, listener)
             folder = self.episode_dir / "agents" / color
             folder.mkdir(parents=True)
-            side.ledger = (folder / "bridge.jsonl").open("x")
+            side.ledger = (folder / "bridge.jsonl").open("x") if self.ledger_enabled else None
             environment[f"EXPLORER_RL_PORT_{player}"] = str(listener.getsockname()[1])
             self.sides[player] = side
         self.started = time.monotonic()
@@ -447,10 +450,10 @@ class ContextualMixin:
     def _issue(self, player, continuation=False):
         side = self.sides[player]
         history = side.validator.live if continuation else side.validator.history
-        if history.decision is None or history.frames[-1] != history.decision:
+        if history.decision is None or history._frames[-1] != history.decision:
             raise ValueError("Request must end at the exact current player decision")
         frames = encoded(history, side.unread_frames_from)
-        typed = tuple(history.frames[side.unread_frames_from:])
+        typed = tuple(history._frames[side.unread_frames_from:])
         # Internal continuation may have already delivered its boundary decision.
         if not frames and continuation:
             frames = [contract.encode_frame(history.decision)]
@@ -622,7 +625,7 @@ class ContextualMixin:
                                                  ["back", "close", "end_turn"] if self.context_profile != contract.WINDOWS_PROFILE
                                                  else ["close", "end_turn"]), "learner_excluded": True},
             "raw_bridge_sha256": {side.color: scoring.digest(self.episode_dir / "agents" / side.color / "bridge.jsonl")
-                                  for side in self.sides.values()}, "identity": identity,
+                                  if self.ledger_enabled else None for side in self.sides.values()}, "identity": identity,
         }
         if self.context_profile.dialogs:
             evidence_document["dialog_cutoff_drain"] = self.dialog_cutoff_drain
@@ -652,20 +655,22 @@ class ContextualMixin:
             producer = side.validator
             folder = self.episode_dir / "agents" / side.color
             path = folder / self.context_profile.history_filename
-            digest = persist_history(path, producer.history)
-            prefix = producer.history.frames[:-1] if producer.history.frames[-1].kind in ("finalized", "cutoff_finalized") else producer.history.frames
+            canonical_digest = producer.history.digest()
+            digest = None if self.capture_only else persist_history(path, producer.history)
+            frames = producer.history._frames
+            prefix = frames[:-1] if frames[-1].kind in ("finalized", "cutoff_finalized") else frames
             digestor = hashlib.sha256()
             for frame in prefix:
                 digestor.update(contract.canonical_frame(frame).encode() + b"\n")
             live = folder / ("live-" + self.context_profile.history_filename)
-            live_digest = persist_history(live, producer.live)
+            live_digest = None if self.capture_only else persist_history(live, producer.live)
             declarations[side.color] = {**executions[side.color], "actions_sent": side.actions_sent,
                 "actions_accepted": side.accepted, "actions_rejected": side.rejected,
                 "responses_undelivered": side.responses_undelivered,
-                self.context_profile.history_key: {"path": str(path.relative_to(self.episode_dir)), "sha256": digest,
-                               "canonical_sha256": producer.history.digest(), "prefix_sha256": digestor.hexdigest(),
+                self.context_profile.history_key: {"path": None if self.capture_only else str(path.relative_to(self.episode_dir)), "sha256": digest,
+                               "canonical_sha256": canonical_digest, "prefix_sha256": digestor.hexdigest(),
                                "boundary": producer.history.boundary, "complete": complete[side.player]},
-                "live_evidence": {"path": str(live.relative_to(self.episode_dir)), "sha256": live_digest,
+                "live_evidence": {"path": None if self.capture_only else str(live.relative_to(self.episode_dir)), "sha256": live_digest,
                                   "continuation_steps": producer.continuation_steps, "learner_input": False}}
         manifest = {"schema_version": 1, "kind": "contextual-headless-self-play", "episode": str(self.episode),
                     "environment": self.interface, "history_schema": self.context_profile.history_schema,
@@ -682,8 +687,11 @@ class ContextualMixin:
             manifest["dialog_cutoff_drain"] = self.dialog_cutoff_drain
         if self.army_information is not None:
             manifest["army_information"] = self.army_information
+        if self.capture_only:
+            manifest['capture_only'] = True
+            manifest['bridge_ledger_recorded'] = False
         scoring.write_json(self.episode_dir / "manifest.json", manifest)
-        final = {side.color: encoded(side.validator.history, min(side.unread_frames_from, len(side.validator.history.frames) - 1))
+        final = {side.color: encoded(side.validator.history, min(side.unread_frames_from, side.validator.history.frame_count - 1))
                  for side in self.sides.values()}
         bootstrap = {side.color: side.cutoff if status == "truncated" else None for side in self.sides.values()}
         self.result = EpisodeEnd(status, termination, outcomes, rewards, final, final, bootstrap, manifest)

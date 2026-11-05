@@ -216,6 +216,11 @@ def register_capture_launch(bound, process, token):
     _LAUNCHES[id(bound)] = (process, process.pid, token)
 
 
+def capture_artifact_names(plan):
+    names = ('manifest.json', 'neural-rollout.json')
+    return (*names, 'training-rollout.bin') if plan.get('schema') == CYCLE_SCHEMA and plan['mode'] == 'training' else names
+
+
 def accept_capture_completion(bound, message):
     bound.recheck()
     require(id(bound) in _LAUNCHES and id(bound) not in _COMPLETIONS, "Capture completion is not fresh")
@@ -226,7 +231,7 @@ def accept_capture_completion(bound, message):
             and type(message["episode"]) is int and message["episode"] == bound.row["episode"],
             "Capture completion differs from its actual child launch")
     expected = {name: evidence.file_identity(evidence.inside(bound.folder, name))
-                for name in ("manifest.json", "neural-rollout.json")}
+                for name in capture_artifact_names(bound.plan)}
     require(message["files"] == expected, "Capture changed after child completion")
     _COMPLETIONS[id(bound)] = canonical(expected)
 
@@ -445,7 +450,7 @@ class CapturedTrainingReceipt:
 
 def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
     """Compile a fresh owned capture without replay or probability reconstruction."""
-    from .contextual_storage import load_collected
+    from .contextual_storage import load_live_collected
     from .contextual_model import encode_history
     from .native_backend import load_backend
     from .native_recipes import compile_history
@@ -454,9 +459,9 @@ def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
             and id(bound) in _COMPLETIONS, 'Live training requires this fresh owned capture')
     folder = Path(bound.folder)
     files = {name: evidence.file_identity(folder / name)
-             for name in ('manifest.json', 'neural-rollout.json')}
+             for name in capture_artifact_names(bound.plan)}
     require(canonical(files) == _COMPLETIONS[id(bound)], 'Completed live capture changed')
-    collected = load_collected(folder / 'neural-rollout.json')
+    collected = load_live_collected(folder / 'neural-rollout.json', files)
     models = ((learner_model, opponent_model) if bound.row['learner_player'] == 0
               else (opponent_model, learner_model))
     _check_collected(bound, collected, models)

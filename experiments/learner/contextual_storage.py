@@ -1,14 +1,18 @@
 """Lossless, manifest-bound rollout storage without a second copy of history.
 
-The envelope is a seal, written last and never overwritten. Histories stay in
-their original player JSONL files; decisions, exact supports, probabilities,
-values and sample boundaries remain explicit. This storage codec never grants
+The envelope is a seal, written last and never overwritten. Diagnostics retain
+their original player JSONL files. Fresh owned capture-only training uses a
+restricted binary handoff bound to child completion. Both retain exact decisions,
+supports, probabilities, values and sample boundaries. Neither codec grants
 verification or PPO admission. Legacy self-contained artifacts remain readable.
 """
 from __future__ import annotations
 
-from dataclasses import fields
+from dataclasses import fields, is_dataclass
 import hashlib
+import importlib
+import io
+import pickle
 import json
 import os
 from pathlib import Path
@@ -20,6 +24,8 @@ from .contextual_rollout import (CollectedEpisode, ContextualRollout, _TRAJECTOR
                                  _canonical, _record)
 
 SCHEMA = "heroes-context-rollout-storage-v1"
+LIVE_SCHEMA = "heroes-owned-context-rollout-transfer-v1"
+LIVE_FILE = "training-rollout.bin"
 
 
 def _require(condition, message):
@@ -66,6 +72,10 @@ def save_collected(path, collected):
     envelope = dict(schema=SCHEMA, artifact_schema=collected.artifact_schema, rollouts=rollouts,
                     manifest=manifest, audit=json.loads(collected.audit_json),
                     model_configs=[json.loads(value) for value in collected.model_configs_json])
+    _seal(path, envelope)
+
+
+def _seal(path, envelope):
     # fsync the complete temporary file before an exclusive atomic publication.
     # A crash leaves either no seal or a complete seal, never a partial success.
     fd, temporary = tempfile.mkstemp(prefix=".rollout-", suffix=".partial", dir=path.parent)
@@ -81,6 +91,67 @@ def save_collected(path, collected):
             os.close(directory_fd)
     finally:
         Path(temporary).unlink(missing_ok=True)
+
+
+
+class _OwnedTransferReader(pickle.Unpickler):
+    """Only the immutable records our owned collector writes, never executable globals."""
+
+    def find_class(self, module, name):
+        allowed = ('experiments.learner.contextual', 'experiments.learner.contextual_model',
+                   'experiments.learner.contextual_rollout', 'experiments.learner.interaction_guard')
+        if module in allowed:
+            cls = getattr(importlib.import_module(module), name, None)
+            if isinstance(cls, type) and is_dataclass(cls) and cls.__module__ == module:
+                return cls
+        raise ValueError('Unsupported class in owned training transfer')
+
+
+def save_live_collected(path, collected):
+    """Seal a validated in-process capture for its owning coordinator's handoff."""
+    path = Path(path)
+    _require(type(collected) is CollectedEpisode and all(
+        r.origin == 'native' and r.purpose == 'training' for r in collected.rollouts),
+        'Binary transfer is only for fresh native training')
+    manifest = evidence.strict_json((path.parent / 'manifest.json').read_bytes())
+    _require(manifest.get('capture_only') is True and manifest == json.loads(collected.manifest_json),
+             'Binary transfer requires its explicit capture-only manifest')
+    _require(not path.exists() and not path.is_symlink(), 'Refusing to replace an existing transfer')
+    blob = path.parent / LIVE_FILE
+    with blob.open('xb') as stream:
+        pickle.dump(collected, stream, protocol=5)
+        stream.flush(); os.fsync(stream.fileno())
+    _seal(path, dict(schema=LIVE_SCHEMA, manifest=manifest,
+                    transfer=dict(path=LIVE_FILE, **evidence.file_identity(blob))))
+
+
+def load_live_collected(path, expected_files):
+    """A completion-token owner must bind all bytes before using this fast reader.
+
+    This reader supplies no verification or admission capability. The general
+    legacy/diagnostic loader intentionally does not accept this private format.
+    """
+    path = Path(path)
+    envelope_bytes = path.read_bytes()
+    _require(evidence.file_identity(path) == expected_files['neural-rollout.json'], 'Transfer seal changed')
+    envelope = _record(evidence.strict_json(envelope_bytes), ('schema', 'manifest', 'transfer'))
+    _require(envelope['schema'] == LIVE_SCHEMA, 'Unknown owned training transfer')
+    reference = _record(envelope['transfer'], ('path', 'sha256', 'bytes'))
+    _require(reference['path'] == LIVE_FILE
+             and {k:v for k,v in reference.items() if k != 'path'} == expected_files[LIVE_FILE],
+             'Owned transfer differs from its actual child completion')
+    payload = evidence.inside(path.parent, LIVE_FILE).read_bytes()
+    _require(len(payload) == reference['bytes'] and hashlib.sha256(payload).hexdigest() == reference['sha256'],
+             'Owned binary transfer changed')
+    stream = io.BytesIO(payload)
+    collected = _OwnedTransferReader(stream).load()
+    _require(stream.read(1) == b'' and type(collected) is CollectedEpisode,
+             'Expected one complete owned rollout transfer')
+    manifest = evidence.strict_json((path.parent / 'manifest.json').read_bytes())
+    _require(evidence.file_identity(path.parent / 'manifest.json') == expected_files['manifest.json']
+             and manifest == envelope['manifest'] == json.loads(collected.manifest_json),
+             'Owned transfer manifest changed')
+    return collected
 
 
 def _history(folder, reference):
@@ -109,6 +180,8 @@ def load_collected(path):
     """Strictly reload every record; no file cache or persisted verification trust."""
     path = Path(path)
     raw = evidence.strict_json(path.read_bytes())
+    if raw.get("schema") == LIVE_SCHEMA:
+        raise ValueError("Owned training transfer requires its fresh child completion binding")
     if raw.get("schema") != SCHEMA:
         collected = CollectedEpisode.from_dict(raw)
         _require(collected.to_dict() == raw, "Legacy rollout does not roundtrip exactly")

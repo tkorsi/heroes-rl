@@ -359,7 +359,7 @@ class HeadlessSelfPlayEnv:
         # The server's input log, state digests and the players' capture digests
         # (engine/replay.jsonl, engine/observations-p<N>.jsonl) that replay.py
         # verifies. They are internal evidence and never a policy input.
-        if replay and not ledger:
+        if replay and not ledger and not getattr(self, "capture_only", False):
             raise ValueError("Replay recording needs the bridge ledger to verify the players' observations")
         self.replay = replay
         self._identity_cache = None

@@ -724,6 +724,15 @@ def _record_key(value):
             append(_TUPLE); append(len(item)); extend(item)
         elif kind is bool:
             append(_TRUE if item else _FALSE)
+        elif (kind is c.Tile and type(item.position) is tuple and len(item.position) == 3
+              and all(type(v) is int for v in item.position)
+              and type(item.terrain) is int and type(item.road) is int
+              and type(item.blocked) is bool and type(item.visitable) is bool):
+            # The same tokens as the generic LIFO traversal, without pushing
+            # and popping each cell field separately for every observation.
+            out.extend((kind, _TRUE if item.visitable else _FALSE,
+                    _TRUE if item.blocked else _FALSE, item.road, item.terrain,
+                    _TUPLE, 3, item.position[2], item.position[1], item.position[0]))
         else:
             getter = _record_fields(kind)
             if getter is None:

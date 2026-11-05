@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 import hashlib
 import json
 import math
+import marshal
 from pathlib import Path
 
 import torch
@@ -68,8 +69,18 @@ def _wire_text(raw):
         return None
 
 
-def _json_native(value):
+def _json_native(value, wire=None):
     """True when every node has exactly a JSON type: no subclasses, tuples or floats."""
+    if wire is not None:
+        try:
+            # Equal marshal streams preserve exact container/scalar types. A
+            # freshly decoded canonical JSON graph has only native JSON types.
+            # Float/nonfinite tokens become strings, so they cannot match a
+            # forbidden float. Alias/order differences fall back to the walk.
+            if marshal.dumps(value) == marshal.dumps(json.loads(wire, parse_float=str, parse_constant=str)):
+                return True
+        except (TypeError, ValueError, RecursionError):
+            pass
     stack = [value]
     while stack:
         item = stack.pop()
@@ -99,6 +110,27 @@ def _repeats(raw, known, verbatim):
     if type(seq) is not int or seq not in verbatim:
         return False
     return _wire_text(raw) == c.canonical_frame(known[seq]) and _json_native(raw)
+
+
+def _delivered(records, typed):
+    """The frames to consume for these delivered records.
+
+    When the environment also hands over its own validated frames, and each
+    delivered record has exact JSON types and exactly the canonical text of its
+    frame, the session consumes those frames instead of decoding a fresh copy of
+    each from its record. JSON text is injective over exact JSON types, so such
+    a record is the canonical record of that frame, which the strict decoder
+    maps back to an equal frame (canonical encoding round-trips); the model
+    input is unchanged. Anything else, valid or not, takes the original path.
+    """
+    if typed is None or type(typed) is not tuple or type(records) is not list or len(typed) != len(records):
+        return records
+    for record, frame in zip(records, typed):
+        wire = _wire_text(record)
+        if type(frame) is not c.Frame or wire != c.canonical_frame(frame) or not _json_native(record, wire):
+            return records
+    return typed
+
 
 
 def _support_dict(support):
@@ -509,6 +541,8 @@ class ContextualSession:
             if type(frame.seq) is not int or frame.seq < 0:
                 raise ValueError("Invalid history sequence")
             if frame.seq < len(known):
+                if known[frame.seq] is frame:
+                    continue
                 if (known[frame.seq] != frame
                         or c.canonical_frame(known[frame.seq]) != c.canonical_frame(frame)):
                     raise ValueError("Previously delivered history prefix changed")
@@ -654,7 +688,10 @@ class ContextualCollector:
 
     def __init__(self, models, checkpoints, *, learner_player, opponent_pool, interface=c.TOWN_ENVIRONMENT,
                  purpose="diagnostic", origin="native", policy_seeds=(0, 1), trajectory_schema=c.TERMINAL_TRAJECTORY_SCHEMA,
-                 guard_version=_DEFAULT_GUARD):
+                 guard_version=_DEFAULT_GUARD, capture_only=False):
+        if type(capture_only) is not bool or capture_only and (purpose != "training" or origin != "native"):
+            raise ValueError("Capture-only finalization requires explicit native training")
+        self.capture_only = capture_only
         if type(models) is not tuple or len(models) != 2 or type(checkpoints) is not tuple or len(checkpoints) != 2:
             raise ValueError("Collection requires fixed models/checkpoints for both seats")
         c._integer(learner_player, high=1); _text(opponent_pool, "opponent pool")
@@ -696,9 +733,9 @@ class ContextualCollector:
                 or request.reward != 0 or not request.frames):
             raise ValueError("Expected a current own contextual request before the horizon")
         session = self.sessions[request.player]
-        session.consume(request.frames)
-        last = c.decode_frame(request.frames[-1])
-        if last.kind != "decision" or c.decode_frame(request.record) != last:
+        last = session.consume(_delivered(request.frames, getattr(request, "typed_frames", None)))
+        if last.kind != "decision" or (request.record is not request.frames[-1]
+                                      and c.decode_frame(request.record) != last):
             raise ValueError("Request must end at its exact decision frame")
         return session, last
 
@@ -733,10 +770,14 @@ class ContextualCollector:
             persisted = json.loads(path.read_text())
             if persisted != end.manifest: raise ValueError("Persisted native manifest changed")
             from validation.probes.audit_contextual_histories import audit
-            paths = tuple(path.parent / persisted["players"][color][self.profile.history_key]["path"] for color in COLORS)
-            audit_report = audit(*paths, path)
-            if not audit_report["consistent"] or not audit_report["manifest_bound"]:
-                raise ValueError("Independent native history audit failed")
+            if self.capture_only:
+                audit_report = {"source": "native", "native_evidence_verified": False,
+                                "independent_history_audit": "not_performed"}
+            else:
+                paths = tuple(path.parent / persisted["players"][color][self.profile.history_key]["path"] for color in COLORS)
+                audit_report = audit(*paths, path)
+                if not audit_report["consistent"] or not audit_report["manifest_bound"]:
+                    raise ValueError("Independent native history audit failed")
         rollouts = []
         for player, session in enumerate(self.sessions):
             samples = []
