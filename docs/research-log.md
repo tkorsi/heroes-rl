@@ -1805,7 +1805,8 @@ execution of the new ten-game training mode remains for the user's manual launch
 The user explicitly authorized deleting bulky recordings and failed-run data
 while preserving everything required to resume checkpoint 1,753. The stopped
 first ten-game training attempt had zero admitted games and zero updates. Its
-consumed reservation remains intact, including all ten attempted seeds. The
+consumed reservation remains intact for all 100 planned games, including the
+ten attempted games and 90 unstarted games. The
 latest run is `selfplay-batch10-training/run-20261104T220221Z-eaf201f5`.
 
 Under the existing exclusive activity lease, cleanup removed 492 raw JSONL
@@ -1834,3 +1835,11 @@ inventory, before/after counters and restore result are private under
 transcript is retained there as `resume-preflight.log`. The next launch uses
 `--resume --run-dir` for the existing stopped run, retaining its consumed seeds.
 Preparation performs no native game or official optimizer update.
+
+The actual CLI resume preflight passed after cleanup and journal commit. Its
+fresh-seed preview starts at engine seed 1,970,000,100 and policy seed
+1,972,000,200. A local post-check assertion initially expected only ten consumed
+games and failed. Inspecting the immutable launch and durable ledger confirmed
+that the user had reserved ten batches (100 games) before that attempt. All 100
+remain consumed under the existing reserve-including-unstarted rule. The
+corrected check against the actual ledger passed. No ledger was altered.
