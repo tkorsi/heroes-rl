@@ -1798,3 +1798,39 @@ A read-only check of an existing verified native manifest confirmed that its
 army-information/equipment fields match the new admission checks. This is reuse
 of existing native evidence, not a newly executed training batch. Full native
 execution of the new ten-game training mode remains for the user's manual launch.
+
+
+## 2026-11-05 — Authorized capture cleanup and checkpoint 1,753 continuation
+
+The user explicitly authorized deleting bulky recordings and failed-run data
+while preserving everything required to resume checkpoint 1,753. The stopped
+first ten-game training attempt had zero admitted games and zero updates. Its
+consumed reservation remains intact, including all ten attempted seeds. The
+latest run is `selfplay-batch10-training/run-20261104T220221Z-eaf201f5`.
+
+Under the existing exclusive activity lease, cleanup removed 492 raw JSONL
+capture files from that stopped training attempt, the interrupted fixed-count
+`selfplay-one-game-2x/win-count-1acc104c29f3` experiment and the failed
+`selfplay-ten` trials. Removed file types were native contextual replay, bridge,
+paired history and ordinary replay streams. Compact manifests, reports, seed
+ledgers, plans, checkpoint ancestry, process-deadline evidence, model/resume
+pairs, runtimes and Python dependencies were retained. Historical captures in
+these groups can no longer be replayed from their deleted raw streams. Earlier
+verification results remain historical results, not newly reproducible claims.
+
+The 805 protected input bindings were checked unchanged after deletion. An
+independent copy of the selected policy/resume pair and its descriptor was
+preserved under private `diagnostics/cleanup-20261105/checkpoint1753`. Full
+post-cleanup restoration passed with progress updates=1753, rollouts=7012,
+decisions=1268962 and the original weight digest. Model, Adam, global/minibatch
+RNG, progress, sampler and pool restoration checks remain enforced.
+
+Deleted logical file size was 341,995,816,230 bytes. Observed filesystem free
+space increased from 37,863,718,912 to 379,875,463,168 bytes, recovering
+342,011,744,256 bytes (318.52 GiB). Filesystem allocation and unrelated background
+activity can make this differ slightly from summed logical sizes. The exact
+inventory, before/after counters and restore result are private under
+`Heroes-artifacts/diagnostics/cleanup-20261105/`. The manual CLI preflight
+transcript is retained there as `resume-preflight.log`. The next launch uses
+`--resume --run-dir` for the existing stopped run, retaining its consumed seeds.
+Preparation performs no native game or official optimizer update.
