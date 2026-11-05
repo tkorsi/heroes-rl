@@ -10,8 +10,10 @@ record previous experiments and their limits.
 
 ## Baseline for new experiments
 
-The current prepared experiment repeats ten capture-only training games followed
-by one validated self-play game, starting from checkpoint 1,753. Launches remain
+The current prepared experiment repeats fifty capture-only training games with ten
+rolling actor processes, then one PPO update and one validated self-play game.
+The lineage began at checkpoint 1,753; continuation restores its latest complete
+published checkpoint. Launches remain
 manual. Start other experiments with an explicit hypothesis, configuration, seed allocation, output directory and
 acceptance criteria. Choose explicitly between fresh weights and a verified
 checkpoint. Keep diagnostic games separate from training admission.

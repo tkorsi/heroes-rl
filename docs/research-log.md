@@ -2582,3 +2582,46 @@ and semantic pre-finalization history hashes; report any divergence and do not
 claim matched-workload acceleration if it occurs. Short prefixes and diagnostic
 full recording differ from full lean training episodes, so do not extrapolate
 this result to end-to-end fifty-game/PPO throughput. Raw evidence stays private.
+
+Native benchmark completed at source aee4fe6 using the accepted
+local-v8-no-artifacts-v1-repair2 engine and existing remove-telemetry-v1-attempt1
+native learner. Twelve paired bounded frozen-1,756 games per arm produced
+12/12 identical decision/probability/value traces and 12/12 identical semantic
+pre-finalization histories. All 24 captures passed exact two-policy reconstruction
+and independent native replay. Observed peak actors: one and ten. Capture wall
+time was 188.00s versus 28.77s (6.54x); capture plus serial native preparation
+was 190.03s versus 65.79s (2.89x). Native preparation itself was 51.14s versus
+51.20s and remains serial. Both arms overlap capture/preparation; verification
+follows both timed arms. No optimizer update, official seed reservation or
+training admission occurred, owned groups closed, and protected inputs matched.
+Private paired seeds, plans, captures, timings and shutdown evidence are under
+diagnostics/parallel50-20261105/native-benchmark-attempt4. This is a short
+full-recording diagnostic comparison, not a measurement of fifty complete lean
+training games or end-to-end PPO throughput.
+
+Failed benchmark harness attempts remain private: the first compared two
+different source-identity envelope shapes and rejected before native capture;
+the second omitted policy_support and rejected before native capture. The third
+captured one prefix but rejected native preparation because the private parent's
+ATen thread count was not one; the next in-flight diagnostic was stopped and
+cleanup/protected-input checks passed. The harness now configures the parent
+through the existing configure_native function and uses bounded individual
+stage limits rather than nesting the signal-based wall_limit context. No runtime
+or learning setting was changed to accommodate these harness errors.
+
+The final existing regression runs passed 77 training/checkpoint/controller/UI,
+28 Python PPO numerical/acceleration and 16 actual compiled-native numerical
+tests (121 total). Private dispatcher failure controls also rejected nonzero
+actor exit, launch failure and deadline expiry, joined dispatch and closed owned
+children without admission. Tests/probes and raw evidence remain outside Git.
+
+A private continuation preflight restored the actual complete checkpoint 1,756
+(model/Adam/RNG/progress/sampler/pool), copied the existing closed lineage/ledger,
+reserved 51 slots only in that private copy and validated the actual fifty-game
+training and one-game diagnostic plans. All fifty fresh source/model/seed
+capabilities bound in 5.59s without changing parent Torch RNG. Next official
+unconsumed offset remains 85 (engine 1980000085, policy 1982000170); official
+pointers/reservations and protected inputs were unchanged. This checks planning,
+not a fifty-game production completion or update. Canonical prepare_vcmi.py --check
+passed again. Main-checkout synchronization and its read-only launcher preflight
+remain the final handoff gates.
