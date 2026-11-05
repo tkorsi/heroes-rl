@@ -2423,3 +2423,15 @@ its shutdown reports zero errors, protected inputs unchanged and owned cleanup
 complete, with no owned training/game processes remaining. Main can now be
 fast-forwarded safely under the existing activity lease, including the prepared
 forty-game panel and PPO ETA, then checked against the real latest state.
+
+Main was fast-forwarded from c40ff89 to b4147b2 while holding the existing
+activity lease, after the latest shutdown and clean checkout were verified.
+The real main-checkout continuation preflight then passed: complete checkpoint
+1,755 restored exactly (model/Adam/RNG/progress/sampler/pool), forty training
+games, one held-out diagnostic, one expected PPO update, max_days=365, and zero
+gameplay/optimizer updates performed by the check. All 44 consumed seed slots
+remain consumed; next fresh block is 41 engine seeds from 1,980,000,044 and 82
+policy seeds from 1,982,000,088, not reserved by preflight. Transcript:
+diagnostics/ppo-progress-20261105/main-preflight.log. The final console runtime
+was 00:00:03. The panel and PPO ETA are now in ~/Projects/Heroes for the next
+manual launch. No official training was started or interrupted.
