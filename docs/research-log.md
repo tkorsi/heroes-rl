@@ -2228,3 +2228,12 @@ footer showed PPO UPDATING. The preview called only screen-close, never progress
 finish/cleanup, and did not write any active-run file. Private plain/ANSI captures
 are actual-read-only-preview.* in the same diagnostic directory. This validates
 display compatibility only; it does not claim a completed optimizer update.
+
+Clean committed source identity passed at 52d5c1f in the isolated worktree.
+At final handoff the main run was still active in its PPO-updating phase, with
+all ten games captured and zero published updates so far. Its shutdown record
+was absent. Therefore main integration and a real continuation preflight are
+deferred until owned workers exit; neither active source nor active-run files
+were modified. After current shutdown, fast-forward main from
+codex/batch-grid-ui to enable this UI for the next manual launch. The same
+existing launcher will select it automatically for an interactive terminal.
