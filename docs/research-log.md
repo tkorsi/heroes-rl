@@ -1984,3 +1984,9 @@ cleanup. The failed capture and all eleven reserved slots remain consumed and
 are retained. The next manual launch must use --cycle --resume with this run
 path, which allocates fresh seeds. No game or official update is launched during
 repair. Real progress controls stay local and outside the published diff.
+
+The actual main-checkout resume preflight passed at `71f4b6a`, restoring the full
+1,753 state and retaining all eleven consumed slots. The next fresh engine seed
+is 1,980,000,011. Its private transcript is
+`diagnostics/ten-then-check-20261105/progress-fix-preflight-71f4b6a.log` under the
+artifacts root. No game or optimizer update occurred during this check.
