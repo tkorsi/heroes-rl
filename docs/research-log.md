@@ -2435,3 +2435,81 @@ policy seeds from 1,982,000,088, not reserved by preflight. Transcript:
 diagnostics/ppo-progress-20261105/main-preflight.log. The final console runtime
 was 00:00:03. The panel and PPO ETA are now in ~/Projects/Heroes for the next
 manual launch. No official training was started or interrupted.
+
+
+## 2026-11-05 — Completed forty-game cycle through checkpoint 1,756
+
+The user requested analysis after completion. Fixed run identity is
+run-20261105T153955Z-e97254e5, launched from b584fcf with the no-artifacts runtime
+and forty-game/365-day capture-only contract. Report and shutdown agree on
+completed/returncode 0, protected inputs unchanged and owned cleanup complete;
+no active game/training workers were observed. No game, replay or official
+optimizer update was launched during this analysis.
+
+The forty training games produced engine-reported Red wins 2, Blue wins 11 and
+27 day cutoffs: 13/40 decisive (32.5%). They remain explicitly unverified as
+agreed; zero capture/preparation failures occurred. All forty were sampled using
+frozen checkpoint 1,755 before the single update, so their within-batch outcomes
+cannot show improvement from that update. Alternating learner seats supplied
+five winning, eight losing and 27 cutoff trajectories, 71,758 admitted decisions
+from 132,743 total sampled choices. PPO performed 2,251 Adam minibatches, changed
+weights, and published complete checkpoint 1,756. Recorded approximate KL is
+0.00316454, clip fraction 0.0275091 and value loss 0.0845457; these numerical
+metrics alone do not establish playing strength.
+
+Hash-bound binary captures of all thirteen decisive training games were read
+with the restricted record reader for analysis only. They never entered any
+fresh-capture/admission registry or optimizer. Nine losing-player histories
+explicitly include the seven-days-without-a-town terminal notice; the other four
+lose their last town shortly before their terminal without that notice. This is
+capture analysis, not retrospective native verification or proof of tactical
+skill. A Blue/Red seat imbalance exists (11 vs 2) despite a shared frozen policy;
+map/start-state/seed/behavior effects are not separated by this sample.
+
+The separate fully validated 1,756-vs-1,756 diagnostic reached the 365-day limit
+without a winner, with 2,096 Red and 9,521 Blue choices. Its two exact policy
+reconstructions had maximum absolute difference zero, and full native replay
+passed with no divergence. Both towns remained with their starting owners.
+Red revealed 363/400 tiles, Blue 400/400. Red's single hero died to neutrals on
+day 63; Red hired no replacement and kept recruiting into its town. Blue hired
+22 heroes (22 successful hired results), lost 20 heroes/battles and won two
+battles. Matching same-day visit evidence classifies its twenty battle losses
+as thirteen neutral encounters, six attacks on Red's town and one attack on
+Red's hero. It reached seven simultaneous heroes. These observations describe
+the one diagnostic, not all forty training games.
+
+Window interactions still dominate: Red used 872/2,096 choices (41.60%) and Blue
+7,030/9,521 (73.84%) on open_hero/open_capability/close_capability/close alone.
+Blue's most common four-command pattern was open_capability, close_capability,
+open_capability, close_capability (885 overlapping occurrences). One-command
+cooldown does not eliminate alternating multi-command loops. Productive actions
+also occurred: Red recruited 32 times and constructed twice; Blue recruited 19
+times and constructed three times. Red/Blue movement no_route_known counts were
+5/149 and 66/1,761 respectively (71/1,910 combined, 3.72%). Reaching known tiles
+and exposing the map therefore coexist with window loops and poor battle choice.
+No strategic filter, reward, action limit or game rule was changed by analysis.
+
+Coordinator elapsed time: 5,430.422 seconds, shown 01:30:30. File timestamps
+estimate collection/preparation 00:40:54, PPO/checkpoint publication 00:38:08 and
+the diagnostic including checks 00:11:23. Raw training manifest wall times sum
+to 00:32:36; the 27 full day-cutoff games averaged about 65 seconds through
+manifest finalization. The diagnostic itself took 258.251 seconds (00:04:18),
+then 423.688 seconds (00:07:03) from manifest to validated receipt. The native
+replay report measured 58.1335 seconds within that verification work. Phase
+estimates include I/O/preparation and are not optimizer-kernel profiling.
+
+Private compact evidence and bounded analysis script are under
+ diagnostics/analysis-1756-20261105/ in the artifacts root. Player histories were
+streamed; only decisive training captures were decoded, with a 180-second bound.
+No raw captures, analysis scripts or new tests are staged for publication.
+The actual continuation preflight passed, restoring full 1,756
+model/Adam/RNG/progress/sampler/pool exactly; current policy/resume hashes also
+match publication bindings. All 85 reserved slots remain consumed; next fresh
+engine base is 1,980,000,085 and policy base 1,982,000,170 (41/82 seeds), not
+reserved by the check. Transcript: preflight.log in that private folder.
+
+The cycle successfully delivered real positive/negative terminal training
+examples and a preserved update. A win rate increase from earlier 0/10 and 1/10
+to 13/40 is descriptive across different seeds, policies and sample sizes; it is
+not a controlled estimate of strength. The single post-update diagnostic did
+not win. No frozen-opponent comparative evaluation or new campaign was started.
