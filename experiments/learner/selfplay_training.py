@@ -123,7 +123,8 @@ def _plan(path, digest):
     value = read(path)
     ten_game = value.get("schema") in (TEN_SCHEMA, CYCLE_SCHEMA)
     evaluation = value.get("schema") == CYCLE_SCHEMA and value.get("mode") == "diagnostic"
-    game_count = 1 if evaluation else TEN_GAMEPLAY["training_games"] if ten_game else 4
+    batch_count = CYCLE_GAMEPLAY["training_games"] if value.get("schema") == CYCLE_SCHEMA else TEN_GAMEPLAY["training_games"]
+    game_count = 1 if evaluation else batch_count if ten_game else 4
     guard = interaction_guard.HERO_RELATIVE_VERSION if ten_game else interaction_guard.REVEALED_VERSION
     require(value.get("schema") in (SCHEMA, TEN_SCHEMA, CYCLE_SCHEMA) and value.get("mode") in ("training", "diagnostic")
             and value.get("policy_support") == guard
@@ -138,7 +139,7 @@ def _plan(path, digest):
         require(binding(path)["sha256"] == digest, "Self-play implementation changed: " + name)
     checked(value["checkpoint"]); checked(value["opponent_checkpoint"]); checked(value["replay_binary"])
     cfg, rows = value["configuration"], value["schedule"]
-    require(type(rows) is list and len(rows) == game_count and cfg["training_games"] == (10 if evaluation else game_count)
+    require(type(rows) is list and len(rows) == game_count and cfg["training_games"] == (batch_count if evaluation else game_count)
             and cfg["allow_verified_training_prefix"] is False,
             "Self-play requires every planned game; partial batches cannot train")
     require([row.get("episode") for row in rows] == list(range(1, game_count + 1))
@@ -490,10 +491,10 @@ def prepare_live_capture(bound, learner_model, opponent_model, *, remaining):
 def live_native_update(model, optimizer, receipts, *, plan_sha256, config, generator,
                        remaining, max_optimizer_steps):
     from .builtin_gameplay import transactional_update
-    require(type(receipts) is tuple and len(receipts) == 10
+    require(type(receipts) is tuple and len(receipts) == CYCLE_GAMEPLAY["training_games"]
             and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
-                    for r in receipts), 'Live training requires ten fresh capture capabilities')
-    require([r.binding.schedule_index for r in receipts] == list(range(10)), 'Live receipt order changed')
+                    for r in receipts), 'Live training requires forty fresh capture capabilities')
+    require([r.binding.schedule_index for r in receipts] == list(range(CYCLE_GAMEPLAY['training_games'])), 'Live receipt order changed')
     for receipt in receipts:
         receipt.binding.recheck()
         require(receipt.binding.plan['schema'] == CYCLE_SCHEMA

@@ -308,8 +308,8 @@ class ProgressDisplay:
             self.poll(final=True)
 
 
-def batch_terminal_lines(slots, *, width=80, color=False):
-    """Five columns, two rows; each card keeps result separate from preparation."""
+def batch_terminal_lines(slots, *, width=80, color=False, compact=False):
+    """Five columns; compact rows keep forty games visible in a normal terminal."""
     cell = (width - 4) // 5
     inner = cell - 2
     cards = []
@@ -341,6 +341,13 @@ def batch_terminal_lines(slots, *, width=80, color=False):
                   'READY FOR PPO' if state == 'captured' else 'CHECKS PASSED' if state == 'passed' else
                   '#' * used + '-' * (inner - used) if active else '')
         def fit(text): return text[:inner].ljust(inner)
+        if compact:
+            def short(count): return str(count) if count < 1000 else f"{count // 1000}k"
+            marker = '!' if failed else '>' if active else ' '
+            lines = (f"{slot['episode']:02d}{marker} {label}",
+                     f"{max(days) if days else '---'} {short(counts[0])}/{short(counts[1])}")
+            cards.append([color_text('|' + fit(text) + '|', code, color) for text in lines])
+            continue
         title = f"{'>' if active else ' '} Game {slot['episode']:02d} "
         rows = [color_text('+' + title[:inner].ljust(inner, '-') + '+', code, color)]
         for text, tint in ((label, code), (day, '2'),
@@ -349,7 +356,7 @@ def batch_terminal_lines(slots, *, width=80, color=False):
         rows.append(color_text('+' + '-' * inner + '+', code, color))
         cards.append(rows)
     return [' '.join(cards[col][row] for col in range(start, start + 5))
-            for start in (0, 5) for row in range(7)]
+            for start in range(0, len(cards), 5) for row in range(2 if compact else 7)]
 
 
 class BatchProgressDisplay(ProgressDisplay):
@@ -358,6 +365,8 @@ class BatchProgressDisplay(ProgressDisplay):
     def __init__(self, directory, *, launch, stream=None, clock=time.monotonic):
         super().__init__(directory, stream=stream, clock=clock)
         self.launch, self.report = launch, {}
+        self.batch_games = launch.get("configuration", {}).get("training_games", 10)
+        self.slot_count = 40 if self.batch_games * launch.get("batches", 1) == 40 else 10
         self.started, self.opened = self.clock(), False
         self.saved, self.phase_name, self.phase_start = {}, None, 0
         self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
@@ -403,19 +412,27 @@ class BatchProgressDisplay(ProgressDisplay):
                     episode = attempt['episode']
                     if attempt['status'] != 'not_started' and episode in current:
                         self.saved[(batch.get('name'), episode)] = current[episode]
-            attempts = {a['episode']: a for a in batch.get('attempts', [])}
+            shown_batches = self.report.get('batches', []) if self.slot_count == 40 else [batch]
+            attempts, values = {}, {}
+            for index, shown in enumerate(shown_batches):
+                for attempt in shown.get('attempts', []):
+                    local = attempt['episode']
+                    number = index * self.batch_games + local if self.slot_count == 40 else local
+                    attempts[number] = attempt
+                    values[number] = self.saved.get((shown.get('name'), local), {})
             cfg = self.launch.get('configuration', {})
             defaults = dict(max_days=cfg.get('max_days'), ordinary=cfg.get('ordinary_choice_limit', 1),
                             reserved=cfg.get('reserved_dialog_choices', 0))
             slots = [dict(episode=n, attempt=attempts.get(n, {}),
-                          value={**defaults, **self.saved.get((batch.get('name'), n), {})}) for n in range(1, 11)]
+                          value={**defaults, **values.get(n, {})}) for n in range(1, self.slot_count + 1)]
             elapsed = int(self.clock() - self.started)
             checkpoint = self.report.get('latest_checkpoint', self.launch.get('parent_pair', {}).get('progress', {}).get('updates', '?'))
             completed = sum(a.get('status') in ('captured', 'passed') for a in attempts.values())
-            rows = [color_text('HEROES  /  TEN-GAME TRAINING'[:width], '1', self.color),
-                    f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/10 | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
-            if width >= 74 and height >= 21:
-                rows += batch_terminal_lines(slots, width=width, color=self.color)
+            rows = [color_text(f'HEROES  /  {self.slot_count}-GAME TRAINING'[:width], '1', self.color),
+                    f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/{self.slot_count} | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
+            compact = height < self.slot_count // 5 * 7 + 6
+            if width >= 74 and height >= self.slot_count // 5 * (2 if compact else 7) + 6:
+                rows += batch_terminal_lines(slots, width=width, color=self.color, compact=compact)
             else:
                 rows += ['Widen to 80 columns for the 5 x 2 grid.']
                 for slot in slots:
@@ -423,10 +440,11 @@ class BatchProgressDisplay(ProgressDisplay):
                     days = [d for d in v.get('days', ()) if d is not None]
                     rows.append(f"Game {slot['episode']:02d} | {a.get('status', 'waiting')} | Day {max(days) if days else '?'} | R/B "
                                 + '/'.join(str(n) for n in v.get('choices', a.get('sampled_by_player', [0, 0]))))
-            counts = batch.get('counts', {})
+            counts = {key: sum(b.get('counts', {}).get(key, 0) for b in shown_batches)
+                      for key in ('engine_red_wins', 'engine_blue_wins', 'red_wins', 'blue_wins', 'game_cutoffs', 'failures')}
             red = counts.get('engine_red_wins', counts.get('red_wins', 0))
             blue = counts.get('engine_blue_wins', counts.get('blue_wins', 0))
-            rows.append(f"Engine results: Red {red} | Blue {blue} | Cutoffs {counts.get('game_cutoffs', 0)} | Errors {counts.get('failures', 0)}")
+            rows.append(f"Engine results (unverified): Red {red} | Blue {blue} | Cutoffs {counts.get('game_cutoffs', 0)} | Errors {counts.get('failures', 0)}")
             if evaluation:
                 v = current.get(1, {})
                 days = [d for d in v.get('days', ()) if d is not None]
@@ -435,7 +453,12 @@ class BatchProgressDisplay(ProgressDisplay):
             else:
                 status = 'UPDATING' if batch.get('status') == 'updating' else 'SAVED' if batch.get('status') == 'checkpoint_verified' else 'waiting for 10 ready games'
                 rows.append(f"PPO: {status} | Updates {self.report.get('optimizer_updates', 0)} | Validation: after saved update")
-            rows.append('> active | R/B = choices used | Bars = action budget, not time | Wins above are unverified')
+            if compact:
+                active = next((slot for slot in slots if slot['attempt'].get('status') == 'running'), None)
+                exact = active['value'].get('choices', [0, 0]) if active else [0, 0]
+                rows.append(f"Active {active['episode']:02d}: Red {exact[0]:,} | Blue {exact[1]:,}" if active else 'No active game')
+            rows.append('> active | ! error | Cards: day Red/Blue choices; k rounded down' if compact else
+                        '> active | R/B = choices used | Bars = action budget, not time | Wins above are unverified')
             if self.report.get('error'):
                 rows[-1] = 'STOPPED: ' + self.report['error']
             # Clip before styling is applied to cards; other rows have no ANSI

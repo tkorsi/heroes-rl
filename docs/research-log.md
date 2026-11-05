@@ -2304,3 +2304,44 @@ and zero optimizer updates. All 33 consumed slots remain consumed; next fresh
 engine seed is 1,980,000,033 and policy base 1,982,000,066, not reserved by this
 check. The actual console ended `Total running time: 00:00:02`. Private transcript:
 diagnostics/completed-cycle-20261105/preflight.log. No training was restarted.
+
+## 2026-11-05 — Prepare forty-game 5 by 8 terminal view
+
+The user requested forty training games first and a 5-column/8-row grid.
+PPO cadence is explicitly pending clarification: preserve ten-game updates with
+one diagnostic after all forty, or collect forty before one update/diagnostic.
+Do not change training semantics before that answer. Current main is running
+run-20261105T142055Z-4ffa5e98, so changes are isolated on codex/forty-game-grid in
+Heroes-next-40 from c40ff89. No active source or active-run artifacts may change.
+Independent UI work can support forty slots now. Acceptance: all forty visible
+at a normal 80x24 terminal using compact cards, exact active counts separately,
+full cards in tall windows, no scrolling, unchanged hh:mm:ss, and existing
+regressions plus private layout controls. No training is launched automatically.
+
+
+The user explicitly selected forty captures before one PPO update, followed by
+one diagnostic game. The capture-only --cycle contract now requires forty fresh
+captures per update; legacy --batch-ten remains ten. Existing complete ten-game
+cycle checkpoints retain their exact metadata and restore support. Publication
+ancestry audits now sum each bound plan's declared 10/40 receipts and matching
+checkpoint rollout delta instead of multiplying all update counts by ten.
+The existing seed namespace remains continuous: historical eleven-slot blocks
+remain consumed and new blocks explicitly declare width 41. Publication,
+recovery/report counts and sampler consumed-game offsets use actual admitted
+games. No partial batch can train and no consumed capture may update twice.
+The opponent stays frozen at batch start for all forty games; both diagnostic
+seats use the saved updated policy. Architecture, PPO/Adam hyperparameters,
+365-day cap, action support, rewards and memory/disk guards stay unchanged.
+Collecting forty before one update is the user's explicit batch-size change.
+
+Local controls passed forty-only fresh-receipt gating (39 rejected), order
+checking, exactly one mocked update with forty prepared native inputs, repeated
+update rejection, restoring original ten-game metadata and new forty-game
+metadata, and rejecting unknown batch sizes. A private copy of the actual seed
+ledger preserved every historical reservation and accepted a fresh 41-slot block
+without official writes. Forty-slot 5x8 rendering passed at 80x24 and 140x65;
+compact counters are rounded down to whole thousands, exact active counts stay
+visible. All 77 existing progress/training/checkpoint/controller tests passed.
+No native forty-game batch or official optimizer update has been run; forty-game
+peak memory/runtime remains unmeasured and guarded. Validation/probe code stays
+private under diagnostics/forty-grid-20261105, outside the published diff.

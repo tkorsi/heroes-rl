@@ -190,6 +190,17 @@ DURATION_DISPLAY_SOURCES = {
     'tools/run_selfplay_training.py': {'before': 'e346222977911579e233f9a7dc578332433d1c6b91ef21aa44bfcca765abe1cc',
         'after': '2023caa08329f69c39a63e6dfc30934461acefac451e44d62ca82b40bd4063e3'},
 }
+# User-selected forty-game update cadence and 5x8 dashboard, preserving old parents.
+FORTY_BATCH_SOURCES = {
+    'experiments/learner/checkpoints.py': {'before': '72807338ac95be22496cb293724ef964adff5173aa617c71d3b89cb020fd090f',
+        'after': '5e1e74e7faf7d24c3e451b37e360e8ea7971865761ca01978f7a71dbda116812'},
+    'experiments/learner/selfplay_training.py': {'before': '8064f3f606060d5c683e0103099ddb204a8f45b7733c485101dd5c65e3c865d1',
+        'after': '1c7f01d7b9b23376efccc60fa6ed69867f7b1218dfed6cb53dc6703c4c41b293'},
+    'experiments/learner/game_progress.py': {'before': '976853e6bac5414d357f832d86b1e6ec76adeb46b4f7d84d67f477453862ba26',
+        'after': 'f426c139a2d4b743169e986b3b84eb8c7cf1977edd8a266e02c58252822d0c8e'},
+    'tools/run_selfplay_training.py': {'before': '2023caa08329f69c39a63e6dfc30934461acefac451e44d62ca82b40bd4063e3',
+        'after': '8b49072641c838918e2eb3bbb3564c73096e2917dfc85be2229e74b05cdeee44'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -242,6 +253,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in DURATION_DISPLAY_SOURCES.items()),
             'Duration-display source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in DURATION_DISPLAY_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in FORTY_BATCH_SOURCES.items()),
+            'Forty-game source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in FORTY_BATCH_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -262,7 +276,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_capture_only_main_loop', LOOP_SPEED_SOURCES),
                    ('reviewed_capture_only_365_day_limit', CYCLE_DAY_LIMIT_SOURCES),
                    ('reviewed_batch_grid_display', BATCH_GRID_SOURCES),
-                   ('reviewed_duration_display', DURATION_DISPLAY_SOURCES))
+                   ('reviewed_duration_display', DURATION_DISPLAY_SOURCES),
+                   ('reviewed_forty_game_batch', FORTY_BATCH_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -300,6 +315,7 @@ def source_identity():
         cycle_day_limit_sources=CYCLE_DAY_LIMIT_SOURCES,
         batch_grid_sources=BATCH_GRID_SOURCES,
         duration_display_sources=DURATION_DISPLAY_SOURCES,
+        forty_batch_sources=FORTY_BATCH_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

@@ -53,32 +53,37 @@ frozen setup and continues after verified victories. The dashboard and final
 report show Red and Blue wins, with separate counts for cutoffs, failures and
 interruptions. The time budget can end the run before all attempts settle.
 
-## Ten training games followed by one validated game
+## Forty training games followed by one validated game
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight. Launch manually with
-`./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has ten
+`./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has forty
 training games, one PPO update and one diagnostic game. Both diagnostic seats
-use the newly saved weights. Use `--cycles 10` for 100 training games and ten
+use the newly saved weights. Use `--cycles 1` for 40 training games and one
 diagnostic games under the shared ten-hour deadline. Both training and diagnostic
 games stop at 365 game days; the existing per-player choice limits remain
 158,720 ordinary plus 5,120 reserved choices.
 
-In an interactive terminal, the ten-game launcher displays a stationary 5 by 2
+In an interactive terminal, the cycle launcher displays a stationary 5 by 8
 grid of game slots. The active slot is marked `>` and highlighted; cards retain
 days, Red/Blue action counts and results. PPO and diagnostic validation have
 separate status lines. The panel uses the alternate screen and restores the
 terminal/cursor on exit. Elapsed time in the panel and final runtime summary uses
 `hh:mm:ss`. Resize to at least 80 columns for the grid; smaller
-windows use a compact list. Redirected output remains plain text.
+windows use a compact list. At 80x24, two-line cards keep all forty games visible;
+compact counts use whole thousands (`k`), with exact active counts below. Tall
+windows show full cards. Redirected output remains plain text.
 
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes
-and are explicitly unverified. All ten fresh completed captures must exist
+and are explicitly unverified. All forty fresh completed captures must exist
 before one PPO update. Basic source, seed, action, boundary, terminal reward and
 checkpoint integrity checks remain active. Checkpoint metadata explicitly records
 `training_verification=not_performed`. The historical verified mode remains a
-separate contract.
+separate contract. Previously published ten-game cycle checkpoints restore with
+their original metadata; new cycles require forty games before one update.
+The existing lineage/namespace names are historical. Old eleven-slot reservations
+remain consumed; new cycles reserve forty training seeds plus one diagnostic.
 
 Collection is sequential to limit concurrent memory. Each completed game is
 compiled into a native PPO program, then its full Python history is released.
@@ -88,7 +93,7 @@ the project's record classes. Training omits duplicate bridge/history JSONL and
 the independent post-game history audit. Native terminal evidence remains active.
 Diagnostic games retain full JSONL, audit and replay. Temporary raw training
 streams are removed after compilation. The update retains
-all ten learner trajectories, the existing shuffled PPO windows and the original
+all forty learner trajectories, the existing shuffled PPO windows and the original
 PPO/Adam settings. An owned-process resident-memory guard leaves 48 GiB of the
 Mac's physical RAM as headroom. It stops the attempt safely if the budget is
 exceeded. A system-wide memory-pressure check also stops below 20% free.
@@ -106,7 +111,7 @@ A separate lineage and seed namespace keep this experiment distinct from the
 previous failed runs. Subsequent manual launches use
 `./continue-selfplay.sh --cycle --resume --run-dir PRIVATE_RUN_PATH --cycles 1 --hours 10`.
 All reserved slots remain consumed, including unstarted games. If continuation
-needs an outstanding diagnostic, one additional eleven-slot block is reserved
+needs an outstanding diagnostic, one additional forty-one-slot block is reserved
 for it and its unused slots remain consumed. Reports separately record engine
 wins, cutoffs, PPO steps, whether weight bytes changed, the saved checkpoint and
 the diagnostic validation result. No training starts during `--check`.
