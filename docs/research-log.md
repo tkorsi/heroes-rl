@@ -1955,3 +1955,32 @@ The cycle terminal output is intentionally limited to engine-reported Red/Blue
 wins, cutoffs, PPO updates, weight changes, checkpoint and diagnostic result.
 Full source and recovery evidence remains in the private JSON report. The check
 command retains its explicit JSON configuration display.
+
+
+## 2026-11-05 — Cycle handoff failed on an unregistered progress phase
+
+The manually launched cycle `run-20261105T111051Z-4911fcaa` stopped after
+1,092.05 seconds. Game 1 completed collection as an unscored game-day-limit
+cutoff, with 45,454 Red choices and 24,247 Blue choices. Immediately afterward,
+the coordinator called set_phase("preparing PPO"), which raised
+ValueError("Invalid progress phase") before preparation or PPO admission.
+The new collector also emitted "captured", another phase omitted from the
+progress schema and label map. This was an implementation defect in the new
+cycle UI integration. The earlier collector mock replaced set_phase, so it did
+not exercise the actual validator. The earlier green checks did not cover this
+normal runtime handoff and should not be read as evidence that it had worked.
+
+The repair registers both phases and their display labels. It retains unknown
+phase rejection and captured-state finalization. A local control now uses real
+GameProgress/set_phase/snapshot reads, preserves the observed choice/day fields,
+checks plain and terminal rendering, and verifies that finalization retains the
+captured state. An AST control checks that every literal set_phase emitted by
+the controller belongs to the phase schema and every phase has a label. All 19
+existing progress tests passed. Source pins bind the exact display-only delta.
+
+The actual run admitted zero games and performed zero PPO updates. Checkpoint
+1,753 and protected inputs remain preserved; shutdown verified owned-process
+cleanup. The failed capture and all eleven reserved slots remain consumed and
+are retained. The next manual launch must use --cycle --resume with this run
+path, which allocates fresh seeds. No game or official update is launched during
+repair. Real progress controls stay local and outside the published diff.

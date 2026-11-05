@@ -16,10 +16,12 @@ import time
 
 
 SCHEMA = "heroes-game-progress-v1"
-PHASES = {"starting", "collecting", "finalizing", "storing", "awaiting verification", "verifying", "verified", "failed"}
+PHASES = {"starting", "collecting", "finalizing", "storing", "awaiting verification",
+          "preparing PPO", "captured", "verifying", "verified", "failed"}
 PHASE_LABELS = {
     "starting": "Starting", "collecting": "Playing", "finalizing": "Finishing game",
     "storing": "Saving game", "awaiting verification": "Waiting for replay checks",
+    "preparing PPO": "Preparing PPO", "captured": "Captured for training",
     "verifying": "Verifying game", "verified": "Verified", "failed": "Failed",
 }
 

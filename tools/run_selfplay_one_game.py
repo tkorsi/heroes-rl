@@ -139,7 +139,7 @@ CYCLE_BATCH_SOURCES = {
     'experiments/learner/checkpoints.py': {'before': '808a708c494e9d3099e82172e77ae393bf2971b2f6699ab43bfc140e313131ce',
         'after': 'a848db2c02665dd22a0499b5e185190279a8d4df653c7bb646fe02443a76a123'},
     'experiments/learner/game_progress.py': {'before': '968ba409785f7a11f7d08506bb9286a8a6842307384100683667c754581ea015',
-        'after': 'b5022050d1514a72a0286a6d646f6a09e9fa5fe8e3682e443e6ff1f063d5b14d'},
+        'after': '1f2eb870df6088c04926d675fac993e7788da2ed0a217f8bffd037528fcacee4'},
     'experiments/learner/ppo.py': {'before': 'b835502024f347863cf6110259e641903a1c294d9b29fa1eca6f461636849444',
         'after': 'd2bc6833098b596d52b26314ef0b2fbc87c827b1c5092d6c304f68552d5a2a8b'},
     'experiments/learner/selfplay_training.py': {'before': 'c02baa2e2aec16b768afda8cfedcf10a7ebacf3d11bd41e39637fafb73d35427',
