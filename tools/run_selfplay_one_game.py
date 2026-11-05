@@ -197,7 +197,7 @@ FORTY_BATCH_SOURCES = {
     'experiments/learner/selfplay_training.py': {'before': '8064f3f606060d5c683e0103099ddb204a8f45b7733c485101dd5c65e3c865d1',
         'after': '1c7f01d7b9b23376efccc60fa6ed69867f7b1218dfed6cb53dc6703c4c41b293'},
     'experiments/learner/game_progress.py': {'before': '976853e6bac5414d357f832d86b1e6ec76adeb46b4f7d84d67f477453862ba26',
-        'after': 'f426c139a2d4b743169e986b3b84eb8c7cf1977edd8a266e02c58252822d0c8e'},
+        'after': 'c4e4af997f410b26635d7db2db62aa7717f0441477e520b0eb69c8ff456c69f9'},
     'tools/run_selfplay_training.py': {'before': '2023caa08329f69c39a63e6dfc30934461acefac451e44d62ca82b40bd4063e3',
         'after': '8b49072641c838918e2eb3bbb3564c73096e2917dfc85be2229e74b05cdeee44'},
 }

@@ -2345,3 +2345,21 @@ visible. All 77 existing progress/training/checkpoint/controller tests passed.
 No native forty-game batch or official optimizer update has been run; forty-game
 peak memory/runtime remains unmeasured and guarded. Validation/probe code stays
 private under diagnostics/forty-grid-20261105, outside the published diff.
+
+An isolated snapshot containing only the closed historical lineage through
+checkpoint 1,754 passed the actual ten_inspect restore/audit under the new code.
+All actual policy/Adam/RNG/progress/sampler/pool components restored. Private
+prepare_ten and ten_batch_plan then produced strict forty-training plus one
+same-policy diagnostic plans with 41 distinct engine and 82 distinct policy
+seeds; incomplete 39-game plan rejection passed. Only the temporary lineage
+copy reserved seeds or wrote copied policy files. Active official lineage was
+never modified, and this is not a preflight of its still-running latest launch.
+Script: diagnostics/forty-grid-20261105/closed-lineage-preflight.py (private).
+
+A related UI audit found that two future forty-game cycles must display the
+current forty, rather than leaving the second batch off-screen. This was fixed
+and local controls now cover 1x40, 2x40 and historical 4x10 numbering at both
+terminal sizes. No historical training contract is changed by the UI case.
+Main integration remains deferred until the active run's shutdown is complete.
+The handoff command must check the existing run first, fast-forward the prepared
+branch only after that check passes, then manually launch the forty-game cycle.

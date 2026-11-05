@@ -366,7 +366,8 @@ class BatchProgressDisplay(ProgressDisplay):
         super().__init__(directory, stream=stream, clock=clock)
         self.launch, self.report = launch, {}
         self.batch_games = launch.get("configuration", {}).get("training_games", 10)
-        self.slot_count = 40 if self.batch_games * launch.get("batches", 1) == 40 else 10
+        self.overview = self.batch_games == 10 and launch.get("batches", 1) == 4
+        self.slot_count = 40 if self.batch_games == 40 or self.overview else 10
         self.started, self.opened = self.clock(), False
         self.saved, self.phase_name, self.phase_start = {}, None, 0
         self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
@@ -412,12 +413,12 @@ class BatchProgressDisplay(ProgressDisplay):
                     episode = attempt['episode']
                     if attempt['status'] != 'not_started' and episode in current:
                         self.saved[(batch.get('name'), episode)] = current[episode]
-            shown_batches = self.report.get('batches', []) if self.slot_count == 40 else [batch]
+            shown_batches = self.report.get('batches', []) if self.overview else [batch]
             attempts, values = {}, {}
             for index, shown in enumerate(shown_batches):
                 for attempt in shown.get('attempts', []):
                     local = attempt['episode']
-                    number = index * self.batch_games + local if self.slot_count == 40 else local
+                    number = index * self.batch_games + local if self.overview else local
                     attempts[number] = attempt
                     values[number] = self.saved.get((shown.get('name'), local), {})
             cfg = self.launch.get('configuration', {})
