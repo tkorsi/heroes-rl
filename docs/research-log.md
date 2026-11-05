@@ -2170,3 +2170,10 @@ All 77 existing self-play/checkpoint/controller/progress tests passed. Local
 controls passed exact source-transition binding, new-cycle metadata max_days=365,
 all other gameplay fields unchanged, and rejection of 5,840 as new-cycle metadata.
 There are no owned active training workers. No tests/probes were added to Git.
+
+The actual main-checkout continuation preflight passed at `6c9575e`, confirming
+configuration max_days=365, exact full checkpoint 1,753 restore, zero gameplay
+and zero optimizer updates. All 22 consumed slots remain consumed; next engine
+seed is 1,980,000,022, next policy base 1,982,000,044, with no reservation by the
+check. Transcript: `diagnostics/loop-speed-20261105/preflight-365.log` under the
+private artifacts root. Manual launch remains with the user.
