@@ -7,13 +7,17 @@ from tools import run_tiny_selfplay_one_game as verified_runtime
 ROOT = Path(__file__).resolve().parents[1]
 VERSION = 'no-artifacts-v1'
 RELEASE = dict(
-    directory=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2',
-    freeze_sha='5e340b7060e0a9ad9bc268e7ce5c691b3adc07eab94426cb080a0b999288deeb',
-    preflight_sha='ef621bb08e83471fd5bfc889f4524cf6b47c5ac087216e9373041abdf0fa94ad',
-    validation=campaign.ARTIFACTS / 'runtime/local-v8-no-artifacts-v1-repair2/native-acceptance.json',
-    validation_sha='2c5ffa0904e80099428fa31f8183c94c4036498c5cc90efcd522ab9fe703893a',
+    directory=campaign.ARTIFACTS / 'runtime/local-v8-taverns-static-neutrals-v1',
+    freeze_sha='4c0a91f831e866dc3e78b1f0a55bd2d6d8ba6bb7c61eaa55085e46d744238e50',
+    preflight_sha='dcd7042f42218ed4eb9255c4fbfa012fc31e66304f748480b4bbf5a227e3679b',
+    validation=campaign.ARTIFACTS / 'runtime/local-v8-taverns-static-neutrals-v1/native-acceptance.json',
+    validation_sha='98c26da6406e238fd3eeff9a7818fcc07c98c15fab02ec5be850bb581a41b40f',
     schema='heroes-starting-artifacts-native-v1',
 )
+CYCLE_MAP = ROOT / 'experiments/explorer/maps/hero-management-v3.vmap'
+CYCLE_MAP_SHA = '2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056'
+CYCLE_ACCEPTANCE = RELEASE['directory'] / 'scenario-acceptance.json'
+CYCLE_ACCEPTANCE_SHA = '0c328103d291c3576d9f76e0ae87fdf950f733528bb5ebe082c5fc191ba092b2'
 
 
 def inspect_runtime(baseline):
@@ -41,4 +45,31 @@ def inspect_runtime(baseline):
     launcher.preflight()
     checked['native'] = launcher.identity()
     checked['equipment_policy'] = VERSION
+    return checked
+
+
+def inspect_cycle_scenario(checked):
+    """Select the independently accepted temporary map for fifty-game cycles."""
+    from experiments.headless.env import VcmiLauncher
+    from tools import run_selfplay_one_game as evaluation
+    game_map, receipt = campaign.binding(CYCLE_MAP), campaign.binding(CYCLE_ACCEPTANCE)
+    campaign.require(game_map['sha256'] == CYCLE_MAP_SHA and receipt['sha256'] == CYCLE_ACCEPTANCE_SHA,
+                     'Temporary cycle map or its native acceptance changed')
+    accepted = campaign.read(campaign.bound(receipt))
+    campaign.require(accepted.get('schema') == 'heroes-taverns-static-neutrals-native-v1'
+                     and accepted.get('status') == 'passed' and accepted.get('runtime') == checked['runtime']
+                     and accepted.get('map') == game_map and accepted.get('players') == [0, 1]
+                     and accepted.get('source_implementation') == evaluation.source_identity()['implementation']
+                     and accepted.get('optimizer_updates') == 0 and accepted.get('training_samples_admitted') == 0
+                     and all(accepted.get(key) is True for key in (
+                         'initial_state_preserved', 'starting_taverns_and_hiring_both_players',
+                         'monthly_spawn_positive_and_negative_controls', 'weekly_growth_preserved',
+                         'native_replay_verified', 'both_policies_reconstructed', 'owned_cleanup_verified')),
+                     'Temporary cycle rules lack complete native acceptance')
+    launcher = VcmiLauncher(Path(checked['binary']), Path(checked['data']), CYCLE_MAP,
+                            equipment_policy=VERSION)
+    launcher.preflight()
+    checked.update(game_map=str(CYCLE_MAP), native=launcher.identity())
+    checked['runtime_origin']['scenario_validation'] = receipt
+    checked['protected'].update({item['path']: item for item in (game_map, receipt)})
     return checked

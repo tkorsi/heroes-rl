@@ -3034,3 +3034,78 @@ needed the IGameSettings definition; adding that include fixed the build.
 Canonical dependency agreement and the exact map semantic-diff check passed.
 All eighteen selected existing scenario/runtime-freeze tests passed. Native
 acceptance and cycle selection remain pending at this implementation checkpoint.
+
+## 2026-11-07 — Tavern/calendar native acceptance and cycle selection
+
+Built and froze the canonical engine at implementation commit `81eda14` into
+`Heroes-artifacts/runtime/local-v8-taverns-static-neutrals-v1`; the historical
+runtime was not modified. The freeze retains the v2 map for existing historical
+launch modes. The new cycle selector binds v3 separately, with its own native
+acceptance. Map SHA-256 is
+`2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056`.
+The frozen build contains patch 0032 with monthly spawning enabled by default;
+v3 alone sets `allowMonthlyMonsters=false`.
+
+Reused the private existing no-artifacts validator with fresh durably reserved
+seeds. All 220 controls, nine initialization pairs, three native random-bonus
+branches, later-hire/artifact-acquisition checks, wrong-setting replay rejection,
+the frozen-1,753 two-policy prefix and process cleanup passed in 30.38 seconds.
+Evidence: `Heroes-artifacts/starting-equipment-diagnostics/attempt-20261107-taverns-runtime/report.json`.
+The complete fresh receipt is pinned as the new runtime's `native-acceptance.json`.
+
+Private rule controls and scripts are retained under
+`Heroes-artifacts/diagnostics/taverns-static-neutrals-20261107/`. An initial
+script import failed before seed allocation or gameplay. Attempt 01 then spent
+its declared diagnostic schedule beginning at engine seed 2,020,000,000, but
+failed when the diagnostic tried `close` directly from a recruitment overlay.
+The environment correctly rejected that invalid action before transmission.
+No policy or engine correction was needed: the private control now uses the
+existing explicit panel-back/unwind actions. Its failed capture was preserved.
+
+Attempt 02 reserved the fresh engine seeds 2,020,000,032–34 and policy seeds
+2,021,000,032–33. Each same-seed comparison was declared before launch, excluded
+from training, and separate from the official cycle namespace. Four native
+mechanics captures and their independent replays passed:
+
+- v2 and v3 initial-state comparison: both players' initial resources, heroes,
+  armies, town identities and visible objects matched exactly. The v3 map
+  exposed native Taverns immediately. Each side moved its initial visitor and
+  hired another hero on day one for the displayed native gold price.
+- Two maps differing only in the calendar-spawn header ran through day 113.
+  Both received the same native Gog month notification on day 85. The default
+  control created one new Gog object at `(15,8,0)`; the restricted control had
+  no spawn calls and no native `NewObject` packets in its complete trace.
+  This conclusion uses engine logs, not absence behind player fog.
+- Both town recruitment projections matched on days 1, 8 and 29. Special-week
+  notifications remained enabled. Existing neutral growth and town special-week
+  calculations are unchanged source paths; no separate quantitative neutral
+  growth or Deity-of-Fire fixture was run.
+
+The first post-capture report incorrectly read only `*.log`, omitting the real
+`VCMI_Client_log.txt`, so its positive spawn assertion failed. The failed report
+remains unchanged. `complete_acceptance.py` reread the retained native traces,
+checked actual object-creation packets and matching month notices, and produced
+`attempt-02/corrected-calendar-analysis.json` without rerunning mechanics games.
+It then used the already reserved prefix seed to exercise checkpoint 1,757 on
+v3: 64 Red and 53 Blue choices, exact reconstruction of both policies with zero
+maximum difference, and independent native replay all passed. This was a bounded
+unscored diagnostic, not a complete evaluation game or evidence of learning.
+No optimizer update or training sample admission occurred.
+
+Final native evidence is `attempt-02/acceptance.json`, copied intact to the new
+runtime's `scenario-acceptance.json` (SHA-256
+`0c328103d291c3576d9f76e0ae87fdf950f733528bb5ebe082c5fc191ba092b2`).
+Only the fifty-game cycle selects v3, through the existing runtime validator;
+source/map/runtime/acceptance bindings remain strict. Other modes retain v2 on
+the new default-compatible binary. The first continuation `--check` stopped
+at the existing clean-committed-checkout requirement before gameplay or seed
+allocation; commit the integration before rerunning that check. No full cycle
+was launched.
+
+Integration unit selection: 59 existing tests ran, with 56 passing and three
+errors. Both completed-capture fixture errors lack the `stdin` handshake added
+by the earlier worker-registration fix; the old release-pin fixture omits
+starting-equipment dependencies. All three errors reproduced unchanged in a
+private `git archive 3012b93` baseline. Logs are `integration-tests.log` and
+`baseline-tests.log` under the private diagnostic directory. No tests were
+modified or excluded from the reported result, and no gate was weakened.

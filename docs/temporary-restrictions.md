@@ -13,7 +13,7 @@ rules of Heroes III and must not be forgotten when interpreting results.
 | One-action town cooldown | `visible-interaction-budget-recruit-only-town-cooldown-v1` excludes `open_town` after a player closes a town, until that player completes a different action. It also applies after an empty visit. | Review repeat openings and menu alternation after the frozen game. Remove the cooldown by selecting a different support version and retain the original version for replay. |
 | Consecutive identical commands | `visible-interaction-budget-hero-relative-cooldown-v1` retains the town rule and excludes the previous command for each player. Another hero, tile or quantity is a different command. Mandatory choices and window exits stay available, and a repeated end turn is allowed when it is the only available action. | Measure repeated commands, travel and menu alternation. Select a separate support version to remove the restriction. |
 
-The second restriction was explicitly requested on 30 October 2026. It excludes
+The troop-slot restriction was explicitly requested on 30 October 2026. It excludes
 `split_stack`, `merge_stacks`, `swap_stacks`, `transfer_stack`, `open_stack`,
 `select_upgrade` and `upgrade_stack`. Buying creatures remains available, including
 already upgraded creatures offered by a dwelling. Native recruitment chooses its
@@ -66,5 +66,6 @@ restoring ordinary artifact behavior. Siege and spell access intentionally diffe
 On 7 November 2026 the user added the tavern and calendar-spawn restrictions and
 chose gradual removal of temporary restrictions in later experiments. Each
 removal must declare its rule/version and parent checkpoint, preserve the prior
-variant, and distinguish a rule effect from policy learning. The new variant is
-undergoing native validation; it has not yet been used for training.
+variant, and distinguish a rule effect from policy learning. The new variant
+passed native validation; it has not yet been used for training. The fifty-game
+cycle selects this map; historical one-game modes retain `hero-management-v2`.

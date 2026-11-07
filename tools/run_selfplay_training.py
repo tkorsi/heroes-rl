@@ -1624,6 +1624,8 @@ def ten_inspect():
     require(shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
             'Ten-game launch requires the existing 30 GiB disk reserve')
     checked = one.inspect_candidate(one.HERO_RELATIVE_VERSION)
+    if CYCLE_MODE:
+        checked = one.runtime_validation.inspect_cycle_scenario(checked)
     initial = checked['parent']['checkpoint']
     selected, steps = initial, checked['optimizer_steps']
     lineage_path, latest_path = TEN_BASE / 'lineage.json', TEN_BASE / 'latest-checkpoint.json'

@@ -247,6 +247,10 @@ require, read, write, binding, bound = campaign.require, campaign.read, campaign
 SCENARIO_RULE_SOURCES = {
     'engine/patches/0032-monthly-neutral-spawn-rule.patch': 'e5f46d520e26f06d063f0bc26805bf03b3af12dc8332fe61e9cb902ee70cd8a2',
 }
+SCENARIO_SELECTION_SOURCES = {
+    CONTROLLER_PATH: {'before': '67ff976be5dc6ffe03b5f0848cfd0903777bf12e2a39d5aae75c73db297c9c86',
+        'after': '4e1ffdcf2468d4dd30c80f7e8b9320070a3003d475e3826348c11dfcc3d9a193'},
+}
 
 
 def verify_runtime_sources(implementation):
@@ -307,6 +311,9 @@ def verify_runtime_sources(implementation):
             'Recipe-sharing source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in RECIPE_SHARING_SOURCES.items()})
     original.update(SCENARIO_RULE_SOURCES)
+    require(all(original.get(name) == pins['before'] for name, pins in SCENARIO_SELECTION_SOURCES.items()),
+            'Cycle scenario selection differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in SCENARIO_SELECTION_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
