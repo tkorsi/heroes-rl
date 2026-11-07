@@ -1545,8 +1545,8 @@ def finalize_stopped_run(output, launch):
 def ten_configuration(checked, seconds):
     from experiments.learner import selfplay_training as training
     from experiments.learner.ppo import PPOConfig
-    parent = read(bound(checked['parent']['launch']))
-    inherited = validate_configuration(parent['configuration'])
+    inherited = validate_configuration(checked['inherited_configuration'] if 'inherited_configuration' in checked
+        else read(bound(checked['parent']['launch']))['configuration'])
     cfg = {key: deepcopy(inherited[key]) for key in
            ('interface', 'adam', 'ppo', 'torch_threads', 'allow_verified_training_prefix')}
     cfg.update(schema='heroes-selfplay-batch-ten-config-v1', maximum_seconds=seconds)
@@ -1617,28 +1617,175 @@ def ten_seed_preview(count):
                 policy_base=policy + 2 * offset, policy_seed_count=count * 2, reserved=False)
 
 
+def cycle_retained():
+    """An audited checkpoint replaces retired raw history, never current-run checks."""
+    path = TEN_BASE / 'retained/state.json'
+    if not CYCLE_MODE or not path.exists():
+        return None
+    value = read(path)
+    require(value.get('schema') == CYCLE_LAUNCH + '-retained-v1', 'Unknown retained cycle state')
+    # A consumed seed prefix cannot disappear when old captures are removed.
+    ledger, _ = ten_reservations()
+    prefix = value['seed_reservations']
+    require(ledger['reservations'][:len(prefix)] == prefix, 'Retained seed consumption changed')
+    for pair in (value['initial'], value['checkpoint']):
+        for name in ('policy', 'resume'):
+            path = bound(pair[name])
+            require(path.is_relative_to((TEN_BASE / 'retained').resolve())
+                    and not Path(pair[name]['path']).is_symlink(),
+                    'Retained checkpoint is outside its private directory')
+    return value
+
+
+def cycle_retained_candidate(value):
+    from tools import run_recruit_only_one_game as one
+    from experiments.learner.native_execution import native_execution_choice
+    checked = deepcopy(value['checked'])
+    checked.update(source=one.source_identity(), parent={'checkpoint': value['initial']},
+                   protected={}, experiment=one.experiment(one.HERO_RELATIVE_VERSION))
+    require(checked['native_manifest'] == binding(NATIVE) and binding(NATIVE)['sha256'] == NATIVE_SHA,
+            'Retained native learner changed')
+    require(native_execution_choice(NATIVE, NATIVE_SHA, cpu_cap=16, require_acceptance=False)
+            == checked['execution'], 'Retained native execution profile changed')
+    validate_configuration(checked['inherited_configuration'])
+    checked.update(one.runtime_validation.inspect_runtime(checked))
+    checked['protected'].update(checked.pop('runtime_protected'))
+    for pin in (binding(TEN_BASE / 'retained/state.json'), checked['native_manifest']):
+        checked['protected'][pin['path']] = pin
+    one.frozen_models(checked)
+    return one.runtime_validation.inspect_cycle_scenario(checked)
+
+
+def cycle_finish_retirement(value):
+    """Retry deletion after atomic checkpoint publication, using bounded owned paths."""
+    for name in value['retired_runs']:
+        path = TEN_BASE / name
+        require(Path(name).name == name and name.startswith('run-') and not path.is_symlink()
+                and path.resolve().parent == TEN_BASE.resolve(), 'Unsafe retired run directory')
+        if path.exists():
+            shutil.rmtree(path)
+    for name in ('lineage', 'latest'):
+        pin = value['retired_' + name]
+        path = TEN_BASE / ('lineage.json' if name == 'lineage' else 'latest-checkpoint.json')
+        if pin is not None and path.exists():
+            require(binding(path) == pin, 'New cycle metadata appeared during retirement')
+            path.unlink()
+
+
+def cycle_retire(inspected):
+    """Keep exact continuation state, then remove the analyzed previous run(s)."""
+    from experiments.learner import selfplay_training as training
+    require(CYCLE_MODE, 'Artifact retirement is restricted to the manual cycle')
+    processes = subprocess.check_output(['ps', '-axo', 'command='], text=True).splitlines()
+    require(not any(line.split() and (Path(line.split()[0]).name in ('vcmiclient', 'vcmireplay')
+                or ('run_selfplay_training.py' in line and any(' ' + mode + ' ' in line
+                    for mode in ('_capture', '_coordinator')))) for line in processes),
+            'Game or learner workers are still running; keep their artifacts')
+    lineage = inspected['lineage']
+    if lineage is None:
+        retained = cycle_retained()
+        if retained is not None:
+            cycle_finish_retirement(retained)
+        return ten_inspect()
+    outputs = [Path(read(bound(pin))['output']) for pin in lineage['runs']]
+    require(outputs, 'Cannot retire an empty cycle lineage')
+    require(all(path.parent == TEN_BASE and path.name.startswith('run-') and not path.is_symlink()
+                and path.resolve().parent == TEN_BASE.resolve() for path in outputs),
+            'Only owned cycle run directories can be retired')
+    journal = ROOT / 'docs/research-log.md'
+    require(f'Retention-reviewed run: `{outputs[-1].name}`.' in journal.read_text(),
+            'Analyze the latest run and record its Retention-reviewed run marker in docs/research-log.md first')
+    verify_protected(inspected['protected'])
+    copied = []
+    for pair, steps in ((inspected['initial'], inspected['checked']['optimizer_steps']),
+                        (inspected['parent'], inspected['optimizer_steps'])):
+        replacement = deepcopy(pair)
+        folder = TEN_BASE / 'retained' / ('checkpoint-' + pair['policy']['sha256'])
+        require(not folder.is_symlink() and folder.resolve().parent == TEN_BASE.resolve() / 'retained',
+                'Unsafe retained checkpoint directory')
+        folder.mkdir(parents=True, exist_ok=True)
+        for name in ('policy', 'resume'):
+            source = bound(pair[name]); target = folder / (name + '.pt')
+            require(not target.is_symlink(), 'Retained checkpoint cannot be a symlink')
+            if not target.exists():
+                temporary = target.with_name('.' + name + '-' + secrets.token_hex(6))
+                try:
+                    write_bytes(temporary, source.read_bytes())
+                    require(binding(temporary)['sha256'] == pair[name]['sha256'], 'Checkpoint copy changed')
+                    os.replace(temporary, target)
+                finally:
+                    temporary.unlink(missing_ok=True)
+            replacement[name] = binding(target)
+            require(all(replacement[name][key] == pair[name][key] for key in ('sha256', 'bytes')),
+                    'Retained checkpoint copy differs')
+        training.restore_checkpoint_pair(replacement, expected_metadata=pair['metadata'],
+            expected_ppo_config=PPO, expected_optimizer_steps=steps)
+        descriptor = os.open(folder, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        copied.append(replacement)
+    checked = inspected['checked']
+    inherited = checked.get('inherited_configuration')
+    if inherited is None:
+        inherited = read(bound(checked['parent']['launch']))['configuration']
+    # Runtime acceptance is rechecked from the preserved frozen runtime, not old captures.
+    baseline = {key: checked[key] for key in ('data', 'execution', 'native_manifest', 'optimizer_steps',
+        'checkpoint', 'model_checkpoint', 'weights_sha256', 'model_config', 'parameters')}
+    baseline.update(inherited_configuration=validate_configuration(inherited),
+        game_map=read(bound(checked['runtime_origin']['freeze']))['map']['path'])
+    value = dict(schema=CYCLE_LAUNCH + '-retained-v1', initial=copied[0], checkpoint=copied[1],
+        optimizer_steps=inspected['optimizer_steps'], pending_evaluation=inspected['pending_evaluation'],
+        checked=baseline, seed_reservations=ten_reservations()[0]['reservations'],
+        retired_runs=[path.name for path in outputs], retired_lineage=binding(TEN_BASE / 'lineage.json'),
+        retired_latest=binding(TEN_BASE / 'latest-checkpoint.json') if (TEN_BASE / 'latest-checkpoint.json').exists() else None,
+        audited_utc=datetime.now(timezone.utc).isoformat(), source=source_identity(), analysis_journal=binding(journal))
+    # Publication happens before deletion. Readers recognize the retired pointers
+    # even if interruption leaves any old metadata or partially removed directory.
+    write(TEN_BASE / 'retained/state.json', value)
+    ten_inspect()
+    cycle_finish_retirement(value)
+    keep = {Path(pair['policy']['path']).parent for pair in copied}
+    for path in (TEN_BASE / 'retained').glob('checkpoint-*'):
+        require(path.is_dir() and not path.is_symlink(), 'Unsafe obsolete checkpoint directory')
+        if path.resolve() not in keep:
+            shutil.rmtree(path)
+    return ten_inspect()
+
+
 def ten_inspect():
     """Audit the new publication chain, then restore only its complete last pair."""
     from tools import run_recruit_only_one_game as one
     from experiments.learner import selfplay_training as training
-    require(shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
+    require(CYCLE_MODE or shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
             'Ten-game launch requires the existing 30 GiB disk reserve')
-    checked = one.inspect_candidate(one.HERO_RELATIVE_VERSION)
-    if CYCLE_MODE:
+    retained = cycle_retained()
+    checked = cycle_retained_candidate(retained) if retained else one.inspect_candidate(one.HERO_RELATIVE_VERSION)
+    if CYCLE_MODE and retained is None:
         checked = one.runtime_validation.inspect_cycle_scenario(checked)
     initial = checked['parent']['checkpoint']
     selected, steps = initial, checked['optimizer_steps']
     lineage_path, latest_path = TEN_BASE / 'lineage.json', TEN_BASE / 'latest-checkpoint.json'
     lineage = read(lineage_path) if lineage_path.exists() else None
+    if retained and lineage_path.exists() and binding(lineage_path) == retained['retired_lineage']:
+        lineage = None
+    latest_exists = latest_path.exists() and not (retained and binding(latest_path) == retained['retired_latest'])
     protected = dict(checked['protected'])
     publication = None
     completed_evaluations = {}
     published_games = published_updates = 0
+    if retained:
+        selected, steps = retained['checkpoint'], retained['optimizer_steps']
+        published_updates = selected['progress']['updates'] - initial['progress']['updates']
+        published_games = selected['progress']['rollouts'] - initial['progress']['rollouts']
+        if not retained['pending_evaluation']:
+            completed_evaluations[selected['progress']['updates']] = selected['weights_sha256']
     seed_ledger, _ = ten_reservations()
     reported_publications, all_publications = set(), set()
     if lineage is not None:
         require(lineage.get('schema') == TEN_LAUNCH and lineage.get('initial_checkpoint') == initial
-                and lineage.get('initial_optimizer_steps') == steps and type(lineage.get('runs')) is list,
+                and lineage.get('initial_optimizer_steps') == checked['optimizer_steps'] and type(lineage.get('runs')) is list,
                 'Ten-game lineage initial state changed')
         outputs = set()
         for launch_pin in lineage['runs']:
@@ -1686,7 +1833,7 @@ def ten_inspect():
                     item = read(path)
                     require(item['checkpoint'] == phase['after_checkpoint'], 'Reported checkpoint publication changed')
                     reported_publications.add(binding(path)['sha256'])
-        if latest_path.exists():
+        if latest_exists:
             latest = read(latest_path)
             require(latest.get('schema') == TEN_LAUNCH + '-latest', 'Unknown ten-game latest pointer')
             publication = latest['publication']
@@ -1743,7 +1890,7 @@ def ten_inspect():
         else:
             require(not all_publications, 'Ten-game latest pointer is missing while checkpoint candidates remain; recover explicitly')
     else:
-        require(not latest_path.exists(), 'Ten-game latest pointer has no lineage')
+        require(not latest_exists, 'Ten-game latest pointer has no lineage')
     state = training.restore_checkpoint_pair(selected, expected_metadata=selected['metadata'],
         expected_ppo_config=PPO, expected_optimizer_steps=steps)
     require(state.progress.updates == initial['progress']['updates'] + published_updates
@@ -1761,6 +1908,8 @@ def ten_inspect():
 
 
 def prepare_ten(args, inspected):
+    require(shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
+            'Ten-game launch requires the existing 30 GiB disk reserve after artifact retirement')
     require(type(args.batches) is int and 1 <= args.batches <= 100,
             'Use between one and 100 complete batches')
     seconds = args.hours * 3600
@@ -2120,7 +2269,7 @@ def main(argv=None):
             continuation.add_argument('--output', type=Path)
             continuation.add_argument('--hours', type=float, required=True)
     for name in ('batch10-check', 'batch10-run', 'batch10-continue',
-                 'cycle-check', 'cycle-run', 'cycle-continue'):
+                 'cycle-check', 'cycle-run', 'cycle-continue', 'cycle-cleanup'):
         ten = sub.add_parser(name, help=('One hundred training games, ten rolling actors, one PPO update and one validated self-play game'
             if name.startswith('cycle-') else 'Ten-game learning batches from verified1753; no extra evaluation games'))
         ten.add_argument('--batches', '--cycles', dest='batches', type=int, default=1)
@@ -2159,7 +2308,14 @@ def main(argv=None):
                     require(inspected['lineage'] is not None and inspected['lineage']['runs']
                         and Path(read(bound(inspected['lineage']['runs'][-1]))['output']).resolve() == args.run_dir.resolve(),
                         'The supplied run is not the latest ten-game launch')
-                if args.command == 'batch10-check':
+                if args.command == 'batch10-cleanup':
+                    inspected = cycle_retire(inspected)
+                    result = dict(status='passed', gameplay_performed=False, optimizer_updates=0,
+                        checkpoint=inspected['state'].progress.updates,
+                        exact_model_adam_rng_progress_sampler_pool=True,
+                        artifact_retention='previous analyzed runs deleted',
+                        free_gib=shutil.disk_usage(ARTIFACTS).free / 1024**3)
+                elif args.command == 'batch10-check':
                     result = dict(status='passed', gameplay_performed=False, optimizer_updates=0,
                         checkpoint=inspected['state'].progress.updates,
                         exact_model_adam_rng_progress_sampler_pool=True,
@@ -2168,15 +2324,20 @@ def main(argv=None):
                         total_physical_games=args.batches * cycle_width() + int(inspected.get('pending_evaluation', False)),
                         expected_optimizer_updates=args.batches,
                         next_fresh_seeds=ten_seed_preview((args.batches + int(inspected.get('pending_evaluation', False))) * cycle_width()),
-                        next_command=('cycle-run' if inspected['lineage'] is None else 'cycle-continue') if CYCLE_MODE else
+                        artifact_retention='analyze, then delete before next launch' if CYCLE_MODE else 'unchanged',
+                        disk_reserve_available=shutil.disk_usage(ARTIFACTS).free >= TEN_DISK_RESERVE_GIB * 1024**3,
+                        next_command='cycle-run' if CYCLE_MODE else
                             ('batch10-run' if inspected['lineage'] is None else 'batch10-continue'))
                 else:
+                    if CYCLE_MODE:
+                        inspected = cycle_retire(inspected)
+                        args.command = 'batch10-run'
                     launch = prepare_ten(args, inspected)
                     print(f"Private run: {launch['output']}", flush=True)
                     result = supervise(launch)
             for phase in result.get('batches', []) + result.get('evaluations', []):
                 ten_print_phase(phase)
-            if CYCLE_MODE and args.command != 'batch10-check':
+            if CYCLE_MODE and args.command not in ('batch10-check', 'batch10-cleanup'):
                 print(f"Run {result['status']}; checkpoint {result.get('latest_checkpoint')}; "
                       f"PPO updates {result.get('optimizer_updates', 0)}.", flush=True)
                 if result.get('error') or result.get('supervisor_errors'):

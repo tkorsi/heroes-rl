@@ -3210,3 +3210,52 @@ fix, file deletion, reserve reduction or restart was performed during this statu
 check. A future retry must follow the latest registered run with fresh seeds and
 sufficient free disk space; the older run path in the one-use launch script is
 now superseded.
+
+## 2026-11-07 — Keep one run, then retire its artifacts: plan
+
+The user explicitly replaced indefinite artifact preservation with a one-run
+policy: capture a run, analyze it, retain important conclusions in this journal,
+then delete old artifacts before the next run while keeping the neural network.
+For exact training continuation, "network" includes the paired policy/resume
+files, Adam state, RNGs, progress and opponent pool. The small initial lineage
+checkpoint and consumed-seed ledger also remain; engine/Python/game assets are
+execution dependencies, not game captures. Historical raw re-verification will
+no longer be possible after the authorized deletion.
+
+The current launcher recursively requires all previous game evidence. Replace
+that dependency with an explicitly audited compact continuation baseline before
+deleting anything. Acceptance: exact checkpoint-1,757 restoration before/after
+rotation, unchanged native/map/PPO gates and seed consumption, no deletion of a
+live/unreviewed run, bounded paths, interrupted-rotation retry, and a clean
+read-only preflight after deletion. New captures remain available until their
+analysis is recorded. No gameplay or optimizer launch is part of this task.
+
+Retention-reviewed run: `run-20261107T155027Z-dfd8ff19`.
+Its completed status analysis is the immediately preceding disk-reserve entry;
+13 unverified terminal captures are not an admitted batch or evidence of learning.
+
+### Implementation and local validation before retirement
+
+Implemented cycle-only retirement in the existing controller and manual launcher.
+The retained baseline holds the original 1,753 anchor and latest full 1,757 pair,
+accepted inherited configuration, consumed-seed prefix and pending-diagnostic
+state. Future launches recheck current native/source/map gates and audit only
+publications after that baseline. Checkpoint copies are restored before atomic
+baseline publication and deletion; the old metadata bindings allow interrupted
+deletion to resume. The reusable 100-game command now selects the latest state.
+Disk reserve enforcement remains before seed allocation/game launch; read-only
+inspection and cleanup can run below the reserve to reclaim storage.
+
+Private controls initially exposed two errors caused by macOS temporary-path
+aliases: pruning compared unresolved paths with canonical checkpoint paths.
+Canonical comparisons fixed the issue before any real artifact deletion. All
+12 controls now pass: real 1,753/1,757 pair copy/restoration, exact seed ledger
+preservation, live native/coordinator and owner-lock refusal, unreviewed-run and
+symlink/path refusal, corrupt-copy abort, interrupted deletion retry, pending
+diagnostic carry, seed rollback rejection, and a fixture-only next 100-game
+launch descriptor at offset 339 (101 slots). No fixture game or update ran.
+The 44 existing game-progress/checkpoint/self-play/passive-runtime tests passed.
+Both native acceptance source transitions pass and a changed controller digest
+is rejected. Private controls/logs are under `/tmp/heroes-retention-validation/`;
+they are not committed. Real history audit, retirement and post-cleanup preflight
+are still pending at this entry.

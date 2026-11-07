@@ -64,20 +64,23 @@ calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
 neutrals and their growth remain native. These are temporary restrictions to be
 removed gradually. Native controls, a short frozen-1,757 prefix and the
 read-only continuation preflight passed. The next cycle restores checkpoint
-1,757 with these rules; no training has yet run on this variant.
+1,757 with these rules; no PPO update has yet run on this variant.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
 The diagnostic reached the 365-day limit without a winner. The worker-registration
 race and duplicate native-recipe storage were fixed; numerical parity checks
 passed without changing gameplay, PPO settings or native resource bounds.
-The latest run is `Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry2`.
+The latest successful update is checkpoint 1,757. The subsequent 100-game launch
+`run-20261107T155027Z-dfd8ff19` stopped at the 30 GiB disk reserve after 13 captured
+terminals, with no admitted batch or PPO update. Its analysis is in the journal.
 This completed cycle establishes execution correctness, not improved playing strength.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared
-`./run-100-games.command` starts one manual continuation from the completed
-1,757 run. It refuses a stale run path if another continuation has superseded it.
+`./run-100-games.command` starts one manual continuation from the latest complete
+checkpoint. Before launch it retires the previous analyzed run as described below;
+the script remains reusable and does not contain a historical run path.
 One cycle has one hundred training games, one PPO update and one diagnostic game. Both diagnostic seats
 use the newly saved weights. All stages share the ten-hour deadline. Both
 training and diagnostic
@@ -154,7 +157,9 @@ the diagnostic validation result. No training starts during `--check`.
 
 ## Historical verified batches of ten
 
-Run `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10` for a
+These are historical commands, dependent on raw history that the single-run
+retention policy retires. Use the current `--cycle` launcher for continuation.
+Previously, `./continue-selfplay.sh --batch-ten --check --batches 1 --hours 10` provided a
 read-only preflight. To launch one batch manually, use
 `./continue-selfplay.sh --batch-ten --run --batches 1 --hours 10`. Set
 `--batches 10` for ten successive batches (100 training games), subject to the
@@ -281,6 +286,29 @@ Earlier recorder commands remain in [project history](docs/project-history.md).
 
 ## Artifacts and development
 
+Keep artifacts for one manual cycle launch at a time: record, analyze, then remove
+the previous launch before starting the next one. Record meaningful findings and
+failures in `docs/research-log.md`, including ``Retention-reviewed run: `RUN_ID`.``
+for the latest analyzed run. Cleanup refuses an unreviewed or live run. A failed
+or interrupted run also needs analysis before its artifacts are retired.
+
+The launcher first audits the complete available publication chain, copies and
+exactly restores the initial checkpoint and latest published policy/resume pair,
+then atomically saves a compact continuation baseline under
+`Heroes-artifacts/selfplay-ten-then-check/retained/`. This keeps model weights,
+Adam, RNGs, progress, sampler and opponent pool. It also preserves consumed seed
+reservations, including unstarted attempts, and any pending diagnostic obligation.
+Only then are old run directories deleted. Interrupted cleanup can be retried.
+Fresh-run admission, replay, native/source/map checks and the 30 GiB launch reserve
+remain enforced. `--check` is read-only; `./continue-selfplay.sh --cycle --cleanup`
+performs the same retirement without launching games.
+
+Raw history is deliberately no longer re-verifiable after retirement; journal
+conclusions and the audited checkpoint baseline replace that storage dependency.
+Engine/runtime acceptance, Python, game data, locks and model backups are retained
+as execution dependencies. Historical experiment launchers that require deleted
+raw history are retired; they are not an alternative continuation route.
+
 Keep original game data, raw captures, videos, builds and large checkpoints out
 of this public repository. Use ignored local artifacts and the authorized
 private training-state repository. Publish compact evidence here. A backup is
@@ -288,7 +316,8 @@ complete only after verifying exact restoration of model, optimizer, RNG,
 progress and opponent state.
 
 Never delete/archive the only worktree holding a checkpoint or runtime. Preserve
-and verify artifacts first. Branch cleanup must not interrupt an active pinned
+and verify its continuation state first; the single-run rule authorizes retiring
+analyzed raw captures. Branch cleanup must not interrupt an active pinned
 Teacher, Optimizer or other checkout.
 
 Branch from `main`, read `AGENTS.md`, edit canonical sources and run relevant

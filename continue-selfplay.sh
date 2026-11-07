@@ -14,8 +14,9 @@ if [ "${1:-}" = "--cycle" ]; then
     case "${1:---check}" in
         --check) if [ "$#" -gt 0 ]; then shift; fi ;;
         --run) MODE=cycle-run; shift ;;
+        --cleanup) MODE=cycle-cleanup; shift ;;
         --resume) MODE=cycle-continue; shift ;;
-        *) echo "Usage: $0 --cycle [--check | --run | --resume --run-dir PATH] [--cycles N] [--hours HOURS]" >&2; exit 2 ;;
+        *) echo "Usage: $0 --cycle [--check | --run | --cleanup | --resume --run-dir PATH] [--cycles N] [--hours HOURS]" >&2; exit 2 ;;
     esac
 elif [ "${1:-}" = "--batch-ten" ]; then
     shift

@@ -265,6 +265,12 @@ HUNDRED_BATCH_SOURCES = {
 }
 
 
+# Audited single-run retention; native rules, admission and PPO are unchanged.
+RETENTION_SOURCES = {
+    CONTROLLER_PATH: {'before': '72ead91ceaae6d73ee730e5a17e527b19bccfc55cd3b0941f6e93a9a5892abe7',
+        'after': '87bf201c89cb40b0bf0ff12e68bf4874da2135e18c80096ed086400473ac8127'},
+}
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -329,6 +335,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in HUNDRED_BATCH_SOURCES.items()),
             'Hundred-game source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in HUNDRED_BATCH_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in RETENTION_SOURCES.items()),
+            'Single-run retention differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in RETENTION_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -355,7 +364,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_parallel_fifty_game_batch', PARALLEL_FIFTY_SOURCES),
                    ('reviewed_capture_registration', CAPTURE_REGISTRATION_SOURCES),
                    ('reviewed_exact_recipe_sharing', RECIPE_SHARING_SOURCES),
-                   ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES))
+                   ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES),
+                   ('reviewed_single_run_retention', RETENTION_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -399,6 +409,7 @@ def source_identity():
         capture_registration_sources=CAPTURE_REGISTRATION_SOURCES,
         recipe_sharing_sources=RECIPE_SHARING_SOURCES,
         hundred_batch_sources=HUNDRED_BATCH_SOURCES,
+        retention_sources=RETENTION_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
