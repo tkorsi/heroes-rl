@@ -309,8 +309,10 @@ class ProgressDisplay:
 
 
 def batch_terminal_lines(slots, *, width=80, color=False, compact=False, dense=False):
-    """Five columns; compact rows keep forty games visible in a normal terminal."""
-    cell = (width - 4) // 5
+    """Five groups; a hundred-game batch splits each group into two games."""
+    paired = len(slots) == 100
+    group_width = (width - 4) // 5
+    cell = (group_width + 1) // 2 if paired else group_width
     inner = cell - 2
     cards = []
     for slot in slots:
@@ -332,6 +334,10 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False, dense=F
                             'verifying': 'VERIFYING', 'awaiting verification': 'CHECKS QUEUED',
                             'captured': 'CAPTURED', 'verified': 'VERIFIED'}.get(phase, phase.upper())
                            if active else 'WAITING')
+        marker = '!' if failed else '>' if active else '~' if pending else ' '
+        short_label = ('!' if failed else 'R' if result == 'RED WIN' else 'B' if result == 'BLUE WIN'
+                       else 'D' if result == 'DAY LIMIT' else 'C' if result == 'CUTOFF'
+                       else 'OK' if done else '~' if pending else '>' if active else '.')
         code = '1;31' if failed else '1;36' if active else '33' if result in ('DAY LIMIT', 'CUTOFF') else '33' if pending else '32' if done else '2'
         days = [n for n in value.get('days', ()) if n is not None]
         day = f"Day {max(days) if days else '?'}/{value.get('max_days') or '?'}"
@@ -342,33 +348,46 @@ def batch_terminal_lines(slots, *, width=80, color=False, compact=False, dense=F
                   'READY FOR PPO' if state == 'captured' else 'CHECKS PASSED' if state == 'passed' else
                   '#' * used + '-' * (inner - used) if active else '')
         def fit(text): return text[:inner].ljust(inner)
+        def short(count): return str(count) if count < 1000 else f"{count // 1000}k"
         if compact:
-            def short(count): return str(count) if count < 1000 else f"{count // 1000}k"
-            marker = '!' if failed else '>' if active else '~' if pending else ' '
-            lines = (f"{slot['episode']:02d}{marker} {label}",
-                     f"{max(days) if days else '---'} {short(counts[0])}/{short(counts[1])}")
+            lines = ((f"{slot['episode']:03d} {short_label}", f"d{max(days) if days else '?'}") if paired else
+                     (f"{slot['episode']:02d}{marker} {label}",
+                      f"{max(days) if days else '---'} {short(counts[0])}/{short(counts[1])}"))
             cards.append([color_text('|' + fit(text) + '|', code, color) for text in (lines[:1] if dense else lines)])
             continue
-        title = f"{'>' if active else '~' if pending else ' '} Game {slot['episode']:02d} "
+        title = f"{slot['episode']:03d} {marker} " if paired else f"{marker} Game {slot['episode']:02d} "
         rows = [color_text('+' + title[:inner].ljust(inner, '-') + '+', code, color)]
-        for text, tint in ((label, code), (day, '2'),
-                           (f"R {counts[0]:,}", '91'), (f"B {counts[1]:,}", '94'), (footer, code)):
+        for text, tint in ((short_label if paired and inner < 12 else label, code),
+                           (f"d{max(days) if days else '?'}" if paired else day, '2'),
+                           ('R ' + (short(counts[0]) if paired and inner < 10 else f"{counts[0]:,}"), '91'),
+                           ('B ' + (short(counts[1]) if paired and inner < 10 else f"{counts[1]:,}"), '94'), (footer, code)):
             rows.append(color_text('|', code, color) + color_text(fit(text), tint, color) + color_text('|', code, color))
         rows.append(color_text('+' + '-' * inner + '+', code, color))
         cards.append(rows)
+    if paired:
+        # Share the middle border: two independently styled games per old card.
+        # Remove only the first visible border; preserve its ANSI color prefix.
+        pairs = []
+        for index in range(0, len(cards), 2):
+            right = cards[index + 1]
+            def without_border(row):
+                end = row.index('m') + 1 if row.startswith('\x1b[') else 0
+                return row[:end] + row[end + 1:]
+            pairs.append([left + without_border(other) for left, other in zip(cards[index], right)])
+        cards = pairs
     return [' '.join(cards[col][row] for col in range(start, start + 5))
-            for start in range(0, len(cards), 5) for row in range((1 if dense else 2) if compact else 7)]
+            for start in range(0, len(cards), 5) for row in range(len(cards[0]))]
 
 
 class BatchProgressDisplay(ProgressDisplay):
-    """A stationary ten-slot view of existing disposable progress and reports."""
+    """A stationary batch view of existing disposable progress and reports."""
 
     def __init__(self, directory, *, launch, stream=None, clock=time.monotonic):
         super().__init__(directory, stream=stream, clock=clock)
         self.launch, self.report = launch, {}
         self.batch_games = launch.get("configuration", {}).get("training_games", 10)
         self.overview = self.batch_games == 10 and launch.get("batches", 1) == 4
-        self.slot_count = self.batch_games if self.batch_games in (40, 50) else 40 if self.overview else 10
+        self.slot_count = self.batch_games if self.batch_games in (40, 50, 100) else 40 if self.overview else 10
         self.started, self.opened = self.clock(), False
         self.saved, self.phase_name, self.phase_start = {}, None, 0
         self.dashboard = self.terminal and os.environ.get("TERM", "").lower() != "dumb"
@@ -432,13 +451,14 @@ class BatchProgressDisplay(ProgressDisplay):
             completed = sum(a.get('status') in ('captured', 'passed') for a in attempts.values())
             rows = [color_text(f'HEROES  /  {self.slot_count}-GAME TRAINING'[:width], '1', self.color),
                     f"Batch {len(self.report.get('batches', [])) or 1}/{self.launch.get('batches', 1)} | Ready {completed}/{self.slot_count} | Checkpoint {checkpoint} | {format_duration(elapsed)}"]
-            compact = height < self.slot_count // 5 * 7 + 6
-            dense = compact and height < self.slot_count // 5 * 2 + 6
+            grid_rows = self.slot_count // (10 if self.slot_count == 100 else 5)
+            compact = height < grid_rows * 7 + 6
+            dense = compact and height < grid_rows * 2 + 6
             card_height = (1 if dense else 2) if compact else 7
-            if width >= 74 and height >= self.slot_count // 5 * card_height + 6:
+            if width >= (79 if self.slot_count == 100 else 74) and height >= grid_rows * card_height + 6:
                 rows += batch_terminal_lines(slots, width=width, color=self.color, compact=compact, dense=dense)
             else:
-                rows += [f'Widen to 80 columns for the 5 x {self.slot_count // 5} grid.']
+                rows += [f'Enlarge to 80 columns and {grid_rows + 7} rows for all {self.slot_count} games.']
                 for slot in slots:
                     a, v = slot['attempt'], slot['value']
                     days = [d for d in v.get('days', ()) if d is not None]
@@ -477,7 +497,8 @@ class BatchProgressDisplay(ProgressDisplay):
                     half = max(1, (width - 3) // 2)
                     for start in range(0, len(active), 2):
                         rows.append(' | '.join(detail(slot)[:half].ljust(half) for slot in active[start:start + 2]))
-            rows.append('> playing | ~ prep | ! error | Enlarge for per-game days/counts' if dense else
+            rows.append('> play  ~ prep  . wait  R/B win  D day limit  C cutoff  OK ready  ! error' if self.slot_count == 100 else
+                        '> playing | ~ prep | ! error | Enlarge for per-game days/counts' if dense else
                         '> active | ~ prep | ! error | Cards: day Red/Blue choices; k rounded down' if compact else
                         '> active | ~ prep | R/B = choices used | Bars = action budget, not time')
             if self.report.get('error'):

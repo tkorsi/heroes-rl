@@ -1578,7 +1578,7 @@ def ten_reservations(requests=None):
     for row in value['reservations']:
         mode = row['mode']
         width = row.get('cycle_width', 11 if CYCLE_MODE else 10)
-        require(type(width) is int and width in ((11, 41, 51) if CYCLE_MODE else (10,))
+        require(type(width) is int and width in ((11, 41, 51, 101) if CYCLE_MODE else (10,))
                 and mode in offsets and type(row['count']) is int and row['count'] > 0
                 and row['count'] % width == 0 and row['offset'] == offsets[mode]
                 and row['consumed_including_unstarted'] is True
@@ -1706,7 +1706,7 @@ def ten_inspect():
                         and row['checkpoint']['metadata']['training_contract'] == (training.CYCLE_SCHEMA if CYCLE_MODE else training.TEN_SCHEMA),
                         'Ten-game checkpoint ancestry changed')
                 count = plan['configuration']['training_games']
-                require(type(count) is int and count in ((10, 40, 50) if CYCLE_MODE else (10,))
+                require(type(count) is int and count in ((10, 40, 50, 100) if CYCLE_MODE else (10,))
                         and len(plan['schedule']) == count
                         and row['checkpoint']['metadata'].get('training_games') == count
                         and len(row['receipts']) == count and len({item['path'] for item in row['receipts']}) == count,
@@ -2121,7 +2121,7 @@ def main(argv=None):
             continuation.add_argument('--hours', type=float, required=True)
     for name in ('batch10-check', 'batch10-run', 'batch10-continue',
                  'cycle-check', 'cycle-run', 'cycle-continue'):
-        ten = sub.add_parser(name, help=('Fifty training games, ten rolling actors, one PPO update and one validated self-play game'
+        ten = sub.add_parser(name, help=('One hundred training games, ten rolling actors, one PPO update and one validated self-play game'
             if name.startswith('cycle-') else 'Ten-game learning batches from verified1753; no extra evaluation games'))
         ten.add_argument('--batches', '--cycles', dest='batches', type=int, default=1)
         ten.add_argument('--hours', type=float, default=10)

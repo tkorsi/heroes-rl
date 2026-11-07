@@ -166,7 +166,7 @@ def _plan(path, digest):
                     and type(cfg.get("preparation_workers")) is int and cfg["preparation_workers"] == 1
                     and cfg["collection_workers"] + cfg["preparation_workers"]
                         <= value["execution"]["resource_plan"]["budget_cpus"],
-                    "Fifty-game capture requires ten rolling actors")
+                    "Hundred-game capture requires ten rolling actors")
         config = PPOConfig(**cfg["ppo"])
         require(type(cfg.get("max_optimizer_steps")) is int and cfg["max_optimizer_steps"]
                 == optimizer_step_cap(config, cfg["training_games"], cfg["max_total_choices"]),
@@ -502,7 +502,7 @@ def live_native_update(model, optimizer, receipts, *, plan_sha256, config, gener
     from .builtin_gameplay import transactional_update
     require(type(receipts) is tuple and len(receipts) == CYCLE_GAMEPLAY["training_games"]
             and all(type(r) is CapturedTrainingReceipt and _CAPTURE_RECEIPTS.get(id(r)) is r
-                    for r in receipts), 'Live training requires fifty fresh capture capabilities')
+                    for r in receipts), 'Live training requires one hundred fresh capture capabilities')
     require([r.binding.schedule_index for r in receipts] == list(range(CYCLE_GAMEPLAY['training_games'])), 'Live receipt order changed')
     for receipt in receipts:
         receipt.binding.recheck()

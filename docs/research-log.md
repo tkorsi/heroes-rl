@@ -3120,3 +3120,51 @@ both acceptance receipts, no pending diagnostic, and unchanged latest-checkpoint
 and seed-ledger bindings. The final canonical `prepare_vcmi.py --check` passed.
 The variant is ready for the next manual cycle. No full training or evaluation
 game was launched; the protected checkpoint remains 1,757.
+
+## 2026-11-07 — One hundred games and split dashboard: plan
+
+The user requested 100 training games per cycle and a script they will launch.
+They clarified that each old dashboard card should contain two separate games,
+so all 100 games fit in the footprint of the former 50-card grid. This is not a
+Red/Blue split. Keep ten rolling actors, one PPO update after all 100 captures,
+one fully verified diagnostic, the v3 Tavern/calendar rules, checkpoint 1,757,
+the ten-hour deadline and existing disk/RAM safeguards. No game or training
+launch is authorized in this preparation task.
+
+Acceptance criteria: preserve historical checkpoint/seed formats while requiring
+100 fresh captures for new updates; reserve 101 slots only on actual launch;
+show every game exactly once in a five-group, ten-row layout with two games per
+group; preserve active/result/error markers and PPO/diagnostic status. Validate
+small and large terminal layouts locally, run relevant existing checks, and pass
+the actual read-only continuation preflight without consuming seeds. Keep all
+new validation scripts and previews in private artifacts. The requested launch
+script may be tracked as the explicit user-facing entry point.
+
+Implementation and local validation: the cycle contract now requires 100 games;
+checkpoint restoration still accepts the historical 10/40/50 sizes, and seed
+auditing retains the old 11/41/51 reservation widths alongside the new 101.
+Actor count remains ten. The existing native runtime and both accepted scenario
+receipts are retained through an exact four-file source transition: batch size,
+metadata/seed compatibility, error/help text and dashboard rendering only. No
+native engine, policy sampling or PPO math source changed.
+
+All 44 selected existing progress, self-play checkpoint/training and runtime
+tests passed. Private `validate_preparation.py` passed 24 rendering combinations,
+full dashboard checks at 80x24, 80x28, 120x40 and 160x86, and a narrow-terminal
+fallback. Each complete grid contains IDs 001–100 exactly once; status lines,
+active-game details, terminal width bounds and cursor restoration were checked.
+Metadata checks accept historical parents and the new size while rejecting
+unknown sizes/actor settings. Incomplete batches cannot call the optimizer.
+The exact source transition rejects unrelated native or model edits. A read-only
+101-slot preview preserved the seed ledger. The requested script's run/check/error
+argument paths were exercised against a disposable launcher, never a game.
+Evidence and previews are private under
+`Heroes-artifacts/diagnostics/hundred-game-ui-20261107/`.
+
+`run-100-games.command` is a thin entry point to the existing continuation
+launcher, bound to the completed checkpoint-1,757 run. Default/manual execution
+requests one 100-game cycle plus its diagnostic within ten hours. `--check`
+performs only preflight. A superseding lineage causes the old run path to be
+rejected rather than silently selecting another parent. Full-cycle execution,
+memory use and duration remain unobserved; no seeds or training were started.
+Clean-checkout preflight follows the implementation commit.

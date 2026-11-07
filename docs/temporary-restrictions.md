@@ -67,5 +67,5 @@ On 7 November 2026 the user added the tavern and calendar-spawn restrictions and
 chose gradual removal of temporary restrictions in later experiments. Each
 removal must declare its rule/version and parent checkpoint, preserve the prior
 variant, and distinguish a rule effect from policy learning. The new variant
-passed native validation; it has not yet been used for training. The fifty-game
+passed native validation; it has not yet been used for training. The hundred-game
 cycle selects this map; historical one-game modes retain `hero-management-v2`.

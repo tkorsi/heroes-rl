@@ -49,7 +49,7 @@ def inspect_runtime(baseline):
 
 
 def inspect_cycle_scenario(checked):
-    """Select the independently accepted temporary map for fifty-game cycles."""
+    """Select the independently accepted temporary map for training cycles."""
     from experiments.headless.env import VcmiLauncher
     from tools import run_selfplay_one_game as evaluation
     game_map, receipt = campaign.binding(CYCLE_MAP), campaign.binding(CYCLE_ACCEPTANCE)
@@ -59,17 +59,19 @@ def inspect_cycle_scenario(checked):
     campaign.require(accepted.get('schema') == 'heroes-taverns-static-neutrals-native-v1'
                      and accepted.get('status') == 'passed' and accepted.get('runtime') == checked['runtime']
                      and accepted.get('map') == game_map and accepted.get('players') == [0, 1]
-                     and accepted.get('source_implementation') == evaluation.source_identity()['implementation']
                      and accepted.get('optimizer_updates') == 0 and accepted.get('training_samples_admitted') == 0
                      and all(accepted.get(key) is True for key in (
                          'initial_state_preserved', 'starting_taverns_and_hiring_both_players',
                          'monthly_spawn_positive_and_negative_controls', 'weekly_growth_preserved',
                          'native_replay_verified', 'both_policies_reconstructed', 'owned_cleanup_verified')),
                      'Temporary cycle rules lack complete native acceptance')
+    source_validation = evaluation.verify_native_validation_sources(
+        accepted.get('source_implementation'), evaluation.source_identity()['implementation'])
     launcher = VcmiLauncher(Path(checked['binary']), Path(checked['data']), CYCLE_MAP,
                             equipment_policy=VERSION)
     launcher.preflight()
     checked.update(game_map=str(CYCLE_MAP), native=launcher.identity())
     checked['runtime_origin']['scenario_validation'] = receipt
+    checked['runtime_origin']['scenario_source_validation'] = source_validation
     checked['protected'].update({item['path']: item for item in (game_map, receipt)})
     return checked

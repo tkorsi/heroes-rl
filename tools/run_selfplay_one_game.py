@@ -251,6 +251,18 @@ SCENARIO_SELECTION_SOURCES = {
     CONTROLLER_PATH: {'before': '67ff976be5dc6ffe03b5f0848cfd0903777bf12e2a39d5aae75c73db297c9c86',
         'after': '4e1ffdcf2468d4dd30c80f7e8b9320070a3003d475e3826348c11dfcc3d9a193'},
 }
+# Batch cardinality, legacy metadata/seed compatibility and the split dashboard.
+# Native rules, policy sampling and PPO math retain their accepted implementation.
+HUNDRED_BATCH_SOURCES = {
+    'experiments/learner/checkpoints.py': {'before': 'd1b38098f63d664ff5a73e32b43f28a5ad91d0d32f6801f2e0e6014bcf5f6c63',
+        'after': '1119ad08e21710893b8379b4929a5b6d6cd2954b62e6f0589ff0cf5330134fa8'},
+    'experiments/learner/game_progress.py': {'before': '899b0a43deec3714a09185f9f5a4703146fd3f7e2cce0419b15d783cadeef476',
+        'after': '85692445434a46440d33416702a8c8c1b2a088cd0259d48206fc677ab230ccc2'},
+    'experiments/learner/selfplay_training.py': {'before': '9b4bb1720a75e834688ea0d1dcc9f2d157d78ada25197c20d5f771f6cd498bee',
+        'after': '685456bca3b92d1bf3a2fb01cae8a19078ba85610008dfda2787390e79da376f'},
+    CONTROLLER_PATH: {'before': '4e1ffdcf2468d4dd30c80f7e8b9320070a3003d475e3826348c11dfcc3d9a193',
+        'after': '72ead91ceaae6d73ee730e5a17e527b19bccfc55cd3b0941f6e93a9a5892abe7'},
+}
 
 
 def verify_runtime_sources(implementation):
@@ -314,6 +326,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in SCENARIO_SELECTION_SOURCES.items()),
             'Cycle scenario selection differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in SCENARIO_SELECTION_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in HUNDRED_BATCH_SOURCES.items()),
+            'Hundred-game source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in HUNDRED_BATCH_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -339,7 +354,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_ppo_progress_display', PPO_PROGRESS_SOURCES),
                    ('reviewed_parallel_fifty_game_batch', PARALLEL_FIFTY_SOURCES),
                    ('reviewed_capture_registration', CAPTURE_REGISTRATION_SOURCES),
-                   ('reviewed_exact_recipe_sharing', RECIPE_SHARING_SOURCES))
+                   ('reviewed_exact_recipe_sharing', RECIPE_SHARING_SOURCES),
+                   ('reviewed_hundred_game_split_dashboard', HUNDRED_BATCH_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -382,6 +398,7 @@ def source_identity():
         parallel_fifty_sources=PARALLEL_FIFTY_SOURCES,
         capture_registration_sources=CAPTURE_REGISTRATION_SOURCES,
         recipe_sharing_sources=RECIPE_SHARING_SOURCES,
+        hundred_batch_sources=HUNDRED_BATCH_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 

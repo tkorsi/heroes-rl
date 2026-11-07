@@ -10,7 +10,7 @@ record previous experiments and their limits.
 
 ## Baseline for new experiments
 
-The current prepared experiment repeats fifty capture-only training games with ten
+The current prepared experiment repeats one hundred capture-only training games with ten
 rolling actor processes, then one PPO update and one validated self-play game.
 The lineage began at checkpoint 1,753; continuation restores its latest complete
 published checkpoint. Launches remain manual by default; on November 7 the user
@@ -57,7 +57,7 @@ frozen setup and continues after verified victories. The dashboard and final
 report show Red and Blue wins, with separate counts for cutoffs, failures and
 interruptions. The time budget can end the run before all attempts settle.
 
-## Fifty training games followed by one validated game
+## One hundred training games followed by one validated game
 
 The next cycle uses both starting taverns already built and
 calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
@@ -75,23 +75,26 @@ The latest run is `Heroes-artifacts/selfplay-ten-then-check/run-20261107-registr
 This completed cycle establishes execution correctness, not improved playing strength.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
-read-only preflight. Launch manually with
-`./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has fifty
-training games, one PPO update and one diagnostic game. Both diagnostic seats
+read-only preflight, or use `./run-100-games.command --check`. The prepared
+`./run-100-games.command` starts one manual continuation from the completed
+1,757 run. It refuses a stale run path if another continuation has superseded it.
+One cycle has one hundred training games, one PPO update and one diagnostic game. Both diagnostic seats
 use the newly saved weights. All stages share the ten-hour deadline. Both
 training and diagnostic
 games stop at 365 game days; the existing per-player choice limits remain
 158,720 ordinary plus 5,120 reserved choices.
 
-In an interactive terminal, the cycle launcher displays a stationary 5 by 10
-grid of game slots. The active slot is marked `>` and highlighted; cards retain
-days, Red/Blue action counts and results. PPO and diagnostic validation have
-separate status lines. The panel uses the alternate screen and restores the
-terminal/cursor on exit. Elapsed time in the panel and final runtime summary uses
-`hh:mm:ss`. Resize to at least 80 columns for the grid; smaller
-windows use a compact list. At 80x24, dense cards keep all fifty games visible, with day and exact
-counts for the ten active games below. At 80x28, two-line cards show per-game
-days and counts in whole thousands (`k`). Tall windows show full cards. Redirected output remains plain text. During PPO the
+In an interactive terminal, each former game card is split into two independent
+games: five groups across and ten rows, showing all 100 numbered slots. Each
+half keeps its own activity and outcome marker. PPO and diagnostic validation
+have separate status lines. The panel uses the alternate screen and restores the
+terminal/cursor on exit. Elapsed time uses `hh:mm:ss`. At 80x24, dense cards show
+all 100 games, with exact days and action counts for the ten active games below.
+At 80x28, two-line cards add each game's day; tall windows show per-game Red/Blue
+counts. Compact result markers are `R`/`B` for wins, `D` for the day limit and `C`
+for other cutoffs; `>` means playing, `~` preparing, `OK` ready and `!` failed.
+Widen smaller terminals to 80 columns for the complete grid.
+Redirected output remains plain text. During PPO the
 panel shows completed/total optimizer minibatches, a progress bar, elapsed time
 and an approximate ETA from the current update. ETA stays unknown until at least
 three minibatches and three seconds have elapsed. Optimizer completion and
@@ -101,14 +104,14 @@ failures cannot block or change learning.
 
 Training games have no native replay, policy-probability reconstruction or
 behavior analytics. Their Red/Blue win totals come from engine-reported outcomes
-and are explicitly unverified. All fifty fresh completed captures must exist
+and are explicitly unverified. All one hundred fresh completed captures must exist
 before one PPO update. Basic source, seed, action, boundary, terminal reward and
 checkpoint integrity checks remain active. Checkpoint metadata explicitly records
 `training_verification=not_performed`. The historical verified mode remains a
-separate contract. Previously published ten- and forty-game cycle checkpoints restore with
-their original metadata; new cycles require fifty games before one update.
-The existing lineage/namespace names are historical. Old eleven- and forty-one-slot reservations
-remain consumed; new cycles reserve fifty training seeds plus one diagnostic.
+separate contract. Previously published ten-, forty- and fifty-game cycle checkpoints restore with
+their original metadata; new cycles require one hundred games before one update.
+The existing lineage/namespace names are historical. Old eleven-, forty-one- and fifty-one-slot reservations
+remain consumed; new cycles reserve one hundred training seeds plus one diagnostic.
 
 Collection runs ten independent actor processes, each with one PyTorch/BLAS
 thread. A rolling dispatcher immediately refills an available slot; it does not
@@ -116,7 +119,7 @@ wait for a whole wave. Main prepares completed games serially while actors keep
 playing. All policy binding/model loading happens before the dispatcher starts;
 preparation stays on main so its signal-based deadline remains active. Completed
 receipts are sorted by schedule index before the unchanged PPO shuffle. A single
-PPO update starts only after all fifty games and owned-worker cleanup succeed.
+PPO update starts only after all one hundred games and owned-worker cleanup succeed.
 The inherited native execution profile continues to govern PPO; capture/preparation
 worker counts are explicitly recorded in the cycle configuration. Each completed
 game is compiled into a native PPO program, then its Python history is released.
@@ -126,7 +129,7 @@ the project's record classes. Training omits duplicate bridge/history JSONL and
 the independent post-game history audit. Native terminal evidence remains active.
 Diagnostic games retain full JSONL, audit and replay. Temporary raw training
 streams are removed after compilation. The update retains
-all fifty learner trajectories, the existing shuffled PPO windows and the original
+all one hundred learner trajectories, the existing shuffled PPO windows and the original
 PPO/Adam settings. An owned-process resident-memory guard leaves 48 GiB of the
 Mac's physical RAM as headroom. It stops the attempt safely if the budget is
 exceeded. A system-wide memory-pressure check also stops below 20% free.
@@ -144,7 +147,7 @@ A separate lineage and seed namespace keep this experiment distinct from the
 previous failed runs. Subsequent manual launches use
 `./continue-selfplay.sh --cycle --resume --run-dir PRIVATE_RUN_PATH --cycles 1 --hours 10`.
 All reserved slots remain consumed, including unstarted games. If continuation
-needs an outstanding diagnostic, one additional fifty-one-slot block is reserved
+needs an outstanding diagnostic, one additional 101-slot block is reserved
 for it and its unused slots remain consumed. Reports separately record engine
 wins, cutoffs, PPO steps, whether weight bytes changed, the saved checkpoint and
 the diagnostic validation result. No training starts during `--check`.
