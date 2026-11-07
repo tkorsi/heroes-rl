@@ -3109,3 +3109,14 @@ starting-equipment dependencies. All three errors reproduced unchanged in a
 private `git archive 3012b93` baseline. Logs are `integration-tests.log` and
 `baseline-tests.log` under the private diagnostic directory. No tests were
 modified or excluded from the reported result, and no gate was weakened.
+
+Final integration: the committed source at `2d322ef` passed the actual
+`./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` in three seconds.
+It restored the complete checkpoint 1,757 state, selected 50 captures plus one
+validated diagnostic, and left the next official seed offset at 238 with
+`reserved=false`. A separate read-only inspection saved
+`effective-cycle-configuration.json`, confirming the v3 map, new frozen runtime,
+both acceptance receipts, no pending diagnostic, and unchanged latest-checkpoint
+and seed-ledger bindings. The final canonical `prepare_vcmi.py --check` passed.
+The variant is ready for the next manual cycle. No full training or evaluation
+game was launched; the protected checkpoint remains 1,757.

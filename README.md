@@ -62,8 +62,9 @@ interruptions. The time budget can end the run before all attempts settle.
 The next cycle uses both starting taverns already built and
 calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
 neutrals and their growth remain native. These are temporary restrictions to be
-removed gradually. Native controls and a short frozen-1,757 prefix passed;
-clean-checkout continuation preflight is the remaining integration check.
+removed gradually. Native controls, a short frozen-1,757 prefix and the
+read-only continuation preflight passed. The next cycle restores checkpoint
+1,757 with these rules; no training has yet run on this variant.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
