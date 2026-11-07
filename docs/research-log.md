@@ -3259,3 +3259,49 @@ Both native acceptance source transitions pass and a changed controller digest
 is rejected. Private controls/logs are under `/tmp/heroes-retention-validation/`;
 they are not committed. Real history audit, retirement and post-cleanup preflight
 are still pending at this entry.
+
+### Observed retirement and continuation readiness
+
+Implementation commit `99e33be` passed the actual full legacy/cycle chain audit.
+`./continue-selfplay.sh --cycle --cleanup` completed in 10 seconds and retired
+all nine registered cycle run directories, including the analyzed disk-stop
+attempt. The cycle directory now occupies approximately 3.7 MiB, containing
+the two checkpoint pairs, compact audited baseline and original seed ledger.
+Its free-space result was 106.35 GiB, versus approximately 30 GiB before cleanup.
+
+A bounded, local-only maintenance pass then retired historical raw experiment
+data in 274 selected paths under `Heroes-artifacts`: the old local-script,
+self-play, ten-game, evaluation, investigation and validation captures. It held
+the existing activity lease, refused live workers, checked every deletion tree
+against current protected files, and preserved both existing owner-lock inodes.
+Nested Git/source/model-backup repositories were excluded. Current runtime and
+native acceptance, Python, native learner and game assets were preserved. This
+pass took 38.48 seconds and increased free space by 727.92 GiB; final free space
+was approximately 833 GiB. These free-space deltas include normal filesystem
+activity and are not an exact sum of raw logical file sizes.
+
+After both deletions the controller freshly restored the same policy/resume
+pair, all protected inputs matched, and the seed ledger was byte-for-byte
+unchanged (SHA-256 `e2e4214667edba00c9ff6faba819225842a9642ece9a971753ba7b8a0a1ac8fc`).
+Retained checkpoint 1,757 has 7,122 rollouts, 1,475,242 decisions and 48,378
+optimizer steps. Policy SHA-256 remains
+`6b4c8adbdcefa9bbc4e3ead1d3d55180f281a34cf47b3f0d4bb0e06820ac1686`;
+resume SHA-256 remains
+`4e6d35e55a73e882c875e4f1ec22dc66f7671dbf02703e70a71550fd1c54bdcb`.
+The existing 1,757 diagnostic is accepted, so no recovery diagnostic is pending.
+
+The final manual `./run-100-games.command --check` passed after raw history was
+gone: 100 training games, one PPO update and one diagnostic are planned, not
+executed. The next reservation is still unallocated: offset 339, 101 slots,
+engine base 1,980,000,339 and policy base 1,982,000,678. The v3 tavern/static-neutral
+scenario and current native/source gates remain accepted. Native recipe check
+also passed: pinned VCMI plus canonical patches/owned source match exactly.
+No real game, PPO update, sample admission or seed reservation occurred in this
+retention task. Important conclusions remain in this journal; deleted raw
+history cannot be promised for future replay or behavioral re-analysis.
+
+Durable continuation evidence is
+`Heroes-artifacts/selfplay-ten-then-check/retained/state.json` and the copied
+checkpoint pairs. Local maintenance/preflight details are in
+`/tmp/heroes-retention-validation/{cleanup.log,legacy-cleanup-result.json,final-preflight.log}`;
+those auxiliary files remain uncommitted and are not needed for continuation.
