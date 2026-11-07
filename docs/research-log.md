@@ -2796,3 +2796,51 @@ by its separate unchanged manifest. Evidence: `compact-recipe-controls.json`,
 `compact-recipes-native-tests.log` and `recipe-source-transition.log` in the same
 private diagnostics directory. Next fresh official offset is 187 (engine base
 1,980,000,187, policy base 1,982,000,374); the next attempt must recollect all fifty.
+
+## 2026-11-07 — Completed fifty-game continuation through checkpoint 1,757
+
+The final source was `70373d3` on `codex/fix-capture-registration`. Its read-only
+preflight passed exact restoration of checkpoint 1,756. The agent then invoked
+the same cycle launcher with `--resume`, `--cycles 1 --hours 10`, latest run
+`run-20261107-registration-retry1` and fresh output
+`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry2`.
+Launch time was 13:51:43 UTC. The 51-slot reservation consumed offset 187 through
+237, starting at engine 1,980,000,187 and policy 1,982,000,374. Source/runtime,
+configuration and parent identities are bound in that run's `launch.json`.
+
+All fifty fresh training captures prepared successfully, with zero failed or
+interrupted games. Engine-reported outcomes were zero Red wins, seventeen Blue
+wins and thirty-three day cutoffs; training verification was not performed as
+specified by this experiment. All fifty learner trajectories were admitted,
+containing 87,916 decisions. Exactly one PPO update performed 2,760 Adam
+minibatches and changed weight digest from
+`2ceb90214d71654c419f0d2c7ea84a5ace85d6a013ebd611c8ff37836bf0cfb5` to
+`11aebbe1228f108b3027d54273f120e7d1e2d72becfae5bb82e78739356a19ee`.
+Checkpoint 1,757 passed full save/restore verification and became the latest
+complete publication. Reported approximate KL was 0.0022677753, clip fraction
+0.0260589654 and value loss 0.0437530742. These metrics do not prove strength.
+
+The fresh 1,757-versus-1,757 diagnostic used engine seed 1,980,000,237 and policy
+seeds 1,982,000,474/475. It reached the 365-day cutoff without a winner, with
+16,196 Red and 1,341 Blue sampled choices. Both exact policy reconstructions
+reported maximum absolute difference zero and unchanged weights; independent
+native replay passed. This diagnostic was excluded from PPO. It validates
+recording/reconstruction/replay, not improvement against a fixed opponent.
+
+The campaign report ended `completed`, with one optimizer update, fifty admitted
+games, owned cleanup verified and protected inputs unchanged. Supervisor exit
+code was zero with no cleanup errors. Coordinator elapsed time was 4,988.748
+seconds; total launcher time was 01:23:14. The PPO progress sidecar recorded
+3,558 seconds through save, not an isolated optimizer-kernel measurement.
+The final read-only launcher preflight restored the full 1,757 model, Adam, RNG,
+progress, sampler and opponent pool exactly, with zero games/updates and no seed
+reservation. Next unconsumed offset is 238 (engine 1,980,000,238 and policy
+1,982,000,476). No further cycle was launched.
+
+Evidence: the run's `report.json`, `shutdown.json`,
+`batch-train-000/publication.json`, `evaluation-000/execution/episode-000001/training-receipt.json`
+and associated reconstruction/native replay reports; diagnostics retain
+`cycle-retry2-terminal.log`, `preflight-retry2.log` and `post-run-preflight.log`.
+All raw evidence, controls and adapted test fixtures remain private and outside
+Git. The local branch contains the minimal production fixes, exact source pins
+and English project documentation; no remote push or PR was performed.

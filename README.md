@@ -59,6 +59,14 @@ interruptions. The time budget can end the run before all attempts settle.
 
 ## Fifty training games followed by one validated game
 
+The November 7 continuation completed all fifty games, one PPO update and its
+fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
+The diagnostic reached the 365-day limit without a winner. The worker-registration
+race and duplicate native-recipe storage were fixed; numerical parity checks
+passed without changing gameplay, PPO settings or native resource bounds.
+The latest run is `Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry2`.
+This completed cycle establishes execution correctness, not improved playing strength.
+
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight. Launch manually with
 `./continue-selfplay.sh --cycle --run --cycles 1 --hours 10`. One cycle has fifty
