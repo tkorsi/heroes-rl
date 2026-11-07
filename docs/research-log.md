@@ -2635,3 +2635,92 @@ and a non-reserving preview of 51 fresh slots at offset 85. Actual gameplay and
 optimizer updates were zero; main prepare_vcmi.py --check passed. Evidence:
 diagnostics/parallel50-20261105/main-continuation-check.log. Manual launch remains
 the user's responsibility; full fifty-game memory/runtime completion is not yet observed.
+
+## 2026-11-07 — Status reconstruction of the first fifty-game attempt
+
+Question: where did the experiment stop after the fifty-game handoff? Acceptance
+for this status review is agreement between the latest launch/report/shutdown,
+checkpoint pointer and seed ledger; no game, replay or optimizer launch is part
+of this review. The preceding handoff entry describes preparation, not the later
+manual attempt discovered in private artifacts during this review.
+
+Run `run-20261105T190107Z-9321e3b1` started on November 5 at 21:01 Kyiv time,
+from source `989dcd03364a3f8b5db0a0e9412882d45e518b20` and parent checkpoint
+1,756. Its hash-bound launch records the runtime/configuration identities:
+fifty training games, ten rolling single-thread actors, one preparation worker,
+365-day limit, capture-only training and one planned post-update diagnostic.
+The reserved 51-slot block starts at offset 85, engine seed 1,980,000,085 and
+policy seed 1,982,000,170. All slots, including unstarted ones, remain consumed.
+
+The coordinator report records `stopped` after 119.482 seconds with
+`ValueError: Register one live owned child and private completion token`.
+The fifty attempt statuses are nine captured, ten interrupted, one failed and
+thirty not started. Zero games/samples were admitted and zero optimizer updates
+occurred; the latest published checkpoint remains 1,756. These attempt statuses
+are distinct from engine outcomes and overlapping cutoff counters. No training
+victory in this capture-only attempt is independently replay-verified.
+
+Both shutdown reports record owned cleanup complete; campaign shutdown has
+return code 1 and protected inputs unchanged. No matching active game/training
+process was observed during the status review. Evidence is `launch.json`,
+`report.json`, both `shutdown.json` files and `coordinator-deadline.jsonl` under
+`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/` followed by the
+run ID above, plus that namespace's `latest-checkpoint.json` and
+`seed-reservations.json`. This review did not reproduce or establish the root
+cause of the registration error. The next engineering step is to investigate
+that failure before another manual fifty-game attempt; full-cycle throughput
+and any learning improvement remain unestablished.
+
+## 2026-11-07 — Registration-race repair and authorized fifty-game continuation
+
+The user explicitly authorized investigation, repair, an agent-launched full
+fifty-game cycle and progress reports every thirty minutes. This supersedes the
+earlier user-only launch restriction for this attempt. Parent remains the latest
+complete checkpoint 1,756. No learning, reward, gameplay, worker-count or
+verification setting is to change. Work starts from `989dcd0` on
+`codex/fix-capture-registration`; validation scripts and raw evidence remain
+private under `diagnostics/capture-registration-20261107` in Heroes-artifacts.
+
+Hypothesis: the actor can complete a short game while the launch-registration
+binding recheck runs, before the subsequent live-process check. The failed
+episode 20's worker ran from 19:02:47.950 to 19:02:53.754 UTC and retained a
+natural-terminal manifest without worker stderr, consistent with this ordering.
+The planned repair uses the existing subprocess stdin channel: the actor waits
+for its private token, which the coordinator sends only after successful live
+registration. Source rechecks, live-child requirements, completion tokens,
+artifact hashes, deadlines and full-batch admission remain enabled.
+
+Acceptance before launch: reproduce the old ordering with disposable real child
+processes; prove that delayed registration cannot start gameplay, rejected or
+abandoned registration cannot produce a completion, and fifty rolling actors
+still produce ordered complete receipts with owned cleanup. Run relevant
+existing regressions and canonical engine-recipe verification. Inspect staged
+and complete target-branch diffs before the local source commit required by the
+clean-source launch gate; publish no tests or auxiliary tooling.
+
+Continuation acceptance: restore checkpoint 1,756 exactly, reserve fresh seeds
+after the failed run's consumed 51 slots (next offset 136), collect all fifty
+fresh games, perform exactly one PPO update, save and restore-check checkpoint
+1,757, then complete exact two-policy reconstruction and native replay of one
+fresh diagnostic. Retain the ten-hour deadline, 30 GiB disk reserve and existing
+memory guards. Record outcomes, failed attempts, timings and actual validation
+separately; do not infer learning improvement from one self-play cycle.
+
+The ungated ordering reproduced the original error with a real successfully
+exited child and a deliberately delayed binding recheck. With the production
+stdin gate, the child remained alive without entering capture until registration
+completed. Wrong-token, EOF, deadline and rejected-registration controls produced
+no capture; owned groups closed. The actual rolling collector then completed
+fifty disposable guarded children at peak ten, using real launch registration
+and token/file-bound completion checks, returning fifty ordered receipts and
+closing its process pipes/groups. These controls used synthetic artifacts and
+did not launch VCMI or PPO; their scope is process ordering, not game validity.
+
+The existing 87-test selection passed 85 and failed two controller fixtures
+whose fake Popen objects lack stdin. An external local copy changed only that
+fixture to provide BytesIO; all 37 controller tests then passed. The repository
+tests remain unchanged and are not represented as an entirely green unmodified
+suite. Logs and the adjusted fixture stay in the private diagnostics directory.
+`python3 tools/prepare_vcmi.py --check` passed exact canonical agreement.
+The production change is limited to worker release ordering and pipe closure;
+the launch/completion admission code and numerical learner are unchanged.

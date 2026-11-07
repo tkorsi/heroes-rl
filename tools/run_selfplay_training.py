@@ -802,6 +802,10 @@ def batch_plan(launch, state, index, start, count, previous_policy):
 
 
 def capture_worker(args):
+    # Registration rechecks source and input bindings. A short game must not
+    # finish while its coordinator is still registering this live child.
+    require(sys.stdin.buffer.readline(66) == (args.token + '\n').encode('ascii'),
+            'Capture requires its coordinator registration release')
     from experiments.learner import selfplay_training as training
     from experiments.learner.contextual_rollout import ContextualCollector
     from experiments.learner.contextual_storage import save_collected, save_live_collected
@@ -1028,7 +1032,7 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                    '--deadline', str(deadline), '--wall-deadline', str(wall)]
         process = guarded_popen(command, deadline_monotonic=deadline, deadline_wall=wall,
             evidence_path=output / f'worker-{index:02d}-deadline.jsonl', cwd=ROOT,
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log,
             **({"env": worker_env} if live else {}))
         job = dict(process=process, log=log, binding=capability, index=index, folder=folder,
                    deadline=deadline, wall_deadline=wall,
@@ -1036,6 +1040,9 @@ def collect_batch(plan_path, plan, learner, opponent, launch, save_attempt, *, p
                                   capture_deadline_unix=wall, collection_and_verification=phase_deadline))
         jobs.append(job)
         training.register_capture_launch(capability, process, token)
+        process.stdin.write((token + '\n').encode('ascii'))
+        process.stdin.close()
+        process.stdin = None
         save_attempt(index, dict(**row, status='running', outcomes={'red': None, 'blue': None},
                                 rewards={'red': None, 'blue': None}, deadlines=job['deadlines']))
         return job
@@ -1177,6 +1184,9 @@ def close_collection_jobs(jobs, output, launch):
         except Exception as error:
             errors.append(f"worker {job['index']}: {error}")
         finally:
+            for stream in (getattr(job['process'], 'stdin', None), getattr(job['process'], 'stdout', None)):
+                if stream is not None:
+                    stream.close()
             job['log'].close()
     for evidence in Path(output).glob('native-*-deadline.jsonl'):
         try:
