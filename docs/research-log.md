@@ -3168,3 +3168,14 @@ performs only preflight. A superseding lineage causes the old run path to be
 rejected rather than silently selecting another parent. Full-cycle execution,
 memory use and duration remain unobserved; no seeds or training were started.
 Clean-checkout preflight follows the implementation commit.
+
+Final readiness: committed implementation `f2c1f99` passed the actual
+`./run-100-games.command --check` in three seconds. It restored checkpoint 1,757
+and reported 100 training games, one diagnostic, one expected PPO update, ten
+rolling actors and the 365-day limit. The next reservation is 101 physical-game
+seeds with 202 policy seeds, starting at the unchanged offset 238;
+`reserved=false`, `gameplay_performed=false` and `optimizer_updates=0`.
+The v3 map and both native acceptance gates passed through the declared exact
+source transition. `preflight.log` retains the complete output. The 80x24
+preview was visually inspected as simulated progress, with all 100 games and
+details for all ten active games visible. No native game or optimizer was run.
