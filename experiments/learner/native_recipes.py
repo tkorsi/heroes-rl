@@ -19,8 +19,9 @@ from .contextual_model import (
 
 
 class _Arena:
-    def __init__(self, nodes):
+    def __init__(self, nodes, shared=None):
         self.nodes = nodes
+        self.shared = {} if shared is None else shared
         # A new equality cache per frame preserves signed-zero first-use and
         # Python's existing numeric equality rules within that frame only.
         self.ids = {}
@@ -38,8 +39,16 @@ class _Arena:
             tag, children = tree[1:]
             children = [self.add(child) for child in children]
             node = (kind, self.add(_text(tag)), children)
-        index = len(self.nodes)
-        self.nodes.append(node)
+        # Share immutable recipes across frames only after the frame-local
+        # equality choice above. Keep original numeric identity and signed zero:
+        # different inputs may round to the same preprocessed double features.
+        key = ((kind, type(tree[1]), tree[1], copysign(1., tree[1])) if kind == "number"
+               else (kind, node[1], tuple(node[2])))
+        index = self.shared.get(key)
+        if index is None:
+            index = len(self.nodes)
+            self.nodes.append(node)
+            self.shared[key] = index
         self.ids[tree] = index
         return index
 
@@ -184,10 +193,10 @@ def compile_history(model, inputs, records, backend):
     by_seq = {record.decision_seq: record for record in records}
     if len(by_seq) != len(records):
         raise ValueError("Duplicate native decision recipe")
-    nodes, frames = [], []
+    nodes, frames, shared = [], [], {}
     for seq, frame in enumerate(inputs):
         model._check_step(frame, model.initial_state())
-        arena = _Arena(nodes)
+        arena = _Arena(nodes, shared)
         if frame.semantics is None:
             if seq in by_seq:
                 raise ValueError("Loss decision has no recurrent input")

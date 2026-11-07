@@ -2742,3 +2742,57 @@ The new transition accepts only the controller change and records
 clean-checkout entry point while this pin edit was uncommitted and correctly
 failed; the corrected read-only control used the implementation inventory
 directly. No seeds or gameplay were involved in these checks.
+
+The clean `e4a593d` continuation preflight passed exact restoration of checkpoint
+1,756 and previewed offset 136 without reserving. The agent launched
+`./continue-selfplay.sh --cycle --resume --run-dir
+/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261105T190107Z-9321e3b1
+--cycles 1 --hours 10 --output
+/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261107-registration-retry1`
+at 13:35:01 UTC. It consumed 51 slots at offset 136 (engine base 1,980,000,136,
+policy base 1,982,000,272), using the same engine/native learner and configuration.
+All fifty actors registered and completed capture. Forty-nine preparations
+succeeded; episode 31 failed native preparation with
+`RuntimeError: Native history exceeds bounded recipe size`. The failed learner
+seat had 15,075 choices; the other seat had 3,053. Total engine outcomes were
+one Red win, fifteen Blue wins and thirty-four day cutoffs, all unverified.
+No games were admitted and no PPO update occurred; checkpoint remains 1,756.
+Shutdown return code was 1, with owned cleanup complete and protected inputs
+unchanged. Total launcher time was 00:12:01. This establishes successful live
+registration for the full batch, not successful training-cycle acceptance.
+
+New hypothesis before another attempt: frame-local compilation duplicates exact
+tree recipes across frames until the unchanged native ten-million-node bound is
+reached. Investigate exact structural sharing after each frame's existing Python
+equality/first-use handling. Preserve signed-zero choices, frame order, every
+action, per-frame gradient graphs, native limits and the existing binary.
+Acceptance requires numerical/gradient/update parity against the old compiler,
+plus successful compilation of the actual rejected long capture without
+admitting that historical capture to training. Only then repeat a fresh complete
+fifty-game cycle from 1,756, with the failed 51-slot block left consumed.
+
+Implemented cross-frame sharing in the existing recipe arena, preserving its
+separate frame-local equality cache. Numeric keys retain original type/value
+and signed zero so preprocessing collisions cannot merge distinct frame-local
+nodes. The unchanged native binary still enforces its original size/depth bounds.
+The actual rejected history contained 135,467 frames, 15,075 learner choices and
+12,473,634 old frame-local nodes. It compiled successfully with 139,016 shared
+nodes in 61.20 seconds, without dropping frames/actions or changing source
+captures, model weights or RNG. Old/new native execution on an eight-decision
+prefix of that game matched every output and gradient byte. Signed-zero,
+int/float equality and rounded-number controls preserved within-frame graph
+identity. No retained capture was registered for training or admitted to PPO.
+
+All 43 distinct selected numerical/acceleration tests passed, including actual
+native gradient/Adam/weight/RNG parity. The first invocation skipped seven native
+tests because that module uses a different manifest environment variable; all
+seven passed when explicitly selected with the correct variable. The exact
+212-file inventory accepted only the recipe compiler delta; sixteen alteration
+and omission cases were rejected. A first private inventory probe requested a
+native-kernel path absent from this inventory and raised KeyError; its corrected
+version used the recorded engine source, while the native build remains checked
+by its separate unchanged manifest. Evidence: `compact-recipe-controls.json`,
+`compact-recipe-controls.log`, `compact-recipes-tests.log`,
+`compact-recipes-native-tests.log` and `recipe-source-transition.log` in the same
+private diagnostics directory. Next fresh official offset is 187 (engine base
+1,980,000,187, policy base 1,982,000,374); the next attempt must recollect all fifty.
