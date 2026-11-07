@@ -1,0 +1,104 @@
+diff --git a/lib/IGameSettings.h b/lib/IGameSettings.h
+--- a/lib/IGameSettings.h
++++ b/lib/IGameSettings.h
+@@ -113,6 +113,8 @@
+ 	TOWNS_SPELL_RESEARCH_COST_MULTIPLIER_PER_RESEARCH,
+ 	TOWNS_SPELL_RESEARCH_COST_MULTIPLIER_PER_REROLL,
+ 
++	CREATURES_ALLOW_MONTHLY_SPAWNS,
++
+ 	OPTIONS_COUNT
+ };
+ 
+diff --git a/lib/GameSettings.cpp b/lib/GameSettings.cpp
+--- a/lib/GameSettings.cpp
++++ b/lib/GameSettings.cpp
+@@ -66,6 +66,7 @@
+ 		{EGameSettings::COMBAT_NO_SPELL_HIT_AND_RUN_ROUNDS,               "combat",    "noSpellHitAndRunRounds"               },
+ 		{EGameSettings::CREATURES_ALLOW_ALL_FOR_DOUBLE_MONTH,             "creatures", "allowAllForDoubleMonth"               },
+ 		{EGameSettings::CREATURES_ALLOW_JOINING_FOR_FREE,                 "creatures", "allowJoiningForFree"                  },
++		{EGameSettings::CREATURES_ALLOW_MONTHLY_SPAWNS,                   "creatures", "allowMonthlySpawns"                   },
+ 		{EGameSettings::CREATURES_ALLOW_RANDOM_SPECIAL_WEEKS,             "creatures", "allowRandomSpecialWeeks"              },
+ 		{EGameSettings::CREATURES_DAILY_STACK_EXPERIENCE,                 "creatures", "dailyStackExperience"                 },
+ 		{EGameSettings::CREATURES_JOINING_PERCENTAGE,                     "creatures", "joiningPercentage"                    },
+diff --git a/config/gameConfig.json b/config/gameConfig.json
+--- a/config/gameConfig.json
++++ b/config/gameConfig.json
+@@ -706,6 +706,8 @@
+ 			// if enabled, double growth, plague and creature weeks can happen randomly. Has no effect on weeks by "Deity of Fire" 
+ 			// NOTE: on HotA maps, this setting has no effect. Value provided in map will be used instead.
+ 			"allowRandomSpecialWeeks" : true,
++			// New wandering armies at month boundaries; existing stacks still grow.
++			"allowMonthlySpawns" : true,
+ 			// if enabled, every creature can get double growth month, ignoring predefined list
+ 			"allowAllForDoubleMonth" : false,
+ 			// if enabled creatures may join player for free, disabling it removes free joining globally unless creature is set to join in map editor
+diff --git a/config/schemas/gameSettings.json b/config/schemas/gameSettings.json
+--- a/config/schemas/gameSettings.json
++++ b/config/schemas/gameSettings.json
+@@ -127,6 +127,7 @@
+ 				"monthPlagueProbability" :            { "type" : "number" },
+ 				"weekSpecialProbability" :            { "type" : "number" },
+ 				"dailyStackExperience" :              { "type" : "number" },
++				"allowMonthlySpawns" :                { "type" : "boolean" },
+ 				"allowRandomSpecialWeeks" :           { "type" : "boolean" },
+ 				"allowAllForDoubleMonth" :            { "type" : "boolean" },
+ 				"allowJoiningForFree" :               { "type" : "boolean" },
+diff --git a/config/schemas/mapHeader.json b/config/schemas/mapHeader.json
+--- a/config/schemas/mapHeader.json
++++ b/config/schemas/mapHeader.json
+@@ -6,6 +6,7 @@
+ 	"required" : [ "victoryIconIndex", "victoryString", "defeatIconIndex", "defeatString" ],
+ 	"additionalProperties" : false,
+ 	"properties" : {
++		"allowMonthlyMonsters" : { "type" : "boolean" },
+ 		"victoryIconIndex" : {
+ 			"type" : "number"
+ 		},
+diff --git a/lib/mapping/MapFormatJson.cpp b/lib/mapping/MapFormatJson.cpp
+--- a/lib/mapping/MapFormatJson.cpp
++++ b/lib/mapping/MapFormatJson.cpp
+@@ -16,6 +16,7 @@
+ #include "../filesystem/Filesystem.h"
+ #include "../json/JsonWriter.h"
+ #include "CMap.h"
++#include "../IGameSettings.h"
+ #include "MapFormat.h"
+ #include "../GameLibrary.h"
+ #include "../RiverHandler.h"
+@@ -880,6 +881,13 @@
+ {
+ 	LOG_TRACE(logGlobal);
+ 	readHeader(true);
++	const auto monthlyMonsters = getFromArchive(HEADER_FILE_NAME)["allowMonthlyMonsters"];
++	if(!monthlyMonsters.isNull())
++	{
++		if(!monthlyMonsters.isBool())
++			throw std::runtime_error("allowMonthlyMonsters must be boolean");
++		map->overrideGameSetting(EGameSettings::CREATURES_ALLOW_MONTHLY_SPAWNS, monthlyMonsters);
++	}
+ 	map->initTerrain();
+ 	readTerrain();
+ 	readObjects();
+@@ -1379,6 +1387,8 @@
+ 
+ 	header["versionMajor"].Float() = VERSION_MAJOR;
+ 	header["versionMinor"].Float() = VERSION_MINOR;
++	if(!map->getSettings().getBoolean(EGameSettings::CREATURES_ALLOW_MONTHLY_SPAWNS))
++		header["allowMonthlyMonsters"].Bool() = false;
+ 	
+ 	//write mods
+ 	header["mods"] = ModVerificationInfo::jsonSerializeList(mapHeader->mods);
+diff --git a/server/processors/NewTurnProcessor.cpp b/server/processors/NewTurnProcessor.cpp
+--- a/server/processors/NewTurnProcessor.cpp
++++ b/server/processors/NewTurnProcessor.cpp
+@@ -758,7 +758,8 @@
+ 	}
+ 
+ 	//spawn wandering monsters
+-	if (newMonth && (n.specialWeek == EWeekType::DOUBLE_GROWTH || n.specialWeek == EWeekType::DEITYOFFIRE))
++	if (newMonth && gameHandler->gameInfo().getSettings().getBoolean(EGameSettings::CREATURES_ALLOW_MONTHLY_SPAWNS)
++		&& (n.specialWeek == EWeekType::DOUBLE_GROWTH || n.specialWeek == EWeekType::DEITYOFFIRE))
+ 	{
+ 		gameHandler->spawnWanderingMonsters(n.creatureid);
+ 	}

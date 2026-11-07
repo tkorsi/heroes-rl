@@ -2844,3 +2844,193 @@ and associated reconstruction/native replay reports; diagnostics retain
 All raw evidence, controls and adapted test fixtures remain private and outside
 Git. The local branch contains the minimal production fixes, exact source pins
 and English project documentation; no remote push or PR was performed.
+
+## 2026-11-07 — Diagnostic 1,757 versus 1,756: analysis plan
+
+Question: what behavior prevented a win in the completed 1,757 self-play
+diagnostic, and which observed differences from the preceding 1,756 diagnostic
+could support or contradict an improvement hypothesis? This is read-only
+analysis of existing evidence, with no new game, replay, training, seed
+reservation or policy/configuration change. The source at analysis start is
+`3012b93` on `codex/fix-capture-registration`.
+
+Acceptance criteria: stream both players' manifest-bound histories for both
+games with identical metric definitions; distinguish sampled policy choices
+from the cutoff continuation; verify input hashes against the completed run
+receipts; reconstruct town ownership, hero roster changes, battle results and
+preceding visits, successful development actions, exploration, movement results
+and repeated window actions. Preserve compact evidence privately under
+`Heroes-artifacts/diagnostics/analysis-1757-vs-1756-20261107/` and record the
+observed behavior and limitations here. Exact reconstruction and native replay
+results are read from the existing validated receipts, not rerun. The diagnostic
+seeds differ and both seats change checkpoint, so one self-play game per
+checkpoint cannot estimate a strength increase or isolate the PPO update.
+
+## 2026-11-07 — Observed behavior and comparison of diagnostics 1,757 and 1,756
+
+The bounded private streaming analysis completed for all four player histories.
+Their byte counts and SHA-256 digests match the completed run receipts; submitted
+learner-history actions exactly match the recorded policy sample counts. The
+live cutoff continuation is excluded. The first scratch aggregation used a
+generic battle-event name; this was corrected to paired `battle_start` and
+`battle_complete` events and all four streams were reread before reporting.
+Neither native replay nor gameplay was rerun. Both existing diagnostic receipts
+confirm exact two-policy reconstruction (maximum absolute difference zero) and
+successful native replay. Capture-manifest replay flags predate verification;
+the later verification receipts own that result.
+
+The compared games are `run-20261105T153955Z-e97254e5` (checkpoint 1,756; engine
+seed 1,980,000,084; policy seeds 1,982,000,168/169) and
+`run-20261107-registration-retry2` (checkpoint 1,757; engine seed 1,980,000,237;
+policy seeds 1,982,000,474/475). All capture-manifest runtime/map/adapter identity
+fields match except the project revision. Both use the same no-artifacts profile,
+20-by-20 map and 365-day cutoff. The first retained own views have different
+resources (1,756 Red/Blue wood and ore 5/12; 1,757 Red/Blue 15/5), so even initial
+observed economic conditions are not matched. Both seats use their respective
+checkpoint; this is not a fixed-opponent or paired-seed experiment.
+
+In 1,757, Blue attacked Red's hero on day 6 and lost its only hero. It hired no
+replacement during the remaining game. Its town-building decision on day 17
+is especially informative: the hall showed the tavern as `allowed`, but the
+policy built the archer dwelling instead, spending its last five wood and five
+ore. The tavern subsequently appeared as `no_resources` on day 41. No further
+building or hero-hiring action occurred, and wood/ore stayed zero. The production
+Tavern adapter requires an owned town with a tavern before hiring. Thus the
+observed path stranded Blue without a hero and without the wood needed to enable
+hiring; it was not merely repeatedly declining an already available hire action.
+Blue recruited into its town forty times. At the cutoff boundary the garrison
+contained 710 pikemen and 459 archers, with zero heroes. It retained its original
+town throughout and revealed 286/400 tiles, all by day 6.
+
+Red won a neutral battle on day 2 and defended against Blue's hero on day 6. It
+built a tavern on day 31, first hired on day 81, hired fourteen heroes overall,
+and reached eight simultaneous heroes. Fourteen recruit actions and six
+`swap_garrison` actions included three observed transfers of town troops into
+hero armies: 140 pikemen on day 81, 154 on day 150 and 336 on day 322. The other
+three swaps caused no net troop transfer. These troops were used in the field:
+the first reinforced army won against neutrals on day 102; another reinforced
+army won neutral fights on days 230 and 232. Red uncovered all 400 tiles by day
+100. It won five neutral battles and its one defensive hero battle, but lost
+fifteen battles/heroes: twelve neutral encounters and three attacks on Blue's
+town, on days 123, 305 and 331. These classifications use same-day visits
+immediately preceding battle starts, corroborated by the other player's town
+defenses for the three sieges.
+
+The attacking armies were poorly matched to the town defenders. On day 331,
+Red attacked with sixteen pikemen and seven archers against Blue's recorded
+town army of 640 pikemen and 369 archers. On day 327 its original hero attacked
+neutrals with just three pikemen and died; on day 334 another hero did so with
+one goblin. The last reinforced hero, carrying 352 pikemen and four archers,
+died to neutrals on day 359. All fifteen heroes (initial plus fourteen hired)
+were lost. Red finished with neither heroes nor garrison troops, but retained
+its original town. Blue had no hero to take that empty town, and Red never took
+Blue's defended town. Both original towns remained owned; the experiment ended
+at the day limit, not a native terminal draw or a verification failure.
+
+Window repetition remained prominent. Red devoted 12,372/16,196 sampled choices
+(76.39%) to `open_hero`, `open_capability`, `close_capability` and `close` alone.
+The four-action open/close-capability/open/close-capability pattern occurred
+1,596 times, counted with overlap. Blue's post-loss behavior was mostly town
+opening/closing, turn ending and intermittent recruitment. Across both seats,
+the same four window-action kinds account for 12,783/17,537 choices (72.89%),
+versus 7,902/11,617 (68.02%) in 1,756. These are descriptive action families, not
+a claim that every window opening is useless. Movement `no_route_known` was
+130/3,176 (4.09%), versus 71/1,910 (3.72%); movement exhaustion is counted
+separately and not treated as a route error.
+
+Identically defined aggregate observations (both seats, one game each):
+
+| Metric | 1,756 | 1,757 |
+| --- | ---: | ---: |
+| Enemy towns captured | 0 | 0 |
+| Neutral battles won | 3 | 5 |
+| New heroes hired | 22 | 14 |
+| Hero losses | 21 | 16 |
+| Heroes remaining at cutoff | 3 | 0 |
+| Observed nonzero town-to-hero troop transfers | 1 | 3 |
+| Window-action fraction as defined above | 68.02% | 72.89% |
+| Movement with no known route | 3.72% | 4.09% |
+
+There are useful local behaviors in 1,757: fielding accumulated recruits and
+winning more neutral fights in this particular game. They coexist with resource
+planning failure, weak attack selection, repeated window sequences and eventual
+loss of every field hero. The active/passive color roles largely reversed from
+1,756 (whose Red lost its hero on day 63 and never replaced it). This evidence
+does not establish stronger play or a reliable improvement from the update;
+fewer total losses also cannot be called improved survival when one side stopped
+fielding heroes on day 6. A strength comparison would need matched seeds and
+swapped seats against a fixed opponent, with multiple games and uncertainty
+reported. No such new experiment was launched.
+
+Private evidence: `Heroes-artifacts/diagnostics/analysis-1757-vs-1756-20261107/`
+contains `comparison.json`, the bounded `analyse.py`/`analysis.log`, compact
+per-player action/event records and `blue-tavern-evidence.json`. Full histories,
+armies and source identities remain in private storage. Only this English
+research-journal entry is changed in the repository; no publication occurred.
+
+## 2026-11-07 — Current restriction audit after diagnostic 1,757
+
+The user requested the currently effective limits. Read-only inspection compared
+README, the temporary restriction register and implementation against the last
+completed cycle's launch/evaluation plan. The active support is
+`visible-interaction-budget-hero-relative-cooldown-v1`, with
+`own-army-details-v1` and `no-artifacts-v1`. Current interaction-guard,
+coordinate-model and no-artifacts patch hashes match the executed plan. No rule,
+weight, launch configuration or runtime was changed; no game was started.
+
+The inherited restrictions still block manual stack splitting, merging, swapping,
+transfer, stack inspection and stack upgrades; recruitment and whole-hero
+`swap_garrison` remain available. All artifacts, including spellbooks and war
+machines, remain disabled throughout the game. Movement targets must be present
+in the delivered revealed tiles and the hero must have movement points. Repeated
+no-progress targets, the current tile, immediate repeated commands and immediate
+town reopenings are filtered as specified in the guard. The navigation budget
+is two uses of the same semantic control until visible progress/day renewal;
+free management is capped at 32 uses per involved subject per day. Mandatory
+choices and exits are preserved. These filters do not eliminate alternating
+window loops. Hero-relative coordinate encoding is a representation choice,
+not an additional short movement-radius limit.
+
+The cycle uses 365 game days, 158,720 ordinary and 5,120 reserved dialog choices
+per player, a shared ten-hour wall deadline, ten capture actors, a 30 GiB disk
+reserve, a 48 GiB RAM reserve and the existing 20% free-memory pressure stop.
+Fifty training captures precede one PPO update and one separately validated
+frozen diagnostic; training captures omit full replay/reconstruction as already
+declared. Rewards remain terminal-only, with genuine cutoff bootstrapping rather
+than treating the day limit as a natural draw/loss.
+
+Interpretation clarification for the previous analysis: exact opposing army
+counts in the siege comparisons were obtained offline by matching both players'
+own histories. Those counts were not delivered to the attacking policy.
+`own-army-details-v1` reveals its own armies only and is not a full creature
+special-ability or enemy-strength interface. Combat remains automatic BattleAI.
+
+## 2026-11-07 — Prebuilt taverns and no calendar monster spawns: plan
+
+The user requested two additional temporary restrictions for the current
+experiment: both starting towns have a tavern, and no new neutral armies appear
+over time. They intend to remove restrictions gradually in later experiments.
+Interpretation: grant the native Tavern building at map initialization without
+resource deductions; suppress calendar-driven new wandering-monster objects,
+while retaining initial neutrals, ordinary growth, special-week town growth and
+other existing rules. No training campaign or full policy evaluation is requested.
+
+Acceptance criteria: version the map/rules without overwriting historical maps
+or runtimes; verify both initial taverns and native hiring availability; exercise
+a month that would normally spawn neutral stacks and verify none appear under
+the new rule, while a native-default control still spawns; preserve initial
+objects/resources and native replay; wire the current cycle to the validated new
+configuration and pass read-only continuation preflight from checkpoint 1,757.
+Use existing build, freeze, launch and verification mechanisms. Local controls
+and artifacts stay private, outside the published source diff. Record actual
+validation scope and any failed attempts before calling the variant ready.
+
+Implementation checkpoint: the new map adds only the two Tavern buildings, a
+map-scoped boolean disabling monthly monster spawning and descriptive text.
+The new engine setting defaults to native spawning, is stored in map settings,
+and is retained by JSON map saving. Its enum was appended so existing setting
+indices do not change. The first incremental build failed because the map loader
+needed the IGameSettings definition; adding that include fixed the build.
+Canonical dependency agreement and the exact map semantic-diff check passed.
+All eighteen selected existing scenario/runtime-freeze tests passed. Native
+acceptance and cycle selection remain pending at this implementation checkpoint.

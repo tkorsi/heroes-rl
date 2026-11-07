@@ -59,6 +59,11 @@ interruptions. The time budget can end the run before all attempts settle.
 
 ## Fifty training games followed by one validated game
 
+The next variant is being prepared with both starting taverns already built and
+calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
+neutrals and their growth remain native. These are temporary restrictions to be
+removed gradually; native acceptance and launcher integration are pending.
+
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
 The diagnostic reached the 365-day limit without a winner. The worker-registration

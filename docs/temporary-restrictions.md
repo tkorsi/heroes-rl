@@ -5,6 +5,8 @@ rules of Heroes III and must not be forgotten when interpreting results.
 
 | Restriction | Current scope | Removal work |
 | --- | --- | --- |
+| Prebuilt starting taverns | The prepared `hero-management-v3` variant gives both starting towns a Tavern at no resource cost. Hiring still costs native gold and requires a free visitor slot. | Remove each starting Tavern in a new map version; compare recovery after hero loss. |
+| No calendar neutral spawns | In `hero-management-v3`, new months do not create wandering neutral armies. Initial neutrals, existing stack growth and special-week town growth remain native. | Re-enable calendar spawning in a new map version and measure its effect separately. |
 | Automatic combat | Adventure experiments delegate tactical combat to BattleAI. | Add and validate a separate battle policy before claiming end-to-end learned play. |
 | No manual troop-slot management | The trained-1753 one-game experiment retains the recruitment-only action restrictions. | Restore stack rearrangement and upgrades in a separately versioned experiment after the adventure baseline is evaluated. |
 | No artifacts anywhere | `no-artifacts-v1` removes all hero equipment and disables every artifact, including spellbooks and war machines, throughout the game. Starts, hires, purchases, loot and rewards are covered. | Restore normal artifact acquisition in a separately versioned experiment; report that removing catapults and spellbooks changes siege and spell access. |
@@ -60,3 +62,9 @@ rules. No policy dialog is silently closed. Empty artifact windows may still be
 opened; this rule is not a claim that repeated empty-window visits are useful.
 Review and remove the entire `no-artifacts-v1` restriction explicitly before
 restoring ordinary artifact behavior. Siege and spell access intentionally differ.
+
+On 7 November 2026 the user added the tavern and calendar-spawn restrictions and
+chose gradual removal of temporary restrictions in later experiments. Each
+removal must declare its rule/version and parent checkpoint, preserve the prior
+variant, and distinguish a rule effect from policy learning. The new variant is
+undergoing native validation; it has not yet been used for training.

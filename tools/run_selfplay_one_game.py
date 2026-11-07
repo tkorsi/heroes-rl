@@ -243,6 +243,12 @@ ENGINE_SEED, POLICY_SEED = 1_960_000_000, 1_962_000_000
 require, read, write, binding, bound = campaign.require, campaign.read, campaign.write, campaign.binding, campaign.bound
 
 
+# Map-scoped calendar rule; absent headers keep native monthly spawning.
+SCENARIO_RULE_SOURCES = {
+    'engine/patches/0032-monthly-neutral-spawn-rule.patch': 'e5f46d520e26f06d063f0bc26805bf03b3af12dc8332fe61e9cb902ee70cd8a2',
+}
+
+
 def verify_runtime_sources(implementation):
     """Bind the base plus exact reviewed storage/UI and support additions."""
     require(STORAGE_PROGRESS_PATHS <= implementation.keys(),
@@ -258,7 +264,7 @@ def verify_runtime_sources(implementation):
                      for member in source.getmembers() if member.isfile()}
         require(files.keys() == names, 'Committed evaluation source inventory differs')
         return files
-    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW)
+    original = committed(BASE_COMMIT, implementation.keys() - STORAGE_PROGRESS_NEW - STARTING_EQUIPMENT_NEW - SCENARIO_RULE_SOURCES.keys())
     original.update(committed(STORAGE_PROGRESS_COMMIT, STORAGE_PROGRESS_PATHS))
     original.update(RECRUIT_ONLY_SOURCE_SHA256)
     original.update({name: pins['after'] for name, pins in DAY_PROGRESS_SOURCES.items()})
@@ -300,6 +306,7 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in RECIPE_SHARING_SOURCES.items()),
             'Recipe-sharing source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in RECIPE_SHARING_SOURCES.items()})
+    original.update(SCENARIO_RULE_SOURCES)
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 

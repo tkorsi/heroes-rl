@@ -1,0 +1,21 @@
+{
+  "engine_patch": "engine/patches/0032-monthly-neutral-spawn-rule.patch",
+  "engine_verified": false,
+  "map_sha256": "2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056",
+  "note": "Map configuration only. Native acceptance is recorded separately. Remove each temporary rule in a new version; preserve historical maps.",
+  "parent_sha256": "ccfc8467847067a75091d68626e5b241839036ab729b5520ce4445a75a45b7b3",
+  "preserved": [
+    "initial_neutral_stacks",
+    "existing_stack_growth",
+    "special_week_town_growth",
+    "initial_heroes_armies_resources",
+    "terrain_fog_outcomes"
+  ],
+  "scenario_id": "hero-management-v3",
+  "schema": "heroes-temporary-scenario-v1",
+  "temporary_rules": {
+    "monthly_neutral_spawns": false,
+    "starting_taverns": "both_towns_prebuilt_without_resource_cost"
+  },
+  "training_performed": false
+}
