@@ -3179,3 +3179,34 @@ The v3 map and both native acceptance gates passed through the declared exact
 source transition. `preflight.log` retains the complete output. The 80x24
 preview was visually inspected as simulated progress, with all 100 games and
 details for all ten active games visible. No native game or optimizer was run.
+
+## 2026-11-07 — User-launched hundred-game cycle stopped at disk reserve
+
+The user launched `run-20261107T155027Z-dfd8ff19` and requested a progress check.
+Read-only inspection found the run already stopped, with no remaining coordinator,
+capture workers or native clients. Source was `9e38b6c`, parent checkpoint 1,757,
+the accepted v3 map and the hundred-game/ten-actor configuration. The launch began
+at 17:50:27 Kyiv time; shutdown evidence was finalized at 17:51:55, approximately
+88 seconds later. The supervisor reported `Ten-game disk reserve reached;
+stopping owned workers` (the message retains its historical mode name).
+Current filesystem free space was 29.98 GiB, below the unchanged 30 GiB reserve.
+The stopped run directory occupied approximately 5.4 GiB.
+
+Of 100 scheduled training games, 13 captures completed naturally, ten were
+interrupted during shutdown and 77 never started. Engine-reported results were
+11 Blue wins and two Red wins, with no completed day-limit cutoffs. These are
+unverified training outcomes; policy reconstruction/native replay were not run
+for those captures under the declared training contract. The capture report had
+zero individual capture failures; the overall batch failed because the resource
+safeguard stopped it. Zero games/samples entered PPO and zero updates occurred.
+Checkpoint 1,757 remains the latest publication; both policy and resume files
+were freshly hash-checked against the unchanged latest pointer.
+
+The reserved 101-slot schedule beginning at offset 238 remains consumed,
+including interrupted and unstarted slots. Shutdown reports verified owned
+process cleanup and unchanged protected inputs. Evidence: the run's `report.json`,
+`shutdown.json`, `launch.json` and retained capture manifests. No source/runtime
+fix, file deletion, reserve reduction or restart was performed during this status
+check. A future retry must follow the latest registered run with fresh seeds and
+sufficient free disk space; the older run path in the one-use launch script is
+now superseded.
