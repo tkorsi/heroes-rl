@@ -2724,3 +2724,21 @@ suite. Logs and the adjusted fixture stay in the private diagnostics directory.
 `python3 tools/prepare_vcmi.py --check` passed exact canonical agreement.
 The production change is limited to worker release ordering and pipe closure;
 the launch/completion admission code and numerical learner are unchanged.
+
+The first read-only continuation preflight at `0f3a802` rejected the changed
+controller through the existing exact runtime-source inventory, before any
+reservation or gameplay. The repair also needs an explicit before/after
+controller digest transition in the existing source validator. That transition
+binds only the inspected registration/pipe change and retains rejection of any
+other source drift; historical native captures are not claimed to have repeated.
+
+The actual 212-file source inventory passed the added exact transition, and
+twelve changed/missing controller, PPO and engine-source cases were rejected.
+Seventeen of eighteen existing evaluator tests passed; the remaining historical
+fixture omits the starting-equipment dependency. Running that same fixture
+against the unchanged main-branch evaluator reproduced the identical failure.
+The new transition accepts only the controller change and records
+`native_capture_repeated=false`. A first local inventory control called the
+clean-checkout entry point while this pin edit was uncommitted and correctly
+failed; the corrected read-only control used the implementation inventory
+directly. No seeds or gameplay were involved in these checks.

@@ -223,6 +223,11 @@ PARALLEL_FIFTY_SOURCES = {
     'tools/run_selfplay_training.py': {'before': '09470f3aabd0e27da8f53dfd6ca83664ef09a21402a595a46437d4b3552d0523',
         'after': 'dad7e89afa96952993338da187349ee4cd753c174ee1827f2d4a4af9986fbaa0'},
 }
+# Register the live child before releasing capture; gameplay and admission stay intact.
+CAPTURE_REGISTRATION_SOURCES = {
+    CONTROLLER_PATH: {'before': 'dad7e89afa96952993338da187349ee4cd753c174ee1827f2d4a4af9986fbaa0',
+        'after': '67ff976be5dc6ffe03b5f0848cfd0903777bf12e2a39d5aae75c73db297c9c86'},
+}
 BASE = campaign.ARTIFACTS / 'selfplay-one-game-2x'
 SCHEMA = 'heroes-selfplay-one-game-2x-v1'
 BUDGET = dict(ordinary_choices_per_player=9920, reserved_dialog_choices_per_player=320,
@@ -284,6 +289,9 @@ def verify_runtime_sources(implementation):
     require(all(original.get(name) == pins['before'] for name, pins in PARALLEL_FIFTY_SOURCES.items()),
             'Parallel fifty-game source transition differs from its reviewed parent')
     original.update({name: pins['after'] for name, pins in PARALLEL_FIFTY_SOURCES.items()})
+    require(all(original.get(name) == pins['before'] for name, pins in CAPTURE_REGISTRATION_SOURCES.items()),
+            'Capture-registration source transition differs from its reviewed parent')
+    original.update({name: pins['after'] for name, pins in CAPTURE_REGISTRATION_SOURCES.items()})
     require(original == implementation, 'Evaluation changed an existing learner, adapter, engine or replay source')
 
 
@@ -307,7 +315,8 @@ def verify_native_validation_sources(accepted, current):
                    ('reviewed_duration_display', DURATION_DISPLAY_SOURCES),
                    ('reviewed_forty_game_batch', FORTY_BATCH_SOURCES),
                    ('reviewed_ppo_progress_display', PPO_PROGRESS_SOURCES),
-                   ('reviewed_parallel_fifty_game_batch', PARALLEL_FIFTY_SOURCES))
+                   ('reviewed_parallel_fifty_game_batch', PARALLEL_FIFTY_SOURCES),
+                   ('reviewed_capture_registration', CAPTURE_REGISTRATION_SOURCES))
     for kind, transition in transitions:
         if all(expected.get(name) == pins['before'] for name, pins in transition.items()):
             expected.update({name: pins['after'] for name, pins in transition.items()})
@@ -348,6 +357,7 @@ def source_identity():
         forty_batch_sources=FORTY_BATCH_SOURCES,
         ppo_progress_sources=PPO_PROGRESS_SOURCES,
         parallel_fifty_sources=PARALLEL_FIFTY_SOURCES,
+        capture_registration_sources=CAPTURE_REGISTRATION_SOURCES,
         driver=binding(__file__), launcher=binding(ROOT / 'play-one-selfplay-2x.sh'))
 
 
