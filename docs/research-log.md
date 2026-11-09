@@ -3498,3 +3498,39 @@ Retention-reviewed run: `run-20261107T161908Z-3d80d63a`.
 The requested analysis is now recorded. Raw artifacts are still present; only a
 subsequent manual launch or explicit cleanup will retire them under the agreed
 single-run policy. No source/configuration change or artifact deletion occurred.
+
+## 2026-11-09 — Authorized next 100-game cycle from 1,758: plan
+
+The user explicitly requests that the assistant prepare and launch one more
+100-game training cohort from checkpoint 1,758 with the same restrictions,
+then run the checkpoint diagnostic and analyze whether behavior improved.
+This supersedes the earlier user-launch-only preference for this attempt.
+Reuse the existing `./run-100-games.command --run`: it already performs exactly
+100 captures, one complete PPO update and one fully validated diagnostic,
+within the unchanged ten-hour overall deadline. No new launcher machinery or
+gameplay/training configuration change is needed.
+
+Pre-launch acceptance: current complete checkpoint is 1,758 (57,659 optimizer
+steps; 7,222 rollouts; 1,771,426 decisions), source at preparation is `3f309a2`,
+no native/capture/coordinator process is active, the full restore/preflight
+passes, and the completed prior run is explicitly retention-reviewed above.
+The same v3 map, starting taverns, disabled calendar neutral spawning,
+no-artifact/army restrictions, hero-relative support and cooldowns remain.
+Collection stays at ten rolling actors, 365 days and the existing choice,
+memory and disk limits. PPO/Adam and the native runtime remain unchanged.
+
+The next reservation is offset 440: 100 training games plus one diagnostic,
+engine seeds 1,980,000,440–1,980,000,540 and policy seeds
+1,982,000,880–1,982,001,081. These are planned, not yet allocated at this entry.
+Before starting, the launcher must copy and exactly restore the current full
+1,758 pair and then retire the analyzed old raw run under the agreed policy.
+Record the actual launch/source/reservation and all failures or results after
+the pinned run stops; do not edit the checkout during execution.
+
+Completion criteria: all 100 captures admitted to one update, exact full-state
+restoration and publication of 1,759, verified native replay and both policy
+reconstructions for the fresh 1,759 diagnostic, and owned process cleanup with
+protected inputs unchanged. Analyze the new game's causal sequence and compare
+it with the journal's 1,758 findings using the same metrics. A single diagnostic
+can show behavior, not establish a strength improvement; no additional paired
+evaluation campaign is authorized here. Preserve the new run until analysis.
