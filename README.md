@@ -84,8 +84,13 @@ training replay/policy reconstruction was intentionally not performed. The fresh
 1,758 diagnostic ended in a Blue victory and passed native replay and exact
 two-policy reconstruction. The November 9 read-only audit restored the full
 1,758 state and confirmed clean shutdown, no active workers and no newer
-registered launch. Raw artifacts remain available for behavioral analysis;
-outcome counts alone do not establish improved playing strength.
+registered launch. The completed behavioral analysis found a day-18 capture of
+Red's empty town after Red lost both heroes attacking Blue; neither side built
+or recruited town troops. The preceding 100 games already used 1,757 weights
+on v3 and had 83 engine-reported natural terminals, so the decisive diagnostic
+does not establish improvement from the update. Findings are in the research
+journal and this run is now retention-reviewed; raw artifacts remain until the
+next manual launch or explicit cleanup.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared

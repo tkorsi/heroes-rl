@@ -3366,3 +3366,135 @@ performed no game, update, reservation or artifact deletion. The strong color
 imbalance merits behavioral analysis; neither it nor one decisive diagnostic
 establishes improvement over 1,757. This status check does not mark the run as
 retention-reviewed; its artifacts remain available for that analysis.
+
+## 2026-11-09 — Diagnostic 1,758 versus 1,757: analysis plan
+
+Question: how did both 1,758 seats play, what sequence caused Blue's victory,
+and which observations support or contradict improved behavior versus 1,757?
+Analyze existing finalized histories only: no game, replay, training update,
+seed allocation or experimental rule change. Analysis starts from `3d9641a`.
+Bind the 1,758 histories to their existing verified receipts; reconstruct
+decisions, resources, army/hero changes, town ownership and battle sequences.
+Reuse the existing offline behavior metrics and the same four-action window
+and movement-error definitions as the earlier comparison. Store scratch
+analysis privately inside the current run so normal retirement removes it.
+
+Acceptance: explain the terminal event from both players' evidence, distinguish
+observed choices from inferred strategic intent, and record useful behaviors
+and remaining failures. The 1,757 raw histories were deliberately retired;
+comparison must use their preserved journal findings, without pretending to
+recompute them. The map changed from v2 to v3 (prebuilt taverns and disabled
+calendar neutral spawning), and seeds/initial economic observations differ.
+Both seats use the same checkpoint within each game. A single self-play result
+cannot isolate a weight-update effect or establish stronger play.
+
+## 2026-11-09 — Observed behavior of diagnostic 1,758 and comparison with 1,757
+
+The existing offline history audit and behavior metrics completed successfully.
+Both player-history byte counts and SHA-256 hashes match the already validated
+receipt; sampled choices match 147 Red and 420 Blue submitted actions. Existing
+receipts confirm native replay and exact reconstruction of both policies with
+zero maximum absolute difference. No native replay, inference, new gameplay or
+training was launched. All results below refer to the diagnostic engine seed
+1,980,000,439 and policy seeds 1,982,000,878/879, with checkpoint 1,758 in both
+seats. Private evidence is inside the run at `analysis-1758/` (`analysis.json`,
+`travel.json`, `critical-decisions.json`, `comparison.json` and local analysis
+code/log), so the next normal retirement also removes this analysis material.
+
+Blue won naturally on day 18. The sequence is directly corroborated by both
+player histories, own-army snapshots, visible object visits and town ownership:
+
+- Both initial heroes started with 25 pikemen; both town garrisons were empty.
+  First visible resources differ: Red has 10 wood/10 ore/5,000 gold, Blue has
+  5 wood/5 ore/5,500 gold. Blue saw the enemy town by day 2; Red saw it by day 6.
+- On day 4 Blue's initial hero won a neutral battle and still had 25 pikemen.
+  On day 6 Blue hired a second hero for 2,500 gold. This hero brought 20 pikemen
+  and six archers as its starting army; no creatures were purchased separately.
+- On day 10 Red selected the tile occupied by Blue's original hero at [0,7].
+  Red was the attacker and lost all 25 pikemen and its original hero. Blue's
+  original 25-pikeman army survived with seven. Evidence: Red decision 1178,
+  battle/hero-loss events 1202–1207; Blue defender/completion events 1631/1634.
+- On day 13 Red hired a replacement for 2,500 gold: 19 pixies, three air
+  elementals and three water elementals. Its second movement command targeted
+  Blue's second hero at [0,12], and Red lost this replacement the same day.
+  Blue defended with 20 pikemen and six archers, surviving with 15 pikemen.
+  Evidence: Red hire decision 1353 and attack decision 1404/events 1422–1429;
+  Blue defender/completion events 2276/2280.
+- During days 14–18 Red made only five `open_town`, five `close` and five
+  `end_turn` choices. It had no hero, an empty garrison and 7,375–8,875 gold in
+  its recorded observations. The town overview still exposed the Tavern and
+  recruitment controls, but the policy opened neither panel. Specific refreshed
+  hero offers were not inspected, so their post-loss availability is not assumed.
+- Blue hired a third hero on day 15 and retained all three. On day 18 its second
+  hero (15 pikemen) explicitly targeted Red's visible town at [4,7] from [0,10].
+  There was no siege battle: the town was undefended. Blue's roster changed from
+  one town to two, Red's from one to zero; Red already had zero heroes, so the
+  engine declared loss/win. Evidence: Blue decision 3810, visit 3824, ownership
+  update 3825 and terminal 3829; Red final ownership update 1721 and terminal
+  1723. The final winning movement has no ordinary result because the terminal
+  supersedes it; this is not a failed capture or missing verification.
+
+No building, recruitment, upgrade, stack rearrangement or garrison-swap action
+occurred for either player. All observed town garrisons stayed empty. Blue's
+advantage came from surviving two defenses, retaining the extra army acquired
+through early hiring, and eventually entering the undefended enemy town. The
+learned policy chose adventure-map movements; built-in BattleAI controlled the
+battles (`ExplorerRL::getBattleAIName()` and captured BattleAI load messages).
+In particular, the first 25-versus-25 battle does not demonstrate learned combat
+tactics, and no specific RNG/tactical explanation of that auto-battle is claimed.
+
+There were continuing inefficient-looking patterns. Blue knew the enemy town
+from day 2, made 80 movement choices while it was visible, and targeted its tile
+only once, on day 18. It revealed 377/400 tiles; Red revealed 301/400. Blue used
+303/420 choices (72.14%) on `open_hero`, `open_capability`, `close_capability` and
+`close`; Red used 89/147 (60.54%). The overlapping four-action
+open-capability/close-capability/open-capability/close-capability sequence appears
+37 times for Blue and ten for Red. Window-family counts do not mean every such
+choice was useless, but the recorded repeated sequences remain present.
+
+Comparison uses the preserved November 7 analysis of 1,757; its retired raw
+histories were not reread or reconstructed. Identically defined descriptive
+metrics for both seats combined are:
+
+| Metric | 1,757 diagnostic | 1,758 diagnostic |
+| --- | ---: | ---: |
+| End day / outcome | 365 / day-limit cutoff | 18 / Blue win |
+| Enemy towns captured | 0 | 1 |
+| Sampled policy choices | 17,537 | 567 |
+| Four window-action kinds | 12,783 / 17,537 (72.89%) | 392 / 567 (69.14%) |
+| Movement `no_route_known` | 130 / 3,176 (4.09%) | 3 / 109 (2.75%) |
+| Recruit actions | 54 | 0 |
+| Observed nonzero town-to-hero transfers | 3 | 0 |
+| Heroes remaining | 0 | 3 (all Blue) |
+
+Useful observed behavior includes earlier additional armies, survival of Blue's
+heroes and conversion of an undefended town into a terminal win. This is not
+evidence that development, army consolidation or risk assessment improved:
+none of the development/transfer actions appeared, Red again lost its field
+heroes, and after its second loss it stopped trying to recover despite visible
+town controls and substantial gold. In 1,757 the hero-less Blue had no Tavern
+and lacked the resources to build it; v3 directly removes that earlier obstacle.
+Thus earlier hiring is confounded with the explicitly changed rules.
+
+The strongest check against attributing decisiveness to the 1,758 update is the
+preceding training cohort. Its immutable plan binds both learner and opponent
+weights to the 1,757 digest
+`11aebbe1228f108b3027d54273f120e7d1e2d72becfae5bb82e78739356a19ee`;
+PPO started only after all 100 captures. Already on v3, this older policy yielded
+83 engine-reported natural terminals (69 Blue wins, 14 Red wins) and 17 day
+cutoffs. Those training outcomes lack independent replay/reconstruction, as
+agreed; they nevertheless describe the pre-update captures, not 1,758 play.
+The color imbalance predates the update and its cause is not established here.
+
+Conclusion: the diagnostic demonstrates a valid completed game and a successful
+town capture, with a few better descriptive rates. It does not establish a
+strength improvement over 1,757. Different map rules, seeds, economic starts,
+short versus long game exposure and changing both seats prevent that inference.
+A strength claim requires repeated comparisons under identical rules with
+matched seeds and swapped seats against a fixed opponent. No such experiment
+was authorized or run during this analysis.
+
+Retention-reviewed run: `run-20261107T161908Z-3d80d63a`.
+The requested analysis is now recorded. Raw artifacts are still present; only a
+subsequent manual launch or explicit cleanup will retire them under the agreed
+single-run policy. No source/configuration change or artifact deletion occurred.
