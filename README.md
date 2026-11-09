@@ -59,22 +59,33 @@ interruptions. The time budget can end the run before all attempts settle.
 
 ## One hundred training games followed by one validated game
 
-The next cycle uses both starting taverns already built and
+The current cycle uses both starting taverns already built and
 calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
 neutrals and their growth remain native. These are temporary restrictions to be
 removed gradually. Native controls, a short frozen-1,757 prefix and the
-read-only continuation preflight passed. The next cycle restores checkpoint
-1,757 with these rules; no PPO update has yet run on this variant.
+read-only continuation preflight passed. The first complete 100-game cycle on
+this variant advanced checkpoint 1,757 to 1,758; the next continuation restores
+1,758 with these rules.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
 The diagnostic reached the 365-day limit without a winner. The worker-registration
 race and duplicate native-recipe storage were fixed; numerical parity checks
 passed without changing gameplay, PPO settings or native resource bounds.
-The latest successful update is checkpoint 1,757. The subsequent 100-game launch
+The subsequent 100-game launch
 `run-20261107T155027Z-dfd8ff19` stopped at the 30 GiB disk reserve after 13 captured
 terminals, with no admitted batch or PPO update. Its analysis is in the journal.
 This completed cycle establishes execution correctness, not improved playing strength.
+
+After artifact retirement, `run-20261107T161908Z-3d80d63a` completed 100/100
+training captures and one PPO update to checkpoint 1,758 in 05:38:13 on November 7.
+Engine-reported training outcomes were Blue 69, Red 14 and 17 day-limit cutoffs;
+training replay/policy reconstruction was intentionally not performed. The fresh
+1,758 diagnostic ended in a Blue victory and passed native replay and exact
+two-policy reconstruction. The November 9 read-only audit restored the full
+1,758 state and confirmed clean shutdown, no active workers and no newer
+registered launch. Raw artifacts remain available for behavioral analysis;
+outcome counts alone do not establish improved playing strength.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared

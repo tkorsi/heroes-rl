@@ -3305,3 +3305,64 @@ Durable continuation evidence is
 checkpoint pairs. Local maintenance/preflight details are in
 `/tmp/heroes-retention-validation/{cleanup.log,legacy-cleanup-result.json,final-preflight.log}`;
 those auxiliary files remain uncommitted and are not needed for continuation.
+
+## 2026-11-09 — Status audit of the user's 100-game launch
+
+Question: are the manually launched 100 games progressing, and did capture,
+training, checkpoint publication and diagnostic validation complete separately?
+Acceptance for this read-only investigation: reconcile the registered launch,
+report, publication, shutdown and process inventory, then restore the latest
+complete checkpoint without allocating seeds, launching games or deleting data.
+
+The only registered post-retirement run is
+`Heroes-artifacts/selfplay-ten-then-check/run-20261107T161908Z-3d80d63a`.
+It started November 7 at 18:19:08 Kyiv time and its final report/shutdown were
+written at 23:57:27; coordinator elapsed time is 20,293.32 seconds (05:38:13).
+The source was `77ecfbaa4320a87b8891011ab7d41731862dcc53`, parent 1,757,
+accepted runtime `local-v8-taverns-static-neutrals-v1`, and map
+`hero-management-v3.vmap` (SHA-256
+`2ddd04177e17f588922cc7733ec4fa049be10bb0f020f7387fd7285ea1604056`).
+Settings remain 100 training games, ten rolling actors, 365 days, one PPO
+update and one held-out diagnostic. Both starting taverns and disabled calendar
+neutral spawning were active. Reservation offset 339 consumed 101 slots:
+engine seeds 1,980,000,339–1,980,000,439 and policy seeds
+1,982,000,678–1,982,000,879, including the diagnostic.
+
+Observed: all 100 training captures completed and were admitted, with learner
+seats balanced 50/50. Engine-reported outcomes were 69 Blue wins, 14 Red wins and
+17 `game_day_limit` cutoffs; all other 83 terminations were natural. Capture
+failures, interruptions and reported errors were zero. Training replay and
+two-policy reconstruction were intentionally not performed; these outcome
+counts must not be described as independently verified wins.
+
+One PPO update admitted 296,184 learner samples and performed 9,281 optimizer
+steps, advancing cumulative optimizer steps from 48,378 to 57,659. Published
+checkpoint 1,758 has 7,222 rollouts and 1,771,426 decisions. Weight digest changed
+from `11aebbe1228f108b3027d54273f120e7d1e2d72becfae5bb82e78739356a19ee`
+to `475ba121c6da24c055c756e1b26c460c3ed5ccca264e48b434e7586417a70d08`.
+The policy file SHA-256 is
+`38933a5073f44a562aecacd339db8b1dc24108c4e89517e3efc1b01cc67cbe4c`;
+resume SHA-256 is
+`ea0ed7551b06f54bf090f1670d38f8fabd18829fde173803d49875ffbfbbea37`.
+Reported approximate KL was 0.011269 and clip fraction 0.031092. These metrics
+confirm the executed update, not improved playing strength.
+
+The separate diagnostic used 1,758 in both seats, ended naturally in a Blue
+victory (Red 147 / Blue 420 sampled decisions), and passed native replay plus
+exact policy reconstruction for both players (maximum absolute difference zero).
+It did not enter PPO. The report is `completed`; shutdown return code is zero,
+errors are empty, owned cleanup is verified and protected inputs are unchanged.
+No coordinator, capture worker, native client or replay process was running at
+inspection. No newer launch, including one dated November 9, is registered.
+
+`./run-100-games.command --check` passed in five seconds after auditing the
+publication/evidence chain and freshly restoring the full 1,758 state. The next
+unallocated reservation starts at offset 440 (engine base 1,980,000,440; policy
+base 1,982,000,880), with no outstanding diagnostic. Approximately 793.4 GiB was
+free. Private preflight output is `/tmp/heroes-status-20261109-preflight.log`;
+durable evidence remains the run's `report.json`, `shutdown.json`,
+`batch-train-000/publication.json` and diagnostic receipts. This inspection
+performed no game, update, reservation or artifact deletion. The strong color
+imbalance merits behavioral analysis; neither it nor one decisive diagnostic
+establishes improvement over 1,757. This status check does not mark the run as
+retention-reviewed; its artifacts remain available for that analysis.
