@@ -3646,3 +3646,115 @@ and exact restoration of 1,759, a fresh diagnostic with native replay and exact
 two-policy reconstruction, and verified owned cleanup/protected inputs. Record
 actual source, timing, outcomes, admission and validation separately after the
 run ends; compare diagnostic behavior with the preserved 1,758 journal analysis.
+
+## 2026-11-10 — Fresh 100-game retry completed; checkpoint 1,759 diagnostic
+
+The authorized retry completed using `./run-100-games.command --run`, source
+`68e36c0d1ca6d1c8bcbf1f8b4decdace8df1bc38`, unchanged v3 map/runtime and all
+restrictions/configuration from the plan above. Private run:
+`/Users/orsi/Projects/Heroes-artifacts/selfplay-ten-then-check/run-20261110T113903Z-94c3b975`.
+The launcher retired the analyzed interrupted run only after preserving and
+restoring the complete parent 1,758 pair. Actual reservation was offset 541,
+width/count 101: training engine seeds 1,980,000,541–1,980,000,640, diagnostic
+engine seed 1,980,000,641, policy seeds 1,982,001,082–1,982,001,283. The next
+fresh offset is 642; every reserved slot remains consumed.
+
+Launch was 13:39:03 Kyiv; checkpoint publication was 21:30:24 and clean shutdown
+21:31:18 on November 10. The coordinator reports 28,327.12 seconds (07:52:07);
+launch-to-shutdown wall time was 28,334.46 seconds (07:52:14). All 100 captures
+were first observed ready after approximately 38 minutes 30 seconds. The
+machine started on AC at 100%; a late check found battery power at 83%, with
+lower observed PPO throughput. No closed-lid pause was observed in the progress
+timing. These observations do not isolate the cause of the throughput change.
+No runtime setting, source binding or deadline was changed during execution.
+
+The 100 training captures produced 60 engine-reported Blue wins, 19 Red wins
+and 21 day-limit cutoffs; capture failures/interrupted games were zero. These
+outcomes remain capture-only, without independent replay or policy
+reconstruction. Both seats used parent 1,758, so they do not describe 1,759.
+All 100 games and 341,569 samples entered one completed update of 10,697 Adam
+optimizer minibatches. Publication and exact checkpoint restoration passed:
+1,758 -> 1,759, total optimizer steps 57,659 -> 68,356, rollouts 7,222 -> 7,322,
+and decisions 1,771,426 -> 2,112,995. New identities are:
+
+- Policy SHA-256: `a25fe82a215e567b9193b8e12301de015595168a0f7a1dcc7578b92356a67f19`.
+- Resume SHA-256: `4efc10ec9297cbbe9d6c0836749127155a372939a9fd065f6417850164bf76b1`.
+- Weights SHA-256: `5659d8978bd574cbd3e45f583fcb98acc568668cca4da0d411e6aab880b63eae`.
+
+`report.json` is `completed`; `shutdown.json` reports return code 0, no errors,
+owned cleanup verified and protected inputs unchanged. The supervisor exited
+0 and was absent from the process table. Post-run
+`./run-100-games.command --check` passed exact model/Adam/RNG/progress/sampler/
+opponent-pool restoration at 1,759 without gameplay, updates or seed allocation.
+Evidence: `launch.json`, `report.json`, `shutdown.json`,
+`batch-train-000/publication.json`, `progress/ppo-batch-train-000.json` and
+`post-run-preflight.log` under the private run.
+
+The fresh diagnostic used engine seed 1,980,000,641 and policy seeds
+1,982,001,282/1,982,001,283, with both seats frozen at 1,759. It ended with Blue
+winning on day 19, Red losing, and 249/237 sampled choices respectively.
+Native replay passed, and both policy reconstructions had maximum absolute
+difference 0. Receipt and all bound evidence file sizes/SHA-256 values were
+rechecked before offline analysis. No diagnostic sample entered PPO.
+Evidence is in `evaluation-000/execution/episode-000001`, particularly
+`training-receipt.json`, both `agents/*/history-v8.jsonl` files and
+`training-verification/`. Offline bound-history analysis is saved privately in
+`analysis-1759/{travel,metrics,critical-events,summary,comparison}.json`.
+
+Observed causal sequence:
+
+- Both heroes initially had 25 pikemen and both town garrisons were empty.
+  Red recruited 14 pikemen into its town on day 4 (decision 449), but made no
+  town-to-hero transfer. Its original hero kept 25 pikemen throughout the game.
+- Blue first saw the opposing town on day 3. On day 12 it explicitly targeted
+  Red's town at [4,7] from [0,4] (decision 1297). Blue's 25 pikemen fought the
+  town's 14-pikeman garrison; Red's field hero was elsewhere at [9,14]. Blue won
+  with 22 pikemen remaining and acquired its second town. Evidence: Blue visit
+  1317, battle start 1318, ownership change 1321 and battle completion 1322;
+  Red battle start 1593, ownership view 1595 and completion 1596.
+- Red retained its living field hero and 9,385 gold after losing its town.
+  Across days 13–19 it made 20 movement choices, none targeting a visible
+  opposing town. It neither recovered its own town nor captured another.
+  Blue hired a second hero on day 17 in the captured town (decision 2001),
+  with 16 pikemen; this happened after the decisive town capture.
+- On day 19 Red received `heroes.baseline.seven_days_without_town` at seq 2462,
+  then loss at 2464. Immediately before loss its hero still had 25 pikemen at
+  [0,6]. The following `hero_lost` at 2465 and empty roster at 2466 are
+  elimination cleanup, not evidence that the field hero died in battle.
+  Blue's corresponding all-opponents-defeated notice/win are seq 2389/2390.
+
+Combat remained built-in BattleAI; the learned policy selected adventure-map
+actions. The successful siege therefore does not demonstrate learned combat
+tactics. Neither player built, upgraded or rearranged/transferred stacks.
+Red's single recruitment made a real town garrison, but did not consolidate
+the separate field and town forces. Blue survived with two heroes and two
+towns. Both sides retained repeated window navigation patterns (20 overlapping
+open-capability/close-capability/open-capability/close-capability sequences
+each); the four window action kinds are not all presumed useless.
+
+Comparison with the preserved 1,758 journal analysis (its raw run was already
+retired) uses the same definitions and v3 restrictions:
+
+| Metric | 1,758 diagnostic | 1,759 diagnostic |
+| --- | ---: | ---: |
+| End day / outcome | 18 / Blue win | 19 / Blue win |
+| Enemy town captured on day | 18, empty garrison | 12, 14-pikeman garrison |
+| Sampled choices, both seats | 567 | 486 |
+| Four window-action kinds | 392 / 567 (69.14%) | 327 / 486 (67.28%) |
+| Movement `no_route_known` | 3 / 109 (2.75%) | 5 / 101 (4.95%) |
+| Recruit actions / hero hires | 0 / 3 | 1 / 1 |
+| Town-to-hero transfers | 0 | 0 |
+
+The earlier capture of a defended town and one useful recruitment are positive
+descriptive observations; fewer window actions coexist with a higher no-route
+fraction and no recovery response from Red after losing its only town. These
+mixed observations do not establish stronger play or understanding of the
+seven-day loss condition. The seeds/economic observations differ, both seats
+changed policy, and there is only one diagnostic per checkpoint. No matched
+seed, swapped-seat fixed-opponent evaluation was authorized or run. The cycle
+completion criteria were met; the stronger-learning hypothesis remains unproven.
+
+Retention-reviewed run: `run-20261110T113903Z-94c3b975`.
+Keep this run for inspection until the next authorized launch/cleanup. Its
+summary and causal findings are durable here; preserve the complete 1,759 state
+and seed ledger before retiring raw artifacts. No further cycle was launched.

@@ -64,8 +64,8 @@ calendar spawning of new neutral armies disabled (`hero-management-v3`). Initial
 neutrals and their growth remain native. These are temporary restrictions to be
 removed gradually. Native controls, a short frozen-1,757 prefix and the
 read-only continuation preflight passed. The first complete 100-game cycle on
-this variant advanced checkpoint 1,757 to 1,758; the next continuation restores
-1,758 with these rules.
+this variant advanced checkpoint 1,757 to 1,758; the November 10 retry advanced
+it to 1,759. The next continuation restores 1,759 with these rules.
 
 The November 7 continuation completed all fifty games, one PPO update and its
 fully validated diagnostic, advancing checkpoint 1,756 to 1,757 in 01:23:14.
@@ -97,14 +97,25 @@ games from 1,758: 66 engine-reported Blue wins, 16 Red wins and 18 day cutoffs,
 with no capture failures. The user stopped it on November 10 at 02:11 Kyiv,
 before the shared deadline. PPO had reached 6,826/9,073 minibatches but had not
 published a checkpoint: zero games/samples were committed to training, 1,758
-remains the latest complete state, and no diagnostic ran. Closed-lid sleep
+remained the latest complete state, and no diagnostic ran. Closed-lid sleep
 consumed over three hours of the wall-clock budget; the existing `caffeinate -i`
 does not prevent that sleep. Post-stop full-state restoration and owned process
-cleanup passed. The attempt is journaled and retention-reviewed; its raw data
-remain until the next launch. The next launch uses fresh seeds from offset 541
-and starts from 1,758, rather than resuming the incomplete PPO update. On
-November 10 the user explicitly authorized this fresh cycle and its diagnostic,
-with AC power connected and the lid to remain open; see the journal's new plan.
+cleanup passed. Its analyzed raw data were retired at the explicitly authorized
+November 10 retry, which started from 1,758 with fresh seed offset 541.
+
+That retry, `run-20261110T113903Z-94c3b975`, completed all 100 captures, one PPO
+update and the validated diagnostic on November 10 in 07:52:07 (coordinator
+time). Training outcomes were 60 engine-reported Blue wins, 19 Red wins and
+21 day cutoffs, with zero capture failures. All 100 games and 341,569 samples
+were admitted; 10,697 optimizer steps produced checkpoint 1,759. Exact full-state
+restoration, both diagnostic policy reconstructions and native replay passed,
+with owned cleanup verified and protected inputs unchanged. Blue won the
+diagnostic on day 19: it captured Red's town on day 12 after defeating its
+14-pikeman garrison; Red's surviving 25-pikeman hero did not recover a town
+within seven days. The earlier capture and a modest reduction in window-action
+share are descriptive observations, not proof of stronger play. Analysis is in
+the journal; this run remains available until the next authorized launch. The
+next fresh reservation starts at offset 642.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared
