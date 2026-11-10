@@ -3758,3 +3758,15 @@ Retention-reviewed run: `run-20261110T113903Z-94c3b975`.
 Keep this run for inspection until the next authorized launch/cleanup. Its
 summary and causal findings are durable here; preserve the complete 1,759 state
 and seed ledger before retiring raw artifacts. No further cycle was launched.
+
+## 2026-11-10 — Requested detailed 1,759 diagnostic review
+
+Rechecked the retained diagnostic receipt and all 18 bound evidence files by
+size/SHA-256, then reread both raw player histories and the saved offline
+metrics. The day-19 seven-days-without-town notice, terminal outcomes and action
+counts agree with the causal analysis above. Compared with the preserved 1,758
+journal analysis; its retired raw histories were not available for a fresh
+reconstruction. No new game or training ran. Earlier defended-town capture and
+one recruitment remain descriptive positives, alongside persistent window
+loops, no army consolidation and no Red town recovery. Stronger play remains
+unproven by these two differently seeded self-play diagnostics.
