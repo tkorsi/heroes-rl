@@ -3770,3 +3770,28 @@ reconstruction. No new game or training ran. Earlier defended-town capture and
 one recruitment remain descriptive positives, alongside persistent window
 loops, no army consolidation and no Red town recovery. Stronger play remains
 unproven by these two differently seeded self-play diagnostics.
+
+## 2026-11-10 — Prepared user-launched 100-game continuation from 1,759
+
+The user requests another 100 games with the same restrictions followed by the
+validated diagnostic, and explicitly retains launch control. No game or PPO
+update was started during preparation. Reuse `./run-100-games.command --run`;
+the existing launcher restores the latest complete checkpoint automatically.
+At source `3574c71`, its read-only `--check` passed exact model/Adam/RNG/progress/
+sampler/opponent-pool restoration at 1,759 and the disk reserve gate. Parent
+progress is 68,356 optimizer steps, 7,322 rollouts and 2,112,995 decisions.
+
+Keep the v3 starting Taverns, disabled calendar neutral spawning, artifact/army
+rules, hero-relative controls/cooldowns, 365-day and choice limits, ten rolling
+actors, PPO/Adam/runtime, memory/disk reserves and ten-hour shared deadline.
+The preceding 1,759 run is analyzed and retention-reviewed. At actual launch,
+preserve/restore its complete checkpoint state before retiring its raw data.
+
+Planned reservation is offset 642, count/width 101: training engine seeds
+1,980,000,642–1,980,000,741, diagnostic engine seed 1,980,000,742, policy seeds
+1,982,001,284–1,982,001,485. No seeds were allocated during preparation.
+Acceptance remains all 100 captures admitted to one complete update, exact
+restoration/publication of 1,760, one fresh diagnostic with both policy
+reconstructions and native replay, and verified cleanup/protected inputs.
+Record actual launch identity, timings and results after execution. A single
+diagnostic supports behavioral inspection rather than a strength claim.
