@@ -102,8 +102,9 @@ consumed over three hours of the wall-clock budget; the existing `caffeinate -i`
 does not prevent that sleep. Post-stop full-state restoration and owned process
 cleanup passed. The attempt is journaled and retention-reviewed; its raw data
 remain until the next launch. The next launch uses fresh seeds from offset 541
-and starts from 1,758, rather than resuming the incomplete PPO update. It is
-deferred at the user's request; no automatic restart is scheduled.
+and starts from 1,758, rather than resuming the incomplete PPO update. On
+November 10 the user explicitly authorized this fresh cycle and its diagnostic,
+with AC power connected and the lid to remain open; see the journal's new plan.
 
 Use `./continue-selfplay.sh --cycle --check --cycles 1 --hours 10` for the
 read-only preflight, or use `./run-100-games.command --check`. The prepared

@@ -3613,3 +3613,36 @@ user's request, and no restart or automation was scheduled.
 Retention-reviewed run: `run-20261109T141819Z-14d160b4`.
 Keep this run's private artifacts until the next authorized launch/cleanup;
 the complete 1,758 pair and consumed seed ledger remain protected.
+
+## 2026-11-10 — Authorized fresh 100-game retry from 1,758: plan
+
+The user explicitly reauthorizes one fresh 100-game cycle from checkpoint
+1,758 with the same restrictions, followed by its validated diagnostic, and
+confirms AC power and an open lid. This supersedes the earlier stop/defer
+instruction for the new attempt. The question is whether the unchanged cycle
+can complete on an awake Mac and what behavior its resulting policy shows;
+one diagnostic does not establish improved playing strength.
+
+At preparation source `d1ff72e`, `./run-100-games.command --check` passed exact
+model/Adam/RNG/progress/sampler/opponent-pool restoration at 1,758, with no
+gameplay or optimizer update. `pmset -g batt` reported AC power, 100% charged.
+The parent remains 57,659 optimizer steps, 7,222 rollouts and 1,771,426 decisions.
+The preceding interrupted run is analyzed and retention-reviewed above.
+
+Run the existing `./run-100-games.command --run` with one cycle and its unchanged
+ten-hour shared deadline. Keep v3 starting Taverns, disabled calendar neutral
+spawning, artifact/army restrictions, hero-relative controls/cooldowns, 365 days,
+choice limits, ten rolling actors, PPO/Adam/native runtime, and disk/memory
+reserves unchanged. Preserve and restore the complete parent pair before
+retiring the reviewed old raw run. Pin the clean source after this plan is
+committed and do not edit the checkout while execution uses it.
+
+Planned fresh reservation: offset 541, count/width 101; training engine seeds
+1,980,000,541–1,980,000,640, diagnostic engine seed 1,980,000,641, and policy
+seeds 1,982,001,082–1,982,001,283. These are not yet allocated at this entry.
+Never reuse the interrupted run's reservation or partial in-memory PPO work.
+Completion requires all 100 captures admitted to one full update, publication
+and exact restoration of 1,759, a fresh diagnostic with native replay and exact
+two-policy reconstruction, and verified owned cleanup/protected inputs. Record
+actual source, timing, outcomes, admission and validation separately after the
+run ends; compare diagnostic behavior with the preserved 1,758 journal analysis.
